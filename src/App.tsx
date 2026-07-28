@@ -8,6 +8,8 @@ import { LoadingProvider } from './contexts/LoadingContext';
 import { LoadingOverlay } from './components/loading/LoadingOverlay';
 import MoviFullRoutes from './pages/MoviFullRoutes';
 import MoviLogin from './pages/MoviLogin';
+import { useAppUpdate } from './lib/useAppUpdate';
+import { AppUpdateBanner } from './components/AppUpdateBanner';
 
 // ── Seguwallet pages (lazy) ────────────────────────────────────────────────
 import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
@@ -188,8 +190,10 @@ function SegurosExpressApp() {
 }
 
 function MoviApp() {
+  const { updateAvailable } = useAppUpdate();
   return (
     <BrowserRouter>
+      {updateAvailable && <AppUpdateBanner />}
       <ImpersonationProvider>
         <MoviAuthProvider>
           <LoadingProvider>

@@ -56,13 +56,9 @@ export function useAppUpdate() {
       // Run selective cache cleanup (preserves auth, prefs)
       checkAndHandleVersionChange();
       // Clear Cache API for stale SW assets — the new SW will rebuild it
-      if ('caches' in window) {
-        caches.keys().then(keys =>
-          Promise.all(keys.map(k => caches.delete(k)))
-        ).finally(() => window.location.reload());
-      } else {
-        window.location.reload();
-      }
+      caches.keys()
+        .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+        .finally(() => window.location.reload());
     }, 2500);
   }
 

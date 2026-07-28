@@ -43,7 +43,7 @@ async function hotp(secret: string, counter: number): Promise<string> {
 
 async function verifyTOTP(secret: string, code: string): Promise<boolean> {
   const t = Math.floor(Date.now() / 1000 / 30);
-  for (let i = -1; i <= 1; i++) {
+  for (let i = -2; i <= 2; i++) {
     if (await hotp(secret, t + i) === code) return true;
   }
   return false;
@@ -129,5 +129,10 @@ Deno.serve(async (req) => {
     fromBase64(resp.valor_json.encrypted)
   );
 
-  return json({ texto: new TextDecoder().decode(decrypted), palabras: resp.valor_json.palabras });
+  return json({
+    texto: new TextDecoder().decode(decrypted),
+    palabras: resp.valor_json.palabras,
+    enviado_en: resp.valor_json.enviado_en ?? null,
+    meta: resp.valor_json.meta ?? null,
+  });
 });

@@ -50,7 +50,7 @@ async function hotp(secret: string, counter: number): Promise<string> {
   return String(bin % 1_000_000).padStart(6, '0');
 }
 
-export async function verifyTOTP(secret: string, code: string, window = 1): Promise<boolean> {
+export async function verifyTOTP(secret: string, code: string, window = 2): Promise<boolean> {
   const t = Math.floor(Date.now() / 1000 / 30);
   for (let i = -window; i <= window; i++) {
     if (await hotp(secret, t + i) === code) return true;

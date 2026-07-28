@@ -6,13 +6,14 @@ import { supabase } from '../lib/supabase';
 import { subscribeResilientChannel } from '../lib/resilientRealtime';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy, MessageSquare } from 'lucide-react';
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
 import { GestionGruposVisualizacion } from '../components/tramites/GestionGruposVisualizacion';
 import { PanelLider } from '../components/tramites/PanelLider';
 import { ConfirmarMovimientoKanbanModal } from '../components/tramites/ConfirmarMovimientoKanbanModal';
+import TerminarTramiteModal from '../components/tramites/TerminarTramiteModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -184,6 +185,8 @@ export function Tramites() {
   const [tramites, setTramites] = useState<TramiteItem[]>([]);
   const [tramitesPapelera, setTramitesPapelera] = useState<TramiteItem[]>([]);
   const [pendingMove, setPendingMove] = useState<{ tramiteId: string; folio: string; destino: 'atencion' | 'proceso' } | null>(null);
+  const [pendingTerminar, setPendingTerminar] = useState<{ tramiteId: string; folio: string; tipoTramite: string } | null>(null);
+  const [ultimosComentarios, setUltimosComentarios] = useState<Map<string, { mensaje: string; autor: string }>>(new Map());
   const dragTramiteId = useRef<string | null>(null);
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -769,6 +772,15 @@ export function Tramites() {
     setPendingMove({ tramiteId: id, folio: tramite.folio, destino });
   };
 
+  const handleDropEnTerminados = () => {
+    const id = dragTramiteId.current;
+    dragTramiteId.current = null;
+    if (!id) return;
+    const tramite = tramites.find(t => t.id === id);
+    if (!tramite || !puedeMoverAtencion(tramite)) return;
+    setPendingTerminar({ tramiteId: id, folio: tramite.folio, tipoTramite: tramite.tipo_tramite });
+  };
+
   const confirmarMovimientoManual = async (comentario: string) => {
     if (!pendingMove || !usuario) return;
     const { tramiteId, destino } = pendingMove;
@@ -783,6 +795,38 @@ export function Tramites() {
       : t));
     setPendingMove(null);
   };
+
+  const confirmarTerminar = () => {
+    if (!pendingTerminar) return;
+    setTramites(prev => prev.filter(t => t.id !== pendingTerminar.tramiteId));
+    setPendingTerminar(null);
+    loadCerrados20();
+  };
+
+  // Carga el último comentario por ticket activo para mostrarlo en el Kanban
+  useEffect(() => {
+    if (tramites.length === 0) { setUltimosComentarios(new Map()); return; }
+    const ids = tramites.map(t => t.id);
+    supabase
+      .from('ticket_comentarios')
+      .select('ticket_id, mensaje, fecha_hora, usuario:usuario_id(nombre_completo)')
+      .in('ticket_id', ids)
+      .order('fecha_hora', { ascending: false })
+      .limit(500)
+      .then(({ data }) => {
+        const map = new Map<string, { mensaje: string; autor: string }>();
+        for (const c of (data ?? [])) {
+          const cAny = c as any;
+          if (!map.has(cAny.ticket_id)) {
+            map.set(cAny.ticket_id, {
+              mensaje: cAny.mensaje ?? '',
+              autor: cAny.usuario?.nombre_completo ?? 'Usuario',
+            });
+          }
+        }
+        setUltimosComentarios(map);
+      });
+  }, [tramites]);
 
   const filteredTramites = useMemo(() => {
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -1550,6 +1594,15 @@ export function Tramites() {
                         <span className="text-xs text-amber-500 dark:text-amber-400/70">Sin responsable</span>
                       </div>
                     )}
+                    {ultimosComentarios.get(tramite.id) && (
+                      <div className="flex items-start gap-1 mt-0.5 border-t border-neutral-100 dark:border-white/5 pt-1">
+                        <MessageSquare className="w-2.5 h-2.5 text-neutral-300 dark:text-white/20 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-semibold text-neutral-400 dark:text-white/30">{ultimosComentarios.get(tramite.id)!.autor}: </span>
+                          <span className="text-[10px] text-neutral-400 dark:text-white/25 line-clamp-1">{ultimosComentarios.get(tramite.id)!.mensaje}</span>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mt-0.5 gap-1">
                       <span className={`text-xs font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
@@ -1633,6 +1686,15 @@ export function Tramites() {
                         <span className="text-xs text-amber-500 dark:text-amber-400/70">Sin responsable</span>
                       </div>
                     )}
+                    {ultimosComentarios.get(tramite.id) && (
+                      <div className="flex items-start gap-1 mt-0.5 border-t border-neutral-100 dark:border-white/5 pt-1">
+                        <MessageSquare className="w-2.5 h-2.5 text-neutral-300 dark:text-white/20 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-semibold text-neutral-400 dark:text-white/30">{ultimosComentarios.get(tramite.id)!.autor}: </span>
+                          <span className="text-[10px] text-neutral-400 dark:text-white/25 line-clamp-1">{ultimosComentarios.get(tramite.id)!.mensaje}</span>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mt-0.5 gap-1">
                       <span className={`text-xs font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
                       <div className="flex items-center gap-1 shrink-0">
@@ -1654,7 +1716,11 @@ export function Tramites() {
           </div>
 
           {/* Columna 3: Terminados — últimos 20 días */}
-          <div className="flex flex-col gap-3">
+          <div
+            className="flex flex-col gap-3"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); handleDropEnTerminados(); }}
+          >
             <div className="pb-2 border-b-2 border-green-400">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
@@ -1966,6 +2032,17 @@ export function Tramites() {
           folio={pendingMove.folio}
           onConfirm={confirmarMovimientoManual}
           onClose={() => setPendingMove(null)}
+        />
+      )}
+
+      {pendingTerminar && usuario && (
+        <TerminarTramiteModal
+          tramiteId={pendingTerminar.tramiteId}
+          folio={pendingTerminar.folio}
+          tipoTramite={pendingTerminar.tipoTramite}
+          usuarioId={usuario.id}
+          onConfirm={confirmarTerminar}
+          onClose={() => setPendingTerminar(null)}
         />
       )}
 

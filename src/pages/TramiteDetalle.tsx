@@ -143,6 +143,10 @@ export function TramiteDetalle() {
   const [decryptingCampo, setDecryptingCampo] = useState<{ campoId: string; label: string } | null>(null);
   const [escalacionComentario, setEscalacionComentario] = useState('');
 
+  // Comentario obligatorio al cambiar estatus
+  const [pendingEstatusComentario, setPendingEstatusComentario] = useState<{ slug: string; id: string } | null>(null);
+  const [comentarioCambioEstatus, setComentarioCambioEstatus] = useState('');
+
   // Modal "¿Cambiar estatus?" antes de guardar
   const [estatusModalOpen, setEstatusModalOpen] = useState(false);
   const [modalKeepCurrent, setModalKeepCurrent] = useState(true);
@@ -627,7 +631,7 @@ export function TramiteDetalle() {
 
     if (estatusYaCambio) {
       estatusOverrideRef.current = null;
-      await continuarGuardadoConEstatus(selectedEstatusSlug, selectedEstatus);
+      setPendingEstatusComentario({ slug: selectedEstatusSlug, id: selectedEstatus });
       return;
     }
 
@@ -659,7 +663,11 @@ export function TramiteDetalle() {
     }
 
     setEstatusModalOpen(false);
-    await continuarGuardadoConEstatus(chosenSlug, chosenId);
+    if (!modalKeepCurrent) {
+      setPendingEstatusComentario({ slug: chosenSlug, id: chosenId });
+    } else {
+      await continuarGuardadoConEstatus(chosenSlug, chosenId);
+    }
   };
 
   // Compartido entre handleSave (cuando el estatus ya se cambió a mano) y
@@ -1053,6 +1061,20 @@ export function TramiteDetalle() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const confirmarCambioConComentario = async () => {
+    if (!pendingEstatusComentario || !tramite || !usuario) return;
+    if (!comentarioCambioEstatus.trim()) return;
+    await supabase.from('ticket_comentarios').insert({
+      ticket_id: tramite.id,
+      usuario_id: usuario.id,
+      mensaje: comentarioCambioEstatus.trim(),
+    });
+    const { slug, id } = pendingEstatusComentario;
+    setPendingEstatusComentario(null);
+    setComentarioCambioEstatus('');
+    await continuarGuardadoConEstatus(slug, id);
   };
 
   const confirmarEscalacion = async () => {
@@ -1846,13 +1868,41 @@ export function TramiteDetalle() {
                                   </p>
                                 )}
                                 {(isAdmin || myTeamRole === 'lider' || myTeamRole === 'supervisor' || myTeamRole === 'director') && (
-                                  <button
-                                    onClick={() => setDecryptingCampo({ campoId: campo.id, label: campo.label })}
-                                    className="ml-6 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
-                                  >
-                                    <Lock className="w-3.5 h-3.5" />
-                                    Ver contenido
-                                  </button>
+                                  <>
+                                    {val?.meta && (
+                                      <div className="ml-6 mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                                        {val.meta.tiempo_segundos != null && (
+                                          <span className="text-neutral-500">
+                                            ⏱ {val.meta.tiempo_segundos < 60
+                                              ? `${val.meta.tiempo_segundos}s`
+                                              : `${Math.floor(val.meta.tiempo_segundos / 60)}m ${val.meta.tiempo_segundos % 60}s`}
+                                          </span>
+                                        )}
+                                        {val.meta.dispositivo && (
+                                          <span className="text-neutral-500 capitalize">
+                                            {val.meta.dispositivo === 'móvil' ? '📱' : '💻'} {val.meta.dispositivo}
+                                          </span>
+                                        )}
+                                        {val.meta.score_humano != null && (
+                                          <span className={val.meta.score_humano >= 0.7 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}>
+                                            {val.meta.score_humano >= 0.7 ? '✓' : '⚠'} {Math.round(val.meta.score_humano * 100)}% original
+                                          </span>
+                                        )}
+                                        {val.meta.chars_pegados != null && val.meta.chars_pegados > 0 && (
+                                          <span className="text-amber-600 dark:text-amber-400">
+                                            ⚠ {val.meta.chars_pegados} chars pegados
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    <button
+                                      onClick={() => setDecryptingCampo({ campoId: campo.id, label: campo.label })}
+                                      className="ml-6 mt-1 flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
+                                    >
+                                      <Lock className="w-3.5 h-3.5" />
+                                      Ver contenido
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             ) : (
@@ -1934,7 +1984,7 @@ export function TramiteDetalle() {
             })()}
           </>
         )}
-        {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} />}
+        {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} grupoId={tramite.grupo_asignado_id} />}
         {activeTab === 'archivos' && <TramiteArchivos tramiteId={tramite.id} />}
         {activeTab === 'historial' && <TramiteHistorial tramiteId={tramite.id} />}
         {activeTab === 'comisiones' && <ComisionesPendientes tramiteId={tramite.id} />}
@@ -2161,6 +2211,42 @@ export function TramiteDetalle() {
           campoLabel={decryptingCampo.label}
           onClose={() => setDecryptingCampo(null)}
         />
+      )}
+
+      {/* Comentario obligatorio al cambiar estatus */}
+      {pendingEstatusComentario && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div>
+              <p className="text-base font-semibold text-neutral-900 dark:text-white">Cambio de estatus</p>
+              <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5">Agrega un comentario explicando el cambio de estatus.</p>
+            </div>
+            <textarea
+              autoFocus
+              value={comentarioCambioEstatus}
+              onChange={e => setComentarioCambioEstatus(e.target.value.slice(0, 500))}
+              rows={3}
+              maxLength={500}
+              placeholder="¿Por qué cambia el estatus?"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none resize-none bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={confirmarCambioConComentario}
+                disabled={!comentarioCambioEstatus.trim()}
+                className="flex-1 px-4 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                Guardar
+              </button>
+              <button
+                onClick={() => { setPendingEstatusComentario(null); setComentarioCambioEstatus(''); }}
+                className="px-4 py-2 text-sm text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
