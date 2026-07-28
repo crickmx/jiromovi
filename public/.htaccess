@@ -1,5 +1,54 @@
+# ============================================================================
+# MOVI Digital — SPA fallback + control de caché (Plesk / Apache 2.4)
+# Vive en public/ y Vite lo copia a dist/ en cada build.
+#
+# ⚠️ Sin los headers de abajo, Apache/el navegador/el CDN cachean index.html y
+# siguen sirviendo el bundle JS VIEJO aunque el build genere uno nuevo. Eso causa
+# dos bugs a la vez:
+#   1) el detector de versión (useAppUpdate.ts) entra en bucle de recarga
+#      ("la página se pasma" + popup "Nueva versión disponible" repetido), y
+#   2) el código nuevo nunca aparece en beta pese a build+pull correctos.
+# Requiere que mod_headers esté habilitado en Plesk (Apache modules).
+# ============================================================================
+
 Options -MultiViews
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ /index.html [QSA,L]
+
+# ---- Fallback SPA: rutas que no son archivo/carpeta real -> index.html --------
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  # E=SPA:1 marca la respuesta (sirve index.html) para forzarle no-cache abajo.
+  RewriteRule ^ /index.html [QSA,L,E=SPA:1]
+</IfModule>
+
+# ---- Control de caché ---------------------------------------------------------
+<IfModule mod_headers.c>
+  # 1) Assets con hash de contenido en /_static/ -> inmutables 1 año.
+  #    El nombre cambia en cada build, así que cachear fuerte es seguro y rápido.
+  <If "%{REQUEST_URI} =~ m#^/_static/#">
+    Header always set Cache-Control "public, max-age=31536000, immutable"
+  </If>
+
+  # 2) HTML (index.html directo, cualquier *.html, la raíz "/", y CUALQUIER ruta
+  #    SPA reescrita a index.html) -> NUNCA cachear. Así el navegador siempre
+  #    recibe el index nuevo, que apunta al bundle JS nuevo.
+  <If "%{REQUEST_URI} =~ m#\.html$# || %{REQUEST_URI} == '/' || reqenv('SPA') == '1'">
+    Header always set Cache-Control "no-cache, no-store, must-revalidate"
+    Header always set Pragma "no-cache"
+    Header always set Expires "0"
+  </If>
+
+  # 3) version.json -> siempre fresco (lo consulta el detector de versión).
+  <If "%{REQUEST_URI} =~ m#/version\.json$#">
+    Header always set Cache-Control "no-cache, no-store, must-revalidate"
+    Header always set Pragma "no-cache"
+    Header always set Expires "0"
+  </If>
+
+  # 4) Service workers -> siempre frescos (nunca cachear el SW).
+  <If "%{REQUEST_URI} =~ m#/(push-sw|sw)\.js$#">
+    Header always set Cache-Control "no-cache, no-store, must-revalidate"
+    Header always set Service-Worker-Allowed "/"
+  </If>
+</IfModule>
