@@ -88,6 +88,27 @@ Deno.serve(async (req: Request) => {
     const isGerente = currentUserData?.rol === 'Gerente';
     const isAdmin = currentUserData?.rol === 'Administrador';
 
+    let isMktEquipo = false;
+    if (!isAdmin && !isGerente) {
+      const { data: gruposMkt } = await supabaseAdmin.from('mkt_equipos_acceso').select('grupo_id');
+      const gruposConAcceso = (gruposMkt ?? []).map((g) => g.grupo_id);
+      if (gruposConAcceso.length > 0) {
+        const { count } = await supabaseAdmin
+          .from('tramites_grupos_miembros')
+          .select('grupo_id', { count: 'exact', head: true })
+          .eq('usuario_id', currentUser.id)
+          .in('grupo_id', gruposConAcceso);
+        isMktEquipo = (count ?? 0) > 0;
+      }
+    }
+
+    if (!isAdmin && !isGerente && !isMktEquipo) {
+      return new Response(
+        JSON.stringify({ error: 'No tienes permiso para crear usuarios' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body = await req.json();
     console.log('[create-user] Request body:', JSON.stringify({ ...body, password: '[REDACTED]' }, null, 2));
 
@@ -143,6 +164,11 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
+    }
+
+    // Equipo de Marketing: solo puede crear Agentes, sin importar lo que mande el cliente
+    if (isMktEquipo) {
+      userData.rol = 'Agente';
     }
 
     console.log('[create-user] Creating auth user...');
