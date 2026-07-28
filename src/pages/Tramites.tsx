@@ -202,6 +202,10 @@ export function Tramites() {
   const dragStartClientRef = useRef({ x: 0, y: 0 });
   const dragMovedRef = useRef(false);
   const dragHoverColRef = useRef<'atencion' | 'proceso' | 'terminados' | null>(null);
+  // El pointer capture solo redirige eventos de Pointer, no el click nativo del mouse —
+  // al soltar sobre otra tarjeta, esa tarjeta recibe el click real. Se suprime ese click
+  // fantasma justo después de un arrastre real (moved=true), sin importar dónde caiga.
+  const suppressClickRef = useRef(false);
   const DRAG_THRESHOLD = 4;
   const KANBAN_COL_COLORS: Record<'atencion' | 'proceso' | 'terminados', string> = {
     atencion: '#ef4444',
@@ -911,6 +915,11 @@ export function Tramites() {
       dragTramiteId.current = null;
       return;
     }
+
+    // Hubo arrastre real: el click nativo que sigue (dispare donde dispare) es un
+    // efecto fantasma del gesto, no un click intencional — se suprime brevemente.
+    suppressClickRef.current = true;
+    setTimeout(() => { suppressClickRef.current = false; }, 0);
 
     let opened = false;
     if (hoverCol && hoverCol !== originCol) {
@@ -1707,7 +1716,7 @@ export function Tramites() {
               return (
                 <div
                   key={tramite.id}
-                  onClick={() => navigate(`/tramites/${tramite.id}`)}
+                  onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }}
                   onPointerDown={(e) => startKanbanDrag(e, tramite, 'atencion')}
                   onPointerMove={(e) => moveKanbanDrag(e, tramite)}
                   onPointerUp={endKanbanDrag}
@@ -1808,7 +1817,7 @@ export function Tramites() {
               return (
                 <div
                   key={tramite.id}
-                  onClick={() => navigate(`/tramites/${tramite.id}`)}
+                  onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }}
                   onPointerDown={(e) => startKanbanDrag(e, tramite, 'proceso')}
                   onPointerMove={(e) => moveKanbanDrag(e, tramite)}
                   onPointerUp={endKanbanDrag}
@@ -1897,7 +1906,7 @@ export function Tramites() {
                   : null;
               const totalDays = Math.max(0, Math.floor((new Date(tramite.cerrado_en!).getTime() - new Date(tramite.fecha_creacion).getTime()) / 86_400_000));
               return (
-                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
+                <div key={tramite.id} onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
