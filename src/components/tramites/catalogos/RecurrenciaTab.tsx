@@ -76,7 +76,7 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
   const [dispararMarcarLog, setDispararMarcarLog] = useState(true);
   const [dispararLoading, setDispararLoading] = useState(false);
 
-  useEffect(() => { loadAll(); }, [tipoId]);
+  useEffect(() => { loadAll(); setUsuarios([]); }, [tipoId]);
 
   async function loadAll() {
     setLoading(true);
@@ -94,8 +94,40 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
   async function loadUsuarios() {
     if (usuarios.length > 0) return;
     setLoadingUsuarios(true);
-    const { data } = await supabase.from('usuarios').select('id, nombre_completo').eq('activo', true).order('nombre_completo');
-    setUsuarios(data ?? []);
+
+    // Solo miembros de equipos habilitados para este tipo de trámite
+    const { data: configs } = await supabase
+      .from('tramite_team_tipo_config')
+      .select('team_id')
+      .eq('tipo_id', tipoId)
+      .eq('habilitado', true);
+
+    let result: { id: string; nombre_completo: string }[] = [];
+
+    if (configs?.length) {
+      const grupoIds = configs.map((c: any) => c.team_id);
+      const { data: miembros } = await supabase
+        .from('tramites_grupos_miembros')
+        .select('usuario_id, usuarios!inner(id, nombre_completo)')
+        .in('grupo_id', grupoIds);
+
+      const seen = new Set<string>();
+      for (const m of miembros ?? []) {
+        const u = (m as any).usuarios;
+        if (u?.id && !seen.has(u.id)) {
+          seen.add(u.id);
+          result.push({ id: u.id, nombre_completo: u.nombre_completo });
+        }
+      }
+      result.sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
+    } else {
+      // Sin equipos configurados — fallback a todos los usuarios activos
+      const { data } = await supabase
+        .from('usuarios').select('id, nombre_completo').eq('activo', true).order('nombre_completo');
+      result = data ?? [];
+    }
+
+    setUsuarios(result);
     setLoadingUsuarios(false);
   }
 
