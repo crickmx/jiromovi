@@ -82,6 +82,7 @@ export function TramiteDetalle() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'detalles' | 'comentarios' | 'archivos' | 'historial' | 'comisiones' | 'diagnostico'>('detalles');
   const [esReporteBug, setEsReporteBug] = useState(false);
+  const [tipoEsInterno, setTipoEsInterno] = useState(false);
 
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [selectedEstatus, setSelectedEstatus] = useState('');
@@ -333,14 +334,16 @@ export function TramiteDetalle() {
     if (!ticketData) return;
 
     // Ahora hacer queries separadas para cada relación
-    const [agenteRes, responsableRes, estatusRes, creadoPorRes, modificadoPorRes, cerradoPorRes] = await Promise.all([
+    const [agenteRes, responsableRes, estatusRes, creadoPorRes, modificadoPorRes, cerradoPorRes, tipoRes] = await Promise.all([
       ticketData.agente_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.agente_id).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.assigned_to_user_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.assigned_to_user_id).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.estatus_id ? supabase.from('ticket_estatus').select('*').eq('id', ticketData.estatus_id).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.creado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.creado_por).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.modificado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.modificado_por).maybeSingle() : Promise.resolve({ data: null }),
-      ticketData.cerrado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.cerrado_por).maybeSingle() : Promise.resolve({ data: null })
+      ticketData.cerrado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.cerrado_por).maybeSingle() : Promise.resolve({ data: null }),
+      supabase.from('ticket_tipos').select('es_interno').eq('value', ticketData.tipo_tramite).maybeSingle(),
     ]);
+    setTipoEsInterno((tipoRes.data as any)?.es_interno ?? false);
 
     // Construir el objeto final
     const tramiteCompleto = {
@@ -1576,7 +1579,7 @@ export function TramiteDetalle() {
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {camposDinamicos
-                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus')
+                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus' && !(tipoEsInterno && (c.sistema_key === 'agente_vendedor' || c.sistema_key === 'oficina_jiro')))
                     .map(campo => {
                       const val = respuestasDinamicas[campo.id];
                       const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));

@@ -15,6 +15,7 @@ export interface TicketTipo {
   color: string;
   activo: boolean;
   is_custom: boolean;
+  es_interno: boolean;
   orden: number;
   sla_horas?: number | null;
   updated_at?: string;
