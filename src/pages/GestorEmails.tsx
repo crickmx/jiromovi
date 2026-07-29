@@ -871,7 +871,18 @@ function ReadingPane({
 }) {
   const [showFullHeaders, setShowFullHeaders] = useState(false);
   const [existingTramite, setExistingTramite] = useState<{ id: string; folio: string } | null>(null);
+  const [renderBigBody, setRenderBigBody] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Un correo con HTML enorme (newsletters con imágenes base64 o tablas muy
+  // anidadas) bloquea el hilo principal al escribirlo de golpe en el iframe
+  // (doc.write es síncrono). Por encima de este tamaño pedimos confirmación en
+  // vez de renderizar automático — evita el "la página no responde".
+  const BODY_RENDER_LIMIT = 1_500_000; // ~1.5 MB de HTML
+  const bodyTooBig = !!message.bodyHtml && message.bodyHtml.length > BODY_RENDER_LIMIT && !renderBigBody;
+
+  // Al cambiar de mensaje, volver a exigir confirmación para el siguiente correo grande.
+  useEffect(() => { setRenderBigBody(false); }, [message.uid]);
 
   useEffect(() => {
     if (message.messageId) {
@@ -888,6 +899,7 @@ function ReadingPane({
   }, [message.messageId]);
 
   useEffect(() => {
+    if (bodyTooBig) return; // correo demasiado grande: esperar confirmación del usuario
     if (iframeRef.current && message.bodyHtml) {
       const doc = iframeRef.current.contentDocument;
       if (doc) {
@@ -911,7 +923,7 @@ function ReadingPane({
         }, 200);
       }
     }
-  }, [message.bodyHtml]);
+  }, [message.bodyHtml, bodyTooBig]);
 
   const handleDownloadAttachment = async (att: { filename: string; partId: string }) => {
     try {
@@ -1047,7 +1059,23 @@ function ReadingPane({
 
           {/* Email body */}
           <div className="rounded-xl border border-neutral-100 dark:border-neutral-700/50 overflow-hidden bg-white dark:bg-neutral-800">
-            {message.bodyHtml ? (
+            {bodyTooBig ? (
+              <div className="p-6 text-center">
+                <MailOpen className="w-8 h-8 mx-auto mb-2 text-neutral-400" />
+                <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-1">
+                  Este correo es muy grande y puede tardar en mostrarse.
+                </p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-3">
+                  {formatSize(message.bodyHtml!.length)} de contenido
+                </p>
+                <button
+                  onClick={() => setRenderBigBody(true)}
+                  className="px-3.5 py-2 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent/90 transition"
+                >
+                  Mostrar de todos modos
+                </button>
+              </div>
+            ) : message.bodyHtml ? (
               <iframe
                 ref={iframeRef}
                 className="w-full min-h-[300px] border-0"
