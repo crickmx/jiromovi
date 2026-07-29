@@ -172,7 +172,7 @@ export function NuevoTramiteModal({
   const isInitializingWithPreloadedData = useRef(false);
   const insurerDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [tiposDb, setTiposDb] = useState<Array<{ id: string; value: string; label: string; area: string; is_custom: boolean }>>([]);
+  const [tiposDb, setTiposDb] = useState<Array<{ id: string; value: string; label: string; area: string; is_custom: boolean; es_interno: boolean }>>([]);
 
   // Campos dinámicos del catálogo para el tipo de trámite seleccionado
   interface CampoDinamicoOption { label: string; slug: string; clasificacion?: string | null }
@@ -218,6 +218,7 @@ export function NuevoTramiteModal({
 
   const { tiposMap } = useTiposTramite();
   const isAgent = usuario?.rol === 'Agente';
+  const esInterno = tiposDb.find(t => t.value === tipoTramite)?.es_interno ?? false;
   const isEmpleadoOAgente = isAgent || usuario?.rol === 'Empleado';
   const canAssignOthers = !isAgent;
   const isPoolMode = false;
@@ -286,11 +287,11 @@ export function NuevoTramiteModal({
   const loadTiposDb = async () => {
     const { data } = await supabase
       .from('ticket_tipos')
-      .select('id, value, label, area, is_custom')
+      .select('id, value, label, area, is_custom, es_interno')
       .eq('activo', true)
       .order('orden');
     if (!data) return;
-    setTiposDb(data as Array<{ id: string; value: string; label: string; area: string; is_custom: boolean }>);
+    setTiposDb(data as Array<{ id: string; value: string; label: string; area: string; is_custom: boolean; es_interno: boolean }>);
 
     // Admin y Gerente no tienen restricciones
     if (!usuario || ['Administrador', 'Gerente'].includes(usuario.rol)) return;
@@ -1223,6 +1224,7 @@ export function NuevoTramiteModal({
     );
 
     if (campo.sistema_key === 'agente_vendedor') {
+      if (esInterno) return null;
       const val = respuestasDinamicas[campo.id] || '';
       const selectedAgente = agentesVendedor.find(a => a.id === val);
       const agenteOpts = agentesVendedor.map(a => ({
@@ -1272,6 +1274,7 @@ export function NuevoTramiteModal({
     }
 
     if (campo.sistema_key === 'oficina_jiro') {
+      if (esInterno) return null;
       const val = respuestasDinamicas[campo.id];
       return (
         <div key={campo.id}>
@@ -1563,7 +1566,7 @@ export function NuevoTramiteModal({
 
       const isCommercial = isCommercialTicketType(tipoTramite);
       // Resolve team + optional auto-ejecutivo based on the agent user (applies to all tramite types)
-      const agentUserId = isAgent
+      const agentUserId = isAgent || esInterno
         ? usuario.id
         : (isCommercial ? comAgenteUserId : asignado) ?? null;
       const grupoResult = await resolveGrupoParaTicket(agentUserId, tipoTramite);
@@ -1584,7 +1587,7 @@ export function NuevoTramiteModal({
         instrucciones: isCommercial ? buildCommercialDescription() : (descripcion.trim() || 'Sin descripción'),
         creado_por: usuario.id,
         modificado_por: usuario.id,
-        agente_id: isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo),
+        agente_id: esInterno ? null : (isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo)),
         agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
         assigned_to_user_id: responsableId,
         grupo_asignado_id: grupoAsignadoId ?? undefined,

@@ -77,7 +77,7 @@ export function GestionCatalogosRegistro() {
   const [tramitesOpen, setTramitesOpen] = useState(true);
 
   // ── Edit - Config tab ───────────────────────────────────────────────────
-  const [editConfig, setEditConfig] = useState({ label: '', area: '', color: '#0369a1', slaDias: '' });
+  const [editConfig, setEditConfig] = useState({ label: '', area: '', color: '#0369a1', slaDias: '', es_interno: false });
   const [savingConfig, setSavingConfig] = useState(false);
   const [horasProductivasDia, setHorasProductivasDia] = useState(8);
 
@@ -182,7 +182,8 @@ export function GestionCatalogosRegistro() {
     editConfig.label !== activeTipo.label ||
     editConfig.color !== activeTipo.color ||
     (activeTipo.is_custom && editConfig.area !== activeTipo.area) ||
-    diasToHoras(editConfig.slaDias) !== (activeTipo.sla_horas ?? null)
+    diasToHoras(editConfig.slaDias) !== (activeTipo.sla_horas ?? null) ||
+    editConfig.es_interno !== (activeTipo.es_interno ?? false)
   );
 
   const filteredTipos = searchTipo.trim()
@@ -210,7 +211,7 @@ export function GestionCatalogosRegistro() {
 
   const openEditor = (tipo: TicketTipo) => {
     setActiveTipo(tipo);
-    setEditConfig({ label: tipo.label, area: tipo.area, color: tipo.color, slaDias: horasToDiasLabel(tipo.sla_horas) });
+    setEditConfig({ label: tipo.label, area: tipo.area, color: tipo.color, slaDias: horasToDiasLabel(tipo.sla_horas), es_interno: tipo.es_interno ?? false });
     setActiveTab('config');
     setView('edit');
   };
@@ -231,7 +232,7 @@ export function GestionCatalogosRegistro() {
     if (!activeTipo || !editConfig.label.trim()) { showToast('El nombre es obligatorio', 'error'); return; }
     setSavingConfig(true);
     const nuevoSlaHoras = diasToHoras(editConfig.slaDias);
-    const payload: Record<string, any> = { label: editConfig.label.trim(), color: editConfig.color, sla_horas: nuevoSlaHoras };
+    const payload: Record<string, any> = { label: editConfig.label.trim(), color: editConfig.color, sla_horas: nuevoSlaHoras, es_interno: editConfig.es_interno };
     if (activeTipo.is_custom) {
       payload.area = editConfig.area;
       payload.area_id = areasDisponibles.find(a => a.nombre === editConfig.area)?.id ?? null;
@@ -530,6 +531,20 @@ export function GestionCatalogosRegistro() {
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">Color</label>
               <ColorPicker value={editConfig.color} onChange={(c) => setEditConfig({ ...editConfig, color: c })} />
+            </div>
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editConfig.es_interno}
+                  onChange={e => setEditConfig({ ...editConfig, es_interno: e.target.checked })}
+                  className="w-4 h-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-neutral-700">Trámite interno</span>
+              </label>
+              <p className="text-xs text-neutral-400 mt-1 ml-7">
+                Si está activo, no solicita asignación a un agente/solicitante externo al crear el trámite.
+              </p>
             </div>
             <button
               onClick={handleSaveConfig}
