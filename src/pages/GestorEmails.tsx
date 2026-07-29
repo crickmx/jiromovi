@@ -428,15 +428,6 @@ export function GestorEmails() {
           >
             <RefreshCw className={cn('w-4 h-4', (roundcubeLoading || openingRoundcube) && 'animate-spin')} />
           </button>
-
-          <button
-            onClick={showLegacyMail}
-            className="flex items-center gap-1.5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 px-3 py-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition font-medium text-xs"
-            title="Usar vista clásica"
-          >
-            <LayoutList className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Vista clásica</span>
-          </button>
         </header>
 
         {error && (
