@@ -52,29 +52,49 @@ export default function UbicacionPicker({
       setManualMode(true);
       return;
     }
+    // El GPS del navegador sólo funciona en contexto seguro (HTTPS o localhost).
+    // Si el sitio se sirve por HTTP, getCurrentPosition falla siempre — lo avisamos claro.
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      setStatus('error');
+      setErrorMsg('Necesitamos una conexión segura (HTTPS) para usar tu ubicación. Escribe tu dirección o C.P. abajo.');
+      setManualMode(true);
+      return;
+    }
+
+    const onOk = (pos: GeolocationPosition) => {
+      setStatus('idle');
+      setManualMode(false);
+      onChange({
+        lat: Number(pos.coords.latitude.toFixed(6)),
+        lng: Number(pos.coords.longitude.toFixed(6)),
+        direccion_manual: null,
+        metodo: 'gps',
+      });
+    };
+
+    const onFail = (err: GeolocationPositionError) => {
+      setStatus('error');
+      let msg: string;
+      if (err.code === err.PERMISSION_DENIED) {
+        msg = 'No diste permiso de ubicación. Escribe tu dirección o C.P. abajo.';
+      } else if (err.code === err.TIMEOUT) {
+        msg = 'La ubicación tardó demasiado. Intenta de nuevo o escribe tu dirección o C.P. abajo.';
+      } else {
+        msg = 'No pudimos obtener tu ubicación (revisa que esté activada en tu dispositivo). Escribe tu dirección o C.P. abajo.';
+      }
+      setErrorMsg(msg);
+      setManualMode(true);
+    };
+
     setStatus('locating');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setStatus('idle');
-        setManualMode(false);
-        onChange({
-          lat: Number(pos.coords.latitude.toFixed(6)),
-          lng: Number(pos.coords.longitude.toFixed(6)),
-          direccion_manual: null,
-          metodo: 'gps',
-        });
-      },
-      (err) => {
-        setStatus('error');
-        setErrorMsg(
-          err.code === err.PERMISSION_DENIED
-            ? 'No diste permiso de ubicación. Escribe tu dirección o C.P. abajo.'
-            : 'No pudimos obtener tu ubicación. Escribe tu dirección o C.P. abajo.'
-        );
-        setManualMode(true);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    );
+    // Precisión baja: para asignar un asesor cercano basta con ~ciudad/colonia, y así el
+    // navegador usa ubicación por red (rápida y confiable) en vez de esperar un fix de GPS
+    // que en laptops/desktop no existe y provocaba timeouts constantes.
+    navigator.geolocation.getCurrentPosition(onOk, onFail, {
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 120000,
+    });
   }
 
   function setManual(texto: string) {
