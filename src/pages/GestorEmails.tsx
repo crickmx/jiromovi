@@ -892,7 +892,10 @@ function ReadingPane({
       const doc = iframeRef.current.contentDocument;
       if (doc) {
         doc.open();
-        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+          <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+          <meta name="referrer" content="no-referrer">
+          <base target="_blank"><style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: #333; margin: 20px; word-break: break-word; }
           img { max-width: 100%; height: auto; }
           a { color: #0066cc; }
