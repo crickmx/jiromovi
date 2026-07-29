@@ -5,6 +5,7 @@ import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignat
 import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList, ContactRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmailModal';
+import { AgregarAEmailTramiteModal } from '@/components/email/AgregarAEmailTramiteModal';
 import { getRoundcubeHandoffUrl } from '../lib/roundcubeSso';
 import { ContactosMovi } from '../components/email/ContactosMovi';
 
@@ -189,6 +190,7 @@ export function GestorEmails() {
 
   // Tramite from email
   const [showTramiteModal, setShowTramiteModal] = useState(false);
+  const [showAddTramiteModal, setShowAddTramiteModal] = useState(false);
 
   const composeToContact = (email: string) => {
     setComposeRecipient(email);
@@ -793,6 +795,7 @@ export function GestorEmails() {
               onReplyAll={() => { setComposeMode('replyAll'); setShowCompose(true); }}
               onForward={() => { setComposeMode('forward'); setShowCompose(true); }}
               onIniciarTramite={() => setShowTramiteModal(true)}
+              onAgregarATramite={() => setShowAddTramiteModal(true)}
               currentFolder={currentFolder}
             />
           ) : (
@@ -835,6 +838,17 @@ export function GestorEmails() {
           }}
         />
       )}
+
+      {/* Agregar a Tramite Existente Modal */}
+      {selectedMessage && (
+        <AgregarAEmailTramiteModal
+          isOpen={showAddTramiteModal}
+          onClose={() => setShowAddTramiteModal(false)}
+          email={selectedMessage}
+          emailAccount={configEmail}
+          currentFolder={currentFolder}
+        />
+      )}
     </div>
   );
 }
@@ -842,7 +856,7 @@ export function GestorEmails() {
 // ── Reading Pane ────────────────────────────────────────────────────
 
 function ReadingPane({
-  message, loading, onBack, onMarkRead, onDelete, onReply, onReplyAll, onForward, onIniciarTramite, currentFolder,
+  message, loading, onBack, onMarkRead, onDelete, onReply, onReplyAll, onForward, onIniciarTramite, onAgregarATramite, currentFolder,
 }: {
   message: EmailFull;
   loading: boolean;
@@ -853,6 +867,7 @@ function ReadingPane({
   onReplyAll: () => void;
   onForward: () => void;
   onIniciarTramite: () => void;
+  onAgregarATramite: () => void;
   currentFolder: string;
 }) {
   const [showFullHeaders, setShowFullHeaders] = useState(false);
@@ -1072,6 +1087,9 @@ function ReadingPane({
                 <ClipboardList className="w-3.5 h-3.5" /> Iniciar tramite
               </button>
             )}
+            <button onClick={onAgregarATramite} className="flex items-center gap-1.5 px-3.5 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition text-xs font-medium">
+              <Plus className="w-3.5 h-3.5" /> Agregar a tramite
+            </button>
           </div>
         </div>
       </div>
