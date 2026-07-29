@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignatureUtils';
-import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList, ContactRound } from 'lucide-react';
+import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList, ContactRound, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmailModal';
 import { AgregarAEmailTramiteModal } from '@/components/email/AgregarAEmailTramiteModal';
