@@ -153,12 +153,12 @@ export function GestionCatalogosRegistro() {
     if (tipos.length === 0) return;
 
     const [ticketRes, campoRes] = await Promise.all([
-      supabase.from('tickets').select('tipo').in('tipo', tipos.map(t => t.value)),
+      supabase.from('tickets').select('tipo_tramite').in('tipo_tramite', tipos.map(t => t.value)),
       supabase.from('tramite_tipo_campos').select('tramite_tipo_id').in('tramite_tipo_id', tipos.map(t => t.id)).eq('activo', true),
     ]);
 
     const ticketCount = new Map<string, number>();
-    for (const r of (ticketRes.data || [])) ticketCount.set(r.tipo, (ticketCount.get(r.tipo) || 0) + 1);
+    for (const r of (ticketRes.data || [])) ticketCount.set((r as any).tipo_tramite, (ticketCount.get((r as any).tipo_tramite) || 0) + 1);
 
     const campoCount = new Map<string, number>();
     for (const r of (campoRes.data || [])) campoCount.set(r.tramite_tipo_id, (campoCount.get(r.tramite_tipo_id) || 0) + 1);

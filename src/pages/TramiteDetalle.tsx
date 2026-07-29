@@ -1004,7 +1004,17 @@ export function TramiteDetalle() {
                 srcVal = m.valor_fijo;
               } else if (m.source_sistema_key) {
                 if (m.source_sistema_key === 'poliza_numero') srcVal = snap.poliza;
-                else if (m.source_sistema_key === 'prioridad')  srcVal = snap.prioridad;
+                else if (m.source_sistema_key === 'prioridad') srcVal = snap.prioridad;
+                else {
+                  // agente_vendedor, oficina_jiro y otros: buscar el campo por tipo o sistema_key
+                  const campoOrigen = camposDinamicos.find(
+                    (c: any) => c.tipo === m.source_sistema_key || c.sistema_key === m.source_sistema_key
+                  );
+                  if (campoOrigen) {
+                    const resp = respuestasOriginales.find(r => r.campo_id === campoOrigen.id);
+                    srcVal = resp?.valor_texto ?? resp?.valor_json ?? null;
+                  }
+                }
               } else if (m.source_campo_id) {
                 const resp = respuestasOriginales.find(r => r.campo_id === m.source_campo_id);
                 srcVal = resp?.valor_json ?? resp?.valor_texto ?? resp?.valor_numerico ?? resp?.valor_fecha ?? resp?.valor_booleano ?? null;
@@ -1031,7 +1041,33 @@ export function TramiteDetalle() {
               }
             }
 
-            // 7. Log de ejecución exitosa
+            // 7. Copiar archivos adjuntos del padre al hijo
+            if (trigger.adjunto_categorias_ids?.length > 0) {
+              const { data: archivos } = await supabase
+                .from('ticket_archivos')
+                .select('usuario_id, nombre, url, tipo, tamano')
+                .eq('ticket_id', snap.id);
+              if (archivos?.length) {
+                await supabase.from('ticket_archivos').insert(
+                  archivos.map(a => ({ ...a, ticket_id: childTicket.id }))
+                );
+              }
+            }
+
+            // 8. Auto-asignación de equipo al hijo (misma lógica que NuevoTramiteModal)
+            if (snap.agente?.id) {
+              const { data: grupoData } = await supabase.rpc('get_grupo_para_ticket', {
+                p_agente_id: snap.agente.id,
+                p_tipo_tramite: targetTipo.value,
+              });
+              if (grupoData) {
+                const grupoUpd: Record<string, string> = { grupo_asignado_id: (grupoData as any).grupo_id };
+                if ((grupoData as any).ejecutivo_id) grupoUpd.assigned_to_user_id = (grupoData as any).ejecutivo_id;
+                await supabase.from('tickets').update(grupoUpd).eq('id', childTicket.id);
+              }
+            }
+
+            // 9. Log de ejecución exitosa
             await supabase.from('ticket_trigger_executions').insert({
               trigger_id: trigger.id, parent_ticket_id: snap.id,
               child_ticket_id: childTicket.id, ejecutado_por: usuario.id, estatus: 'ok',
