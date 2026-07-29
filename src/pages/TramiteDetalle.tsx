@@ -1001,13 +1001,27 @@ export function TramiteDetalle() {
               .eq('trigger_id', trigger.id)
               .order('orden');
 
+            let _equipoExplicito = false;
             for (const m of mappings || []) {
               let srcVal: any = null;
               if (m.valor_fijo != null) {
-                srcVal = m.valor_fijo;
+                let tpl = m.valor_fijo;
+                if (tpl.includes('{')) {
+                  tpl = tpl.replace(/\{([^}]+)\}/g, (_m: string, label: string) => {
+                    const src = (camposDinamicos as any[]).find(c => c.label === label);
+                    if (!src) return `{${label}}`;
+                    const resp = respuestasOriginales.find(r => r.campo_id === src.id);
+                    return String(resp?.valor_texto ?? resp?.valor_json ?? `{${label}}`);
+                  });
+                }
+                srcVal = tpl;
               } else if (m.source_sistema_key) {
                 if (m.source_sistema_key === 'poliza_numero') srcVal = snap.poliza;
                 else if (m.source_sistema_key === 'prioridad') srcVal = snap.prioridad;
+                else if (m.source_sistema_key === 'responsable_padre') {
+                  srcVal = (snap as any).responsable?.nombre_completo ?? null;
+                }
+                else if (m.source_sistema_key === 'autoasignar') { srcVal = null; continue; }
                 else {
                   // agente_vendedor, oficina_jiro y otros: buscar el campo por tipo o sistema_key
                   const campoOrigen = camposDinamicos.find(
@@ -1036,6 +1050,15 @@ export function TramiteDetalle() {
                   valor_booleano: tc.tipo === 'booleano' ? Boolean(srcVal) : null,
                   valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto'].includes(tc.tipo) ? srcVal : null,
                 });
+                if (tc.tipo === 'equipo') {
+                  try {
+                    const teamIds: string[] = JSON.parse(String(srcVal));
+                    if (teamIds.length > 0) {
+                      await supabase.from('tickets').update({ grupo_asignado_id: teamIds[0] }).eq('id', childTicket.id);
+                      _equipoExplicito = true;
+                    }
+                  } catch (_e) { /* malformed JSON, skip */ }
+                }
               } else if (m.target_sistema_key) {
                 const upd: any = {};
                 if (m.target_sistema_key === 'poliza_numero') upd.poliza = String(srcVal);
@@ -1058,7 +1081,8 @@ export function TramiteDetalle() {
             }
 
             // 8. Auto-asignación de equipo al hijo (misma lógica que NuevoTramiteModal)
-            if (snap.agente?.id) {
+            // Skipped when equipo was explicitly set via field mapping
+            if (!_equipoExplicito && snap.agente?.id) {
               const { data: grupoData } = await supabase.rpc('get_grupo_para_ticket', {
                 p_agente_id: snap.agente.id,
                 p_tipo_tramite: targetTipo.value,

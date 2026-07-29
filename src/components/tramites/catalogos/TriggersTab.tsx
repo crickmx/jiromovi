@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Save, ChevronDown, ChevronRight, Pencil, Zap, ArrowRight, AlertCircle, Wand2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -7,6 +7,7 @@ import type { TicketTipo, TipoCampo } from './types';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AdjuntoCategoria { id: string; nombre: string }
+interface Grupo { id: string; nombre: string }
 
 interface StatusTrigger {
   id: string;
@@ -60,11 +61,13 @@ const PRIORIDADES: Array<{ value: string; label: string }> = [
 ];
 
 const SISTEMA_KEYS: Array<{ value: string; label: string }> = [
-  { value: 'asignado',       label: 'Responsable asignado' },
-  { value: 'prioridad',      label: 'Prioridad' },
-  { value: 'agente_vendedor', label: 'Agente / Vendedor' },
-  { value: 'oficina_jiro',   label: 'Oficina JIRO' },
-  { value: 'poliza_numero',  label: 'Número de póliza' },
+  { value: 'asignado',          label: 'Responsable asignado' },
+  { value: 'prioridad',         label: 'Prioridad' },
+  { value: 'agente_vendedor',   label: 'Agente / Vendedor' },
+  { value: 'oficina_jiro',      label: 'Oficina JIRO' },
+  { value: 'poliza_numero',     label: 'Número de póliza' },
+  { value: 'responsable_padre', label: 'Responsable del trámite padre' },
+  { value: 'autoasignar',       label: 'Auto-asignar (reglas del equipo)' },
 ];
 
 function mkKey() { return Math.random().toString(36).slice(2); }
@@ -82,6 +85,7 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
   const [sourceCampos, setSourceCampos]       = useState<TipoCampo[]>([]);
   const [sourceStatuses, setSourceStatuses]   = useState<{ label: string; slug: string }[]>([]);
   const [targetCamposMap, setTargetCamposMap] = useState<Record<string, TipoCampo[]>>({});
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [expandedId, setExpandedId]           = useState<string | null>(null);
   const [initialMappingsMap, setInitialMappingsMap] = useState<Record<string, FieldMapping[]>>({});
 
@@ -107,16 +111,18 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
 
   const loadAll = async () => {
     setLoading(true);
-    const [triggersRes, tiposRes, catsRes, camposRes] = await Promise.all([
+    const [triggersRes, tiposRes, catsRes, camposRes, gruposRes] = await Promise.all([
       supabase.from('ticket_status_triggers')
         .select('*, target_tipo:ticket_tipos!target_tipo_id(label,color)')
         .eq('ticket_tipo_id', tipoId).order('created_at'),
       supabase.from('ticket_tipos').select('*').order('label'),
       supabase.from('maestro_adjunto_categorias').select('id,nombre').eq('activo', true).order('nombre'),
       supabase.from('tramite_tipo_campos').select('*').eq('tramite_tipo_id', tipoId).eq('activo', true).order('display_order'),
+      supabase.from('tramites_grupos').select('id, nombre').order('nombre'),
     ]);
     setAllTipos((tiposRes.data || []) as TicketTipo[]);
     setAdjuntoCats((catsRes.data || []) as AdjuntoCategoria[]);
+    setGrupos((gruposRes.data || []) as Grupo[]);
     const srcCampos = (camposRes.data || []) as TipoCampo[];
     setSourceCampos(srcCampos);
     setSourceStatuses(srcCampos.find(c => c.tipo === 'estatus')?.config?.opciones ?? []);
@@ -359,6 +365,7 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
             targetCampos={targetCamposMap[t.target_tipo_id] || []}
             initialMappings={initialMappingsMap[t.id] ?? null}
             saving={saving}
+            grupos={grupos}
             onToggleExpand={() => toggleExpand(t.id)}
             onEdit={() => openEdit(t)}
             onDelete={() => handleDelete(t.id, t.nombre)}
@@ -557,12 +564,13 @@ interface TriggerRowProps {
   trigger: StatusTrigger; expanded: boolean;
   sourceCampos: TipoCampo[]; targetCampos: TipoCampo[];
   initialMappings: FieldMapping[] | null; saving: boolean;
+  grupos: Grupo[];
   onToggleExpand: () => void; onEdit: () => void;
   onDelete: () => void; onToggleActivo: () => void;
   onSaveMappings: (rows: FieldMapping[]) => void;
 }
 
-function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMappings, saving, onToggleExpand, onEdit, onDelete, onToggleActivo, onSaveMappings }: TriggerRowProps) {
+function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMappings, saving, grupos, onToggleExpand, onEdit, onDelete, onToggleActivo, onSaveMappings }: TriggerRowProps) {
   const color = trigger.target_tipo?.color ?? '#64748b';
 
   // Local mapping state: keyed by target_campo_id (or _key for sistema targets)
@@ -683,6 +691,7 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
                       campo={campo}
                       mapping={findByCampoId(campo.id)}
                       sourceCampos={sourceCampos}
+                      grupos={grupos}
                       onSet={(patch) => handleCampoSet(campo.id, patch)}
                     />
                   ))}
@@ -719,10 +728,14 @@ interface CampoMappingRowProps {
   campo: TipoCampo;
   mapping: FieldMapping | null;
   sourceCampos: TipoCampo[];
+  grupos: Grupo[];
   onSet: (patch: Partial<FieldMapping> | null) => void;
 }
 
-function CampoMappingRow({ campo, mapping, sourceCampos, onSet }: CampoMappingRowProps) {
+function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoMappingRowProps) {
+  // Hooks first — before any conditional returns
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const currentSource = !mapping ? ''
     : mapping.valor_fijo !== null ? 'fijo'
     : mapping.source_sistema_key ? `s:${mapping.source_sistema_key}`
@@ -731,19 +744,107 @@ function CampoMappingRow({ campo, mapping, sourceCampos, onSet }: CampoMappingRo
 
   const isFijo = currentSource === 'fijo';
   const hasMapping = currentSource !== '';
+  const isTextoCampo = (campo.tipo === 'texto_largo' || campo.tipo === 'texto_corto') && !campo.sistema_key;
+  const [usePlantilla, setUsePlantilla] = useState(
+    isFijo && isTextoCampo && (mapping?.valor_fijo?.includes('{') ?? false)
+  );
+
+  // fecha_creacion: auto-set, no mapping needed
+  if (campo.sistema_key === 'fecha_creacion') {
+    return (
+      <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50/50">
+        <div className="w-44 shrink-0">
+          <p className="text-xs font-medium truncate text-neutral-700">{campo.label}</p>
+          <p className="text-[10px] text-neutral-400">{campo.tipo}</p>
+        </div>
+        <span className="text-neutral-300 text-xs shrink-0">←</span>
+        <span className="text-xs px-2 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700">
+          Auto — se registra al crear el trámite
+        </span>
+      </div>
+    );
+  }
+
+  // archivos_adjuntos: handled by trigger config
+  if (campo.sistema_key === 'archivos_adjuntos') {
+    return (
+      <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50/50">
+        <div className="w-44 shrink-0">
+          <p className="text-xs font-medium truncate text-neutral-700">{campo.label}</p>
+          <p className="text-[10px] text-neutral-400">{campo.tipo}</p>
+        </div>
+        <span className="text-neutral-300 text-xs shrink-0">←</span>
+        <span className="text-xs px-2 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-700">
+          Categorías configuradas en el trigger
+        </span>
+      </div>
+    );
+  }
+
+  // equipo: multi-select team toggle buttons
+  if (campo.tipo === 'equipo') {
+    const selectedIds: string[] = (() => {
+      try { return JSON.parse(mapping?.valor_fijo ?? '[]'); } catch { return []; }
+    })();
+    const toggleTeam = (id: string) => {
+      const next = selectedIds.includes(id)
+        ? selectedIds.filter(x => x !== id)
+        : [...selectedIds, id];
+      if (next.length === 0) { onSet(null); return; }
+      onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: JSON.stringify(next) });
+    };
+    return (
+      <div className={`flex items-start gap-3 px-4 py-2.5 transition-colors ${selectedIds.length > 0 ? 'bg-blue-50/40' : 'hover:bg-neutral-50/50'}`}>
+        <div className="w-44 shrink-0 pt-0.5">
+          <p className={`text-xs font-medium truncate ${selectedIds.length > 0 ? 'text-blue-700' : 'text-neutral-700'}`}>{campo.label}</p>
+          <p className="text-[10px] text-neutral-400">{campo.tipo}</p>
+        </div>
+        <span className="text-neutral-300 text-xs shrink-0 pt-1">←</span>
+        <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+          {grupos.length === 0
+            ? <span className="text-xs text-neutral-400 italic">Sin equipos configurados</span>
+            : grupos.map(g => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => toggleTeam(g.id)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${selectedIds.includes(g.id) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-neutral-600 border-neutral-300 hover:border-blue-400'}`}
+              >
+                {g.nombre}
+              </button>
+            ))}
+        </div>
+      </div>
+    );
+  }
 
   const handleChange = (val: string) => {
+    setUsePlantilla(false);
     if (!val) { onSet(null); return; }
     if (val === 'fijo') { onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: '' }); return; }
+    if (val === 'plantilla') { setUsePlantilla(true); onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: '' }); return; }
     if (val.startsWith('c:')) { onSet({ source_campo_id: val.slice(2), source_sistema_key: null, valor_fijo: null }); return; }
     if (val.startsWith('s:')) { onSet({ source_campo_id: null, source_sistema_key: val.slice(2), valor_fijo: null }); return; }
   };
 
-  // Suggest matching source campos (same tipo)
+  const insertChip = (label: string) => {
+    const token = `{${label}}`;
+    const current = mapping?.valor_fijo ?? '';
+    if (!textareaRef.current) {
+      onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: current + token });
+      return;
+    }
+    const ta = textareaRef.current;
+    const start = ta.selectionStart ?? current.length;
+    const end = ta.selectionEnd ?? start;
+    onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: current.slice(0, start) + token + current.slice(end) });
+  };
+
   const compatible = sourceCampos.filter(c => c.tipo === campo.tipo);
+  const selectDisplayValue = usePlantilla ? 'plantilla' : currentSource;
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${hasMapping ? 'bg-blue-50/40' : 'hover:bg-neutral-50/50'}`}>
+    <div className={`flex ${usePlantilla ? 'items-start' : 'items-center'} gap-3 px-4 py-2.5 transition-colors ${hasMapping ? 'bg-blue-50/40' : 'hover:bg-neutral-50/50'}`}>
       {/* Target campo label */}
       <div className="w-44 shrink-0">
         <p className={`text-xs font-medium truncate ${hasMapping ? 'text-blue-700' : 'text-neutral-700'}`}>{campo.label}</p>
@@ -754,37 +855,65 @@ function CampoMappingRow({ campo, mapping, sourceCampos, onSet }: CampoMappingRo
       <span className="text-neutral-300 text-xs shrink-0">←</span>
 
       {/* Source picker */}
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <select
-          value={currentSource}
-          onChange={e => handleChange(e.target.value)}
-          className={`flex-1 min-w-0 px-2 py-1.5 border rounded-lg text-xs bg-white focus:ring-1 focus:outline-none transition-colors ${hasMapping ? 'border-blue-300 focus:ring-blue-400' : 'border-neutral-200 focus:ring-blue-400'}`}
-        >
-          <option value="">— No copiar</option>
-          {compatible.length > 0 && (
-            <optgroup label={`Campos del padre (${campo.tipo})`}>
-              {compatible.map(c => <option key={c.id} value={`c:${c.id}`}>{c.label}</option>)}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <select
+            value={selectDisplayValue}
+            onChange={e => handleChange(e.target.value)}
+            className={`flex-1 min-w-0 px-2 py-1.5 border rounded-lg text-xs bg-white focus:ring-1 focus:outline-none transition-colors ${hasMapping ? 'border-blue-300 focus:ring-blue-400' : 'border-neutral-200 focus:ring-blue-400'}`}
+          >
+            <option value="">— No copiar</option>
+            {compatible.length > 0 && (
+              <optgroup label={`Campos del padre (${campo.tipo})`}>
+                {compatible.map(c => <option key={c.id} value={`c:${c.id}`}>{c.label}</option>)}
+              </optgroup>
+            )}
+            {sourceCampos.filter(c => c.tipo !== campo.tipo).length > 0 && (
+              <optgroup label="Otros campos del padre">
+                {sourceCampos.filter(c => c.tipo !== campo.tipo).map(c => <option key={c.id} value={`c:${c.id}`}>{c.label} ({c.tipo})</option>)}
+              </optgroup>
+            )}
+            <optgroup label="Del sistema">
+              {SISTEMA_KEYS.map(s => <option key={s.value} value={`s:${s.value}`}>{s.label}</option>)}
             </optgroup>
-          )}
-          {sourceCampos.filter(c => c.tipo !== campo.tipo).length > 0 && (
-            <optgroup label="Otros campos del padre">
-              {sourceCampos.filter(c => c.tipo !== campo.tipo).map(c => <option key={c.id} value={`c:${c.id}`}>{c.label} ({c.tipo})</option>)}
-            </optgroup>
-          )}
-          <optgroup label="Del sistema">
-            {SISTEMA_KEYS.map(s => <option key={s.value} value={`s:${s.value}`}>{s.label}</option>)}
-          </optgroup>
-          <option value="fijo">✏ Valor fijo…</option>
-        </select>
+            <option value="fijo">✏ Valor fijo…</option>
+            {isTextoCampo && <option value="plantilla">✏ Plantilla con variables…</option>}
+          </select>
 
-        {isFijo && (
-          <input
-            type="text"
-            value={mapping?.valor_fijo ?? ''}
-            onChange={e => onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: e.target.value })}
-            placeholder="Escribe el valor…"
-            className="w-36 shrink-0 px-2 py-1.5 border border-blue-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-400 focus:outline-none"
-          />
+          {isFijo && !usePlantilla && (
+            <input
+              type="text"
+              value={mapping?.valor_fijo ?? ''}
+              onChange={e => onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: e.target.value })}
+              placeholder="Escribe el valor…"
+              className="w-36 shrink-0 px-2 py-1.5 border border-blue-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-400 focus:outline-none"
+            />
+          )}
+        </div>
+
+        {usePlantilla && (
+          <div className="mt-1.5 space-y-1.5">
+            <textarea
+              ref={textareaRef}
+              rows={3}
+              value={mapping?.valor_fijo ?? ''}
+              onChange={e => onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: e.target.value })}
+              placeholder="Ej: El cliente {Nombre} tiene póliza {Número de Póliza}"
+              className="w-full px-2 py-1.5 border border-blue-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-400 focus:outline-none"
+            />
+            <div className="flex flex-wrap gap-1">
+              {sourceCampos.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => insertChip(c.label)}
+                  className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200 transition-colors"
+                >
+                  {`{${c.label}}`}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>
