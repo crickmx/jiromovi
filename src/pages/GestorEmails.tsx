@@ -155,7 +155,7 @@ export function GestorEmails() {
   const [hasConfig, setHasConfig] = useState<boolean | null>(null);
   const [configEmail, setConfigEmail] = useState('');
   const [showSetup, setShowSetup] = useState(false);
-  const [mailView, setMailView] = useState<'roundcube' | 'legacy'>('roundcube');
+  const [mailView, setMailView] = useState<'roundcube' | 'legacy'>('legacy');
   const [roundcubeUrl, setRoundcubeUrl] = useState('');
   const [roundcubeLoading, setRoundcubeLoading] = useState(false);
 
@@ -229,8 +229,7 @@ export function GestorEmails() {
     if (data) {
       setHasConfig(true);
       setConfigEmail(data.email);
-      setInitialLoading(false);
-      openRoundcubeEmbedded();
+      loadFolders();
     } else {
       setHasConfig(false);
       setShowSetup(true);
