@@ -27,7 +27,9 @@ $config['x_frame_options'] = 'sameorigin';
 $config['content_security_policy'] = true;
 
 $config['prefer_html'] = true;
-$config['show_images'] = 0;
+// 2 = mostrar siempre recursos remotos (imágenes/estilos). Evita la barra
+// "Para proteger su privacidad, los recursos remotos han sido bloqueados".
+$config['show_images'] = 2;
 $config['htmleditor'] = 1;
 $config['compose_save_localstorage'] = true;
 $config['draft_autosave'] = 30;
