@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X } from 'lucide-react';
+import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, supabaseUrl } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import { resolveImageUrl } from '../lib/storageUtils';
 import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
+import { UserModal } from '../components/UserModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -82,9 +83,6 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   const [mostrarNuevoAgente, setMostrarNuevoAgente] = useState(false);
-  const [nuevoAgente, setNuevoAgente] = useState({ nombre: '', apellidos: '', email_laboral: '', celular_laboral: '' });
-  const [creandoAgente, setCreandoAgente] = useState(false);
-  const [errorNuevoAgente, setErrorNuevoAgente] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -277,41 +275,6 @@ ALTER TABLE usuarios
     navigator.clipboard.writeText(MIGRATION_SQL);
     setSqlCopiado(true);
     setTimeout(() => setSqlCopiado(false), 2500);
-  }
-
-  async function crearAgente() {
-    if (!nuevoAgente.nombre.trim() || !nuevoAgente.apellidos.trim() || !nuevoAgente.email_laboral.trim()) {
-      setErrorNuevoAgente('Nombre, apellidos y correo laboral son obligatorios.');
-      return;
-    }
-    setCreandoAgente(true);
-    setErrorNuevoAgente('');
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-        body: JSON.stringify({
-          userData: {
-            nombre: nuevoAgente.nombre.trim(),
-            apellidos: nuevoAgente.apellidos.trim(),
-            email_laboral: nuevoAgente.email_laboral.trim(),
-            celular_laboral: nuevoAgente.celular_laboral.trim(),
-            rol: 'Agente',
-          },
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Error al crear el agente');
-
-      setMostrarNuevoAgente(false);
-      setNuevoAgente({ nombre: '', apellidos: '', email_laboral: '', celular_laboral: '' });
-      await cargarAgentes();
-    } catch (e) {
-      setErrorNuevoAgente(e instanceof Error ? e.message : 'Error al crear el agente');
-    } finally {
-      setCreandoAgente(false);
-    }
   }
 
   if (verificandoAcceso) return null;
@@ -644,64 +607,12 @@ ALTER TABLE usuarios
     </div>
 
     {mostrarNuevoAgente && (
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Nuevo agente</h3>
-            <button onClick={() => { setMostrarNuevoAgente(false); setErrorNuevoAgente(''); }} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-white/80">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <p className="text-xs text-neutral-500 dark:text-white/50">Se crea con rol Agente. Le llegará su código de acceso al correo laboral.</p>
-
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Nombre"
-              value={nuevoAgente.nombre}
-              onChange={e => setNuevoAgente(f => ({ ...f, nombre: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <input
-              type="text"
-              placeholder="Apellidos"
-              value={nuevoAgente.apellidos}
-              onChange={e => setNuevoAgente(f => ({ ...f, apellidos: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <input
-              type="email"
-              placeholder="Correo laboral"
-              value={nuevoAgente.email_laboral}
-              onChange={e => setNuevoAgente(f => ({ ...f, email_laboral: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <input
-              type="tel"
-              placeholder="Celular (opcional)"
-              value={nuevoAgente.celular_laboral}
-              onChange={e => setNuevoAgente(f => ({ ...f, celular_laboral: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-          </div>
-
-          {errorNuevoAgente && (
-            <p className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {errorNuevoAgente}
-            </p>
-          )}
-
-          <button
-            onClick={crearAgente}
-            disabled={creandoAgente}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition disabled:opacity-60"
-          >
-            <UserPlus className="w-4 h-4" />
-            {creandoAgente ? 'Creando…' : 'Crear agente'}
-          </button>
-        </div>
-      </div>
+      <UserModal
+        user={null}
+        lockRoleToAgente
+        onClose={() => setMostrarNuevoAgente(false)}
+        onSave={() => { setMostrarNuevoAgente(false); cargarAgentes(); }}
+      />
     )}
     </>
   );
