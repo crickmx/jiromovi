@@ -40,11 +40,13 @@ interface UserModalProps {
   user: Usuario | null;
   onClose: () => void;
   onSave: () => void;
+  /** Si es true, el modal solo permite crear/asignar el rol "Agente" (usado desde Marketing Admin). */
+  lockRoleToAgente?: boolean;
 }
 
 type TabType = 'general' | 'contact' | 'images' | 'payment' | 'other';
 
-export function UserModal({ user, onClose, onSave }: UserModalProps) {
+export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: UserModalProps) {
   const { usuario: currentUser } = useAuth();
   const { isImpersonating } = useImpersonation();
   const isGerente = currentUser?.rol === 'Gerente';
@@ -58,7 +60,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
   const [formData, setFormData] = useState({
     nombre: '',
     apellidos: '',
-    rol: 'Empleado' as 'Administrador' | 'Gerente' | 'Empleado' | 'Agente',
+    rol: (lockRoleToAgente ? 'Agente' : 'Empleado') as 'Administrador' | 'Gerente' | 'Empleado' | 'Agente',
     puesto: '',
     oficina_id: '',
     web_slug: '',
@@ -109,7 +111,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
       setFormData({
         nombre: user.nombre,
         apellidos: user.apellidos,
-        rol: user.rol,
+        rol: lockRoleToAgente ? 'Agente' : user.rol,
         puesto: user.puesto,
         oficina_id: user.oficina_id || '',
         web_slug: user.web_slug || '',
@@ -806,15 +808,25 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                     value={formData.rol}
                     onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
                     required
-                    disabled={!isAdmin && !isGerente}
+                    disabled={lockRoleToAgente || (!isAdmin && !isGerente)}
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
-                    <option value="Empleado">Empleado</option>
-                    <option value="Agente">Agente</option>
-                    {isAdmin && <option value="Gerente">Gerente</option>}
-                    {isAdmin && <option value="Administrador">Administrador</option>}
+                    {lockRoleToAgente ? (
+                      <option value="Agente">Agente</option>
+                    ) : (
+                      <>
+                        <option value="Empleado">Empleado</option>
+                        <option value="Agente">Agente</option>
+                        {isAdmin && <option value="Gerente">Gerente</option>}
+                        {isAdmin && <option value="Administrador">Administrador</option>}
+                      </>
+                    )}
                   </select>
-                  {isGerente && (
+                  {lockRoleToAgente ? (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Este agente se crea con rol Agente.
+                    </p>
+                  ) : isGerente && (
                     <p className="text-xs text-slate-500 mt-1">
                       Puedes asignar roles: Empleado o Agente
                     </p>
