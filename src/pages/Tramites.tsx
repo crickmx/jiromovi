@@ -563,6 +563,7 @@ export function Tramites() {
   const handleSoftDelete = async (e: React.MouseEvent, tramiteId: string) => {
     e.stopPropagation();
     if (!usuario) return;
+    if (!confirm('¿Mover este trámite a la papelera? Podrás restaurarlo desde la pestaña Papelera.')) return;
     await supabase.from('tickets').update({
       eliminado_at: new Date().toISOString(),
       eliminado_por: usuario.id,
@@ -870,6 +871,7 @@ export function Tramites() {
 
   const startKanbanDrag = (e: React.PointerEvent<HTMLDivElement>, tramite: TramiteItem, columna: 'atencion' | 'proceso') => {
     if (e.pointerType !== 'mouse' || !puedeMoverAtencion(tramite)) return;
+    if ((e.target as HTMLElement).closest('button')) return;
     const el = e.currentTarget;
     dragOriginElRef.current = el;
     dragOriginColumnRef.current = columna;
