@@ -4,6 +4,7 @@ import { supabaseUrl } from '../../lib/supabase';
 import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2, Printer } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
+import { getPdfThumbnail } from '../../lib/pdfThumbnail';
 import JSZip from 'jszip';
 
 interface Categoria {
@@ -340,6 +341,8 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
   const FileThumbnail = ({ archivo }: { archivo: Archivo }) => {
     const [imgError, setImgError] = useState(false);
     const [signedUrl, setSignedUrl] = useState<string | null>(null);
+    const [pdfError, setPdfError] = useState(false);
+    const [pdfThumb, setPdfThumb] = useState<string | null>(null);
     const effectiveType = getEffectiveType(archivo.tipo, archivo.nombre);
     const ext = archivo.nombre.split('.').pop()?.toUpperCase() || '';
     const isImage = effectiveType.startsWith('image/');
@@ -357,6 +360,19 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [archivo.url]);
 
+    useEffect(() => {
+      if (!isPdf || !archivo.url) return;
+      let cancelled = false;
+      (async () => {
+        const url = await getSignedFileUrl(archivo.url);
+        const thumb = await getPdfThumbnail(url);
+        if (cancelled) return;
+        if (thumb) setPdfThumb(thumb); else setPdfError(true);
+      })();
+      return () => { cancelled = true; };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [archivo.url]);
+
     if (isImage && !imgError) {
       if (!signedUrl) {
         return <div className="w-full h-full bg-neutral-100 dark:bg-neutral-700 animate-pulse" />;
@@ -367,6 +383,19 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
           alt={friendlyName(archivo.nombre)}
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
+        />
+      );
+    }
+    if (isPdf && !pdfError) {
+      if (!pdfThumb) {
+        return <div className="w-full h-full bg-neutral-100 dark:bg-neutral-700 animate-pulse" />;
+      }
+      return (
+        <img
+          src={pdfThumb}
+          alt={friendlyName(archivo.nombre)}
+          className="w-full h-full object-cover object-top"
+          onError={() => setPdfError(true)}
         />
       );
     }
