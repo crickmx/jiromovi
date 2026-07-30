@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, Video, Plus, ListFilter as Filter, Trash2, Sparkles, TriangleAlert as AlertTriangle, RefreshCw, Eye } from 'lucide-react';
+import { Image, Video, Plus, ListFilter as Filter, Trash2, Sparkles, TriangleAlert as AlertTriangle, RefreshCw, Eye, Megaphone } from 'lucide-react';
 import { NuevaPlantillaModal } from '../components/NuevaPlantillaModal';
 import { PersonalizarPlantillaModal } from '../components/PersonalizarPlantillaModal';
 import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
 import { DesignDetailModal } from '../components/publicidad/DesignDetailModal';
+import { PlecaDescargable } from '../components/publicidad/PlecaDescargable';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
 import { trackPublicityCreated } from '../lib/activityLogger';
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,7 @@ interface Plantilla {
 
 interface Diseno {
   id: string;
-  plantilla_id: string;
+  plantilla_id: string | null;
   archivo_resultante_url: string | null;
   thumbnail_url: string | null;
   rendered_storage_path: string | null;
@@ -55,6 +56,9 @@ interface Diseno {
   ai_copy_version: number;
   ai_copy_editado_manual: boolean;
   ai_copy_original: any | null;
+  origen: 'agente' | 'equipo_mkt';
+  titulo: string | null;
+  tipo: 'imagen' | 'video' | null;
   publicidad_plantillas?: {
     titulo: string | null;
     tipo: string;
@@ -450,7 +454,9 @@ export default function Publicidad({ initialTab = 'biblioteca' }: PublicidadProp
       )}
 
       {activeTab === 'mis-disenos' && (
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5">
+        <div className="space-y-4">
+          {isAgente && <PlecaDescargable />}
+          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white mb-4">
             Mis Disenos Personalizados
           </h2>
@@ -497,11 +503,20 @@ export default function Publicidad({ initialTab = 'biblioteca' }: PublicidadProp
                         </div>
                       )}
                       {/* Needs regeneration badge */}
-                      {(!hasImage || diseno.needs_regeneration) && (
+                      {diseno.origen !== 'equipo_mkt' && (!hasImage || diseno.needs_regeneration) && (
                         <div className="absolute top-2 left-2">
                           <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/90 text-white text-xs font-medium rounded-full shadow-sm">
                             <AlertTriangle className="w-3 h-3" />
                             Regenerar
+                          </span>
+                        </div>
+                      )}
+                      {/* Contenido subido por el equipo de marketing */}
+                      {diseno.origen === 'equipo_mkt' && (
+                        <div className="absolute top-2 left-2">
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-purple-600/90 text-white text-xs font-medium rounded-full shadow-sm">
+                            <Megaphone className="w-3 h-3" />
+                            De marketing
                           </span>
                         </div>
                       )}
@@ -519,6 +534,11 @@ export default function Publicidad({ initialTab = 'biblioteca' }: PublicidadProp
                               {diseno.publicidad_plantillas.ramo}
                             </span>
                           )}
+                          {!diseno.publicidad_plantillas && diseno.titulo && (
+                            <span className="inline-block px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-xs rounded-md font-medium">
+                              {diseno.titulo}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 mb-2">
@@ -529,7 +549,7 @@ export default function Publicidad({ initialTab = 'biblioteca' }: PublicidadProp
                         })}
                       </p>
                       <div className="flex gap-2 mt-3">
-                        {(!hasImage || diseno.needs_regeneration) ? (
+                        {(diseno.origen !== 'equipo_mkt' && (!hasImage || diseno.needs_regeneration)) ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -575,6 +595,7 @@ export default function Publicidad({ initialTab = 'biblioteca' }: PublicidadProp
               })}
             </div>
           )}
+          </div>
         </div>
       )}
 

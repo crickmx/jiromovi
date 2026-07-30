@@ -13,7 +13,7 @@ interface AICopy {
 
 interface Diseno {
   id: string;
-  plantilla_id: string;
+  plantilla_id: string | null;
   archivo_resultante_url: string | null;
   created_at: string;
   ai_copy: AICopy | null;
@@ -21,6 +21,9 @@ interface Diseno {
   ai_copy_version: number;
   ai_copy_editado_manual: boolean;
   ai_copy_original: AICopy | null;
+  origen?: 'agente' | 'equipo_mkt';
+  titulo?: string | null;
+  tipo?: string | null;
   publicidad_plantillas?: {
     titulo: string | null;
     tipo: string;
@@ -211,9 +214,10 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
 
   const handleDownload = () => {
     if (!diseno.archivo_resultante_url) return;
+    const ext = diseno.archivo_resultante_url.split('.').pop()?.split('?')[0] || 'png';
     const link = document.createElement('a');
     link.href = diseno.archivo_resultante_url;
-    link.download = `diseno-${diseno.id.slice(0, 8)}.png`;
+    link.download = `diseno-${diseno.id.slice(0, 8)}.${ext}`;
     link.click();
   };
 
@@ -224,9 +228,14 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-white/8">
           <div>
             <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-              {diseno.publicidad_plantillas?.titulo || 'Detalle del Diseno'}
+              {diseno.publicidad_plantillas?.titulo || diseno.titulo || 'Detalle del Diseno'}
             </h2>
             <div className="flex items-center gap-2 mt-0.5">
+              {diseno.origen === 'equipo_mkt' && (
+                <span className="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-md">
+                  De tu equipo de marketing
+                </span>
+              )}
               {diseno.publicidad_plantillas?.categoria && (
                 <span className="text-xs px-2 py-0.5 bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-white/60 rounded-md">
                   {diseno.publicidad_plantillas.categoria}
