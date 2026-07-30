@@ -57,18 +57,30 @@ export function useStoreAttentionCount(userId: string | null | undefined) {
       setCount(c ?? 0);
     };
 
-    fetchCount();
+    // Ver nota en useTramitesAttentionCount: suscripción sin filtro a `tickets` +
+    // `store_pedidos`; con debounce coalescemos las ráfagas de eventos en un solo
+    // recálculo para no saturar el hilo principal.
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => { fetchCount(); }, 800);
+    };
+
+    fetchCount(); // primera carga inmediata
 
     const unsubscribe = subscribeResilientChannel({
       channelName: channelNameRef.current,
       configure: (channel) =>
         channel
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchCount)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'store_pedidos' }, fetchCount),
-      onReconnect: fetchCount,
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, scheduleFetch)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'store_pedidos' }, scheduleFetch),
+      onReconnect: scheduleFetch,
     });
 
-    return unsubscribe;
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      unsubscribe();
+    };
   }, [userId, isAdmin]);
 
   return count;

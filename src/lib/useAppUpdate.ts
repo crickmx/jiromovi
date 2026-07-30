@@ -13,6 +13,8 @@ import { checkAndHandleVersionChange, getAppVersion } from './appVersion';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const VERSION_URL = '/version.json';
+// Marca de qué versión remota ya intentamos recargar (freno anti-bucle infinito).
+const RELOADED_FOR_KEY = 'movi_reloaded_for_version';
 
 interface RemoteVersion {
   version: string;
@@ -42,10 +44,27 @@ export function useAppUpdate() {
     if (reloadingRef.current) return;
     const remote = await fetchRemoteVersion();
     if (!remote) return;
-    if (remote.version !== currentVersion) {
-      setUpdateAvailable(true);
-      scheduleReload();
+
+    if (remote.version === currentVersion) {
+      // Coinciden: limpia la marca para permitir una futura auto-recarga real.
+      try { sessionStorage.removeItem(RELOADED_FOR_KEY); } catch { /* ignore */ }
+      return;
     }
+
+    // Hay diferencia: mostrar siempre el banner.
+    setUpdateAvailable(true);
+
+    // Freno anti-bucle: si YA recargamos por esta misma versión remota y el bundle
+    // sigue sin coincidir, recargar otra vez no arregla nada (el version.json del
+    // servidor quedó desincronizado del bundle — típico en beta/Plesk, donde no
+    // aplican los headers de caché de netlify.toml). Sin este freno la pestaña se
+    // recarga cada 2.5s en bucle infinito → pantalla en blanco + "la página no responde".
+    let alreadyTried = false;
+    try { alreadyTried = sessionStorage.getItem(RELOADED_FOR_KEY) === remote.version; } catch { /* ignore */ }
+    if (alreadyTried) return; // deja el banner; el usuario recarga a mano si quiere
+
+    try { sessionStorage.setItem(RELOADED_FOR_KEY, remote.version); } catch { /* ignore */ }
+    scheduleReload();
   }
 
   function scheduleReload() {

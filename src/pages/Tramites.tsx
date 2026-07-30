@@ -188,6 +188,31 @@ export function Tramites() {
   const [pendingTerminar, setPendingTerminar] = useState<{ tramiteId: string; folio: string; tipoTramite: string } | null>(null);
   const [ultimosComentarios, setUltimosComentarios] = useState<Map<string, { mensaje: string; autor: string }>>(new Map());
   const dragTramiteId = useRef<string | null>(null);
+  // Drag&drop del Kanban: círculo flotante que sigue al cursor con lag y cambia de color
+  // según la columna sobre la que está — todo por ref/DOM directo, sin estado de React,
+  // para no re-renderizar Tramites.tsx (componente grande) en cada pointermove.
+  const dragGhostRef = useRef<HTMLDivElement>(null);
+  const dragOriginElRef = useRef<HTMLElement | null>(null);
+  const dragOriginColumnRef = useRef<'atencion' | 'proceso' | null>(null);
+  const dragPosRef = useRef({ x: 0, y: 0 });
+  const dragTargetRef = useRef({ x: 0, y: 0 });
+  const dragOriginPointRef = useRef({ x: 0, y: 0 });
+  const dragPhaseRef = useRef<'idle' | 'dragging' | 'parked' | 'returning'>('idle');
+  const dragRafIdRef = useRef<number | null>(null);
+  const dragStartClientRef = useRef({ x: 0, y: 0 });
+  const dragMovedRef = useRef(false);
+  const dragHoverColRef = useRef<'atencion' | 'proceso' | 'terminados' | null>(null);
+  // El pointer capture solo redirige eventos de Pointer, no el click nativo del mouse —
+  // al soltar sobre otra tarjeta, esa tarjeta recibe el click real. Se suprime ese click
+  // fantasma justo después de un arrastre real (moved=true), sin importar dónde caiga.
+  const suppressClickRef = useRef(false);
+  const DRAG_THRESHOLD = 4;
+  const KANBAN_COL_COLORS: Record<'atencion' | 'proceso' | 'terminados', string> = {
+    atencion: '#ef4444',
+    proceso: '#f59e0b',
+    terminados: '#22c55e',
+  };
+  const KANBAN_NEUTRAL_COLOR = '#737373';
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -538,6 +563,7 @@ export function Tramites() {
   const handleSoftDelete = async (e: React.MouseEvent, tramiteId: string) => {
     e.stopPropagation();
     if (!usuario) return;
+    if (!confirm('¿Mover este trámite a la papelera? Podrás restaurarlo desde la pestaña Papelera.')) return;
     await supabase.from('tickets').update({
       eliminado_at: new Date().toISOString(),
       eliminado_por: usuario.id,
@@ -761,25 +787,162 @@ export function Tramites() {
   const puedeMoverAtencion = (t: TramiteItem) =>
     esRolSistemaAdmin || (!!usuario && t.assigned_to_user_id === usuario.id);
 
-  const handleDropEnColumna = (destino: 'atencion' | 'proceso') => {
+  const handleDropEnColumna = (destino: 'atencion' | 'proceso'): boolean => {
     const id = dragTramiteId.current;
     dragTramiteId.current = null;
-    if (!id) return;
+    if (!id) return false;
     const tramite = tramites.find(t => t.id === id);
-    if (!tramite) return;
+    if (!tramite) return false;
     const yaEstaAhi = destino === 'atencion' ? needsAttentionFn(tramite) : !needsAttentionFn(tramite);
-    if (yaEstaAhi || !puedeMoverAtencion(tramite)) return;
+    if (yaEstaAhi || !puedeMoverAtencion(tramite)) return false;
     setPendingMove({ tramiteId: id, folio: tramite.folio, destino });
+    return true;
   };
 
-  const handleDropEnTerminados = () => {
+  const handleDropEnTerminados = (): boolean => {
     const id = dragTramiteId.current;
     dragTramiteId.current = null;
-    if (!id) return;
+    if (!id) return false;
     const tramite = tramites.find(t => t.id === id);
-    if (!tramite || !puedeMoverAtencion(tramite)) return;
+    if (!tramite || !puedeMoverAtencion(tramite)) return false;
     setPendingTerminar({ tramiteId: id, folio: tramite.folio, tipoTramite: tramite.tipo_tramite });
+    return true;
   };
+
+  // ── Drag&drop del Kanban: círculo flotante con lag + color por columna ──────
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+  const stopDragLoop = () => {
+    if (dragRafIdRef.current != null) {
+      cancelAnimationFrame(dragRafIdRef.current);
+      dragRafIdRef.current = null;
+    }
+  };
+
+  const setGhostColor = (col: 'atencion' | 'proceso' | 'terminados' | null) => {
+    if (!dragGhostRef.current) return;
+    dragGhostRef.current.style.backgroundColor = col ? KANBAN_COL_COLORS[col] : KANBAN_NEUTRAL_COLOR;
+  };
+
+  const finishReturn = () => {
+    const ghost = dragGhostRef.current;
+    if (ghost) { ghost.style.opacity = '0'; ghost.style.scale = '0.4'; }
+    if (dragOriginElRef.current) dragOriginElRef.current.style.opacity = '';
+    dragOriginElRef.current = null;
+    dragPhaseRef.current = 'idle';
+    stopDragLoop();
+  };
+
+  const finishGhostSuccess = () => {
+    const ghost = dragGhostRef.current;
+    if (ghost) { ghost.style.opacity = '0'; ghost.style.scale = '0.4'; }
+    dragOriginElRef.current = null;
+    dragPhaseRef.current = 'idle';
+    stopDragLoop();
+  };
+
+  const runDragLoop = () => {
+    const ghost = dragGhostRef.current;
+    if (!ghost || dragPhaseRef.current === 'idle') { dragRafIdRef.current = null; return; }
+    dragPosRef.current.x = lerp(dragPosRef.current.x, dragTargetRef.current.x, 0.22);
+    dragPosRef.current.y = lerp(dragPosRef.current.y, dragTargetRef.current.y, 0.22);
+    ghost.style.transform = `translate3d(${dragPosRef.current.x - 28}px, ${dragPosRef.current.y - 28}px, 0)`;
+
+    if (dragPhaseRef.current === 'returning') {
+      const dist = Math.hypot(dragPosRef.current.x - dragTargetRef.current.x, dragPosRef.current.y - dragTargetRef.current.y);
+      if (dist < 1.5) { finishReturn(); return; }
+    }
+    dragRafIdRef.current = requestAnimationFrame(runDragLoop);
+  };
+
+  const activateGhostDrag = (folio: string) => {
+    const ghost = dragGhostRef.current;
+    if (!ghost) return;
+    ghost.textContent = folio;
+    dragPosRef.current = { ...dragOriginPointRef.current };
+    ghost.style.transform = `translate3d(${dragPosRef.current.x - 28}px, ${dragPosRef.current.y - 28}px, 0)`;
+    setGhostColor(null);
+    ghost.style.opacity = '1';
+    ghost.style.scale = '1';
+    if (dragOriginElRef.current) dragOriginElRef.current.style.opacity = '0';
+    dragPhaseRef.current = 'dragging';
+    if (dragRafIdRef.current == null) dragRafIdRef.current = requestAnimationFrame(runDragLoop);
+  };
+
+  const startKanbanDrag = (e: React.PointerEvent<HTMLDivElement>, tramite: TramiteItem, columna: 'atencion' | 'proceso') => {
+    if (e.pointerType !== 'mouse' || !puedeMoverAtencion(tramite)) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    const el = e.currentTarget;
+    dragOriginElRef.current = el;
+    dragOriginColumnRef.current = columna;
+    dragTramiteId.current = tramite.id;
+    dragMovedRef.current = false;
+    dragStartClientRef.current = { x: e.clientX, y: e.clientY };
+    const rect = el.getBoundingClientRect();
+    dragOriginPointRef.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    dragTargetRef.current = { x: e.clientX, y: e.clientY };
+    el.setPointerCapture(e.pointerId);
+  };
+
+  const moveKanbanDrag = (e: React.PointerEvent<HTMLDivElement>, tramite: TramiteItem) => {
+    if (dragOriginElRef.current !== e.currentTarget) return;
+    if (!dragMovedRef.current) {
+      const dx = e.clientX - dragStartClientRef.current.x;
+      const dy = e.clientY - dragStartClientRef.current.y;
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      dragMovedRef.current = true;
+      activateGhostDrag(tramite.folio);
+    }
+    dragTargetRef.current = { x: e.clientX, y: e.clientY };
+    const elUnder = document.elementFromPoint(e.clientX, e.clientY);
+    const colEl = elUnder?.closest('[data-kanban-col]') as HTMLElement | null;
+    const col = (colEl?.dataset.kanbanCol as 'atencion' | 'proceso' | 'terminados' | undefined) ?? null;
+    if (col !== dragHoverColRef.current) {
+      dragHoverColRef.current = col;
+      setGhostColor(col);
+    }
+  };
+
+  const endKanbanDrag = () => {
+    const origin = dragOriginElRef.current;
+    const originCol = dragOriginColumnRef.current;
+    const moved = dragMovedRef.current;
+    const hoverCol = dragHoverColRef.current;
+    dragOriginColumnRef.current = null;
+    dragMovedRef.current = false;
+    dragHoverColRef.current = null;
+
+    if (!moved || !origin || !originCol) {
+      dragOriginElRef.current = null;
+      dragTramiteId.current = null;
+      return;
+    }
+
+    // Hubo arrastre real: el click nativo que sigue (dispare donde dispare) es un
+    // efecto fantasma del gesto, no un click intencional — se suprime brevemente.
+    suppressClickRef.current = true;
+    setTimeout(() => { suppressClickRef.current = false; }, 0);
+
+    let opened = false;
+    if (hoverCol && hoverCol !== originCol) {
+      dragPhaseRef.current = 'parked';
+      opened = hoverCol === 'terminados' ? handleDropEnTerminados() : handleDropEnColumna(hoverCol);
+    }
+
+    if (!opened) {
+      dragPhaseRef.current = 'returning';
+      dragTargetRef.current = { ...dragOriginPointRef.current };
+    }
+  };
+
+  // Se llama cuando el modal de confirmación (movimiento o cierre) se cierra sin confirmar.
+  const cancelKanbanGhost = () => {
+    if (!dragOriginElRef.current) return;
+    dragPhaseRef.current = 'returning';
+    dragTargetRef.current = { ...dragOriginPointRef.current };
+  };
+
+  useEffect(() => stopDragLoop, []);
 
   const confirmarMovimientoManual = async (comentario: string) => {
     if (!pendingMove || !usuario) return;
@@ -1523,8 +1686,7 @@ export function Tramites() {
           {/* Columna 1: Requiere atención */}
           <div
             className="flex flex-col gap-3"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); handleDropEnColumna('atencion'); }}
+            data-kanban-col="atencion"
           >
             <div className="pb-2 border-b-2 border-orange-400">
               <div className="flex items-center gap-2">
@@ -1556,9 +1718,11 @@ export function Tramites() {
               return (
                 <div
                   key={tramite.id}
-                  onClick={() => navigate(`/tramites/${tramite.id}`)}
-                  draggable={puedeMoverAtencion(tramite)}
-                  onDragStart={() => { dragTramiteId.current = tramite.id; }}
+                  onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }}
+                  onPointerDown={(e) => startKanbanDrag(e, tramite, 'atencion')}
+                  onPointerMove={(e) => moveKanbanDrag(e, tramite)}
+                  onPointerUp={endKanbanDrag}
+                  onPointerCancel={endKanbanDrag}
                   className={`relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
                 >
                   {!tramite.cerrado_en && (
@@ -1626,8 +1790,7 @@ export function Tramites() {
           {/* Columna 2: En proceso */}
           <div
             className="flex flex-col gap-3"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); handleDropEnColumna('proceso'); }}
+            data-kanban-col="proceso"
           >
             <div className="pb-2 border-b-2 border-blue-400">
               <div className="flex items-center gap-2">
@@ -1656,9 +1819,11 @@ export function Tramites() {
               return (
                 <div
                   key={tramite.id}
-                  onClick={() => navigate(`/tramites/${tramite.id}`)}
-                  draggable={puedeMoverAtencion(tramite)}
-                  onDragStart={() => { dragTramiteId.current = tramite.id; }}
+                  onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }}
+                  onPointerDown={(e) => startKanbanDrag(e, tramite, 'proceso')}
+                  onPointerMove={(e) => moveKanbanDrag(e, tramite)}
+                  onPointerUp={endKanbanDrag}
+                  onPointerCancel={endKanbanDrag}
                   className={`relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
                 >
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
@@ -1718,8 +1883,7 @@ export function Tramites() {
           {/* Columna 3: Terminados — últimos 20 días */}
           <div
             className="flex flex-col gap-3"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); handleDropEnTerminados(); }}
+            data-kanban-col="terminados"
           >
             <div className="pb-2 border-b-2 border-green-400">
               <div className="flex items-center gap-2">
@@ -1744,7 +1908,7 @@ export function Tramites() {
                   : null;
               const totalDays = Math.max(0, Math.floor((new Date(tramite.cerrado_en!).getTime() - new Date(tramite.fecha_creacion).getTime()) / 86_400_000));
               return (
-                <div key={tramite.id} onClick={() => navigate(`/tramites/${tramite.id}`)} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
+                <div key={tramite.id} onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
@@ -1774,6 +1938,16 @@ export function Tramites() {
           </div>
 
         </div>
+      )}
+
+      {/* Círculo flotante del drag&drop del Kanban — oculto por defecto (opacity 0),
+          se muestra/mueve por ref directo desde startKanbanDrag/moveKanbanDrag/runDragLoop. */}
+      {activeTab === 'activos' && viewMode === 'kanban' && (
+        <div
+          ref={dragGhostRef}
+          className="fixed top-0 left-0 z-[9999] w-14 h-14 rounded-full flex items-center justify-center text-white text-[10px] font-extrabold uppercase tracking-tight shadow-2xl ring-4 ring-white/70 dark:ring-neutral-900/70 pointer-events-none select-none"
+          style={{ opacity: 0, scale: '0.4', transition: 'opacity 0.18s ease, scale 0.18s ease, background-color 0.15s ease' }}
+        />
       )}
 
       {/* Normal activos/cerrados list — oculto cuando Kanban está activo en tab activos */}
@@ -2030,8 +2204,8 @@ export function Tramites() {
         <ConfirmarMovimientoKanbanModal
           destino={pendingMove.destino}
           folio={pendingMove.folio}
-          onConfirm={confirmarMovimientoManual}
-          onClose={() => setPendingMove(null)}
+          onConfirm={async (comentario) => { await confirmarMovimientoManual(comentario); finishGhostSuccess(); }}
+          onClose={() => { setPendingMove(null); cancelKanbanGhost(); }}
         />
       )}
 
@@ -2041,8 +2215,8 @@ export function Tramites() {
           folio={pendingTerminar.folio}
           tipoTramite={pendingTerminar.tipoTramite}
           usuarioId={usuario.id}
-          onConfirm={confirmarTerminar}
-          onClose={() => setPendingTerminar(null)}
+          onConfirm={() => { confirmarTerminar(); finishGhostSuccess(); }}
+          onClose={() => { setPendingTerminar(null); cancelKanbanGhost(); }}
         />
       )}
 
