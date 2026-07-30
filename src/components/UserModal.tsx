@@ -9,6 +9,7 @@ import { ExpedienteSection } from './ExpedienteSection';
 import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette, Shield, Send, CheckCircle, MapPin, Link2, Search, X, Loader2, TriangleAlert } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import UbicacionPicker, { type UbicacionValue } from './ubicacion/UbicacionPicker';
+import { useRoles } from '../hooks/useRoles';
 import {
   searchSicasVendors,
   getSicasVendorByVendId,
@@ -52,6 +53,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   const isGerente = currentUser?.rol === 'Gerente';
   const isAdmin = currentUser?.rol === 'Administrador';
   const isSaveBlocked = isImpersonating;
+  const { roles: catalogoRoles } = useRoles();
 
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -61,6 +63,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
     nombre: '',
     apellidos: '',
     rol: (lockRoleToAgente ? 'Agente' : 'Empleado') as 'Administrador' | 'Gerente' | 'Empleado' | 'Agente',
+    rol_id: '' as string,
     puesto: '',
     oficina_id: '',
     web_slug: '',
@@ -112,6 +115,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         nombre: user.nombre,
         apellidos: user.apellidos,
         rol: lockRoleToAgente ? 'Agente' : user.rol,
+        rol_id: (lockRoleToAgente ? '' : ((user as any).rol_id ?? '')) as string,
         puesto: user.puesto,
         oficina_id: user.oficina_id || '',
         web_slug: user.web_slug || '',
@@ -396,6 +400,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
           puesto: formData.puesto,
           oficina_id: formData.oficina_id || null,
           web_slug: formData.web_slug || null,
+          ...(formData.rol_id ? { rol_id: formData.rol_id } : {}),
           fecha_nacimiento: formData.fecha_nacimiento || null,
           fecha_ingreso: formData.fecha_ingreso || null,
           celular_personal: formData.celular_personal,
@@ -537,6 +542,12 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                 .eq('id', userId);
             }
           }
+        }
+
+        // Asignar el rol del catálogo (rol_id). La edge function crea con `rol` (base);
+        // aquí fijamos el rol específico elegido (que el trigger de BD solo pone por defecto).
+        if (result.userId && formData.rol_id) {
+          await supabase.from('usuarios').update({ rol_id: formData.rol_id } as any).eq('id', result.userId);
         }
 
         // Guardar permisos adicionales si es Gerente
@@ -805,30 +816,40 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Rol *</label>
                   <select
-                    value={formData.rol}
-                    onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
+                    value={formData.rol_id || catalogoRoles.find((r) => r.nombre === formData.rol)?.id || ''}
+                    onChange={(e) => {
+                      const r = catalogoRoles.find((x) => x.id === e.target.value);
+                      if (r) setFormData({ ...formData, rol_id: r.id, rol: r.rol_base as any });
+                    }}
                     required
                     disabled={lockRoleToAgente || (!isAdmin && !isGerente)}
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
-                    {lockRoleToAgente ? (
-                      <option value="Agente">Agente</option>
-                    ) : (
-                      <>
-                        <option value="Empleado">Empleado</option>
-                        <option value="Agente">Agente</option>
-                        {isAdmin && <option value="Gerente">Gerente</option>}
-                        {isAdmin && <option value="Administrador">Administrador</option>}
-                      </>
-                    )}
+                    {catalogoRoles.length === 0 && <option value="">{formData.rol}</option>}
+                    {catalogoRoles
+                      .filter((r) => {
+                        if (lockRoleToAgente) return r.rol_base === 'Agente';
+                        if (isAdmin) return true;
+                        if (isGerente) return r.rol_base === 'Empleado' || r.rol_base === 'Agente' || r.id === formData.rol_id;
+                        return r.id === formData.rol_id;
+                      })
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nombre}{!r.es_sistema ? ` · base ${r.rol_base}` : ''}
+                        </option>
+                      ))}
                   </select>
                   {lockRoleToAgente ? (
                     <p className="text-xs text-slate-500 mt-1">
                       Este agente se crea con rol Agente.
                     </p>
-                  ) : isGerente && (
+                  ) : isGerente && !isAdmin ? (
                     <p className="text-xs text-slate-500 mt-1">
-                      Puedes asignar roles: Empleado o Agente
+                      Puedes asignar roles con base Empleado o Agente.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Los roles se administran en Configuración → Roles.
                     </p>
                   )}
                 </div>
