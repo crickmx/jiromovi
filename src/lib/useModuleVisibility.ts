@@ -6,8 +6,8 @@ import { isBetaHost } from './betaAccess';
 export interface ModuleVisibilityRule {
   id: string;
   module_key: string;
-  target_type: 'role' | 'office' | 'user' | 'beta_user';
-  target_value: string; // role name, oficina_id, usuario id, o (para beta_user) usuario id
+  target_type: 'role' | 'office' | 'user' | 'beta_user' | 'rol_id';
+  target_value: string; // role name, oficina_id, usuario id, o (para rol_id) id del rol del catálogo
   visible: boolean;
   updated_at: string;
 }
@@ -30,8 +30,9 @@ const CACHE_TTL = 60_000; // 1 min
 export function useModuleVisibility(): UseModuleVisibilityReturn {
   const [rules, setRules] = useState<ModuleVisibilityRule[]>(_cache ?? []);
   const [loading, setLoading] = useState(!_cache);
-  const { esUsuarioBeta } = useMoviAuth();
+  const { esUsuarioBeta, usuario } = useMoviAuth();
   const betaOverrideEligible = isBetaHost() && esUsuarioBeta;
+  const rolId = (usuario as any)?.rol_id as string | null | undefined;
 
   const fetch = useCallback(async () => {
     const now = Date.now();
@@ -75,11 +76,18 @@ export function useModuleVisibility(): UseModuleVisibilityReturn {
       if (officeRule) return officeRule.visible;
     }
 
+    // Rol del catálogo (rol_id): más específico que la capa por rol base.
+    // Permite que dos roles con la misma base tengan visibilidad de módulos distinta.
+    if (rolId) {
+      const rolIdRule = rules.find(r => r.module_key === moduleKey && r.target_type === 'rol_id' && r.target_value === rolId);
+      if (rolIdRule) return rolIdRule.visible;
+    }
+
     const roleRule = rules.find(r => r.module_key === moduleKey && r.target_type === 'role' && r.target_value === userRole);
     if (roleRule) return roleRule.visible;
 
     return true;
-  }, [rules, betaOverrideEligible]);
+  }, [rules, betaOverrideEligible, rolId]);
 
   const reload = useCallback(async () => {
     _cache = null;

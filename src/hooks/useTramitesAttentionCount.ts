@@ -57,16 +57,30 @@ export function useTramitesAttentionCount(userId: string | null | undefined) {
       setCount(c ?? 0);
     };
 
-    fetchCount();
+    // Coalesce ráfagas de cambios en un solo refetch. La suscripción es a TODA la
+    // tabla `tickets` sin filtro (un Admin recibe cada cambio del sistema); en un
+    // centro de contacto eso dispara fetchCount decenas de veces por segundo y
+    // satura el hilo principal ("la página no responde"). Con debounce, N eventos
+    // seguidos = 1 solo recálculo.
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => { fetchCount(); }, 800);
+    };
+
+    fetchCount(); // primera carga inmediata
 
     const unsubscribe = subscribeResilientChannel({
       channelName: channelName.current,
       configure: (channel) =>
-        channel.on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchCount),
-      onReconnect: fetchCount,
+        channel.on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, scheduleFetch),
+      onReconnect: scheduleFetch,
     });
 
-    return unsubscribe;
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      unsubscribe();
+    };
   }, [userId, isAdmin, isImpersonating, impersonatedUser?.id]);
 
   return count;

@@ -6,9 +6,18 @@ import { PaymentFields } from './PaymentFields';
 import { BaseModal } from './BaseModal';
 import { ImageUploader } from './ImageUploader';
 import { ExpedienteSection } from './ExpedienteSection';
-import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette, Shield, Send, CheckCircle, MapPin } from 'lucide-react';
+import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette, Shield, Send, CheckCircle, MapPin, Link2, Search, X, Loader2, TriangleAlert } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import UbicacionPicker, { type UbicacionValue } from './ubicacion/UbicacionPicker';
+import { useRoles } from '../hooks/useRoles';
+import {
+  searchSicasVendors,
+  getSicasVendorByVendId,
+  parseSicasVendorName,
+  computeSicasSlug,
+  matchOficinaId,
+  type SicasVendorOption,
+} from '../lib/sicasVendorLink';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -32,16 +41,19 @@ interface UserModalProps {
   user: Usuario | null;
   onClose: () => void;
   onSave: () => void;
+  /** Si es true, el modal solo permite crear/asignar el rol "Agente" (usado desde Marketing Admin). */
+  lockRoleToAgente?: boolean;
 }
 
 type TabType = 'general' | 'contact' | 'images' | 'payment' | 'other';
 
-export function UserModal({ user, onClose, onSave }: UserModalProps) {
+export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: UserModalProps) {
   const { usuario: currentUser } = useAuth();
   const { isImpersonating } = useImpersonation();
   const isGerente = currentUser?.rol === 'Gerente';
   const isAdmin = currentUser?.rol === 'Administrador';
   const isSaveBlocked = isImpersonating;
+  const { roles: catalogoRoles } = useRoles();
 
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -50,7 +62,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
   const [formData, setFormData] = useState({
     nombre: '',
     apellidos: '',
-    rol: 'Empleado' as 'Administrador' | 'Gerente' | 'Empleado' | 'Agente',
+    rol: (lockRoleToAgente ? 'Agente' : 'Empleado') as 'Administrador' | 'Gerente' | 'Empleado' | 'Agente',
+    rol_id: '' as string,
     puesto: '',
     oficina_id: '',
     web_slug: '',
@@ -79,6 +92,15 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
   const [sendingAccess, setSendingAccess] = useState(false);
   const [accessSent, setAccessSent] = useState(false);
 
+  // Enlace con "usuario SICAS" (catálogo de vendedores)
+  const canLinkSicas = isAdmin || isGerente;
+  const [sicasLink, setSicasLink] = useState<SicasVendorOption | null>(null);
+  const [sicasTouched, setSicasTouched] = useState(false);
+  const [sicasSearch, setSicasSearch] = useState('');
+  const [sicasResults, setSicasResults] = useState<SicasVendorOption[]>([]);
+  const [sicasSearching, setSicasSearching] = useState(false);
+  const [sicasOpen, setSicasOpen] = useState(false);
+
   useEffect(() => {
     if (isGerente && currentUser?.oficina_id) {
       setFormData(prev => ({ ...prev, oficina_id: currentUser.oficina_id || '' }));
@@ -92,7 +114,8 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
       setFormData({
         nombre: user.nombre,
         apellidos: user.apellidos,
-        rol: user.rol,
+        rol: lockRoleToAgente ? 'Agente' : user.rol,
+        rol_id: (lockRoleToAgente ? '' : ((user as any).rol_id ?? '')) as string,
         puesto: user.puesto,
         oficina_id: user.oficina_id || '',
         web_slug: user.web_slug || '',
@@ -119,8 +142,47 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         metodo: (user as any).ubicacion_metodo ?? null,
       });
       loadPermisosAdicionales(user.id);
+
+      // Prellenar el chip de enlace SICAS si el usuario ya tiene id_sicas.
+      const existingIdSicas = (user as any).id_sicas as string | null | undefined;
+      if (existingIdSicas && String(existingIdSicas).trim()) {
+        const vendId = String(existingIdSicas).trim();
+        getSicasVendorByVendId(vendId).then((v) => {
+          setSicasLink(
+            v ?? {
+              id: '',
+              vend_id: vendId,
+              vend_nombre: ((user as any).nombre_sicas as string) || vendId,
+              desp_nombre: null,
+              movi_user_id: user.id,
+              status: 'active',
+            }
+          );
+        });
+      } else {
+        setSicasLink(null);
+      }
+      setSicasTouched(false);
     }
   }, [user]);
+
+  // Búsqueda de vendedores SICAS (con debounce) mientras el buscador está abierto.
+  useEffect(() => {
+    if (!canLinkSicas || !sicasOpen) return;
+    let cancelled = false;
+    setSicasSearching(true);
+    const handle = setTimeout(async () => {
+      const results = await searchSicasVendors(sicasSearch);
+      if (!cancelled) {
+        setSicasResults(results);
+        setSicasSearching(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [sicasSearch, sicasOpen, canLinkSicas]);
 
   const loadOficinas = async () => {
     const { data } = await supabase
@@ -185,6 +247,54 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
     } catch (err) {
       console.error('Error saving additional permissions:', err);
       throw err;
+    }
+  };
+
+  const handleSelectSicasVendor = (vendor: SicasVendorOption) => {
+    setSicasLink(vendor);
+    setSicasTouched(true);
+    setSicasOpen(false);
+    setSicasSearch('');
+    setSicasResults([]);
+
+    // Autollenar los datos del usuario a partir del vendedor SICAS.
+    const parsed = parseSicasVendorName(vendor.vend_nombre);
+    const slug = computeSicasSlug(parsed);
+    // La oficina no se sobreescribe para Gerentes (quedan fijos a su oficina).
+    const oficinaMatch = isGerente ? '' : matchOficinaId(vendor.desp_nombre, oficinas);
+
+    setFormData((prev) => ({
+      ...prev,
+      nombre: parsed.nombre || prev.nombre,
+      apellidos: parsed.apellidos,
+      rol: 'Agente',
+      puesto: 'Agente',
+      web_slug: slug || prev.web_slug,
+      oficina_id: oficinaMatch || prev.oficina_id,
+    }));
+  };
+
+  const handleRemoveSicasLink = () => {
+    setSicasLink(null);
+    setSicasTouched(true);
+    setSicasOpen(false);
+    setSicasSearch('');
+    setSicasResults([]);
+  };
+
+  // Marca el vendedor SICAS como vinculado al usuario (movi_user_id + vendor_mappings).
+  // No es bloqueante: si falla, los campos id_sicas/nombre_sicas del usuario ya quedaron guardados.
+  const persistSicasLink = async (userId: string) => {
+    if (!sicasTouched || !sicasLink || !sicasLink.id) return;
+    try {
+      const { error: rpcError } = await supabase.rpc('link_vendor_to_user', {
+        p_vendor_id: sicasLink.id,
+        p_movi_user_id: userId,
+        p_linked_by: currentUser?.id ?? null,
+      });
+      if (rpcError) throw rpcError;
+    } catch (err) {
+      console.error('Error vinculando vendedor SICAS al usuario:', err);
     }
   };
 
@@ -290,6 +400,7 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           puesto: formData.puesto,
           oficina_id: formData.oficina_id || null,
           web_slug: formData.web_slug || null,
+          ...(formData.rol_id ? { rol_id: formData.rol_id } : {}),
           fecha_nacimiento: formData.fecha_nacimiento || null,
           fecha_ingreso: formData.fecha_ingreso || null,
           celular_personal: formData.celular_personal,
@@ -323,12 +434,21 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           ((user as any).ubicacion_metodo ?? null) !== ubic.metodo;
         if (ubicCambio) ud.ubicacion_updated_at = new Date().toISOString();
 
+        // Enlace SICAS: solo se escribe si el admin tocó el control (evita pisar
+        // un nombre_sicas/id_sicas existente cuando no se modificó el enlace).
+        if (sicasTouched) {
+          ud.id_sicas = sicasLink?.vend_id ?? null;
+          ud.nombre_sicas = sicasLink?.vend_nombre ?? null;
+        }
+
         const { error: updateError } = await supabase
           .from('usuarios')
           .update(updateData)
           .eq('id', user.id);
 
         if (updateError) throw updateError;
+
+        await persistSicasLink(user.id);
 
         // Guardar permisos adicionales si es Gerente
         if (formData.rol === 'Gerente' && isAdmin) {
@@ -424,9 +544,24 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
           }
         }
 
+        // Asignar el rol del catálogo (rol_id). La edge function crea con `rol` (base);
+        // aquí fijamos el rol específico elegido (que el trigger de BD solo pone por defecto).
+        if (result.userId && formData.rol_id) {
+          await supabase.from('usuarios').update({ rol_id: formData.rol_id } as any).eq('id', result.userId);
+        }
+
         // Guardar permisos adicionales si es Gerente
         if (result.userId && formData.rol === 'Gerente' && isAdmin) {
           await savePermisosAdicionales(result.userId);
+        }
+
+        // Enlace SICAS del usuario recién creado
+        if (result.userId && sicasTouched && sicasLink) {
+          await supabase
+            .from('usuarios')
+            .update({ id_sicas: sicasLink.vend_id, nombre_sicas: sicasLink.vend_nombre } as any)
+            .eq('id', result.userId);
+          await persistSicasLink(result.userId);
         }
       }
 
@@ -560,6 +695,93 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
         {/* Tab: General */}
         {activeTab === 'general' && (
           <div className="space-y-6">
+            {/* Enlazar usuario SICAS */}
+            {canLinkSicas && (
+              <div className="bg-gradient-to-br from-indigo-50 to-primary-50 border-2 border-indigo-200 rounded-xl p-4">
+                <h3 className="text-sm font-semibold text-slate-900 mb-1 flex items-center gap-2">
+                  <Link2 className="w-4 h-4 text-indigo-600" />
+                  Enlazar usuario SICAS
+                </h3>
+                <p className="text-xs text-slate-600 mb-3">
+                  Busca al vendedor en el catálogo SICAS para autollenar nombre, apellidos, oficina, rol y slug, y dejar el usuario enlazado.
+                </p>
+
+                {sicasLink ? (
+                  <div className="bg-white rounded-lg border border-indigo-200 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{sicasLink.vend_nombre}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          ID SICAS: <span className="font-mono">{sicasLink.vend_id}</span>
+                          {sicasLink.desp_nombre ? <> · Despacho: {sicasLink.desp_nombre}</> : null}
+                        </p>
+                        {sicasLink.movi_user_id && (!user || sicasLink.movi_user_id !== user.id) && (
+                          <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                            <TriangleAlert className="w-3 h-3 shrink-0" />
+                            Este vendedor ya está vinculado a otro usuario. Al guardar se reasignará a este.
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveSicasLink}
+                        className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 whitespace-nowrap"
+                      >
+                        <X className="w-3.5 h-3.5" /> Quitar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={sicasSearch}
+                        onChange={(e) => { setSicasSearch(e.target.value); setSicasOpen(true); }}
+                        onFocus={() => setSicasOpen(true)}
+                        placeholder="Buscar por nombre o ID SICAS..."
+                        className="w-full pl-9 pr-3 py-2 text-sm border border-indigo-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                      />
+                    </div>
+                    {sicasOpen && (
+                      <div className="absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
+                        {sicasSearching ? (
+                          <div className="flex items-center gap-2 px-3 py-3 text-sm text-slate-500">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Buscando...
+                          </div>
+                        ) : sicasResults.length === 0 ? (
+                          <p className="px-3 py-3 text-sm text-slate-400">
+                            {sicasSearch ? 'Sin resultados' : 'Escribe para buscar un vendedor SICAS'}
+                          </p>
+                        ) : (
+                          sicasResults.map((v) => (
+                            <button
+                              key={v.id}
+                              type="button"
+                              onClick={() => handleSelectSicasVendor(v)}
+                              className="w-full text-left px-3 py-2 hover:bg-indigo-50 transition border-b border-slate-100 last:border-b-0"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm font-medium text-slate-900 truncate">{v.vend_nombre}</span>
+                                <span className="text-[10px] font-mono text-slate-400 shrink-0">{v.vend_id}</span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {v.desp_nombre && <span className="text-xs text-slate-500">{v.desp_nombre}</span>}
+                                {v.movi_user_id && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Ya vinculado</span>
+                                )}
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Información Básica */}
             <div>
               <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
@@ -594,20 +816,40 @@ export function UserModal({ user, onClose, onSave }: UserModalProps) {
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Rol *</label>
                   <select
-                    value={formData.rol}
-                    onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
+                    value={formData.rol_id || catalogoRoles.find((r) => r.nombre === formData.rol)?.id || ''}
+                    onChange={(e) => {
+                      const r = catalogoRoles.find((x) => x.id === e.target.value);
+                      if (r) setFormData({ ...formData, rol_id: r.id, rol: r.rol_base as any });
+                    }}
                     required
-                    disabled={!isAdmin && !isGerente}
+                    disabled={lockRoleToAgente || (!isAdmin && !isGerente)}
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
-                    <option value="Empleado">Empleado</option>
-                    <option value="Agente">Agente</option>
-                    {isAdmin && <option value="Gerente">Gerente</option>}
-                    {isAdmin && <option value="Administrador">Administrador</option>}
+                    {catalogoRoles.length === 0 && <option value="">{formData.rol}</option>}
+                    {catalogoRoles
+                      .filter((r) => {
+                        if (lockRoleToAgente) return r.rol_base === 'Agente';
+                        if (isAdmin) return true;
+                        if (isGerente) return r.rol_base === 'Empleado' || r.rol_base === 'Agente' || r.id === formData.rol_id;
+                        return r.id === formData.rol_id;
+                      })
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nombre}{!r.es_sistema ? ` · base ${r.rol_base}` : ''}
+                        </option>
+                      ))}
                   </select>
-                  {isGerente && (
+                  {lockRoleToAgente ? (
                     <p className="text-xs text-slate-500 mt-1">
-                      Puedes asignar roles: Empleado o Agente
+                      Este agente se crea con rol Agente.
+                    </p>
+                  ) : isGerente && !isAdmin ? (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Puedes asignar roles con base Empleado o Agente.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Los roles se administran en Configuración → Roles.
                     </p>
                   )}
                 </div>

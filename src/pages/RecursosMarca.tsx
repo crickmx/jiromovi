@@ -7,7 +7,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 
 const BUCKET = 'recursos-marca';
 
-interface LogoFamilia { key: string; label: string; description: string; orden: number }
+interface LogoFamilia { key: string; label: string; description: string; orden: number; colores: string[] }
 
 const LOGO_COLORS = [
   { key: 'navy',    label: 'Navy',      hex: '#121A2D', previewBg: '#E2E1CC' },
@@ -108,8 +108,12 @@ export default function RecursosMarca() {
   const [mostrarNuevaFamilia, setMostrarNuevaFamilia] = useState(false);
   const [nuevaFamiliaLabel, setNuevaFamiliaLabel] = useState('');
   const [nuevaFamiliaDesc, setNuevaFamiliaDesc] = useState('');
+  const [nuevaFamiliaColores, setNuevaFamiliaColores] = useState<string[]>(['navy', 'white']);
+  const [editandoColoresKey, setEditandoColoresKey] = useState<string | null>(null);
   const [guardandoFamilia, setGuardandoFamilia] = useState(false);
   const [errorFamilia, setErrorFamilia] = useState<string | null>(null);
+  const [confirmandoEliminarKey, setConfirmandoEliminarKey] = useState<string | null>(null);
+  const [eliminandoFamiliaKey, setEliminandoFamiliaKey] = useState<string | null>(null);
 
   // Per-family selected color
   const [selectedColors, setSelectedColors] = useState<Record<string, string>>({});
@@ -150,6 +154,10 @@ export default function RecursosMarca() {
 
   async function crearFamilia() {
     if (!nuevaFamiliaLabel.trim()) return;
+    if (nuevaFamiliaColores.length === 0) {
+      setErrorFamilia('Elige al menos un color para la categoría.');
+      return;
+    }
     setGuardandoFamilia(true);
     setErrorFamilia(null);
     try {
@@ -157,12 +165,13 @@ export default function RecursosMarca() {
       if (!key) throw new Error('Nombre inválido');
       const orden = logoFamilias.length;
       const { error } = await supabase.from('mkt_logo_familias').insert({
-        key, label: nuevaFamiliaLabel.trim(), description: nuevaFamiliaDesc.trim(), orden,
+        key, label: nuevaFamiliaLabel.trim(), description: nuevaFamiliaDesc.trim(), orden, colores: nuevaFamiliaColores,
       });
       if (error) throw error;
       await cargarFamilias();
       setNuevaFamiliaLabel('');
       setNuevaFamiliaDesc('');
+      setNuevaFamiliaColores(['navy', 'white']);
       setMostrarNuevaFamilia(false);
     } catch (e) {
       console.error('Error creando categoría de logo:', e);
@@ -172,6 +181,31 @@ export default function RecursosMarca() {
       setErrorFamilia(mensaje || 'Error al crear la categoría');
     } finally {
       setGuardandoFamilia(false);
+    }
+  }
+
+  async function eliminarFamilia(key: string) {
+    setEliminandoFamiliaKey(key);
+    try {
+      const { error } = await supabase.from('mkt_logo_familias').delete().eq('key', key);
+      if (error) throw error;
+      setConfirmandoEliminarKey(null);
+      await cargarFamilias();
+    } catch (e) {
+      console.error('Error eliminando categoría de logo:', e);
+      setErrorFamilia(e instanceof Error ? e.message : 'Error al eliminar la categoría');
+    } finally {
+      setEliminandoFamiliaKey(null);
+    }
+  }
+
+  async function actualizarColoresFamilia(key: string, colores: string[]) {
+    setLogoFamilias(prev => prev.map(f => f.key === key ? { ...f, colores } : f));
+    const { error } = await supabase.from('mkt_logo_familias').update({ colores }).eq('key', key);
+    if (error) {
+      console.error('Error actualizando colores de categoría:', error);
+      setErrorFamilia(error.message);
+      await cargarFamilias();
     }
   }
 
@@ -418,6 +452,51 @@ export default function RecursosMarca() {
           ? <LoadingState text="Cargando logos…" compact />
           : (
             <div className="space-y-4">
+              <div className="rounded-2xl border border-neutral-200 dark:border-white/8 bg-neutral-50 dark:bg-white/3 p-5 space-y-4">
+                <p className="text-sm font-semibold text-neutral-800 dark:text-white">Reglas de uso del logotipo</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-neutral-600 dark:text-white/60">
+                  <div>
+                    <p className="font-medium text-neutral-700 dark:text-white/80 mb-1">Color según el fondo</p>
+                    <ul className="space-y-1 list-disc list-inside">
+                      <li>Fondo claro (blanco, crema): versión <strong>navy</strong></li>
+                      <li>Fondo oscuro, azul o fotografía: versión <strong>blanca</strong></li>
+                      <li>Impresión a una tinta: versión <strong>negra</strong></li>
+                      <li>Marcas de agua o fondos sutiles: versión <strong>pale</strong></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium text-neutral-700 dark:text-white/80 mb-1">Área de respiro y tamaño mínimo</p>
+                    <ul className="space-y-1 list-disc list-inside">
+                      <li>Deja libre un margen de 0.5× la altura de la montaña en los 4 lados</li>
+                      <li>Horizontal: 96 px en pantalla · 25 mm impreso</li>
+                      <li>Isotipo solo: 32 px en pantalla · 10 mm impreso</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm pt-1 border-t border-neutral-200 dark:border-white/8">
+                  <div className="pt-3">
+                    <p className="font-medium text-emerald-700 dark:text-emerald-400 mb-1">✓ Correcto</p>
+                    <ul className="space-y-1 list-disc list-inside text-neutral-600 dark:text-white/60">
+                      <li>Usar el archivo oficial sin modificar</li>
+                      <li>Respetar la proporción original al escalar</li>
+                      <li>Colocarlo sobre fondos con contraste suficiente</li>
+                    </ul>
+                  </div>
+                  <div className="pt-3">
+                    <p className="font-medium text-red-700 dark:text-red-400 mb-1">✕ Incorrecto</p>
+                    <ul className="space-y-1 list-disc list-inside text-neutral-600 dark:text-white/60">
+                      <li>Estirar, comprimir, rotar o inclinar el logotipo</li>
+                      <li>Aplicar degradados, sombras, contornos o relieves</li>
+                      <li>Recolorear la montaña o el texto por separado</li>
+                      <li>Colocar el logo navy sobre fondos oscuros</li>
+                    </ul>
+                  </div>
+                </div>
+                <p className="text-xs text-neutral-400 dark:text-white/40">
+                  Las variantes de acento (amarillo, verde, mostaza, salvia) son para piezas especiales — no las uses en comunicación institucional ni documentos oficiales.
+                </p>
+              </div>
+
               {isAdmin && (
                 <div>
                   {!mostrarNuevaFamilia ? (
@@ -428,40 +507,66 @@ export default function RecursosMarca() {
                       + Nueva categoría
                     </button>
                   ) : (
-                    <div className="flex flex-wrap items-end gap-2 bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl p-3">
-                      <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Nombre</label>
-                        <input
-                          type="text"
-                          value={nuevaFamiliaLabel}
-                          onChange={e => setNuevaFamiliaLabel(e.target.value)}
-                          placeholder="Ej. Jiro Fianzas"
-                          className="px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-                        />
+                    <div className="flex flex-col gap-3 bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl p-3">
+                      <div className="flex flex-wrap items-end gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Nombre</label>
+                          <input
+                            type="text"
+                            value={nuevaFamiliaLabel}
+                            onChange={e => setNuevaFamiliaLabel(e.target.value)}
+                            placeholder="Ej. Jiro Fianzas"
+                            className="px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Descripción (opcional)</label>
+                          <input
+                            type="text"
+                            value={nuevaFamiliaDesc}
+                            onChange={e => setNuevaFamiliaDesc(e.target.value)}
+                            placeholder="Ej. Logo de la línea de negocio Jiro Fianzas"
+                            className="px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent w-64"
+                          />
+                        </div>
                       </div>
+
                       <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Descripción (opcional)</label>
-                        <input
-                          type="text"
-                          value={nuevaFamiliaDesc}
-                          onChange={e => setNuevaFamiliaDesc(e.target.value)}
-                          placeholder="Ej. Logo de la línea de negocio Jiro Fianzas"
-                          className="px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent w-64"
-                        />
+                        <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1.5">Colores que aplican a esta categoría</label>
+                        <div className="flex flex-wrap gap-2">
+                          {LOGO_COLORS.map(color => {
+                            const activo = nuevaFamiliaColores.includes(color.key);
+                            return (
+                              <button
+                                key={color.key}
+                                type="button"
+                                onClick={() => setNuevaFamiliaColores(prev =>
+                                  activo ? prev.filter(k => k !== color.key) : [...prev, color.key]
+                                )}
+                                title={color.label}
+                                className={`w-7 h-7 rounded-full transition-transform flex-shrink-0 ${activo ? 'ring-2 ring-offset-1 ring-accent dark:ring-offset-neutral-900' : 'opacity-40 hover:opacity-70'}`}
+                                style={{ backgroundColor: color.hex, border: color.hex === '#FFFFFF' ? '1px solid #d1d5db' : 'none' }}
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
-                      <button
-                        onClick={crearFamilia}
-                        disabled={guardandoFamilia || !nuevaFamiliaLabel.trim()}
-                        className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50"
-                      >
-                        {guardandoFamilia ? 'Creando...' : 'Crear'}
-                      </button>
-                      <button
-                        onClick={() => { setMostrarNuevaFamilia(false); setNuevaFamiliaLabel(''); setNuevaFamiliaDesc(''); setErrorFamilia(null); }}
-                        className="px-3 py-2 rounded-lg text-sm font-medium text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70 transition"
-                      >
-                        Cancelar
-                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={crearFamilia}
+                          disabled={guardandoFamilia || !nuevaFamiliaLabel.trim()}
+                          className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50"
+                        >
+                          {guardandoFamilia ? 'Creando...' : 'Crear'}
+                        </button>
+                        <button
+                          onClick={() => { setMostrarNuevaFamilia(false); setNuevaFamiliaLabel(''); setNuevaFamiliaDesc(''); setNuevaFamiliaColores(['navy', 'white']); setErrorFamilia(null); }}
+                          className="px-3 py-2 rounded-lg text-sm font-medium text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70 transition"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
                     </div>
                   )}
                   {errorFamilia && <p className="text-sm text-red-600 dark:text-red-400 mt-1.5">{errorFamilia}</p>}
@@ -470,8 +575,9 @@ export default function RecursosMarca() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {logoFamilias.map(family => {
-                const selColor = selectedColors[family.key] ?? 'navy';
-                const colorDef = LOGO_COLORS.find(c => c.key === selColor)!;
+                const coloresFamilia = LOGO_COLORS.filter(c => family.colores.includes(c.key));
+                const selColor = selectedColors[family.key] ?? coloresFamilia[0]?.key ?? 'navy';
+                const colorDef = LOGO_COLORS.find(c => c.key === selColor) ?? LOGO_COLORS[0];
                 const logoUrl  = logoUrls[family.key]?.[selColor];
                 const darkBg   = ['#121A2D', '#164281', '#4A5C72'].includes(colorDef.previewBg);
 
@@ -490,29 +596,91 @@ export default function RecursosMarca() {
 
                     {/* Controls */}
                     <div className="p-4 flex flex-col gap-3 flex-1">
-                      <div>
-                        <p className="font-semibold text-sm text-neutral-800 dark:text-white">{family.label}</p>
-                        <p className="text-xs text-neutral-400 dark:text-white/40">{family.description}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-sm text-neutral-800 dark:text-white">{family.label}</p>
+                          <p className="text-xs text-neutral-400 dark:text-white/40">{family.description}</p>
+                        </div>
+                        {isAdmin && (
+                          confirmandoEliminarKey === family.key ? (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                onClick={() => eliminarFamilia(family.key)}
+                                disabled={eliminandoFamiliaKey === family.key}
+                                className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                              >
+                                {eliminandoFamiliaKey === family.key ? '...' : 'Confirmar'}
+                              </button>
+                              <button
+                                onClick={() => setConfirmandoEliminarKey(null)}
+                                className="text-xs font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-white/70"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={() => setEditandoColoresKey(prev => prev === family.key ? null : family.key)}
+                                title="Editar colores"
+                                className={`transition-colors ${editandoColoresKey === family.key ? 'text-accent' : 'text-neutral-300 hover:text-accent dark:text-white/20 dark:hover:text-accent'}`}
+                              >
+                                <Palette className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmandoEliminarKey(family.key)}
+                                title="Eliminar categoría"
+                                className="text-neutral-300 hover:text-red-600 dark:text-white/20 dark:hover:text-red-400 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )
+                        )}
                       </div>
 
+                      {editandoColoresKey === family.key && (
+                        <div className="flex flex-wrap gap-2 bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg p-2.5">
+                          {LOGO_COLORS.map(color => {
+                            const activo = family.colores.includes(color.key);
+                            return (
+                              <button
+                                key={color.key}
+                                title={color.label}
+                                onClick={() => actualizarColoresFamilia(
+                                  family.key,
+                                  activo ? family.colores.filter(k => k !== color.key) : [...family.colores, color.key]
+                                )}
+                                className={`w-6 h-6 rounded-full transition-transform ${activo ? 'ring-2 ring-offset-1 ring-accent dark:ring-offset-neutral-900' : 'opacity-30 hover:opacity-60'}`}
+                                style={{ backgroundColor: color.hex, border: color.hex === '#FFFFFF' ? '1px solid #d1d5db' : 'none' }}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+
                       {/* Color swatches */}
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {LOGO_COLORS.map(color => (
-                          <button key={color.key} title={color.label}
-                            onClick={() => setSelectedColors(prev => ({ ...prev, [family.key]: color.key }))}
-                            className={`w-5 h-5 rounded-full transition-transform ${
-                              selColor === color.key
-                                ? 'ring-2 ring-offset-1 ring-accent dark:ring-offset-neutral-900 scale-125'
-                                : 'hover:scale-110'
-                            }`}
-                            style={{
-                              backgroundColor: color.hex,
-                              border: color.hex === '#FFFFFF' ? '1px solid #d1d5db' : 'none',
-                            }}
-                          />
-                        ))}
-                        <span className="text-xs text-neutral-400 dark:text-white/40 ml-1">{colorDef.label}</span>
-                      </div>
+                      {coloresFamilia.length === 0 ? (
+                        <p className="text-xs text-neutral-400 dark:text-white/40 italic">Sin colores asignados — usa el ícono de paleta para elegir.</p>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {coloresFamilia.map(color => (
+                            <button key={color.key} title={color.label}
+                              onClick={() => setSelectedColors(prev => ({ ...prev, [family.key]: color.key }))}
+                              className={`w-5 h-5 rounded-full transition-transform ${
+                                selColor === color.key
+                                  ? 'ring-2 ring-offset-1 ring-accent dark:ring-offset-neutral-900 scale-125'
+                                  : 'hover:scale-110'
+                              }`}
+                              style={{
+                                backgroundColor: color.hex,
+                                border: color.hex === '#FFFFFF' ? '1px solid #d1d5db' : 'none',
+                              }}
+                            />
+                          ))}
+                          <span className="text-xs text-neutral-400 dark:text-white/40 ml-1">{colorDef.label}</span>
+                        </div>
+                      )}
 
                       {/* Download */}
                       <button
@@ -626,9 +794,56 @@ export default function RecursosMarca() {
 
       {/* ── PALETA ────────────────────────────────────────────────────────── */}
       {section === 'paleta' && (
-        !paletaUrl
-          ? <p className="text-sm text-neutral-400 dark:text-white/40 text-center py-10">Paleta no disponible</p>
-          : (
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-neutral-200 dark:border-white/8 bg-neutral-50 dark:bg-white/3 p-5 space-y-5">
+            <div>
+              <p className="text-sm font-semibold text-neutral-800 dark:text-white mb-1">Colores corporativos</p>
+              <p className="text-xs text-neutral-500 dark:text-white/50 mb-3">Definen la marca — botones, títulos, fondos y texto principal.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { nombre: 'Azul JIRO', hex: '#164281', uso: 'Botones, títulos, enlaces' },
+                  { nombre: 'Navy', hex: '#121A2D', uso: 'Texto y fondos oscuros' },
+                  { nombre: 'Crema', hex: '#E2E1CC', uso: 'Fondo cálido, tarjetas' },
+                  { nombre: 'Blanco', hex: '#FFFFFF', uso: 'Fondo base, logo negativo' },
+                ].map(c => (
+                  <div key={c.hex} className="space-y-1.5">
+                    <div className="h-12 rounded-xl border border-neutral-200 dark:border-white/10" style={{ backgroundColor: c.hex }} />
+                    <p className="text-xs font-medium text-neutral-700 dark:text-white/80">{c.nombre}</p>
+                    <p className="text-[11px] text-neutral-400 dark:text-white/40 font-mono">{c.hex}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-neutral-800 dark:text-white mb-1">Acentos por ramo</p>
+              <p className="text-xs text-neutral-500 dark:text-white/50 mb-3">Un color por ramo, siempre el mismo — es clasificación, no decoración.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { nombre: 'Amarillo', hex: '#FFD62B', ramo: 'Autos' },
+                  { nombre: 'Verde', hex: '#93C01F', ramo: 'Vida y GMM' },
+                  { nombre: 'Naranja', hex: '#F4AD0F', ramo: 'Hogar y Empresarial' },
+                  { nombre: 'Menta', hex: '#59D1AF', ramo: 'Fianzas y Ahorro' },
+                ].map(c => (
+                  <div key={c.hex} className="space-y-1.5">
+                    <div className="h-12 rounded-xl border border-neutral-200 dark:border-white/10" style={{ backgroundColor: c.hex }} />
+                    <p className="text-xs font-medium text-neutral-700 dark:text-white/80">{c.nombre}</p>
+                    <p className="text-[11px] text-neutral-400 dark:text-white/40">{c.ramo} · <span className="font-mono">{c.hex}</span></p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <ul className="space-y-1 text-sm text-neutral-600 dark:text-white/60 list-disc list-inside pt-1 border-t border-neutral-200 dark:border-white/8 pt-3">
+              <li>Máximo dos colores de fondo por pieza — el resto se resuelve con blanco y crema</li>
+              <li>Los acentos nunca se usan como fondo de página completa ni para texto corrido</li>
+              <li>No mezcles los cuatro acentos en una misma sección salvo que muestres todos los ramos juntos</li>
+              <li>Texto sobre azul o navy: siempre blanco. Texto sobre amarillo, verde, naranja o menta: siempre navy</li>
+              <li>No inventes tonos intermedios ni degradados entre colores de la paleta</li>
+            </ul>
+          </div>
+
+          {paletaUrl && (
             <div className="flex flex-col items-center gap-4">
               <img src={paletaUrl} alt="Paleta de color JIRO"
                 className="max-w-2xl w-full rounded-2xl border border-neutral-200 dark:border-white/8 shadow-sm" />
@@ -637,7 +852,8 @@ export default function RecursosMarca() {
                 <Download className="w-4 h-4" />Descargar paleta
               </button>
             </div>
-          )
+          )}
+        </div>
       )}
     </div>
   );

@@ -2,9 +2,10 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignatureUtils';
-import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList, ContactRound } from 'lucide-react';
+import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList, ContactRound, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmailModal';
+import { AgregarAEmailTramiteModal } from '@/components/email/AgregarAEmailTramiteModal';
 import { getRoundcubeHandoffUrl } from '../lib/roundcubeSso';
 import { ContactosMovi } from '../components/email/ContactosMovi';
 
@@ -154,7 +155,7 @@ export function GestorEmails() {
   const [hasConfig, setHasConfig] = useState<boolean | null>(null);
   const [configEmail, setConfigEmail] = useState('');
   const [showSetup, setShowSetup] = useState(false);
-  const [mailView, setMailView] = useState<'roundcube' | 'legacy'>('roundcube');
+  const [mailView, setMailView] = useState<'roundcube' | 'legacy'>('legacy');
   const [roundcubeUrl, setRoundcubeUrl] = useState('');
   const [roundcubeLoading, setRoundcubeLoading] = useState(false);
 
@@ -189,6 +190,7 @@ export function GestorEmails() {
 
   // Tramite from email
   const [showTramiteModal, setShowTramiteModal] = useState(false);
+  const [showAddTramiteModal, setShowAddTramiteModal] = useState(false);
 
   const composeToContact = (email: string) => {
     setComposeRecipient(email);
@@ -227,8 +229,7 @@ export function GestorEmails() {
     if (data) {
       setHasConfig(true);
       setConfigEmail(data.email);
-      setInitialLoading(false);
-      openRoundcubeEmbedded();
+      loadFolders();
     } else {
       setHasConfig(false);
       setShowSetup(true);
@@ -374,7 +375,7 @@ export function GestorEmails() {
 
   // ── Setup / Loading screens ────────────────────────────────────────
   if (showSetup || hasConfig === false) {
-    return <SetupScreen onSuccess={() => { setShowSetup(false); checkConfig(); }} />;
+    return <SetupScreen onSuccess={() => { setShowSetup(false); checkConfig(); }} onClose={() => setShowSetup(false)} />;
   }
 
   if (initialLoading) {
@@ -793,6 +794,7 @@ export function GestorEmails() {
               onReplyAll={() => { setComposeMode('replyAll'); setShowCompose(true); }}
               onForward={() => { setComposeMode('forward'); setShowCompose(true); }}
               onIniciarTramite={() => setShowTramiteModal(true)}
+              onAgregarATramite={() => setShowAddTramiteModal(true)}
               currentFolder={currentFolder}
             />
           ) : (
@@ -835,6 +837,17 @@ export function GestorEmails() {
           }}
         />
       )}
+
+      {/* Agregar a Tramite Existente Modal */}
+      {selectedMessage && (
+        <AgregarAEmailTramiteModal
+          isOpen={showAddTramiteModal}
+          onClose={() => setShowAddTramiteModal(false)}
+          email={selectedMessage}
+          emailAccount={configEmail}
+          currentFolder={currentFolder}
+        />
+      )}
     </div>
   );
 }
@@ -842,7 +855,7 @@ export function GestorEmails() {
 // ── Reading Pane ────────────────────────────────────────────────────
 
 function ReadingPane({
-  message, loading, onBack, onMarkRead, onDelete, onReply, onReplyAll, onForward, onIniciarTramite, currentFolder,
+  message, loading, onBack, onMarkRead, onDelete, onReply, onReplyAll, onForward, onIniciarTramite, onAgregarATramite, currentFolder,
 }: {
   message: EmailFull;
   loading: boolean;
@@ -853,11 +866,23 @@ function ReadingPane({
   onReplyAll: () => void;
   onForward: () => void;
   onIniciarTramite: () => void;
+  onAgregarATramite: () => void;
   currentFolder: string;
 }) {
   const [showFullHeaders, setShowFullHeaders] = useState(false);
   const [existingTramite, setExistingTramite] = useState<{ id: string; folio: string } | null>(null);
+  const [renderBigBody, setRenderBigBody] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Un correo con HTML enorme (newsletters con imágenes base64 o tablas muy
+  // anidadas) bloquea el hilo principal al escribirlo de golpe en el iframe
+  // (doc.write es síncrono). Por encima de este tamaño pedimos confirmación en
+  // vez de renderizar automático — evita el "la página no responde".
+  const BODY_RENDER_LIMIT = 1_500_000; // ~1.5 MB de HTML
+  const bodyTooBig = !!message.bodyHtml && message.bodyHtml.length > BODY_RENDER_LIMIT && !renderBigBody;
+
+  // Al cambiar de mensaje, volver a exigir confirmación para el siguiente correo grande.
+  useEffect(() => { setRenderBigBody(false); }, [message.uid]);
 
   useEffect(() => {
     if (message.messageId) {
@@ -874,11 +899,15 @@ function ReadingPane({
   }, [message.messageId]);
 
   useEffect(() => {
+    if (bodyTooBig) return; // correo demasiado grande: esperar confirmación del usuario
     if (iframeRef.current && message.bodyHtml) {
       const doc = iframeRef.current.contentDocument;
       if (doc) {
         doc.open();
-        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+          <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+          <meta name="referrer" content="no-referrer">
+          <base target="_blank"><style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: #333; margin: 20px; word-break: break-word; }
           img { max-width: 100%; height: auto; }
           a { color: #0066cc; }
@@ -894,7 +923,7 @@ function ReadingPane({
         }, 200);
       }
     }
-  }, [message.bodyHtml]);
+  }, [message.bodyHtml, bodyTooBig]);
 
   const handleDownloadAttachment = async (att: { filename: string; partId: string }) => {
     try {
@@ -1030,7 +1059,23 @@ function ReadingPane({
 
           {/* Email body */}
           <div className="rounded-xl border border-neutral-100 dark:border-neutral-700/50 overflow-hidden bg-white dark:bg-neutral-800">
-            {message.bodyHtml ? (
+            {bodyTooBig ? (
+              <div className="p-6 text-center">
+                <MailOpen className="w-8 h-8 mx-auto mb-2 text-neutral-400" />
+                <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-1">
+                  Este correo es muy grande y puede tardar en mostrarse.
+                </p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-3">
+                  {formatSize(message.bodyHtml!.length)} de contenido
+                </p>
+                <button
+                  onClick={() => setRenderBigBody(true)}
+                  className="px-3.5 py-2 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent/90 transition"
+                >
+                  Mostrar de todos modos
+                </button>
+              </div>
+            ) : message.bodyHtml ? (
               <iframe
                 ref={iframeRef}
                 className="w-full min-h-[300px] border-0"
@@ -1072,6 +1117,9 @@ function ReadingPane({
                 <ClipboardList className="w-3.5 h-3.5" /> Iniciar tramite
               </button>
             )}
+            <button onClick={onAgregarATramite} className="flex items-center gap-1.5 px-3.5 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition text-xs font-medium">
+              <Plus className="w-3.5 h-3.5" /> Agregar a tramite
+            </button>
           </div>
         </div>
       </div>
@@ -1081,13 +1129,40 @@ function ReadingPane({
 
 // ── Setup Screen ────────────────────────────────────────────────────
 
-function SetupScreen({ onSuccess }: { onSuccess: () => void }) {
+interface ConfiguredAccount {
+  email: string;
+  nombre_remitente: string | null;
+  estado_conexion: string | null;
+}
+
+function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose?: () => void }) {
   const { usuario } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
   const [verified, setVerified] = useState(false);
+  const [accounts, setAccounts] = useState<ConfiguredAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    if (!usuario) { setLoadingAccounts(false); return; }
+    supabase
+      .from('email_configuraciones')
+      .select('email, nombre_remitente, estado_conexion, activa')
+      .eq('usuario_id', usuario.id)
+      .then(({ data }) => {
+        const activas = ((data as any[]) || [])
+          .filter(a => a.activa !== false)
+          .map(a => ({ email: a.email, nombre_remitente: a.nombre_remitente ?? null, estado_conexion: a.estado_conexion ?? null }));
+        setAccounts(activas);
+        setShowForm(activas.length === 0); // sin cuentas: mostrar el form directo
+        setLoadingAccounts(false);
+      });
+  }, [usuario?.id]);
+
+  const hasAccounts = accounts.length > 0;
 
   const handleVerify = async () => {
     if (!email || !password) { setError('Ingresa correo y contrasena'); return; }
@@ -1106,16 +1181,31 @@ function SetupScreen({ onSuccess }: { onSuccess: () => void }) {
     }
   };
 
+  const inputCls = 'w-full px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-neutral-900 dark:text-white text-sm';
+
   return (
     <div className="h-full flex items-start justify-center bg-neutral-50 dark:bg-neutral-900 p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg max-w-md w-full p-8 my-auto">
-        <div className="text-center mb-8">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg max-w-md w-full p-8 my-auto relative">
+        {/* Cerrar / volver — solo si ya hay una cuenta a la que regresar */}
+        {onClose && hasAccounts && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition"
+            title="Cerrar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+
+        <div className="text-center mb-6">
           <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
             <Mail className="w-7 h-7 text-accent" />
           </div>
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Configura tu correo</h1>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+            {hasAccounts ? 'Cuentas de correo' : 'Configura tu correo'}
+          </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
-            Ingresa tus credenciales IONOS
+            {hasAccounts ? 'Cuentas conectadas a tu Correo MOVI' : 'Ingresa tus credenciales IONOS'}
           </p>
         </div>
 
@@ -1140,40 +1230,84 @@ function SetupScreen({ onSuccess }: { onSuccess: () => void }) {
               Ir a mi correo
             </button>
           </div>
+        ) : loadingAccounts ? (
+          <div className="flex justify-center py-6">
+            <RefreshCw className="w-5 h-5 animate-spin text-neutral-300" />
+          </div>
         ) : (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Correo electronico</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-neutral-900 dark:text-white text-sm"
-                placeholder="nombre@jiro.mx"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Contrasena</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-neutral-900 dark:text-white text-sm"
-                placeholder="Tu contrasena de IONOS"
-              />
-            </div>
-            <div className="bg-neutral-50 dark:bg-neutral-700/30 rounded-lg p-3 text-[11px] text-neutral-500 dark:text-neutral-400 space-y-0.5">
-              <p className="font-medium">Servidores preconfigurados:</p>
-              <p>IMAP: imap.ionos.mx:993 (SSL/TLS)</p>
-              <p>SMTP: smtp.ionos.mx:465 (SSL/TLS)</p>
-            </div>
-            <button
-              onClick={handleVerify}
-              disabled={verifying || !email || !password}
-              className="w-full py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent/90 transition disabled:opacity-50"
-            >
-              {verifying ? 'Verificando...' : 'Verificar y conectar'}
-            </button>
+            {/* Cuentas ya conectadas */}
+            {hasAccounts && (
+              <div className="space-y-2">
+                {accounts.map((acc) => (
+                  <div key={acc.email} className="flex items-center gap-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-700/30">
+                    <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-4 h-4 text-accent" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-neutral-800 dark:text-white truncate">{acc.email}</p>
+                      {acc.nombre_remitente && <p className="text-[11px] text-neutral-400 truncate">{acc.nombre_remitente}</p>}
+                    </div>
+                    <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 text-[10px] font-semibold text-green-700 dark:text-green-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Conectada
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {hasAccounts && !showForm ? (
+              <div className="flex flex-col gap-2 pt-1">
+                <button
+                  onClick={() => { setShowForm(true); setEmail(accounts[0]?.email || ''); setPassword(''); setError(''); }}
+                  className="w-full py-2.5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition text-sm flex items-center justify-center gap-2"
+                >
+                  <Settings className="w-4 h-4" /> Reconfigurar / cambiar contrasena
+                </button>
+                {onClose && (
+                  <button
+                    onClick={onClose}
+                    className="w-full py-2.5 bg-accent text-white rounded-xl font-semibold hover:bg-accent/90 transition text-sm"
+                  >
+                    Volver a mi correo
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                {hasAccounts && (
+                  <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 pt-1">Reconfigurar cuenta</p>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Correo electronico</label>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="nombre@jiro.mx" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Contrasena</label>
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls} placeholder="Tu contrasena de IONOS" />
+                </div>
+                <div className="bg-neutral-50 dark:bg-neutral-700/30 rounded-lg p-3 text-[11px] text-neutral-500 dark:text-neutral-400 space-y-0.5">
+                  <p className="font-medium">Servidores preconfigurados:</p>
+                  <p>IMAP: imap.ionos.mx:993 (SSL/TLS)</p>
+                  <p>SMTP: smtp.ionos.mx:465 (SSL/TLS)</p>
+                </div>
+                <button
+                  onClick={handleVerify}
+                  disabled={verifying || !email || !password}
+                  className="w-full py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent/90 transition disabled:opacity-50"
+                >
+                  {verifying ? 'Verificando...' : 'Verificar y conectar'}
+                </button>
+                {hasAccounts && (
+                  <button
+                    onClick={() => { setShowForm(false); setError(''); }}
+                    className="w-full py-2 text-sm text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition"
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

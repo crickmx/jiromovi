@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X } from 'lucide-react';
+import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, supabaseUrl } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import { resolveImageUrl } from '../lib/storageUtils';
 import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
+import { UserModal } from '../components/UserModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -54,6 +55,15 @@ function formatFecha(iso: string | null | undefined) {
   try { return format(new Date(iso), "d 'de' MMMM, yyyy", { locale: es }); } catch { return '—'; }
 }
 
+interface DisenoAgente {
+  id: string;
+  titulo: string | null;
+  tipo: 'imagen' | 'video' | null;
+  archivo_resultante_url: string | null;
+  thumbnail_url: string | null;
+  created_at: string;
+}
+
 function emptyForm(a?: Agente | null): FormData {
   return {
     plan_mkt_premium: a?.plan_mkt_premium ?? false,
@@ -82,9 +92,12 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   const [mostrarNuevoAgente, setMostrarNuevoAgente] = useState(false);
-  const [nuevoAgente, setNuevoAgente] = useState({ nombre: '', apellidos: '', email_laboral: '', celular_laboral: '' });
-  const [creandoAgente, setCreandoAgente] = useState(false);
-  const [errorNuevoAgente, setErrorNuevoAgente] = useState('');
+
+  const [disenosAgente, setDisenosAgente] = useState<DisenoAgente[]>([]);
+  const [cargandoDisenos, setCargandoDisenos] = useState(false);
+  const [tituloNuevoDiseno, setTituloNuevoDiseno] = useState('');
+  const [subiendoDiseno, setSubiendoDiseno] = useState(false);
+  const [errorDiseno, setErrorDiseno] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -142,6 +155,64 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setSeleccionado(agente);
     setForm(emptyForm(agente));
     setGuardado(false);
+    setTituloNuevoDiseno('');
+    setErrorDiseno('');
+    cargarDisenosAgente(agente.id);
+  }
+
+  async function cargarDisenosAgente(usuarioId: string) {
+    setCargandoDisenos(true);
+    const { data } = await supabase
+      .from('publicidad_disenos')
+      .select('id, titulo, tipo, archivo_resultante_url, thumbnail_url, created_at')
+      .eq('usuario_id', usuarioId)
+      .eq('origen', 'equipo_mkt')
+      .order('created_at', { ascending: false });
+    setDisenosAgente(data ?? []);
+    setCargandoDisenos(false);
+  }
+
+  async function subirDisenoSemanal(file: File) {
+    if (!seleccionado || !usuario) return;
+    setSubiendoDiseno(true);
+    setErrorDiseno('');
+    try {
+      const tipo: 'imagen' | 'video' = file.type.startsWith('video/') ? 'video' : 'imagen';
+      const path = `equipo-mkt/${seleccionado.id}/${Date.now()}-${file.name}`;
+
+      const { error: upErr } = await supabase.storage.from('publicidad-disenos').upload(path, file);
+      if (upErr) throw upErr;
+
+      const { data: { publicUrl } } = supabase.storage.from('publicidad-disenos').getPublicUrl(path);
+
+      const { error: insErr } = await supabase.from('publicidad_disenos').insert({
+        usuario_id: seleccionado.id,
+        origen: 'equipo_mkt',
+        titulo: tituloNuevoDiseno.trim() || null,
+        tipo,
+        archivo_resultante_url: publicUrl,
+        thumbnail_url: tipo === 'imagen' ? publicUrl : null,
+        creado_por: usuario.id,
+      });
+      if (insErr) throw insErr;
+
+      setTituloNuevoDiseno('');
+      cargarDisenosAgente(seleccionado.id);
+    } catch (err: any) {
+      setErrorDiseno(err.message || 'No se pudo subir el contenido');
+    } finally {
+      setSubiendoDiseno(false);
+    }
+  }
+
+  async function eliminarDisenoAgente(id: string) {
+    if (!confirm('¿Eliminar este contenido? El agente ya no podrá verlo.')) return;
+    const { error } = await supabase.from('publicidad_disenos').delete().eq('id', id);
+    if (error) {
+      alert(`No se pudo eliminar: ${error.message}`);
+      return;
+    }
+    setDisenosAgente(prev => prev.filter(d => d.id !== id));
   }
 
   async function crearTramiteCobranzaPremium(agente: Agente) {
@@ -277,41 +348,6 @@ ALTER TABLE usuarios
     navigator.clipboard.writeText(MIGRATION_SQL);
     setSqlCopiado(true);
     setTimeout(() => setSqlCopiado(false), 2500);
-  }
-
-  async function crearAgente() {
-    if (!nuevoAgente.nombre.trim() || !nuevoAgente.apellidos.trim() || !nuevoAgente.email_laboral.trim()) {
-      setErrorNuevoAgente('Nombre, apellidos y correo laboral son obligatorios.');
-      return;
-    }
-    setCreandoAgente(true);
-    setErrorNuevoAgente('');
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-        body: JSON.stringify({
-          userData: {
-            nombre: nuevoAgente.nombre.trim(),
-            apellidos: nuevoAgente.apellidos.trim(),
-            email_laboral: nuevoAgente.email_laboral.trim(),
-            celular_laboral: nuevoAgente.celular_laboral.trim(),
-            rol: 'Agente',
-          },
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Error al crear el agente');
-
-      setMostrarNuevoAgente(false);
-      setNuevoAgente({ nombre: '', apellidos: '', email_laboral: '', celular_laboral: '' });
-      await cargarAgentes();
-    } catch (e) {
-      setErrorNuevoAgente(e instanceof Error ? e.message : 'Error al crear el agente');
-    } finally {
-      setCreandoAgente(false);
-    }
   }
 
   if (verificandoAcceso) return null;
@@ -637,6 +673,88 @@ ALTER TABLE usuarios
                   )}
                 </div>
               </div>
+
+              {/* Contenido semanal de Publicidad */}
+              <div className="pt-6 border-t border-neutral-200 dark:border-white/8 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Megaphone className="w-4 h-4 text-purple-600" />
+                  <p className="text-sm font-semibold text-neutral-800 dark:text-white">Contenido semanal (Publicidad)</p>
+                </div>
+                <p className="text-xs text-neutral-400">
+                  Sube el diseño de esta semana para {seleccionado.nombre}. Aparecerá en su pestaña "Mis Diseños" de Publicidad.
+                </p>
+
+                <input
+                  type="text"
+                  value={tituloNuevoDiseno}
+                  onChange={e => setTituloNuevoDiseno(e.target.value)}
+                  placeholder="Título (opcional, ej. Semana del 4 de agosto)"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                />
+
+                <label className={`flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl border-2 border-dashed cursor-pointer text-sm font-medium transition ${
+                  subiendoDiseno
+                    ? 'border-neutral-200 dark:border-white/10 text-neutral-400 cursor-not-allowed'
+                    : 'border-purple-300 dark:border-purple-800 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/10'
+                }`}>
+                  {subiendoDiseno ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
+                  ) : (
+                    <><Upload className="w-4 h-4" /> Subir imagen o video</>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    disabled={subiendoDiseno}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) subirDisenoSemanal(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+
+                {errorDiseno && (
+                  <p className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    {errorDiseno}
+                  </p>
+                )}
+
+                {cargandoDisenos ? (
+                  <LoadingState text="Cargando contenido..." compact />
+                ) : disenosAgente.length === 0 ? (
+                  <p className="text-xs text-neutral-400 text-center py-3">Aún no se ha subido contenido para este agente</p>
+                ) : (
+                  <div className="space-y-2">
+                    {disenosAgente.map(d => (
+                      <div key={d.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-neutral-200 dark:border-white/10">
+                        <div className="w-11 h-11 rounded-lg bg-neutral-100 dark:bg-white/5 overflow-hidden shrink-0 flex items-center justify-center">
+                          {d.tipo === 'video' ? (
+                            <VideoIcon className="w-4 h-4 text-neutral-400" />
+                          ) : d.thumbnail_url ? (
+                            <img src={d.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="w-4 h-4 text-neutral-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-neutral-700 dark:text-white/80 truncate">{d.titulo || 'Sin título'}</p>
+                          <p className="text-xs text-neutral-400">{formatFecha(d.created_at)}</p>
+                        </div>
+                        <button
+                          onClick={() => eliminarDisenoAgente(d.id)}
+                          className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all shrink-0"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -644,64 +762,12 @@ ALTER TABLE usuarios
     </div>
 
     {mostrarNuevoAgente && (
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Nuevo agente</h3>
-            <button onClick={() => { setMostrarNuevoAgente(false); setErrorNuevoAgente(''); }} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-white/80">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <p className="text-xs text-neutral-500 dark:text-white/50">Se crea con rol Agente. Le llegará su código de acceso al correo laboral.</p>
-
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Nombre"
-              value={nuevoAgente.nombre}
-              onChange={e => setNuevoAgente(f => ({ ...f, nombre: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <input
-              type="text"
-              placeholder="Apellidos"
-              value={nuevoAgente.apellidos}
-              onChange={e => setNuevoAgente(f => ({ ...f, apellidos: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <input
-              type="email"
-              placeholder="Correo laboral"
-              value={nuevoAgente.email_laboral}
-              onChange={e => setNuevoAgente(f => ({ ...f, email_laboral: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <input
-              type="tel"
-              placeholder="Celular (opcional)"
-              value={nuevoAgente.celular_laboral}
-              onChange={e => setNuevoAgente(f => ({ ...f, celular_laboral: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-          </div>
-
-          {errorNuevoAgente && (
-            <p className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {errorNuevoAgente}
-            </p>
-          )}
-
-          <button
-            onClick={crearAgente}
-            disabled={creandoAgente}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition disabled:opacity-60"
-          >
-            <UserPlus className="w-4 h-4" />
-            {creandoAgente ? 'Creando…' : 'Crear agente'}
-          </button>
-        </div>
-      </div>
+      <UserModal
+        user={null}
+        lockRoleToAgente
+        onClose={() => setMostrarNuevoAgente(false)}
+        onSave={() => { setMostrarNuevoAgente(false); cargarAgentes(); }}
+      />
     )}
     </>
   );

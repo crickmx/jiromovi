@@ -82,6 +82,7 @@ export function TramiteDetalle() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'detalles' | 'comentarios' | 'archivos' | 'historial' | 'comisiones' | 'diagnostico'>('detalles');
   const [esReporteBug, setEsReporteBug] = useState(false);
+  const [tipoEsInterno, setTipoEsInterno] = useState(false);
 
   const [estatusList, setEstatusList] = useState<TramiteEstatus[]>([]);
   const [selectedEstatus, setSelectedEstatus] = useState('');
@@ -333,14 +334,16 @@ export function TramiteDetalle() {
     if (!ticketData) return;
 
     // Ahora hacer queries separadas para cada relación
-    const [agenteRes, responsableRes, estatusRes, creadoPorRes, modificadoPorRes, cerradoPorRes] = await Promise.all([
+    const [agenteRes, responsableRes, estatusRes, creadoPorRes, modificadoPorRes, cerradoPorRes, tipoRes] = await Promise.all([
       ticketData.agente_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.agente_id).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.assigned_to_user_id ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.assigned_to_user_id).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.estatus_id ? supabase.from('ticket_estatus').select('*').eq('id', ticketData.estatus_id).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.creado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.creado_por).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.modificado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.modificado_por).maybeSingle() : Promise.resolve({ data: null }),
-      ticketData.cerrado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.cerrado_por).maybeSingle() : Promise.resolve({ data: null })
+      ticketData.cerrado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.cerrado_por).maybeSingle() : Promise.resolve({ data: null }),
+      supabase.from('ticket_tipos').select('es_interno').eq('value', ticketData.tipo_tramite).maybeSingle(),
     ]);
+    setTipoEsInterno((tipoRes.data as any)?.es_interno ?? false);
 
     // Construir el objeto final
     const tramiteCompleto = {
@@ -998,13 +1001,37 @@ export function TramiteDetalle() {
               .eq('trigger_id', trigger.id)
               .order('orden');
 
+            let _equipoExplicito = false;
             for (const m of mappings || []) {
               let srcVal: any = null;
               if (m.valor_fijo != null) {
-                srcVal = m.valor_fijo;
+                let tpl = m.valor_fijo;
+                if (tpl.includes('{')) {
+                  tpl = tpl.replace(/\{([^}]+)\}/g, (_m: string, label: string) => {
+                    const src = (camposDinamicos as any[]).find(c => c.label === label);
+                    if (!src) return `{${label}}`;
+                    const resp = respuestasOriginales.find(r => r.campo_id === src.id);
+                    return String(resp?.valor_texto ?? resp?.valor_json ?? `{${label}}`);
+                  });
+                }
+                srcVal = tpl;
               } else if (m.source_sistema_key) {
                 if (m.source_sistema_key === 'poliza_numero') srcVal = snap.poliza;
-                else if (m.source_sistema_key === 'prioridad')  srcVal = snap.prioridad;
+                else if (m.source_sistema_key === 'prioridad') srcVal = snap.prioridad;
+                else if (m.source_sistema_key === 'responsable_padre') {
+                  srcVal = (snap as any).responsable?.nombre_completo ?? null;
+                }
+                else if (m.source_sistema_key === 'autoasignar') { srcVal = null; continue; }
+                else {
+                  // agente_vendedor, oficina_jiro y otros: buscar el campo por tipo o sistema_key
+                  const campoOrigen = camposDinamicos.find(
+                    (c: any) => c.tipo === m.source_sistema_key || c.sistema_key === m.source_sistema_key
+                  );
+                  if (campoOrigen) {
+                    const resp = respuestasOriginales.find(r => r.campo_id === campoOrigen.id);
+                    srcVal = resp?.valor_texto ?? resp?.valor_json ?? null;
+                  }
+                }
               } else if (m.source_campo_id) {
                 const resp = respuestasOriginales.find(r => r.campo_id === m.source_campo_id);
                 srcVal = resp?.valor_json ?? resp?.valor_texto ?? resp?.valor_numerico ?? resp?.valor_fecha ?? resp?.valor_booleano ?? null;
@@ -1023,6 +1050,15 @@ export function TramiteDetalle() {
                   valor_booleano: tc.tipo === 'booleano' ? Boolean(srcVal) : null,
                   valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto'].includes(tc.tipo) ? srcVal : null,
                 });
+                if (tc.tipo === 'equipo') {
+                  try {
+                    const teamIds: string[] = JSON.parse(String(srcVal));
+                    if (teamIds.length > 0) {
+                      await supabase.from('tickets').update({ grupo_asignado_id: teamIds[0] }).eq('id', childTicket.id);
+                      _equipoExplicito = true;
+                    }
+                  } catch (_e) { /* malformed JSON, skip */ }
+                }
               } else if (m.target_sistema_key) {
                 const upd: any = {};
                 if (m.target_sistema_key === 'poliza_numero') upd.poliza = String(srcVal);
@@ -1031,7 +1067,34 @@ export function TramiteDetalle() {
               }
             }
 
-            // 7. Log de ejecución exitosa
+            // 7. Copiar archivos adjuntos del padre al hijo
+            if (trigger.adjunto_categorias_ids?.length > 0) {
+              const { data: archivos } = await supabase
+                .from('ticket_archivos')
+                .select('usuario_id, nombre, url, tipo, tamano')
+                .eq('ticket_id', snap.id);
+              if (archivos?.length) {
+                await supabase.from('ticket_archivos').insert(
+                  archivos.map(a => ({ ...a, ticket_id: childTicket.id }))
+                );
+              }
+            }
+
+            // 8. Auto-asignación de equipo al hijo (misma lógica que NuevoTramiteModal)
+            // Skipped when equipo was explicitly set via field mapping
+            if (!_equipoExplicito && snap.agente?.id) {
+              const { data: grupoData } = await supabase.rpc('get_grupo_para_ticket', {
+                p_agente_id: snap.agente.id,
+                p_tipo_tramite: targetTipo.value,
+              });
+              if (grupoData) {
+                const grupoUpd: Record<string, string> = { grupo_asignado_id: (grupoData as any).grupo_id };
+                if ((grupoData as any).ejecutivo_id) grupoUpd.assigned_to_user_id = (grupoData as any).ejecutivo_id;
+                await supabase.from('tickets').update(grupoUpd).eq('id', childTicket.id);
+              }
+            }
+
+            // 9. Log de ejecución exitosa
             await supabase.from('ticket_trigger_executions').insert({
               trigger_id: trigger.id, parent_ticket_id: snap.id,
               child_ticket_id: childTicket.id, ejecutado_por: usuario.id, estatus: 'ok',
@@ -1540,7 +1603,7 @@ export function TramiteDetalle() {
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {camposDinamicos
-                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus')
+                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus' && !(tipoEsInterno && (c.sistema_key === 'agente_vendedor' || c.sistema_key === 'oficina_jiro')))
                     .map(campo => {
                       const val = respuestasDinamicas[campo.id];
                       const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));

@@ -375,10 +375,11 @@ function decodePartContent(body: string, headersBlock: string): string {
 }
 
 function decodeBodyContent(body: string, headers: string): string {
-  const enc = (extractHeaderValue(headers, 'Content-Transfer-Encoding') || '7bit').toLowerCase();
-  if (enc === 'base64') return decodeBase64Str(body.replace(/\s/g, ''));
-  if (enc === 'quoted-printable') return decodeQP(body);
-  return body;
+  // Delega en decodePartContent, que respeta el charset del Content-Type
+  // (reconstruye bytes + TextDecoder(charset)). Antes usaba decodeQP, que
+  // mapea cada byte con String.fromCharCode (Latin-1): un UTF-8 =C3=A9 salía
+  // como "Ã©" (mojibake) en correos single-part quoted-printable.
+  return decodePartContent(body, headers);
 }
 
 function extractFilenameFromHeaders(headersBlock: string): string | null {
