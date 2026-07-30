@@ -1,8 +1,104 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import html2canvas from 'html2canvas';
 import { supabase } from '../lib/supabase';
 import { BookOpen, Plus, Pencil, Trash2, Eye, EyeOff, Save, X, ArrowLeft, List, GripVertical, Upload, FileText, Image as ImageIcon, CheckCircle } from 'lucide-react';
 import { PageHeader } from '../components/ui/page-header';
+
+/** Renderiza el HTML (contenido crudo, no una URL) en un iframe oculto y lo
+ * captura como imagen. Usa srcdoc (no src) para que el iframe herede el
+ * origen de la app y html2canvas pueda leer su contentDocument sin chocar
+ * con Same-Origin Policy (el archivo aun no vive en una URL de Storage). */
+// Ancho de referencia para el render y alto del recorte para la miniatura
+// (≈2.2:1, la proporcion real de la tarjeta en Manuales.tsx). El iframe se
+// deja mas alto que el recorte para que el documento tenga espacio real
+// donde acomodarse (layouts con % o vh no se ven raros por falta de alto).
+// El manual esta diseñado para tamaño Carta (8.5x11in ~850px a 100dpi) —
+// si el iframe es mas ancho que eso, el contenido queda centrado con
+// margenes blancos a los lados en vez de llenar la miniatura.
+const MINIATURA_ANCHO = 850;
+// Una pagina Carta completa (8.5x11in) a este ancho — captura la portada
+// entera (título, subtítulo, pie) en vez de solo una franja corta. La
+// tarjeta la recorta visualmente despues con object-cover.
+const MINIATURA_ALTO_RECORTE = 1100;
+const IFRAME_ALTO_RENDER = 1400;
+
+async function generarMiniaturaDesdeHtml(htmlContent: string): Promise<Blob | null> {
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-9999px';
+  iframe.style.top = '0';
+  iframe.style.width = `${MINIATURA_ANCHO}px`;
+  iframe.style.height = `${IFRAME_ALTO_RENDER}px`;
+  iframe.style.border = 'none';
+  iframe.sandbox.add('allow-same-origin', 'allow-scripts');
+  document.body.appendChild(iframe);
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      iframe.onload = () => resolve();
+      iframe.onerror = () => reject(new Error('No se pudo cargar el HTML'));
+      iframe.srcdoc = htmlContent;
+      setTimeout(() => reject(new Error('Tiempo de espera agotado renderizando el HTML')), 10000);
+    });
+
+    const doc = iframe.contentDocument;
+    if (!doc?.body) return null;
+
+    // document.fonts.ready solo detecta fuentes que el navegador ya
+    // encolo para descargar, y eso solo pasa despues de un layout real —
+    // si lo consultamos demasiado pronto puede resolver vacio (0 fuentes
+    // pendientes) sin haber cargado nada todavia. Forzamos un reflow real
+    // antes de preguntar, y otro despues por si el texto se recorre al
+    // aplicar la fuente definitiva (afecta cajas/resaltados posicionados
+    // a mano que dependen de las metricas exactas de Gotham).
+    void doc.body.offsetHeight;
+    await new Promise(resolve => setTimeout(resolve, 50));
+    try { await (doc as any).fonts?.ready; } catch { /* no soportado, seguimos */ }
+    void doc.body.offsetHeight;
+
+    await Promise.all(
+      Array.from(doc.images).map(img =>
+        img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+      )
+    );
+    await new Promise(resolve => setTimeout(resolve, 700));
+
+    // html2canvas no soporta backdrop-filter (efecto "vidrio esmerilado") —
+    // lo ignora y deja el fondo solido de por debajo, que muchas veces es
+    // casi opaco a proposito (para que el blur haga el resto). Forzamos un
+    // fondo blanco semi-transparente para que al menos se vea translucido
+    // en vez de un bloque solido tapando el contenido.
+    const win = doc.defaultView;
+    if (win) {
+      doc.querySelectorAll<HTMLElement>('*').forEach(el => {
+        const backdrop = win.getComputedStyle(el).backdropFilter;
+        if (backdrop && backdrop !== 'none') {
+          el.style.backgroundColor = 'rgba(255,255,255,0.35)';
+          el.style.backdropFilter = 'none';
+        }
+      });
+    }
+
+    const canvas = await html2canvas(doc.body, {
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      scale: 1,
+      width: MINIATURA_ANCHO,
+      height: MINIATURA_ALTO_RECORTE,
+      windowWidth: MINIATURA_ANCHO,
+      windowHeight: IFRAME_ALTO_RENDER,
+    });
+
+    return await new Promise<Blob | null>(resolve => canvas.toBlob(b => resolve(b), 'image/jpeg', 0.85));
+  } catch (err) {
+    console.error('Error generando miniatura del manual:', err);
+    return null;
+  } finally {
+    document.body.removeChild(iframe);
+  }
+}
 
 interface Manual {
   id: string;
@@ -69,6 +165,7 @@ export default function ManualesAdmin() {
   // File upload states
   const [uploadingHtml, setUploadingHtml] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [generandoMiniatura, setGenerandoMiniatura] = useState(false);
   const htmlInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -138,8 +235,9 @@ export default function ManualesAdmin() {
 
   async function uploadHtmlFile(file: File) {
     setUploadingHtml(true);
+    const slug = form.slug || generateSlug(form.title) || `manual-${Date.now()}`;
+    const generarPortada = !form.cover_image;
     try {
-      const slug = form.slug || generateSlug(form.title) || `manual-${Date.now()}`;
       const path = `${slug}/${file.name}`;
 
       const { error: uploadError } = await supabase.storage
@@ -155,8 +253,35 @@ export default function ManualesAdmin() {
       setForm(f => ({ ...f, html_path: urlData.publicUrl }));
     } catch (err: any) {
       alert(`Error al subir archivo HTML: ${err.message}`);
-    } finally {
       setUploadingHtml(false);
+      return;
+    }
+    setUploadingHtml(false);
+
+    if (generarPortada) {
+      setGenerandoMiniatura(true);
+      try {
+        const htmlContent = await file.text();
+        const blob = await generarMiniaturaDesdeHtml(htmlContent);
+        if (blob) {
+          const coverPath = `${slug}/cover-auto.jpg`;
+          const { error: coverError } = await supabase.storage
+            .from('manuals')
+            .upload(coverPath, blob, { cacheControl: '3600', upsert: true, contentType: 'image/jpeg' });
+          if (!coverError) {
+            const { data: coverUrlData } = supabase.storage.from('manuals').getPublicUrl(coverPath);
+            // Cache-bust: la ruta es siempre la misma (cover-auto.jpg) y el
+            // upload se guarda con cache de 1h — sin esto, se sigue viendo
+            // la version anterior aunque ya se haya regenerado.
+            const urlConCacheBust = `${coverUrlData.publicUrl}?v=${Date.now()}`;
+            setForm(f => (f.cover_image ? f : { ...f, cover_image: urlConCacheBust }));
+          }
+        }
+      } catch (err) {
+        console.error('Error generando miniatura automática:', err);
+      } finally {
+        setGenerandoMiniatura(false);
+      }
     }
   }
 
@@ -182,6 +307,36 @@ export default function ManualesAdmin() {
       alert(`Error al subir imagen: ${err.message}`);
     } finally {
       setUploadingImage(false);
+    }
+  }
+
+  /** Genera la miniatura para un manual que ya tiene HTML subido de antes
+   * (creado antes de que existiera la generacion automatica), sin tener
+   * que volver a subir el archivo. */
+  async function generarMiniaturaParaManualExistente() {
+    if (!form.html_path) return;
+    setGenerandoMiniatura(true);
+    try {
+      const slug = form.slug || generateSlug(form.title) || `manual-${Date.now()}`;
+      const res = await fetch(form.html_path);
+      if (!res.ok) throw new Error(`No se pudo leer el HTML (${res.status})`);
+      const htmlContent = await res.text();
+
+      const blob = await generarMiniaturaDesdeHtml(htmlContent);
+      if (!blob) throw new Error('No se pudo generar la imagen');
+
+      const coverPath = `${slug}/cover-auto.jpg`;
+      const { error: coverError } = await supabase.storage
+        .from('manuals')
+        .upload(coverPath, blob, { cacheControl: '3600', upsert: true, contentType: 'image/jpeg' });
+      if (coverError) throw coverError;
+
+      const { data: coverUrlData } = supabase.storage.from('manuals').getPublicUrl(coverPath);
+      setForm(f => ({ ...f, cover_image: `${coverUrlData.publicUrl}?v=${Date.now()}` }));
+    } catch (err: any) {
+      alert(`Error al generar la miniatura: ${err.message}`);
+    } finally {
+      setGenerandoMiniatura(false);
     }
   }
 
@@ -451,10 +606,12 @@ export default function ManualesAdmin() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700 dark:text-white/70">Imagen de Portada</p>
-                  {form.cover_image ? (
+                  {generandoMiniatura ? (
+                    <p className="text-xs text-accent">Generando miniatura automática del HTML…</p>
+                  ) : form.cover_image ? (
                     <p className="text-xs text-green-600 dark:text-green-400 truncate">{getFileName(form.cover_image)}</p>
                   ) : (
-                    <p className="text-xs text-neutral-400 dark:text-white/40">Sube una imagen para la portada del manual</p>
+                    <p className="text-xs text-neutral-400 dark:text-white/40">Se genera sola al subir el HTML, o sube la tuya</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -464,6 +621,16 @@ export default function ManualesAdmin() {
                       className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                     >
                       Quitar
+                    </button>
+                  )}
+                  {form.html_path && (
+                    <button
+                      onClick={generarMiniaturaParaManualExistente}
+                      disabled={generandoMiniatura}
+                      title="Genera la miniatura a partir del HTML ya subido"
+                      className="px-2 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      {generandoMiniatura ? '...' : 'Generar miniatura'}
                     </button>
                   )}
                   <button
