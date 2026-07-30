@@ -5,12 +5,13 @@ import type { Database } from '../lib/database.types';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
+import RolesTab from '../components/configuracion/RolesTab';
 
 type PermisosCampo = Database['public']['Tables']['permisos_campos']['Row'];
 type CampoPersonalizado = Database['public']['Tables']['campos_personalizados']['Row'];
 
 export function Configuracion() {
-  const [activeTab, setActiveTab] = useState<'permisos' | 'campos'>('permisos');
+  const [activeTab, setActiveTab] = useState<'roles' | 'permisos' | 'campos'>('roles');
   const [permisos, setPermisos] = useState<PermisosCampo[]>([]);
   const [camposPersonalizados, setCamposPersonalizados] = useState<CampoPersonalizado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,7 +208,7 @@ export function Configuracion() {
         icon={Settings}
       >
         <div className="flex gap-1 border-b border-neutral-200 dark:border-white/8">
-          {([['permisos', 'Permisos de Campos'], ['campos', 'Campos Personalizados']] as const).map(([key, label]) => (
+          {([['roles', 'Roles'], ['permisos', 'Permisos de Campos'], ['campos', 'Campos Personalizados']] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
@@ -236,7 +237,9 @@ export function Configuracion() {
             </div>
           )}
 
-          {activeTab === 'permisos' ? (
+          {activeTab === 'roles' ? (
+            <RolesTab />
+          ) : activeTab === 'permisos' ? (
             <>
               <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg">
                 <p className="text-sm text-blue-800 dark:text-blue-300">
