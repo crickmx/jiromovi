@@ -596,10 +596,16 @@ export function NuevoTramiteModal({
 
   const resolveGrupoParaTicket = async (agente_id: string | null, tipo_tramite?: string): Promise<{ grupo_id: string; ejecutivo_id: string | null } | null> => {
     if (!agente_id) return null;
-    const { data } = await supabase.rpc('get_grupo_para_ticket', {
+    const { data, error } = await supabase.rpc('get_grupo_para_ticket', {
       p_agente_id: agente_id,
       ...(tipo_tramite ? { p_tipo_tramite: tipo_tramite } : {}),
     });
+    if (error) {
+      // Si esto falla en silencio, el trámite se crea sin equipo/responsable sin dejar
+      // rastro (ver bug TK37540) — mejor que quede en consola para diagnosticar en el momento.
+      console.error('[resolveGrupoParaTicket] Error al resolver equipo/ejecutivo:', error);
+      return null;
+    }
     if (!data || !Array.isArray(data) || data.length === 0) return null;
     const row = data[0] as { grupo_id: string; ejecutivo_id: string | null };
     return row.grupo_id ? row : null;
