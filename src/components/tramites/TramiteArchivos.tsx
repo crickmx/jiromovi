@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { supabaseUrl } from '../../lib/supabase';
-import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle } from 'lucide-react';
+import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
 import JSZip from 'jszip';
@@ -29,6 +29,25 @@ interface Archivo {
 
 interface TramiteArchivosProps {
   tramiteId: string;
+}
+
+// El bucket 'ticket-archivos' no es público — la URL guardada en BD tiene forma de
+// URL pública pero el navegador la rechaza directo (403); hay que firmarla primero,
+// mismo patrón que ya usan la descarga y FilePreviewModal.
+async function getSignedFileUrl(url: string): Promise<string> {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
+    if (pathParts.length > 1) {
+      const { data } = await supabase.storage
+        .from('ticket-archivos')
+        .createSignedUrl(decodeURIComponent(pathParts[1]), 3600);
+      if (data) return data.signedUrl;
+    }
+  } catch {
+    // cae al fallback de abajo
+  }
+  return url;
 }
 
 export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
@@ -298,6 +317,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
 
   const FileThumbnail = ({ archivo }: { archivo: Archivo }) => {
     const [imgError, setImgError] = useState(false);
+    const [signedUrl, setSignedUrl] = useState<string | null>(null);
     const effectiveType = getEffectiveType(archivo.tipo, archivo.nombre);
     const ext = archivo.nombre.split('.').pop()?.toUpperCase() || '';
     const isImage = effectiveType.startsWith('image/');
@@ -307,10 +327,21 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     const isWord = effectiveType.includes('word') || effectiveType.includes('wordprocessingml');
     const isExcel = effectiveType.includes('excel') || effectiveType.includes('spreadsheetml') || effectiveType === 'text/csv';
 
-    if (isImage && archivo.url && !imgError) {
+    useEffect(() => {
+      if (!isImage || !archivo.url) return;
+      let cancelled = false;
+      getSignedFileUrl(archivo.url).then(url => { if (!cancelled) setSignedUrl(url); });
+      return () => { cancelled = true; };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [archivo.url]);
+
+    if (isImage && !imgError) {
+      if (!signedUrl) {
+        return <div className="w-full h-full bg-neutral-100 dark:bg-neutral-700 animate-pulse" />;
+      }
       return (
         <img
-          src={archivo.url}
+          src={signedUrl}
           alt={friendlyName(archivo.nombre)}
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
@@ -515,6 +546,28 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
                 >
                   <Eye className="w-3.5 h-3.5" />
                   Ver
+                </button>
+                <button
+                  onClick={async () => {
+                    const shareUrl = await getSignedFileUrl(archivo.url);
+                    const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void>; canShare?: (data?: ShareData) => boolean };
+                    if (nav.share) {
+                      try {
+                        await nav.share({ title: friendlyName(archivo.nombre), url: shareUrl });
+                        return;
+                      } catch {
+                        // usuario canceló el share nativo — no hacer nada más
+                        return;
+                      }
+                    }
+                    // Sin Web Share API (la mayoría de navegadores de escritorio): abrir en
+                    // pestaña nueva — desde ahí el usuario puede imprimir (Ctrl+P) o copiar el link.
+                    window.open(shareUrl, '_blank');
+                  }}
+                  className="p-1.5 text-neutral-400 dark:text-white/30 hover:text-accent hover:bg-accent/10 rounded-lg transition-colors"
+                  title="Compartir / Imprimir"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={async () => {
