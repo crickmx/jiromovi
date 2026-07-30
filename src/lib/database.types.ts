@@ -91,10 +91,49 @@ export interface Database {
           ubicacion_updated_at?: string | null
         }
       }
+      roles: {
+        Row: {
+          id: string
+          nombre: string
+          descripcion: string | null
+          color: string | null
+          rol_base: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
+          es_sistema: boolean
+          activo: boolean
+          orden: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nombre: string
+          descripcion?: string | null
+          color?: string | null
+          rol_base: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
+          es_sistema?: boolean
+          activo?: boolean
+          orden?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nombre?: string
+          descripcion?: string | null
+          color?: string | null
+          rol_base?: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
+          es_sistema?: boolean
+          activo?: boolean
+          orden?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
       usuarios: {
         Row: {
           id: string
           rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
+          rol_id: string | null
           nombre: string
           apellidos: string
           puesto: string
@@ -125,6 +164,7 @@ export interface Database {
         Insert: {
           id: string
           rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
+          rol_id?: string | null
           nombre: string
           apellidos: string
           email_laboral: string
@@ -155,6 +195,7 @@ export interface Database {
         Update: {
           id?: string
           rol?: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente'
+          rol_id?: string | null
           nombre?: string
           apellidos?: string
           puesto?: string
