@@ -9,6 +9,22 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        // Gotham (Book 400 · Medium 500 · Bold 700 · Black 900) — cargada vía @font-face en src/index.css.
+        // Se sobreescribe `sans` para que TODA la app (preflight de Tailwind + cualquier `font-sans`) use Gotham.
+        sans: [
+          'Gotham',
+          'ui-sans-serif',
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'sans-serif',
+        ],
+      },
       colors: {
         // Dynamic office accent – driven by CSS variables set in themeUtils.ts
         accent: {
