@@ -137,6 +137,7 @@ REGLAS ESTRICTAS:
 - NUNCA uses emojis
 - MAXIMO 550 caracteres por seccion (compatibilidad WhatsApp)
 - Se conciso, impactante y orientado a la accion
+- El "nombre" que recibes es el de una PERSONA (el asesor independiente), NUNCA el de una empresa o marca. No lo uses como sujeto de frases corporativas tipo "En [nombre], ofrecemos..." o "En [nombre], te brindamos...". Escribe en primera persona como si el propio agente hablara ("Soy [nombre], tu asesor de seguros...", "Como tu asesor, te ayudo a...") o deja el nombre solo para la firma/cierre
 - Usa datos del agente (nombre, telefono, web) para personalizar
 - Adapta el tono segun la categoria y ramo del diseno
 - Los hashtags deben ser relevantes al ramo, sin # repetidos
@@ -159,7 +160,7 @@ DISENO:
 - Titulo de plantilla: ${plantilla?.titulo || "Sin titulo"}
 
 MARCA DEL AGENTE:
-- Nombre: ${brandContext.nombre}
+- Nombre (persona, NO empresa): ${brandContext.nombre}
 - Oficina: ${brandContext.oficina || "Independiente"}
 - Color de marca: ${brandContext.colores?.primario || "No definido"}
 - URL Web: ${brandContext.url_web || "No tiene"}
