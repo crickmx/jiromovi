@@ -44,6 +44,24 @@ interface EmailFull {
   attachments: { filename: string; contentType: string; size: number; partId: string }[];
 }
 
+// ── Socket write helper ───────────────────────────────────────────
+
+// Deno.TlsConn.write() NO garantiza escribir todo el buffer en una sola
+// llamada: con payloads grandes hace escrituras parciales y devuelve cuántos
+// bytes escribió realmente. Sin este loop, un correo con adjunto se enviaba a
+// medias — el servidor SMTP nunca recibía el terminador "\r\n.\r\n", esperaba
+// el resto del comando y cerraba la conexión con "421 ... command timeout"
+// (el error "esperado 250, recibido: 421" que veía el usuario). Lo mismo
+// aplica al literal de IMAP APPEND al guardar en Enviados.
+async function writeAll(conn: Deno.TlsConn, data: Uint8Array): Promise<void> {
+  let written = 0;
+  while (written < data.length) {
+    const n = await conn.write(data.subarray(written));
+    if (n <= 0) throw new Error('La conexion se cerro durante el envio');
+    written += n;
+  }
+}
+
 // ── IMAP Low-level helpers ────────────────────────────────────────
 
 async function imapConnect(host: string, port: number): Promise<Deno.TlsConn> {
@@ -58,7 +76,7 @@ let tagCounter = 0;
 async function imapCommand(conn: Deno.TlsConn, cmd: string): Promise<string> {
   const tag = `A${++tagCounter}`;
   const fullCmd = `${tag} ${cmd}\r\n`;
-  await conn.write(new TextEncoder().encode(fullCmd));
+  await writeAll(conn, new TextEncoder().encode(fullCmd));
   return imapReadUntilTag(conn, tag);
 }
 
@@ -194,7 +212,7 @@ async function imapStatusPipeline(conn: Deno.TlsConn, paths: string[]): Promise<
     tags.push(tag);
     cmds += `${tag} STATUS "${p}" (MESSAGES UNSEEN)\r\n`;
   }
-  await conn.write(new TextEncoder().encode(cmds));
+  await writeAll(conn, new TextEncoder().encode(cmds));
 
   const lastTag = tags[tags.length - 1];
   const decoder = new TextDecoder();
@@ -350,6 +368,7 @@ async function getMessageFull(conn: Deno.TlsConn, uid: number): Promise<EmailFul
   function extractContent(ct: string, partBody: string, partHeaders: string, disp: string, partId: string, depth: number): void {
     if (depth > 5) return;
     const ctLower = ct.toLowerCase();
+    const dispLower = (disp || '').toLowerCase();
 
     if (ctLower.includes('multipart')) {
       const nb = ct.match(/boundary="?([^";\s]+)"?/i)?.[1];
@@ -358,11 +377,11 @@ async function getMessageFull(conn: Deno.TlsConn, uid: number): Promise<EmailFul
           extractContent(nct, nb2, nh, nd, `${partId}.${npid}`, depth + 1);
         });
       }
-    } else if (ctLower.includes('text/html') && !bodyHtml && !disp.includes('attachment')) {
+    } else if (ctLower.includes('text/html') && !bodyHtml && !dispLower.includes('attachment')) {
       bodyHtml = decodePartContent(partBody, partHeaders);
-    } else if (ctLower.includes('text/plain') && !bodyText && !disp.includes('attachment')) {
+    } else if (ctLower.includes('text/plain') && !bodyText && !dispLower.includes('attachment')) {
       bodyText = decodePartContent(partBody, partHeaders);
-    } else if (disp.includes('attachment') || (disp.includes('inline') && extractFilenameFromHeaders(partHeaders))) {
+    } else if (dispLower.includes('attachment') || (dispLower.includes('inline') && extractFilenameFromHeaders(partHeaders))) {
       const fn = extractFilenameFromHeaders(partHeaders) || `adjunto_${partId}`;
       attachments.push({ filename: fn, contentType: ctLower.split(';')[0], size: partBody.length, partId });
     } else if (!ctLower.includes('text/') && !ctLower.includes('multipart')) {
@@ -396,8 +415,15 @@ function parseParts(body: string, boundary: string, handler: (ct: string, disp: 
     const cleaned = seg.replace(/^\r\n/, '');
     const { headers: h, body: b } = splitHeadersBody(cleaned);
     if (!h.trim() && !b.trim()) continue;
-    const ct = (extractHeaderValue(h, 'Content-Type') || 'text/plain').toLowerCase();
-    const disp = (extractHeaderValue(h, 'Content-Disposition') || '').toLowerCase();
+    // OJO: NO bajar a minúsculas aquí. El Content-Type incluye el parámetro
+    // `boundary=...` y los boundaries de Outlook/Exchange (y de correos S/MIME
+    // firmados) suelen llevar mayúsculas (ej. `_000_CO6PR16MB4097...`). Si se
+    // lowercasea, el boundary extraído deja de coincidir con el delimitador real
+    // del cuerpo, el multipart anidado se toma como text/plain y se muestra el
+    // MIME crudo (base64 + boundaries). Cada consumidor baja a minúsculas por su
+    // cuenta para las comparaciones (ctLower/dispLower en extractContent).
+    const ct = extractHeaderValue(h, 'Content-Type') || 'text/plain';
+    const disp = extractHeaderValue(h, 'Content-Disposition') || '';
     handler(ct, disp, h, b, String(idx++));
   }
 }
@@ -722,14 +748,14 @@ async function smtpSend(email: string, password: string, fromName: string, to: s
   };
 
   const send = async (cmd: string, expect: string) => {
-    await conn.write(new TextEncoder().encode(cmd + '\r\n'));
+    await writeAll(conn, new TextEncoder().encode(cmd + '\r\n'));
     const r = await read();
     if (!r.startsWith(expect)) throw new Error(`SMTP: esperado ${expect}, recibido: ${r.substring(0, 100)}`);
     return r;
   };
 
   const sendRaw = async (data: string, expect: string) => {
-    await conn.write(new TextEncoder().encode(data));
+    await writeAll(conn, new TextEncoder().encode(data));
     const r = await read();
     if (!r.startsWith(expect)) throw new Error(`SMTP: esperado ${expect}, recibido: ${r.substring(0, 100)}`);
   };
@@ -1137,7 +1163,7 @@ Deno.serve(async (req: Request) => {
             // IMAP APPEND with literal
             const tag = `A${++tagCounter}`;
             const appendLine = `${tag} APPEND "${sentFolder}" (\\Seen) {${sentMsgBytes.length}}\r\n`;
-            await conn.write(new TextEncoder().encode(appendLine));
+            await writeAll(conn, new TextEncoder().encode(appendLine));
             // Read server response - expect continuation "+"
             const waitBuf = new Uint8Array(4096);
             let waitResp = '';
@@ -1153,8 +1179,8 @@ Deno.serve(async (req: Request) => {
             }
             if (waitResp.includes('+')) {
               // Server ready to receive literal data
-              await conn.write(sentMsgBytes);
-              await conn.write(new TextEncoder().encode('\r\n'));
+              await writeAll(conn, sentMsgBytes);
+              await writeAll(conn, new TextEncoder().encode('\r\n'));
               // Wait for completion
               await imapReadUntilTag(conn, tag);
             }
