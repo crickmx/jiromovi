@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Download, ZoomIn, ZoomOut, RotateCw, FileText, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Download, ZoomIn, ZoomOut, RotateCw, FileText, AlertCircle, Printer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface FilePreviewModalProps {
@@ -9,6 +9,8 @@ interface FilePreviewModalProps {
   fileUrl: string;
   fileType: string | null;
   fileSize: number | null;
+  /** Al terminar de cargar la vista previa, dispara Imprimir automaticamente una sola vez. */
+  autoPrint?: boolean;
 }
 
 // Detect mime type from file extension when the stored type is missing
@@ -43,13 +45,40 @@ export function FilePreviewModal({
   fileName,
   fileUrl,
   fileType,
-  fileSize
+  fileSize,
+  autoPrint
 }: FilePreviewModalProps) {
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [signedUrl, setSignedUrl] = useState<string>('');
+  const autoPrintedRef = useRef(false);
+
+  const handlePrint = () => {
+    document.body.classList.add('printing-file-preview');
+    const cleanup = () => {
+      document.body.classList.remove('printing-file-preview');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(cleanup, 5000); // por si "afterprint" no dispara (ej. algunos flujos de Guardar como PDF)
+    window.print();
+  };
+
+  // Imprimir en cadena: abrir el previsualizador ya dispara la carga; en cuanto el
+  // archivo termina de cargar, se llama a imprimir solo (sin que el usuario tenga
+  // que encontrar el botón) — una sola vez por apertura del modal.
+  useEffect(() => {
+    if (isOpen) autoPrintedRef.current = false;
+  }, [isOpen, fileUrl]);
+
+  useEffect(() => {
+    if (!autoPrint || !isOpen || loading || error || autoPrintedRef.current) return;
+    autoPrintedRef.current = true;
+    handlePrint();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPrint, isOpen, loading, error]);
 
   // Resolve effective file type: use stored type, fallback to extension inference
   const effectiveType = fileType || inferTypeFromName(fileName, fileUrl);
@@ -365,6 +394,15 @@ export function FilePreviewModal({
                 <div className="w-px h-6 bg-neutral-300 mx-2" />
               </>
             )}
+            {!error && signedUrl && (
+              <button
+                onClick={handlePrint}
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-all"
+                title="Imprimir"
+              >
+                <Printer className="w-5 h-5 text-neutral-600" />
+              </button>
+            )}
             <button
               onClick={handleDownload}
               className="p-2 hover:bg-neutral-100 rounded-lg transition-all"
@@ -382,8 +420,8 @@ export function FilePreviewModal({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 p-6 overflow-auto relative">
+        {/* Content — id usado por la regla @media print para aislar solo esto al imprimir */}
+        <div id="file-preview-print-root" className="flex-1 p-6 overflow-auto relative">
           {loading && !error && (
             <div className="absolute inset-0 flex items-center justify-center bg-neutral-50 rounded-xl">
               <div className="text-center space-y-4">

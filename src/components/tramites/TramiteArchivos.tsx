@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { supabaseUrl } from '../../lib/supabase';
-import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle } from 'lucide-react';
+import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2, Printer } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
+import { getPdfThumbnail } from '../../lib/pdfThumbnail';
 import JSZip from 'jszip';
 
 interface Categoria {
@@ -29,9 +30,30 @@ interface Archivo {
 
 interface TramiteArchivosProps {
   tramiteId: string;
+  /** Administrador y lider del equipo del tramite pueden recategorizar un archivo ya subido. */
+  puedeEditarCategoria?: boolean;
 }
 
-export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
+// El bucket 'ticket-archivos' no es público — la URL guardada en BD tiene forma de
+// URL pública pero el navegador la rechaza directo (403); hay que firmarla primero,
+// mismo patrón que ya usan la descarga y FilePreviewModal.
+async function getSignedFileUrl(url: string): Promise<string> {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
+    if (pathParts.length > 1) {
+      const { data } = await supabase.storage
+        .from('ticket-archivos')
+        .createSignedUrl(decodeURIComponent(pathParts[1]), 3600);
+      if (data) return data.signedUrl;
+    }
+  } catch {
+    // cae al fallback de abajo
+  }
+  return url;
+}
+
+export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArchivosProps) {
   const { usuario } = useAuth();
   const isAdmin = usuario?.rol === 'Administrador';
   const [archivos, setArchivos] = useState<Archivo[]>([]);
@@ -40,6 +62,13 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [previewFile, setPreviewFile] = useState<Archivo | null>(null);
+  const [previewAutoPrint, setPreviewAutoPrint] = useState(false);
+  const [editingCategoriaId, setEditingCategoriaId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   // Category picker state
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
@@ -102,6 +131,19 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
 
     if (data) setArchivos(data as Archivo[]);
     setLoading(false);
+  };
+
+  const handleCambiarCategoria = async (archivoId: string, nuevaCategoriaId: string) => {
+    const categoriaObj = categorias.find(c => c.id === nuevaCategoriaId) ?? null;
+    const { error } = await supabase
+      .from('ticket_archivos')
+      .update({ categoria_id: nuevaCategoriaId || null })
+      .eq('id', archivoId);
+    if (error) { showToast('No se pudo cambiar la categoría: ' + error.message, 'error'); return; }
+    setArchivos(prev => prev.map(a => a.id === archivoId
+      ? { ...a, categoria_id: nuevaCategoriaId || null, categoria: categoriaObj ? { nombre: categoriaObj.nombre } : null }
+      : a));
+    setEditingCategoriaId(null);
   };
 
   const handleDeleteArchivo = async (archivoId: string) => {
@@ -298,6 +340,9 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
 
   const FileThumbnail = ({ archivo }: { archivo: Archivo }) => {
     const [imgError, setImgError] = useState(false);
+    const [signedUrl, setSignedUrl] = useState<string | null>(null);
+    const [pdfError, setPdfError] = useState(false);
+    const [pdfThumb, setPdfThumb] = useState<string | null>(null);
     const effectiveType = getEffectiveType(archivo.tipo, archivo.nombre);
     const ext = archivo.nombre.split('.').pop()?.toUpperCase() || '';
     const isImage = effectiveType.startsWith('image/');
@@ -307,13 +352,50 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
     const isWord = effectiveType.includes('word') || effectiveType.includes('wordprocessingml');
     const isExcel = effectiveType.includes('excel') || effectiveType.includes('spreadsheetml') || effectiveType === 'text/csv';
 
-    if (isImage && archivo.url && !imgError) {
+    useEffect(() => {
+      if (!isImage || !archivo.url) return;
+      let cancelled = false;
+      getSignedFileUrl(archivo.url).then(url => { if (!cancelled) setSignedUrl(url); });
+      return () => { cancelled = true; };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [archivo.url]);
+
+    useEffect(() => {
+      if (!isPdf || !archivo.url) return;
+      let cancelled = false;
+      (async () => {
+        const url = await getSignedFileUrl(archivo.url);
+        const thumb = await getPdfThumbnail(url);
+        if (cancelled) return;
+        if (thumb) setPdfThumb(thumb); else setPdfError(true);
+      })();
+      return () => { cancelled = true; };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [archivo.url]);
+
+    if (isImage && !imgError) {
+      if (!signedUrl) {
+        return <div className="w-full h-full bg-neutral-100 dark:bg-neutral-700 animate-pulse" />;
+      }
       return (
         <img
-          src={archivo.url}
+          src={signedUrl}
           alt={friendlyName(archivo.nombre)}
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
+        />
+      );
+    }
+    if (isPdf && !pdfError) {
+      if (!pdfThumb) {
+        return <div className="w-full h-full bg-neutral-100 dark:bg-neutral-700 animate-pulse" />;
+      }
+      return (
+        <img
+          src={pdfThumb}
+          alt={friendlyName(archivo.nombre)}
+          className="w-full h-full object-cover object-top"
+          onError={() => setPdfError(true)}
         />
       );
     }
@@ -464,7 +546,7 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
           <p className="text-sm mt-2">Sube el primer archivo para comenzar</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {archivos.map((archivo) => (
             <div
               key={archivo.id}
@@ -499,59 +581,124 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
                     {archivo.usuarios.nombre_completo}
                   </p>
                 )}
-                {archivo.categoria && (
-                  <span className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-medium">
-                    <Tag className="w-2.5 h-2.5" />
-                    {archivo.categoria.nombre}
-                  </span>
+                {puedeEditarCategoria ? (
+                  editingCategoriaId === archivo.id ? (
+                    <select
+                      autoFocus
+                      value={archivo.categoria_id ?? ''}
+                      onChange={(e) => handleCambiarCategoria(archivo.id, e.target.value)}
+                      onBlur={() => setEditingCategoriaId(null)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1.5 w-full text-[11px] font-medium border border-blue-300 rounded px-1 py-0.5 bg-white dark:bg-neutral-800 dark:text-white"
+                    >
+                      <option value="">Sin categoría</option>
+                      {categorias.map(c => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditingCategoriaId(archivo.id); }}
+                      className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium transition-colors"
+                      title="Cambiar categoría"
+                    >
+                      <Tag className="w-2.5 h-2.5" />
+                      {archivo.categoria?.nombre ?? 'Sin categoría'}
+                    </button>
+                  )
+                ) : (
+                  archivo.categoria && (
+                    <span className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-medium">
+                      <Tag className="w-2.5 h-2.5" />
+                      {archivo.categoria.nombre}
+                    </span>
+                  )
                 )}
               </div>
 
               {/* Actions */}
-              <div className="px-3 pb-3 flex items-center gap-1.5">
-                <button
-                  onClick={() => setPreviewFile(archivo)}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold text-xs"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  Ver
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      const urlObj = new URL(archivo.url);
-                      const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
-                      let downloadUrl = archivo.url;
-                      if (pathParts.length > 1) {
-                        const filePath = pathParts[1];
-                        const { data } = await supabase.storage.from('ticket-archivos').createSignedUrl(filePath, 3600);
-                        if (data) downloadUrl = data.signedUrl;
-                      }
-                      const link = document.createElement('a');
-                      link.href = downloadUrl;
-                      link.download = archivo.nombre;
-                      link.target = '_blank';
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    } catch {
-                      window.open(archivo.url, '_blank');
-                    }
-                  }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-white/80 rounded-lg transition-all font-semibold text-xs"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Bajar
-                </button>
-                {isAdmin && (
+              <div className="px-3 pb-3 flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => handleDeleteArchivo(archivo.id)}
-                    className="p-1.5 text-neutral-300 dark:text-white/20 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                    title="Eliminar archivo"
+                    onClick={() => { setPreviewFile(archivo); setPreviewAutoPrint(false); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold text-xs"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Eye className="w-3.5 h-3.5" />
+                    Ver
                   </button>
-                )}
+                  <button
+                    onClick={() => { setPreviewFile(archivo); setPreviewAutoPrint(true); }}
+                    className="p-1.5 text-neutral-400 dark:text-white/30 hover:text-accent hover:bg-accent/10 rounded-lg transition-colors"
+                    title="Imprimir"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const shareUrl = await getSignedFileUrl(archivo.url);
+                      const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void>; canShare?: (data?: ShareData) => boolean };
+                      if (nav.share) {
+                        try {
+                          await nav.share({ title: friendlyName(archivo.nombre), url: shareUrl });
+                        } catch {
+                          // usuario canceló el share nativo
+                        }
+                        return;
+                      }
+                      // Sin Web Share API (la mayoría de navegadores de escritorio): copiar el
+                      // enlace en vez de solo abrir una pestaña, que confundía a los usuarios.
+                      try {
+                        await navigator.clipboard.writeText(shareUrl);
+                        showToast('Enlace copiado al portapapeles');
+                      } catch {
+                        window.open(shareUrl, '_blank');
+                      }
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all font-semibold text-xs"
+                    title="Compartir"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    Compartir
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const urlObj = new URL(archivo.url);
+                        const pathParts = urlObj.pathname.split('/storage/v1/object/public/ticket-archivos/');
+                        let downloadUrl = archivo.url;
+                        if (pathParts.length > 1) {
+                          const filePath = pathParts[1];
+                          const { data } = await supabase.storage.from('ticket-archivos').createSignedUrl(filePath, 3600);
+                          if (data) downloadUrl = data.signedUrl;
+                        }
+                        const link = document.createElement('a');
+                        link.href = downloadUrl;
+                        link.download = archivo.nombre;
+                        link.target = '_blank';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      } catch {
+                        window.open(archivo.url, '_blank');
+                      }
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-white/80 rounded-lg transition-all font-semibold text-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Bajar
+                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDeleteArchivo(archivo.id)}
+                      className="p-1.5 text-neutral-300 dark:text-white/20 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="Eliminar archivo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -561,12 +708,19 @@ export function TramiteArchivos({ tramiteId }: TramiteArchivosProps) {
       {previewFile && (
         <FilePreviewModal
           isOpen={!!previewFile}
-          onClose={() => setPreviewFile(null)}
+          onClose={() => { setPreviewFile(null); setPreviewAutoPrint(false); }}
           fileName={previewFile.nombre}
           fileUrl={previewFile.url}
           fileType={previewFile.tipo}
           fileSize={previewFile.tamano}
+          autoPrint={previewAutoPrint}
         />
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[60] px-4 py-3 rounded-xl shadow-lg text-sm font-semibold text-white ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
+          {toast.message}
+        </div>
       )}
 
       {/* Category picker modal */}

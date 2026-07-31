@@ -99,7 +99,7 @@ export function TramiteDetalle() {
   };
 
   const [userArea, setUserArea] = useState<string | null>(null);
-  const [myTeamRole, setMyTeamRole] = useState<'lider' | 'ejecutivo' | 'miembro' | null>(null);
+  const [myTeamRole, setMyTeamRole] = useState<'lider' | 'supervisor' | 'director' | 'ejecutivo' | 'miembro' | null>(null);
   const [canEditForType, setCanEditForType] = useState(true);
 
   // Campos dinámicos del catálogo
@@ -2048,7 +2048,12 @@ export function TramiteDetalle() {
           </>
         )}
         {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} grupoId={tramite.grupo_asignado_id} />}
-        {activeTab === 'archivos' && <TramiteArchivos tramiteId={tramite.id} />}
+        {activeTab === 'archivos' && (
+          <TramiteArchivos
+            tramiteId={tramite.id}
+            puedeEditarCategoria={isAdmin || myTeamRole === 'lider' || myTeamRole === 'supervisor' || myTeamRole === 'director'}
+          />
+        )}
         {activeTab === 'historial' && <TramiteHistorial tramiteId={tramite.id} />}
         {activeTab === 'comisiones' && <ComisionesPendientes tramiteId={tramite.id} />}
         {activeTab === 'diagnostico' && (

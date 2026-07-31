@@ -269,3 +269,16 @@ body {
     padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* Imprimir un archivo desde FilePreviewModal: aísla solo el contenido previsualizado
+   (imagen/pdf/etc.), oculta el resto de la app (sidebar, barra beta, el propio modal). */
+@media print {
+  body.printing-file-preview > *:not(#file-preview-print-root) {
+    display: none !important;
+  }
+  #file-preview-print-root {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+  }
+}
