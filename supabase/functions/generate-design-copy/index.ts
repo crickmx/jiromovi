@@ -135,8 +135,10 @@ Deno.serve(async (req: Request) => {
 REGLAS ESTRICTAS:
 - Escribe en espanol de Mexico, tono profesional pero cercano
 - NUNCA uses emojis
-- MAXIMO 550 caracteres por seccion (compatibilidad WhatsApp)
-- Se conciso, impactante y orientado a la accion
+- Se breve: la meta es que se lea completo en menos de 10 segundos. Nada de parrafos largos ni relleno — cada oracion debe aportar algo nuevo
+- apertura: MAXIMO 90 caracteres, una sola frase de gancho
+- desarrollo: MAXIMO 140 caracteres, una sola oracion con la propuesta de valor (nunca 2-3 oraciones)
+- cta: MAXIMO 60 caracteres, una sola oracion directa
 - El "nombre" que recibes es el de una PERSONA (el asesor independiente), NUNCA el de una empresa o marca. No lo uses como sujeto de frases corporativas tipo "En [nombre], ofrecemos..." o "En [nombre], te brindamos...". Escribe en primera persona como si el propio agente hablara ("Soy [nombre], tu asesor de seguros...", "Como tu asesor, te ayudo a...") o deja el nombre solo para la firma/cierre
 - Usa datos del agente (nombre, telefono, web) para personalizar
 - Adapta el tono segun la categoria y ramo del diseno
@@ -144,9 +146,9 @@ REGLAS ESTRICTAS:
 
 FORMATO DE RESPUESTA (JSON estricto):
 {
-  "apertura": "Frase de gancho inicial que capture atencion (1-2 oraciones)",
-  "desarrollo": "Cuerpo del mensaje con propuesta de valor y beneficios (2-3 oraciones)",
-  "cta": "Llamada a la accion clara y directa (1 oracion)",
+  "apertura": "Frase de gancho inicial, breve (max 90 caracteres)",
+  "desarrollo": "Una sola oracion con la propuesta de valor (max 140 caracteres)",
+  "cta": "Llamada a la accion clara y directa, una oracion (max 60 caracteres)",
   "firma": "Cierre con nombre del agente y dato de contacto",
   "url_web": "URL de la pagina web del agente si existe",
   "hashtags": ["array", "de", "hashtags", "relevantes"]
