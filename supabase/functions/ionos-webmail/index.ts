@@ -311,6 +311,7 @@ async function getMessage(conn: Deno.TlsConn, uid: number, folder: string): Prom
   function extractContent(ct: string, partBody: string, partHeaders: string, disp: string, partId: string, depth: number): void {
     if (depth > 5) return;
     const ctLower = ct.toLowerCase();
+    const dispLower = (disp || '').toLowerCase();
 
     if (ctLower.includes('multipart')) {
       const nb = ct.match(/boundary="?([^";\s]+)"?/i)?.[1];
@@ -319,11 +320,11 @@ async function getMessage(conn: Deno.TlsConn, uid: number, folder: string): Prom
           extractContent(nct, nb2, nh, nd, `${partId}.${npid}`, depth + 1);
         });
       }
-    } else if (ctLower.includes('text/html') && !bodyHtml && !disp.includes('attachment')) {
+    } else if (ctLower.includes('text/html') && !bodyHtml && !dispLower.includes('attachment')) {
       bodyHtml = decodePartContent(partBody, partHeaders);
-    } else if (ctLower.includes('text/plain') && !bodyText && !disp.includes('attachment')) {
+    } else if (ctLower.includes('text/plain') && !bodyText && !dispLower.includes('attachment')) {
       bodyText = decodePartContent(partBody, partHeaders);
-    } else if (disp.includes('attachment') || (disp.includes('inline') && extractFilenameFromHeaders(partHeaders))) {
+    } else if (dispLower.includes('attachment') || (dispLower.includes('inline') && extractFilenameFromHeaders(partHeaders))) {
       const fn = extractFilenameFromHeaders(partHeaders) || `adjunto_${partId}`;
       attachments.push({ filename: fn, contentType: ctLower.split(';')[0], size: partBody.length, partId });
     } else if (!ctLower.includes('text/') && !ctLower.includes('multipart')) {
@@ -339,7 +340,7 @@ async function getMessage(conn: Deno.TlsConn, uid: number, folder: string): Prom
         extractContent(ct, partBody, partHeaders, disp, partId, 0);
       });
     }
-  } else if (contentType.includes('text/html')) {
+  } else if (contentType.toLowerCase().includes('text/html')) {
     bodyHtml = decodeBodyContent(body, headers);
   } else {
     bodyText = decodeBodyContent(body, headers);
@@ -357,8 +358,15 @@ function parseParts(body: string, boundary: string, handler: (ct: string, disp: 
     const cleaned = seg.replace(/^\r\n/, '');
     const { headers: h, body: b } = splitHeadersBody(cleaned);
     if (!h.trim() && !b.trim()) continue;
-    const ct = (extractHeaderValue(h, 'Content-Type') || 'text/plain').toLowerCase();
-    const disp = (extractHeaderValue(h, 'Content-Disposition') || '').toLowerCase();
+    // OJO: NO bajar a minúsculas aquí. El Content-Type incluye el parámetro
+    // `boundary=...` y los boundaries de Outlook/Exchange (y de correos S/MIME
+    // firmados) suelen llevar mayúsculas (ej. `_000_CO6PR16MB4097...`). Si se
+    // lowercasea, el boundary extraído deja de coincidir con el delimitador real
+    // del cuerpo, el multipart anidado se toma como text/plain y se muestra el
+    // MIME crudo (base64 + boundaries). Cada consumidor baja a minúsculas por su
+    // cuenta para las comparaciones (ctLower/dispLower en extractContent).
+    const ct = extractHeaderValue(h, 'Content-Type') || 'text/plain';
+    const disp = extractHeaderValue(h, 'Content-Disposition') || '';
     handler(ct, disp, h, b, String(idx++));
   }
 }
