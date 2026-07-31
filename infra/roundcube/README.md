@@ -199,6 +199,56 @@ Roundcube incluye ambos grupos en el autocompletado nativo de Para, CC y CCO.
 Cada inicio SSO reemplaza exclusivamente los contactos dentro de esos grupos;
 los contactos y grupos personales creados por el usuario no se alteran.
 
+## Contactos IONOS (CardDAV) en el correo embebido
+
+Además del directorio MOVI, el correo embebido puede mostrar la **libreta
+oficial de IONOS** de cada usuario (su agenda CardDAV) en el mismo
+autocompletado nativo. Esto lo aporta el plugin `rcmcarddav`, sincronizando
+contra IONOS con las mismas credenciales de la sesión (`%u`/`%p`), sin guardar
+una contraseña aparte.
+
+El archivo `config/zz-movi-carddav.inc.php` ya trae el preset gestionado, pero
+es **inerte** hasta completar tres pasos de deploy (por eso subir el archivo no
+altera el contenedor actual):
+
+1. **Instalar el plugin** en la imagen. `rcmcarddav` no viene en la imagen
+   oficial; requiere un `Dockerfile` propio sobre `${ROUNDCUBE_IMAGE}` que corra
+   Composer:
+
+   ```dockerfile
+   FROM roundcube/roundcubemail:1.7.2-apache
+   RUN cd /var/www/html && \
+       composer require roundcube/carddav:^5 --no-interaction --optimize-autoloader
+   ```
+
+   Apuntar `ROUNDCUBE_IMAGE` a esa imagen construida (o agregar un `build:` al
+   servicio `roundcube` en `docker-compose.yml`).
+
+2. **Habilitar el plugin**: agregar `carddav` a `ROUNDCUBEMAIL_PLUGINS` en
+   `docker-compose.yml`. ⚠️ No agregarlo antes del paso 1: Roundcube falla al
+   arrancar si el plugin no está instalado.
+
+3. **Configurar la URL**: definir `IONOS_CARDDAV_URL` en el `.env` del
+   contenedor con la colección CardDAV de IONOS (o la URL base con
+   descubrimiento `.well-known/carddav`). Sin esta variable el preset no se
+   define y el plugin no intenta nada.
+
+Recrear el contenedor tras los cambios:
+
+```bash
+docker compose up -d --build --force-recreate roundcube
+```
+
+El **mismo** `IONOS_CARDDAV_URL` debe cargarse como secreto en Supabase Edge
+Functions (`supabase secrets set IONOS_CARDDAV_URL=...`) para que esa libreta
+también aparezca en el selector de destinatarios del **correo nativo** (fuente
+"IONOS", junto a los remitentes recientes del buzón). Ambos métodos leen la
+misma libreta; los recientes del buzón sólo se calculan del lado nativo.
+
+Si IONOS no expone CardDAV con estas credenciales, dejar `IONOS_CARDDAV_URL`
+vacío: el correo nativo seguirá mostrando los contactos "recientes" del buzón y
+el embebido seguirá con el directorio MOVI, sin errores.
+
 ## Productividad y gestión personal
 
 - El compositor abre en HTML y permite formato, listas y vínculos.

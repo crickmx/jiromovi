@@ -48,6 +48,9 @@ services:
       ROUNDCUBE_SSO_SHARED_SECRET: ${ROUNDCUBE_SSO_SHARED_SECRET}
       ROUNDCUBE_SSO_REDEEM_URL: ${ROUNDCUBE_SSO_REDEEM_URL}
       ROUNDCUBE_FIRMA_SYNC_URL: ${ROUNDCUBE_FIRMA_SYNC_URL}
+      # Libreta CardDAV de IONOS (opcional). Vacío = inerte. Para activarla hay
+      # que además instalar rcmcarddav y agregar 'carddav' a ROUNDCUBEMAIL_PLUGINS.
+      IONOS_CARDDAV_URL: ${IONOS_CARDDAV_URL:-}
     ports:
       - "${ROUNDCUBE_BIND_ADDRESS}:${ROUNDCUBE_HTTP_PORT}:80"
     volumes:

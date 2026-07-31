@@ -8,6 +8,9 @@ import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmail
 import { AgregarAEmailTramiteModal } from '@/components/email/AgregarAEmailTramiteModal';
 import { getRoundcubeHandoffUrl } from '../lib/roundcubeSso';
 import { ContactosMovi } from '../components/email/ContactosMovi';
+import { RecipientPicker } from '../components/email/RecipientPicker';
+import { callWebmail } from '../lib/ionosWebmail';
+import { emailCache } from '../lib/emailCache';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -69,29 +72,6 @@ function getFolderLabel(path: string): string {
 
 function getFolderIcon(path: string) {
   return FOLDER_META[path]?.icon || FolderOpen;
-}
-
-// ── API Helper ──────────────────────────────────────────────────────
-
-async function callWebmail(action: string, params: Record<string, unknown> = {}): Promise<any> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('No hay sesion activa');
-
-  const resp = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ionos-webmail`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action, ...params }),
-    }
-  );
-
-  const data = await resp.json();
-  if (!resp.ok) throw new Error(data.error || data.message || 'Error del servidor');
-  return data;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -229,7 +209,7 @@ export function GestorEmails() {
     if (data) {
       setHasConfig(true);
       setConfigEmail(data.email);
-      loadFolders();
+      openMailbox({ showCacheFirst: true });
     } else {
       setHasConfig(false);
       setShowSetup(true);
@@ -237,30 +217,75 @@ export function GestorEmails() {
     }
   };
 
-  const loadFolders = async () => {
+  // Carga fusionada: carpetas + primera página de una carpeta en UN solo login
+  // IMAP (action `open-mailbox`), en vez del waterfall list-folders →
+  // list-messages (dos logins en serie). Con `showCacheFirst` pinta al instante
+  // desde caché y revalida en segundo plano (volver al módulo es inmediato).
+  const openMailbox = useCallback(async (opts?: { force?: boolean; folder?: string; page?: number; showCacheFirst?: boolean }) => {
+    const f = opts?.folder || 'INBOX';
+    const pg = opts?.page || 1;
+
+    if (opts?.showCacheFirst) {
+      const cf = emailCache.getList<ImapFolder[]>('__folders__', 0);
+      const cl = emailCache.getList<{ messages: EmailHeader[]; total: number }>(f, pg);
+      if (cf && cl) {
+        setFolders(cf);
+        setCurrentFolder(f);
+        setPage(pg);
+        setMessages(cl.messages);
+        setTotalMessages(cl.total);
+        setConnectionFailed(false);
+        setInitialLoading(false);
+      }
+    }
+
     try {
-      const data = await callWebmail('list-folders');
-      setFolders(data);
+      const data = await callWebmail('open-mailbox', { folder: f, page: pg, perPage });
+      setFolders(data.folders || []);
+      setCurrentFolder(f);
+      setPage(pg);
+      setMessages(data.messages || []);
+      setTotalMessages(data.total || 0);
+      emailCache.setList('__folders__', 0, data.folders || []);
+      emailCache.setList(f, pg, { messages: data.messages || [], total: data.total || 0 });
       setConnectionFailed(false);
       setInitialLoading(false);
-      loadMessages('INBOX', 1);
     } catch (err: any) {
-      setError(err.message);
-      setConnectionFailed(true);
+      // Si ya pintamos desde caché, no marcamos error (la revalidación falló
+      // pero el usuario sigue viendo su bandeja).
+      const hadCache = emailCache.getList<ImapFolder[]>('__folders__', 0) && emailCache.getList(f, pg);
+      if (!hadCache) {
+        setError(err.message);
+        setConnectionFailed(true);
+      }
       setInitialLoading(false);
     }
-  };
+  }, [perPage]);
 
-  const loadMessages = useCallback(async (folder?: string, p?: number) => {
+  const loadMessages = useCallback(async (folder?: string, p?: number, opts?: { force?: boolean }) => {
     const f = folder || currentFolder;
     const pg = p || page;
-    setLoadingMessages(true);
     setError('');
     setSearchResults(null);
+
+    if (!opts?.force) {
+      const cached = emailCache.getList<{ messages: EmailHeader[]; total: number }>(f, pg);
+      if (cached) {
+        setMessages(cached.messages);
+        setTotalMessages(cached.total);
+        if (folder) setCurrentFolder(f);
+        if (p) setPage(pg);
+        setLoadingMessages(false);
+        return;
+      }
+    }
+
+    setLoadingMessages(true);
     try {
       const data = await callWebmail('list-messages', { folder: f, page: pg, perPage });
       setMessages(data.messages || []);
       setTotalMessages(data.total || 0);
+      emailCache.setList(f, pg, { messages: data.messages || [], total: data.total || 0 });
       if (folder) setCurrentFolder(f);
       if (p) setPage(pg);
     } catch (err: any) {
@@ -271,11 +296,20 @@ export function GestorEmails() {
   }, [currentFolder, page, perPage]);
 
   const openMessage = async (uid: number) => {
+    const cacheKey = `${currentFolder}:${uid}`;
+    const cached = emailCache.getBody<EmailFull>(cacheKey);
+    if (cached) {
+      setSelectedMessage(cached);
+      setMobileShowReading(true);
+      setMessages(prev => prev.map(m => m.uid === uid ? { ...m, seen: true } : m));
+      return;
+    }
     setLoadingMessage(true);
     setError('');
     try {
       const data = await callWebmail('get-message', { uid, folder: currentFolder });
       setSelectedMessage(data);
+      emailCache.setBody(cacheKey, data);
       setMobileShowReading(true);
       setMessages(prev => prev.map(m => m.uid === uid ? { ...m, seen: true } : m));
     } catch (err: any) {
@@ -290,6 +324,10 @@ export function GestorEmails() {
       await callWebmail('mark-read', { uid, folder: currentFolder, read });
       setMessages(prev => prev.map(m => m.uid === uid ? { ...m, seen: read } : m));
       if (selectedMessage?.uid === uid) setSelectedMessage({ ...selectedMessage, seen: read });
+      const cacheKey = `${currentFolder}:${uid}`;
+      const cachedBody = emailCache.getBody<EmailFull>(cacheKey);
+      if (cachedBody) emailCache.setBody(cacheKey, { ...cachedBody, seen: read });
+      emailCache.invalidateFolder(currentFolder); // el conteo de no-leídos cambió
     } catch (err: any) {
       setError(err.message);
     }
@@ -299,6 +337,9 @@ export function GestorEmails() {
     try {
       await callWebmail('delete-message', { uid, folder: currentFolder });
       setMessages(prev => prev.filter(m => m.uid !== uid));
+      emailCache.deleteBody(`${currentFolder}:${uid}`);
+      emailCache.invalidateFolder(currentFolder);
+      emailCache.invalidateFolder('Trash');
       if (selectedMessage?.uid === uid) {
         setSelectedMessage(null);
         setMobileShowReading(false);
@@ -323,8 +364,10 @@ export function GestorEmails() {
   };
 
   const handleRefresh = () => {
-    loadFolders();
-    loadMessages(currentFolder, page);
+    // Un solo login: `open-mailbox` trae carpetas (con conteos) + la página
+    // actual de la carpeta actual. Antes disparaba 3 conexiones IMAP.
+    emailCache.invalidateFolder(currentFolder);
+    openMailbox({ force: true, folder: currentFolder, page });
   };
 
   const openRoundcubeEmbedded = async () => {
@@ -366,7 +409,7 @@ export function GestorEmails() {
     setMailView('legacy');
     if (folders.length === 0) {
       setInitialLoading(true);
-      loadFolders();
+      openMailbox({ showCacheFirst: true });
     }
   };
 
@@ -505,7 +548,7 @@ export function GestorEmails() {
           </p>
           <div className="flex flex-col gap-2">
             <button
-              onClick={() => { setConnectionFailed(false); setError(''); setInitialLoading(true); loadFolders(); }}
+              onClick={() => { setConnectionFailed(false); setError(''); setInitialLoading(true); openMailbox({ force: true }); }}
               className="w-full py-2.5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition text-sm flex items-center justify-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
@@ -1493,12 +1536,11 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
           {/* To */}
           <div className="flex items-center gap-2">
             <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">Para</label>
-            <input
-              type="text"
+            <RecipientPicker
               value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
-              placeholder="email@ejemplo.com"
+              onChange={setTo}
+              placeholder="Escribe o busca (MOVI, guardados, IONOS)…"
+              className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
             />
             <div className="flex gap-1 flex-shrink-0">
               {!showCc && <button onClick={() => setShowCc(true)} className="text-[10px] font-medium text-accent hover:text-accent/80 px-1.5 py-0.5 rounded">CC</button>}
@@ -1510,12 +1552,11 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
           {showCc && (
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">CC</label>
-              <input
-                type="text"
+              <RecipientPicker
                 value={cc}
-                onChange={(e) => setCc(e.target.value)}
-                className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
+                onChange={setCc}
                 placeholder="cc@ejemplo.com"
+                className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
               />
             </div>
           )}
@@ -1524,12 +1565,11 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
           {showBcc && (
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">CCO</label>
-              <input
-                type="text"
+              <RecipientPicker
                 value={bcc}
-                onChange={(e) => setBcc(e.target.value)}
-                className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
+                onChange={setBcc}
                 placeholder="cco@ejemplo.com"
+                className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
               />
             </div>
           )}

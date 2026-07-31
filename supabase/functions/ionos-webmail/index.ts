@@ -178,6 +178,49 @@ function splitHeadersBody(raw: string): { headers: string; body: string } {
 
 // ── IMAP operations ───────────────────────────────────────────────
 
+// Pide el STATUS (MESSAGES/UNSEEN) de TODAS las carpetas en una sola tanda:
+// escribe todos los comandos de golpe (pipelining IMAP) y lee hasta el OK del
+// último tag, en vez de un round-trip por carpeta. Con 7-10 carpetas eso
+// recorta 7-10 idas y vueltas a IONOS a ~1. Si algo falla en el parseo, el que
+// llama cae al camino secuencial de siempre (nunca peor que antes).
+async function imapStatusPipeline(conn: Deno.TlsConn, paths: string[]): Promise<Map<string, { total: number; unseen: number }>> {
+  const map = new Map<string, { total: number; unseen: number }>();
+  if (paths.length === 0) return map;
+
+  const tags: string[] = [];
+  let cmds = '';
+  for (const p of paths) {
+    const tag = `A${++tagCounter}`;
+    tags.push(tag);
+    cmds += `${tag} STATUS "${p}" (MESSAGES UNSEEN)\r\n`;
+  }
+  await conn.write(new TextEncoder().encode(cmds));
+
+  const lastTag = tags[tags.length - 1];
+  const decoder = new TextDecoder();
+  const doneRe = new RegExp(`${lastTag} (OK|NO|BAD)`);
+  let result = '';
+  let attempts = 0;
+  while (!doneRe.test(result)) {
+    if (attempts++ > 400) break;
+    const buf = new Uint8Array(262144);
+    const n = await conn.read(buf);
+    if (n === null) break;
+    result += decoder.decode(buf.subarray(0, n));
+  }
+
+  for (const line of result.split(/\r\n/)) {
+    const m = line.match(/^\* STATUS (?:"([^"]+)"|(\S+)) \(([^)]*)\)/);
+    if (!m) continue;
+    const name = m[1] ?? m[2];
+    const attrs = m[3];
+    const msgM = attrs.match(/MESSAGES (\d+)/);
+    const unM = attrs.match(/UNSEEN (\d+)/);
+    map.set(name, { total: msgM ? parseInt(msgM[1]) : 0, unseen: unM ? parseInt(unM[1]) : 0 });
+  }
+  return map;
+}
+
 async function listFolders(conn: Deno.TlsConn): Promise<ImapFolder[]> {
   const resp = await imapCommand(conn, 'LIST "" "*"');
   const folders: ImapFolder[] = [];
@@ -190,8 +233,21 @@ async function listFolders(conn: Deno.TlsConn): Promise<ImapFolder[]> {
       folders.push({ name, path: name, flags, total: 0, unseen: 0 });
     }
   }
-  // Get counts
+
+  // Contadores por carpeta: intento pipelined (1 round-trip); si no devuelve
+  // datos para alguna carpeta, la completo con un STATUS suelto de respaldo.
+  let counts = new Map<string, { total: number; unseen: number }>();
+  try {
+    counts = await imapStatusPipeline(conn, folders.map((f) => f.path));
+  } catch { /* cae al secuencial abajo */ }
+
   for (const f of folders) {
+    const c = counts.get(f.path);
+    if (c) {
+      f.total = c.total;
+      f.unseen = c.unseen;
+      continue;
+    }
     try {
       const st = await imapCommand(conn, `STATUS "${f.path}" (MESSAGES UNSEEN)`);
       const msgM = st.match(/MESSAGES (\d+)/);
@@ -259,8 +315,9 @@ function parseHeaderResponses(resp: string): EmailHeader[] {
   return messages;
 }
 
-async function getMessage(conn: Deno.TlsConn, uid: number, folder: string): Promise<EmailFull | null> {
-  await imapCommand(conn, `SELECT "${folder}"`);
+// Camino de respaldo: baja el RFC822 completo (BODY[], incluye adjuntos) y lo
+// parsea entero. Asume que la carpeta YA fue seleccionada por quien llama.
+async function getMessageFull(conn: Deno.TlsConn, uid: number): Promise<EmailFull | null> {
   const resp = await imapCommand(conn, `UID FETCH ${uid} (FLAGS BODY[])`);
 
   const flagsM = resp.match(/FLAGS \(([^)]*)\)/);
@@ -387,6 +444,256 @@ function extractFilenameFromHeaders(headersBlock: string): string | null {
   const ct = extractHeaderValue(headersBlock, 'Content-Type') || '';
   const m = disp.match(/filename="?([^";\r\n]+)"?/i) || ct.match(/name="?([^";\r\n]+)"?/i);
   return m ? decodeHeaderWord(m[1]) : null;
+}
+
+// ── BODYSTRUCTURE: fetch selectivo del cuerpo (sin bajar adjuntos) ──
+//
+// getMessageFull baja el correo ENTERO (BODY[]) — con adjuntos pesados en
+// base64 — solo para mostrar el texto. Aquí, en su lugar, pedimos primero la
+// BODYSTRUCTURE (metadata liviana), ubicamos las partes text/html y text/plain
+// y traemos SOLO esas; los adjuntos quedan como metadata y se bajan on-demand
+// vía 'download-attachment'. Si algo del parseo falla o el mensaje no es
+// multipart, caemos a getMessageFull (comportamiento idéntico al de antes).
+
+interface BodyPartRef {
+  partId: string;
+  type: string;
+  subtype: string;
+  encoding: string;
+  charset: string;
+  size: number;
+  filename: string | null;
+  disposition: string;
+}
+
+// Devuelve la subcadena balanceada de paréntesis desde `openIdx` (respeta
+// comillas). Usada para aislar la lista de BODYSTRUCTURE del resto de la respuesta.
+function extractBalancedParens(s: string, openIdx: number): string | null {
+  if (openIdx < 0 || s[openIdx] !== '(') return null;
+  let depth = 0;
+  let inQuote = false;
+  for (let i = openIdx; i < s.length; i++) {
+    const ch = s[i];
+    if (inQuote) {
+      if (ch === '\\') { i++; continue; }
+      if (ch === '"') inQuote = false;
+      continue;
+    }
+    if (ch === '"') { inQuote = true; continue; }
+    if (ch === '(') depth++;
+    else if (ch === ')') { depth--; if (depth === 0) return s.substring(openIdx, i + 1); }
+  }
+  return null;
+}
+
+// Tokeniza una lista IMAP con paréntesis en un arreglo anidado (strings, null
+// para NIL, y sub-arreglos). Maneja comillas y literales {n}.
+function tokenizeImapList(s: string): any {
+  let i = 0;
+  const parseQuoted = (): string => {
+    i++; // salta la comilla inicial
+    let out = '';
+    while (i < s.length) {
+      const ch = s[i];
+      if (ch === '\\') { out += s[i + 1] ?? ''; i += 2; continue; }
+      if (ch === '"') { i++; break; }
+      out += ch; i++;
+    }
+    return out;
+  };
+  const parseLiteral = (): string => {
+    const m = s.slice(i).match(/^\{(\d+)\}\r\n/);
+    if (!m) { i++; return ''; }
+    const n = parseInt(m[1]);
+    const start = i + m[0].length;
+    const val = s.substr(start, n);
+    i = start + n;
+    return val;
+  };
+  const parseAtom = (): any => {
+    let out = '';
+    while (i < s.length && s[i] !== ' ' && s[i] !== '(' && s[i] !== ')') { out += s[i]; i++; }
+    return out === 'NIL' ? null : out;
+  };
+  const parseList = (): any[] => {
+    const arr: any[] = [];
+    i++; // salta '('
+    while (i < s.length) {
+      const ch = s[i];
+      if (ch === ')') { i++; break; }
+      if (ch === ' ' || ch === '\r' || ch === '\n') { i++; continue; }
+      if (ch === '(') { arr.push(parseList()); continue; }
+      if (ch === '"') { arr.push(parseQuoted()); continue; }
+      if (ch === '{') { arr.push(parseLiteral()); continue; }
+      arr.push(parseAtom());
+    }
+    return arr;
+  };
+  while (i < s.length && s[i] !== '(') i++;
+  if (i >= s.length) return null;
+  return parseList();
+}
+
+// Recorre el árbol de BODYSTRUCTURE asignando números de parte IMAP y
+// clasificando cada hoja como texto, html o adjunto.
+function walkBodyStructure(
+  node: any[],
+  prefix: string,
+  out: { text?: BodyPartRef; html?: BodyPartRef; attachments: BodyPartRef[] },
+): void {
+  if (!Array.isArray(node)) return;
+
+  if (Array.isArray(node[0])) {
+    // multipart: (part1)(part2)... "subtype" ...
+    let idx = 0;
+    const children: any[] = [];
+    while (Array.isArray(node[idx])) { children.push(node[idx]); idx++; }
+    children.forEach((child, ci) => {
+      walkBodyStructure(child, prefix ? `${prefix}.${ci + 1}` : `${ci + 1}`, out);
+    });
+    return;
+  }
+
+  const type = (node[0] ?? '').toString().toLowerCase();
+  const subtype = (node[1] ?? '').toString().toLowerCase();
+  const params = Array.isArray(node[2]) ? node[2] : [];
+  const encoding = (node[5] ?? '7bit').toString().toLowerCase();
+  const size = parseInt((node[6] ?? '0').toString()) || 0;
+
+  let charset = 'utf-8';
+  for (let k = 0; k + 1 < params.length; k += 2) {
+    if ((params[k] ?? '').toString().toLowerCase() === 'charset') charset = (params[k + 1] ?? 'utf-8').toString();
+  }
+
+  // Disposición + filename: buscamos una sublista tipo ["attachment", ["filename","x"]]
+  let filename: string | null = null;
+  let disposition = '';
+  for (let k = 7; k < node.length; k++) {
+    const el = node[k];
+    if (Array.isArray(el) && typeof el[0] === 'string' && /attachment|inline/i.test(el[0])) {
+      disposition = el[0].toLowerCase();
+      const dp = el[1];
+      if (Array.isArray(dp)) {
+        for (let j = 0; j + 1 < dp.length; j += 2) {
+          if (/filename/i.test((dp[j] ?? '').toString())) filename = (dp[j + 1] ?? '').toString();
+        }
+      }
+    }
+  }
+  if (!filename) {
+    for (let k = 0; k + 1 < params.length; k += 2) {
+      if (/^name$/i.test((params[k] ?? '').toString())) filename = (params[k + 1] ?? '').toString();
+    }
+  }
+  if (filename) filename = decodeHeaderWord(filename);
+
+  const partId = prefix || '1';
+  const ref: BodyPartRef = { partId, type, subtype, encoding, charset, size, filename, disposition };
+
+  if (type === 'text' && subtype === 'plain' && disposition !== 'attachment' && !out.text) {
+    out.text = ref;
+  } else if (type === 'text' && subtype === 'html' && disposition !== 'attachment' && !out.html) {
+    out.html = ref;
+  } else {
+    out.attachments.push(ref);
+  }
+}
+
+// Decodifica el contenido de una parte reutilizando decodePartContent (que ya
+// respeta charset y transfer-encoding) sintetizando sus cabeceras.
+function decodePartWithRef(data: string, ref: BodyPartRef): string {
+  const fakeHeaders = `Content-Transfer-Encoding: ${ref.encoding}\r\nContent-Type: ${ref.type}/${ref.subtype}; charset="${ref.charset}"`;
+  return decodePartContent(data, fakeHeaders);
+}
+
+async function getMessage(conn: Deno.TlsConn, uid: number, folder: string): Promise<EmailFull | null> {
+  await imapCommand(conn, `SELECT "${folder}"`);
+
+  try {
+    const bsResp = await imapCommand(conn, `UID FETCH ${uid} (FLAGS BODYSTRUCTURE)`);
+    const bsKeyIdx = bsResp.search(/BODYSTRUCTURE /i);
+    if (bsKeyIdx === -1) throw new Error('sin BODYSTRUCTURE');
+    const listStr = extractBalancedParens(bsResp, bsResp.indexOf('(', bsKeyIdx));
+    if (!listStr) throw new Error('BODYSTRUCTURE no balanceada');
+
+    const tree = tokenizeImapList(listStr);
+    // Solo optimizamos el caso multipart (donde viven los adjuntos). Un
+    // mensaje single-part no tiene adjuntos y es liviano ⇒ camino completo.
+    if (!Array.isArray(tree) || !Array.isArray(tree[0])) throw new Error('single-part');
+
+    const parsed: { text?: BodyPartRef; html?: BodyPartRef; attachments: BodyPartRef[] } = { attachments: [] };
+    walkBodyStructure(tree, '', parsed);
+    if (!parsed.html && !parsed.text) throw new Error('sin partes de cuerpo');
+
+    const flagsM = bsResp.match(/FLAGS \(([^)]*)\)/);
+    const flags = flagsM ? flagsM[1].split(' ').filter(Boolean) : [];
+
+    // Traer cabeceras + SOLO las partes de cuerpo en un único FETCH.
+    const wanted: BodyPartRef[] = [];
+    if (parsed.html) wanted.push(parsed.html);
+    if (parsed.text) wanted.push(parsed.text);
+    const partSpecs = wanted.map((w) => `BODY.PEEK[${w.partId}]`).join(' ');
+    const fetchResp = await imapCommand(
+      conn,
+      `UID FETCH ${uid} (BODY.PEEK[HEADER.FIELDS (FROM TO CC BCC SUBJECT DATE MESSAGE-ID)] ${partSpecs})`,
+    );
+
+    // Aísla el bloque de cabeceras por su longitud de literal (la respuesta
+    // trae varios literales: cabeceras + partes de cuerpo).
+    let headers = '';
+    const hIdx = fetchResp.search(/BODY\[HEADER\.FIELDS[^\]]*\] \{\d+\}\r\n/);
+    if (hIdx !== -1) {
+      const hLenM = fetchResp.substring(hIdx).match(/^BODY\[HEADER\.FIELDS[^\]]*\] \{(\d+)\}\r\n/);
+      if (hLenM) {
+        const hStart = hIdx + hLenM[0].length;
+        headers = fetchResp.substring(hStart, hStart + parseInt(hLenM[1]));
+      }
+    }
+
+    const rawFrom = decodeHeaderWord(extractHeaderValue(headers, 'From') || '');
+    const fromEmail = extractEmail(rawFrom);
+    const fromName = extractName(rawFrom) || fromEmail;
+    const to = (extractHeaderValue(headers, 'To') || '').split(',').map((s) => decodeHeaderWord(s.trim())).filter(Boolean);
+    const cc = (extractHeaderValue(headers, 'Cc') || '').split(',').map((s) => decodeHeaderWord(s.trim())).filter(Boolean);
+    const bcc = (extractHeaderValue(headers, 'Bcc') || '').split(',').map((s) => decodeHeaderWord(s.trim())).filter(Boolean);
+    const subject = decodeHeaderWord(extractHeaderValue(headers, 'Subject') || '');
+    const date = extractHeaderValue(headers, 'Date') || '';
+    const messageId = extractHeaderValue(headers, 'Message-ID') || '';
+
+    let bodyHtml: string | null = null;
+    let bodyText: string | null = null;
+    for (const w of wanted) {
+      // Aísla el bloque de esta parte: BODY[<partId>] {len}\r\n<data>
+      const marker = `BODY[${w.partId}] {`;
+      const mi = fetchResp.indexOf(marker);
+      if (mi === -1) continue;
+      const lenM = fetchResp.substring(mi).match(/^BODY\[[^\]]+\] \{(\d+)\}\r\n/);
+      if (!lenM) continue;
+      const dataStart = mi + lenM[0].length;
+      const raw = fetchResp.substring(dataStart, dataStart + parseInt(lenM[1]));
+      const decoded = decodePartWithRef(raw, w);
+      if (w === parsed.html) bodyHtml = decoded;
+      else if (w === parsed.text) bodyText = decoded;
+    }
+
+    if (bodyHtml === null && bodyText === null) throw new Error('sin cuerpo tras fetch');
+
+    const attachments = parsed.attachments.map((a) => ({
+      filename: a.filename || `adjunto_${a.partId}`,
+      contentType: `${a.type}/${a.subtype}`,
+      size: a.size,
+      partId: a.partId,
+    }));
+
+    return {
+      uid, messageId, from: fromName, fromEmail, to, cc, bcc, subject, date,
+      seen: flags.includes('\\Seen'), flagged: flags.includes('\\Flagged'),
+      bodyHtml, bodyText, attachments,
+    };
+  } catch {
+    // Cualquier problema ⇒ camino completo de siempre (carpeta ya seleccionada).
+    return await getMessageFull(conn, uid);
+  }
 }
 
 // ── SMTP ──────────────────────────────────────────────────────────
@@ -526,6 +833,113 @@ function buildRfc822Message(fromEmail: string, fromName: string, to: string[], c
   return msg;
 }
 
+// ── Contactos IONOS ────────────────────────────────────────────────
+//
+// Dos fuentes que se combinan:
+//  1. "Recientes": remitentes/destinatarios reales de tu buzón (INBOX + Enviados).
+//  2. "Libreta": tu agenda CardDAV de IONOS, si está configurado IONOS_CARDDAV_URL.
+
+interface IonosContact { name: string; email: string; source: 'reciente' | 'libreta'; }
+
+function splitAddresses(value: string): string[] {
+  // Corte simple por coma (coincide con el resto del parseo del proyecto). Los
+  // nombres con coma suelen ir entre comillas; el caso raro se tolera.
+  return value.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+async function collectFromFolder(
+  conn: Deno.TlsConn,
+  folder: string,
+  fields: string[],
+  map: Map<string, { name: string; date: string }>,
+  limit: number,
+): Promise<void> {
+  const selResp = await imapCommand(conn, `SELECT "${folder}"`);
+  const total = parseInt(selResp.match(/\* (\d+) EXISTS/)?.[1] || '0');
+  if (!total) return;
+  const start = Math.max(1, total - limit + 1);
+  const fetchFields = [...fields, 'DATE'].join(' ');
+  const resp = await imapCommand(conn, `FETCH ${start}:${total} (BODY.PEEK[HEADER.FIELDS (${fetchFields})])`);
+
+  const parts = resp.split(/\* \d+ FETCH /);
+  for (const part of parts) {
+    if (!part.trim()) continue;
+    const hb = part.match(/HEADER\.FIELDS[^}]*\}\r\n([\s\S]*?)(?:\r\n\))/)?.[1] || '';
+    if (!hb) continue;
+    const date = extractHeaderValue(hb, 'Date') || '';
+    for (const fld of fields) {
+      const val = extractHeaderValue(hb, fld);
+      if (!val) continue;
+      for (const addr of splitAddresses(val)) {
+        const email = extractEmail(addr).toLowerCase();
+        if (!email.includes('@') || email.length > 254) continue;
+        const name = decodeHeaderWord(extractName(addr)) || '';
+        const prev = map.get(email);
+        if (!prev) {
+          map.set(email, { name, date });
+        } else {
+          const newer = date && (!prev.date || new Date(date).getTime() > new Date(prev.date).getTime());
+          if (newer) map.set(email, { name: name || prev.name, date });
+          else if (!prev.name && name) prev.name = name;
+        }
+      }
+    }
+  }
+}
+
+async function listImapContacts(conn: Deno.TlsConn, ownEmail: string): Promise<IonosContact[]> {
+  const listResp = await imapCommand(conn, 'LIST "" "*"');
+  let sentFolder = '';
+  for (const sf of ['Sent', 'Enviados', 'Sent Items', 'Sent Messages', 'INBOX.Sent']) {
+    if (listResp.includes(`"${sf}"`)) { sentFolder = sf; break; }
+  }
+
+  const map = new Map<string, { name: string; date: string }>();
+  try { await collectFromFolder(conn, 'INBOX', ['From'], map, 250); } catch { /* ignore */ }
+  if (sentFolder) { try { await collectFromFolder(conn, sentFolder, ['To', 'Cc'], map, 250); } catch { /* ignore */ } }
+
+  const own = ownEmail.toLowerCase();
+  return [...map.entries()]
+    .filter(([email]) => email !== own)
+    .sort((a, b) => (new Date(b[1].date).getTime() || 0) - (new Date(a[1].date).getTime() || 0))
+    .slice(0, 400)
+    .map(([email, v]) => ({ email, name: v.name, source: 'reciente' as const }));
+}
+
+// Best-effort: sólo corre si IONOS_CARDDAV_URL apunta a la colección de la
+// libreta. Un solo REPORT addressbook-query, parseo de vCards por regex. Ante
+// cualquier error devuelve [] (nunca rompe el resto de contactos).
+async function fetchCardDavContacts(collectionUrl: string, email: string, password: string): Promise<IonosContact[]> {
+  try {
+    const body = `<?xml version="1.0" encoding="utf-8" ?>` +
+      `<C:addressbook-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">` +
+      `<D:prop><D:getetag/><C:address-data/></D:prop></C:addressbook-query>`;
+    const resp = await fetch(collectionUrl, {
+      method: 'REPORT',
+      headers: {
+        'Authorization': 'Basic ' + btoa(`${email}:${password}`),
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Depth': '1',
+      },
+      body,
+    });
+    if (!resp.ok) return [];
+    const xml = await resp.text();
+    const out: IonosContact[] = [];
+    for (const m of xml.matchAll(/BEGIN:VCARD([\s\S]*?)END:VCARD/gi)) {
+      const card = m[1];
+      const fn = card.match(/\r?\nFN[^:\r\n]*:(.+)/i)?.[1]?.trim() || '';
+      for (const em of card.matchAll(/\r?\nEMAIL[^:\r\n]*:(.+)/gi)) {
+        const addr = em[1].trim().toLowerCase();
+        if (addr.includes('@')) out.push({ name: fn, email: addr, source: 'libreta' });
+      }
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 // ── Main handler ───────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -623,6 +1037,53 @@ Deno.serve(async (req: Request) => {
           result = await listFolders(conn);
           await imapLogout(conn);
         } catch (e) { try { conn.close(); } catch {} throw e; }
+        break;
+      }
+
+      // Carga inicial en UN solo login: carpetas + primera página de una
+      // carpeta (INBOX por defecto). Reemplaza el waterfall list-folders →
+      // list-messages (dos logins IMAP en serie) por una sola conexión.
+      case 'open-mailbox': {
+        const folder = body.folder || 'INBOX';
+        const page = body.page || 1;
+        const perPage = body.perPage || 30;
+        const conn = await imapConnect('imap.ionos.mx', 993);
+        try {
+          if (!await imapLogin(conn, creds.email, creds.password)) throw new Error('AUTH_FAILED');
+          const folders = await listFolders(conn);
+          const { messages, total } = await listMessages(conn, folder, page, perPage);
+          await imapLogout(conn);
+          result = { folders, folder, messages, total, page, perPage };
+        } catch (e) { try { conn.close(); } catch {} throw e; }
+        break;
+      }
+
+      // Contactos IONOS: recientes del buzón (INBOX + Enviados) combinados con
+      // la libreta CardDAV si está configurada. Un solo login IMAP.
+      case 'list-contacts': {
+        const conn = await imapConnect('imap.ionos.mx', 993);
+        let recientes: IonosContact[] = [];
+        try {
+          if (!await imapLogin(conn, creds.email, creds.password)) throw new Error('AUTH_FAILED');
+          recientes = await listImapContacts(conn, creds.email);
+          await imapLogout(conn);
+        } catch (e) { try { conn.close(); } catch {} throw e; }
+
+        const cardDavUrl = Deno.env.get('IONOS_CARDDAV_URL');
+        const libreta = cardDavUrl
+          ? await fetchCardDavContacts(cardDavUrl, creds.email, creds.password)
+          : [];
+
+        // Merge dedup por email: la libreta (con nombre "oficial") pisa el
+        // nombre vacío de un reciente, pero conservamos ambos orígenes.
+        const byEmail = new Map<string, IonosContact>();
+        for (const c of recientes) byEmail.set(c.email, c);
+        for (const c of libreta) {
+          const prev = byEmail.get(c.email);
+          if (!prev) byEmail.set(c.email, c);
+          else if (!prev.name && c.name) byEmail.set(c.email, { ...prev, name: c.name });
+        }
+        result = { contacts: [...byEmail.values()] };
         break;
       }
 
