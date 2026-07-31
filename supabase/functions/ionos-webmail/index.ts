@@ -44,6 +44,24 @@ interface EmailFull {
   attachments: { filename: string; contentType: string; size: number; partId: string }[];
 }
 
+// ── Socket write helper ───────────────────────────────────────────
+
+// Deno.TlsConn.write() NO garantiza escribir todo el buffer en una sola
+// llamada: con payloads grandes hace escrituras parciales y devuelve cuántos
+// bytes escribió realmente. Sin este loop, un correo con adjunto se enviaba a
+// medias — el servidor SMTP nunca recibía el terminador "\r\n.\r\n", esperaba
+// el resto del comando y cerraba la conexión con "421 ... command timeout"
+// (el error "esperado 250, recibido: 421" que veía el usuario). Lo mismo
+// aplica al literal de IMAP APPEND al guardar en Enviados.
+async function writeAll(conn: Deno.TlsConn, data: Uint8Array): Promise<void> {
+  let written = 0;
+  while (written < data.length) {
+    const n = await conn.write(data.subarray(written));
+    if (n <= 0) throw new Error('La conexion se cerro durante el envio');
+    written += n;
+  }
+}
+
 // ── IMAP Low-level helpers ────────────────────────────────────────
 
 async function imapConnect(host: string, port: number): Promise<Deno.TlsConn> {
@@ -58,7 +76,7 @@ let tagCounter = 0;
 async function imapCommand(conn: Deno.TlsConn, cmd: string): Promise<string> {
   const tag = `A${++tagCounter}`;
   const fullCmd = `${tag} ${cmd}\r\n`;
-  await conn.write(new TextEncoder().encode(fullCmd));
+  await writeAll(conn, new TextEncoder().encode(fullCmd));
   return imapReadUntilTag(conn, tag);
 }
 
@@ -415,14 +433,14 @@ async function smtpSend(email: string, password: string, fromName: string, to: s
   };
 
   const send = async (cmd: string, expect: string) => {
-    await conn.write(new TextEncoder().encode(cmd + '\r\n'));
+    await writeAll(conn, new TextEncoder().encode(cmd + '\r\n'));
     const r = await read();
     if (!r.startsWith(expect)) throw new Error(`SMTP: esperado ${expect}, recibido: ${r.substring(0, 100)}`);
     return r;
   };
 
   const sendRaw = async (data: string, expect: string) => {
-    await conn.write(new TextEncoder().encode(data));
+    await writeAll(conn, new TextEncoder().encode(data));
     const r = await read();
     if (!r.startsWith(expect)) throw new Error(`SMTP: esperado ${expect}, recibido: ${r.substring(0, 100)}`);
   };
@@ -676,7 +694,7 @@ Deno.serve(async (req: Request) => {
             // IMAP APPEND with literal
             const tag = `A${++tagCounter}`;
             const appendLine = `${tag} APPEND "${sentFolder}" (\\Seen) {${sentMsgBytes.length}}\r\n`;
-            await conn.write(new TextEncoder().encode(appendLine));
+            await writeAll(conn, new TextEncoder().encode(appendLine));
             // Read server response - expect continuation "+"
             const waitBuf = new Uint8Array(4096);
             let waitResp = '';
@@ -692,8 +710,8 @@ Deno.serve(async (req: Request) => {
             }
             if (waitResp.includes('+')) {
               // Server ready to receive literal data
-              await conn.write(sentMsgBytes);
-              await conn.write(new TextEncoder().encode('\r\n'));
+              await writeAll(conn, sentMsgBytes);
+              await writeAll(conn, new TextEncoder().encode('\r\n'));
               // Wait for completion
               await imapReadUntilTag(conn, tag);
             }

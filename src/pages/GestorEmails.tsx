@@ -73,21 +73,47 @@ function getFolderIcon(path: string) {
 
 // ── API Helper ──────────────────────────────────────────────────────
 
-async function callWebmail(action: string, params: Record<string, unknown> = {}): Promise<any> {
-  const { data: { session } } = await supabase.auth.getSession();
+// Obtiene un access_token válido. getSession() puede devolver un JWT ya
+// vencido tras un rato de inactividad (el auto-refresh en segundo plano no
+// siempre alcanzó a correr) — por eso refrescamos de forma proactiva si el
+// token está por expirar. Sin esto, el edge function respondía "Token invalido"
+// al reconfigurar la cuenta.
+async function getValidAccessToken(forceRefresh = false): Promise<string> {
+  let { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('No hay sesion activa');
 
-  const resp = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ionos-webmail`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action, ...params }),
+  const expiresAtMs = session.expires_at ? session.expires_at * 1000 : 0;
+  const aboutToExpire = expiresAtMs > 0 && expiresAtMs - Date.now() < 60_000;
+
+  if (forceRefresh || aboutToExpire) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    if (refreshed?.session) session = refreshed.session;
+  }
+
+  return session.access_token;
+}
+
+async function callWebmail(action: string, params: Record<string, unknown> = {}): Promise<any> {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ionos-webmail`;
+  const doFetch = (token: string) => fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action, ...params }),
+  });
+
+  let resp = await doFetch(await getValidAccessToken());
+
+  // Si el token venció justo entre getSession() y la petición, forzamos un
+  // refresh y reintentamos una sola vez antes de dar el error al usuario.
+  if (resp.status === 401) {
+    resp = await doFetch(await getValidAccessToken(true));
+    if (resp.status === 401) {
+      throw new Error('Tu sesion expiro. Vuelve a iniciar sesion e intenta de nuevo.');
     }
-  );
+  }
 
   const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || data.message || 'Error del servidor');
