@@ -100,6 +100,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
   const [editedText, setEditedText] = useState('');
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [descargando, setDescargando] = useState(false);
 
   if (!isOpen) return null;
 
@@ -212,13 +213,29 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!diseno.archivo_resultante_url) return;
-    const ext = diseno.archivo_resultante_url.split('.').pop()?.split('?')[0] || 'png';
-    const link = document.createElement('a');
-    link.href = diseno.archivo_resultante_url;
-    link.download = `diseno-${diseno.id.slice(0, 8)}.${ext}`;
-    link.click();
+    const url = diseno.archivo_resultante_url;
+    const ext = url.split('.').pop()?.split('?')[0] || (diseno.tipo === 'video' ? 'mp4' : 'png');
+    const filename = `diseno-${diseno.id.slice(0, 8)}.${ext}`;
+
+    setDescargando(true);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('fetch failed');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Si el fetch falla (ej. CORS), al menos abre el archivo en una pestana nueva
+      window.open(url, '_blank');
+    } finally {
+      setDescargando(false);
+    }
   };
 
   return (
@@ -262,7 +279,15 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
             {/* Image Preview */}
             <div className="p-5 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800/30 border-b md:border-b-0 md:border-r border-neutral-200 dark:border-white/8">
               <div className="relative w-full max-w-sm aspect-[4/5] rounded-lg overflow-hidden bg-white dark:bg-neutral-800 shadow-sm">
-                <ModalImage src={diseno.archivo_resultante_url} />
+                {diseno.tipo === 'video' ? (
+                  <video
+                    src={diseno.archivo_resultante_url ?? undefined}
+                    controls
+                    className="w-full h-full object-contain bg-black"
+                  />
+                ) : (
+                  <ModalImage src={diseno.archivo_resultante_url} />
+                )}
               </div>
             </div>
 
@@ -336,9 +361,12 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
         {/* Footer Actions */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-neutral-200 dark:border-white/8 bg-neutral-50 dark:bg-neutral-800/30">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="w-3.5 h-3.5 mr-1.5" />
-              Descargar
+            <Button variant="outline" size="sm" onClick={handleDownload} disabled={descargando}>
+              {descargando ? (
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Descargando...</>
+              ) : (
+                <><Download className="w-3.5 h-3.5 mr-1.5" /> Descargar</>
+              )}
             </Button>
             {currentCopy && !editing && (
               <Button variant="outline" size="sm" onClick={handleCopyToClipboard}>

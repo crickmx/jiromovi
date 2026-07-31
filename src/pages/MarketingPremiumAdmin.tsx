@@ -7,6 +7,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import { resolveImageUrl } from '../lib/storageUtils';
 import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
+import { generarThumbnailVideo } from '../lib/videoThumbnail';
 import { UserModal } from '../components/UserModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -98,6 +99,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [tituloNuevoDiseno, setTituloNuevoDiseno] = useState('');
   const [subiendoDiseno, setSubiendoDiseno] = useState(false);
   const [errorDiseno, setErrorDiseno] = useState('');
+  const [arrastrandoDiseno, setArrastrandoDiseno] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -178,12 +180,28 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setErrorDiseno('');
     try {
       const tipo: 'imagen' | 'video' = file.type.startsWith('video/') ? 'video' : 'imagen';
-      const path = `equipo-mkt/${seleccionado.id}/${Date.now()}-${file.name}`;
+      const timestamp = Date.now();
+      const path = `equipo-mkt/${seleccionado.id}/${timestamp}-${file.name}`;
 
       const { error: upErr } = await supabase.storage.from('publicidad-disenos').upload(path, file);
       if (upErr) throw upErr;
 
       const { data: { publicUrl } } = supabase.storage.from('publicidad-disenos').getPublicUrl(path);
+
+      let thumbnailUrl: string | null = tipo === 'imagen' ? publicUrl : null;
+
+      if (tipo === 'video') {
+        try {
+          const thumbBlob = await generarThumbnailVideo(file);
+          const thumbPath = `equipo-mkt/${seleccionado.id}/${timestamp}-thumb.jpg`;
+          const { error: thumbErr } = await supabase.storage.from('publicidad-disenos').upload(thumbPath, thumbBlob);
+          if (!thumbErr) {
+            thumbnailUrl = supabase.storage.from('publicidad-disenos').getPublicUrl(thumbPath).data.publicUrl;
+          }
+        } catch {
+          // si falla la miniatura, el video se sube igual sin vista previa
+        }
+      }
 
       const { error: insErr } = await supabase.from('publicidad_disenos').insert({
         usuario_id: seleccionado.id,
@@ -191,7 +209,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
         titulo: tituloNuevoDiseno.trim() || null,
         tipo,
         archivo_resultante_url: publicUrl,
-        thumbnail_url: tipo === 'imagen' ? publicUrl : null,
+        thumbnail_url: thumbnailUrl,
         creado_por: usuario.id,
       });
       if (insErr) throw insErr;
@@ -692,15 +710,27 @@ ALTER TABLE usuarios
                   className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                 />
 
-                <label className={`flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl border-2 border-dashed cursor-pointer text-sm font-medium transition ${
+                <label
+                  onDragOver={e => { e.preventDefault(); if (!subiendoDiseno) setArrastrandoDiseno(true); }}
+                  onDragLeave={e => { e.preventDefault(); setArrastrandoDiseno(false); }}
+                  onDrop={e => {
+                    e.preventDefault();
+                    setArrastrandoDiseno(false);
+                    if (subiendoDiseno) return;
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) subirDisenoSemanal(file);
+                  }}
+                  className={`flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl border-2 border-dashed cursor-pointer text-sm font-medium transition ${
                   subiendoDiseno
                     ? 'border-neutral-200 dark:border-white/10 text-neutral-400 cursor-not-allowed'
-                    : 'border-purple-300 dark:border-purple-800 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/10'
+                    : arrastrandoDiseno
+                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700'
+                      : 'border-purple-300 dark:border-purple-800 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/10'
                 }`}>
                   {subiendoDiseno ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
                   ) : (
-                    <><Upload className="w-4 h-4" /> Subir imagen o video</>
+                    <><Upload className="w-4 h-4" /> {arrastrandoDiseno ? 'Suelta aquí' : 'Subir imagen o video (o arrástralo aquí)'}</>
                   )}
                   <input
                     type="file"
