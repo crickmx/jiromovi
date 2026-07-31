@@ -2,12 +2,15 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignatureUtils';
-import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList, ContactRound, ExternalLink } from 'lucide-react';
+import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList, ContactRound, ExternalLink, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IniciarTramiteEmailModal } from '@/components/email/IniciarTramiteEmailModal';
 import { AgregarAEmailTramiteModal } from '@/components/email/AgregarAEmailTramiteModal';
 import { getRoundcubeHandoffUrl } from '../lib/roundcubeSso';
 import { ContactosMovi } from '../components/email/ContactosMovi';
+import { RecipientsInput } from '../components/email/RecipientsInput';
+import { RichTextEditor } from '../components/email/RichTextEditor';
+import { useEmailContacts } from '../components/email/useEmailContacts';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -1334,9 +1337,9 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
   usuarioId?: string;
   configEmail?: string;
 }) {
-  const [to, setTo] = useState(initialTo || '');
-  const [cc, setCc] = useState('');
-  const [bcc, setBcc] = useState('');
+  const [to, setTo] = useState<string[]>(initialTo ? [initialTo] : []);
+  const [cc, setCc] = useState<string[]>([]);
+  const [bcc, setBcc] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
   const [bodyHtml, setBodyHtml] = useState('');
   const [sending, setSending] = useState(false);
@@ -1348,26 +1351,35 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [attachError, setAttachError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { contacts } = useEmailContacts();
+  const draftKey = `movi_email_draft_${senderEmail || 'default'}`;
+  const draftReady = useRef(false);
+  const [draftMsg, setDraftMsg] = useState('');
 
   useEffect(() => {
     if (!replyTo) return;
     if (mode === 'reply') {
-      setTo(replyTo.fromEmail);
+      setTo([replyTo.fromEmail].filter(Boolean));
       setSubject(replyTo.subject.startsWith('Re:') ? replyTo.subject : `Re: ${replyTo.subject}`);
     } else if (mode === 'replyAll') {
-      setTo(replyTo.fromEmail);
+      setTo([replyTo.fromEmail].filter(Boolean));
       const others = [...replyTo.to, ...replyTo.cc]
         .filter(Boolean)
         .filter(e => e !== senderEmail && !e.includes(senderEmail || '__none__'));
       if (others.length > 0) {
-        setCc(others.join(', '));
+        setCc(others);
         setShowCc(true);
       }
       setSubject(replyTo.subject.startsWith('Re:') ? replyTo.subject : `Re: ${replyTo.subject}`);
     } else if (mode === 'forward') {
       setSubject(replyTo.subject.startsWith('Fwd:') ? replyTo.subject : `Fwd: ${replyTo.subject}`);
-      const quoted = replyTo.bodyText || (replyTo.bodyHtml ? replyTo.bodyHtml.replace(/<[^>]*>/g, '') : '');
-      setBodyHtml(`\n\n---------- Mensaje reenviado ----------\nDe: ${replyTo.from} <${replyTo.fromEmail}>\nFecha: ${replyTo.date}\nAsunto: ${replyTo.subject}\n\n${quoted}`);
+      const quotedHtml = replyTo.bodyHtml || (replyTo.bodyText ? replyTo.bodyText.replace(/\n/g, '<br/>') : '');
+      setBodyHtml(
+        `<br/><br/><div>---------- Mensaje reenviado ----------</div>` +
+        `<div>De: ${escapeHtml(replyTo.from)} &lt;${escapeHtml(replyTo.fromEmail)}&gt;</div>` +
+        `<div>Fecha: ${escapeHtml(replyTo.date)}</div>` +
+        `<div>Asunto: ${escapeHtml(replyTo.subject)}</div><br/>${quotedHtml}`
+      );
     }
   }, [mode, replyTo, senderEmail]);
 
@@ -1380,6 +1392,50 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
       setSignatureLoading(false);
     }).catch(() => setSignatureLoading(false));
   }, [usuarioId]);
+
+  // ── Borrador (localStorage) ──────────────────────────────────────────
+  const saveDraft = () => {
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ to, cc, bcc, subject, bodyHtml, savedAt: Date.now() }));
+      setDraftMsg('Borrador guardado');
+      setTimeout(() => setDraftMsg(''), 2500);
+    } catch { /* ignore */ }
+  };
+  const clearDraft = () => { try { localStorage.removeItem(draftKey); } catch { /* ignore */ } };
+
+  // Restaurar el borrador al abrir un correo nuevo.
+  useEffect(() => {
+    if (mode !== 'new') { draftReady.current = true; return; }
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (!initialTo && Array.isArray(d.to)) setTo(d.to);
+        if (Array.isArray(d.cc) && d.cc.length) { setCc(d.cc); setShowCc(true); }
+        if (Array.isArray(d.bcc) && d.bcc.length) { setBcc(d.bcc); setShowBcc(true); }
+        if (typeof d.subject === 'string') setSubject(d.subject);
+        if (typeof d.bodyHtml === 'string') setBodyHtml(d.bodyHtml);
+      }
+    } catch { /* ignore */ }
+    draftReady.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autoguardado del borrador (debounce). Guarda destinatarios, asunto y texto
+  // (los adjuntos no se guardan). Si todo está vacío, borra el borrador.
+  useEffect(() => {
+    if (mode !== 'new' || !draftReady.current) return;
+    const t = setTimeout(() => {
+      const bodyText = bodyHtml.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, '').trim();
+      const hasImg = /<img/i.test(bodyHtml);
+      const empty = to.length === 0 && cc.length === 0 && bcc.length === 0 && !subject.trim() && !bodyText && !hasImg;
+      try {
+        if (empty) localStorage.removeItem(draftKey);
+        else localStorage.setItem(draftKey, JSON.stringify({ to, cc, bcc, subject, bodyHtml, savedAt: Date.now() }));
+      } catch { /* ignore */ }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [to, cc, bcc, subject, bodyHtml, mode, draftKey]);
 
   const totalAttachmentSize = attachments.reduce((sum, a) => sum + a.file.size, 0);
 
@@ -1418,7 +1474,7 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
   };
 
   const handleSend = async () => {
-    if (!to.trim() || !subject.trim()) {
+    if (to.length === 0 || !subject.trim()) {
       setError('Destinatario y asunto son requeridos');
       return;
     }
@@ -1436,9 +1492,9 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
       const htmlContent = finalBody.includes('<') ? finalBody : `<p>${finalBody.replace(/\n/g, '<br/>')}</p>`;
 
       const payload: Record<string, unknown> = {
-        to: to.split(',').map(s => s.trim()).filter(Boolean),
-        cc: cc ? cc.split(',').map(s => s.trim()).filter(Boolean) : [],
-        bcc: bcc ? bcc.split(',').map(s => s.trim()).filter(Boolean) : [],
+        to,
+        cc,
+        bcc,
         subject,
         bodyHtml: htmlContent,
         bodyText: finalBody.replace(/<[^>]*>/g, ''),
@@ -1460,6 +1516,7 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
       }
 
       await callWebmail('send-message', payload);
+      clearDraft();
       onSent();
     } catch (err: any) {
       setError(err.message);
@@ -1490,49 +1547,18 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
             </div>
           )}
 
-          {/* To */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">Para</label>
-            <input
-              type="text"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
-              placeholder="email@ejemplo.com"
-            />
-            <div className="flex gap-1 flex-shrink-0">
-              {!showCc && <button onClick={() => setShowCc(true)} className="text-[10px] font-medium text-accent hover:text-accent/80 px-1.5 py-0.5 rounded">CC</button>}
-              {!showBcc && <button onClick={() => setShowBcc(true)} className="text-[10px] font-medium text-accent hover:text-accent/80 px-1.5 py-0.5 rounded">CCO</button>}
-            </div>
+          {/* Para */}
+          <RecipientsInput label="Para" value={to} onChange={setTo} contacts={contacts} autoFocus={mode === 'new'} />
+          <div className="flex justify-end gap-2 -mt-1">
+            {!showCc && <button type="button" onClick={() => setShowCc(true)} className="text-[10px] font-medium text-accent hover:text-accent/80 px-1.5 py-0.5 rounded">+ CC</button>}
+            {!showBcc && <button type="button" onClick={() => setShowBcc(true)} className="text-[10px] font-medium text-accent hover:text-accent/80 px-1.5 py-0.5 rounded">+ CCO</button>}
           </div>
 
           {/* CC */}
-          {showCc && (
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">CC</label>
-              <input
-                type="text"
-                value={cc}
-                onChange={(e) => setCc(e.target.value)}
-                className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
-                placeholder="cc@ejemplo.com"
-              />
-            </div>
-          )}
+          {showCc && <RecipientsInput label="CC" value={cc} onChange={setCc} contacts={contacts} />}
 
-          {/* BCC */}
-          {showBcc && (
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 w-10 flex-shrink-0">CCO</label>
-              <input
-                type="text"
-                value={bcc}
-                onChange={(e) => setBcc(e.target.value)}
-                className="flex-1 px-3 py-2 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white"
-                placeholder="cco@ejemplo.com"
-              />
-            </div>
-          )}
+          {/* CCO */}
+          {showBcc && <RecipientsInput label="CCO" value={bcc} onChange={setBcc} contacts={contacts} />}
 
           {/* Subject */}
           <div className="flex items-center gap-2">
@@ -1547,13 +1573,7 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
           </div>
 
           {/* Body */}
-          <textarea
-            value={bodyHtml}
-            onChange={(e) => setBodyHtml(e.target.value)}
-            rows={10}
-            className="w-full px-3 py-3 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/50 text-xs text-neutral-800 dark:text-white resize-none leading-relaxed"
-            placeholder="Escribe tu mensaje..."
-          />
+          <RichTextEditor value={bodyHtml} onChange={setBodyHtml} onError={setAttachError} placeholder="Escribe tu mensaje…" />
 
           {/* Attachments section */}
           {attachments.length > 0 && (
@@ -1633,6 +1653,18 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
               onChange={handleFileSelect}
               className="hidden"
             />
+            {mode === 'new' && (
+              <button
+                type="button"
+                onClick={saveDraft}
+                className="flex items-center gap-1.5 px-3 py-2 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition text-xs font-medium border border-neutral-200 dark:border-neutral-700"
+                title="Guardar borrador"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Borrador</span>
+              </button>
+            )}
+            {draftMsg && <span className="text-[11px] text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{draftMsg}</span>}
           </div>
           <button
             onClick={handleSend}
@@ -1646,6 +1678,14 @@ function ComposeModal({ mode, replyTo, initialTo, onClose, onSent, usuarioId, co
       </div>
     </div>
   );
+}
+
+function escapeHtml(s: string): string {
+  return (s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function fileToBase64(file: File): Promise<string> {
