@@ -99,7 +99,10 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [tituloNuevoDiseno, setTituloNuevoDiseno] = useState('');
   const [subiendoDiseno, setSubiendoDiseno] = useState(false);
   const [errorDiseno, setErrorDiseno] = useState('');
+  const [avisoDiseno, setAvisoDiseno] = useState('');
   const [arrastrandoDiseno, setArrastrandoDiseno] = useState(false);
+  const [archivoPendiente, setArchivoPendiente] = useState<File | null>(null);
+  const [previewPendienteUrl, setPreviewPendienteUrl] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -159,7 +162,29 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setGuardado(false);
     setTituloNuevoDiseno('');
     setErrorDiseno('');
+    setAvisoDiseno('');
+    cancelarArchivoPendiente();
     cargarDisenosAgente(agente.id);
+  }
+
+  function seleccionarArchivoPendiente(file: File) {
+    if (previewPendienteUrl) URL.revokeObjectURL(previewPendienteUrl);
+    setArchivoPendiente(file);
+    setPreviewPendienteUrl(URL.createObjectURL(file));
+    setErrorDiseno('');
+    setAvisoDiseno('');
+  }
+
+  function cancelarArchivoPendiente() {
+    if (previewPendienteUrl) URL.revokeObjectURL(previewPendienteUrl);
+    setArchivoPendiente(null);
+    setPreviewPendienteUrl(null);
+  }
+
+  async function confirmarSubidaPendiente() {
+    if (!archivoPendiente) return;
+    await subirDisenoSemanal(archivoPendiente);
+    cancelarArchivoPendiente();
   }
 
   async function cargarDisenosAgente(usuarioId: string) {
@@ -178,6 +203,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     if (!seleccionado || !usuario) return;
     setSubiendoDiseno(true);
     setErrorDiseno('');
+    setAvisoDiseno('');
     try {
       const tipo: 'imagen' | 'video' = file.type.startsWith('video/') ? 'video' : 'imagen';
       const timestamp = Date.now();
@@ -195,11 +221,11 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
           const thumbBlob = await generarThumbnailVideo(file);
           const thumbPath = `equipo-mkt/${seleccionado.id}/${timestamp}-thumb.jpg`;
           const { error: thumbErr } = await supabase.storage.from('publicidad-disenos').upload(thumbPath, thumbBlob);
-          if (!thumbErr) {
-            thumbnailUrl = supabase.storage.from('publicidad-disenos').getPublicUrl(thumbPath).data.publicUrl;
-          }
-        } catch {
-          // si falla la miniatura, el video se sube igual sin vista previa
+          if (thumbErr) throw thumbErr;
+          thumbnailUrl = supabase.storage.from('publicidad-disenos').getPublicUrl(thumbPath).data.publicUrl;
+        } catch (thumbErr: any) {
+          console.warn('[MarketingPremiumAdmin] No se pudo generar miniatura del video:', thumbErr);
+          setAvisoDiseno(`El video se subió, pero no se pudo generar su miniatura (${thumbErr?.message || thumbErr}).`);
         }
       }
 
@@ -710,45 +736,81 @@ ALTER TABLE usuarios
                   className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                 />
 
-                <label
-                  onDragOver={e => { e.preventDefault(); if (!subiendoDiseno) setArrastrandoDiseno(true); }}
-                  onDragLeave={e => { e.preventDefault(); setArrastrandoDiseno(false); }}
-                  onDrop={e => {
-                    e.preventDefault();
-                    setArrastrandoDiseno(false);
-                    if (subiendoDiseno) return;
-                    const file = e.dataTransfer.files?.[0];
-                    if (file) subirDisenoSemanal(file);
-                  }}
-                  className={`flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl border-2 border-dashed cursor-pointer text-sm font-medium transition ${
-                  subiendoDiseno
-                    ? 'border-neutral-200 dark:border-white/10 text-neutral-400 cursor-not-allowed'
-                    : arrastrandoDiseno
+                {archivoPendiente && previewPendienteUrl ? (
+                  <div className="rounded-xl border-2 border-purple-300 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10 p-3 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-neutral-200 dark:bg-white/10 shrink-0 flex items-center justify-center">
+                        {archivoPendiente.type.startsWith('video/') ? (
+                          <video src={previewPendienteUrl} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <img src={previewPendienteUrl} alt="" className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-neutral-800 dark:text-white truncate">{archivoPendiente.name}</p>
+                        <p className="text-xs text-neutral-400">{(archivoPendiente.size / 1024 / 1024).toFixed(1)} MB · confirma para subirlo</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={confirmarSubidaPendiente}
+                        disabled={subiendoDiseno}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition disabled:opacity-60"
+                      >
+                        {subiendoDiseno ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
+                        ) : (
+                          <><CheckCircle className="w-4 h-4" /> Confirmar subida</>
+                        )}
+                      </button>
+                      <button
+                        onClick={cancelarArchivoPendiente}
+                        disabled={subiendoDiseno}
+                        className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 text-sm text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/5 transition disabled:opacity-60"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    onDragOver={e => { e.preventDefault(); setArrastrandoDiseno(true); }}
+                    onDragLeave={e => { e.preventDefault(); setArrastrandoDiseno(false); }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      setArrastrandoDiseno(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) seleccionarArchivoPendiente(file);
+                    }}
+                    className={`flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl border-2 border-dashed cursor-pointer text-sm font-medium transition ${
+                    arrastrandoDiseno
                       ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700'
                       : 'border-purple-300 dark:border-purple-800 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/10'
-                }`}>
-                  {subiendoDiseno ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
-                  ) : (
-                    <><Upload className="w-4 h-4" /> {arrastrandoDiseno ? 'Suelta aquí' : 'Subir imagen o video (o arrástralo aquí)'}</>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    className="hidden"
-                    disabled={subiendoDiseno}
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) subirDisenoSemanal(file);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
+                  }`}>
+                    <Upload className="w-4 h-4" /> {arrastrandoDiseno ? 'Suelta aquí' : 'Subir imagen o video (o arrástralo aquí)'}
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) seleccionarArchivoPendiente(file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
 
                 {errorDiseno && (
                   <p className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
                     {errorDiseno}
+                  </p>
+                )}
+                {avisoDiseno && (
+                  <p className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    {avisoDiseno}
                   </p>
                 )}
 
