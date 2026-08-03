@@ -66,10 +66,15 @@ function vlookup(table: any[], key: any, valueCol: number = 1, tableName: string
 }
 
 function vlookupByAge(table: any[], edad: number, sexo: string): number {
-  const row = table.find(r => Number(r.col_0) === edad);
+  const row = table.find(r => r.col_0 !== null && r.col_0 !== '' && Number(r.col_0) === edad);
   if (!row) {
-    const minAge = Math.min(...table.map(r => Number(r.col_0)));
-    const maxAge = Math.max(...table.map(r => Number(r.col_0)));
+    // Solo filas con edad numérica: la tabla trae un encabezado ("Edad") y
+    // posibles filas vacías que producirían NaN en el min/max.
+    const edades = table
+      .map(r => Number(r.col_0))
+      .filter(n => Number.isFinite(n));
+    const minAge = edades.length ? Math.min(...edades) : 0;
+    const maxAge = edades.length ? Math.max(...edades) : 0;
     throw new Error(
       `Edad ${edad} no encontrada en tabla de tarifas.\n` +
       `Rango válido: ${minAge} - ${maxAge} años`

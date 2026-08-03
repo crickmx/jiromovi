@@ -480,9 +480,9 @@ export default function MulticotizadorGMM() {
                   <input
                     type="number"
                     min={0}
-                    max={99}
+                    max={100}
                     value={person.age}
-                    onChange={e => updatePerson(person.id, 'age', Number(e.target.value))}
+                    onChange={e => updatePerson(person.id, 'age', Math.max(0, Math.min(100, Math.floor(Number(e.target.value) || 0))))}
                     className="px-2 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                   />
                   <button

@@ -179,10 +179,15 @@ function vlookup(
  * Búsqueda por edad y sexo
  */
 function vlookupByAge(table: any[], edad: number, sexo: string): number {
-  const row = table.find(r => Number(r.col_0) === edad);
+  const row = table.find(r => r.col_0 !== null && r.col_0 !== '' && Number(r.col_0) === edad);
   if (!row) {
-    const minAge = Math.min(...table.map(r => Number(r.col_0)));
-    const maxAge = Math.max(...table.map(r => Number(r.col_0)));
+    // Solo considerar filas con edad numérica: la tabla incluye una fila de
+    // encabezado ("Edad") y posibles filas vacías que romperían el min/max con NaN.
+    const edades = table
+      .map(r => Number(r.col_0))
+      .filter(n => Number.isFinite(n));
+    const minAge = edades.length ? Math.min(...edades) : 0;
+    const maxAge = edades.length ? Math.max(...edades) : 0;
     throw new Error(
       `[CAPA 1 - LOOKUP] Edad ${edad} no encontrada.\n` +
       `Rango válido: ${minAge} - ${maxAge} años`
