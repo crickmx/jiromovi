@@ -2,6 +2,10 @@ import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { getMailboxPassword, setMailboxPassword } from '../_shared/emailCredentials.ts';
 import { emailCorsHeaders, forbiddenOriginResponse } from '../_shared/emailCors.ts';
 
+// El runtime de Supabase Edge Functions expone EdgeRuntime globalmente para
+// correr tareas en segundo plano tras responder (waitUntil).
+declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void } | undefined;
+
 // ── Types ─────────────────────────────────────────────────────────
 
 interface ImapFolder {
@@ -397,16 +401,36 @@ interface SmtpAttachment {
   content: string; // base64 encoded
 }
 
+// Tiempos límite del envío. Sin ellos, un servidor de correo colgado deja el
+// request "Enviando…" indefinidamente — la causa principal de "tarda mucho".
+const SMTP_CONNECT_TIMEOUT_MS = 20000;
+const SMTP_READ_TIMEOUT_MS = 30000;
+
+// Aborta una promesa si excede el tiempo dado (falla rápido en vez de colgarse).
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Tiempo de espera agotado (${label})`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function smtpSend(email: string, password: string, fromName: string, to: string[], cc: string[], bcc: string[], subject: string, bodyHtml: string, bodyText: string, attachments: SmtpAttachment[] = [], inReplyTo?: string, references?: string): Promise<void> {
-  const rawConn = await Deno.connect({ hostname: 'smtp.ionos.mx', port: 465, transport: 'tcp' });
-  const conn = await Deno.startTls(rawConn, { hostname: 'smtp.ionos.mx' });
+  const rawConn = await withTimeout(
+    Deno.connect({ hostname: 'smtp.ionos.mx', port: 465, transport: 'tcp' }),
+    SMTP_CONNECT_TIMEOUT_MS, 'conexión SMTP',
+  );
+  const conn = await withTimeout(
+    Deno.startTls(rawConn, { hostname: 'smtp.ionos.mx' }),
+    SMTP_CONNECT_TIMEOUT_MS, 'TLS SMTP',
+  );
 
   const read = async (): Promise<string> => {
     const buf = new Uint8Array(8192);
     let result = '';
     let attempts = 0;
     while (attempts++ < 10) {
-      const n = await conn.read(buf);
+      const n = await withTimeout(conn.read(buf), SMTP_READ_TIMEOUT_MS, 'respuesta SMTP');
       if (n === null) break;
       result += new TextDecoder().decode(buf.subarray(0, n));
       if (/^\d{3} /m.test(result)) break;
@@ -503,6 +527,60 @@ async function smtpSend(email: string, password: string, fromName: string, to: s
 }
 
 // ── Build RFC822 for IMAP APPEND ─────────────────────────────────
+
+// Guarda una copia del correo enviado en la carpeta "Enviados" vía IMAP APPEND.
+// Es best-effort (nunca hace fallar el envío) y corre en segundo plano tras
+// responder al cliente — abrir esta segunda sesión IMAP era la mitad del tiempo
+// de "Enviando…", y el usuario no necesita esperarla para saber que se envió.
+async function appendToSentFolder(
+  creds: { email: string; password: string; nombre: string },
+  msg: { to: string[]; cc: string[]; subject: string; bodyHtml: string; bodyText: string; inReplyTo?: string; references?: string },
+): Promise<void> {
+  try {
+    const sentMsg = buildRfc822Message(creds.email, creds.nombre, msg.to, msg.cc, msg.subject, msg.bodyHtml, msg.bodyText, msg.inReplyTo, msg.references);
+    const sentMsgBytes = new TextEncoder().encode(sentMsg);
+    const conn = await imapConnect('imap.ionos.mx', 993);
+    if (await imapLogin(conn, creds.email, creds.password)) {
+      // Detect the Sent folder from LIST
+      const listResp = await imapCommand(conn, 'LIST "" "*"');
+      let sentFolder = 'Sent';
+      const sentFolderCandidates = ['Sent', 'Enviados', 'Sent Items', 'Sent Messages', 'INBOX.Sent'];
+      for (const sf of sentFolderCandidates) {
+        if (listResp.includes(`"${sf}"`)) {
+          sentFolder = sf;
+          break;
+        }
+      }
+      // IMAP APPEND with literal
+      const tag = `A${++tagCounter}`;
+      const appendLine = `${tag} APPEND "${sentFolder}" (\\Seen) {${sentMsgBytes.length}}\r\n`;
+      await conn.write(new TextEncoder().encode(appendLine));
+      // Read server response - expect continuation "+"
+      const waitBuf = new Uint8Array(4096);
+      let waitResp = '';
+      const waitStart = Date.now();
+      while (Date.now() - waitStart < 5000) {
+        const wn = await Promise.race([
+          conn.read(waitBuf),
+          new Promise<null>(r => setTimeout(() => r(null), 5000)),
+        ]);
+        if (wn === null || typeof wn !== 'number') break;
+        waitResp += new TextDecoder().decode(waitBuf.subarray(0, wn));
+        if (waitResp.includes('+') || waitResp.includes(tag)) break;
+      }
+      if (waitResp.includes('+')) {
+        // Server ready to receive literal data
+        await conn.write(sentMsgBytes);
+        await conn.write(new TextEncoder().encode('\r\n'));
+        // Wait for completion
+        await imapReadUntilTag(conn, tag);
+      }
+      await imapLogout(conn);
+    } else {
+      try { conn.close(); } catch { /* ignore */ }
+    }
+  } catch { /* best-effort: don't fail the send if APPEND fails */ }
+}
 
 function buildRfc822Message(fromEmail: string, fromName: string, to: string[], cc: string[], subject: string, bodyHtml: string, bodyText: string, inReplyTo?: string, references?: string): string {
   const altBoundary = `----=_Alt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -657,51 +735,21 @@ Deno.serve(async (req: Request) => {
         }));
         await smtpSend(creds.email, creds.password, creds.nombre, body.to, body.cc || [], body.bcc || [], body.subject, body.bodyHtml, body.bodyText || '', attachments, body.inReplyTo, body.references);
 
-        // Append sent message to Sent folder via IMAP
-        try {
-          const sentMsg = buildRfc822Message(creds.email, creds.nombre, body.to, body.cc || [], body.subject, body.bodyHtml, body.bodyText || '', body.inReplyTo, body.references);
-          const sentMsgBytes = new TextEncoder().encode(sentMsg);
-          const conn = await imapConnect('imap.ionos.mx', 993);
-          if (await imapLogin(conn, creds.email, creds.password)) {
-            // Detect the Sent folder from LIST
-            const listResp = await imapCommand(conn, 'LIST "" "*"');
-            let sentFolder = 'Sent';
-            const sentFolderCandidates = ['Sent', 'Enviados', 'Sent Items', 'Sent Messages', 'INBOX.Sent'];
-            for (const sf of sentFolderCandidates) {
-              if (listResp.includes(`"${sf}"`)) {
-                sentFolder = sf;
-                break;
-              }
-            }
-            // IMAP APPEND with literal
-            const tag = `A${++tagCounter}`;
-            const appendLine = `${tag} APPEND "${sentFolder}" (\\Seen) {${sentMsgBytes.length}}\r\n`;
-            await conn.write(new TextEncoder().encode(appendLine));
-            // Read server response - expect continuation "+"
-            const waitBuf = new Uint8Array(4096);
-            let waitResp = '';
-            const waitStart = Date.now();
-            while (Date.now() - waitStart < 5000) {
-              const wn = await Promise.race([
-                conn.read(waitBuf),
-                new Promise<null>(r => setTimeout(() => r(null), 5000)),
-              ]);
-              if (wn === null || typeof wn !== 'number') break;
-              waitResp += new TextDecoder().decode(waitBuf.subarray(0, wn));
-              if (waitResp.includes('+') || waitResp.includes(tag)) break;
-            }
-            if (waitResp.includes('+')) {
-              // Server ready to receive literal data
-              await conn.write(sentMsgBytes);
-              await conn.write(new TextEncoder().encode('\r\n'));
-              // Wait for completion
-              await imapReadUntilTag(conn, tag);
-            }
-            await imapLogout(conn);
+        // Guardar la copia en "Enviados" en segundo plano: la respuesta al
+        // cliente ya no espera esta segunda sesión IMAP (era la mitad de la
+        // latencia percibida). EdgeRuntime mantiene vivo el worker hasta que
+        // termina la tarea aunque ya hayamos respondido.
+        {
+          const sentCopyTask = appendToSentFolder(
+            { email: creds.email, password: creds.password, nombre: creds.nombre },
+            { to: body.to, cc: body.cc || [], subject: body.subject, bodyHtml: body.bodyHtml, bodyText: body.bodyText || '', inReplyTo: body.inReplyTo, references: body.references },
+          );
+          if (typeof EdgeRuntime !== 'undefined' && typeof EdgeRuntime.waitUntil === 'function') {
+            EdgeRuntime.waitUntil(sentCopyTask);
           } else {
-            try { conn.close(); } catch {}
+            await sentCopyTask;
           }
-        } catch { /* best-effort: don't fail the send if APPEND fails */ }
+        }
 
         result = { success: true };
         break;

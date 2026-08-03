@@ -65,14 +65,19 @@ export function RecipientsInput({
     else onChange([...value, c.email]);
   };
 
+  // Al enfocar el campo sin escribir, mostramos el directorio (primeros
+  // contactos) para que sea evidente que existe y se puede elegir de ahí —
+  // antes no aparecía nada hasta teclear, y el usuario terminaba buscando el
+  // correo por fuera para copiarlo y pegarlo.
+  const isDirectoryPreview = !input.trim();
   const suggestions = useMemo(() => {
     const q = input.trim().toLowerCase();
-    if (!q) return [];
     const added = new Set(value.map((v) => v.toLowerCase()));
-    return contacts
-      .filter((c) => !added.has(c.email.toLowerCase()))
+    const available = contacts.filter((c) => !added.has(c.email.toLowerCase()));
+    if (!q) return available.slice(0, 8);
+    return available
       .filter((c) => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q))
-      .slice(0, 6);
+      .slice(0, 8);
   }, [input, contacts, value]);
 
   const pickerList = useMemo(() => {
@@ -96,7 +101,10 @@ export function RecipientsInput({
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',' || e.key === ';' || e.key === 'Tab') {
-      if (openSug && suggestions[highlight]) {
+      // Solo agregamos por teclado si el usuario escribió algo: sobre el
+      // directorio (input vacío) un Enter accidental no debe meter un
+      // destinatario que no eligió.
+      if (input.trim() && openSug && suggestions[highlight]) {
         e.preventDefault();
         addEmail(suggestions[highlight].email);
         return;
@@ -170,9 +178,15 @@ export function RecipientsInput({
           </button>
         </div>
 
-        {/* Autocompletar mientras escribes */}
+        {/* Autocompletar mientras escribes / directorio al enfocar */}
         {openSug && suggestions.length > 0 && (
           <div className="absolute z-[60] left-0 right-0 mt-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg overflow-hidden">
+            {isDirectoryPreview && (
+              <div className="px-3 py-1.5 border-b border-neutral-100 dark:border-neutral-700 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                <ContactRound className="w-3 h-3" />
+                Directorio · escribe para buscar
+              </div>
+            )}
             {suggestions.map((c, i) => (
               <button
                 key={c.id}
