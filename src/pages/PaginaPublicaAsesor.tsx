@@ -292,6 +292,13 @@ export default function PaginaPublicaAsesor() {
     } finally { setLoading(false); }
   }
 
+  function seleccionarSeguroYCotizar(displayName: string) {
+    setFormData(p => ({ ...p, seguro_interes: displayName }));
+    setSubmitStatus('idle');
+    const formEl = document.getElementById('cotizar-form');
+    if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   async function handleSubmitLead(e: React.FormEvent) {
     e.preventDefault();
     if (!slug || !formData.nombre || !formData.celular || !formData.email || !formData.seguro_interes) return;
@@ -742,7 +749,8 @@ export default function PaginaPublicaAsesor() {
               {/* DERECHA: formulario de cotización */}
               <div className="lg:sticky lg:top-24">
                 <div
-                  className="bg-white rounded-2xl border shadow-xl overflow-hidden"
+                  id="cotizar-form"
+                  className="bg-white rounded-2xl border shadow-xl overflow-hidden scroll-mt-24"
                   style={{ borderColor: `${primaryColor}20` }}
                 >
                   {/* Cabecera del formulario con color primario */}
@@ -961,12 +969,11 @@ export default function PaginaPublicaAsesor() {
                 {visibleFeatured.map(link => {
                   const IconComponent = (LucideIcons as any)[link.meta.icon];
                   return (
-                    <a
+                    <button
                       key={link.slug}
-                      href={link.publicUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group bg-white rounded-2xl border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-lg p-6 transition-all duration-300 hover:-translate-y-1 block no-underline"
+                      type="button"
+                      onClick={() => seleccionarSeguroYCotizar(link.displayName)}
+                      className="group bg-white rounded-2xl border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-lg p-6 transition-all duration-300 hover:-translate-y-1 block no-underline text-left w-full"
                     >
                       {IconComponent && (
                         <div
@@ -986,7 +993,7 @@ export default function PaginaPublicaAsesor() {
                       >
                         Cotizar ahora <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </span>
-                    </a>
+                    </button>
                   );
                 })}
               </div>
@@ -1082,12 +1089,11 @@ export default function PaginaPublicaAsesor() {
                     {paginatedLinks.map(link => {
                       const IconComponent = (LucideIcons as any)[link.meta.icon];
                       return (
-                        <a
+                        <button
                           key={link.slug}
-                          href={link.publicUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group flex items-center gap-3 bg-white px-4 py-3.5 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all no-underline"
+                          type="button"
+                          onClick={() => seleccionarSeguroYCotizar(link.displayName)}
+                          className="group flex items-center gap-3 bg-white px-4 py-3.5 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all no-underline text-left w-full"
                         >
                           <div
                             className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
@@ -1105,7 +1111,7 @@ export default function PaginaPublicaAsesor() {
                           >
                             Cotizar
                           </span>
-                        </a>
+                        </button>
                       );
                     })}
                   </div>
