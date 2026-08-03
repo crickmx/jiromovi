@@ -211,7 +211,7 @@ function BnvParams({ input, onChange }: { input: BnvQuoteInput; onChange: (p: Pa
       </Field>
       <Field label="Deducible">
         <select value={input.deducible} onChange={e => onChange({ deducible: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {BNV_DEDUCIBLES.map(v => <option key={v} value={v}>${v.toLocaleString()}</option>)}
+          {BNV_DEDUCIBLES.map(v => <option key={v} value={v}>${(v * 1000).toLocaleString()}</option>)}
         </select>
       </Field>
       <Field label="Coaseguro (%)">
@@ -244,7 +244,7 @@ function BnpParams({ input, onChange }: { input: BnpQuoteInput; onChange: (p: Pa
       </Field>
       <Field label="Deducible">
         <select value={input.deducible} onChange={e => onChange({ deducible: Number(e.target.value) })} className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/30">
-          {BNP_DEDUCIBLES.map(v => <option key={v} value={v}>${v.toLocaleString()}</option>)}
+          {BNP_DEDUCIBLES.map(v => <option key={v} value={v}>${(v * 1000).toLocaleString()}</option>)}
         </select>
       </Field>
       <Field label="Coaseguro (%)">

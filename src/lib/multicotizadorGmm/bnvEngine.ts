@@ -87,32 +87,55 @@ export function calculateBnv(
       };
     }
 
-    // Build a lookup: filter rates matching the requested S/D/C/TC/region, index by age
-    const targetSuma = input.suma_asegurada;
-    const targetDed = input.deducible;
-    const targetCoas = input.coaseguro;
-    const targetTopeK = input.tope_coaseguro ? Math.round(input.tope_coaseguro / 1000) : 0;
+    // Filtrar por la combinación pedida (S/D/C/región), indexar por edad.
+    // Coaccionamos a número en ambos lados: si el input llega como string (p.ej. de
+    // una cotización guardada) el === estricto fallaba en silencio y no encontraba nada.
+    const targetSuma = Number(input.suma_asegurada);
+    const targetDed = Number(input.deducible);
+    const targetCoas = Number(input.coaseguro);
+    const targetTopeK = input.tope_coaseguro ? Math.round(Number(input.tope_coaseguro) / 1000) : 0;
 
-    const ratesByAge = new Map<number, number>();
+    // Agrupar candidatos (misma SA/Ded/Coas/Región) por tope de coaseguro → edad → tasa.
+    // El tope se resuelve por el más cercano si no hay match exacto, en lugar de fallar
+    // duro (mismo criterio de degradado que usa el motor BNP con nearestKey).
+    const byTope = new Map<number, Map<number, number>>();
 
     for (const r of rates) {
       const parsed = parsePlanName(r.plan_name);
       if (!parsed) continue;
-      if (parsed.suma !== targetSuma) continue;
-      if (parsed.deducible !== targetDed) continue;
-      if (parsed.coaseguro !== targetCoas) continue;
-      // TC matching: when coaseguro > 0, plans include TC; match by tope_coaseguro
-      if (targetCoas > 0) {
-        if (parsed.topeCoaseguro == null) continue;
-        if (targetTopeK > 0 && parsed.topeCoaseguro !== targetTopeK) continue;
-      }
+      if (Number(parsed.suma) !== targetSuma) continue;
+      if (Number(parsed.deducible) !== targetDed) continue;
+      if (Number(parsed.coaseguro) !== targetCoas) continue;
       if (!matchesRegion(r.region, input.region_zone)) continue;
       const rate = Number(r.rate);
       if (isNaN(rate) || rate <= 0) continue;
-      ratesByAge.set(r.age, rate);
+      const topeK = parsed.topeCoaseguro == null ? 0 : Number(parsed.topeCoaseguro);
+      if (!byTope.has(topeK)) byTope.set(topeK, new Map<number, number>());
+      byTope.get(topeK)!.set(Number(r.age), rate);
     }
 
-    if (ratesByAge.size === 0) {
+    // Elegir el grupo de tope adecuado
+    let ratesByAge: Map<number, number> | undefined;
+    if (byTope.size > 0) {
+      if (targetCoas <= 0) {
+        // Coaseguro 0% → el tope no aplica (esos planes no llevan TC)
+        ratesByAge = byTope.get(0) ?? [...byTope.values()][0];
+      } else if (targetTopeK > 0 && byTope.has(targetTopeK)) {
+        ratesByAge = byTope.get(targetTopeK);
+      } else {
+        // Tope más cercano disponible para esta combinación
+        const topesDisponibles = [...byTope.keys()].filter(t => t > 0);
+        if (topesDisponibles.length > 0) {
+          const nearestTope = topesDisponibles.reduce((prev, curr) =>
+            Math.abs(curr - targetTopeK) < Math.abs(prev - targetTopeK) ? curr : prev, topesDisponibles[0]);
+          ratesByAge = byTope.get(nearestTope);
+        } else {
+          ratesByAge = [...byTope.values()][0];
+        }
+      }
+    }
+
+    if (!ratesByAge || ratesByAge.size === 0) {
       return {
         product: 'BNV', people_results: [], prima_anual_total: 0, totals: {} as any,
         tariff_package_id: packageConfig.id,

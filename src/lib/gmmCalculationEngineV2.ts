@@ -765,10 +765,10 @@ export function calculateQuoteV2(
   const insureds: InsuredCalculation[] = input.insureds.map((insured, index) => {
     const edad = insured.edad;
 
-    if (!edad || edad <= 0) {
+    if (edad === null || edad === undefined || !Number.isFinite(edad) || edad < 0) {
       throw new Error(
-        `[VALIDACIÓN] Edad obligatoria para asegurado "${insured.nombre}".\n` +
-        `Proporcione un valor de edad válido (número entero positivo).`
+        `[VALIDACIÓN] Edad inválida para asegurado "${insured.nombre}".\n` +
+        `Proporcione un valor de edad válido (número entero mayor o igual a 0).`
       );
     }
 
