@@ -113,6 +113,11 @@ body {
 #root {
   width: 100%;
   height: 100vh;
+  /* En móvil, 100vh incluye el área tras la barra del navegador → el shell queda
+     más alto que lo visible y, al ser overflow:hidden, la parte inferior (barra de
+     navegación / pie del menú) se corta y no hay forma de scrollear. 100dvh usa la
+     altura del viewport realmente visible. */
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -120,6 +125,14 @@ body {
 #root.public-page {
   height: auto;
   overflow: visible;
+}
+
+/* Shell principal de la app: llena el viewport VISIBLE.
+   Usa 100dvh (excluye la barra del navegador en móvil) con fallback a 100vh
+   para navegadores viejos sin soporte de unidades dinámicas. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
 }
 
 /* ────────────────────────────────────────────────────────────

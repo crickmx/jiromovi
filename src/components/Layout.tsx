@@ -85,7 +85,7 @@ export function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-[#0e0e10]">
+    <div className="app-shell flex overflow-hidden bg-neutral-50 dark:bg-[#0e0e10]">
       {/* Impersonation banner — fixed top, only during active session */}
       <ImpersonationBanner />
       {isBeta && <BetaBanner />}
