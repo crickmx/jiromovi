@@ -14,6 +14,10 @@ interface PageHeaderProps {
   backLabel?: string;
   onBack?: () => void;
   badge?: ReactNode;
+  /** Optional breadcrumb row rendered above the title (e.g. Workspace › Section). Pure orientation, adds no routes. */
+  breadcrumb?: ReactNode;
+  /** When true, the header sticks to the top of the scroll container (desktop long lists). Opt-in. */
+  sticky?: boolean;
 }
 
 export function PageHeader({
@@ -27,6 +31,8 @@ export function PageHeader({
   backLabel,
   onBack,
   badge,
+  breadcrumb,
+  sticky = false,
 }: PageHeaderProps) {
   const navigate = useNavigate();
 
@@ -41,7 +47,23 @@ export function PageHeader({
   const showBack = backTo || onBack;
 
   return (
-    <div className={cn("flex flex-col gap-4 sm:gap-5", className)}>
+    <div
+      className={cn(
+        "flex flex-col gap-4 sm:gap-5",
+        sticky &&
+          "sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-3 border-b border-[color:var(--color-border-subtle)] bg-[var(--color-surface-overlay)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface-overlay)]",
+        className
+      )}
+    >
+      {breadcrumb && (
+        <nav
+          aria-label="Ruta de navegación"
+          className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 dark:text-white/40 -mb-1"
+        >
+          {breadcrumb}
+        </nav>
+      )}
+
       {showBack && (
         <button
           onClick={handleBack}

@@ -11,6 +11,8 @@ interface FilterBarProps {
   hasActiveFilters?: boolean;
   onClearFilters?: () => void;
   actions?: ReactNode;
+  /** When true, keeps the filter bar pinned to the top while a long list scrolls (desktop). Opt-in. */
+  sticky?: boolean;
 }
 
 export function FilterBar({
@@ -22,10 +24,12 @@ export function FilterBar({
   hasActiveFilters,
   onClearFilters,
   actions,
+  sticky = false,
 }: FilterBarProps) {
   return (
     <div className={cn(
       "bg-white dark:bg-neutral-800/60 rounded-xl border border-neutral-200/70 dark:border-white/10 p-3 sm:p-4",
+      sticky && "sticky top-0 z-10 shadow-sm",
       className
     )}>
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">

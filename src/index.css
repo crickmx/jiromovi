@@ -199,7 +199,7 @@ body {
 
 /* Nav icon buttons */
 .sidebar-rail-btn {
-  color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.62);
   transition: background 0.15s, color 0.15s, transform 0.1s;
 }
 .sidebar-rail-btn:hover {
@@ -207,9 +207,10 @@ body {
   color: rgba(255,255,255,0.90);
 }
 .sidebar-rail-btn.active {
-  background: rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.16);
   color: #ffffff;
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.20) inset;
+  /* Stronger active marker: 3px accent bar on the left + subtle full ring */
+  box-shadow: inset 3px 0 0 0 #ffffff, inset 0 0 0 1px rgba(255,255,255,0.10);
 }
 
 /* Chava AI dedicated button */

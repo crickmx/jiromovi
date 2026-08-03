@@ -39,7 +39,9 @@ export function Layout({ children }: LayoutProps) {
   const hasTopBanner = isImpersonating || isBeta || esUsuarioBeta;
   const bannerCount = (isImpersonating ? 1 : 0) + (isBeta || esUsuarioBeta ? 1 : 0);
   const bannerPt = bannerCount === 2 ? 'pt-[72px]' : bannerCount === 1 ? 'pt-9' : '';
-  const [secondaryCollapsed, setSecondaryCollapsed] = useState(false);
+  const [secondaryCollapsed, setSecondaryCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('movi:secondaryCollapsed') === '1'; } catch { return false; }
+  });
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const userRole = (usuario?.rol as UserRole) || 'Agente';
@@ -111,7 +113,11 @@ export function Layout({ children }: LayoutProps) {
             activeItem={activeItem}
             userRole={userRole}
             collapsed={secondaryCollapsed}
-            onToggleCollapse={() => setSecondaryCollapsed(c => !c)}
+            onToggleCollapse={() => setSecondaryCollapsed(c => {
+              const next = !c;
+              try { localStorage.setItem('movi:secondaryCollapsed', next ? '1' : '0'); } catch { /* ignore */ }
+              return next;
+            })}
             isModuleVisible={isModuleVisible}
             oficinaId={oficinaId}
             badgeCounts={badgeCounts}
