@@ -53,7 +53,7 @@ export default function FormulariosCotizacion() {
   }, [] as { category: FormCategory; items: QuoteFormTemplate[] }[]);
 
   const startForm = (template: QuoteFormTemplate) => {
-    navigate(`/cotizar/formularios/nuevo/${template.form_type}`);
+    navigate(`/cotizar/formularios/${template.form_type}/wizard`);
   };
 
   return (
