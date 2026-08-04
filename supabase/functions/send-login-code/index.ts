@@ -9,15 +9,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const CHARSET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 6;
 const EXPIRES_MINUTES = 10;
 const RATE_LIMIT_MINUTES = 2;
 
+// Código de acceso: 6 dígitos (0-9). Solo numérico para evitar confusiones al
+// teclear (S/5, Z/2, B/8, G/6…) que provocaban códigos "incorrectos".
 function generateCode(): string {
-  const arr = new Uint8Array(CODE_LENGTH);
-  crypto.getRandomValues(arr);
-  return Array.from(arr).map(b => CHARSET[b % CHARSET.length]).join('');
+  const digits: string[] = [];
+  const buf = new Uint8Array(1);
+  while (digits.length < CODE_LENGTH) {
+    crypto.getRandomValues(buf);
+    // 250 = 25*10: descartar 250-255 elimina el sesgo de módulo hacia 0-5,
+    // dejando cada dígito con probabilidad uniforme.
+    if (buf[0] >= 250) continue;
+    digits.push(String(buf[0] % 10));
+  }
+  return digits.join('');
 }
 
 async function sha256(text: string): Promise<string> {
