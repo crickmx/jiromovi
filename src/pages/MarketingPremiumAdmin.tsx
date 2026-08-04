@@ -26,6 +26,7 @@ interface Agente {
   mkt_premium_fecha_pago: string | null;
   mkt_premium_plan: PlanTipo | null;
   mkt_premium_metodo_pago: MetodoPago | null;
+  mkt_premium_parcialidades: number | null;
   oficina: { nombre: string } | null;
 }
 
@@ -35,6 +36,7 @@ interface FormData {
   mkt_premium_metodo_pago: MetodoPago | '';
   mkt_premium_fecha_inicio: string;
   mkt_premium_fecha_pago: string;
+  mkt_premium_parcialidades: string;
 }
 
 const METODOS: { value: MetodoPago; label: string }[] = [
@@ -72,6 +74,7 @@ function emptyForm(a?: Agente | null): FormData {
     mkt_premium_metodo_pago: a?.mkt_premium_metodo_pago ?? '',
     mkt_premium_fecha_inicio: a?.mkt_premium_fecha_inicio ?? '',
     mkt_premium_fecha_pago: a?.mkt_premium_fecha_pago ?? '',
+    mkt_premium_parcialidades: a?.mkt_premium_parcialidades ? String(a.mkt_premium_parcialidades) : '',
   };
 }
 
@@ -121,7 +124,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     // Intentar query completa (requiere que las migraciones estén aplicadas)
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, oficinas:oficina_id(nombre)')
+      .select('id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, oficinas:oficina_id(nombre)')
       .eq('activo', true)
       .order('nombre');
 
@@ -140,6 +143,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
           mkt_premium_fecha_pago: null,
           mkt_premium_plan: null,
           mkt_premium_metodo_pago: null,
+          mkt_premium_parcialidades: null,
           oficina: Array.isArray(u.oficinas) ? u.oficinas[0] ?? null : u.oficinas ?? null,
         }))
       );
@@ -284,10 +288,15 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     const fechaInicio = form.mkt_premium_fecha_inicio || 'Sin especificar';
     const fechaPago = form.mkt_premium_fecha_pago || 'Sin especificar';
 
+    const parcialidades = form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_parcialidades
+      ? `${form.mkt_premium_parcialidades}`
+      : null;
+
     const instrucciones =
       `Cobro de Marketing Premium activado para ${agente.nombre} ${agente.apellidos}.\n` +
       `Plan: ${plan}\n` +
       `Método de pago: ${metodo}\n` +
+      (parcialidades ? `Diferido a: ${parcialidades} parcialidades\n` : '') +
       `Fecha de inicio: ${fechaInicio}\n` +
       `Fecha de próximo pago: ${fechaPago}\n` +
       `Oficina: ${agente.oficina?.nombre ?? '—'}`;
@@ -313,6 +322,10 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
         setErrorValidacion('Para activar el premium debes seleccionar la fecha de inicio y la fecha de pago.');
         return;
       }
+      if (form.mkt_premium_metodo_pago === 'comisiones' && !form.mkt_premium_parcialidades) {
+        setErrorValidacion('Para diferir a comisiones debes indicar en cuántas parcialidades.');
+        return;
+      }
     }
     setErrorValidacion('');
 
@@ -332,11 +345,14 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       payload.mkt_premium_metodo_pago = form.mkt_premium_metodo_pago || null;
       payload.mkt_premium_fecha_inicio = form.mkt_premium_fecha_inicio || null;
       payload.mkt_premium_fecha_pago = form.mkt_premium_fecha_pago || null;
+      payload.mkt_premium_parcialidades = form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_parcialidades
+        ? parseInt(form.mkt_premium_parcialidades, 10)
+        : null;
     }
 
     const selectCols = needsMigration
       ? 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, oficinas:oficina_id(nombre)'
-      : 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, oficinas:oficina_id(nombre)';
+      : 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, oficinas:oficina_id(nombre)';
 
     const { data, error } = await supabase
       .from('usuarios')
@@ -386,7 +402,8 @@ ALTER TABLE usuarios
   ADD COLUMN IF NOT EXISTS mkt_premium_fecha_inicio date,
   ADD COLUMN IF NOT EXISTS mkt_premium_fecha_pago date,
   ADD COLUMN IF NOT EXISTS mkt_premium_plan text CHECK (mkt_premium_plan IN ('mensual', 'anual')),
-  ADD COLUMN IF NOT EXISTS mkt_premium_metodo_pago text CHECK (mkt_premium_metodo_pago IN ('deposito_jiro', 'bono_anual', 'comisiones'));`;
+  ADD COLUMN IF NOT EXISTS mkt_premium_metodo_pago text CHECK (mkt_premium_metodo_pago IN ('deposito_jiro', 'bono_anual', 'comisiones')),
+  ADD COLUMN IF NOT EXISTS mkt_premium_parcialidades integer CHECK (mkt_premium_parcialidades IS NULL OR mkt_premium_parcialidades BETWEEN 1 AND 12);`;
 
   function copiarSQL() {
     navigator.clipboard.writeText(MIGRATION_SQL);
@@ -643,6 +660,37 @@ ALTER TABLE usuarios
                     ))}
                   </div>
                 </div>
+
+                {/* Parcialidades — solo aplica cuando se difiere a comisiones */}
+                {form.mkt_premium_metodo_pago === 'comisiones' && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className={`text-xs font-medium uppercase tracking-wide ${
+                      form.plan_mkt_premium && !form.mkt_premium_parcialidades
+                        ? 'text-red-500'
+                        : 'text-neutral-500 dark:text-white/50'
+                    }`}>
+                      Número de parcialidades {form.plan_mkt_premium && !form.mkt_premium_parcialidades && '— requerido'}
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={12}
+                      step={1}
+                      value={form.mkt_premium_parcialidades}
+                      onChange={e => { setForm(f => ({ ...f, mkt_premium_parcialidades: e.target.value })); setErrorValidacion(''); }}
+                      placeholder="Ej. 3"
+                      className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 ${
+                        form.plan_mkt_premium && !form.mkt_premium_parcialidades
+                          ? 'border-red-400 focus:ring-red-400'
+                          : 'border-neutral-200 dark:border-white/10 focus:ring-purple-400'
+                      }`}
+                    />
+                    <p className="text-xs text-neutral-400">En cuántas comisiones se va a diferir el cobro (1 a 12).</p>
+                    {seleccionado.mkt_premium_parcialidades && (
+                      <p className="text-xs text-neutral-400">Actual: {seleccionado.mkt_premium_parcialidades} parcialidades</p>
+                    )}
+                  </div>
+                )}
 
                 {/* Fecha inicio */}
                 <div className="space-y-2">
