@@ -110,41 +110,43 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   useEffect(() => {
     loadOficinas();
     loadModulosSistema();
-    if (user) {
+    if (!user) return;
+
+    // Poblar el formulario a partir de un registro de usuario (parcial o completo).
+    const poblarDesde = (u: any) => {
       setFormData({
-        nombre: user.nombre,
-        apellidos: user.apellidos,
-        rol: lockRoleToAgente ? 'Agente' : user.rol,
-        rol_id: (lockRoleToAgente ? '' : ((user as any).rol_id ?? '')) as string,
-        puesto: user.puesto,
-        oficina_id: user.oficina_id || '',
-        web_slug: user.web_slug || '',
-        fecha_nacimiento: user.fecha_nacimiento || '',
-        fecha_ingreso: user.fecha_ingreso || '',
-        celular_personal: user.celular_personal,
-        email_personal: user.email_personal,
-        celular_laboral: user.celular_laboral,
-        email_laboral: user.email_laboral,
-        extension_telefonica: user.extension_telefonica,
-        regimen_fiscal_id: user.regimen_fiscal_id || '',
-        banco: user.banco || '',
-        clabe: user.clabe || '',
-        dias_vacaciones_disponibles: user.dias_vacaciones_disponibles || 0,
-        equipo_computo: user.equipo_computo || '',
-        equipo_celular: user.equipo_celular || '',
-        plan_mkt_premium: user.plan_mkt_premium || false,
-        seguros_express_habilitado: (user as any).seguros_express_habilitado || false,
+        nombre: u.nombre,
+        apellidos: u.apellidos,
+        rol: lockRoleToAgente ? 'Agente' : u.rol,
+        rol_id: (lockRoleToAgente ? '' : (u.rol_id ?? '')) as string,
+        puesto: u.puesto,
+        oficina_id: u.oficina_id || '',
+        web_slug: u.web_slug || '',
+        fecha_nacimiento: u.fecha_nacimiento || '',
+        fecha_ingreso: u.fecha_ingreso || '',
+        celular_personal: u.celular_personal,
+        email_personal: u.email_personal,
+        celular_laboral: u.celular_laboral,
+        email_laboral: u.email_laboral,
+        extension_telefonica: u.extension_telefonica,
+        regimen_fiscal_id: u.regimen_fiscal_id || '',
+        banco: u.banco || '',
+        clabe: u.clabe || '',
+        dias_vacaciones_disponibles: u.dias_vacaciones_disponibles || 0,
+        equipo_computo: u.equipo_computo || '',
+        equipo_celular: u.equipo_celular || '',
+        plan_mkt_premium: u.plan_mkt_premium || false,
+        seguros_express_habilitado: u.seguros_express_habilitado || false,
       });
       setUbic({
-        lat: (user as any).ubicacion_lat ?? null,
-        lng: (user as any).ubicacion_lng ?? null,
-        direccion_manual: (user as any).ubicacion_direccion_manual ?? null,
-        metodo: (user as any).ubicacion_metodo ?? null,
+        lat: u.ubicacion_lat ?? null,
+        lng: u.ubicacion_lng ?? null,
+        direccion_manual: u.ubicacion_direccion_manual ?? null,
+        metodo: u.ubicacion_metodo ?? null,
       });
-      loadPermisosAdicionales(user.id);
 
       // Prellenar el chip de enlace SICAS si el usuario ya tiene id_sicas.
-      const existingIdSicas = (user as any).id_sicas as string | null | undefined;
+      const existingIdSicas = u.id_sicas as string | null | undefined;
       if (existingIdSicas && String(existingIdSicas).trim()) {
         const vendId = String(existingIdSicas).trim();
         getSicasVendorByVendId(vendId).then((v) => {
@@ -152,9 +154,9 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             v ?? {
               id: '',
               vend_id: vendId,
-              vend_nombre: ((user as any).nombre_sicas as string) || vendId,
+              vend_nombre: (u.nombre_sicas as string) || vendId,
               desp_nombre: null,
-              movi_user_id: user.id,
+              movi_user_id: u.id,
               status: 'active',
             }
           );
@@ -163,7 +165,27 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         setSicasLink(null);
       }
       setSicasTouched(false);
-    }
+    };
+
+    // Poblar de inmediato con lo que llegó del caller (la lista puede traer solo
+    // un subconjunto de columnas para renderizar rápido).
+    poblarDesde(user);
+    loadPermisosAdicionales(user.id);
+
+    // Recargar el registro COMPLETO por id. Las listas que abren este modal
+    // (Directorio, Marketing Premium) hacen un SELECT parcial que no incluye
+    // web_slug/banco/clabe/fechas/ubicación/etc. — sin esto esos campos se ven
+    // en blanco al editar y un guardado posterior los sobrescribiría con null.
+    let cancelado = false;
+    (async () => {
+      const { data } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (!cancelado && data) poblarDesde(data);
+    })();
+    return () => { cancelado = true; };
   }, [user]);
 
   // Búsqueda de vendedores SICAS (con debounce) mientras el buscador está abierto.
