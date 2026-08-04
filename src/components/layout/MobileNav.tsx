@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ClipboardList, MessageCircle, Menu } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 interface MobileNavProps {
   onOpenDrawer?: () => void;
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
 export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { unreadCount } = useNotifications();
 
   return (
     <nav
@@ -52,13 +54,20 @@ export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
       {/* Divider */}
       <div className="w-px h-8 bg-neutral-200 dark:bg-white/[0.06] mx-1 flex-shrink-0" />
 
-      {/* Menu button — opens MobileDrawer */}
+      {/* Menu button — opens MobileDrawer (also surfaces unread notification count) */}
       <button
         onClick={onOpenDrawer}
-        className="flex-1 flex flex-col items-center gap-1 py-2.5 px-2 text-neutral-400 dark:text-white/35 active:text-neutral-600 dark:active:text-white/60 transition-colors"
+        className="flex-1 flex flex-col items-center gap-1 py-2.5 px-2 text-neutral-400 dark:text-white/35 active:text-neutral-600 dark:active:text-white/60 transition-colors relative"
         aria-label="Abrir menu"
       >
-        <Menu className="w-5 h-5" />
+        <span className="relative">
+          <Menu className="w-5 h-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </span>
         <span className="text-[10px] font-medium">Menu</span>
       </button>
     </nav>

@@ -27,7 +27,7 @@ export function Section({
 
   const variantStyles: Record<string, string> = {
     default: '',
-    card: 'bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-[0_1px_3px_rgba(0,0,0,0.04)]',
+    card: 'bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/70 dark:border-white/10 shadow-card',
     bordered: 'border-l-4 border-accent pl-4',
   };
 

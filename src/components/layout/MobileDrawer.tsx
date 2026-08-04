@@ -113,7 +113,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          'fixed inset-y-0 right-0 z-50 md:hidden flex flex-col',
+          'app-shell fixed top-0 right-0 z-50 md:hidden flex flex-col',
           'w-[300px] max-w-[85vw]',
           'bg-white dark:bg-[#111113]',
           'shadow-[-8px_0_40px_rgba(0,0,0,0.18)]',

@@ -10,13 +10,13 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border border-neutral-200/60 dark:border-white/8 bg-white dark:bg-neutral-800/60",
-      !flat && "shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.02)]",
+      "rounded-2xl border border-neutral-200/70 dark:border-white/10 bg-white dark:bg-neutral-800/60",
+      !flat && "shadow-card",
       "transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
       hover && [
         "cursor-pointer",
-        "hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.08),0_4px_8px_-4px_rgba(0,0,0,0.03)]",
-        "hover:border-neutral-200 dark:hover:border-white/12",
+        "hover:shadow-card-hover",
+        "hover:border-neutral-300 dark:hover:border-white/18",
         "hover:-translate-y-0.5",
         "active:translate-y-0 active:scale-[0.99]",
       ],

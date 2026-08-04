@@ -225,7 +225,7 @@ export default function MoviFullRoutes() {
           <Route path="/cotizar" element={<ProtectedRoute><CotizarHub /></ProtectedRoute>} />
           <Route path="/cotizar/gmm-bx" element={<Navigate to="/cotizar/multicotizador-gmm" replace />} />
           <Route path="/cotizar/formularios" element={<ProtectedRoute><FormulariosCotizacion /></ProtectedRoute>} />
-          <Route path="/cotizar/formularios/:slug/wizard" element={<ProtectedRoute><QuoteFormWizard /></ProtectedRoute>} />
+          <Route path="/cotizar/formularios/:formType/wizard" element={<ProtectedRoute><QuoteFormWizard /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida" element={<ProtectedRoute><AlaMedida /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida/auto" element={<ProtectedRoute><DisenadorAuto /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida/gmm" element={<ProtectedRoute><DisenadorGMM /></ProtectedRoute>} />
