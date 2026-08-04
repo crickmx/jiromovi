@@ -132,8 +132,8 @@ export function SeguwalletLogin() {
   async function handleCodeSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    const trimmedCode = code.trim().toUpperCase();
-    if (trimmedCode.length < 6) { setError('Ingresa el código completo de 6 caracteres.'); return; }
+    const trimmedCode = code.trim();
+    if (trimmedCode.length < 6) { setError('Ingresa el código completo de 6 dígitos.'); return; }
     setLoading(true);
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-login-code`, {
@@ -377,7 +377,7 @@ export function SeguwalletLogin() {
                   </form>
 
                   <p className="mt-6 text-xs text-center" style={{ color: 'rgba(148,185,255,0.4)' }}>
-                    Recibirás un código de 6 caracteres por correo y WhatsApp
+                    Recibirás un código de 6 dígitos por correo y WhatsApp
                   </p>
                 </>
               )}
@@ -423,8 +423,8 @@ export function SeguwalletLogin() {
                         ref={codeInputRef}
                         type="text"
                         value={code}
-                        onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-                        placeholder="ABC123"
+                        onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="123456"
                         className={`${inputCls} px-4 text-center text-2xl font-bold tracking-[0.35em] font-mono`}
                         style={{
                           ...inputBase,
@@ -433,7 +433,8 @@ export function SeguwalletLogin() {
                         onFocus={inputFocusOn}
                         onBlur={inputFocusOff}
                         autoComplete="one-time-code"
-                        inputMode="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         maxLength={6}
                         autoFocus
                       />
