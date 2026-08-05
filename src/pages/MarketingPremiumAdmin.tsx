@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2 } from 'lucide-react';
+import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
@@ -8,6 +8,13 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { resolveImageUrl } from '../lib/storageUtils';
 import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
 import { generarThumbnailVideo } from '../lib/videoThumbnail';
+import {
+  dispararTriggersPremium,
+  obtenerMapeoCamposTriggerPremium,
+  guardarMapeoCampoTriggerPremium,
+  PLACEHOLDERS_TRIGGER_PREMIUM,
+} from '../lib/mktPremiumTriggers';
+import { obtenerCamposTramiteTipo } from '../lib/storeUtils';
 import { UserModal } from '../components/UserModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -96,6 +103,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   const [mostrarNuevoAgente, setMostrarNuevoAgente] = useState(false);
+  const [vista, setVista] = useState<'agentes' | 'triggers'>('agentes');
 
   const [disenosAgente, setDisenosAgente] = useState<DisenoAgente[]>([]);
   const [cargandoDisenos, setCargandoDisenos] = useState(false);
@@ -263,54 +271,46 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setDisenosAgente(prev => prev.filter(d => d.id !== id));
   }
 
-  async function crearTramiteCobranzaPremium(agente: Agente) {
-    // Obtener el estatus "Iniciado" (o el primero disponible)
-    const { data: estatuses } = await supabase
-      .from('ticket_estatus')
-      .select('id, nombre')
-      .eq('activo', true)
-      .order('orden');
+  function detectarEventosPremium(antes: Agente, despues: Agente): string[] {
+    const eventos: string[] = [];
+    const eraActivo = antes.plan_mkt_premium;
+    const esActivo = despues.plan_mkt_premium;
 
-    const estatus = estatuses?.find(e =>
-      e.nombre.toLowerCase().includes('inicia') || e.nombre.toLowerCase().includes('nuevo')
-    ) ?? estatuses?.[0];
+    if (!eraActivo && esActivo) {
+      eventos.push('activacion');
+    } else if (eraActivo && !esActivo) {
+      eventos.push('desactivacion');
+    } else if (eraActivo && esActivo) {
+      if (antes.mkt_premium_metodo_pago !== despues.mkt_premium_metodo_pago) {
+        eventos.push('cambio_metodo_pago');
+      }
+      const otrosCambiaron =
+        antes.mkt_premium_plan !== despues.mkt_premium_plan ||
+        antes.mkt_premium_fecha_inicio !== despues.mkt_premium_fecha_inicio ||
+        antes.mkt_premium_fecha_pago !== despues.mkt_premium_fecha_pago ||
+        antes.mkt_premium_parcialidades !== despues.mkt_premium_parcialidades;
+      if (otrosCambiaron) eventos.push('actualizacion');
+    }
+    return eventos;
+  }
 
-    if (!estatus || !usuario) return;
-
-    const METODO_LABELS: Record<string, string> = {
-      deposito_jiro: 'Depósito a cuenta Jiro',
-      bono_anual: 'Descuento de bono anual',
-      comisiones: 'Descuento a comisiones',
-    };
-
-    const plan = form.mkt_premium_plan ? (form.mkt_premium_plan === 'mensual' ? 'Mensual — $200 MXN/mes' : 'Anual — $2,000 MXN/año') : 'Sin especificar';
-    const metodo = form.mkt_premium_metodo_pago ? METODO_LABELS[form.mkt_premium_metodo_pago] : 'Sin especificar';
-    const fechaInicio = form.mkt_premium_fecha_inicio || 'Sin especificar';
-    const fechaPago = form.mkt_premium_fecha_pago || 'Sin especificar';
-
-    const parcialidades = form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_parcialidades
-      ? `${form.mkt_premium_parcialidades}`
-      : null;
-
-    const instrucciones =
-      `Cobro de Marketing Premium activado para ${agente.nombre} ${agente.apellidos}.\n` +
-      `Plan: ${plan}\n` +
-      `Método de pago: ${metodo}\n` +
-      (parcialidades ? `Diferido a: ${parcialidades} parcialidades\n` : '') +
-      `Fecha de inicio: ${fechaInicio}\n` +
-      `Fecha de próximo pago: ${fechaPago}\n` +
-      `Oficina: ${agente.oficina?.nombre ?? '—'}`;
-
-    await supabase.from('tickets').insert({
-      tipo_tramite: 'cobranza',
-      prioridad: 'Media',
-      instrucciones,
-      creado_por: usuario.id,
-      modificado_por: usuario.id,
-      agente_id: agente.id,
-      assigned_to_user_id: usuario.id,
-      estatus_id: estatus.id,
-    });
+  async function dispararReglasPremium(eventos: string[], agente: Agente) {
+    if (!usuario || eventos.length === 0) return;
+    for (const eventoKey of eventos) {
+      await dispararTriggersPremium({
+        eventoKey,
+        agente: { id: agente.id, nombre: agente.nombre, apellidos: agente.apellidos, oficina: agente.oficina },
+        form: {
+          mkt_premium_plan: form.mkt_premium_plan,
+          mkt_premium_metodo_pago: form.mkt_premium_metodo_pago,
+          mkt_premium_parcialidades: form.mkt_premium_parcialidades,
+          mkt_premium_fecha_inicio: form.mkt_premium_fecha_inicio,
+          mkt_premium_fecha_pago: form.mkt_premium_fecha_pago,
+        },
+        usuarioId: usuario.id,
+        usuarioNombre: `${usuario.nombre} ${usuario.apellidos}`.trim(),
+      });
+    }
   }
 
   async function guardar() {
@@ -329,8 +329,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     }
     setErrorValidacion('');
 
-    // Detectar si el premium se está activando (transición false → true)
-    const activandoPremium = form.plan_mkt_premium && !seleccionado.plan_mkt_premium;
+    const agenteAntes = seleccionado;
 
     setGuardando(true);
     setGuardado(false);
@@ -375,10 +374,9 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setSeleccionado(actualizado);
     setAgentes(prev => prev.map(a => a.id === actualizado.id ? actualizado : a));
 
-    // Crear trámite de cobranza solo al activar por primera vez
-    if (activandoPremium) {
-      await crearTramiteCobranzaPremium(actualizado);
-    }
+    // Disparar las reglas configuradas para el/los eventos que ocurrieron en este guardado
+    const eventos = detectarEventosPremium(agenteAntes, actualizado);
+    await dispararReglasPremium(eventos, actualizado);
 
     setGuardado(true);
     setTimeout(() => setGuardado(false), 3000);
@@ -459,6 +457,30 @@ ALTER TABLE usuarios
         </div>
       )}
 
+      {/* Tabs: agentes / reglas de tickets */}
+      <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-white/8">
+        {([
+          { key: 'agentes' as const, label: 'Agentes' },
+          { key: 'triggers' as const, label: 'Reglas de tickets' },
+        ]).map(t => (
+          <button
+            key={t.key}
+            onClick={() => setVista(t.key)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
+              vista === t.key
+                ? 'border-purple-600 text-purple-700 dark:text-purple-400'
+                : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {vista === 'triggers' ? (
+        <MktPremiumTriggersPanel />
+      ) : (
+      <>
       {/* Estadísticas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
@@ -899,6 +921,8 @@ ALTER TABLE usuarios
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
 
     {mostrarNuevoAgente && (
@@ -910,5 +934,393 @@ ALTER TABLE usuarios
       />
     )}
     </>
+  );
+}
+
+interface MktTriggerRow {
+  id: string;
+  nombre: string;
+  evento_id: string;
+  ticket_tipo_id: string;
+  descripcion_template: string;
+  metodo_pago_filtro: string[] | null;
+  activo: boolean;
+}
+interface MktEventoRow { id: string; key: string; nombre: string; }
+interface MktTicketTipoRow { id: string; nombre: string; value: string; }
+
+const METODO_PAGO_PREMIUM_OPCIONES: { value: string; label: string }[] = [
+  { value: 'deposito_jiro', label: 'Depósito a cuenta Jiro' },
+  { value: 'bono_anual', label: 'Descuento de bono anual' },
+  { value: 'comisiones', label: 'Descuento a comisiones' },
+];
+
+// Campos que se autollenan solos (mismo criterio que el TriggersPanel de Store)
+const SISTEMA_KEYS_AUTOMATICOS_PREMIUM = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'creado_por', 'estatus', 'asignado_a'];
+
+function MktPremiumTriggersPanel() {
+  const [triggers, setTriggers] = useState<MktTriggerRow[]>([]);
+  const [eventosList, setEventosList] = useState<MktEventoRow[]>([]);
+  const [tiposList, setTiposList] = useState<MktTicketTipoRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editando, setEditando] = useState<MktTriggerRow | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [nombre, setNombre] = useState('');
+  const [eventoId, setEventoId] = useState('');
+  const [ticketTipoId, setTicketTipoId] = useState('');
+  const [descripcionTemplate, setDescripcionTemplate] = useState('');
+  const [activoTrigger, setActivoTrigger] = useState(true);
+  const [metodoPagoFiltro, setMetodoPagoFiltro] = useState<string[]>([]);
+  const [camposTipo, setCamposTipo] = useState<{ id: string; label: string; tipo: string }[]>([]);
+  const [mapeoCampos, setMapeoCampos] = useState<Record<string, { fuente: 'vacio' | 'template'; valor_template: string }>>({});
+
+  useEffect(() => {
+    if (!ticketTipoId) { setCamposTipo([]); return; }
+    obtenerCamposTramiteTipo(ticketTipoId).then(data => {
+      setCamposTipo((data ?? [])
+        .filter((c: any) => !SISTEMA_KEYS_AUTOMATICOS_PREMIUM.includes(c.sistema_key ?? ''))
+        .map((c: any) => ({ id: c.id, label: c.label, tipo: c.tipo })));
+    });
+  }, [ticketTipoId]);
+
+  useEffect(() => { cargar(); }, []);
+
+  const cargar = async () => {
+    setLoading(true);
+    const [triggersRes, eventosRes, tiposRes] = await Promise.all([
+      supabase.from('mkt_premium_triggers').select('*').order('created_at'),
+      supabase.from('mkt_premium_eventos').select('id, key, nombre').eq('activo', true).order('orden'),
+      supabase.from('ticket_tipos').select('id, nombre:label, value').eq('activo', true).order('label'),
+    ]);
+    setTriggers(triggersRes.data ?? []);
+    setEventosList(eventosRes.data ?? []);
+    setTiposList(tiposRes.data ?? []);
+    setLoading(false);
+  };
+
+  const abrirFormNuevo = () => {
+    setEditando(null);
+    setNombre('');
+    setEventoId(eventosList[0]?.id ?? '');
+    setTicketTipoId(tiposList[0]?.id ?? '');
+    setDescripcionTemplate('Marketing Premium — {{evento}} para {{nombre_completo}}.');
+    setActivoTrigger(true);
+    setMetodoPagoFiltro([]);
+    setMapeoCampos({});
+    setShowForm(true);
+  };
+
+  const abrirFormEditar = async (t: MktTriggerRow) => {
+    setEditando(t);
+    setNombre(t.nombre);
+    setEventoId(t.evento_id);
+    setTicketTipoId(t.ticket_tipo_id);
+    setDescripcionTemplate(t.descripcion_template);
+    setActivoTrigger(t.activo);
+    setMetodoPagoFiltro(t.metodo_pago_filtro ?? []);
+    const mapeoExistente = await obtenerMapeoCamposTriggerPremium(t.id);
+    const mapeoRecord: Record<string, { fuente: 'vacio' | 'template'; valor_template: string }> = {};
+    mapeoExistente.forEach(m => {
+      mapeoRecord[m.campo_id] = { fuente: m.fuente, valor_template: m.valor_template ?? '' };
+    });
+    setMapeoCampos(mapeoRecord);
+    setShowForm(true);
+  };
+
+  const guardar = async () => {
+    if (!nombre.trim() || !eventoId || !ticketTipoId) return;
+    setGuardando(true);
+    const payload = {
+      nombre: nombre.trim(),
+      evento_id: eventoId,
+      ticket_tipo_id: ticketTipoId,
+      descripcion_template: descripcionTemplate,
+      activo: activoTrigger,
+      metodo_pago_filtro: metodoPagoFiltro.length > 0 ? metodoPagoFiltro : null,
+    };
+    let triggerId = editando?.id ?? null;
+    if (editando) {
+      await supabase.from('mkt_premium_triggers').update(payload).eq('id', editando.id);
+    } else {
+      const { data: nuevoTrigger } = await supabase.from('mkt_premium_triggers').insert(payload).select().single();
+      triggerId = nuevoTrigger?.id ?? null;
+    }
+    if (triggerId) {
+      for (const campo of camposTipo) {
+        const m = mapeoCampos[campo.id];
+        await guardarMapeoCampoTriggerPremium({
+          trigger_id: triggerId,
+          campo_id: campo.id,
+          fuente: m?.fuente ?? 'vacio',
+          valor_template: m?.valor_template || null,
+        });
+      }
+    }
+    setGuardando(false);
+    setShowForm(false);
+    await cargar();
+  };
+
+  const eliminar = async (id: string) => {
+    if (!confirm('¿Eliminar este trigger?')) return;
+    await supabase.from('mkt_premium_triggers').delete().eq('id', id);
+    await cargar();
+  };
+
+  const toggleActivo = async (t: MktTriggerRow) => {
+    await supabase.from('mkt_premium_triggers').update({ activo: !t.activo }).eq('id', t.id);
+    await cargar();
+  };
+
+  const getNombreEvento = (id: string) => eventosList.find(e => e.id === id)?.nombre ?? id;
+  const getNombreTipo = (id: string) => tiposList.find(t => t.id === id)?.nombre ?? id;
+
+  if (loading) return <LoadingState text="Cargando reglas..." compact />;
+
+  return (
+    <div>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Reglas automáticas</h2>
+          <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
+            Cuando pasa un evento en el Marketing Premium de un agente (activación, cambio de método de pago, etc.), se crea automáticamente el trámite que configures aquí.
+          </p>
+        </div>
+        <button
+          onClick={abrirFormNuevo}
+          className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm shadow-sm whitespace-nowrap"
+        >
+          <Plus className="w-4 h-4" /><span className="ml-1">Nueva regla</span>
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-6">
+          <h3 className="font-semibold text-neutral-900 dark:text-white mb-4">
+            {editando ? 'Editar regla' : 'Nueva regla'}
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Nombre de la regla</label>
+              <input
+                type="text"
+                value={nombre}
+                onChange={e => setNombre(e.target.value)}
+                placeholder="Ej: Cobro al activar premium"
+                className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Cuando ocurre el evento</label>
+                <select
+                  value={eventoId}
+                  onChange={e => setEventoId(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                >
+                  <option value="">Selecciona evento...</option>
+                  {eventosList.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Crea trámite de tipo</label>
+                <select
+                  value={ticketTipoId}
+                  onChange={e => setTicketTipoId(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                >
+                  <option value="">Selecciona tipo...</option>
+                  {tiposList.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
+                Y el método de pago es <span className="text-neutral-400 font-normal">(opcional, elige varios)</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {METODO_PAGO_PREMIUM_OPCIONES.map(m => {
+                  const checked = metodoPagoFiltro.includes(m.value);
+                  return (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setMetodoPagoFiltro(prev => checked ? prev.filter(x => x !== m.value) : [...prev, m.value])}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        checked
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-300 dark:border-white/10 hover:border-purple-400'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-white/50 mt-1.5">
+                Sin ninguno seleccionado = cualquier método de pago.
+              </p>
+            </div>
+
+            {camposTipo.length > 0 && (
+              <div className="border border-neutral-200 dark:border-white/10 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-medium text-neutral-700 dark:text-white/70">
+                  Autollenado de campos del formulario
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-white/50">
+                  Elige de dónde sale el valor de cada campo al crearse el trámite. Los campos sin autollenado quedan vacíos para que el equipo los complete manualmente.
+                </p>
+                {camposTipo.map(campo => {
+                  const m = mapeoCampos[campo.id] ?? { fuente: 'vacio' as const, valor_template: '' };
+                  return (
+                    <div key={campo.id} className="border-t border-neutral-100 dark:border-white/5 pt-3 first:border-t-0 first:pt-0">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-neutral-800 dark:text-white/80 flex-1 min-w-0 truncate">{campo.label}</span>
+                        <select
+                          value={m.fuente}
+                          onChange={e => setMapeoCampos(prev => ({
+                            ...prev,
+                            [campo.id]: { fuente: e.target.value as 'vacio' | 'template', valor_template: prev[campo.id]?.valor_template ?? '' },
+                          }))}
+                          className="px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white shrink-0"
+                        >
+                          <option value="vacio">No autollenar</option>
+                          <option value="template">Plantilla de texto</option>
+                        </select>
+                      </div>
+                      {m.fuente === 'template' && (
+                        <div className="mt-2 space-y-1.5">
+                          <input
+                            type="text"
+                            value={m.valor_template}
+                            onChange={e => setMapeoCampos(prev => ({ ...prev, [campo.id]: { fuente: 'template', valor_template: e.target.value } }))}
+                            placeholder="Ej: {{nombre_completo}} — plan {{plan}}"
+                            className="w-full px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                          />
+                          <div className="flex flex-wrap gap-1">
+                            {PLACEHOLDERS_TRIGGER_PREMIUM.map(p => (
+                              <button
+                                key={p.key}
+                                type="button"
+                                title={p.label}
+                                onClick={() => setMapeoCampos(prev => ({
+                                  ...prev,
+                                  [campo.id]: { fuente: 'template', valor_template: `${prev[campo.id]?.valor_template ?? ''}${p.key}` },
+                                }))}
+                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/20"
+                              >
+                                {p.key}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">Plantilla de descripción</label>
+              <textarea
+                value={descripcionTemplate}
+                onChange={e => setDescripcionTemplate(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm resize-none"
+              />
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {PLACEHOLDERS_TRIGGER_PREMIUM.map(p => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    title={p.label}
+                    onClick={() => setDescripcionTemplate(prev => `${prev}${p.key}`)}
+                    className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/20"
+                  >
+                    {p.key}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="mkt-trigger-activo-chk"
+                checked={activoTrigger}
+                onChange={e => setActivoTrigger(e.target.checked)}
+                className="w-4 h-4 text-purple-600 rounded"
+              />
+              <label htmlFor="mkt-trigger-activo-chk" className="text-sm text-neutral-700 dark:text-white/70">Regla activa</label>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-5">
+            <button
+              onClick={guardar}
+              disabled={guardando || !nombre.trim() || !eventoId || !ticketTipoId}
+              className="bg-purple-600 text-white px-5 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium disabled:opacity-50"
+            >
+              {guardando ? 'Guardando...' : editando ? 'Actualizar' : 'Crear'}
+            </button>
+            <button
+              onClick={() => setShowForm(false)}
+              className="bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 px-5 py-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 transition-colors text-sm font-medium"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {triggers.length === 0 ? (
+        <div className="text-center py-12 text-neutral-400">No hay reglas configuradas. Crea una para empezar.</div>
+      ) : (
+        <div className="space-y-3">
+          {triggers.map(trigger => (
+            <div
+              key={trigger.id}
+              className={`flex items-center justify-between bg-white dark:bg-white/5 rounded-xl border px-5 py-4 ${trigger.activo ? 'border-neutral-200 dark:border-white/10' : 'border-neutral-100 dark:border-white/5 opacity-60'}`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className={`w-4 h-4 flex-shrink-0 ${trigger.activo ? 'text-yellow-500' : 'text-neutral-400'}`} />
+                  <span className="font-medium text-neutral-900 dark:text-white truncate">{trigger.nombre}</span>
+                  {!trigger.activo && (
+                    <span className="text-xs bg-neutral-100 dark:bg-white/10 text-neutral-500 px-2 py-0.5 rounded-full">Inactivo</span>
+                  )}
+                </div>
+                <div className="text-xs text-neutral-500 dark:text-white/50">
+                  Evento: <strong>{getNombreEvento(trigger.evento_id)}</strong> &middot; Trámite: <strong>{getNombreTipo(trigger.ticket_tipo_id)}</strong>
+                  {!!trigger.metodo_pago_filtro?.length && (
+                    <> &middot; Método: <strong>{trigger.metodo_pago_filtro.map(v => METODO_PAGO_PREMIUM_OPCIONES.find(o => o.value === v)?.label ?? v).join(', ')}</strong></>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                <button
+                  onClick={() => toggleActivo(trigger)}
+                  className="p-2 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+                >
+                  {trigger.activo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => abrirFormEditar(trigger)}
+                  className="p-2 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => eliminar(trigger.id)}
+                  className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
