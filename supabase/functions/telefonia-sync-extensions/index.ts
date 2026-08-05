@@ -152,6 +152,7 @@ Deno.serve(async (req: Request) => {
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /**/ }
   const dryRun = body.dry_run === true;
+  const debug = body.debug === true;
 
   let ws = "";
   try {
@@ -172,6 +173,12 @@ Deno.serve(async (req: Request) => {
     }
 
     await pbxLogout(ws); ws = "";
+
+    if (debug) {
+      return new Response(JSON.stringify({ success: true, raw: all }, null, 2), {
+        status: 200, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
 
     const pbxExts = all.filter(e => {
       const n = String(e.number ?? "").trim();
