@@ -98,7 +98,14 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
     adjunto_categorias_ids: [], activo: true, folio_mode: 'nuevo',
   });
 
-  useEffect(() => { loadAll(); }, [tipoId]);
+  // Escalation triggers
+  interface EscalacionTrigger { id: string; from_status: string; destinatario: 'supervisor' | 'director' | 'ambos'; activo: boolean }
+  const [escalaciones, setEscalaciones] = useState<EscalacionTrigger[]>([]);
+  const [showEscForm, setShowEscForm] = useState(false);
+  const [escForm, setEscForm] = useState<{ from_status: string; destinatario: 'supervisor' | 'director' | 'ambos' }>({ from_status: '', destinatario: 'ambos' });
+  const [escEditingId, setEscEditingId] = useState<string | null>(null);
+
+  useEffect(() => { loadAll(); loadEscalaciones(); }, [tipoId]);
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -310,6 +317,46 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
     setSaving(false);
   };
 
+  // ── Escalation triggers ─────────────────────────────────────────────────────
+
+  const loadEscalaciones = async () => {
+    const { data } = await supabase.from('ticket_escalacion_triggers')
+      .select('*').eq('ticket_tipo_id', tipoId).order('created_at');
+    setEscalaciones((data ?? []) as EscalacionTrigger[]);
+  };
+
+  const handleSaveEscalacion = async () => {
+    if (!escForm.from_status) { showToast('Elige un estatus que dispare la escalación', 'error'); return; }
+    setSaving(true);
+    if (escEditingId) {
+      const { error } = await supabase.from('ticket_escalacion_triggers')
+        .update({ from_status: escForm.from_status, destinatario: escForm.destinatario })
+        .eq('id', escEditingId);
+      if (error) { showToast('Error: ' + error.message, 'error'); setSaving(false); return; }
+    } else {
+      const { error } = await supabase.from('ticket_escalacion_triggers')
+        .insert({ ticket_tipo_id: tipoId, from_status: escForm.from_status, destinatario: escForm.destinatario });
+      if (error) { showToast('Error: ' + error.message, 'error'); setSaving(false); return; }
+    }
+    showToast('Trigger de escalación guardado');
+    setSaving(false);
+    setShowEscForm(false);
+    setEscEditingId(null);
+    setEscForm({ from_status: '', destinatario: 'ambos' });
+    await loadEscalaciones();
+  };
+
+  const handleDeleteEscalacion = async (id: string) => {
+    if (!confirm('¿Eliminar este trigger de escalación?')) return;
+    await supabase.from('ticket_escalacion_triggers').delete().eq('id', id);
+    setEscalaciones(prev => prev.filter(e => e.id !== id));
+  };
+
+  const handleToggleEscActivo = async (e: EscalacionTrigger) => {
+    await supabase.from('ticket_escalacion_triggers').update({ activo: !e.activo }).eq('id', e.id);
+    setEscalaciones(prev => prev.map(x => x.id === e.id ? { ...x, activo: !x.activo } : x));
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) return <div className="p-6 text-sm text-neutral-500">Cargando triggers…</div>;
@@ -390,6 +437,94 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
             onSaveMappings={() => saveMappings(t.id)}
           />
         ))}
+      </div>
+
+      {/* ── Escalation triggers section ─────────────────────────────────────── */}
+      <div className="mt-6 border-t border-neutral-200 pt-4">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-100 bg-orange-50 shrink-0">
+          <div>
+            <p className="text-sm font-semibold text-orange-800">Triggers de Escalación</p>
+            <p className="text-xs text-orange-600 mt-0.5">
+              Al cambiar al estatus indicado, se notifica al supervisor/director y el trámite aparece en "Requiere atención".
+            </p>
+          </div>
+          <button
+            onClick={() => { setShowEscForm(true); setEscEditingId(null); setEscForm({ from_status: '', destinatario: 'ambos' }); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Nuevo
+          </button>
+        </div>
+
+        {showEscForm && (
+          <div className="mx-5 mt-3 border border-orange-200 bg-orange-50 rounded-xl p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-neutral-600 mb-1">Estatus que dispara</label>
+                <select
+                  value={escForm.from_status}
+                  onChange={e => setEscForm(f => ({ ...f, from_status: e.target.value }))}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                >
+                  <option value="">Seleccionar estatus…</option>
+                  {sourceStatuses.map(s => <option key={s.slug} value={s.slug}>{s.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-600 mb-1">Notificar a</label>
+                <select
+                  value={escForm.destinatario}
+                  onChange={e => setEscForm(f => ({ ...f, destinatario: e.target.value as EscalacionTrigger['destinatario'] }))}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                >
+                  <option value="ambos">Supervisor y Director</option>
+                  <option value="supervisor">Solo Supervisor</option>
+                  <option value="director">Solo Director</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowEscForm(false)} className="px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors">Cancelar</button>
+              <button onClick={handleSaveEscalacion} disabled={saving} className="px-4 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50">
+                {saving ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="divide-y divide-neutral-100">
+          {escalaciones.length === 0 && !showEscForm && (
+            <div className="py-8 text-center text-xs text-neutral-400">Sin triggers de escalación</div>
+          )}
+          {escalaciones.map(e => {
+            const destinatarioLabel = e.destinatario === 'ambos' ? 'Supervisor y Director' : e.destinatario === 'supervisor' ? 'Supervisor' : 'Director';
+            const statusLabel = sourceStatuses.find(s => s.slug === e.from_status)?.label ?? e.from_status;
+            return (
+              <div key={e.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-800 truncate">
+                    <span className="font-mono text-xs bg-neutral-100 px-1.5 py-0.5 rounded mr-2">{statusLabel}</span>
+                    <ArrowRight className="w-3 h-3 inline text-neutral-400 mr-2" />
+                    Notificar a <strong>{destinatarioLabel}</strong>
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleToggleEscActivo(e)}
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.activo ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}
+                >
+                  {e.activo ? 'Activo' : 'Inactivo'}
+                </button>
+                <button onClick={() => { setEscEditingId(e.id); setEscForm({ from_status: e.from_status, destinatario: e.destinatario }); setShowEscForm(true); }} className="p-1 text-neutral-400 hover:text-blue-600 transition-colors">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => handleDeleteEscalacion(e.id)} className="p-1 text-neutral-400 hover:text-red-500 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

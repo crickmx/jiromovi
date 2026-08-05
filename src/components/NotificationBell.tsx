@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag, PhoneMissed } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, type MouseEvent } from 'react';
+import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag, Phone, MessageCircle } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -123,9 +123,32 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
     }
   };
 
-  const getModuleIcon = (notification: any) => {
-    if (notification.tipo === 'llamada_perdida') return PhoneMissed;
-    return moduleIcons[notification.modulo] || Bell;
+  const getModuleIcon = (modulo: string) => {
+    const IconComponent = moduleIcons[modulo] || Bell;
+    return IconComponent;
+  };
+
+  // Llamada perdida del conmutador: extrae el numero a 10 digitos para callto/WhatsApp
+  const getMissedCallNumber = (notification: any): string | null => {
+    if (notification.tipo !== 'llamada_perdida') return null;
+    const raw = notification.metadata?.caller_number;
+    if (!raw) return null;
+    const digits = String(raw).replace(/\D/g, '');
+    if (digits.length < 10) return null;
+    return digits.slice(-10);
+  };
+
+  const handleLlamarClick = (e: MouseEvent, notification: any) => {
+    e.stopPropagation();
+    markAsRead(notification.id);
+  };
+
+  const handleWhatsappClick = (e: MouseEvent, notification: any, numero: string) => {
+    e.stopPropagation();
+    markAsRead(notification.id);
+    const nombre = notification.metadata?.caller_name || '';
+    navigate(`/centro-contacto/whatsapp?telefono=${numero}${nombre ? `&nombre=${encodeURIComponent(nombre)}` : ''}`);
+    setIsOpen(false);
   };
 
   const buttonClass = compact
@@ -246,7 +269,8 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-white/5">
                 {filteredNotifications.map((notification) => {
-                  const IconComponent = getModuleIcon(notification);
+                  const IconComponent = getModuleIcon(notification.modulo);
+                  const numeroLlamada = getMissedCallNumber(notification);
 
                   return (
                     <div
@@ -299,26 +323,25 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                             </div>
 
                             <div className="flex items-center gap-1">
-                              {notification.tipo === 'llamada_perdida' && notification.metadata?.caller_number && (
+                              {numeroLlamada ? (
                                 <>
                                   <a
-                                    href={`/admin/whatsapp?nuevo=true&numero=${notification.metadata.caller_number}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+                                    href={`tel:${numeroLlamada}`}
+                                    onClick={(e) => handleLlamarClick(e, notification)}
+                                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-accent hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
                                   >
-                                    WhatsApp
-                                  </a>
-                                  <a
-                                    href={`tel:${notification.metadata.caller_number}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                                  >
+                                    <Phone className="w-3.5 h-3.5" />
                                     Llamar
                                   </a>
+                                  <button
+                                    onClick={(e) => handleWhatsappClick(e, notification, numeroLlamada)}
+                                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded transition-colors"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                    WhatsApp
+                                  </button>
                                 </>
-                              )}
-
-                              {notification.accion_url && (
+                              ) : notification.accion_url && (
                                 <button
                                   onClick={() => handleNotificationClick(notification)}
                                   className="px-2 py-1 text-xs font-medium text-accent hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"

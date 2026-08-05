@@ -182,6 +182,13 @@ export async function obtenerProductoPorId(id: string) {
   return data as StoreProducto;
 }
 
+export const PERSONALIZACION_KEY = '_personalizacion:';
+
+export function parsearPersonalizacion(atributos?: { nombre: string }[]): { activo: boolean; label: string } {
+  const attr = (atributos ?? []).find(a => a.nombre.startsWith(PERSONALIZACION_KEY));
+  return { activo: !!attr, label: attr?.nombre.slice(PERSONALIZACION_KEY.length) || 'Personalización' };
+}
+
 export async function crearProducto(producto: Omit<StoreProducto, 'id' | 'created_at' | 'categoria'>) {
   console.log('Creando producto con datos:', producto);
 
@@ -768,9 +775,8 @@ export async function crearPedido(
     .from('store_pedidos')
     .insert({
       usuario_id: usuarioId,
-      notas_usuario: notasUsuario,
+      notas_usuario: [areaEntrega ? `Área de entrega: ${areaEntrega}` : '', notasUsuario].filter(Boolean).join('\n') || null,
       direccion_entrega: direccionEntrega,
-      area_entrega: areaEntrega || null,
       estatus_id: estatusId,
       responsable_pago_id: responsablePagoId || null,
       folio_oc: folioData

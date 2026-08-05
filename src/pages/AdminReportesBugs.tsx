@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bug, ToggleLeft, ToggleRight, ExternalLink, Download, Loader2, Save } from 'lucide-react';
+import { Bug, ToggleLeft, ToggleRight, ExternalLink, Download, Loader2, Save, Copy, Check, CalendarClock } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { supabase } from '../lib/supabase';
 import { BUG_REPORT_SISTEMA_AUTOMATICO, PLACEHOLDERS_BUG_REPORT } from '../lib/bugReportTemplate';
@@ -59,6 +59,9 @@ export function AdminReportesBugs() {
   const [reportes, setReportes] = useState<ReporteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [descargando, setDescargando] = useState(false);
+  const [reporteSeleccionadoId, setReporteSeleccionadoId] = useState('');
+  const [copiado, setCopiado] = useState(false);
+  const [descargandoDigest, setDescargandoDigest] = useState(false);
 
   const cargarCamposYMapeo = async (tipoId: string) => {
     const { data: campos, error } = await supabase
@@ -165,12 +168,9 @@ export function AdminReportesBugs() {
     }
   };
 
-  const handleDescargarReporte = () => {
-    setDescargando(true);
-    try {
-      const secciones = reportes.map(r => {
-        const ultimaRuta = r.rutas_visitadas[r.rutas_visitadas.length - 1]?.ruta || 'desconocida';
-        return `## Reporte ${r.folio}
+  const construirSeccionReporte = (r: ReporteRow): string => {
+    const ultimaRuta = r.rutas_visitadas[r.rutas_visitadas.length - 1]?.ruta || 'desconocida';
+    return `## Reporte ${r.folio}
 
 - Fecha: ${new Date(r.created_at).toLocaleString('es-MX')}
 - Estatus: ${r.custom_estatus_label || 'Sin estatus'}
@@ -202,7 +202,12 @@ Navegador: ${r.user_agent || 'desconocido'} · Viewport: ${r.viewport || 'descon
 
 ---
 `;
-      }).join('\n');
+  };
+
+  const handleDescargarReporte = () => {
+    setDescargando(true);
+    try {
+      const secciones = reportes.map(construirSeccionReporte).join('\n');
 
       const contenido = `# Reporte de Bugs — jiromovi
 Generado: ${new Date().toLocaleString('es-MX')}
@@ -226,6 +231,37 @@ ${secciones}`;
     }
   };
 
+  const handleCopiarReporte = async () => {
+    const r = reportes.find(x => x.id === reporteSeleccionadoId);
+    if (!r) return;
+    const contenido = `Instrucciones para el agente de IA: este es un bug reportado por un usuario real dentro de la plataforma jiromovi (React + TypeScript + Supabase). El "Diagnóstico IA" es solo una hipótesis preliminar generada sin ver el código — revisa el repo real antes de confirmar una causa o aplicar un fix.
+
+---
+
+${construirSeccionReporte(r)}`;
+    try {
+      await navigator.clipboard.writeText(contenido);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2500);
+    } catch {
+      alert('No se pudo copiar al portapapeles.');
+    }
+  };
+
+  const handleDescargarDigestDiario = async () => {
+    setDescargandoDigest(true);
+    try {
+      const { data, error } = await supabase.storage.from('bug-reports-digest').createSignedUrl('latest.md', 60);
+      if (error || !data?.signedUrl) {
+        alert('Todavía no se ha generado el reporte diario automático (corre una vez al día).');
+        return;
+      }
+      window.open(data.signedUrl, '_blank');
+    } finally {
+      setDescargandoDigest(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-6 sm:p-8 max-w-5xl mx-auto text-sm text-neutral-500">Cargando…</div>;
   }
@@ -237,16 +273,56 @@ ${secciones}`;
         title="Admin › Reportes de Bugs"
         description="Configura el botón de reporte de problemas y revisa lo reportado."
         actions={
-          <button
-            onClick={handleDescargarReporte}
-            disabled={descargando || reportes.length === 0}
-            className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-800 transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {descargando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Descargar reporte para IA
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDescargarDigestDiario}
+              disabled={descargandoDigest}
+              title="El más reciente generado automáticamente una vez al día"
+              className="px-4 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-xl text-sm font-semibold hover:bg-neutral-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {descargandoDigest ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarClock className="w-4 h-4" />}
+              Reporte diario automático
+            </button>
+            <button
+              onClick={handleDescargarReporte}
+              disabled={descargando || reportes.length === 0}
+              className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {descargando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Descargar reporte para IA
+            </button>
+          </div>
         }
       />
+
+      <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-neutral-900">Copiar un solo reporte</p>
+          <p className="text-xs text-neutral-500">Elige un trámite y copia solo su información para pegarla en Claude u otra IA.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={reporteSeleccionadoId}
+            onChange={(e) => setReporteSeleccionadoId(e.target.value)}
+            className="flex-1 px-3 py-2 border border-neutral-300 rounded-xl text-sm bg-white"
+          >
+            <option value="">Selecciona un trámite…</option>
+            {reportes.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.folio} — {(r.instrucciones || 'Sin descripción').slice(0, 80)}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleCopiarReporte}
+            disabled={!reporteSeleccionadoId}
+            className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-800 transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0"
+          >
+            {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copiado ? 'Copiado' : 'Copiar'}
+          </button>
+        </div>
+      </div>
 
       <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-4">
         <div className="flex items-center justify-between">

@@ -5,8 +5,11 @@ import { SecondarySidebar } from './layout/SecondarySidebar';
 import { MobileNav } from './layout/MobileNav';
 import { MobileDrawer } from './layout/MobileDrawer';
 import { ImpersonationBanner } from './ImpersonationBanner';
+import { BetaBanner } from './BetaBanner';
+import { BackToBetaBanner } from './BackToBetaBanner';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
+import { isBetaHost } from '../lib/betaAccess';
 import { resolveWorkspace } from '../lib/workspaceConfig';
 import type { UserRole } from '../lib/workspaceConfig';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
@@ -30,8 +33,10 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { usuario, signOut } = useMoviAuth();
+  const { usuario, signOut, esUsuarioBeta, redirigiendoABeta } = useMoviAuth();
   const { isImpersonating } = useImpersonation();
+  const isBeta = isBetaHost();
+  const hasTopBanner = isImpersonating || isBeta || esUsuarioBeta;
   const [secondaryCollapsed, setSecondaryCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -65,13 +70,25 @@ export function Layout({ children }: LayoutProps) {
     navigate('/login');
   }
 
+  if (redirigiendoABeta) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-6" style={{ background: 'linear-gradient(140deg, #2A1860 0%, #180E40 55%, #0D0B24 100%)' }}>
+        <div className="w-14 h-14 border-4 border-white/25 border-t-white rounded-full animate-spin" />
+        <p className="text-lg font-semibold text-white">Te estamos redirigiendo a la versión Beta de MOVI.</p>
+        <p className="text-sm text-white/60">¡Gracias por ayudarnos a mejorar!</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-[#0e0e10]">
       {/* Impersonation banner — fixed top, only during active session */}
       <ImpersonationBanner />
+      {isBeta && <BetaBanner />}
+      {!isBeta && esUsuarioBeta && <BackToBetaBanner />}
 
       {/* Primary rail sidebar — hidden on mobile */}
-      <div className={`hidden md:flex ${isImpersonating ? 'pt-9' : ''}`}>
+      <div className={`hidden md:flex ${hasTopBanner ? 'pt-9' : ''}`}>
         <PrimarySidebar
           activeWorkspaceId={workspace?.id ?? null}
           userRole={userRole}
@@ -86,7 +103,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Secondary sidebar — only when inside a workspace, hidden on mobile */}
       {workspace && workspace.id !== 'produccion' && (
-        <div className={`hidden md:flex ${isImpersonating ? 'pt-9' : ''}`}>
+        <div className={`hidden md:flex ${hasTopBanner ? 'pt-9' : ''}`}>
           <SecondarySidebar
             workspace={workspace}
             activeItem={activeItem}
@@ -115,11 +132,11 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content — shift down when banner is visible */}
       {isFullHeight ? (
-        <main className={`flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0 ${isImpersonating ? 'pt-9' : ''}`}>
+        <main className={`flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0 ${hasTopBanner ? 'pt-9' : ''}`}>
           {children}
         </main>
       ) : (
-        <main className={`flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0 ${isImpersonating ? 'pt-9' : ''}`}>
+        <main className={`flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0 ${hasTopBanner ? 'pt-9' : ''}`}>
           <div className="px-4 md:px-6 py-4 md:py-6 max-w-screen-2xl mx-auto">
             {children}
           </div>

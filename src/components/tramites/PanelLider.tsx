@@ -15,7 +15,7 @@ interface LiderEquipo {
 
 interface Miembro {
   usuario_id: string; nombre_completo: string;
-  rol_en_equipo: 'lider' | 'ejecutivo' | 'miembro';
+  rol_en_equipo: 'lider' | 'supervisor' | 'director' | 'ejecutivo' | 'miembro';
   oficina_nombre: string | null; rol: string;
 }
 
@@ -67,7 +67,7 @@ export function PanelLider({ onClose }: Props) {
   const [loadingMiembros, setLoadingMiembros] = useState(false);
   const [searchAdd, setSearchAdd] = useState('');
   const [allUsuarios, setAllUsuarios] = useState<UsuarioOpc[]>([]);
-  const [pendingRol, setPendingRol] = useState<'lider' | 'ejecutivo' | 'miembro'>('ejecutivo');
+  const [pendingRol, setPendingRol] = useState<'lider' | 'supervisor' | 'director' | 'ejecutivo' | 'miembro'>('ejecutivo');
   const [addingUser, setAddingUser] = useState<string | null>(null);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [changingRol, setChangingRol] = useState<string | null>(null);
