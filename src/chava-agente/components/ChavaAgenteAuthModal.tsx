@@ -275,7 +275,7 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage, initialV
                   </div>
                   <p className="text-sm font-semibold text-white">Revisa tu bandeja</p>
                   <p className="text-xs mt-1 max-w-xs mx-auto leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    Te enviamos un código de 6 caracteres
+                    Te enviamos un código de 6 dígitos
                     {maskedEmail ? ` a ${maskedEmail}` : ''}
                   </p>
                 </div>
@@ -297,15 +297,16 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage, initialV
                 <DarkField label="Código de acceso">
                   <input
                     type="text"
-                    inputMode="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     maxLength={6}
                     value={otp}
-                    onChange={e => setOtp(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                    onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     onKeyDown={e => e.key === 'Enter' && handleVerifyOtp(isRegisterStep)}
-                    placeholder="ABC123"
+                    placeholder="123456"
                     autoFocus
                     autoComplete="one-time-code"
-                    className="dark-input text-center tracking-[0.5em] font-mono uppercase"
+                    className="dark-input text-center tracking-[0.5em] font-mono"
                   />
                   <p className="text-[10px] mt-1.5 text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>Vence en 10 minutos</p>
                 </DarkField>
