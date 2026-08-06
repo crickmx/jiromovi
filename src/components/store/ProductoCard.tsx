@@ -101,12 +101,12 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
           {producto.descripcion}
         </p>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white shrink-0">
             ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
           </p>
 
-          <div className="w-full sm:w-auto flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {!esPremium && !sinStock && !requiereModal && (
               <div className="flex items-center gap-1.5">
                 <button
@@ -142,13 +142,13 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
                 setCantidad(1);
               }}
               disabled={!esPremium && sinStock}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+              className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap ${
                 !esPremium && sinStock
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-accent text-white hover:bg-accent-hover'
               }`}
             >
-              <ShoppingCart className="w-4 h-4" />
+              <ShoppingCart className="w-4 h-4 shrink-0" />
               <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : requiereModal ? 'Elegir opciones' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
             </button>
           </div>
