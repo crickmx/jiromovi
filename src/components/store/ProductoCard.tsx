@@ -104,7 +104,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         <div className="flex flex-col gap-2">
           {/* Fila precio + stepper */}
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xl font-bold text-gray-900 dark:text-white">
+            <p className="text-base font-bold text-gray-900 dark:text-white">
               ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </p>
             {!esPremium && !sinStock && !requiereModal && (
