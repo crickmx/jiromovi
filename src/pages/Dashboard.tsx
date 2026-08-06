@@ -15,6 +15,7 @@ import { CampaniasActivasCard } from '../components/dashboard/CampaniasActivasCa
 import { ConvencionCard } from '../components/dashboard/ConvencionCard';
 import { VendedorSections } from '../components/dashboard/VendedorSections';
 import { GerenteSections } from '../components/dashboard/GerenteSections';
+import { DireccionSections } from '../components/dashboard/DireccionSections';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -355,15 +356,17 @@ export default function Dashboard() {
   const wideWidgets = enabledWidgets.filter(w => w.full_width);
   const narrowWidgets = enabledWidgets.filter(w => !w.full_width);
 
-  const esAgente   = usuario.rol === 'Agente';
-  const esGerente  = usuario.rol === 'Gerente';
+  const esAgente      = usuario.rol === 'Agente';
+  const esGerente     = usuario.rol === 'Gerente';
+  const esDireccion   = usuario.rol === 'Administrador';
 
   return (
     <div className="space-y-6 pb-8">
       <WelcomeHero usuario={usuario} />
 
-      {esAgente  && <VendedorSections usuario={usuario} />}
-      {esGerente && <GerenteSections  usuario={usuario} />}
+      {esAgente     && <VendedorSections  usuario={usuario} />}
+      {esGerente    && <GerenteSections   usuario={usuario} />}
+      {esDireccion  && <DireccionSections usuario={usuario} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

@@ -544,7 +544,7 @@ export function VendedorSections({ usuario }: { usuario: Usuario }) {
           👤
         </div>
         <div>
-          <p className="text-lg font-extrabold text-neutral-900 dark:text-white leading-tight">Vendedor</p>
+          <p className="text-lg font-extrabold text-neutral-900 dark:text-white leading-tight">Asesor</p>
           <p className="text-[11px] text-neutral-400 dark:text-white/35">Lo que necesitas</p>
         </div>
       </div>
