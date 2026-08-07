@@ -141,6 +141,7 @@ const PaginaPublicaAsesor = lazy(() => import('./PaginaPublicaAsesor'));
 const AgendaPublica = lazy(() => import('./AgendaPublica'));
 const Alta = lazy(() => import('./Alta'));
 const AltaSimular = lazy(() => import('./AltaSimular'));
+const AdminContratosAlta = lazy(() => import('./AdminContratosAlta'));
 
 function PageLoader() {
   return (
@@ -204,6 +205,7 @@ export default function MoviFullRoutes() {
           <Route path="/mi-crm/configuracion" element={<ProtectedRoute><CRMConfiguracion /></ProtectedRoute>} />
           <Route path="/mi-crm/leads-seguros-express" element={<ProtectedRoute><CRMLeadsSegurosExpress /></ProtectedRoute>} />
           <Route path="/admin/seguros-express" element={<ProtectedRoute requireAdmin><AdminSegurosExpress /></ProtectedRoute>} />
+          <Route path="/admin/registro-at/contratos" element={<ProtectedRoute requireAdmin><AdminContratosAlta /></ProtectedRoute>} />
           <Route path="/tramites" element={<ProtectedRoute><Tramites /></ProtectedRoute>} />
           <Route path="/tramites/:id" element={<ProtectedRoute><TramiteDetalle /></ProtectedRoute>} />
           <Route path="/tareas/reporte/:tramiteId/:campoId" element={<ProtectedRoute><TareaReportePage /></ProtectedRoute>} />
