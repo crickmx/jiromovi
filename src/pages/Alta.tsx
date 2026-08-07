@@ -13,7 +13,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Loader as Loader2, CircleAlert as AlertCircle, Check, ArrowLeft, ArrowRight,
-  Upload, ShieldCheck, FileText, User, RefreshCw,
+  Upload, ShieldCheck, FileText, User, CreditCard, RefreshCw,
 } from 'lucide-react';
 import {
   iniciarAlta, guardarPaso, subirDocumento, retomarAlta, reconciliar, iniciarVerificacion as iniciarVerificacionApi,
@@ -66,14 +66,22 @@ async function ejecutarRecaptcha(): Promise<string> {
 
 interface Paso { id: string; label: string; icon: React.ElementType; }
 const PASOS: Paso[] = [
-  { id: 'datos', label: 'Datos', icon: User },
+  { id: 'personales', label: 'Personales', icon: User },
+  { id: 'fiscal', label: 'Fiscal y RC', icon: CreditCard },
   { id: 'documentos', label: 'Documentos', icon: FileText },
   { id: 'verificacion', label: 'Identidad', icon: ShieldCheck },
 ];
 
+// Régimen fiscal: principales para personas físicas en México.
+const REGIMENES: { v: string; t: string }[] = [
+  { v: 'honorarios', t: 'Servicios profesionales (honorarios)' },
+  { v: 'actividad_empresarial', t: 'Actividad empresarial y profesional' },
+  { v: 'resico', t: 'RESICO (Régimen Simplificado de Confianza)' },
+  { v: 'otro', t: 'Otro' },
+];
+
 const DOCS_REQUERIDOS: { tipo: TipoDocumento; label: string; soloConCedula?: boolean }[] = [
-  { tipo: 'ine_frente', label: 'INE / identificación oficial (frente)' },
-  { tipo: 'ine_reverso', label: 'INE / identificación oficial (reverso)' },
+  { tipo: 'ine_frente', label: 'INE / identificación oficial (ambos lados, en un solo archivo)' },
   { tipo: 'csf', label: 'Constancia de Situación Fiscal (CSF)' },
   { tipo: 'caratula_bancaria', label: 'Carátula bancaria' },
   { tipo: 'poliza_rc', label: 'Póliza de Responsabilidad Civil' },
@@ -147,9 +155,9 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
         setForm(datos as AltaDatos);
         setDocsSubidos(new Set((r.documentos || []).map((d) => d.tipo_documento)));
         if (['identity_pending', 'signature_pending', 'approved', 'awaiting_review'].includes(r.alta.estado)) {
-          setStep(2); iniciarPolling(s);
+          setStep(3); iniciarPolling(s);
         } else if (['completed', 'needs_retry', 'human_review', 'rejected'].includes(r.alta.estado)) {
-          setStep(2);
+          setStep(3);
         }
       } catch { limpiarSesionLocal(); }
     })();
@@ -193,13 +201,15 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
 
   function validar(id: string): boolean {
     const e: Record<string, string> = {};
-    if (id === 'datos') {
+    if (id === 'personales') {
       if (!tipo) e.tipo = 'Elige el tipo de agente';
       if (!form.nombre?.trim()) e.nombre = 'Requerido';
       if (!form.apellidos?.trim()) e.apellidos = 'Requerido';
       if (!form.email?.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) e.email = 'Correo válido requerido';
       if (!form.whatsapp?.trim() || form.whatsapp.replace(/\D/g, '').length < 10) e.whatsapp = 'WhatsApp a 10 dígitos';
       if (tipo === 'con_cedula' && !form.rfc?.trim()) e.rfc = 'RFC requerido';
+    }
+    if (id === 'fiscal') {
       if (!form.regimen_fiscal?.trim()) e.regimen_fiscal = 'Requerido';
       if (!form.codigo_postal_fiscal?.trim()) e.codigo_postal_fiscal = 'Requerido';
       if (!form.banco?.trim()) e.banco = 'Requerido';
@@ -214,7 +224,7 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
       if (faltan.length) e.documentos = `Faltan ${faltan.length} documento(s) obligatorio(s)`;
     }
     setErrors(e);
-    if (Object.keys(e).length && id === 'datos') window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (Object.keys(e).length && (id === 'personales' || id === 'fiscal')) window.scrollTo({ top: 0, behavior: 'smooth' });
     return Object.keys(e).length === 0;
   }
 
@@ -317,7 +327,8 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
 
             {/* Contenido */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4">
-              {p.id === 'datos' && <PasoDatos marca={MARCA} tipo={tipo} setTipo={(t) => { setTipo(t); setErrors((e) => ({ ...e, tipo: '' })); triggerAutoSave(); }} form={form} errors={errors} upd={upd} />}
+              {p.id === 'personales' && <PasoPersonales marca={MARCA} tipo={tipo} setTipo={(t) => { setTipo(t); setErrors((e) => ({ ...e, tipo: '' })); triggerAutoSave(); }} form={form} errors={errors} upd={upd} />}
+              {p.id === 'fiscal' && <PasoFiscal tipo={tipo} form={form} errors={errors} upd={upd} />}
               {p.id === 'documentos' && (
                 <PasoDocumentos marca={MARCA} tipo={tipo} docsSubidos={docsSubidos} subiendo={subiendo} onFile={onFile} error={errors.documentos} />
               )}
@@ -379,7 +390,7 @@ function Subtitulo({ children }: { children: React.ReactNode }) {
   return <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mt-2">{children}</h3>;
 }
 
-function PasoDatos({ marca, tipo, setTipo, form, errors, upd }: {
+function PasoPersonales({ marca, tipo, setTipo, form, errors, upd }: {
   marca: string; tipo: AltaTipo | null; setTipo: (t: AltaTipo) => void;
   form: AltaDatos; errors: Record<string, string>; upd: (c: keyof AltaDatos, v: string) => void;
 }) {
@@ -389,6 +400,7 @@ function PasoDatos({ marca, tipo, setTipo, form, errors, upd }: {
   ];
   return (
     <div className="space-y-4">
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white">Datos personales</h2>
       {/* Tipo de agente (segmentado) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo de agente <span className="text-red-500">*</span></label>
@@ -408,7 +420,6 @@ function PasoDatos({ marca, tipo, setTipo, form, errors, upd }: {
         <p className="mt-1 text-[11px] text-gray-400">{tipo === 'en_desarrollo' ? 'Aún no tienes cédula; inicias tu desarrollo con nosotros.' : tipo === 'con_cedula' ? 'Ya cuentas con tu cédula de agente vigente.' : 'Elige una opción para continuar.'}</p>
       </div>
 
-      <Subtitulo>Datos personales</Subtitulo>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Campo label="Nombre(s)" req error={errors.nombre}><input className={inputCls(!!errors.nombre)} value={form.nombre || ''} onChange={(e) => upd('nombre', e.target.value)} /></Campo>
         <Campo label="Apellidos" req error={errors.apellidos}><input className={inputCls(!!errors.apellidos)} value={form.apellidos || ''} onChange={(e) => upd('apellidos', e.target.value)} /></Campo>
@@ -420,11 +431,23 @@ function PasoDatos({ marca, tipo, setTipo, form, errors, upd }: {
         <Campo label="CURP"><input className={inputCls()} value={form.curp || ''} onChange={(e) => upd('curp', e.target.value.toUpperCase())} /></Campo>
         <Campo label="Fecha de nacimiento"><input type="date" className={inputCls()} value={form.fecha_nacimiento || ''} onChange={(e) => upd('fecha_nacimiento', e.target.value)} /></Campo>
       </div>
+    </div>
+  );
+}
 
-      <Subtitulo>Datos fiscales y bancarios</Subtitulo>
+function PasoFiscal({ tipo, form, errors, upd }: {
+  tipo: AltaTipo | null; form: AltaDatos; errors: Record<string, string>; upd: (c: keyof AltaDatos, v: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white">Datos fiscales y bancarios</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Campo label="Razón social (o tu nombre)"><input className={inputCls()} value={form.razon_social || ''} onChange={(e) => upd('razon_social', e.target.value)} /></Campo>
-        <Campo label="Régimen fiscal" req error={errors.regimen_fiscal}><input className={inputCls(!!errors.regimen_fiscal)} value={form.regimen_fiscal || ''} onChange={(e) => upd('regimen_fiscal', e.target.value)} /></Campo>
+        <Campo label="Régimen fiscal" req error={errors.regimen_fiscal}>
+          <select className={inputCls(!!errors.regimen_fiscal)} value={form.regimen_fiscal || ''} onChange={(e) => upd('regimen_fiscal', e.target.value)}>
+            <option value="">Selecciona…</option>
+            {REGIMENES.map((r) => <option key={r.v} value={r.v}>{r.t}</option>)}
+          </select>
+        </Campo>
         <Campo label="Código postal fiscal" req error={errors.codigo_postal_fiscal}><input inputMode="numeric" className={inputCls(!!errors.codigo_postal_fiscal)} value={form.codigo_postal_fiscal || ''} onChange={(e) => upd('codigo_postal_fiscal', e.target.value)} /></Campo>
         <Campo label="Banco" req error={errors.banco}><input className={inputCls(!!errors.banco)} value={form.banco || ''} onChange={(e) => upd('banco', e.target.value)} /></Campo>
         <Campo label="CLABE interbancaria (18 dígitos)" req error={errors.clabe}><input inputMode="numeric" className={inputCls(!!errors.clabe)} value={form.clabe || ''} onChange={(e) => upd('clabe', e.target.value)} /></Campo>
