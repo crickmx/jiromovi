@@ -182,13 +182,21 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === 'reconciliar') {
-      // Refresca el estado consultando al proveedor (útil para el wizard sin
-      // esperar al cron). Gateado por resume_token: el usuario solo reconcilia
-      // su propia alta.
+      // Refresca el estado consultando a ambos proveedores (útil para el wizard
+      // sin esperar al cron). Gateado por resume_token: solo su propia alta.
       await reconciliarAlta(db, alta, 'cron');
-      const { data: fresca } = await db.from('alta_agente')
-        .select('estado, usuario_id').eq('id', alta.id).maybeSingle();
-      return json({ ok: true, estado: fresca?.estado || alta.estado, usuario_id: fresca?.usuario_id || null });
+      const [{ data: fresca }, { data: v }, { data: f }] = await Promise.all([
+        db.from('alta_agente').select('estado, usuario_id').eq('id', alta.id).maybeSingle(),
+        db.from('alta_agente_verificacion').select('estado').eq('alta_id', alta.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        db.from('alta_agente_firma').select('estado').eq('alta_id', alta.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      return json({
+        ok: true,
+        estado: fresca?.estado || alta.estado,
+        usuario_id: fresca?.usuario_id || null,
+        verificacion: (v as { estado?: string } | null)?.estado || 'no_iniciada',
+        firma: (f as { estado?: string } | null)?.estado || 'no_iniciada',
+      });
     }
 
     if (action === 'retomar') {

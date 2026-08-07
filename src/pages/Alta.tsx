@@ -16,7 +16,7 @@ import {
   Upload, ShieldCheck, FileText, User, RefreshCw,
 } from 'lucide-react';
 import {
-  iniciarAlta, guardarPaso, subirDocumento, retomarAlta, reconciliar, enviarACincel,
+  iniciarAlta, guardarPaso, subirDocumento, retomarAlta, reconciliar, iniciarVerificacion as iniciarVerificacionApi,
   leerSesionLocal, guardarSesionLocal, limpiarSesionLocal,
   type AltaSession, type AltaDatos, type AltaTipo, type AltaEstado, type TipoDocumento,
 } from '../lib/alta/altaApi';
@@ -109,6 +109,8 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
   const [estado, setEstado] = useState<AltaEstado | null>(null);
   const [folio, setFolio] = useState<string | null>(null);
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
+  const [subEstados, setSubEstados] = useState<{ verif: string; firma: string }>({ verif: 'no_iniciada', firma: 'no_iniciada' });
+  const [sesionUrls, setSesionUrls] = useState<{ identidad?: string | null; firma?: string | null }>({});
 
   const sessionRef = useRef<AltaSession | null>(null);
   const creandoRef = useRef(false);
@@ -243,6 +245,7 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
       try {
         const r = await reconciliar(s);
         setEstado(r.estado);
+        if (r.verificacion || r.firma) setSubEstados({ verif: r.verificacion || 'no_iniciada', firma: r.firma || 'no_iniciada' });
         if (['completed', 'rejected', 'human_review', 'needs_retry'].includes(r.estado)) {
           if (pollTimer.current) clearInterval(pollTimer.current);
         }
@@ -250,14 +253,18 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
     }, 4000);
   }
 
-  async function iniciarVerificacion() {
+  async function arrancarVerificacion() {
     setEnviando(true); setErrorGlobal(null);
     try {
       const s = await ensureSession({ ...form, ...(tipo ? { tipo_agente: tipo } : {}) });
       await guardarPaso(s, { datos: { ...form, ...(tipo ? { tipo_agente: tipo } : {}) } });
-      const r = await enviarACincel(s);
+      const r = await iniciarVerificacionApi(s);
       setEstado('identity_pending');
-      if (r.signUrl) window.open(r.signUrl, '_blank', 'noopener');
+      setSubEstados({ verif: 'pendiente', firma: 'enviada' });
+      setSesionUrls({ identidad: r.identidad?.url || null, firma: r.firma?.signUrl || null });
+      // Abrir ambos procesos (identidad Sumsub / firma SignWell) en pestañas.
+      if (r.identidad?.url) window.open(r.identidad.url, '_blank', 'noopener');
+      if (r.firma?.signUrl) window.open(r.firma.signUrl, '_blank', 'noopener');
       iniciarPolling(s);
     } catch (e) { setErrorGlobal((e as Error).message); }
     finally { setEnviando(false); }
@@ -315,7 +322,8 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
                 <PasoDocumentos marca={MARCA} tipo={tipo} docsSubidos={docsSubidos} subiendo={subiendo} onFile={onFile} error={errors.documentos} />
               )}
               {p.id === 'verificacion' && (
-                <PasoVerificacion marca={MARCA} estado={estado} enviando={enviando} onIniciar={iniciarVerificacion} onReintentar={() => session && iniciarVerificacion()} />
+                <PasoVerificacion marca={MARCA} estado={estado} enviando={enviando} sub={subEstados} urls={sesionUrls}
+                  onIniciar={arrancarVerificacion} onReintentar={() => session && arrancarVerificacion()} />
               )}
             </div>
 
@@ -468,8 +476,37 @@ function PasoDocumentos({ marca, tipo, docsSubidos, subiendo, onFile, error }: {
   );
 }
 
-function PasoVerificacion({ marca, estado, enviando, onIniciar, onReintentar }: {
-  marca: string; estado: AltaEstado | null; enviando: boolean; onIniciar: () => void; onReintentar: () => void;
+function estadoSubMeta(s: string): { txt: string; cls: string; ok?: boolean; fail?: boolean } {
+  if (s === 'aprobada' || s === 'firmada') return { txt: s === 'aprobada' ? 'Aprobada' : 'Firmado', cls: 'text-emerald-600', ok: true };
+  if (s === 'rechazada' || s === 'error') return { txt: 'Con problema', cls: 'text-red-600', fail: true };
+  if (s === 'no_iniciada') return { txt: 'Sin iniciar', cls: 'text-gray-400' };
+  return { txt: 'En proceso…', cls: 'text-amber-600' };
+}
+
+function ProcesoCard({ marca, titulo, desc, estado, url }: { marca: string; titulo: string; desc: string; estado: string; url?: string | null }) {
+  const m = estadoSubMeta(estado);
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${marca}15`, color: marca }}>
+        {m.ok ? <Check className="w-4 h-4 text-emerald-600" /> : m.fail ? <AlertCircle className="w-4 h-4 text-red-600" /> : <Loader2 className="w-4 h-4 animate-spin" />}
+      </div>
+      <div className="flex-1 min-w-0 text-left">
+        <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{titulo}</p>
+        <p className={`text-xs ${m.cls}`}>{m.txt}</p>
+      </div>
+      {url && !m.ok && (
+        <button onClick={() => window.open(url, '_blank', 'noopener')} className="text-xs font-medium px-2.5 py-1.5 rounded-lg border shrink-0" style={{ borderColor: marca, color: marca }}>
+          Abrir
+        </button>
+      )}
+    </div>
+  );
+}
+
+function PasoVerificacion({ marca, estado, enviando, sub, urls, onIniciar, onReintentar }: {
+  marca: string; estado: AltaEstado | null; enviando: boolean;
+  sub: { verif: string; firma: string }; urls: { identidad?: string | null; firma?: string | null };
+  onIniciar: () => void; onReintentar: () => void;
 }) {
   const enProceso = estado === 'identity_pending' || estado === 'signature_pending' || estado === 'approved' || estado === 'awaiting_review';
   if (estado === 'human_review') {
@@ -495,10 +532,13 @@ function PasoVerificacion({ marca, estado, enviando, onIniciar, onReintentar }: 
   }
   if (enProceso) {
     return (
-      <div className="text-center py-6">
-        <Loader2 className="w-10 h-10 mx-auto animate-spin mb-3" style={{ color: marca }} />
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Verificando identidad y firma…</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Completa el proceso en la ventana que abrimos. Esta pantalla se actualiza sola cuando termines.</p>
+      <div className="py-2">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-white text-center">Verificación de identidad y firma</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4 text-center">Completa ambos procesos en las ventanas que abrimos. Esta pantalla se actualiza sola.</p>
+        <div className="space-y-2.5">
+          <ProcesoCard marca={marca} titulo="Verificación de identidad" desc="INE + selfie + prueba de vida" estado={sub.verif} url={urls.identidad} />
+          <ProcesoCard marca={marca} titulo="Firma del contrato" desc="Firma con validez legal" estado={sub.firma} url={urls.firma} />
+        </div>
       </div>
     );
   }

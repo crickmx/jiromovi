@@ -12,7 +12,9 @@ const MARCA = '#164281';
 
 export default function AltaSimular() {
   const [params] = useSearchParams();
-  const doc = params.get('doc') || '';
+  const tipo = params.get('tipo') || 'firma';
+  const doc = params.get('doc') || params.get('id') || '';
+  const esIdentidad = tipo === 'identidad';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-950 flex items-center justify-center px-4">
@@ -20,13 +22,12 @@ export default function AltaSimular() {
         <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-4" style={{ background: `${MARCA}15`, color: MARCA }}>
           <ShieldCheck className="w-7 h-7" />
         </div>
-        <h1 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Simulador de verificación y firma</h1>
+        <h1 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{esIdentidad ? 'Simulador de verificación de identidad' : 'Simulador de firma del contrato'}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-          Estás en <strong>modo de prueba</strong> (sin credenciales reales de Cincel). En producción,
-          aquí capturarías tu INE, tu selfie con prueba de vida y firmarías el contrato.
+          Estás en <strong>modo de prueba</strong> (sin credenciales reales). En producción, aquí {esIdentidad ? 'capturarías tu INE y tu selfie con prueba de vida (Sumsub)' : 'firmarías el contrato con validez legal (SignWell)'}.
         </p>
         <div className="flex items-center justify-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 mb-5">
-          <Check className="w-4 h-4" /> Identidad y firma simuladas como exitosas
+          <Check className="w-4 h-4" /> {esIdentidad ? 'Identidad simulada como exitosa' : 'Firma simulada como exitosa'}
         </div>
         <p className="text-xs text-gray-400 mb-6">
           Puedes cerrar esta pestaña. Tu alta se completará automáticamente en la ventana anterior.

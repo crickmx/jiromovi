@@ -1,16 +1,13 @@
 // ============================================================================
-// Capa de proveedores del módulo /alta — CONTRATO DESACOPLADO
+// Capa de proveedores del módulo /alta — CONTRATO DESACOPLADO (dos proveedores)
 // ----------------------------------------------------------------------------
-// La UI y las edge functions dependen SOLO de estas interfaces, nunca de Cincel
-// directamente. Para cambiar a Sumsub u otro proveedor: agregar una nueva
-// implementación de estas interfaces y registrarla en getOnboardingProvider().
-//
-// Cincel fusiona identidad biométrica + firma en un mismo documento (firmante
-// con identity_verification: true), por eso el proveedor de Cincel implementa
-// AMBAS interfaces (OnboardingProvider). Un futuro proveedor podría separarlas.
+// Identidad y firma son procesos SEPARADOS que corren EN PARALELO:
+//   IdentityVerificationProvider  → Sumsub  (KYC: applicant, WebSDK, estado)
+//   DocumentSignatureProvider     → SignWell (documento/plantilla, firma, estado)
+// La UI y las edge functions dependen solo de estas interfaces. Para cambiar de
+// proveedor: nueva implementación + registrarla en los factories de abajo.
+// (El adaptador Cincel — que fusionaba ambos — queda en el repo, sin usar.)
 // ============================================================================
-
-export type ProviderMode = 'cincel' | 'mock';
 
 export type VerificacionEstado =
   | 'no_iniciada' | 'pendiente' | 'en_proceso' | 'aprobada' | 'rechazada' | 'error';
@@ -18,100 +15,96 @@ export type VerificacionEstado =
 export type FirmaEstado =
   | 'no_iniciada' | 'pendiente' | 'enviada' | 'abierta' | 'firmada' | 'rechazada' | 'error';
 
-export interface Firmante {
+// ─── Identidad (Sumsub) ─────────────────────────────────────────────────
+export interface IniciarVerificacionParams {
+  altaId: string;
+  externalUserId: string;   // id estable del prospecto (usamos el alta id)
   nombre: string;
-  apellidos?: string;
-  email: string;
-  rfc?: string;
-  /** exige verificación biométrica de identidad antes de firmar */
-  requiereIdentidad: boolean;
+  apellidos: string;
+  email?: string;
+  telefono?: string;
+}
+export interface SesionVerificacion {
+  applicantId: string;
+  /** token para el WebSDK del frontend (Sumsub) */
+  sdkToken?: string;
+  /** URL alojada alternativa (o simulador en mock) */
+  url?: string;
+  raw?: unknown;
+}
+export interface EstadoVerificacion {
+  estado: VerificacionEstado;
+  /** pista para el flujo global: reintento posible, revisión manual, o final */
+  motivo?: 'retry' | 'manual' | 'final';
+  evidencias?: Record<string, string>;
+  raw?: unknown;
+}
+export interface RefVerificacion { applicantId: string; }
+
+export interface IdentityVerificationProvider {
+  readonly nombre: string;
+  iniciarVerificacion(p: IniciarVerificacionParams): Promise<SesionVerificacion>;
+  consultarVerificacion(ref: RefVerificacion): Promise<EstadoVerificacion>;
 }
 
-export interface CrearSesionParams {
+// ─── Firma (SignWell) ───────────────────────────────────────────────────
+export interface CrearFirmaParams {
   altaId: string;
-  firmante: Firmante;
-  /** contrato en base64 (PDF) */
-  contratoPdfBase64: string;
+  firmante: { nombre: string; apellidos?: string; email: string };
+  /** contrato en base64 (PDF) si no se usa plantilla */
+  contratoPdfBase64?: string;
   contratoNombre: string;
-  /** URL de retorno tras firmar (dominio configurable, ver VITE_APP_URL) */
+  /** id de plantilla del proveedor (opcional) */
+  templateId?: string;
   returnUrl?: string;
-  /** datos extra; el mock lee `mockResultado` para simular aprobación/rechazo */
   metadata?: Record<string, unknown>;
 }
-
-export interface SesionCreada {
-  documentoExternalId: string;
-  inviteExternalId: string;
-  teamUuid?: string;
-  folderUuid?: string;
-  /** URL alojada donde el firmante hace identidad + firma */
+export interface SesionFirma {
+  documentId: string;
+  signatureId?: string;   // id del firmante/recipient
+  /** URL de firma embebida/alojada */
   signUrl?: string;
   raw?: unknown;
 }
-
-export interface RefSesion {
-  documentoExternalId: string;
-  inviteExternalId: string;
-  identityUuid?: string;
-}
-
-export interface EstadoVerificacion {
-  estado: VerificacionEstado;
-  /** URLs/paths de evidencias (INE frente/reverso, selfie, liveness) */
-  evidencias?: Record<string, string>;
-  rfcValidado?: boolean;
-  raw?: unknown;
-}
-
 export interface EstadoFirma {
   estado: FirmaEstado;
-  /** status crudo del documento del proveedor (ej. unsigned/partially_signed/signed) */
-  documentoStatus?: string;
-  /** status crudo del invite (ej. idle/sent/opened/completed) */
-  inviteStatus?: string;
+  documentoStatus?: string;   // status crudo del proveedor
   raw?: unknown;
 }
+export interface RefFirma { documentId: string; signatureId?: string; }
 
 export interface Constancia {
-  /** PDF firmado */
   documentoFirmadoBytes?: Uint8Array;
-  /** ZIP con constancia legal (NOM-151 + audit trail) */
   constanciaZipBytes?: Uint8Array;
+  url?: string;
 }
 
-/** Verificación de identidad biométrica (KYC). */
-export interface IdentityVerificationProvider {
-  readonly nombre: string;
-  consultarVerificacion(ref: RefSesion): Promise<EstadoVerificacion>;
-}
-
-/** Firma de documentos con validez legal. */
 export interface DocumentSignatureProvider {
   readonly nombre: string;
-  /** Crea la sesión (documento + firmante). Si firmante.requiereIdentidad,
-   *  la sesión incluye la verificación biométrica en el mismo flujo. */
-  crearSesion(params: CrearSesionParams): Promise<SesionCreada>;
-  consultarFirma(ref: RefSesion): Promise<EstadoFirma>;
-  descargarConstancia(ref: RefSesion): Promise<Constancia>;
+  crearFirma(p: CrearFirmaParams): Promise<SesionFirma>;
+  consultarFirma(ref: RefFirma): Promise<EstadoFirma>;
+  descargarConstancia(ref: RefFirma): Promise<Constancia>;
 }
 
-/** Proveedor combinado (identidad + firma en un solo flujo), p.ej. Cincel. */
-export interface OnboardingProvider
-  extends DocumentSignatureProvider, IdentityVerificationProvider {}
-
-/**
- * Factory. Selecciona el proveedor según ALTA_PROVIDER_MODE (default 'mock'
- * si no hay credenciales de Cincel configuradas). Import dinámico para no
- * cargar el SDK del proveedor que no se use.
- */
-export async function getOnboardingProvider(): Promise<OnboardingProvider> {
-  const mode = (Deno.env.get('ALTA_PROVIDER_MODE') || '').toLowerCase() as ProviderMode;
-  const hayCincel = !!Deno.env.get('CINCEL_PAT') && !!Deno.env.get('CINCEL_DEFAULT_TEAM_UUID');
-
-  if (mode === 'cincel' || (mode !== 'mock' && hayCincel)) {
-    const { CincelProvider } = await import('./cincelProvider.ts');
-    return new CincelProvider();
+// ─── Factories (selección por entorno; mock si no hay credenciales) ──────
+export async function getIdentityProvider(): Promise<IdentityVerificationProvider> {
+  const forzado = (Deno.env.get('ALTA_IDENTITY_PROVIDER') || '').toLowerCase();
+  const haySumsub = !!Deno.env.get('SUMSUB_APP_TOKEN') && !!Deno.env.get('SUMSUB_SECRET_KEY');
+  if (forzado === 'sumsub' || (forzado !== 'mock' && haySumsub)) {
+    const { SumsubIdentityVerificationProvider } = await import('./sumsubProvider.ts');
+    return new SumsubIdentityVerificationProvider();
   }
-  const { MockProvider } = await import('./mockProvider.ts');
-  return new MockProvider();
+  const { MockIdentityProvider } = await import('./mockProvider.ts');
+  return new MockIdentityProvider();
+}
+
+export async function getSignatureProvider(): Promise<DocumentSignatureProvider> {
+  const forzado = (Deno.env.get('ALTA_SIGNATURE_PROVIDER') || '').toLowerCase();
+  const haySignwell = !!Deno.env.get('SIGNWELL_API_KEY');
+  if (forzado === 'signwell' || (forzado !== 'mock' && haySignwell)) {
+    const { SignWellDocumentSignatureProvider } = await import('./signwellProvider.ts');
+    return new SignWellDocumentSignatureProvider();
+  }
+  const { MockSignatureProvider } = await import('./mockProvider.ts');
+  return new MockSignatureProvider();
 }

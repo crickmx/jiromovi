@@ -122,10 +122,16 @@ export async function consultarEstado(s: AltaSession): Promise<{ estado: AltaEst
   return await invoke('estado', { alta_id: s.id, resume_token: s.resume_token });
 }
 
-export async function reconciliar(s: AltaSession): Promise<{ estado: AltaEstado; usuario_id: string | null }> {
+export async function reconciliar(s: AltaSession): Promise<{ estado: AltaEstado; usuario_id: string | null; verificacion?: string; firma?: string }> {
   return await invoke('reconciliar', { alta_id: s.id, resume_token: s.resume_token });
 }
 
-export async function enviarACincel(s: AltaSession): Promise<{ signUrl?: string; documento: string; proveedor: string }> {
+export interface IniciarVerifResp {
+  ok: boolean;
+  identidad: { proveedor: string; applicantId: string; sdkToken: string | null; url: string | null } | null;
+  firma: { proveedor: string; documentId: string; signUrl: string | null } | null;
+}
+// Arranca identidad (Sumsub) + firma (SignWell) en paralelo. (slug legacy)
+export async function iniciarVerificacion(s: AltaSession): Promise<IniciarVerifResp> {
   return await invoke('', { alta_id: s.id, resume_token: s.resume_token }, 'alta-enviar-cincel');
 }
