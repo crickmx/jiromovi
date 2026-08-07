@@ -101,31 +101,32 @@ export function generarFolio(): string {
   return `ALT-${ymd}-${suf}`;
 }
 
-/** Notifica a todos los Administradores activos vía notificación transaccional. */
+/**
+ * Notifica a todos los Administradores activos (in-app + WhatsApp opcional) vía
+ * `enviar_notificacion_global` con filtro por rol — no depende de plantillas
+ * transaccionales, así que funciona sin registrar event_keys nuevos. Nunca lanza.
+ */
 export async function notificarAdmins(
   db: SupabaseClient,
-  eventKey: string,
-  variables: Record<string, string>,
+  titulo: string,
+  mensaje: string,
   linkUrl: string,
-): Promise<number> {
-  const { data: admins } = await db
-    .from('usuarios')
-    .select('id')
-    .eq('rol', 'Administrador')
-    .eq('activo', true);
-  let n = 0;
-  for (const a of (admins || [])) {
-    try {
-      await db.rpc('send_transactional_notification', {
-        p_event_key: eventKey,
-        p_user_id: (a as { id: string }).id,
-        p_variables: variables,
-        p_link_url: linkUrl,
-      });
-      n++;
-    } catch (e) {
-      console.error('[alta] notificarAdmins error (no fatal):', e);
-    }
+  enviarWhatsapp = false,
+): Promise<boolean> {
+  try {
+    const { error } = await db.rpc('enviar_notificacion_global', {
+      p_titulo: titulo,
+      p_mensaje: mensaje,
+      p_accion_url: linkUrl,
+      p_filtros: { tipo: 'rol', rol: 'Administrador' },
+      p_evento_id: null,
+      p_enviar_whatsapp: enviarWhatsapp,
+      p_enviado_por: null,
+    });
+    if (error) { console.error('[alta] notificarAdmins error (no fatal):', error.message); return false; }
+    return true;
+  } catch (e) {
+    console.error('[alta] notificarAdmins error (no fatal):', e);
+    return false;
   }
-  return n;
 }

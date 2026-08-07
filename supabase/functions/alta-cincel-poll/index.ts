@@ -58,12 +58,14 @@ Deno.serve(async (req: Request) => {
           minutos_sin_actividad: ABANDONO_MIN,
         }, 'cron');
         await db.from('alta_agente').update({ abandono_notificado_at: new Date().toISOString() }).eq('id', alta.id);
-        await notificarAdmins(db, 'alta_agente_incompleta', {
-          nombre: `${alta.nombre || ''} ${alta.apellidos || ''}`.trim() || 'Prospecto sin nombre',
-          folio: String(alta.folio || ''),
-          contacto: String(alta.whatsapp || alta.email || ''),
-          url: '/admin/altas',
-        }, '/admin/altas');
+        const nombre = `${alta.nombre || ''} ${alta.apellidos || ''}`.trim() || 'Prospecto sin nombre';
+        const contacto = String(alta.whatsapp || alta.email || 'sin contacto');
+        await notificarAdmins(
+          db,
+          'Alta de agente incompleta (abandono)',
+          `${nombre} dejó su alta sin terminar (folio ${alta.folio}). Contacto: ${contacto}.`,
+          '/admin/altas',
+        );
         abandonos++;
       } catch (e) {
         console.error('[alta-cincel-poll] abandono error (no fatal):', e);

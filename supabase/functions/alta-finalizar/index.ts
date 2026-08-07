@@ -149,12 +149,13 @@ Deno.serve(async (req: Request) => {
 
     // 6) Notificar a Administradores (para asignar oficina y dar seguimiento).
     const nombreCompleto = `${alta.nombre} ${alta.apellidos}`;
-    await notificarAdmins(db, 'alta_agente_completada', {
-      nombre: nombreCompleto,
-      tipo_agente: String(alta.tipo_agente || ''),
-      folio: String(alta.folio || ''),
-      url: '/admin/usuarios',
-    }, '/admin/usuarios');
+    const tipoTxt = alta.tipo_agente === 'con_cedula' ? 'con cédula' : 'en desarrollo';
+    await notificarAdmins(
+      db,
+      'Nueva alta de agente completada',
+      `Se dio de alta y activó al agente ${nombreCompleto} (${tipoTxt}). Folio ${alta.folio}. Falta asignarle oficina.`,
+      '/admin/usuarios',
+    );
 
     return json({ ok: true, usuario_id: usuarioId });
   } catch (e) {
