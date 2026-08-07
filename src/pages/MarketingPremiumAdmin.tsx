@@ -378,11 +378,6 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setSeleccionado(actualizado);
     setAgentes(prev => prev.map(a => a.id === actualizado.id ? actualizado : a));
 
-    // Crear trámite de cobranza solo al activar por primera vez
-    if (activandoPremium) {
-      await crearTramiteCobranzaPremium(actualizado);
-    }
-
     // Disparar las reglas configuradas para el/los eventos que ocurrieron en este guardado
     const eventos = detectarEventosPremium(agenteAntes, actualizado);
     await dispararReglasPremium(eventos, actualizado);
@@ -1368,66 +1363,5 @@ function MktPremiumTriggersPanel() {
       )}
     </div>
 
-    {mostrarNuevoAgente && (
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Nuevo agente</h3>
-            <button onClick={() => { setMostrarNuevoAgente(false); setErrorNuevoAgente(''); }} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-white/80">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <p className="text-xs text-neutral-500 dark:text-white/50">Se crea con rol Agente. Le llegará su código de acceso al correo laboral.</p>
-
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Nombre"
-              value={nuevoAgente.nombre}
-              onChange={e => setNuevoAgente(f => ({ ...f, nombre: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <input
-              type="text"
-              placeholder="Apellidos"
-              value={nuevoAgente.apellidos}
-              onChange={e => setNuevoAgente(f => ({ ...f, apellidos: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <input
-              type="email"
-              placeholder="Correo laboral"
-              value={nuevoAgente.email_laboral}
-              onChange={e => setNuevoAgente(f => ({ ...f, email_laboral: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <input
-              type="tel"
-              placeholder="Celular (opcional)"
-              value={nuevoAgente.celular_laboral}
-              onChange={e => setNuevoAgente(f => ({ ...f, celular_laboral: e.target.value }))}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-          </div>
-
-          {errorNuevoAgente && (
-            <p className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {errorNuevoAgente}
-            </p>
-          )}
-
-          <button
-            onClick={crearAgente}
-            disabled={creandoAgente}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition disabled:opacity-60"
-          >
-            <UserPlus className="w-4 h-4" />
-            {creandoAgente ? 'Creando…' : 'Crear agente'}
-          </button>
-        </div>
-      </div>
-    )}
-    </>
   );
 }
