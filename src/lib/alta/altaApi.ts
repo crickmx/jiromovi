@@ -32,7 +32,6 @@ export interface AltaDatos {
   razon_social?: string;
   regimen_fiscal?: string;
   codigo_postal_fiscal?: string;
-  uso_cfdi?: string;
   banco?: string;
   clabe?: string;
   cuenta_banco?: string;

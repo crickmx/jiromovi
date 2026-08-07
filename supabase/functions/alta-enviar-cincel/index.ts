@@ -41,7 +41,8 @@ function faltantes(alta: AltaRow, docs: string[]): string[] {
   if (!alta.nombre || !alta.apellidos) f.push('nombre_completo');
   if (!alta.email) f.push('email');
   if (!alta.whatsapp) f.push('whatsapp');
-  if (!alta.rfc) f.push('rfc');
+  // El RFC solo es obligatorio para Agente con Cédula.
+  if (alta.tipo_agente === 'con_cedula' && !alta.rfc) f.push('rfc');
   if (alta.tipo_agente === 'con_cedula' && !alta.cedula) f.push('cedula');
   // Documentos mínimos:
   const req = ['ine_frente', 'csf', 'caratula_bancaria', 'poliza_rc'];

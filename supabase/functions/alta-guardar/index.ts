@@ -22,7 +22,7 @@ import { reconciliarAlta } from '../_shared/alta/reconciliar.ts';
 const CAMPOS_ALTA = new Set([
   'tipo_agente', 'nombre', 'apellidos', 'fecha_nacimiento', 'curp', 'rfc',
   'email', 'whatsapp', 'telefono', 'razon_social', 'regimen_fiscal',
-  'codigo_postal_fiscal', 'uso_cfdi', 'banco', 'clabe', 'cuenta_banco',
+  'codigo_postal_fiscal', 'banco', 'clabe', 'cuenta_banco',
   'cedula', 'cedula_vigencia', 'poliza_rc_numero', 'poliza_rc_aseguradora',
   'poliza_rc_vigencia',
 ]);

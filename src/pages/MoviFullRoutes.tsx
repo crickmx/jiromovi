@@ -129,6 +129,7 @@ const DashboardEditorAdmin = lazy(() => import('./DashboardEditorAdmin'));
 const BaseDatosMaestrosAdmin = lazy(() => import('./BaseDatosMaestrosAdmin'));
 const AdminTramites = lazy(() => import('./AdminTramites'));
 const AdminReportesBugs = lazy(() => import('./AdminReportesBugs'));
+const AdminAltas = lazy(() => import('./AdminAltas'));
 const DiasNoHabiles = lazy(() => import('./admin/DiasNoHabiles'));
 const ConfigJornada = lazy(() => import('./admin/ConfigJornada'));
 
@@ -316,6 +317,7 @@ export default function MoviFullRoutes() {
           <Route path="/admin/base-datos" element={<ProtectedRoute requireAdmin><BaseDatosMaestrosAdmin /></ProtectedRoute>} />
           <Route path="/admin/tramites" element={<ProtectedRoute requireAdmin><AdminTramites /></ProtectedRoute>} />
           <Route path="/admin/reportes-bugs" element={<ProtectedRoute requireAdmin><AdminReportesBugs /></ProtectedRoute>} />
+          <Route path="/admin/altas" element={<ProtectedRoute requireAdmin><AdminAltas /></ProtectedRoute>} />
           <Route path="/admin/dias-no-habiles" element={<ProtectedRoute requireAdmin><DiasNoHabiles /></ProtectedRoute>} />
           <Route path="/admin/config-jornada" element={<ProtectedRoute requireAdmin><ConfigJornada /></ProtectedRoute>} />
 

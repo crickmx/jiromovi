@@ -94,6 +94,14 @@ export default function Alta() {
 
   const setSess = (s: AltaSession | null) => { sessionRef.current = s; setSession(s); };
 
+  // #root tiene overflow:hidden por defecto (app shell). Marcar como página
+  // pública para permitir el scroll normal del documento.
+  useEffect(() => {
+    const root = document.getElementById('root');
+    root?.classList.add('public-page');
+    return () => root?.classList.remove('public-page');
+  }, []);
+
   // Retomar por URL (?alta=&token=) o localStorage.
   useEffect(() => {
     const idUrl = searchParams.get('alta');
@@ -168,7 +176,7 @@ export default function Alta() {
       if (!form.apellidos?.trim()) e.apellidos = 'Requerido';
       if (!form.email?.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) e.email = 'Correo válido requerido';
       if (!form.whatsapp?.trim() || form.whatsapp.replace(/\D/g, '').length < 10) e.whatsapp = 'WhatsApp a 10 dígitos';
-      if (!form.rfc?.trim()) e.rfc = 'RFC requerido';
+      if (tipo === 'con_cedula' && !form.rfc?.trim()) e.rfc = 'RFC requerido';
     }
     if (id === 'fiscal') {
       if (!form.regimen_fiscal?.trim()) e.regimen_fiscal = 'Requerido';
@@ -282,7 +290,7 @@ export default function Alta() {
             {/* Contenido */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-4">
               {p.id === 'tipo' && <PasoTipo tipo={tipo} setTipo={(t) => { setTipo(t); setErrors({}); triggerAutoSave(); }} error={errors.tipo} />}
-              {p.id === 'datos' && <PasoDatos form={form} errors={errors} upd={upd} />}
+              {p.id === 'datos' && <PasoDatos tipo={tipo} form={form} errors={errors} upd={upd} />}
               {p.id === 'fiscal' && <PasoFiscal form={form} errors={errors} upd={upd} />}
               {p.id === 'cedula' && <PasoCedula tipo={tipo} form={form} errors={errors} upd={upd} />}
               {p.id === 'documentos' && (
@@ -366,7 +374,7 @@ function PasoTipo({ tipo, setTipo, error }: { tipo: AltaTipo | null; setTipo: (t
   );
 }
 
-function PasoDatos({ form, errors, upd }: { form: AltaDatos; errors: Record<string, string>; upd: (c: keyof AltaDatos, v: string) => void }) {
+function PasoDatos({ tipo, form, errors, upd }: { tipo: AltaTipo | null; form: AltaDatos; errors: Record<string, string>; upd: (c: keyof AltaDatos, v: string) => void }) {
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-gray-900 dark:text-white">Tus datos</h2>
@@ -375,7 +383,10 @@ function PasoDatos({ form, errors, upd }: { form: AltaDatos; errors: Record<stri
         <Campo label="Apellidos" req error={errors.apellidos}><input className={inputCls(!!errors.apellidos)} value={form.apellidos || ''} onChange={(e) => upd('apellidos', e.target.value)} /></Campo>
         <Campo label="Correo electrónico" req error={errors.email}><input type="email" className={inputCls(!!errors.email)} value={form.email || ''} onChange={(e) => upd('email', e.target.value)} /></Campo>
         <Campo label="WhatsApp (10 dígitos)" req error={errors.whatsapp}><input inputMode="numeric" className={inputCls(!!errors.whatsapp)} value={form.whatsapp || ''} onChange={(e) => upd('whatsapp', e.target.value)} /></Campo>
-        <Campo label="RFC" req error={errors.rfc}><input className={inputCls(!!errors.rfc)} value={form.rfc || ''} onChange={(e) => upd('rfc', e.target.value.toUpperCase())} /></Campo>
+        {/* El RFC solo se solicita para Agente con Cédula. */}
+        {tipo === 'con_cedula' && (
+          <Campo label="RFC" req error={errors.rfc}><input className={inputCls(!!errors.rfc)} value={form.rfc || ''} onChange={(e) => upd('rfc', e.target.value.toUpperCase())} /></Campo>
+        )}
         <Campo label="CURP"><input className={inputCls()} value={form.curp || ''} onChange={(e) => upd('curp', e.target.value.toUpperCase())} /></Campo>
         <Campo label="Fecha de nacimiento"><input type="date" className={inputCls()} value={form.fecha_nacimiento || ''} onChange={(e) => upd('fecha_nacimiento', e.target.value)} /></Campo>
         <Campo label="Teléfono fijo (opcional)"><input inputMode="numeric" className={inputCls()} value={form.telefono || ''} onChange={(e) => upd('telefono', e.target.value)} /></Campo>
@@ -392,7 +403,6 @@ function PasoFiscal({ form, errors, upd }: { form: AltaDatos; errors: Record<str
         <Campo label="Razón social (o tu nombre)"><input className={inputCls()} value={form.razon_social || ''} onChange={(e) => upd('razon_social', e.target.value)} /></Campo>
         <Campo label="Régimen fiscal" req error={errors.regimen_fiscal}><input className={inputCls(!!errors.regimen_fiscal)} value={form.regimen_fiscal || ''} onChange={(e) => upd('regimen_fiscal', e.target.value)} /></Campo>
         <Campo label="Código postal fiscal" req error={errors.codigo_postal_fiscal}><input inputMode="numeric" className={inputCls(!!errors.codigo_postal_fiscal)} value={form.codigo_postal_fiscal || ''} onChange={(e) => upd('codigo_postal_fiscal', e.target.value)} /></Campo>
-        <Campo label="Uso de CFDI"><input className={inputCls()} value={form.uso_cfdi || ''} onChange={(e) => upd('uso_cfdi', e.target.value)} /></Campo>
         <Campo label="Banco" req error={errors.banco}><input className={inputCls(!!errors.banco)} value={form.banco || ''} onChange={(e) => upd('banco', e.target.value)} /></Campo>
         <Campo label="CLABE interbancaria (18 dígitos)" req error={errors.clabe}><input inputMode="numeric" className={inputCls(!!errors.clabe)} value={form.clabe || ''} onChange={(e) => upd('clabe', e.target.value)} /></Campo>
         <Campo label="Número de cuenta (opcional)"><input inputMode="numeric" className={inputCls()} value={form.cuenta_banco || ''} onChange={(e) => upd('cuenta_banco', e.target.value)} /></Campo>
