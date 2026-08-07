@@ -78,9 +78,9 @@ async function invoke<T>(action: string, body: Record<string, unknown>, fn = 'al
   return data as T;
 }
 
-export async function iniciarAlta(datos: AltaDatos, recaptchaToken?: string): Promise<AltaSession> {
+export async function iniciarAlta(datos: AltaDatos, recaptchaToken?: string, brand?: string): Promise<AltaSession> {
   const data = await invoke<{ id: string; folio: string; resume_token: string }>('iniciar', {
-    datos, recaptchaToken, paso_actual: 'tipo',
+    datos, recaptchaToken, brand, paso_actual: 'datos',
   });
   const s: AltaSession = { id: data.id, folio: data.folio, resume_token: data.resume_token };
   guardarSesionLocal(s);

@@ -1,16 +1,19 @@
 // ============================================================================
-// /alta — Onboarding público de agentes (Agente con Cédula / en Desarrollo).
-// Wizard por pasos con guardado automático, progreso, subida de documentos,
-// verificación de identidad + firma (Cincel) y alta automática al aprobar.
-// Aislado: ruta pública, sin Layout ni sesión. Toda persistencia via edge
-// functions (ver src/lib/alta/altaApi.ts). Español de México.
+// Onboarding público de agentes — wizard de 3 pasos (Datos / Documentos /
+// Identidad y firma). Guardado automático, subida de documentos, verificación
+// de identidad + firma (Cincel), alta automática al aprobar. 100% responsivo.
+//
+// Variantes de marca (prop `brand`):
+//   'movi'         → /alta            (MOVI, azul)
+//   'agente_total' → /registro-at     (Agente Total, rojo; auto-asigna oficina)
+// Aislado: ruta pública, sin Layout ni sesión. Persistencia vía edge functions.
 // ============================================================================
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Loader as Loader2, CircleAlert as AlertCircle, Check, ArrowLeft, ArrowRight,
-  Upload, ShieldCheck, FileText, User, CreditCard, IdCard, RefreshCw,
+  Upload, ShieldCheck, FileText, User, RefreshCw,
 } from 'lucide-react';
 import {
   iniciarAlta, guardarPaso, subirDocumento, retomarAlta, reconciliar, enviarACincel,
@@ -18,7 +21,27 @@ import {
   type AltaSession, type AltaDatos, type AltaTipo, type AltaEstado, type TipoDocumento,
 } from '../lib/alta/altaApi';
 
-const MARCA = '#164281';
+type BrandKey = 'movi' | 'agente_total';
+interface BrandCfg {
+  key: BrandKey; color: string; titulo: string; subtitulo: string;
+  logoUrl?: string; logoTexto?: string; sesionKeySuffix: string;
+}
+const BRANDS: Record<BrandKey, BrandCfg> = {
+  movi: {
+    key: 'movi', color: '#164281',
+    titulo: 'Alta de agente · MOVI',
+    subtitulo: 'Proceso guiado, seguro y en pocos minutos.',
+    logoTexto: 'M', sesionKeySuffix: 'movi',
+  },
+  agente_total: {
+    key: 'agente_total', color: '#E94947',
+    titulo: 'Registro de agente · Agente Total',
+    subtitulo: 'Más que una Promotoría de Seguros.',
+    logoUrl: 'https://qhwvuuyjhcennqccgvse.supabase.co/storage/v1/object/public/oficinas-logos/8cf898b3-165a-48b3-a762-afa0859ed79a/logo.png',
+    sesionKeySuffix: 'at',
+  },
+};
+
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 
 function useRecaptchaLoader() {
@@ -42,6 +65,11 @@ async function ejecutarRecaptcha(): Promise<string> {
 }
 
 interface Paso { id: string; label: string; icon: React.ElementType; }
+const PASOS: Paso[] = [
+  { id: 'datos', label: 'Datos', icon: User },
+  { id: 'documentos', label: 'Documentos', icon: FileText },
+  { id: 'verificacion', label: 'Identidad', icon: ShieldCheck },
+];
 
 const DOCS_REQUERIDOS: { tipo: TipoDocumento; label: string; soloConCedula?: boolean }[] = [
   { tipo: 'ine_frente', label: 'INE / identificación oficial (frente)' },
@@ -57,11 +85,15 @@ const DOCS_OBLIGATORIOS: TipoDocumento[] = ['ine_frente', 'csf', 'caratula_banca
 function inputCls(err?: boolean): string {
   return `w-full px-4 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 dark:text-gray-100 ${
     err ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700'
-  } focus:outline-none focus:ring-2 focus:ring-[#164281]/40`;
+  } focus:outline-none focus:ring-2 focus:ring-[color:var(--brand)] focus:border-[color:var(--brand)]`;
 }
 
-export default function Alta() {
+interface AltaProps { brand?: BrandKey; }
+
+export default function Alta({ brand = 'movi' }: AltaProps) {
   useRecaptchaLoader();
+  const b = BRANDS[brand] || BRANDS.movi;
+  const MARCA = b.color;
   const [searchParams] = useSearchParams();
 
   const [session, setSession] = useState<AltaSession | null>(null);
@@ -83,19 +115,9 @@ export default function Alta() {
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const pasos: Paso[] = [
-    { id: 'tipo', label: 'Tipo', icon: User },
-    { id: 'datos', label: 'Tus datos', icon: User },
-    { id: 'fiscal', label: 'Fiscal y banco', icon: CreditCard },
-    { id: 'cedula', label: tipo === 'con_cedula' ? 'Cédula y RC' : 'Póliza RC', icon: IdCard },
-    { id: 'documentos', label: 'Documentos', icon: FileText },
-    { id: 'verificacion', label: 'Identidad y firma', icon: ShieldCheck },
-  ];
-
   const setSess = (s: AltaSession | null) => { sessionRef.current = s; setSession(s); };
 
-  // #root tiene overflow:hidden por defecto (app shell). Marcar como página
-  // pública para permitir el scroll normal del documento.
+  // #root tiene overflow:hidden por defecto (app shell) → marcar como pública.
   useEffect(() => {
     const root = document.getElementById('root');
     root?.classList.add('public-page');
@@ -123,11 +145,11 @@ export default function Alta() {
         setForm(datos as AltaDatos);
         setDocsSubidos(new Set((r.documentos || []).map((d) => d.tipo_documento)));
         if (['identity_pending', 'signature_pending', 'approved', 'awaiting_review'].includes(r.alta.estado)) {
-          setStep(5); iniciarPolling(s);
+          setStep(2); iniciarPolling(s);
         } else if (['completed', 'needs_retry', 'human_review', 'rejected'].includes(r.alta.estado)) {
-          setStep(5);
+          setStep(2);
         }
-      } catch { /* sesión inválida: empezar de cero */ limpiarSesionLocal(); }
+      } catch { limpiarSesionLocal(); }
     })();
     return () => { if (pollTimer.current) clearInterval(pollTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,22 +161,22 @@ export default function Alta() {
     creandoRef.current = true;
     try {
       const token = await ejecutarRecaptcha();
-      const s = await iniciarAlta(datos, token);
+      const s = await iniciarAlta(datos, token, brand);
       setSess(s); setFolio(s.folio);
       return s;
     } finally { creandoRef.current = false; }
-  }, []);
+  }, [brand]);
 
   const persistir = useCallback(async (paso?: string, extra?: AltaDatos) => {
     const datos = { ...form, ...(extra || {}), ...(tipo ? { tipo_agente: tipo } : {}) };
     try {
       setSaving(true);
       const s = await ensureSession(datos);
-      await guardarPaso(s, { datos, paso, paso_actual: pasos[step]?.id });
+      await guardarPaso(s, { datos, paso, paso_actual: PASOS[step]?.id });
       setLastSaved(new Date());
     } catch (e) { setErrorGlobal((e as Error).message); }
     finally { setSaving(false); }
-  }, [form, tipo, step, ensureSession]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form, tipo, step, ensureSession]);
 
   const triggerAutoSave = useCallback(() => {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
@@ -167,24 +189,19 @@ export default function Alta() {
     triggerAutoSave();
   };
 
-  // ─── Validación por paso ─────────────────────────────────────────────
   function validar(id: string): boolean {
     const e: Record<string, string> = {};
-    if (id === 'tipo' && !tipo) e.tipo = 'Elige el tipo de agente';
     if (id === 'datos') {
+      if (!tipo) e.tipo = 'Elige el tipo de agente';
       if (!form.nombre?.trim()) e.nombre = 'Requerido';
       if (!form.apellidos?.trim()) e.apellidos = 'Requerido';
       if (!form.email?.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) e.email = 'Correo válido requerido';
       if (!form.whatsapp?.trim() || form.whatsapp.replace(/\D/g, '').length < 10) e.whatsapp = 'WhatsApp a 10 dígitos';
       if (tipo === 'con_cedula' && !form.rfc?.trim()) e.rfc = 'RFC requerido';
-    }
-    if (id === 'fiscal') {
       if (!form.regimen_fiscal?.trim()) e.regimen_fiscal = 'Requerido';
       if (!form.codigo_postal_fiscal?.trim()) e.codigo_postal_fiscal = 'Requerido';
       if (!form.banco?.trim()) e.banco = 'Requerido';
       if (!form.clabe?.trim() || form.clabe.replace(/\D/g, '').length !== 18) e.clabe = 'CLABE de 18 dígitos';
-    }
-    if (id === 'cedula') {
       if (tipo === 'con_cedula' && !form.cedula?.trim()) e.cedula = 'Cédula requerida';
       if (!form.poliza_rc_numero?.trim()) e.poliza_rc_numero = 'Número de póliza RC requerido';
       if (!form.poliza_rc_aseguradora?.trim()) e.poliza_rc_aseguradora = 'Aseguradora requerida';
@@ -192,21 +209,22 @@ export default function Alta() {
     if (id === 'documentos') {
       const faltan = DOCS_OBLIGATORIOS.filter((d) => !docsSubidos.has(d));
       if (tipo === 'con_cedula' && !docsSubidos.has('cedula')) faltan.push('cedula');
-      if (faltan.length) e.documentos = `Faltan documentos: ${faltan.length}`;
+      if (faltan.length) e.documentos = `Faltan ${faltan.length} documento(s) obligatorio(s)`;
     }
     setErrors(e);
+    if (Object.keys(e).length && id === 'datos') window.scrollTo({ top: 0, behavior: 'smooth' });
     return Object.keys(e).length === 0;
   }
 
   async function siguiente() {
-    const p = pasos[step];
+    const p = PASOS[step];
     if (!validar(p.id)) return;
     await persistir(p.id);
-    setStep((s) => Math.min(s + 1, pasos.length - 1));
+    setStep((s) => Math.min(s + 1, PASOS.length - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  const anterior = () => setStep((s) => Math.max(s - 1, 0));
+  const anterior = () => { setStep((s) => Math.max(s - 1, 0)); window.scrollTo({ top: 0 }); };
 
-  // ─── Subida de documentos ────────────────────────────────────────────
   async function onFile(tipoDoc: TipoDocumento, file: File | null) {
     if (!file) return;
     if (file.size > 15 * 1024 * 1024) { setErrorGlobal('El archivo supera 15 MB'); return; }
@@ -219,7 +237,6 @@ export default function Alta() {
     finally { setSubiendo(null); }
   }
 
-  // ─── Identidad + firma ───────────────────────────────────────────────
   function iniciarPolling(s: AltaSession) {
     if (pollTimer.current) clearInterval(pollTimer.current);
     pollTimer.current = setInterval(async () => {
@@ -229,7 +246,7 @@ export default function Alta() {
         if (['completed', 'rejected', 'human_review', 'needs_retry'].includes(r.estado)) {
           if (pollTimer.current) clearInterval(pollTimer.current);
         }
-      } catch { /* reintenta en el próximo tick */ }
+      } catch { /* reintenta */ }
     }, 4000);
   }
 
@@ -246,58 +263,59 @@ export default function Alta() {
     finally { setEnviando(false); }
   }
 
-  // ─── Render ──────────────────────────────────────────────────────────
-  const p = pasos[step];
+  const p = PASOS[step];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-gray-950 dark:to-gray-900 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-gray-950 dark:to-gray-900 py-6 sm:py-8 px-3 sm:px-4"
+      style={{ ['--brand' as string]: MARCA }}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold" style={{ background: MARCA }}>M</div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">Alta de agente · MOVI</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Proceso guiado, seguro y en pocos minutos.</p>
+        <div className="flex items-center gap-3 mb-5 sm:mb-6">
+          {b.logoUrl ? (
+            <img src={b.logoUrl} alt="" className="h-10 w-auto max-w-[140px] object-contain" />
+          ) : (
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold shrink-0" style={{ background: MARCA }}>{b.logoTexto}</div>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight">{b.titulo}</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{b.subtitulo}</p>
           </div>
-          {folio && <span className="ml-auto text-[11px] font-mono text-gray-400">{folio}</span>}
+          {folio && <span className="ml-auto text-[11px] font-mono text-gray-400 shrink-0 hidden sm:block">{folio}</span>}
         </div>
 
         {estado === 'completed' ? (
-          <Exito folio={folio} />
+          <Exito folio={folio} marca={MARCA} />
         ) : (
           <>
             {/* Progreso */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-4">
-              <div className="flex items-center justify-between gap-1 overflow-x-auto">
-                {pasos.map((ps, idx) => {
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 mb-4">
+              <div className="flex items-center justify-between gap-1">
+                {PASOS.map((ps, idx) => {
                   const Icon = ps.icon; const activo = idx === step; const hecho = idx < step;
                   return (
                     <button key={ps.id} onClick={() => idx <= step && setStep(idx)} disabled={idx > step}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                         activo ? 'text-white' : hecho ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'
                       }`} style={activo ? { background: MARCA } : undefined}>
                       {hecho ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
-                      <span className="hidden sm:inline">{ps.label}</span>
+                      <span>{ps.label}</span>
                     </button>
                   );
                 })}
               </div>
               <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                <div className="h-1.5 rounded-full transition-all duration-500" style={{ width: `${((step + 1) / pasos.length) * 100}%`, background: MARCA }} />
+                <div className="h-1.5 rounded-full transition-all duration-500" style={{ width: `${((step + 1) / PASOS.length) * 100}%`, background: MARCA }} />
               </div>
             </div>
 
             {/* Contenido */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-4">
-              {p.id === 'tipo' && <PasoTipo tipo={tipo} setTipo={(t) => { setTipo(t); setErrors({}); triggerAutoSave(); }} error={errors.tipo} />}
-              {p.id === 'datos' && <PasoDatos tipo={tipo} form={form} errors={errors} upd={upd} />}
-              {p.id === 'fiscal' && <PasoFiscal form={form} errors={errors} upd={upd} />}
-              {p.id === 'cedula' && <PasoCedula tipo={tipo} form={form} errors={errors} upd={upd} />}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4">
+              {p.id === 'datos' && <PasoDatos marca={MARCA} tipo={tipo} setTipo={(t) => { setTipo(t); setErrors((e) => ({ ...e, tipo: '' })); triggerAutoSave(); }} form={form} errors={errors} upd={upd} />}
               {p.id === 'documentos' && (
-                <PasoDocumentos tipo={tipo} docsSubidos={docsSubidos} subiendo={subiendo} onFile={onFile} error={errors.documentos} />
+                <PasoDocumentos marca={MARCA} tipo={tipo} docsSubidos={docsSubidos} subiendo={subiendo} onFile={onFile} error={errors.documentos} />
               )}
               {p.id === 'verificacion' && (
-                <PasoVerificacion estado={estado} enviando={enviando} onIniciar={iniciarVerificacion} onReintentar={() => session && iniciarVerificacion()} />
+                <PasoVerificacion marca={MARCA} estado={estado} enviando={enviando} onIniciar={iniciarVerificacion} onReintentar={() => session && iniciarVerificacion()} />
               )}
             </div>
 
@@ -309,18 +327,18 @@ export default function Alta() {
 
             {/* Navegación */}
             {p.id !== 'verificacion' && (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <button onClick={anterior} disabled={step === 0}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40">
                   <ArrowLeft className="w-4 h-4" /> Atrás
                 </button>
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                  <span className="text-[11px] text-gray-400 hidden sm:flex items-center gap-1">
                     {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : lastSaved ? <Check className="w-3 h-3 text-emerald-500" /> : null}
                     {lastSaved ? `Guardado ${lastSaved.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}` : ''}
                   </span>
                   <button onClick={siguiente} className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-lg" style={{ background: MARCA }}>
-                    {step === pasos.length - 2 ? 'Ir a verificación' : 'Siguiente'} <ArrowRight className="w-4 h-4" />
+                    {step === PASOS.length - 2 ? 'Ir a verificación' : 'Siguiente'} <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -335,7 +353,7 @@ export default function Alta() {
   );
 }
 
-// ─── Sub-componentes de paso ───────────────────────────────────────────
+// ─── Sub-componentes ───────────────────────────────────────────────────
 
 function Campo({ label, req, error, children }: { label: string; req?: boolean; error?: string; children: React.ReactNode }) {
   return (
@@ -349,57 +367,54 @@ function Campo({ label, req, error, children }: { label: string; req?: boolean; 
   );
 }
 
-function PasoTipo({ tipo, setTipo, error }: { tipo: AltaTipo | null; setTipo: (t: AltaTipo) => void; error?: string }) {
-  const opciones: { v: AltaTipo; t: string; d: string }[] = [
-    { v: 'con_cedula', t: 'Agente con Cédula', d: 'Ya cuentas con tu cédula de agente vigente ante la CNSF.' },
-    { v: 'en_desarrollo', t: 'Agente en Desarrollo', d: 'Aún no tienes cédula. Inicias tu desarrollo con nosotros.' },
-  ];
-  return (
-    <div className="space-y-3">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white">¿Qué tipo de agente eres?</h2>
-      {opciones.map((o) => (
-        <button key={o.v} onClick={() => setTipo(o.v)}
-          className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-            tipo === o.v ? 'border-[#164281] bg-[#164281]/5' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-          }`}>
-          <div className="flex items-center gap-2">
-            <div className={`w-4 h-4 rounded-full border-2 ${tipo === o.v ? 'border-[#164281] bg-[#164281]' : 'border-gray-300'}`} />
-            <span className="font-medium text-gray-900 dark:text-white">{o.t}</span>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">{o.d}</p>
-        </button>
-      ))}
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </div>
-  );
+function Subtitulo({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mt-2">{children}</h3>;
 }
 
-function PasoDatos({ tipo, form, errors, upd }: { tipo: AltaTipo | null; form: AltaDatos; errors: Record<string, string>; upd: (c: keyof AltaDatos, v: string) => void }) {
+function PasoDatos({ marca, tipo, setTipo, form, errors, upd }: {
+  marca: string; tipo: AltaTipo | null; setTipo: (t: AltaTipo) => void;
+  form: AltaDatos; errors: Record<string, string>; upd: (c: keyof AltaDatos, v: string) => void;
+}) {
+  const opciones: { v: AltaTipo; t: string }[] = [
+    { v: 'con_cedula', t: 'Con Cédula' },
+    { v: 'en_desarrollo', t: 'En Desarrollo' },
+  ];
   return (
     <div className="space-y-4">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white">Tus datos</h2>
-      <div className="grid sm:grid-cols-2 gap-4">
+      {/* Tipo de agente (segmentado) */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo de agente <span className="text-red-500">*</span></label>
+        <div className="grid grid-cols-2 gap-2">
+          {opciones.map((o) => {
+            const activo = tipo === o.v;
+            return (
+              <button key={o.v} onClick={() => setTipo(o.v)}
+                className={`px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${activo ? 'text-white' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}
+                style={activo ? { background: marca, borderColor: marca } : undefined}>
+                {o.t}
+              </button>
+            );
+          })}
+        </div>
+        {errors.tipo && <p className="mt-1 text-xs text-red-600">{errors.tipo}</p>}
+        <p className="mt-1 text-[11px] text-gray-400">{tipo === 'en_desarrollo' ? 'Aún no tienes cédula; inicias tu desarrollo con nosotros.' : tipo === 'con_cedula' ? 'Ya cuentas con tu cédula de agente vigente.' : 'Elige una opción para continuar.'}</p>
+      </div>
+
+      <Subtitulo>Datos personales</Subtitulo>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Campo label="Nombre(s)" req error={errors.nombre}><input className={inputCls(!!errors.nombre)} value={form.nombre || ''} onChange={(e) => upd('nombre', e.target.value)} /></Campo>
         <Campo label="Apellidos" req error={errors.apellidos}><input className={inputCls(!!errors.apellidos)} value={form.apellidos || ''} onChange={(e) => upd('apellidos', e.target.value)} /></Campo>
         <Campo label="Correo electrónico" req error={errors.email}><input type="email" className={inputCls(!!errors.email)} value={form.email || ''} onChange={(e) => upd('email', e.target.value)} /></Campo>
         <Campo label="WhatsApp (10 dígitos)" req error={errors.whatsapp}><input inputMode="numeric" className={inputCls(!!errors.whatsapp)} value={form.whatsapp || ''} onChange={(e) => upd('whatsapp', e.target.value)} /></Campo>
-        {/* El RFC solo se solicita para Agente con Cédula. */}
         {tipo === 'con_cedula' && (
           <Campo label="RFC" req error={errors.rfc}><input className={inputCls(!!errors.rfc)} value={form.rfc || ''} onChange={(e) => upd('rfc', e.target.value.toUpperCase())} /></Campo>
         )}
         <Campo label="CURP"><input className={inputCls()} value={form.curp || ''} onChange={(e) => upd('curp', e.target.value.toUpperCase())} /></Campo>
         <Campo label="Fecha de nacimiento"><input type="date" className={inputCls()} value={form.fecha_nacimiento || ''} onChange={(e) => upd('fecha_nacimiento', e.target.value)} /></Campo>
-        <Campo label="Teléfono fijo (opcional)"><input inputMode="numeric" className={inputCls()} value={form.telefono || ''} onChange={(e) => upd('telefono', e.target.value)} /></Campo>
       </div>
-    </div>
-  );
-}
 
-function PasoFiscal({ form, errors, upd }: { form: AltaDatos; errors: Record<string, string>; upd: (c: keyof AltaDatos, v: string) => void }) {
-  return (
-    <div className="space-y-4">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white">Datos fiscales y bancarios</h2>
-      <div className="grid sm:grid-cols-2 gap-4">
+      <Subtitulo>Datos fiscales y bancarios</Subtitulo>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Campo label="Razón social (o tu nombre)"><input className={inputCls()} value={form.razon_social || ''} onChange={(e) => upd('razon_social', e.target.value)} /></Campo>
         <Campo label="Régimen fiscal" req error={errors.regimen_fiscal}><input className={inputCls(!!errors.regimen_fiscal)} value={form.regimen_fiscal || ''} onChange={(e) => upd('regimen_fiscal', e.target.value)} /></Campo>
         <Campo label="Código postal fiscal" req error={errors.codigo_postal_fiscal}><input inputMode="numeric" className={inputCls(!!errors.codigo_postal_fiscal)} value={form.codigo_postal_fiscal || ''} onChange={(e) => upd('codigo_postal_fiscal', e.target.value)} /></Campo>
@@ -407,15 +422,9 @@ function PasoFiscal({ form, errors, upd }: { form: AltaDatos; errors: Record<str
         <Campo label="CLABE interbancaria (18 dígitos)" req error={errors.clabe}><input inputMode="numeric" className={inputCls(!!errors.clabe)} value={form.clabe || ''} onChange={(e) => upd('clabe', e.target.value)} /></Campo>
         <Campo label="Número de cuenta (opcional)"><input inputMode="numeric" className={inputCls()} value={form.cuenta_banco || ''} onChange={(e) => upd('cuenta_banco', e.target.value)} /></Campo>
       </div>
-    </div>
-  );
-}
 
-function PasoCedula({ tipo, form, errors, upd }: { tipo: AltaTipo | null; form: AltaDatos; errors: Record<string, string>; upd: (c: keyof AltaDatos, v: string) => void }) {
-  return (
-    <div className="space-y-4">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white">{tipo === 'con_cedula' ? 'Cédula y Póliza de RC' : 'Póliza de Responsabilidad Civil'}</h2>
-      <div className="grid sm:grid-cols-2 gap-4">
+      <Subtitulo>{tipo === 'con_cedula' ? 'Cédula y Póliza RC' : 'Póliza de Responsabilidad Civil'}</Subtitulo>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {tipo === 'con_cedula' && (
           <>
             <Campo label="Número de cédula" req error={errors.cedula}><input className={inputCls(!!errors.cedula)} value={form.cedula || ''} onChange={(e) => upd('cedula', e.target.value)} /></Campo>
@@ -430,8 +439,8 @@ function PasoCedula({ tipo, form, errors, upd }: { tipo: AltaTipo | null; form: 
   );
 }
 
-function PasoDocumentos({ tipo, docsSubidos, subiendo, onFile, error }: {
-  tipo: AltaTipo | null; docsSubidos: Set<string>; subiendo: string | null;
+function PasoDocumentos({ marca, tipo, docsSubidos, subiendo, onFile, error }: {
+  marca: string; tipo: AltaTipo | null; docsSubidos: Set<string>; subiendo: string | null;
   onFile: (t: TipoDocumento, f: File | null) => void; error?: string;
 }) {
   const lista = DOCS_REQUERIDOS.filter((d) => !d.soloConCedula || tipo === 'con_cedula');
@@ -442,14 +451,13 @@ function PasoDocumentos({ tipo, docsSubidos, subiendo, onFile, error }: {
       {lista.map((d) => {
         const hecho = docsSubidos.has(d.tipo); const cargando = subiendo === d.tipo;
         return (
-          <label key={d.tipo} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-            hecho ? 'border-emerald-300 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-gray-200 dark:border-gray-700 hover:border-[#164281]/50'
-          }`}>
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${hecho ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+          <label key={d.tipo} className="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40"
+            style={hecho ? { borderColor: '#10b981', background: '#10b98111' } : undefined}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={hecho ? { background: '#d1fae5', color: '#059669' } : { background: '#f3f4f6', color: '#6b7280' }}>
               {cargando ? <Loader2 className="w-4 h-4 animate-spin" /> : hecho ? <Check className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
             </div>
             <span className="flex-1 text-sm text-gray-700 dark:text-gray-200">{d.label}</span>
-            <span className="text-xs text-gray-400">{hecho ? 'Cargado' : 'Subir'}</span>
+            <span className="text-xs text-gray-400 shrink-0">{hecho ? 'Cargado' : 'Subir'}</span>
             <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic" disabled={cargando}
               onChange={(e) => onFile(d.tipo, e.target.files?.[0] || null)} />
           </label>
@@ -460,8 +468,8 @@ function PasoDocumentos({ tipo, docsSubidos, subiendo, onFile, error }: {
   );
 }
 
-function PasoVerificacion({ estado, enviando, onIniciar, onReintentar }: {
-  estado: AltaEstado | null; enviando: boolean; onIniciar: () => void; onReintentar: () => void;
+function PasoVerificacion({ marca, estado, enviando, onIniciar, onReintentar }: {
+  marca: string; estado: AltaEstado | null; enviando: boolean; onIniciar: () => void; onReintentar: () => void;
 }) {
   const enProceso = estado === 'identity_pending' || estado === 'signature_pending' || estado === 'approved' || estado === 'awaiting_review';
   if (estado === 'human_review') {
@@ -479,7 +487,7 @@ function PasoVerificacion({ estado, enviando, onIniciar, onReintentar }: {
         <div className="w-14 h-14 mx-auto rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-3"><AlertCircle className="w-7 h-7" /></div>
         <h2 className="text-base font-semibold text-gray-900 dark:text-white">No pudimos verificar o firmar</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">Puedes intentar de nuevo ahora, o cerrar y retomar más tarde desde el mismo dispositivo.</p>
-        <button onClick={onReintentar} disabled={enviando} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-lg" style={{ background: MARCA }}>
+        <button onClick={onReintentar} disabled={enviando} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-lg" style={{ background: marca }}>
           {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Reintentar
         </button>
       </div>
@@ -488,7 +496,7 @@ function PasoVerificacion({ estado, enviando, onIniciar, onReintentar }: {
   if (enProceso) {
     return (
       <div className="text-center py-6">
-        <Loader2 className="w-10 h-10 mx-auto animate-spin mb-3" style={{ color: MARCA }} />
+        <Loader2 className="w-10 h-10 mx-auto animate-spin mb-3" style={{ color: marca }} />
         <h2 className="text-base font-semibold text-gray-900 dark:text-white">Verificando identidad y firma…</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Completa el proceso en la ventana que abrimos. Esta pantalla se actualiza sola cuando termines.</p>
       </div>
@@ -496,23 +504,23 @@ function PasoVerificacion({ estado, enviando, onIniciar, onReintentar }: {
   }
   return (
     <div className="text-center py-6">
-      <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3" style={{ background: `${MARCA}15`, color: MARCA }}><ShieldCheck className="w-7 h-7" /></div>
+      <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3" style={{ background: `${marca}15`, color: marca }}><ShieldCheck className="w-7 h-7" /></div>
       <h2 className="text-base font-semibold text-gray-900 dark:text-white">Verificación de identidad y firma del contrato</h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">En un solo paso validamos tu identidad (INE + selfie) y firmas tu contrato con validez legal. Es rápido y seguro.</p>
-      <button onClick={onIniciar} disabled={enviando} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-lg" style={{ background: MARCA }}>
+      <button onClick={onIniciar} disabled={enviando} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-lg" style={{ background: marca }}>
         {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />} Iniciar verificación y firma
       </button>
     </div>
   );
 }
 
-function Exito({ folio }: { folio: string | null }) {
+function Exito({ folio, marca }: { folio: string | null; marca: string }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center shadow-sm">
-      <div className="w-16 h-16 mx-auto bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
-        <Check className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8 text-center shadow-sm">
+      <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4" style={{ background: `${marca}15`, color: marca }}>
+        <Check className="w-8 h-8" />
       </div>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">¡Bienvenido a MOVI!</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">¡Bienvenido!</h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Tu alta como agente quedó completa. Te enviamos un correo de bienvenida con los siguientes pasos para ingresar a la plataforma.</p>
       {folio && <div className="inline-block bg-gray-50 dark:bg-gray-700/50 rounded-xl px-4 py-2 text-sm"><span className="text-gray-500">Folio: </span><span className="font-mono font-semibold text-gray-800 dark:text-gray-200">{folio}</span></div>}
     </div>

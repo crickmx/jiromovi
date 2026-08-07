@@ -77,14 +77,26 @@ Deno.serve(async (req: Request) => {
 
       const campos = limpiarCampos(body.datos || {});
       const folio = generarFolio();
+
+      // Marca/variante: 'agente_total' auto-asigna la oficina Agente Total.
+      const brand = String(body.brand || 'movi');
+      let oficinaId: string | null = null;
+      if (brand === 'agente_total') {
+        const { data: ofi } = await db.from('oficinas')
+          .select('id').ilike('nombre', 'Agente Total').eq('activa', true).limit(1).maybeSingle();
+        oficinaId = (ofi as { id: string } | null)?.id || null;
+      }
+      const metaBase = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
+
       const { data, error } = await db.from('alta_agente').insert({
         folio,
         estado: 'in_progress',
-        paso_actual: body.paso_actual || 'tipo',
+        paso_actual: body.paso_actual || 'datos',
         ...campos,
+        ...(oficinaId ? { oficina_id: oficinaId } : {}),
         user_agent: req.headers.get('user-agent') || null,
         ip_address: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
-        metadata: body.metadata && typeof body.metadata === 'object' ? body.metadata : {},
+        metadata: { ...metaBase, brand, source: brand },
       }).select('id, folio, resume_token, estado').single();
       if (error || !data) return json({ error: 'NO_SE_PUDO_CREAR', detalle: error?.message }, 500);
 

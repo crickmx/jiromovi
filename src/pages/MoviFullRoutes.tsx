@@ -167,7 +167,8 @@ export default function MoviFullRoutes() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public / no-layout routes */}
-        <Route path="/alta" element={<Alta />} />
+        <Route path="/alta" element={<Alta brand="movi" />} />
+        <Route path="/registro-at" element={<Alta brand="agente_total" />} />
         <Route path="/alta/simular" element={<AltaSimular />} />
         <Route path="/registro-personal" element={<RegistroPersonal />} />
         <Route path="/p/:slug" element={<PaginaPublicaAsesor />} />
