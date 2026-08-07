@@ -14,9 +14,10 @@
 // ============================================================================
 
 import {
-  corsHeaders, json, preflight, serviceClient, bitacora, transicion, generarFolio,
+  json, preflight, serviceClient, bitacora, transicion, generarFolio,
   type AltaRow,
 } from '../_shared/alta/service.ts';
+import { reconciliarAlta } from '../_shared/alta/reconciliar.ts';
 
 const CAMPOS_ALTA = new Set([
   'tipo_agente', 'nombre', 'apellidos', 'fecha_nacimiento', 'curp', 'rfc',
@@ -152,6 +153,30 @@ Deno.serve(async (req: Request) => {
         detalle: { tipo: body.tipo_documento }, actor: 'usuario',
       });
       return json({ ok: true });
+    }
+
+    if (action === 'estado') {
+      const [{ data: verif }, { data: firma }] = await Promise.all([
+        db.from('alta_agente_verificacion').select('estado').eq('alta_id', alta.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        db.from('alta_agente_firma').select('estado').eq('alta_id', alta.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      return json({
+        ok: true,
+        estado: alta.estado,
+        usuario_id: alta.usuario_id || null,
+        verificacion: (verif as { estado?: string } | null)?.estado || 'no_iniciada',
+        firma: (firma as { estado?: string } | null)?.estado || 'no_iniciada',
+      });
+    }
+
+    if (action === 'reconciliar') {
+      // Refresca el estado consultando al proveedor (útil para el wizard sin
+      // esperar al cron). Gateado por resume_token: el usuario solo reconcilia
+      // su propia alta.
+      await reconciliarAlta(db, alta, 'cron');
+      const { data: fresca } = await db.from('alta_agente')
+        .select('estado, usuario_id').eq('id', alta.id).maybeSingle();
+      return json({ ok: true, estado: fresca?.estado || alta.estado, usuario_id: fresca?.usuario_id || null });
     }
 
     if (action === 'retomar') {

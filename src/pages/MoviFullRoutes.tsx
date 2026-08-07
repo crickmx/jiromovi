@@ -138,6 +138,8 @@ const Oficinas = lazy(() => import('./Oficinas'));
 const RegistroPersonal = lazy(() => import('./RegistroPersonal'));
 const PaginaPublicaAsesor = lazy(() => import('./PaginaPublicaAsesor'));
 const AgendaPublica = lazy(() => import('./AgendaPublica'));
+const Alta = lazy(() => import('./Alta'));
+const AltaSimular = lazy(() => import('./AltaSimular'));
 
 function PageLoader() {
   return (
@@ -164,6 +166,8 @@ export default function MoviFullRoutes() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public / no-layout routes */}
+        <Route path="/alta" element={<Alta />} />
+        <Route path="/alta/simular" element={<AltaSimular />} />
         <Route path="/registro-personal" element={<RegistroPersonal />} />
         <Route path="/p/:slug" element={<PaginaPublicaAsesor />} />
         <Route path="/cotizar/formularios/:slug" element={<PublicQuoteForm />} />
