@@ -3,6 +3,7 @@ import { Upload, X, Image as ImageIcon, CircleCheck as CheckCircle2, CircleAlert
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
+import { MiFirmaEmail } from '../components/firmas/MiFirmaEmail';
 import { getDisplayName } from '../lib/utils';
 import { trackSettingsOpened, trackBrandingUpdated, trackProfileImageUpdated, trackLogoUpdated } from '../lib/activityLogger';
 
@@ -295,6 +296,8 @@ export default function MiMarca() {
           refreshUsuario();
         }}
       />
+
+      <MiFirmaEmail />
 
       <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-6">
         <h3 className="text-sm font-semibold text-neutral-900 mb-3">
