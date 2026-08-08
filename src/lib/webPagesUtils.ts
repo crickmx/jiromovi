@@ -164,6 +164,69 @@ export async function getUserWebPageConfig(userId: string): Promise<UserWebPageC
   };
 }
 
+export interface UserWebPageBranding {
+  primary_color: string;
+  secondary_color: string;
+  custom_text: string;
+}
+
+// Lee solo la marca (colores + "Sobre mí") sin las relaciones de aseguradoras/ramos.
+// Se edita ahora desde Mi Marca; Mi Página Web solo la refleja en la vista previa.
+export async function getUserWebPageBranding(userId: string): Promise<UserWebPageBranding | null> {
+  const { data, error } = await supabase
+    .from('user_web_pages')
+    .select('primary_color, secondary_color, custom_text')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    primary_color: data.primary_color,
+    secondary_color: data.secondary_color,
+    custom_text: data.custom_text || ''
+  };
+}
+
+// Guarda solo colores + "Sobre mí". NO toca las relaciones de aseguradoras/ramos
+// (a diferencia de saveUserWebPageConfig, que las borra y reinserta).
+export async function saveUserWebPageBranding(
+  userId: string,
+  branding: UserWebPageBranding
+): Promise<void> {
+  const { data: existingPage } = await supabase
+    .from('user_web_pages')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingPage) {
+    const { error } = await supabase
+      .from('user_web_pages')
+      .update({
+        primary_color: branding.primary_color,
+        secondary_color: branding.secondary_color,
+        custom_text: branding.custom_text
+      })
+      .eq('id', existingPage.id);
+
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from('user_web_pages')
+      .insert({
+        user_id: userId,
+        primary_color: branding.primary_color,
+        secondary_color: branding.secondary_color,
+        custom_text: branding.custom_text,
+        is_published: true
+      });
+
+    if (error) throw error;
+  }
+}
+
 export async function saveUserWebPageConfig(
   userId: string,
   config: Omit<UserWebPageConfig, 'id'>
