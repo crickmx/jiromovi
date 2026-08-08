@@ -275,6 +275,21 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setDisenosAgente(prev => prev.filter(d => d.id !== id));
   }
 
+  async function subirFotoPerfil(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !seleccionado) return;
+    const ext = file.name.split('.').pop();
+    const filePath = `${seleccionado.id}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file);
+    if (upErr) { alert('No se pudo subir la foto: ' + upErr.message); return; }
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    const publicUrl = urlData.publicUrl;
+    await supabase.from('usuarios').update({ imagen_perfil_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', seleccionado.id);
+    const actualizado = { ...seleccionado, imagen_perfil_url: publicUrl };
+    setSeleccionado(actualizado);
+    setAgentes(prev => prev.map(a => a.id === seleccionado.id ? actualizado : a));
+  }
+
   function detectarEventosPremium(antes: Agente, despues: Agente): string[] {
     const eventos: string[] = [];
     const eraActivo = antes.plan_mkt_premium;

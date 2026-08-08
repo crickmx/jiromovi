@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
-import { X, Check, Upload, Image as ImageIcon, Type, Trash2 } from 'lucide-react';
+import { X, Check, Upload, Image as ImageIcon, Type, Trash2, Move, Maximize2 } from 'lucide-react';
 import { getEffectiveUserLogo, obtenerLogosGuardados, guardarLogoPersonalizado, type LogoGuardado } from '../../lib/logoUtils';
 import { supabase } from '../../lib/supabase';
 import { calcularMatrizPerspectiva, type StorePersonalizacionCapa, type StorePersonalizacionEsquina } from '../../lib/storeUtils';
@@ -17,9 +17,20 @@ interface Props {
   onCancelar: () => void;
 }
 
+type ModoEdicion = 'posicion' | 'perspectiva';
+
 type DragEstado =
   | { tipo: 'mover'; capaId: string; startX: number; startY: number; esquinasOrig: StorePersonalizacionEsquina[] }
-  | { tipo: 'esquina'; capaId: string; indice: number; startX: number; startY: number; esquinaOrig: StorePersonalizacionEsquina };
+  | { tipo: 'esquina'; capaId: string; indice: number; startX: number; startY: number; esquinasOrig: StorePersonalizacionEsquina[] };
+
+function calcBBox(esqs: StorePersonalizacionEsquina[]) {
+  const xs = esqs.map(e => e.x), ys = esqs.map(e => e.y);
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+}
+
+function bboxToEsquinas(x0: number, y0: number, x1: number, y1: number): StorePersonalizacionCapa['esquinas'] {
+  return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+}
 
 function nuevoId() {
   return `capa-${Math.random().toString(36).slice(2, 10)}`;
@@ -41,6 +52,7 @@ export function PersonalizarLogoScreen({ imagenProducto, usuarioId, capasInicial
   const [logosGuardados, setLogosGuardados] = useState<LogoGuardado[]>([]);
   const [logoPerfil, setLogoPerfil] = useState<string | null>(null);
   const [mostrarSelectorLogo, setMostrarSelectorLogo] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState<ModoEdicion>('posicion');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragEstado | null>(null);
@@ -118,11 +130,11 @@ export function PersonalizarLogoScreen({ imagenProducto, usuarioId, capasInicial
     dragRef.current = { tipo: 'mover', capaId: capa.id, startX: e.clientX, startY: e.clientY, esquinasOrig: capa.esquinas.map(p => ({ ...p })) };
   }
 
-  function handlePointerDownEsquina(e: React.PointerEvent, capaId: string, indice: number, esquinaActual: StorePersonalizacionEsquina) {
+  function handlePointerDownEsquina(e: React.PointerEvent, capaId: string, indice: number, capa: StorePersonalizacionCapa) {
     e.preventDefault();
     e.stopPropagation();
     (e.target as Element).setPointerCapture(e.pointerId);
-    dragRef.current = { tipo: 'esquina', capaId, indice, startX: e.clientX, startY: e.clientY, esquinaOrig: { ...esquinaActual } };
+    dragRef.current = { tipo: 'esquina', capaId, indice, startX: e.clientX, startY: e.clientY, esquinasOrig: capa.esquinas.map(p => ({ ...p })) };
   }
 
   function handlePointerMove(e: React.PointerEvent) {
@@ -136,13 +148,33 @@ export function PersonalizarLogoScreen({ imagenProducto, usuarioId, capasInicial
     if (drag.tipo === 'mover') {
       const nuevasEsquinas = drag.esquinasOrig.map(p => ({ x: p.x + dxPct, y: p.y + dyPct })) as StorePersonalizacionCapa['esquinas'];
       actualizarCapa(drag.capaId, { esquinas: nuevasEsquinas });
-    } else {
+    } else if (modoEdicion === 'perspectiva') {
+      // Distorsión libre: solo mueve la esquina arrastrada
       setCapas(prev => prev.map(c => {
         if (c.id !== drag.capaId) return c;
         const esquinas = [...c.esquinas] as StorePersonalizacionCapa['esquinas'];
-        esquinas[drag.indice] = { x: drag.esquinaOrig.x + dxPct, y: drag.esquinaOrig.y + dyPct };
+        esquinas[drag.indice] = {
+          x: drag.esquinasOrig[drag.indice].x + dxPct,
+          y: drag.esquinasOrig[drag.indice].y + dyPct,
+        };
         return { ...c, esquinas };
       }));
+    } else {
+      // Modo posición: escala rectangular manteniendo la esquina opuesta fija
+      const orig = drag.esquinasOrig;
+      const bbox = calcBBox(orig);
+      let { x0, y0, x1, y1 } = bbox;
+      // Corner mapping: 0=TL, 1=TR, 2=BR, 3=BL
+      const nx = orig[drag.indice].x + dxPct;
+      const ny = orig[drag.indice].y + dyPct;
+      if (drag.indice === 0) { x0 = nx; y0 = ny; }
+      else if (drag.indice === 1) { x1 = nx; y0 = ny; }
+      else if (drag.indice === 2) { x1 = nx; y1 = ny; }
+      else { x0 = nx; y1 = ny; }
+      // Evitar inversión
+      if (x1 - x0 < 2) x1 = x0 + 2;
+      if (y1 - y0 < 2) y1 = y0 + 2;
+      actualizarCapa(drag.capaId, { esquinas: bboxToEsquinas(x0, y0, x1, y1) });
     }
   }
 
@@ -243,8 +275,8 @@ export function PersonalizarLogoScreen({ imagenProducto, usuarioId, capasInicial
           {listo && capaActiva && capaActiva.esquinas.map((esquina, i) => (
             <div
               key={i}
-              onPointerDown={(e) => handlePointerDownEsquina(e, capaActiva.id, i, esquina)}
-              className="absolute w-4 h-4 bg-white rounded-full border-2 border-accent shadow z-10"
+              onPointerDown={(e) => handlePointerDownEsquina(e, capaActiva.id, i, capaActiva)}
+              className={`absolute w-4 h-4 rounded-full border-2 shadow z-10 ${modoEdicion === 'perspectiva' ? 'bg-amber-400 border-amber-600' : 'bg-white border-accent'}`}
               style={{ left: `${esquina.x}%`, top: `${esquina.y}%`, transform: 'translate(-50%, -50%)', cursor: 'grab', touchAction: 'none' }}
             />
           ))}
@@ -301,6 +333,22 @@ export function PersonalizarLogoScreen({ imagenProducto, usuarioId, capasInicial
 
       <div className="p-4 border-t border-white/10 flex items-center justify-between gap-3 flex-shrink-0 flex-wrap">
         <div className="flex items-center gap-3">
+          {/* Modo edición toggle */}
+          <div className="flex items-center rounded-lg border border-white/20 overflow-hidden text-xs font-semibold">
+            <button
+              onClick={() => setModoEdicion('posicion')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${modoEdicion === 'posicion' ? 'bg-accent text-white' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+            >
+              <Move className="w-3.5 h-3.5" /> Posición
+            </button>
+            <button
+              onClick={() => setModoEdicion('perspectiva')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${modoEdicion === 'perspectiva' ? 'bg-amber-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+            >
+              <Maximize2 className="w-3.5 h-3.5" /> Perspectiva
+            </button>
+          </div>
+
           <button onClick={() => setMostrarSelectorLogo(prev => !prev)} className="flex items-center gap-1.5 text-sm text-white/80 hover:text-white transition-colors">
             <ImageIcon className="w-4 h-4" /> + Logo
           </button>

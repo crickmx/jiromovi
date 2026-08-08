@@ -49,7 +49,7 @@ export function PlantillasFirma() {
     setFormData({
       nombre: '',
       descripcion: '',
-      html: `<table style="font-family:Arial,sans-serif;font-size:14px;color:#333333;max-width:600px;border-collapse:collapse;" cellpadding="0" cellspacing="0" role="presentation">
+      html: `<table style="font-family:'Gotham',Arial,Helvetica,sans-serif;font-size:14px;color:#333333;max-width:600px;border-collapse:collapse;" cellpadding="0" cellspacing="0" role="presentation">
   <tr>
     <td style="padding:0 0 12px 0;">
       <table cellpadding="0" cellspacing="0" role="presentation">

@@ -44,6 +44,14 @@ function absoluteAssetUrl(value: string | null | undefined): string {
   return url;
 }
 
+// Fuente corporativa: TODAS las firmas deben usar Gotham (con respaldos seguros
+// para clientes de correo externos que no tengan la fuente instalada).
+const SIGNATURE_FONT_STACK = "'Gotham', Arial, Helvetica, sans-serif";
+
+function forceSignatureFont(html: string): string {
+  return html.replace(/font-family\s*:\s*[^;}"]*/gi, `font-family:${SIGNATURE_FONT_STACK}`);
+}
+
 function renderTemplate(template: string, data: Record<string, string>): string {
   let result = template;
 
@@ -198,6 +206,21 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Colores de la marca personal del agente (los toma de Mi Página Web)
+    let webPagePrimary = '';
+    let webPageSecondary = '';
+    {
+      const { data: webPage } = await supabase
+        .from('user_web_pages')
+        .select('primary_color, secondary_color')
+        .eq('user_id', targetUserId)
+        .maybeSingle();
+      if (webPage) {
+        webPagePrimary = String(webPage.primary_color ?? '').trim();
+        webPageSecondary = String(webPage.secondary_color ?? '').trim();
+      }
+    }
+
     // Preparar datos para el template
     const celularRaw = usuario.celular_laboral || '';
     const celularSinFormato = stripPhoneFormat(celularRaw);
@@ -220,13 +243,13 @@ Deno.serve(async (req: Request) => {
       mi_pagina_web: usuario.web_slug ? `agentedeseguros.website/${usuario.web_slug}` : '',
     };
 
-    // Oficina
-    if (usuario.oficina) {
-      const oficina = Array.isArray(usuario.oficina) ? usuario.oficina[0] : usuario.oficina;
-      templateData.oficina_logo = absoluteAssetUrl(oficina.logo_url);
+    // Oficina (datos de contacto — no cambian por rol)
+    const oficina = usuario.oficina
+      ? (Array.isArray(usuario.oficina) ? usuario.oficina[0] : usuario.oficina)
+      : null;
+
+    if (oficina) {
       templateData.oficina_nombre = oficina.nombre || '';
-      templateData.oficina_color_primario = oficina.accent_color || '#0E23E2';
-      templateData.oficina_color_secundario = oficina.color_secundario || '';
       templateData.oficina_telefono = oficina.telefono || '';
       templateData.oficina_domicilio = oficina.domicilio || '';
       templateData.oficina_direccion = oficina.domicilio || '';
@@ -238,8 +261,42 @@ Deno.serve(async (req: Request) => {
       templateData.oficina_instagram = oficina.instagram || '';
     }
 
-    // Renderizar template
-    const renderedHtml = renderTemplate(firmaHtml, templateData);
+    // ── Marca efectiva por rol ────────────────────────────────────────────────
+    // Agente: usa su marca personal (logo de Mi Marca + colores de Mi Página Web),
+    // con fallback a la oficina si le falta el logo o los colores.
+    // Empleado/Admin/demás roles: siempre la marca de su oficina (no la cambian).
+    const officeLogo = absoluteAssetUrl(oficina?.logo_url);
+    const officeColorPrimario = String(oficina?.accent_color ?? '').trim() || '#0E23E2';
+    const officeColorSecundario = String(oficina?.color_secundario ?? '').trim();
+
+    const esAgente = String(usuario.rol ?? '').trim().toLowerCase() === 'agente';
+    const miLogo = absoluteAssetUrl(usuario.mi_logotipo_url);
+
+    const marcaLogo = esAgente ? (miLogo || officeLogo) : officeLogo;
+    const marcaColorPrimario = esAgente ? (webPagePrimary || officeColorPrimario) : officeColorPrimario;
+    const marcaColorSecundario = esAgente ? (webPageSecondary || officeColorSecundario) : officeColorSecundario;
+
+    // Las plantillas existentes usan {{oficina_logo}}/{{oficina_color_*}}: para un
+    // agente esas variables resuelven a SU marca sin tener que reeditar la plantilla.
+    templateData.oficina_logo = marcaLogo;
+    templateData.oficina_color_primario = marcaColorPrimario;
+    templateData.oficina_color_secundario = marcaColorSecundario;
+
+    // Alias explícitos por si una plantilla nueva quiere referir la marca efectiva.
+    templateData.marca_logo = marcaLogo;
+    templateData.marca_color_primario = marcaColorPrimario;
+    templateData.marca_color_secundario = marcaColorSecundario;
+
+    // Nombre para mostrar: el agente usa su nombre personalizado de Mi Marca
+    // (nombre_publico); si no lo personalizó, queda el nombre del sistema.
+    const nombrePublico = String(usuario.nombre_publico ?? '').trim();
+    if (esAgente && nombrePublico) {
+      templateData.nombre_completo = nombrePublico;
+    }
+    templateData.marca_nombre = templateData.nombre_completo;
+
+    // Renderizar template y forzar la fuente corporativa (Gotham) en toda la firma
+    const renderedHtml = `<div style="font-family:${SIGNATURE_FONT_STACK}">${forceSignatureFont(renderTemplate(firmaHtml, templateData))}</div>`;
 
     return new Response(
       JSON.stringify({

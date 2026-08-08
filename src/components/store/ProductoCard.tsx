@@ -101,20 +101,20 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
           {producto.descripcion}
         </p>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-            ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-          </p>
-
-          <div className="w-full sm:w-auto flex items-center gap-2">
+        <div className="flex flex-col gap-2">
+          {/* Fila precio + stepper */}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-base font-bold text-gray-900 dark:text-white">
+              ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+            </p>
             {!esPremium && !sinStock && !requiereModal && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setCantidad(c => Math.max(1, c - 1))}
                   disabled={cantidad <= 1}
-                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-gray-300 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50 shrink-0"
+                  className="w-7 h-7 flex items-center justify-center border border-gray-300 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                 >
-                  <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <Minus className="w-3 h-3" />
                 </button>
                 <input
                   type="number"
@@ -122,36 +122,37 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
                   max="999"
                   value={cantidad}
                   onChange={e => setCantidad(Math.max(1, Math.min(999, parseInt(e.target.value) || 1)))}
-                  className="w-10 text-center text-sm font-medium text-gray-900 dark:text-white border border-gray-200 dark:border-white/15 rounded bg-transparent focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="w-9 text-center text-sm font-medium text-gray-900 dark:text-white border border-gray-200 dark:border-white/15 rounded bg-transparent focus:outline-none focus:ring-1 focus:ring-accent"
                 />
                 <button
                   onClick={() => setCantidad(c => Math.min(999, c + 1))}
                   disabled={cantidad >= 999}
-                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-gray-300 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50 shrink-0"
+                  className="w-7 h-7 flex items-center justify-center border border-gray-300 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                 >
-                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <Plus className="w-3 h-3" />
                 </button>
               </div>
             )}
-
-            <button
-              onClick={() => {
-                if (esPremium || requiereModal) { onVerDetalle(producto); return; }
-                if (sinStock) return;
-                onAgregar(producto, cantidad);
-                setCantidad(1);
-              }}
-              disabled={!esPremium && sinStock}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base transition-colors ${
-                !esPremium && sinStock
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-accent text-white hover:bg-accent-hover'
-              }`}
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : requiereModal ? 'Elegir opciones' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
-            </button>
           </div>
+
+          {/* Botón siempre en su propio renglón, ancho completo */}
+          <button
+            onClick={() => {
+              if (esPremium || requiereModal) { onVerDetalle(producto); return; }
+              if (sinStock) return;
+              onAgregar(producto, cantidad);
+              setCantidad(1);
+            }}
+            disabled={!esPremium && sinStock}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+              !esPremium && sinStock
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-accent text-white hover:bg-accent-hover'
+            }`}
+          >
+            <ShoppingCart className="w-4 h-4 shrink-0" />
+            <span>{esPremium ? 'Ver Planes' : sinStock ? 'Agotado' : requiereModal ? 'Elegir opciones' : producto.tipo_item === 'servicio' ? 'Solicitar' : 'Agregar'}</span>
+          </button>
         </div>
       </div>
     </div>
