@@ -1,11 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, X, Image as ImageIcon, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, User, Save, RotateCcw } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, User, Save, RotateCcw, Palette, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
 import { MiFirmaEmail } from '../components/firmas/MiFirmaEmail';
 import { getDisplayName } from '../lib/utils';
 import { trackSettingsOpened, trackBrandingUpdated, trackProfileImageUpdated, trackLogoUpdated } from '../lib/activityLogger';
+import {
+  getUserWebPageBranding,
+  saveUserWebPageBranding,
+  type UserWebPageBranding
+} from '../lib/webPagesUtils';
+import { DEFAULT_COLORS, DEFAULT_TEXT } from '../lib/webPagesTypes';
 
 export default function MiMarca() {
   const { usuario, reloadUsuario: refreshUsuario } = useAuth();
@@ -19,9 +25,68 @@ export default function MiMarca() {
   );
   const [savingName, setSavingName] = useState(false);
 
+  const [branding, setBranding] = useState<UserWebPageBranding>({
+    primary_color: DEFAULT_COLORS.primary,
+    secondary_color: DEFAULT_COLORS.secondary,
+    custom_text: DEFAULT_TEXT
+  });
+  const [savingBranding, setSavingBranding] = useState(false);
+
   useEffect(() => {
     trackSettingsOpened();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBranding() {
+      if (!usuario?.id) return;
+      try {
+        const existing = await getUserWebPageBranding(usuario.id);
+        if (cancelled) return;
+        if (existing) {
+          setBranding({
+            primary_color: existing.primary_color || DEFAULT_COLORS.primary,
+            secondary_color: existing.secondary_color || DEFAULT_COLORS.secondary,
+            custom_text: existing.custom_text || DEFAULT_TEXT
+          });
+        } else {
+          // Sin página aún: hereda los colores de la oficina si existen.
+          const { data: office } = await supabase
+            .from('usuarios')
+            .select('oficinas(accent_color, secondary_color)')
+            .eq('id', usuario.id)
+            .maybeSingle();
+          if (cancelled) return;
+          const off = (office as any)?.oficinas;
+          setBranding(prev => ({
+            ...prev,
+            primary_color: off?.accent_color || DEFAULT_COLORS.primary,
+            secondary_color: off?.secondary_color || DEFAULT_COLORS.secondary
+          }));
+        }
+      } catch (err) {
+        console.error('Error al cargar la marca de la página web:', err);
+      }
+    }
+    loadBranding();
+    return () => { cancelled = true; };
+  }, [usuario?.id]);
+
+  const handleSaveBranding = async () => {
+    if (!usuario?.id) return;
+    setSavingBranding(true);
+    setMessage(null);
+    try {
+      await saveUserWebPageBranding(usuario.id, branding);
+      setMessage({ type: 'success', text: 'Marca actualizada correctamente' });
+      trackBrandingUpdated('pagina_web');
+    } catch (err) {
+      console.error('Error al guardar la marca:', err);
+      setMessage({ type: 'error', text: 'No se pudieron guardar los cambios' });
+    } finally {
+      setSavingBranding(false);
+    }
+  };
 
   useEffect(() => {
     if (!usuario) return;
@@ -296,6 +361,114 @@ export default function MiMarca() {
           refreshUsuario();
         }}
       />
+
+      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="p-2 bg-neutral-100 rounded-lg">
+            <Palette className="w-5 h-5 text-neutral-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-neutral-900">Colores</h3>
+            <p className="text-sm text-neutral-500 mt-0.5">
+              Se usan en tu página web pública, tus PDFs de cotización y tu firma de correo.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+              Color primario
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={branding.primary_color}
+                onChange={(e) => setBranding(prev => ({ ...prev, primary_color: e.target.value }))}
+                className="w-12 h-10 p-1 border border-neutral-300 rounded-lg cursor-pointer"
+              />
+              <input
+                type="text"
+                value={branding.primary_color}
+                onChange={(e) => setBranding(prev => ({ ...prev, primary_color: e.target.value }))}
+                className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="#2563eb"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+              Color secundario
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={branding.secondary_color}
+                onChange={(e) => setBranding(prev => ({ ...prev, secondary_color: e.target.value }))}
+                className="w-12 h-10 p-1 border border-neutral-300 rounded-lg cursor-pointer"
+              />
+              <input
+                type="text"
+                value={branding.secondary_color}
+                onChange={(e) => setBranding(prev => ({ ...prev, secondary_color: e.target.value }))}
+                className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="#7c3aed"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={handleSaveBranding}
+            disabled={savingBranding}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Save className="w-4 h-4" />
+            {savingBranding ? 'Guardando...' : 'Guardar colores'}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="p-2 bg-neutral-100 rounded-lg">
+            <FileText className="w-5 h-5 text-neutral-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-neutral-900">Sobre mí</h3>
+            <p className="text-sm text-neutral-500 mt-0.5">
+              Escribe sobre ti, tu experiencia y lo que te hace especial como asesor. Aparece en tu
+              página web pública. Separa párrafos con líneas vacías.
+            </p>
+          </div>
+        </div>
+
+        <div className="relative">
+          <textarea
+            value={branding.custom_text}
+            onChange={(e) => setBranding(prev => ({ ...prev, custom_text: e.target.value }))}
+            className="w-full px-4 py-3 border border-neutral-300 rounded-xl min-h-[220px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            placeholder="Como tu asesor personal de seguros, mi compromiso es brindarte atención especializada...&#10;&#10;Trabajo con las mejores aseguradoras del mercado...&#10;&#10;Mi objetivo es que tomes decisiones informadas..."
+          />
+          <div className="absolute bottom-3 right-3 text-xs text-neutral-400">
+            {branding.custom_text.split('\n\n').filter(p => p.trim()).length} párrafo(s)
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={handleSaveBranding}
+            disabled={savingBranding}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Save className="w-4 h-4" />
+            {savingBranding ? 'Guardando...' : 'Guardar sobre mí'}
+          </button>
+        </div>
+      </div>
 
       <MiFirmaEmail />
 
