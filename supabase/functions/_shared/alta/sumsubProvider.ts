@@ -59,8 +59,17 @@ export class SumsubIdentityVerificationProvider implements IdentityVerificationP
     // 2) Access token para el WebSDK (frontend).
     let sdkToken: string | undefined;
     try {
-      const tokenPath = `/resources/accessTokens?userId=${encodeURIComponent(p.externalUserId)}&levelName=${encodeURIComponent(this.level)}&ttlInSecs=1200`;
-      const tokRes = await this.req('POST', tokenPath, '');
+      const tokenPath = `/resources/accessTokens/sdk`;
+      const tokBody = JSON.stringify({
+        applicantIdentifiers: {
+          email: p.email,
+          phone: p.telefono,
+        },
+        ttlInSecs: 1200,
+        userId: p.externalUserId,
+        levelName: this.level,
+      });
+      const tokRes = await this.req('POST', tokenPath, tokBody);
       if (tokRes.ok) { const t = await tokRes.json(); sdkToken = t.token; }
     } catch (_e) { /* no fatal: se puede regenerar */ }
 

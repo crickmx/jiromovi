@@ -43,6 +43,7 @@ const BRANDS: Record<BrandKey, BrandCfg> = {
 };
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+const SUMSUB_SDK_SRC = 'https://static.sumsub.com/idensic/static/sns-websdk-builder.js';
 
 function useRecaptchaLoader() {
   useEffect(() => {
@@ -118,7 +119,7 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
   const [folio, setFolio] = useState<string | null>(null);
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
   const [subEstados, setSubEstados] = useState<{ verif: string; firma: string }>({ verif: 'no_iniciada', firma: 'no_iniciada' });
-  const [sesionUrls, setSesionUrls] = useState<{ identidad?: string | null; firma?: string | null }>({});
+  const [sesionUrls, setSesionUrls] = useState<{ identidad?: string | null; identidadSdkToken?: string | null; firma?: string | null }>({});
 
   const sessionRef = useRef<AltaSession | null>(null);
   const creandoRef = useRef(false);
@@ -271,10 +272,11 @@ export default function Alta({ brand = 'movi' }: AltaProps) {
       const r = await iniciarVerificacionApi(s);
       setEstado('identity_pending');
       setSubEstados({ verif: 'pendiente', firma: 'enviada' });
-      setSesionUrls({ identidad: r.identidad?.url || null, firma: r.firma?.signUrl || null });
-      // Abrir ambos procesos (identidad Sumsub / firma SignWell) en pestañas.
-      if (r.identidad?.url) window.open(r.identidad.url, '_blank', 'noopener');
-      if (r.firma?.signUrl) window.open(r.firma.signUrl, '_blank', 'noopener');
+      setSesionUrls({
+        identidad: r.identidad?.url || null,
+        identidadSdkToken: r.identidad?.sdkToken || null,
+        firma: r.firma?.signUrl || null,
+      });
       iniciarPolling(s);
     } catch (e) { setErrorGlobal((e as Error).message); }
     finally { setEnviando(false); }
@@ -526,9 +528,70 @@ function ProcesoCard({ marca, titulo, desc, estado, url }: { marca: string; titu
   );
 }
 
+function SumsubWidget({ accessToken }: { accessToken: string }) {
+  const containerId = 'sumsub-websdk-container';
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      const load = () => new Promise<void>((resolve, reject) => {
+        const id = 'sumsub-websdk-script';
+        const existing = document.getElementById(id) as HTMLScriptElement | null;
+        if (existing && (window as any).snsWebSdk) { resolve(); return; }
+        if (existing) {
+          existing.addEventListener('load', () => resolve(), { once: true });
+          existing.addEventListener('error', () => reject(new Error('No se pudo cargar Sumsub WebSDK')), { once: true });
+          return;
+        }
+        const s = document.createElement('script');
+        s.id = id;
+        s.src = SUMSUB_SDK_SRC;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('No se pudo cargar Sumsub WebSDK'));
+        document.head.appendChild(s);
+      });
+
+      await load();
+      if (!mounted) return;
+      const sns = (window as any).snsWebSdk;
+      if (!sns?.init) throw new Error('Sumsub WebSDK no disponible');
+      const sdk = sns
+        .init(accessToken, () => Promise.resolve(accessToken))
+        .withConf({ lang: 'es' })
+        .withOptions({ addViewportTag: false, adaptIframeHeight: true })
+        .on('idCheck.onReady', () => { /* listo */ })
+        .on('idCheck.onInitialized', () => { /* listo */ })
+        .on('idCheck.onStepCompleted', () => { /* Sumsub gestiona el progreso */ })
+        .on('idCheck.onApplicantSubmitted', () => { /* noop */ })
+        .on('idCheck.onError', () => { /* noop */ })
+        .build();
+      sdk.launch(`#${containerId}`);
+    };
+    run().catch((e) => {
+      const el = document.getElementById(containerId);
+      if (el) el.innerHTML = `<div style="padding:12px;border:1px solid #fca5a5;border-radius:12px;color:#b91c1c;background:#fef2f2;font-size:12px;">${String((e as Error).message || e)}</div>`;
+    });
+    return () => {
+      mounted = false;
+      const el = document.getElementById(containerId);
+      if (el) el.innerHTML = '';
+    };
+  }, [accessToken]);
+
+  return <div id={containerId} className="min-h-[520px] rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" />;
+}
+
+function SignWellFrame({ url }: { url: string }) {
+  return (
+    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <iframe src={url} title="Firma del contrato" className="w-full min-h-[620px] bg-white" />
+    </div>
+  );
+}
+
 function PasoVerificacion({ marca, estado, enviando, sub, urls, onIniciar, onReintentar }: {
   marca: string; estado: AltaEstado | null; enviando: boolean;
-  sub: { verif: string; firma: string }; urls: { identidad?: string | null; firma?: string | null };
+  sub: { verif: string; firma: string }; urls: { identidad?: string | null; identidadSdkToken?: string | null; firma?: string | null };
   onIniciar: () => void; onReintentar: () => void;
 }) {
   const enProceso = estado === 'identity_pending' || estado === 'signature_pending' || estado === 'approved' || estado === 'awaiting_review';
@@ -557,10 +620,26 @@ function PasoVerificacion({ marca, estado, enviando, sub, urls, onIniciar, onRei
     return (
       <div className="py-2">
         <h2 className="text-base font-semibold text-gray-900 dark:text-white text-center">Verificación de identidad y firma</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4 text-center">Completa ambos procesos en las ventanas que abrimos. Esta pantalla se actualiza sola.</p>
-        <div className="space-y-2.5">
-          <ProcesoCard marca={marca} titulo="Verificación de identidad" desc="INE + selfie + prueba de vida" estado={sub.verif} url={urls.identidad} />
-          <ProcesoCard marca={marca} titulo="Firma del contrato" desc="Firma con validez legal" estado={sub.firma} url={urls.firma} />
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4 text-center">Completa ambos procesos aquí mismo. Esta pantalla se actualiza sola.</p>
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Verificación de identidad</p>
+              <span className={`text-xs ${estadoSubMeta(sub.verif).cls}`}>{estadoSubMeta(sub.verif).txt}</span>
+            </div>
+            {urls.identidadSdkToken ? (
+              <SumsubWidget accessToken={urls.identidadSdkToken} />
+            ) : (
+              <ProcesoCard marca={marca} titulo="Verificación de identidad" desc="INE + selfie + prueba de vida" estado={sub.verif} url={urls.identidad} />
+            )}
+          </div>
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Firma del contrato</p>
+              <span className={`text-xs ${estadoSubMeta(sub.firma).cls}`}>{estadoSubMeta(sub.firma).txt}</span>
+            </div>
+            {urls.firma ? <SignWellFrame url={urls.firma} /> : <ProcesoCard marca={marca} titulo="Firma del contrato" desc="Firma con validez legal" estado={sub.firma} url={urls.firma} />}
+          </div>
         </div>
       </div>
     );
