@@ -44,6 +44,14 @@ function absoluteAssetUrl(value: string | null | undefined): string {
   return url;
 }
 
+// Fuente corporativa: TODAS las firmas deben usar Gotham (con respaldos seguros
+// para clientes de correo externos que no tengan la fuente instalada).
+const SIGNATURE_FONT_STACK = "'Gotham', Arial, Helvetica, sans-serif";
+
+function forceSignatureFont(html: string): string {
+  return html.replace(/font-family\s*:\s*[^;}"]*/gi, `font-family:${SIGNATURE_FONT_STACK}`);
+}
+
 function renderTemplate(template: string, data: Record<string, string>): string {
   let result = template;
 
@@ -287,8 +295,8 @@ Deno.serve(async (req: Request) => {
     }
     templateData.marca_nombre = templateData.nombre_completo;
 
-    // Renderizar template
-    const renderedHtml = renderTemplate(firmaHtml, templateData);
+    // Renderizar template y forzar la fuente corporativa (Gotham) en toda la firma
+    const renderedHtml = `<div style="font-family:${SIGNATURE_FONT_STACK}">${forceSignatureFont(renderTemplate(firmaHtml, templateData))}</div>`;
 
     return new Response(
       JSON.stringify({
