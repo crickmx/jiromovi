@@ -72,6 +72,16 @@ export const SIGNATURE_VARIABLES: SignatureVariableGroup[] = [
 
 const SIGNATURE_MARKER = 'data-movi-email-signature="true"';
 
+// Fuente corporativa: TODAS las firmas deben usar Gotham (con respaldos seguros
+// para clientes de correo externos que no tengan la fuente instalada).
+export const SIGNATURE_FONT_STACK = "'Gotham', Arial, Helvetica, sans-serif";
+
+// Reemplaza cualquier font-family declarada en la plantilla por el stack Gotham,
+// para que ninguna plantilla se salga de la fuente corporativa.
+export function forceSignatureFont(html: string): string {
+  return html.replace(/font-family\s*:\s*[^;}"]*/gi, `font-family:${SIGNATURE_FONT_STACK}`);
+}
+
 // ── Sanitization ──────────────────────────────────────────────────────────────
 
 function sanitize(value: string | null | undefined): string {
@@ -218,7 +228,7 @@ export function renderSignatureHtml(templateHtml: string, ctx: SignatureContext)
     return sanitize(value);
   });
 
-  return `<div ${SIGNATURE_MARKER}>${html}</div>`;
+  return `<div ${SIGNATURE_MARKER} style="font-family:${SIGNATURE_FONT_STACK}">${forceSignatureFont(html)}</div>`;
 }
 
 // ── Convenience: fetch + render in one call ───────────────────────────────────
