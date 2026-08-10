@@ -91,7 +91,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         </div>
 
         <h3
-          className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-accent transition-colors line-clamp-2"
+          className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-accent transition-colors line-clamp-2 h-12 sm:h-14 overflow-hidden"
           onClick={() => onVerDetalle(producto)}
         >
           {producto.titulo}
