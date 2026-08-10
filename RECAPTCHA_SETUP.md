@@ -9,6 +9,7 @@ Las claves de reCAPTCHA v3 ya están configuradas:
 ```bash
 # Frontend (.env)
 VITE_RECAPTCHA_SITE_KEY=6Ldf1jssAAAAAAzGfo0IIm8JJxNaIpLVDPSqHuIN
+VITE_RECAPTCHA_SITE_KEY_MOVI=6Ldf1jssAAAAAAzGfo0IIm8JJxNaIpLVDPSqHuIN
 
 # Backend (Supabase Edge Functions Secret)
 RECAPTCHA_SECRET_KEY=6Ldf1jssAAAAAOcKNjP9PMrW2q33P-bU6ydDTA3z
@@ -54,7 +55,10 @@ Si necesitas regenerar las claves:
 #### A. Actualizar `.env` (Frontend)
 ```bash
 VITE_RECAPTCHA_SITE_KEY=TU_SITE_KEY_AQUI
+VITE_RECAPTCHA_SITE_KEY_MOVI=TU_SITE_KEY_AQUI
 ```
+
+En beta.movi.digital conviene dejar ambas variables con la misma site key para que funcionen tanto `/registro-at` como el flujo de reporte protegido.
 
 #### B. Configurar en Supabase (Backend)
 
@@ -158,6 +162,7 @@ Este error aparece cuando el score de reCAPTCHA es menor a 0.5 (detectado como b
 
 ### reCAPTCHA v3 no funciona
 - Verifica que `VITE_RECAPTCHA_SITE_KEY` esté en el archivo `.env`
+- Verifica que `VITE_RECAPTCHA_SITE_KEY_MOVI` esté en el archivo `.env` si el reporte protegido depende de esa variable
 - Reinicia el servidor de desarrollo después de cambiar variables de entorno
 - Abre la consola del navegador y busca errores relacionados con `grecaptcha`
 - Verifica que el script de reCAPTCHA se esté cargando: busca `recaptcha/api.js` en las herramientas de desarrollo (Network tab)
