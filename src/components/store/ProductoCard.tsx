@@ -97,7 +97,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
           {producto.titulo}
         </h3>
 
-        <p className="text-sm text-gray-600 dark:text-white/60 mb-3 sm:mb-4 line-clamp-2">
+        <p className="text-sm text-gray-600 dark:text-white/60 mb-3 sm:mb-4 line-clamp-2 h-10 overflow-hidden">
           {producto.descripcion}
         </p>
 
