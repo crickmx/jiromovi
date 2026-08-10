@@ -12,6 +12,7 @@ interface Props {
 
 export default function QuoteFormStepAttachments({ formData, quoteFormId, updateField }: Props) {
   const [attachments, setAttachments] = useState<QuoteFormAttachment[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('otro');
   const [error, setError] = useState('');
@@ -35,6 +36,7 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
     const files = e.target.files;
     if (!files || files.length === 0 || !quoteFormId) return;
 
+    setPendingFiles(Array.from(files));
     setUploading(true);
     setError('');
 
@@ -84,6 +86,7 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
       setError('Error inesperado al subir archivos');
     } finally {
       setUploading(false);
+      setPendingFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -160,9 +163,41 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
               className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors"
             >
               <Paperclip className="w-8 h-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">Haz clic o arrastra archivos aqui</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {pendingFiles.length > 0
+                  ? `${pendingFiles.length} archivo${pendingFiles.length !== 1 ? 's' : ''} seleccionado${pendingFiles.length !== 1 ? 's' : ''}`
+                  : 'Haz clic o arrastra archivos aqui'}
+              </p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, imagenes, Excel, Word, XML (max 10 MB)</p>
             </div>
+
+            {pendingFiles.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Listo para subir
+                </p>
+                <div className="space-y-2">
+                  {pendingFiles.map((file) => (
+                    <div
+                      key={`${file.name}-${file.size}-${file.lastModified}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-blue-100 dark:border-blue-900/40 bg-blue-50/80 dark:bg-blue-500/10 px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {file.type || 'Archivo'} · {formatSize(file.size)}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-white/80 dark:bg-white/10 px-2.5 py-1 text-[11px] font-medium text-blue-700 dark:text-blue-200">
+                        Pendiente
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (
