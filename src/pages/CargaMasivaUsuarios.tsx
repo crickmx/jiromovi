@@ -19,11 +19,11 @@ export default function CargaMasivaUsuarios() {
   const [dragActive, setDragActive] = useState(false);
 
   const handleDownloadTemplate = () => {
-    const template = `email,password,nombre,apellidos,rol,oficina_nombre,puesto,fecha_nacimiento,fecha_ingreso,celular_personal,email_personal,celular_laboral,email_laboral,extension_telefonica,regimen_fiscal,esquema_pago,banco,clabe,url_web_jiro,url_web_multicotizador,mi_logotipo_url,plan_mkt_premium,id_sicas,nombre_sicas,equipo_computo,equipo_celular,dias_vacaciones_disponibles,activo,estado
-juan.perez@ejemplo.com,Temporal123,Juan Carlos,Pérez García,Agente,Ciudad de México Centro,Agente de Seguros,1985-03-15,2023-01-10,5587654321,juan.personal@gmail.com,5512345678,juan.perez@ejemplo.com,101,RESICO,Quincenal,BBVA,012180001234567890,juan-perez,https://cotizador.com/juan,https://storage.com/logo.png,true,H03117,Juan Pérez,Dell Laptop,iPhone 13,15,true,activo
-maria.gonzalez@ejemplo.com,Temporal456,María Elena,González López,Empleado,Ciudad de México Centro,Asistente Administrativa,1990-07-22,2023-02-01,5598765432,maria.personal@gmail.com,5523456789,maria.gonzalez@ejemplo.com,102,ASIMILADOS,Mensual,Santander,014180009876543210,maria-gonzalez,,,,C05421,María González,HP Desktop,Samsung A54,12,true,activo
-carlos.rodriguez@ejemplo.com,Temporal789,Carlos Alberto,Rodríguez Sánchez,Gerente,Ciudad de México Centro,Gerente de Ventas,1980-11-30,2022-06-15,5576543210,carlos.personal@gmail.com,5534567890,carlos.rodriguez@ejemplo.com,103,HONORARIOS,Mensual,HSBC,021180005555555555,carlos-rodriguez,https://cotizador.com/carlos,,,G12345,Carlos Rodríguez,MacBook Pro,iPhone 14 Pro,20,true,activo
-ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Guadalajara,Agente de Seguros GMM,1992-05-18,2023-03-20,3312345678,ana.personal@gmail.com,3398765432,ana.martinez@ejemplo.com,201,RESICO,Quincenal,Banorte,072180007777777777,ana-martinez,https://cotizador.com/ana,https://storage.com/logo2.png,false,V08899,Ana Martínez,Lenovo ThinkPad,Xiaomi Redmi Note,15,true,activo`;
+    const template = `email,password,nombre,apellidos,rol,oficina_nombre,puesto,fecha_nacimiento,fecha_ingreso,celular_personal,email_personal,celular_laboral,email_laboral,extension_telefonica,regimen_fiscal,esquema_pago,banco,clabe,url_web_jiro,url_web_multicotizador,mi_logotipo_url,plan_mkt_premium,id_sicas,nombre_sicas,equipo_computo,equipo_celular,dias_vacaciones_disponibles,tramite_group_ids,activo,estado
+juan.perez@ejemplo.com,Temporal123,Juan Carlos,Pérez García,Agente,Ciudad de México Centro,Agente de Seguros,1985-03-15,2023-01-10,5587654321,juan.personal@gmail.com,5512345678,juan.perez@ejemplo.com,101,RESICO,Quincenal,BBVA,012180001234567890,juan-perez,https://cotizador.com/juan,https://storage.com/logo.png,true,H03117,Juan Pérez,Dell Laptop,iPhone 13,15,,true,activo
+maria.gonzalez@ejemplo.com,Temporal456,María Elena,González López,Empleado,Ciudad de México Centro,Asistente Administrativa,1990-07-22,2023-02-01,5598765432,maria.personal@gmail.com,5523456789,maria.gonzalez@ejemplo.com,102,ASIMILADOS,Mensual,Santander,014180009876543210,maria-gonzalez,,,,C05421,María González,HP Desktop,Samsung A54,12,,true,activo
+carlos.rodriguez@ejemplo.com,Temporal789,Carlos Alberto,Rodríguez Sánchez,Gerente,Ciudad de México Centro,Gerente de Ventas,1980-11-30,2022-06-15,5576543210,carlos.personal@gmail.com,5534567890,carlos.rodriguez@ejemplo.com,103,HONORARIOS,Mensual,HSBC,021180005555555555,carlos-rodriguez,https://cotizador.com/carlos,,,G12345,Carlos Rodríguez,MacBook Pro,iPhone 14 Pro,20,,true,activo
+ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Guadalajara,Agente de Seguros GMM,1992-05-18,2023-03-20,3312345678,ana.personal@gmail.com,3398765432,ana.martinez@ejemplo.com,201,RESICO,Quincenal,Banorte,072180007777777777,ana-martinez,https://cotizador.com/ana,https://storage.com/logo2.png,false,V08899,Ana Martínez,Lenovo ThinkPad,Xiaomi Redmi Note,15,ID_EQUIPO_ADMIN|ID_EQUIPO_COMERCIAL,true,activo`;
 
     const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -140,7 +140,7 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
                 <div>
                   <h4 className="font-medium">Llena la Información</h4>
                   <p className="text-sm text-muted-foreground">
-                    Completa los datos de los usuarios en el archivo CSV. Los campos obligatorios son: email, password, nombre, apellidos, rol y oficina_nombre
+                    Completa los datos de los usuarios en el archivo CSV. Los campos obligatorios son: email, password, nombre, apellidos, rol y oficina_nombre. Si el usuario tiene rol Agente, agrega 'tramite_group_ids' con 1 o más ids de equipos separados por '|'
                   </p>
                 </div>
               </div>
@@ -161,7 +161,7 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
             <Alert className="bg-blue-50 border-blue-200">
               <AlertCircle className="w-4 h-4 text-blue-600" />
               <div className="text-sm text-blue-800">
-                <strong>Importante:</strong> La oficina debe existir previamente. Los emails deben ser únicos.
+                <strong>Importante:</strong> La oficina debe existir previamente. Los emails deben ser únicos. Los agentes deben cubrir al menos una opción de cada categoría activa de trámites.
               </div>
             </Alert>
 
