@@ -275,6 +275,25 @@ export default function PaginaPublicaAsesor() {
 
   useEffect(() => { setVisibleCount(ITEMS_PER_PAGE); }, [activeCategory, searchQuery]);
 
+  useEffect(() => {
+    const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI;
+    if (!siteKey) return;
+
+    const scriptId = 'recaptcha-v3-script';
+    if (document.getElementById(scriptId)) return;
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    return () => {
+      script.remove();
+    };
+  }, []);
+
   async function loadPageData() {
     if (!slug) return;
     try {
@@ -305,7 +324,7 @@ export default function PaginaPublicaAsesor() {
     setIsSubmitting(true);
     setSubmitStatus('idle');
     try {
-      const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+      const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI;
       if (!siteKey) throw new Error('reCAPTCHA no configurado');
       const recaptchaToken = await window.grecaptcha.execute(siteKey, { action: 'submit_lead' });
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qhwvuuyjhcennqccgvse.supabase.co';

@@ -36,7 +36,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
   const requiereModal = tieneVariantes || tienePersonalizacion;
 
   return (
-    <div className={`bg-white dark:bg-white/5 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden hover:shadow-md transition-shadow ${sinStock ? 'opacity-75' : ''}`}>
+    <div className={`flex flex-col bg-white dark:bg-white/5 rounded-xl shadow-sm border border-gray-200 dark:border-white/10 overflow-hidden hover:shadow-md transition-shadow ${sinStock ? 'opacity-75' : ''}`}>
       <div
         className="aspect-square w-full bg-gray-100 dark:bg-white/5 cursor-pointer overflow-hidden relative"
         onClick={() => onVerDetalle(producto)}
@@ -75,7 +75,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         )}
       </div>
 
-      <div className="p-3 sm:p-4">
+      <div className="p-3 sm:p-4 flex flex-col flex-1">
         <div className="mb-2 flex flex-wrap gap-1.5">
           {producto.categoria && (
             <span className="inline-block px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 dark:bg-accent/10 dark:text-accent rounded-full">
@@ -91,17 +91,17 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         </div>
 
         <h3
-          className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-accent transition-colors line-clamp-2"
+          className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-accent transition-colors line-clamp-2 h-12 sm:h-14 overflow-hidden"
           onClick={() => onVerDetalle(producto)}
         >
           {producto.titulo}
         </h3>
 
-        <p className="text-sm text-gray-600 dark:text-white/60 mb-3 sm:mb-4 line-clamp-2">
+        <p className="text-sm text-gray-600 dark:text-white/60 mb-3 sm:mb-4 line-clamp-2 h-10 overflow-hidden">
           {producto.descripcion}
         </p>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 mt-auto">
           {/* Fila precio + stepper */}
           <div className="flex items-center justify-between gap-2">
             <p className="text-base font-bold text-gray-900 dark:text-white">
