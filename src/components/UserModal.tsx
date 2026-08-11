@@ -10,6 +10,7 @@ import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, La
 import type { Database } from '../lib/database.types';
 import UbicacionPicker, { type UbicacionValue } from './ubicacion/UbicacionPicker';
 import { useRoles } from '../hooks/useRoles';
+import AgentTramiteTeamsSection from './tramites/AgentTramiteTeamsSection';
 import {
   searchSicasVendors,
   getSicasVendorByVendId,
@@ -18,6 +19,7 @@ import {
   matchOficinaId,
   type SicasVendorOption,
 } from '../lib/sicasVendorLink';
+import { syncUserTramiteTeamMemberships } from '../lib/tramiteTeamAssignments';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -91,6 +93,12 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   const [error, setError] = useState('');
   const [sendingAccess, setSendingAccess] = useState(false);
   const [accessSent, setAccessSent] = useState(false);
+  const [tramiteTeamIds, setTramiteTeamIds] = useState<string[]>([]);
+  const [tramiteTeamState, setTramiteTeamState] = useState<{ ready: boolean; valid: boolean; missingCategories: string[] }>({
+    ready: false,
+    valid: false,
+    missingCategories: [],
+  });
 
   // Enlace con "usuario SICAS" (catálogo de vendedores)
   const canLinkSicas = isAdmin || isGerente;
@@ -161,6 +169,8 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         });
       } else {
         setSicasLink(null);
+        setTramiteTeamIds([]);
+        setTramiteTeamState({ ready: false, valid: false, missingCategories: [] });
       }
       setSicasTouched(false);
     }
@@ -304,6 +314,9 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
     return slugRegex.test(slug);
   };
 
+  const canManageTramiteTeams = isAdmin;
+  const mustValidateTramiteTeams = canManageTramiteTeams && formData.rol === 'Agente';
+
   const uploadImage = async (file: File, bucket: string, userId: string): Promise<string | null> => {
     try {
       const fileExt = file.name.split('.').pop();
@@ -374,6 +387,12 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
           setLoading(false);
           return;
         }
+      }
+
+      if (mustValidateTramiteTeams && (!tramiteTeamState.ready || !tramiteTeamState.valid)) {
+        setError(`El agente debe tener al menos un equipo en cada categoría activa. Faltan: ${tramiteTeamState.missingCategories.join(', ')}`);
+        setLoading(false);
+        return;
       }
 
       if (user) {
@@ -454,6 +473,10 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         if (formData.rol === 'Gerente' && isAdmin) {
           await savePermisosAdicionales(user.id);
         }
+
+        if (mustValidateTramiteTeams) {
+          await syncUserTramiteTeamMemberships(user.id, tramiteTeamIds);
+        }
       } else {
         // Crear usuario nuevo
         if (!formData.email_laboral) {
@@ -496,6 +519,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             ubicacion_lng: ubic.lng,
             ubicacion_direccion_manual: ubic.direccion_manual,
             ubicacion_metodo: ubic.metodo,
+            tramite_group_ids: mustValidateTramiteTeams ? tramiteTeamIds : undefined,
           },
         };
 
@@ -1221,6 +1245,17 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                 </p>
               </div>
             </div>
+
+            {canManageTramiteTeams && formData.rol === 'Agente' && (
+              <div className="bg-white border border-slate-200 rounded-xl p-4">
+                <AgentTramiteTeamsSection
+                  userId={user?.id}
+                  selectedIds={tramiteTeamIds}
+                  onSelectedIdsChange={setTramiteTeamIds}
+                  onStateChange={setTramiteTeamState}
+                />
+              </div>
+            )}
 
             {/* Equipos Asignados - Solo para Administradores */}
             {isAdmin && (

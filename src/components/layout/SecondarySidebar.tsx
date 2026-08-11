@@ -130,7 +130,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
               {grupo && (
                 <button
                   onClick={() => toggleGrupo(grupo.id, grupo.colapsado_default)}
-                  className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-white/40 hover:text-neutral-600 dark:hover:text-white/60 transition-colors"
+                  className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-white/45 hover:text-neutral-700 dark:hover:text-white/70 transition-colors"
                 >
                   {colapsado ? <ChevronRight className="w-3 h-3 flex-shrink-0" /> : <ChevronDown className="w-3 h-3 flex-shrink-0" />}
                   <span className="w-2.5 h-px bg-current opacity-50 flex-shrink-0" />
@@ -151,7 +151,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                     key={item.path}
                     onClick={() => handleNav(item.path)}
                     className={cn(
-                      "w-full flex flex-col gap-0.5 px-3 rounded-xl text-[13px] font-medium transition-all duration-200",
+                      "relative w-full flex flex-col gap-0.5 px-3 rounded-xl text-[13px] font-medium transition-all duration-200",
                       mobileMode ? "py-3.5" : "py-2.5",
                       "active:scale-[0.97] text-left",
                       active
@@ -159,6 +159,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                         : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.07] hover:text-neutral-900 dark:hover:text-white"
                     )}
                   >
+                    {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-accent" aria-hidden="true" />}
                     <span className="w-full flex items-center gap-2.5">
                       <Icon className={cn("flex-shrink-0 w-4 h-4", active ? "text-accent" : "text-neutral-400 dark:text-neutral-500")} />
                       <span className="truncate flex-1 min-w-0">{item.label}</span>

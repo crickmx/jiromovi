@@ -13,6 +13,10 @@ import { SolicitudBetaModal } from '../components/dashboard/SolicitudBetaModal';
 import { ProduccionResumenCard } from '../components/dashboard/ProduccionResumenCard';
 import { CampaniasActivasCard } from '../components/dashboard/CampaniasActivasCard';
 import { ConvencionCard } from '../components/dashboard/ConvencionCard';
+import { VendedorSections } from '../components/dashboard/VendedorSections';
+import { GerenteSections } from '../components/dashboard/GerenteSections';
+import { DireccionSections } from '../components/dashboard/DireccionSections';
+import { EjecutivoSections } from '../components/dashboard/EjecutivoSections';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -353,9 +357,19 @@ export default function Dashboard() {
   const wideWidgets = enabledWidgets.filter(w => w.full_width);
   const narrowWidgets = enabledWidgets.filter(w => !w.full_width);
 
+  const esAgente      = usuario.rol === 'Agente';
+  const esEjecutivo   = usuario.rol === 'Ejecutivo';
+  const esGerente     = usuario.rol === 'Gerente';
+  const esDireccion   = usuario.rol === 'Administrador';
+
   return (
     <div className="space-y-6 pb-8">
       <WelcomeHero usuario={usuario} />
+
+      {esAgente     && <VendedorSections   usuario={usuario} />}
+      {esEjecutivo  && <EjecutivoSections  usuario={usuario} />}
+      {esGerente    && <GerenteSections    usuario={usuario} />}
+      {esDireccion  && <DireccionSections  usuario={usuario} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

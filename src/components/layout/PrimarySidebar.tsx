@@ -95,7 +95,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             const customBadgeEl = badge ? (
               <span
                 className={cn(
-                  'absolute -bottom-1 -right-1 px-1 py-[1px] rounded-full text-[7px] font-bold leading-none whitespace-nowrap',
+                  'absolute -bottom-1 -right-1 px-1 py-[1px] rounded-full text-[8px] font-bold leading-none whitespace-nowrap',
                   BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber
                 )}
               >
@@ -154,7 +154,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                           {tlBadgeEl}
                           {customBadgeEl}
                         </span>
-                        <span className="text-[8.5px] leading-[1.15] font-semibold uppercase tracking-wide text-center line-clamp-2 px-0.5">
+                        <span className="text-[9.5px] leading-[1.15] font-semibold tracking-wide text-center line-clamp-2 px-0.5">
                           {item.label}
                         </span>
                       </button>
@@ -226,7 +226,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                         {wsBadgeEl}
                         {customBadgeEl}
                       </span>
-                      <span className="text-[8.5px] leading-[1.15] font-semibold uppercase tracking-wide text-center line-clamp-2 px-0.5">
+                      <span className="text-[9.5px] leading-[1.15] font-semibold tracking-wide text-center line-clamp-2 px-0.5">
                         {ws.label}
                       </span>
                     </button>

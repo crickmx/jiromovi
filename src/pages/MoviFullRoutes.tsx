@@ -129,6 +129,7 @@ const DashboardEditorAdmin = lazy(() => import('./DashboardEditorAdmin'));
 const BaseDatosMaestrosAdmin = lazy(() => import('./BaseDatosMaestrosAdmin'));
 const AdminTramites = lazy(() => import('./AdminTramites'));
 const AdminReportesBugs = lazy(() => import('./AdminReportesBugs'));
+const AdminAltas = lazy(() => import('./AdminAltas'));
 const DiasNoHabiles = lazy(() => import('./admin/DiasNoHabiles'));
 const ConfigJornada = lazy(() => import('./admin/ConfigJornada'));
 
@@ -138,6 +139,9 @@ const Oficinas = lazy(() => import('./Oficinas'));
 const RegistroPersonal = lazy(() => import('./RegistroPersonal'));
 const PaginaPublicaAsesor = lazy(() => import('./PaginaPublicaAsesor'));
 const AgendaPublica = lazy(() => import('./AgendaPublica'));
+const Alta = lazy(() => import('./Alta'));
+const AltaSimular = lazy(() => import('./AltaSimular'));
+const AdminContratosAlta = lazy(() => import('./AdminContratosAlta'));
 
 function PageLoader() {
   return (
@@ -164,6 +168,9 @@ export default function MoviFullRoutes() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public / no-layout routes */}
+        <Route path="/alta" element={<Alta brand="movi" />} />
+        <Route path="/registro-at" element={<Alta brand="agente_total" />} />
+        <Route path="/alta/simular" element={<AltaSimular />} />
         <Route path="/registro-personal" element={<RegistroPersonal />} />
         <Route path="/p/:slug" element={<PaginaPublicaAsesor />} />
         <Route path="/cotizar/formularios/:slug" element={<PublicQuoteForm />} />
@@ -198,6 +205,7 @@ export default function MoviFullRoutes() {
           <Route path="/mi-crm/configuracion" element={<ProtectedRoute><CRMConfiguracion /></ProtectedRoute>} />
           <Route path="/mi-crm/leads-seguros-express" element={<ProtectedRoute><CRMLeadsSegurosExpress /></ProtectedRoute>} />
           <Route path="/admin/seguros-express" element={<ProtectedRoute requireAdmin><AdminSegurosExpress /></ProtectedRoute>} />
+          <Route path="/admin/registro-at/contratos" element={<ProtectedRoute requireAdmin><AdminContratosAlta /></ProtectedRoute>} />
           <Route path="/tramites" element={<ProtectedRoute><Tramites /></ProtectedRoute>} />
           <Route path="/tramites/:id" element={<ProtectedRoute><TramiteDetalle /></ProtectedRoute>} />
           <Route path="/tareas/reporte/:tramiteId/:campoId" element={<ProtectedRoute><TareaReportePage /></ProtectedRoute>} />
@@ -225,7 +233,7 @@ export default function MoviFullRoutes() {
           <Route path="/cotizar" element={<ProtectedRoute><CotizarHub /></ProtectedRoute>} />
           <Route path="/cotizar/gmm-bx" element={<Navigate to="/cotizar/multicotizador-gmm" replace />} />
           <Route path="/cotizar/formularios" element={<ProtectedRoute><FormulariosCotizacion /></ProtectedRoute>} />
-          <Route path="/cotizar/formularios/:slug/wizard" element={<ProtectedRoute><QuoteFormWizard /></ProtectedRoute>} />
+          <Route path="/cotizar/formularios/:formType/wizard" element={<ProtectedRoute><QuoteFormWizard /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida" element={<ProtectedRoute><AlaMedida /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida/auto" element={<ProtectedRoute><DisenadorAuto /></ProtectedRoute>} />
           <Route path="/cotizar/a-la-medida/gmm" element={<ProtectedRoute><DisenadorGMM /></ProtectedRoute>} />
@@ -312,6 +320,7 @@ export default function MoviFullRoutes() {
           <Route path="/admin/base-datos" element={<ProtectedRoute requireAdmin><BaseDatosMaestrosAdmin /></ProtectedRoute>} />
           <Route path="/admin/tramites" element={<ProtectedRoute requireAdmin><AdminTramites /></ProtectedRoute>} />
           <Route path="/admin/reportes-bugs" element={<ProtectedRoute requireAdmin><AdminReportesBugs /></ProtectedRoute>} />
+          <Route path="/admin/altas" element={<ProtectedRoute requireAdmin><AdminAltas /></ProtectedRoute>} />
           <Route path="/admin/dias-no-habiles" element={<ProtectedRoute requireAdmin><DiasNoHabiles /></ProtectedRoute>} />
           <Route path="/admin/config-jornada" element={<ProtectedRoute requireAdmin><ConfigJornada /></ProtectedRoute>} />
 

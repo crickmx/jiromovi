@@ -104,7 +104,7 @@ body {
   margin: 0;
   background: var(--bg-base);
   color: var(--text-base);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Gotham', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s ease, color 0.2s ease;
@@ -113,6 +113,11 @@ body {
 #root {
   width: 100%;
   height: 100vh;
+  /* En móvil, 100vh incluye el área tras la barra del navegador → el shell queda
+     más alto que lo visible y, al ser overflow:hidden, la parte inferior (barra de
+     navegación / pie del menú) se corta y no hay forma de scrollear. 100dvh usa la
+     altura del viewport realmente visible. */
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -120,6 +125,14 @@ body {
 #root.public-page {
   height: auto;
   overflow: visible;
+}
+
+/* Shell principal de la app: llena el viewport VISIBLE.
+   Usa 100dvh (excluye la barra del navegador en móvil) con fallback a 100vh
+   para navegadores viejos sin soporte de unidades dinámicas. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -199,7 +212,7 @@ body {
 
 /* Nav icon buttons */
 .sidebar-rail-btn {
-  color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.62);
   transition: background 0.15s, color 0.15s, transform 0.1s;
 }
 .sidebar-rail-btn:hover {
@@ -207,9 +220,10 @@ body {
   color: rgba(255,255,255,0.90);
 }
 .sidebar-rail-btn.active {
-  background: rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.16);
   color: #ffffff;
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.20) inset;
+  /* Stronger active marker: 3px accent bar on the left + subtle full ring */
+  box-shadow: inset 3px 0 0 0 #ffffff, inset 0 0 0 1px rgba(255,255,255,0.10);
 }
 
 /* Chava AI dedicated button */

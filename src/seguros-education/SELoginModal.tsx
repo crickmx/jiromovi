@@ -161,9 +161,11 @@ export function SELoginModal({ onClose, onSuccess, redirectTo }: Props) {
                 <input
                   type="text"
                   value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   onKeyDown={(e) => e.key === 'Enter' && handleVerifyCode()}
-                  placeholder="XXXXXX"
+                  placeholder="123456"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   maxLength={6}
                   autoFocus
                   className="w-full px-4 py-3 border border-neutral-300 rounded-xl text-sm text-center font-mono text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

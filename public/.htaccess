@@ -1,5 +1,66 @@
+# ---------------------------------------------------------------------------
+# MOVI — Apache/Plesk config para el SPA (beta.movi.digital y producción)
+#
+# Plesk IGNORA vercel.json y netlify.toml. Todo lo que necesita el servidor
+# Apache (compresión, caché, y el fallback del SPA) tiene que vivir aquí.
+# Cada bloque va protegido con <IfModule> para que, si un módulo no está
+# habilitado en el servidor, Apache lo salte en vez de tirar un 500.
+# ---------------------------------------------------------------------------
+
 Options -MultiViews
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ /index.html [QSA,L]
+
+# --- 1. Compresión (gzip / brotli) -----------------------------------------
+# El bundle JS es grande; sin esto se manda sin comprimir = carga lenta.
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css \
+    text/javascript application/javascript application/x-javascript \
+    application/json application/manifest+json image/svg+xml \
+    font/ttf font/otf font/woff font/woff2 application/wasm
+</IfModule>
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS text/html text/plain text/css \
+    text/javascript application/javascript application/x-javascript \
+    application/json application/manifest+json image/svg+xml \
+    font/ttf font/otf font/woff font/woff2
+</IfModule>
+
+# --- 2. Caché ---------------------------------------------------------------
+<IfModule mod_headers.c>
+  # 2a. Assets con hash de contenido (/_static/*) → cachear duro 1 año.
+  #     El nombre cambia en cada build, así que "immutable" es seguro.
+  <FilesMatch "\.(js|mjs|css|woff2|woff|ttf|otf|eot)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # 2b. Imágenes/íconos (no siempre llevan hash) → caché moderada (7 días).
+  <FilesMatch "\.(png|jpg|jpeg|gif|svg|webp|avif|ico)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+
+  # 2c. El "shell" y los marcadores de versión → NUNCA cachear.
+  #     Esto evita el bug documentado (useAppUpdate.ts): un index.html viejo
+  #     en caché apunta a chunks de un build anterior que ya no existen →
+  #     pantalla en blanco / "no carga bien". Va al final para ganarle a 2a.
+  <FilesMatch "(^|/)(index\.html|version\.json|manifest\.webmanifest|push-sw\.js)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+
+  # El service worker de push tiene que poder controlar todo el scope.
+  <FilesMatch "push-sw\.js$">
+    Header set Service-Worker-Allowed "/"
+  </FilesMatch>
+</IfModule>
+
+# --- 3. Fallback del SPA (React Router) ------------------------------------
+# Cualquier ruta que no sea un archivo/carpeta real sirve index.html.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ /index.html [QSA,L]
+</IfModule>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type MouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag, Phone, MessageCircle } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +42,11 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
   const [isOpen, setIsOpen] = useState(false);
   const [filterModule, setFilterModule] = useState<string>('all');
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
+  // En móvil el panel se muestra a pantalla completa; en escritorio, posicionado
+  // junto al botón. Se inicializa con el ancho actual para evitar un parpadeo.
+  const [fullScreen, setFullScreen] = useState<boolean>(
+    () => typeof window !== 'undefined' && window.innerWidth < 640
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -53,6 +59,10 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
     const PANEL_HEIGHT = 560;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
+
+    const mobile = viewportWidth < 640;
+    setFullScreen(mobile);
+    if (mobile) return; // en móvil se usa layout de pantalla completa, sin cálculo de posición
     const panelWidth = Math.min(384, viewportWidth - 2 * MARGIN);
 
     // Horizontal: prefer right of button, fall back to left
@@ -176,16 +186,23 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
       </button>
 
       {/* Notification Panel */}
-      {isOpen && (
+      {isOpen && (() => {
+        const panelNode = (
         <div
           ref={panelRef}
-          style={fixedPanel ? panelStyle : undefined}
-          className={cn(
-            "bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 flex flex-col overflow-hidden",
+          style={
             fixedPanel
-              ? ''
+              ? (fullScreen ? { position: 'fixed', inset: 0, zIndex: 9999 } : panelStyle)
+              : undefined
+          }
+          className={cn(
+            "bg-white dark:bg-neutral-900 shadow-2xl flex flex-col overflow-hidden",
+            fixedPanel
+              ? (fullScreen
+                  ? "rounded-none border-0 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]"
+                  : "rounded-xl border border-neutral-200 dark:border-white/10")
               : cn(
-                  "absolute z-50",
+                  "absolute z-50 rounded-xl border border-neutral-200 dark:border-white/10",
                   dropdownSide === 'right'
                     ? "left-full ml-2 top-0 w-80 sm:w-96 max-h-[min(600px,calc(100vh-80px))]"
                     : "right-0 top-full mt-2 w-80 sm:w-96 max-h-[min(600px,calc(100vh-80px))]"
@@ -393,7 +410,9 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
             </div>
           )}
         </div>
-      )}
+        );
+        return fixedPanel ? createPortal(panelNode, document.body) : panelNode;
+      })()}
     </div>
   );
 }

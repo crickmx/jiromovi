@@ -39,6 +39,7 @@ interface CreateUserRequest {
     ubicacion_lng?: number | null;
     ubicacion_direccion_manual?: string | null;
     ubicacion_metodo?: 'gps' | 'manual' | null;
+    tramite_group_ids?: string[];
   };
 }
 
@@ -266,6 +267,78 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[create-user] ✅ User inserted successfully:', insertedData);
+
+    const selectedGroupIds = Array.from(new Set((userData.tramite_group_ids || []).filter((id): id is string => typeof id === 'string' && id.trim() !== '')));
+    if (isAdmin && userData.rol === 'Agente') {
+      const { data: activeGroups, error: groupsError } = await supabaseAdmin
+        .from('tramites_grupos_visualizacion')
+        .select('id, area_categoria')
+        .eq('activo', true);
+
+      if (groupsError) {
+        await supabaseAdmin.from('usuarios').delete().eq('id', authData.user.id);
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        return new Response(
+          JSON.stringify({ error: 'No se pudieron validar los equipos de trámite: ' + groupsError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const activeMap = new Map<string, string[]>();
+      for (const group of activeGroups ?? []) {
+        const category = String(group.area_categoria || '').trim();
+        if (!category) continue;
+        const bucket = activeMap.get(category) ?? [];
+        bucket.push(group.id);
+        activeMap.set(category, bucket);
+      }
+
+      const selectedSet = new Set(selectedGroupIds);
+      const missingCategories = Array.from(activeMap.entries())
+        .filter(([, groupIds]) => !groupIds.some((id) => selectedSet.has(id)))
+        .map(([category]) => category);
+
+      const selectedActiveIds = selectedGroupIds.filter((id) =>
+        (activeGroups ?? []).some((group) => group.id === id)
+      );
+
+      if (missingCategories.length > 0) {
+        await supabaseAdmin.from('usuarios').delete().eq('id', authData.user.id);
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        return new Response(
+          JSON.stringify({
+            error: 'El agente debe tener al menos un equipo en cada categoría activa',
+            details: { missingCategories },
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (selectedActiveIds.length !== selectedGroupIds.length) {
+        await supabaseAdmin.from('usuarios').delete().eq('id', authData.user.id);
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        return new Response(
+          JSON.stringify({
+            error: 'Uno o más equipos seleccionados no están activos',
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const memberships = selectedGroupIds.map((grupoId) => ({ grupo_id: grupoId, usuario_id: authData.user.id }));
+      const { error: membershipError } = await supabaseAdmin
+        .from('tramites_grupos_miembros')
+        .insert(memberships);
+
+      if (membershipError) {
+        await supabaseAdmin.from('usuarios').delete().eq('id', authData.user.id);
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        return new Response(
+          JSON.stringify({ error: 'No se pudieron guardar los equipos de trámite: ' + membershipError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Si el usuario se creó como activo, enviar notificaciones de bienvenida inmediatamente
     if (insertData.estado === 'activo') {
