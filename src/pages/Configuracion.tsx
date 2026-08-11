@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { Settings, Save, Plus, X } from 'lucide-react';
+import { supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabase';
+import { Settings, Save, Plus, X, Download, Loader2 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ export function Configuracion() {
   const [camposPersonalizados, setCamposPersonalizados] = useState<CampoPersonalizado[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showNewFieldModal, setShowNewFieldModal] = useState(false);
   const [newField, setNewField] = useState({
@@ -59,6 +60,56 @@ export function Configuracion() {
     if (permisosRes.data) setPermisos(permisosRes.data);
     if (camposRes.data) setCamposPersonalizados(camposRes.data);
     setLoading(false);
+  };
+
+  const handleDownloadBackup = async () => {
+    setExporting(true);
+    setMessage(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error('No hay sesión activa');
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/export-users-backup`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          apikey: supabaseAnonKey,
+        },
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.details || payload?.error || 'No se pudo generar el respaldo');
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const fileNameMatch = contentDisposition?.match(/filename="([^"]+)"/i);
+      const fileName = fileNameMatch?.[1] || `respaldo_usuarios_configuracion_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setMessage({ type: 'success', text: 'Respaldo descargado correctamente' });
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Error al descargar el respaldo',
+      });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const getPermiso = (rol: string, campo: string) => {
@@ -206,6 +257,12 @@ export function Configuracion() {
         title="Configuracion del Sistema"
         description="Gestiona permisos y campos personalizados"
         icon={Settings}
+        actions={
+          <Button variant="outline" size="sm" onClick={handleDownloadBackup} disabled={exporting}>
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {exporting ? 'Generando respaldo...' : 'Descargar respaldo'}
+          </Button>
+        }
       >
         <div className="flex gap-1 border-b border-neutral-200 dark:border-white/8">
           {([['roles', 'Roles'], ['permisos', 'Permisos de Campos'], ['campos', 'Campos Personalizados']] as const).map(([key, label]) => (
