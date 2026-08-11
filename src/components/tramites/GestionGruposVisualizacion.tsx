@@ -1389,6 +1389,7 @@ export function GestionGruposVisualizacion() {
                     {selectedGrupo?.area_categoria && (
                       <> Aplica solo a trámites del área <strong>{selectedGrupo.area_categoria}</strong>.</>
                     )}
+                    {' '}Estas reglas individuales tienen prioridad sobre "Equipos habilitados" (Admin &gt; Trámites &gt; Tipos) — si un tipo también enruta por oficina, esta asignación por vendedor gana.
                   </div>
                 </div>
 

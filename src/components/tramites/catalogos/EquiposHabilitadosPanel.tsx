@@ -120,6 +120,8 @@ export function EquiposHabilitadosPanel({ tipoId, area, showToast }: Props) {
     <div className="p-4 overflow-auto space-y-4">
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
         Elige qué equipos pueden <strong>atender</strong> este tipo de trámite (no afecta quién puede crearlo). La auto-asignación resuelve el equipo según la oficina del agente solicitante, cruzada contra las oficinas de cada equipo marcado aquí. Un tipo sin ningún equipo marcado no participa de la asignación automática por oficina.
+        <br /><br />
+        <strong>Prioridad:</strong> si el agente ya tiene un ejecutivo o equipo asignado a mano en la pestaña "Asignación" de un equipo, esa regla individual gana sobre este enrutamiento automático por oficina — este panel solo decide el equipo para agentes que <em>no</em> tengan una regla propia configurada.
       </div>
 
       {equipos.length === 0 ? (
