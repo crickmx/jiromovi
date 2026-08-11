@@ -2,17 +2,19 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Save, Upload, User as UserIcon, ArrowLeft, FileText, Briefcase, Link as LinkIcon, FolderOpen, Copy, Check, MapPin } from 'lucide-react';
+import { Save, Upload, User as UserIcon, ArrowLeft, FileText, Briefcase, Link as LinkIcon, FolderOpen, Copy, Check, MapPin, Users } from 'lucide-react';
 import UbicacionPicker from '../components/ubicacion/UbicacionPicker';
 import { CustomFields } from '../components/CustomFields';
 import { PaymentFields } from '../components/PaymentFields';
 import { ExpedienteSection } from '../components/ExpedienteSection';
 import { MiLogotipoEditor } from '../components/MiLogotipoEditor';
+import AgentTramiteTeamsSection from '../components/tramites/AgentTramiteTeamsSection';
 import { getMiPaginaWeb } from '../lib/webUrlUtils';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Button } from '@/components/ui/button';
 import type { Database } from '../lib/database.types';
+import { syncUserTramiteTeamMemberships } from '../lib/tramiteTeamAssignments';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -27,9 +29,15 @@ export function PerfilUsuario() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'laboral' | 'accesos' | 'documentos'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'laboral' | 'equipos' | 'accesos' | 'documentos'>('general');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [tramiteTeamIds, setTramiteTeamIds] = useState<string[]>([]);
+  const [tramiteTeamState, setTramiteTeamState] = useState<{ ready: boolean; valid: boolean; missingCategories: string[] }>({
+    ready: false,
+    valid: false,
+    missingCategories: [],
+  });
 
   const canEditExpediente = currentUser?.rol === 'Administrador' || currentUser?.rol === 'Gerente';
   const isAdmin = currentUser?.rol === 'Administrador';
@@ -74,6 +82,8 @@ export function PerfilUsuario() {
       if (usuarioRes.data) {
         setUsuario(usuarioRes.data);
         setFormData(usuarioRes.data);
+        setTramiteTeamIds([]);
+        setTramiteTeamState({ ready: false, valid: false, missingCategories: [] });
       } else {
         setMessage({ type: 'error', text: 'Usuario no encontrado' });
         setTimeout(() => navigate('/directorio'), 2000);
@@ -93,6 +103,16 @@ export function PerfilUsuario() {
 
     setSaving(true);
     setMessage(null);
+
+    const mustValidateTramiteTeams = isAdmin && formData.rol === 'Agente';
+    if (mustValidateTramiteTeams && (!tramiteTeamState.ready || !tramiteTeamState.valid)) {
+      setMessage({
+        type: 'error',
+        text: `El agente debe tener al menos un equipo en cada categoría activa. Faltan: ${tramiteTeamState.missingCategories.join(', ')}`,
+      });
+      setSaving(false);
+      return;
+    }
 
     const updateData: Partial<Usuario> = {
       nombre: formData.nombre,
@@ -149,6 +169,15 @@ export function PerfilUsuario() {
       console.error('Error saving user:', error);
       setMessage({ type: 'error', text: `Error al guardar cambios: ${error.message}` });
     } else {
+      if (mustValidateTramiteTeams) {
+        try {
+          await syncUserTramiteTeamMemberships(id, tramiteTeamIds);
+        } catch (teamError: any) {
+          setMessage({ type: 'error', text: `Usuario guardado, pero no se pudieron guardar los equipos: ${teamError?.message || 'error desconocido'}` });
+          setSaving(false);
+          return;
+        }
+      }
       setMessage({ type: 'success', text: 'Cambios guardados correctamente' });
       setHasUnsavedChanges(false);
       await loadData();
@@ -213,6 +242,7 @@ export function PerfilUsuario() {
   const tabs = [
     { id: 'general' as const, label: 'Información General', icon: FileText },
     { id: 'laboral' as const, label: 'Datos Laborales', icon: Briefcase },
+    ...(isAdmin && formData.rol === 'Agente' ? [{ id: 'equipos' as const, label: 'Equipos', icon: Users }] : []),
     { id: 'accesos' as const, label: 'Accesos y Enlaces', icon: LinkIcon },
     { id: 'documentos' as const, label: 'Expediente', icon: FolderOpen },
   ];
@@ -668,6 +698,23 @@ export function PerfilUsuario() {
                       editable={true}
                     />
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'equipos' && isAdmin && formData.rol === 'Agente' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Equipos de Trámites</h3>
+                    <p className="text-sm text-neutral-500 dark:text-white/45 mt-1">
+                      El agente debe pertenecer a al menos un equipo en cada categoría activa.
+                    </p>
+                  </div>
+                  <AgentTramiteTeamsSection
+                    userId={usuario.id}
+                    selectedIds={tramiteTeamIds}
+                    onSelectedIdsChange={setTramiteTeamIds}
+                    onStateChange={setTramiteTeamState}
+                  />
                 </div>
               )}
 
