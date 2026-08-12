@@ -147,16 +147,11 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => handleNav(item.path)}
-                        className={cn('sidebar-rail-btn w-full py-2 px-1 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-90', isActive && 'active')}
+                        className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
                       >
-                        <span className="relative flex items-center justify-center w-[18px] h-[18px]">
-                          <Icon className="w-[18px] h-[18px]" />
-                          {tlBadgeEl}
-                          {customBadgeEl}
-                        </span>
-                        <span className="text-[9.5px] leading-[1.15] font-semibold tracking-wide text-center line-clamp-2 px-0.5">
-                          {item.label}
-                        </span>
+                        <Icon className="w-[18px] h-[18px]" />
+                        {tlBadgeEl}
+                        {customBadgeEl}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
@@ -219,16 +214,11 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => handleNav(firstPath)}
-                      className={cn('sidebar-rail-btn w-full py-2 px-1 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-90', isActive && 'active')}
+                      className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
                     >
-                      <span className="relative flex items-center justify-center w-[18px] h-[18px]">
-                        <Icon className="w-[18px] h-[18px]" />
-                        {wsBadgeEl}
-                        {customBadgeEl}
-                      </span>
-                      <span className="text-[9.5px] leading-[1.15] font-semibold tracking-wide text-center line-clamp-2 px-0.5">
-                        {ws.label}
-                      </span>
+                      <Icon className="w-[18px] h-[18px]" />
+                      {wsBadgeEl}
+                      {customBadgeEl}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={10} className={TOOLTIP_CLS}>
