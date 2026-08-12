@@ -631,17 +631,23 @@ ALTER TABLE usuarios
               <div className="rounded-2xl border border-neutral-200 dark:border-white/8 bg-white dark:bg-white/3 overflow-hidden">
                 {/* Cabecera */}
                 <div className="flex items-center gap-3 px-5 py-4 border-b border-neutral-100 dark:border-white/8">
-                  {seleccionado.imagen_perfil_url ? (
-                    <img
-                      src={resolveImageUrl(seleccionado.imagen_perfil_url, 'avatars')}
-                      alt=""
-                      className="w-10 h-10 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-white/10 flex items-center justify-center shrink-0">
-                      <User className="w-5 h-5 text-neutral-400" />
+                  <label className="relative group cursor-pointer shrink-0">
+                    {seleccionado.imagen_perfil_url ? (
+                      <img
+                        src={resolveImageUrl(seleccionado.imagen_perfil_url, 'avatars')}
+                        alt=""
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-white/10 flex items-center justify-center">
+                        <User className="w-5 h-5 text-neutral-400" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                      <Upload className="w-3.5 h-3.5 text-white" />
                     </div>
-                  )}
+                    <input type="file" accept="image/*" className="hidden" onChange={subirFotoPerfil} />
+                  </label>
                   <div>
                     <p className="font-semibold text-neutral-800 dark:text-white">
                       {seleccionado.nombre} {seleccionado.apellidos}
