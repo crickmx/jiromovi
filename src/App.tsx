@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
 import { MoviAuthProvider } from './contexts/MoviAuthContext';
@@ -197,6 +197,7 @@ function SegurosExpressApp() {
 }
 
 function MoviTiendaApp() {
+  useEffect(() => { document.getElementById('root')?.classList.add('public-page'); }, []);
   return (
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
