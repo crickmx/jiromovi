@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon, ChevronUp, ChevronDown } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon, GripVertical } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -44,6 +44,10 @@ export default function StoreAdmin() {
 
   // Inline edit en tabla de productos
   const [inlineEdit, setInlineEdit] = useState<{ id: string; campo: 'precio' | 'stock'; valor: string } | null>(null);
+
+  // Drag & drop para reordenar productos
+  const dragIndex = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
   // Carga masiva
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,14 +115,32 @@ export default function StoreAdmin() {
     }
   };
 
-  const handleMoverProducto = async (index: number, direccion: 'arriba' | 'abajo') => {
-    const otroIndex = direccion === 'arriba' ? index - 1 : index + 1;
-    if (otroIndex < 0 || otroIndex >= productos.length) return;
+  const handleDragStart = (index: number) => {
+    dragIndex.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOver(index);
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const from = dragIndex.current;
+    dragIndex.current = null;
+    setDragOver(null);
+    if (from === null || from === dropIndex) return;
     const nuevo = [...productos];
-    [nuevo[index], nuevo[otroIndex]] = [nuevo[otroIndex], nuevo[index]];
+    const [moved] = nuevo.splice(from, 1);
+    nuevo.splice(dropIndex, 0, moved);
     const reordenados = nuevo.map((p, i) => ({ ...p, orden: i + 1 }));
     setProductos(reordenados);
     await actualizarOrdenProductos(reordenados.map(p => ({ id: p.id, orden: p.orden })));
+  };
+
+  const handleDragEnd = () => {
+    dragIndex.current = null;
+    setDragOver(null);
   };
 
   const handleInlineEditSave = async () => {
@@ -362,7 +384,7 @@ export default function StoreAdmin() {
                 <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
                   <thead className="bg-neutral-50 dark:bg-white/5">
                     <tr>
-                      <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Orden</th>
+                      <th className="px-2 py-3 w-8"></th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Imagen</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Producto</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Categoría</th>
@@ -376,27 +398,23 @@ export default function StoreAdmin() {
                   </thead>
                   <tbody className="bg-white divide-y divide-neutral-200 dark:divide-white/10">
                     {productos.map((producto, index) => (
-                      <tr key={producto.id} className="hover:bg-neutral-50 dark:bg-white/5">
-                        <td className="px-3 py-4">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <button
-                              onClick={() => handleMoverProducto(index, 'arriba')}
-                              disabled={index === 0}
-                              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                              title="Mover arriba"
-                            >
-                              <ChevronUp className="w-4 h-4 text-neutral-500 dark:text-white/50" />
-                            </button>
-                            <span className="text-xs font-mono text-neutral-400 dark:text-white/30 w-5 text-center">{index + 1}</span>
-                            <button
-                              onClick={() => handleMoverProducto(index, 'abajo')}
-                              disabled={index === productos.length - 1}
-                              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                              title="Mover abajo"
-                            >
-                              <ChevronDown className="w-4 h-4 text-neutral-500 dark:text-white/50" />
-                            </button>
-                          </div>
+                      <tr
+                        key={producto.id}
+                        draggable
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={e => handleDragOver(e, index)}
+                        onDrop={e => handleDrop(e, index)}
+                        onDragEnd={handleDragEnd}
+                        className={`transition-colors ${
+                          dragOver === index
+                            ? 'bg-blue-50 dark:bg-blue-500/10 border-t-2 border-blue-400'
+                            : dragIndex.current === index
+                              ? 'opacity-40'
+                              : 'hover:bg-neutral-50 dark:bg-white/5'
+                        }`}
+                      >
+                        <td className="px-2 py-4 cursor-grab active:cursor-grabbing">
+                          <GripVertical className="w-4 h-4 text-neutral-300 dark:text-white/20 hover:text-neutral-500 dark:hover:text-white/40 transition-colors" />
                         </td>
                         <td className="px-6 py-4">
                           <img
