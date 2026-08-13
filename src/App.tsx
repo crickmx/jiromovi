@@ -41,6 +41,10 @@ const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEd
 const SegurosExpressLanding = lazy(() => import('./seguros-express/SegurosExpressLanding'));
 const SegurosExpressCotizar = lazy(() => import('./seguros-express/CotizarPage'));
 
+// ── MOVI Tienda pública (lazy) ────────────────────────────────────────────
+const TiendaHome     = lazy(() => import('./movistore/TiendaHome').then(m => ({ default: m.TiendaHome })));
+const TiendaProducto = lazy(() => import('./movistore/TiendaProducto').then(m => ({ default: m.TiendaProducto })));
+
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
 const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
@@ -50,6 +54,9 @@ const isEducationSite  = HOST === 'seguros.education' || HOST.endsWith('.seguros
 const isExpressSite    = HOST === 'seguros.express'
   || HOST.endsWith('.seguros.express')
   || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'express');
+const isTiendaSite     = HOST === 'tienda.movi.digital'
+  || HOST.endsWith('.tienda.movi.digital')
+  || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'tienda');
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
@@ -189,6 +196,19 @@ function SegurosExpressApp() {
   );
 }
 
+function MoviTiendaApp() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/producto/:id" element={<TiendaProducto />} />
+          <Route path="/*" element={<TiendaHome />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+
 function MoviApp() {
   const { updateAvailable } = useAppUpdate();
   return (
@@ -278,6 +298,7 @@ function App() {
   if (isSeguwalletSite) return <SeguwalletApp />;
   if (isEducationSite)  return <SegurosEducationApp />;
   if (isExpressSite)    return <SegurosExpressApp />;
+  if (isTiendaSite)     return <MoviTiendaApp />;
   return <MoviApp />;
 }
 
