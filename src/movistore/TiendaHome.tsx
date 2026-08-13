@@ -86,30 +86,39 @@ export function TiendaHome() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {productos.map(p => (
-              <Link
-                key={p.id}
-                to={`/producto/${p.id}`}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group"
-              >
-                <div className="aspect-square bg-gray-100 overflow-hidden">
-                  {p.imagen_url ? (
-                    <img
-                      src={p.imagen_url}
-                      alt={p.titulo}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-200 text-5xl">📦</div>
-                  )}
+              <div key={p.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group flex flex-col">
+                <Link to={`/producto/${p.id}`} className="block">
+                  <div className="aspect-square bg-gray-100 overflow-hidden">
+                    {p.imagen_url ? (
+                      <img
+                        src={p.imagen_url}
+                        alt={p.titulo}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-200 text-5xl">📦</div>
+                    )}
+                  </div>
+                  <div className="p-3 pb-2">
+                    {p.categoria && (
+                      <span className="text-xs text-gray-400 font-medium">{p.categoria.nombre}</span>
+                    )}
+                    <p className="text-sm font-semibold text-gray-800 line-clamp-2 mt-0.5 leading-snug">{p.titulo}</p>
+                    <p className="text-base font-bold mt-1.5" style={{ color: BRAND }}>{fmt(p.precio)}</p>
+                  </div>
+                </Link>
+                <div className="px-3 pb-3 mt-auto">
+                  <a
+                    href={`https://app.movi.digital/store?producto=${p.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-center text-sm font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: BRAND }}
+                  >
+                    Comprar
+                  </a>
                 </div>
-                <div className="p-3">
-                  {p.categoria && (
-                    <span className="text-xs text-gray-400 font-medium">{p.categoria.nombre}</span>
-                  )}
-                  <p className="text-sm font-semibold text-gray-800 line-clamp-2 mt-0.5 leading-snug">{p.titulo}</p>
-                  <p className="text-base font-bold mt-1.5" style={{ color: BRAND }}>{fmt(p.precio)}</p>
-                </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
