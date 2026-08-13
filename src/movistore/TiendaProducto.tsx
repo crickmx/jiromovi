@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { CheckCircle, Sparkles, Clock, Wrench } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { StoreProducto } from '@/lib/storeTypes';
@@ -79,8 +80,27 @@ export function TiendaProducto() {
 
   const atributosConOpciones = (producto?.atributos ?? []).filter(a => (a.opciones ?? []).length > 0);
 
+  const ogImage = producto?.imagen_url || 'https://app.movi.digital/movirecurso_7.png';
+  const ogTitle = producto ? `${producto.titulo} — MOVI Tienda` : 'MOVI Tienda';
+  const ogDesc = producto?.descripcion
+    ? producto.descripcion.slice(0, 160)
+    : 'Descubre los productos y servicios de MOVI Digital.';
+  const ogUrl = typeof window !== 'undefined' ? window.location.href : '';
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <Helmet>
+        <title>{ogTitle}</title>
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={ogDesc} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:url" content={ogUrl} />
+        <meta property="og:type" content="product" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={ogTitle} />
+        <meta name="twitter:description" content={ogDesc} />
+        <meta name="twitter:image" content={ogImage} />
+      </Helmet>
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link to="/" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/lib/supabase';
 import type { StoreCategoria, StoreProducto } from '@/lib/storeTypes';
 
@@ -40,6 +41,16 @@ export function TiendaHome() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Helmet>
+        <title>MOVI Tienda</title>
+        <meta property="og:title" content="MOVI Tienda" />
+        <meta property="og:description" content="Descubre los productos y servicios de MOVI Digital." />
+        <meta property="og:image" content="https://app.movi.digital/movirecurso_7.png" />
+        <meta property="og:url" content="https://tienda.movi.digital/" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://app.movi.digital/movirecurso_7.png" />
+      </Helmet>
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <span className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>MOVI</span>
