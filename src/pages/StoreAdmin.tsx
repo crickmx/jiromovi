@@ -48,6 +48,7 @@ export default function StoreAdmin() {
   // Drag & drop para reordenar productos
   const dragIndex = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const [guardandoOrden, setGuardandoOrden] = useState(false);
 
   // Carga masiva
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -115,27 +116,40 @@ export default function StoreAdmin() {
     }
   };
 
-  const handleDragStart = (index: number) => {
+  const handleDragStart = (e: React.DragEvent, index: number) => {
     dragIndex.current = index;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     setDragOver(index);
   };
 
   const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
-    const from = dragIndex.current;
+    const from = dragIndex.current ?? parseInt(e.dataTransfer.getData('text/plain'), 10);
     dragIndex.current = null;
     setDragOver(null);
-    if (from === null || from === dropIndex) return;
+    if (isNaN(from) || from === dropIndex) return;
+    const prevProductos = [...productos];
     const nuevo = [...productos];
     const [moved] = nuevo.splice(from, 1);
     nuevo.splice(dropIndex, 0, moved);
     const reordenados = nuevo.map((p, i) => ({ ...p, orden: i + 1 }));
     setProductos(reordenados);
-    await actualizarOrdenProductos(reordenados.map(p => ({ id: p.id, orden: p.orden })));
+    try {
+      setGuardandoOrden(true);
+      await actualizarOrdenProductos(reordenados.map(p => ({ id: p.id, orden: p.orden })));
+    } catch (err) {
+      console.error('Error guardando orden:', err);
+      setProductos(prevProductos);
+      alert('No se pudo guardar el orden. Verifica que la migración SQL fue ejecutada en Supabase.');
+    } finally {
+      setGuardandoOrden(false);
+    }
   };
 
   const handleDragEnd = () => {
@@ -338,13 +352,21 @@ export default function StoreAdmin() {
                   />
                 </label>
               </div>
-              <button
-                onClick={handleCrearProducto}
-                className="flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
-              >
-                <Plus className="w-5 h-5" />
-                Nuevo Producto
-              </button>
+              <div className="flex items-center gap-3">
+                {guardandoOrden && (
+                  <span className="text-sm text-neutral-500 dark:text-white/50 flex items-center gap-2">
+                    <div className="w-3.5 h-3.5 border-2 border-neutral-300 border-t-neutral-500 rounded-full animate-spin" />
+                    Guardando orden…
+                  </span>
+                )}
+                <button
+                  onClick={handleCrearProducto}
+                  className="flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
+                >
+                  <Plus className="w-5 h-5" />
+                  Nuevo Producto
+                </button>
+              </div>
             </div>
 
             {resultadoImport && (
@@ -401,7 +423,7 @@ export default function StoreAdmin() {
                       <tr
                         key={producto.id}
                         draggable
-                        onDragStart={() => handleDragStart(index)}
+                        onDragStart={e => handleDragStart(e, index)}
                         onDragOver={e => handleDragOver(e, index)}
                         onDrop={e => handleDrop(e, index)}
                         onDragEnd={handleDragEnd}

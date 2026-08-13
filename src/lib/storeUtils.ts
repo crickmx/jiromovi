@@ -169,11 +169,13 @@ export async function obtenerTodosProductos() {
 }
 
 export async function actualizarOrdenProductos(items: { id: string; orden: number }[]) {
-  await Promise.all(
+  const resultados = await Promise.all(
     items.map(({ id, orden }) =>
       supabase.from('store_productos').update({ orden }).eq('id', id)
     )
   );
+  const primerError = resultados.find(r => r.error);
+  if (primerError?.error) throw primerError.error;
 }
 
 export async function obtenerProductoPorId(id: string) {
