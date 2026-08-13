@@ -199,14 +199,16 @@ function SegurosExpressApp() {
 function MoviTiendaApp() {
   useEffect(() => { document.getElementById('root')?.classList.add('public-page'); }, []);
   return (
-    <BrowserRouter>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/producto/:id" element={<TiendaProducto />} />
-          <Route path="/*" element={<TiendaHome />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+    <HelmetProvider>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/producto/:id" element={<TiendaProducto />} />
+            <Route path="/*" element={<TiendaHome />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </HelmetProvider>
   );
 }
 
