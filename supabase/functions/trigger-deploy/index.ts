@@ -46,38 +46,49 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'target debe ser "beta" o "produccion"' }, 400);
     }
 
-    const webhookUrl = target === 'beta'
-      ? Deno.env.get('PLESK_WEBHOOK_BETA_URL')
-      : Deno.env.get('PLESK_WEBHOOK_PRODUCCION_URL');
+    const relayUrl   = Deno.env.get('PLESK_RELAY_URL');
+    const relayToken = Deno.env.get('PLESK_RELAY_TOKEN');
 
-    if (!webhookUrl) {
-      return json({ error: `Falta configurar el webhook de "${target}" en Supabase (Edge Functions > Secrets)` }, 500);
+    if (!relayUrl || !relayToken) {
+      return json({ error: 'Falta configurar PLESK_RELAY_URL / PLESK_RELAY_TOKEN en Supabase Secrets' }, 500);
     }
 
-    let resp: Response;
+    let relayResp: Response;
+    let pleskOk   = false;
+    let pleskStatus: number | null = null;
+
     try {
-      resp = await fetch(webhookUrl, { method: 'GET' });
+      relayResp = await fetch(relayUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Relay-Token': relayToken,
+        },
+        body: JSON.stringify({ target }),
+      });
+
+      const result = await relayResp.json().catch(() => ({ ok: false, status: null }));
+      pleskOk     = result.ok === true;
+      pleskStatus = result.status ?? relayResp.status;
+
+      await supabaseAdmin.from('deploy_triggers').insert({
+        usuario_id: user.id, target, status_code: pleskStatus, ok: pleskOk,
+      });
+
+      if (!relayResp.ok) {
+        return json({ error: `Relay respondió ${relayResp.status}`, detail: result }, 502);
+      }
+      if (!pleskOk) {
+        return json({ error: `Plesk respondió ${pleskStatus}`, detail: result }, 502);
+      }
     } catch (fetchErr: any) {
       await supabaseAdmin.from('deploy_triggers').insert({
         usuario_id: user.id, target, status_code: null, ok: false,
       });
-      return json({ error: 'No se pudo contactar a Plesk: ' + fetchErr.message }, 502);
+      return json({ error: 'No se pudo contactar el relay: ' + fetchErr.message }, 502);
     }
 
-    const bodyText = await resp.text().catch(() => '');
-
-    await supabaseAdmin.from('deploy_triggers').insert({
-      usuario_id: user.id,
-      target,
-      status_code: resp.status,
-      ok: resp.ok,
-    });
-
-    if (!resp.ok) {
-      return json({ error: `Plesk respondió ${resp.status}`, detail: bodyText.slice(0, 500) }, 502);
-    }
-
-    return json({ ok: true, target, status: resp.status });
+    return json({ ok: true, target, status: pleskStatus });
   } catch (error: any) {
     return json({ error: 'Server error: ' + error.message }, 500);
   }
