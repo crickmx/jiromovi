@@ -46,11 +46,14 @@ export function AdminDeploy() {
 
   const getRecaptchaToken = (): Promise<string> => {
     if (!RECAPTCHA_SITE_KEY) return Promise.resolve('');
-    return new Promise(resolve => {
-      const g = (window as any).grecaptcha;
-      if (!g) { resolve(''); return; }
-      g.ready(() => g.execute(RECAPTCHA_SITE_KEY, { action: 'deploy' }).then(resolve).catch(() => resolve('')));
-    });
+    return Promise.race([
+      new Promise<string>(resolve => {
+        const g = (window as any).grecaptcha;
+        if (!g) { resolve(''); return; }
+        g.ready(() => g.execute(RECAPTCHA_SITE_KEY, { action: 'deploy' }).then(resolve).catch(() => resolve('')));
+      }),
+      new Promise<string>(resolve => setTimeout(() => resolve(''), 4000)),
+    ]);
   };
 
   const ejecutarDeploy = async (target: 'beta' | 'produccion', rcToken: string, totp: string) => {
@@ -81,7 +84,9 @@ export function AdminDeploy() {
     const label = target === 'beta' ? 'beta.movi.digital' : 'producción (movi.digital)';
     if (!confirm(`¿Actualizar ${label} ahora? Esto jala el último código de GitHub y reconstruye el sitio para todos los usuarios.`)) return;
 
+    setLoading(target);
     const rcToken = await getRecaptchaToken();
+    setLoading(null);
 
     if (target === 'produccion') {
       setTotpCode('');
