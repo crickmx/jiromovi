@@ -12,6 +12,7 @@ export type Disponibilidad = 'por_existencia' | 'por_pedido';
 export interface StoreProducto {
   id: string;
   categoria_id: string;
+  orden: number;
   titulo: string;
   descripcion: string;
   precio: number;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon, ChevronUp, ChevronDown } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -16,6 +16,7 @@ import {
   exportarProductosExcel,
   importarProductosExcel,
   tieneAccesoEquipoStore,
+  actualizarOrdenProductos,
   PERSONALIZACION_KEY
 } from '../lib/storeUtils';
 import type { ResultadoCargaMasiva } from '../lib/storeUtils';
@@ -108,6 +109,16 @@ export default function StoreAdmin() {
       console.error('Error eliminando producto:', error);
       alert('Error al eliminar producto. Puede que tenga pedidos asociados.');
     }
+  };
+
+  const handleMoverProducto = async (index: number, direccion: 'arriba' | 'abajo') => {
+    const otroIndex = direccion === 'arriba' ? index - 1 : index + 1;
+    if (otroIndex < 0 || otroIndex >= productos.length) return;
+    const nuevo = [...productos];
+    [nuevo[index], nuevo[otroIndex]] = [nuevo[otroIndex], nuevo[index]];
+    const reordenados = nuevo.map((p, i) => ({ ...p, orden: i + 1 }));
+    setProductos(reordenados);
+    await actualizarOrdenProductos(reordenados.map(p => ({ id: p.id, orden: p.orden })));
   };
 
   const handleInlineEditSave = async () => {
@@ -351,6 +362,7 @@ export default function StoreAdmin() {
                 <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
                   <thead className="bg-neutral-50 dark:bg-white/5">
                     <tr>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Orden</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Imagen</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Producto</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Categoría</th>
@@ -363,8 +375,29 @@ export default function StoreAdmin() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-neutral-200 dark:divide-white/10">
-                    {productos.map(producto => (
+                    {productos.map((producto, index) => (
                       <tr key={producto.id} className="hover:bg-neutral-50 dark:bg-white/5">
+                        <td className="px-3 py-4">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button
+                              onClick={() => handleMoverProducto(index, 'arriba')}
+                              disabled={index === 0}
+                              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                              title="Mover arriba"
+                            >
+                              <ChevronUp className="w-4 h-4 text-neutral-500 dark:text-white/50" />
+                            </button>
+                            <span className="text-xs font-mono text-neutral-400 dark:text-white/30 w-5 text-center">{index + 1}</span>
+                            <button
+                              onClick={() => handleMoverProducto(index, 'abajo')}
+                              disabled={index === productos.length - 1}
+                              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                              title="Mover abajo"
+                            >
+                              <ChevronDown className="w-4 h-4 text-neutral-500 dark:text-white/50" />
+                            </button>
+                          </div>
+                        </td>
                         <td className="px-6 py-4">
                           <img
                             src={getImageUrl(producto.imagen_url)}

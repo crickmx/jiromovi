@@ -31,7 +31,7 @@ export function TiendaHome() {
       .from('store_productos')
       .select('*, categoria:store_categorias(id, nombre)')
       .eq('activo', true)
-      .order('created_at', { ascending: false });
+      .order('orden', { ascending: true });
     if (catActiva) q = q.eq('categoria_id', catActiva);
     q.then(({ data }) => {
       setProductos((data ?? []) as StoreProducto[]);

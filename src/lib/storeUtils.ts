@@ -162,10 +162,18 @@ export async function obtenerTodosProductos() {
       *,
       categoria:store_categorias(*)
     `)
-    .order('created_at', { ascending: false });
+    .order('orden', { ascending: true });
 
   if (error) throw error;
   return data as StoreProducto[];
+}
+
+export async function actualizarOrdenProductos(items: { id: string; orden: number }[]) {
+  await Promise.all(
+    items.map(({ id, orden }) =>
+      supabase.from('store_productos').update({ orden }).eq('id', id)
+    )
+  );
 }
 
 export async function obtenerProductoPorId(id: string) {
