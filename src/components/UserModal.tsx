@@ -109,6 +109,23 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   const [sicasSearching, setSicasSearching] = useState(false);
   const [sicasOpen, setSicasOpen] = useState(false);
 
+  const DRAFT_KEY = 'userModal_new_draft';
+
+  // Cargar borrador al abrir (solo al crear, no al editar)
+  useEffect(() => {
+    if (!user) {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        try { setFormData(prev => ({ ...prev, ...JSON.parse(saved) })); } catch {}
+      }
+    }
+  }, []);
+
+  // Guardar borrador en cada cambio (solo al crear)
+  useEffect(() => {
+    if (!user) localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+  }, [formData, user]);
+
   useEffect(() => {
     if (isGerente && currentUser?.oficina_id) {
       setFormData(prev => ({ ...prev, oficina_id: currentUser.oficina_id || '' }));
@@ -589,6 +606,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         }
       }
 
+      localStorage.removeItem(DRAFT_KEY);
       onSave();
     } catch (err: any) {
       setError(err.message || 'Error al guardar usuario');
@@ -628,7 +646,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
     <>
       <button
         type="button"
-        onClick={onClose}
+        onClick={() => { localStorage.removeItem(DRAFT_KEY); onClose(); }}
         className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
       >
         Cancelar
