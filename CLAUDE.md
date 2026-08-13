@@ -1,7 +1,9 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-08-12)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-08-13)
 -2. **✅ RESUELTO 2026-08-13: Botón "Admin > Deploy" funcionando con seguridad de dos niveles.** El puerto 8443 de Plesk está bloqueado para todo tráfico externo. Solución: relay PHP en `https://relay.movi.digital/deploy-relay.php` que llama a `server1.miemail.digital:8443` con `CURLOPT_RESOLVE` forzando por `127.0.0.1`. Edge function `trigger-deploy` usa el relay. Secrets en Supabase: `PLESK_RELAY_URL`, `PLESK_RELAY_TOKEN`. Seguridad agregada: **Beta** = reCAPTCHA v3 invisible; **Producción** = reCAPTCHA + TOTP (modal de código de 6 dígitos del autenticador, verificado contra `usuario_totp_secrets`). Si el servidor se cae tras un reinicio: `bash /var/www/vhosts/movi.digital/cp.movi.digital/restart_gunicorn.sh` (desde SSH Terminal root en Plesk) levanta `cp.movi.digital`.
+
+-1. **✅ RESUELTO 2026-08-13: tienda.movi.digital — vitrina pública de productos.** Implementada y en producción. Ver sección "tienda.movi.digital" abajo. Pendientes de polish: OG tags por producto, deep-link directo al producto en MOVI, diseño más elaborado.
 
 0. **reCAPTCHA v3 en reporte protegido — falta configurar la clave secreta en Supabase.** El código ya está listo en `procesar-reporte-protegido/index.ts` — lee `RECAPTCHA_SECRET_KEY` de las env vars. Pasos pendientes: (1) Agregar `RECAPTCHA_SECRET_KEY` en Supabase → Project Settings → Edge Functions → Secrets (la clave secreta de reCAPTCHA v3, misma cuenta que seguros.express). (2) Redesplegar la edge function `procesar-reporte-protegido` desde el dashboard de Supabase. (3) Confirmar que `VITE_RECAPTCHA_SITE_KEY` ya está en el `.env` del servidor Plesk (si no, agregarlo y hacer rebuild). Sin esto, el CAPTCHA carga pero la verificación server-side no corre — el submit sigue funcionando igual que antes.
 -1. **🔴 BLOQUEANTE: Vcards de "Campañas Activas" y "Convención" no aparecen en beta.movi.digital pese a build+pull confirmados.** Ver sección "Integración con Bonos" más abajo para todo el contexto. Resumen del blocker: el commit `1143c20` (jiromovi/main) sí llegó al servidor (confirmado en la lista de commits de Plesk), el build corre automático con el pull (confirmado por Ricardo), el archivo JS principal cambia de hash y de fecha de modificación en cada build — pero buscando `CampaniasActivasCard` en DevTools → Sources → "Search in all files" no aparece ningún resultado, ni siquiera en una ventana de incógnito nueva (se descartó caché de navegador/service worker). Sin diagnosticar aún: por qué el código nuevo no llega al bundle servido si el pull y el build sí corrieron. Próximo paso sugerido: pedir a Ricardo el log/salida completa del script de build en Plesk (puede estar fallando silenciosamente a medio camino, o el Document Root/ruta de salida puede no coincidir con donde realmente escribe el build), o revisar si hay un paso de build manual vs automático corriendo por separado y pisándose.
@@ -285,6 +287,38 @@ Botón flotante "Reportar un problema" visible a todos los usuarios logueados (`
 - **`ProduccionResumenCard`**: aplica a vendedor/gerencia/despacho. Admin/corporativo/dirreg → `aplica: false`, no se muestra nada (no tienen "mi producción" personal).
 - **`ConvencionCard`**: vendedor ve su nivel individual (stepper Plata/Oro + progreso); gerencia/despacho ve el roster de su equipo (quién está en convención + quién está cerca); cualquier otro rol no ve nada.
 - **`CampaniasActivasCard`**: una tarjeta por campaña activa en la que el usuario o su equipo participan (nunca las de otros equipos) — para gerencia/despacho incluye 3 KPIs de equipo (participantes/prima ponderada/en zona de premio) que un vendedor no ve.
+
+## tienda.movi.digital — vitrina pública de productos (agregado 2026-08-13)
+
+Tienda pública sin login en `tienda.movi.digital`. Misma arquitectura que `seguros.express`: **un solo build de Vite**, detección de host en runtime en `App.tsx`, sin build separado ni cambios en Vite config.
+
+**Archivos nuevos:**
+- `src/movistore/TiendaHome.tsx` — listado de productos con filtros por categoría (pills). Grid 2 col mobile / 3 col desktop. Carga `store_categorias` + `store_productos` (solo `activo=true`) directo de Supabase con el cliente anon.
+- `src/movistore/TiendaProducto.tsx` — detalle de producto: imagen, nombre, precio, descripción, botón "Comprar en MOVI" → `https://app.movi.digital/store?producto=:id`. Actualiza `document.title` con el nombre del producto.
+
+**Cambios en `App.tsx`:**
+```ts
+const isTiendaSite = HOST === 'tienda.movi.digital'
+  || HOST.endsWith('.tienda.movi.digital')
+  || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'tienda');
+```
+Función `MoviTiendaApp()` con `BrowserRouter` + rutas `/producto/:id` y `/*`. Se despacha antes de `<MoviApp />` en la función `App`.
+
+**Migración `20260813000001_store_anon_rls.sql`** — políticas SELECT para `anon` en `store_productos` y `store_categorias` (solo `activo=true`). **Ya corrida en Supabase.**
+
+**Deploy / infraestructura:**
+- Subdominio `tienda.movi.digital` creado en Plesk + A record en IONOS (`62.151.183.45`) + SSL via Let's Encrypt — hecho por Ricardo.
+- Tienda sirve el **mismo build** que `app.movi.digital` vía **symlink en el servidor**:
+  ```bash
+  ln -s /var/www/vhosts/movi.digital/httpdocs/dist /var/www/vhosts/movi.digital/tienda.movi.digital/httpdocs/dist
+  ```
+  Document root de tienda en Plesk = `httpdocs/dist` (mismo valor que app). El symlink hace que `tienda.movi.digital/httpdocs/dist` apunte a `/var/www/vhosts/movi.digital/httpdocs/dist/`. Cada deploy de producción actualiza ambos dominios automáticamente.
+- Para probar en dev: `http://localhost:5173/?site=tienda`
+
+**Pendientes de polish (no urgentes):**
+- OG tags por producto (`og:title`, `og:image`) para compartir en WhatsApp — requiere SSR/prerender (Vite SPA, el bot de WhatsApp no ejecuta JS). Por ahora `document.title` actualiza solo la pestaña.
+- Deep-link `?producto=:id` dentro de MOVI — el store de app.movi.digital no maneja ese query param todavía.
+- Diseño más elaborado (colores, tipografía Gotham, layout) si Ricardo lo pide.
 
 ## seguros.express — leads por cercanía (agregado 2026-07-21)
 
