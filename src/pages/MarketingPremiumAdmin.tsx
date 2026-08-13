@@ -99,6 +99,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [needsMigration, setNeedsMigration] = useState(false);
   const [sqlCopiado, setSqlCopiado] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState('');
+  const [triggerToast, setTriggerToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
   const [tieneAcceso, setTieneAcceso] = useState(false);
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
@@ -315,8 +316,10 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
 
   async function dispararReglasPremium(eventos: string[], agente: Agente) {
     if (!usuario || eventos.length === 0) return;
+    const creados: { folio: string; tipoLabel: string }[] = [];
+    const omitidos: { folio: string; tipoLabel: string }[] = [];
     for (const eventoKey of eventos) {
-      await dispararTriggersPremium({
+      const res = await dispararTriggersPremium({
         eventoKey,
         agente: { id: agente.id, nombre: agente.nombre, apellidos: agente.apellidos, oficina: agente.oficina },
         form: {
@@ -329,7 +332,17 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
         usuarioId: usuario.id,
         usuarioNombre: `${usuario.nombre} ${usuario.apellidos}`.trim(),
       });
+      creados.push(...res.creados);
+      omitidos.push(...res.omitidos);
     }
+    if (creados.length === 0 && omitidos.length === 0) return;
+    const partes: string[] = [];
+    if (creados.length > 0)
+      partes.push(`Trámite${creados.length > 1 ? 's' : ''} nuevo${creados.length > 1 ? 's' : ''}: ${creados.map(c => `${c.tipoLabel} (${c.folio})`).join(', ')}`);
+    if (omitidos.length > 0)
+      partes.push(`Ya existía${omitidos.length > 1 ? 'n' : ''}: ${omitidos.map(o => `${o.tipoLabel} (${o.folio})`).join(', ')}`);
+    setTriggerToast({ message: partes.join(' · '), type: omitidos.length > 0 && creados.length === 0 ? 'info' : 'success' });
+    setTimeout(() => setTriggerToast(null), 6000);
   }
 
   async function guardar() {
@@ -846,6 +859,15 @@ ALTER TABLE usuarios
                         </span>
                       )}
                     </div>
+                    {triggerToast && (
+                      <div className={`mt-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                        triggerToast.type === 'success'
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                          : 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-300'
+                      }`}>
+                        {triggerToast.message}
+                      </div>
+                    )}
                   </div>
 
                   {/* Contenido semanal de Publicidad */}

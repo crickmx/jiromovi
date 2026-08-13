@@ -304,11 +304,16 @@ export default function StorePedidoDetalle() {
 
       await cargarDatos();
 
-      if (resultadoTriggers.creados.length > 0) {
-        const detalle = resultadoTriggers.creados.map(c => `${c.tipoLabel} (${c.folio})`).join(', ');
-        showToast(`Estatus actualizado. Trámite${resultadoTriggers.creados.length > 1 ? 's' : ''} creado${resultadoTriggers.creados.length > 1 ? 's' : ''}: ${detalle}`, 'success');
-      } else if (resultadoTriggers.errores.length > 0) {
+      const partes: string[] = [];
+      if (resultadoTriggers.creados.length > 0)
+        partes.push(`Trámite${resultadoTriggers.creados.length > 1 ? 's' : ''} nuevo${resultadoTriggers.creados.length > 1 ? 's' : ''}: ${resultadoTriggers.creados.map(c => `${c.tipoLabel} (${c.folio})`).join(', ')}`);
+      if (resultadoTriggers.omitidos.length > 0)
+        partes.push(`Ya existía${resultadoTriggers.omitidos.length > 1 ? 'n' : ''}: ${resultadoTriggers.omitidos.map(o => `${o.tipoLabel} (${o.folio})`).join(', ')}`);
+
+      if (resultadoTriggers.errores.length > 0) {
         showToast(`Estatus actualizado, pero falló la creación del trámite "${resultadoTriggers.errores[0].nombre}": ${resultadoTriggers.errores[0].error}`, 'error');
+      } else if (partes.length > 0) {
+        showToast(`Estatus actualizado. ${partes.join(' · ')}`, 'success');
       } else if (resultadoTriggers.totalTriggers > resultadoTriggers.triggersAplicados) {
         showToast('Estatus actualizado. Ningún trigger aplicó: el método o forma de pago del pedido no coincide con lo configurado.', 'error');
       } else {
@@ -340,7 +345,7 @@ export default function StorePedidoDetalle() {
   });
 
   const dispararTriggersEstatus = async (nuevoEstatusId: string, nombreEstatus: string) => {
-    const resultado = { creados: [] as { folio: string; tipoLabel: string }[], errores: [] as { nombre: string; error: string }[], totalTriggers: 0, triggersAplicados: 0 };
+    const resultado = { creados: [] as { folio: string; tipoLabel: string }[], omitidos: [] as { folio: string; tipoLabel: string }[], errores: [] as { nombre: string; error: string }[], totalTriggers: 0, triggersAplicados: 0 };
     if (!pedidoId || !usuario?.id || !pedido) return resultado;
     const { data: triggersRaw } = await supabase
       .from('store_tramite_triggers')
@@ -405,6 +410,18 @@ export default function StorePedidoDetalle() {
         const instrucciones = (mapeoDescripcion?.fuente === 'template' && mapeoDescripcion.valor_template)
           ? resolverTemplatePedido(mapeoDescripcion.valor_template, pedido)
           : (descripcionLegacy || `${trigger.nombre} — Pedido ${folio}`);
+
+        // Deduplicación: si ya existe un ticket del mismo tipo para este pedido, omitir
+        const { data: existente } = await supabase
+          .from('tickets')
+          .select('folio')
+          .eq('store_pedido_id', pedidoId)
+          .eq('tipo_tramite', tipoInfo.value)
+          .maybeSingle();
+        if (existente) {
+          resultado.omitidos.push({ folio: existente.folio, tipoLabel: tipoInfo.label });
+          continue;
+        }
 
         const { data: ticket, error: ticketError } = await supabase.from('tickets').insert({
           tipo_tramite: tipoInfo.value,

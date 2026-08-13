@@ -132,6 +132,7 @@ function construirRespuesta(tramiteId: string, campoId: string, tipoCampo: strin
 
 export interface DispararTriggersPremiumResultado {
   creados: { folio: string; tipoLabel: string }[];
+  omitidos: { folio: string; tipoLabel: string }[];
   errores: { nombre: string; error: string }[];
   totalTriggers: number;
   triggersAplicados: number;
@@ -144,7 +145,7 @@ export async function dispararTriggersPremium(params: {
   usuarioId: string;
   usuarioNombre?: string;
 }): Promise<DispararTriggersPremiumResultado> {
-  const resultado: DispararTriggersPremiumResultado = { creados: [], errores: [], totalTriggers: 0, triggersAplicados: 0 };
+  const resultado: DispararTriggersPremiumResultado = { creados: [], omitidos: [], errores: [], totalTriggers: 0, triggersAplicados: 0 };
 
   const { data: evento } = await supabase
     .from('mkt_premium_eventos')
@@ -207,6 +208,20 @@ export async function dispararTriggersPremium(params: {
         ? resolverTemplatePremium(mapeoDescripcion.valor_template, params.agente, params.form, evento.nombre)
         : (resolverTemplatePremium(trigger.descripcion_template, params.agente, params.form, evento.nombre)
           || `${trigger.nombre} — ${params.agente.nombre} ${params.agente.apellidos}`);
+
+      // Deduplicación: si ya existe un ticket abierto del mismo tipo para este agente, omitir
+      const { data: existentes } = await supabase
+        .from('tickets')
+        .select('folio, ticket_estatus(clasificacion)')
+        .eq('agente_id', params.agente.id)
+        .eq('tipo_tramite', tipoInfo.value);
+      const existenteActivo = (existentes ?? []).find((t: any) =>
+        t.ticket_estatus?.clasificacion !== 'terminacion'
+      );
+      if (existenteActivo) {
+        resultado.omitidos.push({ folio: existenteActivo.folio, tipoLabel: tipoInfo.label });
+        continue;
+      }
 
       const { data: ticket, error: ticketError } = await supabase.from('tickets').insert({
         tipo_tramite: tipoInfo.value,
