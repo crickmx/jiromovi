@@ -10,7 +10,7 @@ import {
   Loader as Loader2, RefreshCw, ChevronDown, ChevronRight, Check, Building2,
   FileText, ShieldCheck, PenLine, Clock,
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl } from '../lib/supabase';
 
 type Estado =
   | 'draft' | 'in_progress' | 'identity_pending' | 'signature_pending'
@@ -91,7 +91,31 @@ export default function AdminAltas() {
     if (error) { mostrarToast('No se pudo asignar la oficina', 'error'); return; }
     // Si ya existe el usuario Agente, propagar la oficina a su perfil.
     if (alta.usuario_id) {
-      await supabase.from('usuarios').update({ oficina_id: oficinaId || null }).eq('id', alta.usuario_id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        mostrarToast('No hay sesión activa para actualizar el usuario', 'error');
+        return;
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/update-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          userId: alta.usuario_id,
+          userData: {
+            oficina_id: oficinaId || null,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        mostrarToast(result.error || 'No se pudo actualizar la oficina del usuario', 'error');
+        return;
+      }
     }
     setAltas((prev) => prev.map((x) => (x.id === alta.id ? { ...x, oficina_id: oficinaId || null } : x)));
     mostrarToast('Oficina asignada');

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Save, Upload, User as UserIcon, ArrowLeft, FileText, Briefcase, Link as LinkIcon, FolderOpen, Copy, Check, MapPin, Users } from 'lucide-react';
 import UbicacionPicker from '../components/ubicacion/UbicacionPicker';
@@ -18,13 +18,23 @@ import { syncUserTramiteTeamMemberships } from '../lib/tramiteTeamAssignments';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
+type UsuarioPerfilExtra = {
+  seguros_express_habilitado?: boolean;
+  ubicacion_lat?: number | null;
+  ubicacion_lng?: number | null;
+  ubicacion_direccion_manual?: string | null;
+  ubicacion_metodo?: string | null;
+  ubicacion_updated_at?: string;
+};
+type UsuarioPerfilUpdate = Partial<Usuario> & UsuarioPerfilExtra;
+type PerfilFormData = Partial<UsuarioPerfilUpdate>;
 
 export function PerfilUsuario() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { usuario: currentUser } = useAuth();
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [formData, setFormData] = useState<Partial<Usuario>>({});
+  const [formData, setFormData] = useState<PerfilFormData>({});
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -114,7 +124,7 @@ export function PerfilUsuario() {
       return;
     }
 
-    const updateData: Partial<Usuario> = {
+    const updateData: UsuarioPerfilUpdate = {
       nombre: formData.nombre,
       apellidos: formData.apellidos,
       puesto: formData.puesto,
@@ -132,8 +142,8 @@ export function PerfilUsuario() {
       url_web_multicotizador: formData.url_web_multicotizador,
       web_slug: formData.web_slug || null,
       regimen_fiscal_id: formData.regimen_fiscal_id || null,
-      banco: formData.banco || null,
-      clabe: formData.clabe || null,
+      banco: formData.banco || undefined,
+      clabe: formData.clabe || undefined,
       dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles ?? 0,
       updated_at: new Date().toISOString(),
     };
@@ -143,9 +153,9 @@ export function PerfilUsuario() {
     }
 
     // seguros.express: habilitación (solo admin) + ubicación (admin/gerente).
-    const ud = updateData as any;
-    const fd = formData as any;
-    const u = usuario as any;
+    const ud = updateData;
+    const fd = formData as UsuarioPerfilUpdate;
+    const u = usuario as UsuarioPerfilUpdate;
     if (isAdmin) {
       ud.seguros_express_habilitado = !!fd.seguros_express_habilitado;
     }
@@ -160,20 +170,38 @@ export function PerfilUsuario() {
       (u.ubicacion_metodo ?? null) !== (fd.ubicacion_metodo ?? null);
     if (ubicCambio) ud.ubicacion_updated_at = new Date().toISOString();
 
-    const { error } = await supabase
-      .from('usuarios')
-      .update(updateData)
-      .eq('id', id);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setMessage({ type: 'error', text: 'No hay sesión activa' });
+      setSaving(false);
+      return;
+    }
 
-    if (error) {
-      console.error('Error saving user:', error);
-      setMessage({ type: 'error', text: `Error al guardar cambios: ${error.message}` });
+    const response = await fetch(`${supabaseUrl}/functions/v1/update-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        userId: id,
+        userData: updateData,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      const errorMessage = result.error || 'Error al guardar cambios';
+      const detailsMessage = result.details ? ` (${result.details})` : '';
+      setMessage({ type: 'error', text: `${errorMessage}${detailsMessage}` });
     } else {
       if (mustValidateTramiteTeams) {
         try {
           await syncUserTramiteTeamMemberships(id, tramiteTeamIds);
-        } catch (teamError: any) {
-          setMessage({ type: 'error', text: `Usuario guardado, pero no se pudieron guardar los equipos: ${teamError?.message || 'error desconocido'}` });
+        } catch (teamError: unknown) {
+          const message = teamError instanceof Error ? teamError.message : 'error desconocido';
+          setMessage({ type: 'error', text: `Usuario guardado, pero no se pudieron guardar los equipos: ${message}` });
           setSaving(false);
           return;
         }
@@ -209,13 +237,32 @@ export function PerfilUsuario() {
 
     setFormData({ ...formData, imagen_perfil_url: publicUrl });
 
-    const { error: updateError } = await supabase
-      .from('usuarios')
-      .update({ imagen_perfil_url: publicUrl, updated_at: new Date().toISOString() })
-      .eq('id', id);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setMessage({ type: 'error', text: 'No hay sesión activa' });
+      return;
+    }
 
-    if (updateError) {
-      setMessage({ type: 'error', text: 'Error al actualizar imagen' });
+    const response = await fetch(`${supabaseUrl}/functions/v1/update-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        userId: id,
+        userData: {
+          imagen_perfil_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        },
+      }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      const errorMessage = result.error || 'Error al actualizar imagen';
+      const detailsMessage = result.details ? ` (${result.details})` : '';
+      setMessage({ type: 'error', text: `${errorMessage}${detailsMessage}` });
     } else {
       setMessage({ type: 'success', text: 'Imagen actualizada correctamente' });
       await loadData();
@@ -447,7 +494,7 @@ export function PerfilUsuario() {
                       </label>
                       <select
                         value={formData.rol || 'Empleado'}
-                        onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
+                        onChange={(e) => setFormData({ ...formData, rol: e.target.value as Usuario['rol'] })}
                         disabled={!canEditRole}
                         className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent disabled:bg-neutral-100 dark:disabled:bg-white/5 disabled:cursor-not-allowed"
                       >
@@ -657,8 +704,8 @@ export function PerfilUsuario() {
                       <label className="flex items-start gap-3 mb-4 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={!!(formData as any).seguros_express_habilitado}
-                          onChange={(e) => setFormData({ ...formData, seguros_express_habilitado: e.target.checked } as any)}
+                          checked={!!formData.seguros_express_habilitado}
+                          onChange={(e) => setFormData({ ...formData, seguros_express_habilitado: e.target.checked })}
                           className="mt-1 h-4 w-4 text-accent border-neutral-300 rounded focus:ring-2 focus:ring-accent"
                         />
                         <span className="flex-1">
@@ -672,12 +719,12 @@ export function PerfilUsuario() {
                     <label className="block text-xs font-medium text-neutral-600 dark:text-white/50 mb-2">
                       Ubicación del agente (para el matching por distancia)
                     </label>
-                    <UbicacionPicker
+                      <UbicacionPicker
                       value={{
-                        lat: (formData as any).ubicacion_lat ?? null,
-                        lng: (formData as any).ubicacion_lng ?? null,
-                        direccion_manual: (formData as any).ubicacion_direccion_manual ?? null,
-                        metodo: (formData as any).ubicacion_metodo ?? null,
+                        lat: formData.ubicacion_lat ?? null,
+                        lng: formData.ubicacion_lng ?? null,
+                        direccion_manual: formData.ubicacion_direccion_manual ?? null,
+                        metodo: formData.ubicacion_metodo ?? null,
                       }}
                       onChange={(v) => setFormData({
                         ...formData,
@@ -685,7 +732,7 @@ export function PerfilUsuario() {
                         ubicacion_lng: v.lng,
                         ubicacion_direccion_manual: v.direccion_manual,
                         ubicacion_metodo: v.metodo,
-                      } as any)}
+                      })}
                     />
                   </div>
 
