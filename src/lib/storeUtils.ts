@@ -171,11 +171,13 @@ export async function obtenerTodosProductos() {
 export async function actualizarOrdenProductos(items: { id: string; orden: number }[]) {
   const resultados = await Promise.all(
     items.map(({ id, orden }) =>
-      supabase.from('store_productos').update({ orden }).eq('id', id)
+      supabase.from('store_productos').update({ orden }).eq('id', id).select('id, orden')
     )
   );
   const primerError = resultados.find(r => r.error);
   if (primerError?.error) throw primerError.error;
+  const sinFilas = resultados.find(r => !r.data?.length);
+  if (sinFilas) throw new Error('RLS bloqueó el update de orden — falta política UPDATE en store_productos');
 }
 
 export async function obtenerProductoPorId(id: string) {
