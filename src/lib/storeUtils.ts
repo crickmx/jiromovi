@@ -127,7 +127,7 @@ export async function obtenerProductos(categoriaId?: string) {
       atributos:store_producto_atributos(*, opciones:store_producto_atributo_opciones(*))
     `)
     .eq('activo', true)
-    .order('created_at', { ascending: false });
+    .order('orden', { ascending: true });
 
   if (categoriaId) {
     query = query.eq('categoria_id', categoriaId);
@@ -141,7 +141,7 @@ export async function obtenerProductos(categoriaId?: string) {
       .from('store_productos')
       .select('*, categoria:store_categorias(*)')
       .eq('activo', true)
-      .order('created_at', { ascending: false });
+      .order('orden', { ascending: true });
 
     if (categoriaId) {
       fallbackQuery = fallbackQuery.eq('categoria_id', categoriaId);
