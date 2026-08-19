@@ -10,6 +10,7 @@ import { HistorialPanel } from './catalogos/HistorialPanel';
 import { TriggersTab } from './catalogos/TriggersTab';
 import { EquiposHabilitadosPanel } from './catalogos/EquiposHabilitadosPanel';
 import RecurrenciaTab from './catalogos/RecurrenciaTab';
+import { ExtraccionPdfTab } from './catalogos/ExtraccionPdfTab';
 import { ColorPicker } from './catalogos/ColorPicker';
 import { type TicketTipo, slugify } from './catalogos/types';
 import { logHistorial } from './catalogos/logHistorial';
@@ -59,7 +60,7 @@ export function GestionCatalogosRegistro() {
   // ── Navigation ──────────────────────────────────────────────────────────
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [activeTipo, setActiveTipo] = useState<TicketTipo | null>(null);
-  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos' | 'equipos' | 'triggers' | 'historial' | 'recurrencia'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'campos' | 'permisos' | 'equipos' | 'triggers' | 'historial' | 'recurrencia' | 'extraccion_pdf'>('config');
 
   // ── Ticket tipos ────────────────────────────────────────────────────────
   const [tiposTramite, setTiposTramite] = useState<TicketTipo[]>([]);
@@ -459,6 +460,7 @@ export function GestionCatalogosRegistro() {
             { id: 'triggers',  label: 'Triggers de Estatus' },
             { id: 'historial', label: 'Historial' },
             { id: 'recurrencia', label: 'Recurrencia' },
+            { id: 'extraccion_pdf', label: 'Extracción PDF' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -585,6 +587,11 @@ export function GestionCatalogosRegistro() {
         {/* Tab: Recurrencia */}
         {activeTab === 'recurrencia' && (
           <RecurrenciaTab tipoId={activeTipo.id} showToast={showToast} />
+        )}
+
+        {/* Tab: Extracción PDF */}
+        {activeTab === 'extraccion_pdf' && (
+          <ExtraccionPdfTab tipoId={activeTipo.id} showToast={showToast} />
         )}
       </div>
     );
