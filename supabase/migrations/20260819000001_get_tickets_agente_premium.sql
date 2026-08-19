@@ -1,0 +1,60 @@
+-- Función que retorna el historial de tickets de un agente para el panel
+-- de Marketing Premium. Usa SECURITY DEFINER para bypasear RLS (el caller
+-- no siempre tiene rol Administrador/Gerente), pero verifica que el caller
+-- tenga acceso al módulo de Marketing antes de devolver datos.
+
+CREATE OR REPLACE FUNCTION public.get_tickets_agente_premium(p_agente_id uuid)
+RETURNS TABLE (
+  id              uuid,
+  folio           text,
+  tipo_tramite    text,
+  created_at      timestamptz,
+  custom_estatus_label text,
+  creado_por      uuid
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_caller_rol   text;
+  v_tiene_acceso boolean := false;
+BEGIN
+  -- Verificar que el caller existe y tiene un rol
+  SELECT rol INTO v_caller_rol
+  FROM usuarios
+  WHERE id = auth.uid();
+
+  -- Admins y gerentes: acceso directo
+  IF v_caller_rol IN ('Administrador', 'Gerente') THEN
+    v_tiene_acceso := true;
+  ELSE
+    -- Verificar acceso al equipo MKT (misma lógica que tieneAccesoEquipoMkt)
+    SELECT EXISTS (
+      SELECT 1
+      FROM tramites_grupos_miembros tgm
+      JOIN mkt_equipos_acceso mea ON mea.grupo_id = tgm.grupo_id
+      WHERE tgm.usuario_id = auth.uid()
+    ) INTO v_tiene_acceso;
+  END IF;
+
+  IF NOT v_tiene_acceso THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    t.id,
+    t.folio,
+    t.tipo_tramite,
+    t.created_at,
+    t.custom_estatus_label,
+    t.creado_por
+  FROM tickets t
+  WHERE t.agente_id = p_agente_id
+     OR t.agente_usuario_id = p_agente_id
+  ORDER BY t.created_at DESC;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_tickets_agente_premium(uuid) TO authenticated;
