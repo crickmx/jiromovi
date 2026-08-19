@@ -284,12 +284,15 @@ async function readSicasReport(
   const { conditions, conditionsDirect } = buildConditions(reportType, filters);
   const requestBody: Record<string, unknown> = {
     PageRequested: page,
-    ItemsForPage: exportAll ? -1 : pageSize,
+    ItemsForPages: exportAll ? -1 : pageSize,
     SortFields: sortFields,
     FormatResponse: 2,
     SingleKey: true,
   };
-  if (conditions) requestBody.Conditions = conditions;
+  if (conditions) {
+    requestBody.Conditions = conditions;
+    requestBody.ConditionsAdd = conditions;
+  }
   if (conditionsDirect) requestBody.ConditionsDirect = conditionsDirect;
 
   let lastError: Error | null = null;
@@ -364,7 +367,9 @@ Deno.serve(async (req: Request) => {
     const { rows, control, keyCode } = await readSicasReport(
       sicasToken, reportType, page, pageSize, exportAll, body.filters || {},
     );
-    const normalizedRows = rows.map((row) => normalizeRecord(row, reportType));
+    const normalizedRows = rows
+      .map((row) => normalizeRecord(row, reportType))
+      .filter((row) => reportType !== "pendiente" || String(row.Status_TXT || "").trim().toLocaleLowerCase("es-MX") === "pendiente");
     const total = Number(control.MaxRecords ?? control.TotalRecords ?? control.Records ?? normalizedRows.length) || normalizedRows.length;
     const pages = Number(control.Pages ?? control.TotalPages ?? (exportAll ? 1 : Math.ceil(total / pageSize))) || 1;
 
