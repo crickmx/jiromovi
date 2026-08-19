@@ -206,23 +206,33 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setCargandoTramites(true);
     setTramitesAgente([]);
     try {
+      // 1. Obtener IDs de ticket_tipos configurados en triggers activos
       const { data: triggers } = await supabase
         .from('mkt_premium_triggers')
-        .select('ticket_tipos(value, label)')
+        .select('ticket_tipo_id')
         .eq('activo', true);
+
+      const tipoIds = [...new Set((triggers ?? []).map((t: any) => t.ticket_tipo_id).filter(Boolean))];
+      if (tipoIds.length === 0) return;
+
+      // 2. Resolver los valores (slug) y labels de esos tipos
+      const { data: tipos } = await supabase
+        .from('ticket_tipos')
+        .select('id, value, label')
+        .in('id', tipoIds);
 
       const tipoMap: Record<string, string> = {};
       const tiposTramite: string[] = [];
-      (triggers ?? []).forEach((t: any) => {
-        const tipo = t.ticket_tipos;
-        if (tipo?.value) {
-          tiposTramite.push(tipo.value);
-          tipoMap[tipo.value] = tipo.label || tipo.value;
+      (tipos ?? []).forEach((t: any) => {
+        if (t.value) {
+          tiposTramite.push(t.value);
+          tipoMap[t.value] = t.label || t.value;
         }
       });
 
       if (tiposTramite.length === 0) return;
 
+      // 3. Buscar tickets del agente con esos tipos
       const { data: tickets } = await supabase
         .from('tickets')
         .select('id, folio, tipo_tramite, created_at, custom_estatus_label, creado_por')
