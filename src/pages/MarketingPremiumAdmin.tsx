@@ -206,39 +206,49 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setCargandoTramites(true);
     setTramitesAgente([]);
     try {
-      // 1. Obtener IDs de ticket_tipos configurados en triggers activos
-      const { data: triggers } = await supabase
+      // 1. Obtener IDs de ticket_tipos de todos los triggers premium (activos o no)
+      const { data: triggers, error: errTriggers } = await supabase
         .from('mkt_premium_triggers')
         .select('ticket_tipo_id')
-        .eq('activo', true);
+        .not('ticket_tipo_id', 'is', null);
+
+      if (errTriggers) console.error('[MKT historial] triggers error:', errTriggers);
 
       const tipoIds = [...new Set((triggers ?? []).map((t: any) => t.ticket_tipo_id).filter(Boolean))];
-      if (tipoIds.length === 0) return;
-
-      // 2. Resolver los valores (slug) y labels de esos tipos
-      const { data: tipos } = await supabase
-        .from('ticket_tipos')
-        .select('id, value, label')
-        .in('id', tipoIds);
 
       const tipoMap: Record<string, string> = {};
-      const tiposTramite: string[] = [];
-      (tipos ?? []).forEach((t: any) => {
-        if (t.value) {
-          tiposTramite.push(t.value);
-          tipoMap[t.value] = t.label || t.value;
-        }
-      });
+      let tiposTramite: string[] = [];
 
-      if (tiposTramite.length === 0) return;
+      if (tipoIds.length > 0) {
+        // 2. Resolver los valores (slug) y labels de esos tipos
+        const { data: tipos, error: errTipos } = await supabase
+          .from('ticket_tipos')
+          .select('id, value, label')
+          .in('id', tipoIds);
 
-      // 3. Buscar tickets del agente con esos tipos
-      const { data: tickets } = await supabase
+        if (errTipos) console.error('[MKT historial] ticket_tipos error:', errTipos);
+
+        (tipos ?? []).forEach((t: any) => {
+          if (t.value != null) {
+            tiposTramite.push(t.value);
+            tipoMap[t.value] = t.label || t.value;
+          }
+        });
+      }
+
+      // 3. Buscar tickets del agente — filtrar por tipo si hay tipos configurados
+      let q = supabase
         .from('tickets')
         .select('id, folio, tipo_tramite, created_at, custom_estatus_label, creado_por')
         .eq('agente_id', agenteId)
-        .in('tipo_tramite', tiposTramite)
         .order('created_at', { ascending: false });
+
+      if (tiposTramite.length > 0) {
+        q = q.in('tipo_tramite', tiposTramite);
+      }
+
+      const { data: tickets, error: errTickets } = await q;
+      if (errTickets) console.error('[MKT historial] tickets error:', errTickets);
 
       setTramitesAgente(
         (tickets ?? []).map((t: any) => ({
