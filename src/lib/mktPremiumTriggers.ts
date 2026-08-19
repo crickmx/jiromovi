@@ -231,6 +231,7 @@ export async function dispararTriggersPremium(params: {
         creado_por: params.usuarioId,
         modificado_por: params.usuarioId,
         agente_id: params.agente.id,
+        agente_usuario_id: params.agente.id,
         assigned_to_user_id: grupoResult?.ejecutivo_id ?? null,
         grupo_asignado_id: grupoResult?.grupo_id ?? null,
       }).select().single();

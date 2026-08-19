@@ -224,11 +224,11 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
         });
       }
 
-      // Todos los tickets del agente, sin filtrar por tipo
+      // Todos los tickets del agente — buscar en agente_id Y agente_usuario_id
       const { data: tickets, error: errTickets } = await supabase
         .from('tickets')
         .select('id, folio, tipo_tramite, created_at, custom_estatus_label, creado_por')
-        .eq('agente_id', agenteId)
+        .or(`agente_id.eq.${agenteId},agente_usuario_id.eq.${agenteId}`)
         .order('created_at', { ascending: false });
 
       if (errTickets) console.error('[MKT historial] tickets error:', errTickets);
