@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus, FileText, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
@@ -65,6 +66,15 @@ function formatFecha(iso: string | null | undefined) {
   try { return format(new Date(iso), "d 'de' MMMM, yyyy", { locale: es }); } catch { return '—'; }
 }
 
+interface TramiteResumen {
+  id: string;
+  folio: string;
+  tipo_tramite: string;
+  tipo_label: string;
+  created_at: string;
+  custom_estatus_label: string | null;
+}
+
 interface DisenoAgente {
   id: string;
   titulo: string | null;
@@ -87,6 +97,7 @@ function emptyForm(a?: Agente | null): FormData {
 
 export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean } = {}) {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -115,6 +126,9 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [arrastrandoDiseno, setArrastrandoDiseno] = useState(false);
   const [archivoPendiente, setArchivoPendiente] = useState<File | null>(null);
   const [previewPendienteUrl, setPreviewPendienteUrl] = useState<string | null>(null);
+
+  const [tramitesAgente, setTramitesAgente] = useState<TramiteResumen[]>([]);
+  const [cargandoTramites, setCargandoTramites] = useState(false);
 
   const [nuevoAgente, setNuevoAgente] = useState({ nombre: '', apellidos: '', email_laboral: '', celular_laboral: '' });
   const [creandoAgente, setCreandoAgente] = useState(false);
@@ -182,6 +196,48 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setAvisoDiseno('');
     cancelarArchivoPendiente();
     cargarDisenosAgente(agente.id);
+    cargarTramitesAgente(agente.id);
+  }
+
+  async function cargarTramitesAgente(agenteId: string) {
+    setCargandoTramites(true);
+    setTramitesAgente([]);
+    try {
+      const { data: triggers } = await supabase
+        .from('mkt_premium_triggers')
+        .select('ticket_tipos(value, label)')
+        .eq('activo', true);
+
+      const tipoMap: Record<string, string> = {};
+      const tiposTramite: string[] = [];
+      (triggers ?? []).forEach((t: any) => {
+        const tipo = t.ticket_tipos;
+        if (tipo?.value) {
+          tiposTramite.push(tipo.value);
+          tipoMap[tipo.value] = tipo.label || tipo.value;
+        }
+      });
+
+      if (tiposTramite.length === 0) return;
+
+      const { data: tickets } = await supabase
+        .from('tickets')
+        .select('id, folio, tipo_tramite, created_at, custom_estatus_label')
+        .eq('agente_id', agenteId)
+        .in('tipo_tramite', tiposTramite)
+        .order('created_at', { ascending: false });
+
+      setTramitesAgente(
+        (tickets ?? []).map((t: any) => ({
+          ...t,
+          tipo_label: tipoMap[t.tipo_tramite] || t.tipo_tramite,
+        }))
+      );
+    } catch (err) {
+      console.error('Error cargando trámites premium:', err);
+    } finally {
+      setCargandoTramites(false);
+    }
   }
 
   function seleccionarArchivoPendiente(file: File) {
@@ -409,7 +465,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     // Disparar las reglas configuradas para el/los eventos que ocurrieron en este guardado
     const eventos = detectarEventosPremium(agenteAntes, actualizado);
     await dispararReglasPremium(eventos, actualizado);
-
+    if (eventos.length > 0) cargarTramitesAgente(actualizado.id);
 
     setGuardado(true);
     setTimeout(() => setGuardado(false), 3000);
@@ -866,6 +922,43 @@ ALTER TABLE usuarios
                           : 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-300'
                       }`}>
                         {triggerToast.message}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Historial de Trámites de cargo */}
+                  <div className="pt-6 border-t border-neutral-200 dark:border-white/8 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-purple-600" />
+                      <p className="text-sm font-semibold text-neutral-800 dark:text-white">Historial de Trámites</p>
+                    </div>
+                    {cargandoTramites ? (
+                      <p className="text-xs text-neutral-400">Cargando…</p>
+                    ) : tramitesAgente.length === 0 ? (
+                      <p className="text-xs text-neutral-400">Sin trámites generados para este agente.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {tramitesAgente.map(t => (
+                          <button
+                            key={t.id}
+                            onClick={() => navigate(`/tramites/${t.id}`)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 text-left transition"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">{t.folio}</span>
+                                <span className="text-xs text-neutral-500 dark:text-white/50 truncate">{t.tipo_label}</span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs text-neutral-400">{formatFecha(t.created_at)}</span>
+                                {t.custom_estatus_label && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/60">{t.custom_estatus_label}</span>
+                                )}
+                              </div>
+                            </div>
+                            <ExternalLink className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
