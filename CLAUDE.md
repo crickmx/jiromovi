@@ -1,6 +1,53 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-08-13)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-08-19)
+
+### 🔴 Feature activa: Adjuntos por tipo + extracción automática de pólizas PDF (2026-08-19)
+
+Lo que ya está hecho (committeado, falta desplegar):
+- **`supabase/migrations/20260819000001_poliza_pdf_extraccion.sql`** — tablas `poliza_datos_extraidos` y `poliza_pdf_extraccion_config`, categoría "Póliza PDF". **Falta correr en Supabase.**
+- **`supabase/functions/process-poliza-pdf/index.ts`** — edge function completa: descarga PDF, llama a `lector.movi.digital/api/extraer-poliza-registro`, guarda en `poliza_datos_extraidos`, notifica agente y equipos según config. **Falta redesplegar:** `supabase functions deploy process-poliza-pdf`.
+- **`src/components/tramites/catalogos/ExtraccionPdfTab.tsx`** — tab "Extracción PDF" en el editor de tipo de trámite (activo/notificaciones/plantillas).
+- **`GestionCatalogosRegistro.tsx`** — tab "Extracción PDF" registrado como 7º tab.
+- **`TramiteArchivos.tsx`** — detecta categoría "Póliza PDF" al subir, llama edge function, muestra badge de estado (spinner/verde/rojo) en la tarjeta del archivo.
+- **`lector.movi.digital`** — endpoint Python `/api/extraer-poliza-registro` instalado y corriendo en el servidor como `lector-polizas.service`.
+
+Lo que viene (plan acordado con Ricardo, retomar aquí):
+
+**Fase 1 — FormBuilder: `tipos_config` por campo adjunto**
+- Cambiar `tramite_tipo_campos.config` de `{ categoria_id: uuid }` (una sola categoría para todos) a `{ tipos_config: [{ categoria_id, requerido, dispara_extraccion }] }`.
+- En el panel derecho de `FormBuilderTab.tsx` (líneas 729–784), reemplazar el `<select>` de "Categoría del archivo" por una lista editable donde cada fila = un tipo permitido con dos checkboxes.
+- Retrocompatible: si `tipos_config` está vacío/ausente, comportamiento anterior.
+
+**Fase 2 — Upload UX: tipo por archivo antes de subir**
+- Al seleccionar N archivos en `TramiteArchivos.tsx`, mostrar una fila por archivo con dropdown de tipo (opciones = `tipos_config` del campo adjunto de este trámite, o todas las categorías si el campo no tiene config).
+- Botón "Subir" deshabilitado hasta que todos tengan tipo elegido.
+- El tipo elegido se guarda como `categoria_id` en `ticket_archivos`.
+
+**Fase 3 — Validación de estatus**
+- En `TramiteDetalle.tsx → continuarGuardadoConEstatus()`, antes de la validación de triggers existente: verificar que todos los tipos con `requerido: true` en el campo adjunto del tipo de trámite estén cubiertos por archivos ya subidos.
+- Si faltan: bloquear con mensaje "Falta subir: [Póliza, Identificación]".
+
+**Fase 4 — Trigger de extracción vía config del campo**
+- Reemplazar el chequeo hardcodeado `categoria.nombre === 'Póliza PDF'` en `TramiteArchivos.tsx` por: buscar si la `categoria_id` del archivo tiene `dispara_extraccion: true` en el `tipos_config` del campo adjunto de este tipo de trámite.
+
+**Fase 5 — XLSX para SICAS + datos al trámite hijo**
+- Al completar la extracción en `process-poliza-pdf`, generar un XLSX con columnas exactas de SICAS (ver abajo) usando `npm:xlsx` en Deno, y subirlo como archivo adjunto al ticket.
+- Hacer disponibles los campos de `poliza_datos_extraidos` como tokens (`{poliza.rfc}`, `{poliza.documento}`, etc.) en los `ticket_trigger_field_mappings` del trigger de trámite hijo.
+
+**Columnas XLSX SICAS (exactas, en orden):**
+Entidad · Apellido Paterno · Apellido Materno · Nombre · Razón Social · R.F.C. · Grupo · Ejecutivo de Cuenta · Despacho · Tipo Documento · Documento · Agente · Forma Pago · Moneda · Sub Ramo · Vendedor · Renovación · Fecha Antigüedad · Desde · Hasta · Estatus · Prima Neta · Descuento · Recargos · Derechos · Sub Total · IVA · Prima Total · Concepto · Serie · Descripción · Modelo · Motor · Placas
+
+**Mapeo de datos conocido:**
+- Entidad, RFC, Tipo Documento, Documento, Agente (clave), Forma Pago, Moneda, Sub Ramo, Desde, Hasta, Prima Neta/Descuento/Recargos/Derechos/Sub Total/IVA/Prima Total, Concepto, Serie, Descripción (descripcion_veh), Modelo, Motor, Placas → `poliza_datos_extraidos`
+- Nombre/Apellidos (split de `nombre_completo`), Razón Social → `poliza_datos_extraidos`
+- Ejecutivo de Cuenta, Renovación, Fecha Antigüedad → `poliza_datos_extraidos` (captura manual por Mesa de Control)
+- Grupo, Despacho, Vendedor → del trámite padre (a confirmar mapeo exacto con Ricardo)
+
+**Nota sobre `poliza_pdf_extraccion_config`:**
+Con la Fase 4, la casilla `dispara_extraccion` del campo adjunto reemplaza parcialmente al tab "Extracción PDF" (que queda solo para notificaciones). Revisar si conviene fusionar o mantener ambos.
+
+---
 -2. **✅ RESUELTO 2026-08-13: Botón "Admin > Deploy" funcionando con seguridad de dos niveles.** El puerto 8443 de Plesk está bloqueado para todo tráfico externo. Solución: relay PHP en `https://relay.movi.digital/deploy-relay.php` que llama a `server1.miemail.digital:8443` con `CURLOPT_RESOLVE` forzando por `127.0.0.1`. Edge function `trigger-deploy` usa el relay. Secrets en Supabase: `PLESK_RELAY_URL`, `PLESK_RELAY_TOKEN`. Seguridad agregada: **Beta** = reCAPTCHA v3 invisible; **Producción** = reCAPTCHA + TOTP (modal de código de 6 dígitos del autenticador, verificado contra `usuario_totp_secrets`). Si el servidor se cae tras un reinicio: `bash /var/www/vhosts/movi.digital/cp.movi.digital/restart_gunicorn.sh` (desde SSH Terminal root en Plesk) levanta `cp.movi.digital`.
 
 -1. **✅ RESUELTO 2026-08-13: tienda.movi.digital — vitrina pública de productos.** Implementada y en producción. Ver sección "tienda.movi.digital" abajo. Pendientes de polish: OG tags por producto, deep-link directo al producto en MOVI, diseño más elaborado.
