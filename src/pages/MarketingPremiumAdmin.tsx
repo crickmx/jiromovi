@@ -224,9 +224,12 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
         });
       }
 
-      // RPC con SECURITY DEFINER para bypasear RLS (el usuario MKT no es Admin/Gerente)
+      // Todos los tickets del agente (RLS ahora incluye equipo MKT)
       const { data: tickets, error: errTickets } = await supabase
-        .rpc('get_tickets_agente_premium', { p_agente_id: agenteId });
+        .from('tickets')
+        .select('id, folio, tipo_tramite, created_at, custom_estatus_label, creado_por')
+        .or(`agente_id.eq.${agenteId},agente_usuario_id.eq.${agenteId}`)
+        .order('created_at', { ascending: false });
 
       if (errTickets) console.error('[MKT historial] tickets error:', errTickets);
 
