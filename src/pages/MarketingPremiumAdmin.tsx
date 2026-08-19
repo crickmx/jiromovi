@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus, FileText, ExternalLink } from 'lucide-react';
+import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus, FileText, ExternalLink, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
@@ -73,6 +74,7 @@ interface TramiteResumen {
   tipo_label: string;
   created_at: string;
   custom_estatus_label: string | null;
+  creado_por: string | null;
 }
 
 interface DisenoAgente {
@@ -222,7 +224,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
 
       const { data: tickets } = await supabase
         .from('tickets')
-        .select('id, folio, tipo_tramite, created_at, custom_estatus_label')
+        .select('id, folio, tipo_tramite, created_at, custom_estatus_label, creado_por')
         .eq('agente_id', agenteId)
         .in('tipo_tramite', tiposTramite)
         .order('created_at', { ascending: false });
@@ -238,6 +240,123 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     } finally {
       setCargandoTramites(false);
     }
+  }
+
+  async function descargarPDFTramitePremium(tramite: TramiteResumen, agente: Agente) {
+    const METODO_LABELS: Record<string, string> = {
+      deposito_jiro: 'Depósito a cuenta Jiro',
+      bono_anual: 'Descuento de bono anual',
+      comisiones: 'Descuento a comisiones',
+    };
+    const PLAN_LABELS: Record<string, string> = {
+      mensual: 'Mensual ($200 MXN/mes)',
+      anual: 'Anual ($2,000 MXN/año)',
+    };
+
+    let creadorNombre = '—';
+    if (tramite.creado_por) {
+      const { data: creador } = await supabase
+        .from('usuarios')
+        .select('nombre, apellidos')
+        .eq('id', tramite.creado_por)
+        .single();
+      if (creador) creadorNombre = `${(creador as any).nombre} ${(creador as any).apellidos}`.trim();
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    // Encabezado
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COMPROBANTE DE TRÁMITE', pageWidth / 2, y, { align: 'center' });
+    y += 8;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Marketing Premium · MOVI', pageWidth / 2, y, { align: 'center' });
+    y += 4;
+    doc.setLineWidth(0.5);
+    doc.line(14, y, pageWidth - 14, y);
+    y += 10;
+
+    // Folio y fecha
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Folio:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(tramite.folio, 45, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fecha:', pageWidth / 2, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(format(new Date(tramite.created_at), "d 'de' MMMM yyyy", { locale: es }), pageWidth / 2 + 16, y);
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Tipo de trámite:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(tramite.tipo_label, 45, y);
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Estatus:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(tramite.custom_estatus_label || '—', 45, y);
+    y += 12;
+
+    // Datos del agente
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DATOS DEL AGENTE', 14, y);
+    y += 2;
+    doc.setLineWidth(0.3);
+    doc.line(14, y, pageWidth - 14, y);
+    y += 8;
+    doc.setFontSize(10);
+
+    const camposAgente: [string, string][] = [
+      ['Nombre:', `${agente.nombre} ${agente.apellidos}`],
+      ['Oficina:', agente.oficina?.nombre || '—'],
+      ['Plan:', PLAN_LABELS[agente.mkt_premium_plan ?? ''] || agente.mkt_premium_plan || '—'],
+      ['Método de pago:', METODO_LABELS[agente.mkt_premium_metodo_pago ?? ''] || agente.mkt_premium_metodo_pago || '—'],
+    ];
+    if (agente.mkt_premium_parcialidades) {
+      camposAgente.push(['Parcialidades:', `${agente.mkt_premium_parcialidades}`]);
+    }
+    if (agente.mkt_premium_fecha_inicio) {
+      camposAgente.push(['Fecha de inicio:', format(new Date(agente.mkt_premium_fecha_inicio), "d 'de' MMMM yyyy", { locale: es })]);
+    }
+    if (agente.mkt_premium_fecha_pago) {
+      camposAgente.push(['Fecha de pago:', format(new Date(agente.mkt_premium_fecha_pago), "d 'de' MMMM yyyy", { locale: es })]);
+    }
+
+    for (const [label, value] of camposAgente) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(label, 14, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(value, 60, y);
+      y += 6;
+    }
+    y += 6;
+
+    // Generado por
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('GENERADO POR', 14, y);
+    y += 2;
+    doc.line(14, y, pageWidth - 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Responsable:', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(creadorNombre, 60, y);
+    y += 16;
+
+    // Pie
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`Generado el ${format(new Date(), "d 'de' MMMM yyyy 'a las' HH:mm", { locale: es })}`, pageWidth / 2, y, { align: 'center' });
+
+    doc.save(`tramite-premium-${tramite.folio}.pdf`);
   }
 
   function seleccionarArchivoPendiente(file: File) {
@@ -939,12 +1058,14 @@ ALTER TABLE usuarios
                     ) : (
                       <div className="space-y-1.5">
                         {tramitesAgente.map(t => (
-                          <button
+                          <div
                             key={t.id}
-                            onClick={() => navigate(`/tramites/${t.id}`)}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 text-left transition"
+                            className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10"
                           >
-                            <div className="min-w-0 flex-1">
+                            <button
+                              onClick={() => navigate(`/tramites/${t.id}`)}
+                              className="min-w-0 flex-1 text-left hover:opacity-75 transition"
+                            >
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">{t.folio}</span>
                                 <span className="text-xs text-neutral-500 dark:text-white/50 truncate">{t.tipo_label}</span>
@@ -955,9 +1076,22 @@ ALTER TABLE usuarios
                                   <span className="text-xs px-1.5 py-0.5 rounded-md bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/60">{t.custom_estatus_label}</span>
                                 )}
                               </div>
-                            </div>
-                            <ExternalLink className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                          </button>
+                            </button>
+                            <button
+                              onClick={() => descargarPDFTramitePremium(t, seleccionado!)}
+                              title="Descargar PDF"
+                              className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-neutral-400 hover:text-purple-600 transition shrink-0"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => navigate(`/tramites/${t.id}`)}
+                              title="Abrir trámite"
+                              className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-400 hover:text-neutral-600 transition shrink-0"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         ))}
                       </div>
                     )}
