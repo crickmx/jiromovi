@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { supabaseUrl } from '../../lib/supabase';
-import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2, Printer } from 'lucide-react';
+import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2, Printer, Loader2, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
 import { getPdfThumbnail } from '../../lib/pdfThumbnail';
@@ -70,6 +70,8 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
     setTimeout(() => setToast(null), 4000);
   };
 
+  const [extractionStatus, setExtractionStatus] = useState<Record<string, { estado: 'pendiente' | 'ok' | 'error'; mensaje?: string }>>({});
+
   // Category picker state
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [selectedCategoriaId, setSelectedCategoriaId] = useState('');
@@ -122,14 +124,29 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
   };
 
   const loadArchivos = async () => {
-    const { data } = await supabase
-      .from('ticket_archivos')
-      .select('*, usuarios!usuario_id(nombre_completo), categoria:maestro_adjunto_categorias!categoria_id(nombre)')
-      .eq('ticket_id', tramiteId)
-      .is('eliminado_at', null)
-      .order('fecha_subida', { ascending: false });
+    const [{ data }, { data: extraidos }] = await Promise.all([
+      supabase
+        .from('ticket_archivos')
+        .select('*, usuarios!usuario_id(nombre_completo), categoria:maestro_adjunto_categorias!categoria_id(nombre)')
+        .eq('ticket_id', tramiteId)
+        .is('eliminado_at', null)
+        .order('fecha_subida', { ascending: false }),
+      supabase
+        .from('poliza_datos_extraidos')
+        .select('archivo_id, estado, error_detalle')
+        .eq('ticket_id', tramiteId),
+    ]);
 
     if (data) setArchivos(data as Archivo[]);
+    if (extraidos) {
+      const map: Record<string, { estado: 'pendiente' | 'ok' | 'error'; mensaje?: string }> = {};
+      for (const e of extraidos) {
+        if (e.archivo_id && e.estado !== 'no_reconocida') {
+          map[e.archivo_id] = { estado: e.estado as any, mensaje: e.error_detalle ?? undefined };
+        }
+      }
+      setExtractionStatus(map);
+    }
     setLoading(false);
   };
 
@@ -245,6 +262,10 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
         setArchivos(prev =>
           prev.map(a => a.id === tempId ? data as Archivo : a)
         );
+
+        if ((data as Archivo).categoria?.nombre === 'Póliza PDF') {
+          triggerPolizaExtraccion(insertData.id);
+        }
       }
 
       if (uploadedFileIds.length > 0) {
@@ -258,6 +279,33 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       );
     } finally {
       setUploading(false);
+    }
+  };
+
+  const triggerPolizaExtraccion = async (archivoId: string) => {
+    setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'pendiente' } }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const resp = await fetch(`${supabaseUrl}/functions/v1/process-poliza-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ ticket_id: tramiteId, archivo_id: archivoId }),
+      });
+      const result = await resp.json();
+      if (result.estado === 'no_configurado') {
+        // Extracción no habilitada para este tipo de trámite — no mostrar badge
+        setExtractionStatus(prev => { const s = { ...prev }; delete s[archivoId]; return s; });
+      } else if (result.ok) {
+        setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'ok' } }));
+      } else {
+        setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'error', mensaje: result.error ?? 'Error al extraer datos del PDF' } }));
+      }
+    } catch (err: any) {
+      setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'error', mensaje: err?.message ?? 'Error de red' } }));
     }
   };
 
@@ -558,6 +606,28 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                 onClick={() => setPreviewFile(archivo)}
               >
                 <FileThumbnail archivo={archivo} />
+                {extractionStatus[archivo.id] && (
+                  <div className="absolute top-2 right-2 z-10">
+                    {extractionStatus[archivo.id].estado === 'pendiente' && (
+                      <div className="bg-amber-400 text-white rounded-full p-1 shadow" title="Extrayendo datos del PDF...">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      </div>
+                    )}
+                    {extractionStatus[archivo.id].estado === 'ok' && (
+                      <div className="bg-green-500 text-white rounded-full p-1 shadow" title="Datos extraídos correctamente">
+                        <Check className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                    {extractionStatus[archivo.id].estado === 'error' && (
+                      <div
+                        className="bg-red-500 text-white rounded-full p-1 shadow cursor-help"
+                        title={extractionStatus[archivo.id].mensaje || 'Error al extraer datos del PDF'}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/15 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
                   <div className="bg-white/90 dark:bg-neutral-900/90 rounded-full p-2">
                     <Eye className="w-5 h-5 text-neutral-700 dark:text-white" />
