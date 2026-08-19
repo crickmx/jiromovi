@@ -646,6 +646,7 @@ export default function StoreAdmin() {
           <ProductoModal
             producto={productoEditando}
             categorias={categorias}
+            nextOrden={Math.max(0, ...productos.map(p => p.orden)) + 1}
             onClose={() => {
               setShowProductoModal(false);
               setProductoEditando(null);
@@ -680,11 +681,12 @@ export default function StoreAdmin() {
 interface ProductoModalProps {
   producto: StoreProducto | null;
   categorias: StoreCategoria[];
+  nextOrden: number;
   onClose: () => void;
   onGuardar: () => void;
 }
 
-function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoModalProps) {
+function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: ProductoModalProps) {
   const [titulo, setTitulo] = useState(producto?.titulo || '');
   const [descripcion, setDescripcion] = useState(producto?.descripcion || '');
   const [precio, setPrecio] = useState(producto?.precio.toString() || '');
@@ -914,7 +916,7 @@ function ProductoModal({ producto, categorias, onClose, onGuardar }: ProductoMod
         productoId = producto.id;
         alert('Producto actualizado exitosamente');
       } else {
-        const nuevo = await crearProducto(datos);
+        const nuevo = await crearProducto({ ...datos, orden: nextOrden });
         productoId = nuevo.id;
         alert('Producto creado exitosamente');
       }
