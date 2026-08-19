@@ -131,6 +131,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
 
   const [tramitesAgente, setTramitesAgente] = useState<TramiteResumen[]>([]);
   const [cargandoTramites, setCargandoTramites] = useState(false);
+  const [generandoTramite, setGenerandoTramite] = useState(false);
 
   const [nuevoAgente, setNuevoAgente] = useState({ nombre: '', apellidos: '', email_laboral: '', celular_laboral: '' });
   const [creandoAgente, setCreandoAgente] = useState(false);
@@ -357,6 +358,41 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     doc.text(`Generado el ${format(new Date(), "d 'de' MMMM yyyy 'a las' HH:mm", { locale: es })}`, pageWidth / 2, y, { align: 'center' });
 
     doc.save(`tramite-premium-${tramite.folio}.pdf`);
+  }
+
+  async function generarTramiteManual() {
+    if (!seleccionado || !usuario) return;
+    setGenerandoTramite(true);
+    try {
+      const res = await dispararTriggersPremium({
+        eventoKey: 'activacion',
+        agente: { id: seleccionado.id, nombre: seleccionado.nombre, apellidos: seleccionado.apellidos, oficina: seleccionado.oficina },
+        form: {
+          mkt_premium_plan: seleccionado.mkt_premium_plan ?? '',
+          mkt_premium_metodo_pago: seleccionado.mkt_premium_metodo_pago ?? '',
+          mkt_premium_parcialidades: seleccionado.mkt_premium_parcialidades?.toString() ?? '',
+          mkt_premium_fecha_inicio: seleccionado.mkt_premium_fecha_inicio ?? '',
+          mkt_premium_fecha_pago: seleccionado.mkt_premium_fecha_pago ?? '',
+        },
+        usuarioId: usuario.id,
+        usuarioNombre: `${usuario.nombre} ${usuario.apellidos}`.trim(),
+      });
+      const partes: string[] = [];
+      if (res.creados.length > 0)
+        partes.push(`Trámite creado: ${res.creados.map(c => `${c.tipoLabel} (${c.folio})`).join(', ')}`);
+      if (res.omitidos.length > 0)
+        partes.push(`Ya existía: ${res.omitidos.map(o => `${o.tipoLabel} (${o.folio})`).join(', ')}`);
+      if (partes.length > 0) {
+        const tipo = res.creados.length > 0 ? 'success' : 'info';
+        setTriggerToast({ message: partes.join(' · '), type: tipo });
+        setTimeout(() => setTriggerToast(null), 6000);
+      }
+      await cargarTramitesAgente(seleccionado.id);
+    } catch (err) {
+      console.error('Error generando trámite:', err);
+    } finally {
+      setGenerandoTramite(false);
+    }
   }
 
   function seleccionarArchivoPendiente(file: File) {
@@ -1049,7 +1085,19 @@ ALTER TABLE usuarios
                   <div className="pt-6 border-t border-neutral-200 dark:border-white/8 space-y-3">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-purple-600" />
-                      <p className="text-sm font-semibold text-neutral-800 dark:text-white">Historial de Trámites</p>
+                      <p className="text-sm font-semibold text-neutral-800 dark:text-white flex-1">Historial de Trámites</p>
+                      <button
+                        onClick={generarTramiteManual}
+                        disabled={generandoTramite}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition disabled:opacity-60"
+                      >
+                        {generandoTramite ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Plus className="w-3.5 h-3.5" />
+                        )}
+                        {generandoTramite ? 'Generando…' : 'Generar trámite'}
+                      </button>
                     </div>
                     {cargandoTramites ? (
                       <p className="text-xs text-neutral-400">Cargando…</p>
