@@ -243,6 +243,7 @@ export default function MoviFullRoutes() {
 
           {/* Central de Produccion */}
           <Route path="/produccion" element={<ProtectedRoute><BonosPage /></ProtectedRoute>} />
+          <Route path="/produccion/reportes-sicas-ccj" element={<ProtectedRoute requireAdmin><BonosPage /></ProtectedRoute>} />
           {/* Legacy production route redirects */}
           <Route path="/produccion/*" element={<Navigate to="/produccion" replace />} />
           <Route path="/mi-produccion-sicas-live" element={<Navigate to="/produccion" replace />} />

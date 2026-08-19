@@ -1,17 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { useThemeMode } from '../hooks/useThemeMode';
 import { supabase } from '../lib/supabase';
-import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, CircleAlert as AlertCircle, FileText, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin, Paintbrush, LayoutDashboard, Menu, X } from 'lucide-react';
+import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, CloudUpload as UploadCloud, Trophy, CircleAlert as AlertCircle, FileText, FileSpreadsheet, Calculator, ListFilter as Filter, Tag, Users, UserCheck, Settings, Clock, RefreshCw, MapPin, Paintbrush, LayoutDashboard, Menu, X } from 'lucide-react';
 import { LoadingOrb } from '../components/loading/LoadingOrb';
 import { LoadingFactCard } from '../components/loading/LoadingFactCard';
+import SicasCCJReports from './SicasCCJReports';
 
 const BONOS_URL = import.meta.env.VITE_BONOS_URL || 'http://localhost:8003';
 const IS_LOCAL_BONOS = BONOS_URL.includes('localhost') || BONOS_URL.includes('127.0.');
 
 const SSO_CACHE_KEY = 'bonos_sso_ts';
 const SSO_CACHE_TTL_MS = 45 * 60 * 1000; // 45 min
+const SICAS_CCJ_REPORTS_PATH = 'movi://reportes-sicas-ccj';
 
 function readSsoCache(): boolean {
   try {
@@ -60,6 +63,7 @@ const SECTIONS: SectionDef[] = [
   { label: 'Cargar Pendiente', path: '/etl/upload/pendiente/', icon: Clock, show: no_dirreg },
   { label: 'Enriquecer CP/RFC', path: '/etl/upload/emitidas/', icon: MapPin, show: no_dirreg },
   { label: 'Calculo de Bonos', path: '/calculations/run/', icon: Calculator, show: p => p.can_admin },
+  { label: 'Reportes SICAS CCJ', path: SICAS_CCJ_REPORTS_PATH, icon: FileSpreadsheet, show: p => p.can_admin },
   { label: 'Campanias', path: '/campanias/', icon: Trophy, show: p => p.can_campanias },
   { label: 'Config. Filtros', path: '/filters/config/', icon: Filter, show: no_dirreg },
   { label: 'Etiq. de Bandas', path: '/filters/band-labels/', icon: Tag, show: no_dirreg },
@@ -72,13 +76,19 @@ const SECTIONS: SectionDef[] = [
 ];
 
 export default function BonosPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { usuario } = useMoviAuth();
   const { isImpersonating, impersonatedUser } = useImpersonation();
   const { isDarkEffective } = useThemeMode();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState(false);
-  const [activePath, setActivePath] = useState('/');
+  const [activePath, setActivePath] = useState(
+    location.pathname === '/produccion/reportes-sicas-ccj' ? SICAS_CCJ_REPORTS_PATH : '/',
+  );
+  const activePathRef = useRef(activePath);
+  activePathRef.current = activePath;
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
   const [retryCount, setRetryCount] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -177,6 +187,7 @@ export default function BonosPage() {
         setSsoConfirmed(true);
         writeSsoCache();
         clearSsoTimeout();
+        if (activePathRef.current === SICAS_CCJ_REPORTS_PATH) return;
         const p: string = event.data.path || '/';
         const match = SECTIONS.slice().reverse().find(s => p.startsWith(s.path) && s.path !== '/')
           ?? (p === '/' ? SECTIONS[0] : null);
@@ -200,6 +211,7 @@ export default function BonosPage() {
         setSsoConfirmed(true);
         writeSsoCache();
         clearSsoTimeout();
+        if (activePathRef.current === SICAS_CCJ_REPORTS_PATH) return;
         setActivePath(path);
       }
 
@@ -230,13 +242,18 @@ export default function BonosPage() {
 
   function navigateTo(path: string) {
     setActivePath(path);
+    if (path === SICAS_CCJ_REPORTS_PATH) {
+      navigate('/produccion/reportes-sicas-ccj');
+      return;
+    }
+    if (location.pathname !== '/produccion') navigate('/produccion');
     iframeRef.current?.contentWindow?.postMessage(
       { type: 'bonos:navigate', url: path },
       BONOS_URL
     );
   }
 
-  if (error) {
+  if (error && activePath !== SICAS_CCJ_REPORTS_PATH) {
     const REASON_MESSAGES: Record<Exclude<ErrorReason, null>, string> = {
       no_session: 'No se encontró una sesión activa de MOVI. Cierra sesión y vuelve a entrar, luego intenta de nuevo.',
       timeout: `Central de Producción no respondió a tiempo (más de ${Math.round(SSO_TIMEOUT_MS / 1000)} segundos esperando confirmación). El servidor puede estar lento o temporalmente caído.`,
@@ -288,7 +305,7 @@ export default function BonosPage() {
     );
   }
 
-  if (!src) {
+  if (!src && activePath !== SICAS_CCJ_REPORTS_PATH) {
     return (
       <div
         className="flex flex-col items-center justify-center h-full gap-8"
@@ -395,9 +412,14 @@ export default function BonosPage() {
           </span>
         </div>
 
-        {/* Iframe area */}
+        {/* Content area: MOVI-native SICAS reports or embedded Central de Produccion */}
         <div className="flex-1 relative min-w-0 overflow-hidden">
-          {!ssoConfirmed && (
+          {activePath === SICAS_CCJ_REPORTS_PATH && (
+            <div className="absolute inset-0 z-30 bg-neutral-50 dark:bg-neutral-950">
+              <SicasCCJReports />
+            </div>
+          )}
+          {activePath !== SICAS_CCJ_REPORTS_PATH && !ssoConfirmed && (
             <div
               className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-8"
               style={{ background: 'rgba(248, 250, 255, 0.97)', backdropFilter: 'blur(8px)' }}
@@ -426,7 +448,7 @@ export default function BonosPage() {
           )}
           <iframe
             ref={iframeRef}
-            src={src}
+            src={src || undefined}
             className="w-full h-full border-0 block"
             allow="clipboard-write"
             style={{ margin: 0, padding: 0 }}
