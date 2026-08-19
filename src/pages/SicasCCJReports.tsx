@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
   AlertCircle,
@@ -38,10 +38,20 @@ interface Filters {
 interface ReportResponse {
   ok: boolean;
   error?: string;
+  status?: 'queued' | 'running' | 'completed' | 'worker_started';
   columns: string[];
   rows: ReportRow[];
   pagination: { page: number; pageSize: number; total: number; pages: number };
   source: { api: string; keyCode: string; live: boolean };
+  progress?: {
+    runId?: string;
+    nextPage?: number;
+    sourceRowsProcessed?: number;
+    resultRows?: number;
+    startedAt?: string;
+    updatedAt?: string;
+    completedAt?: string;
+  };
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -91,8 +101,16 @@ function compactFilters(filters: Filters) {
   return Object.fromEntries(Object.entries(filters).filter(([, value]) => value.trim() !== ''));
 }
 
-function getInvokeError(error: unknown, data?: Partial<ReportResponse> | null) {
+async function getInvokeError(error: unknown, data?: Partial<ReportResponse> | null) {
   if (data?.error) return data.error;
+  if (error && typeof error === 'object' && 'context' in error && error.context instanceof Response) {
+    try {
+      const payload = await error.context.clone().json() as { error?: string };
+      if (payload.error) return payload.error;
+    } catch {
+      // Fall through to the SDK message when the response is not JSON.
+    }
+  }
   if (error && typeof error === 'object' && 'message' in error) return String(error.message);
   return 'No fue posible consultar SICAS. Intenta nuevamente.';
 }
@@ -112,6 +130,9 @@ export default function SicasCCJReports() {
   const [error, setError] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [syncProgress, setSyncProgress] = useState<ReportResponse['progress'] | null>(null);
+  const pollTimerRef = useRef<number | null>(null);
+  const forceRefreshRef = useRef(false);
 
   const dateLabel = reportType === 'efectuada' ? 'Fecha de pago' : 'Fecha límite de pago';
   const activeFilterCount = useMemo(
@@ -120,27 +141,42 @@ export default function SicasCCJReports() {
   );
 
   const loadReport = useCallback(async () => {
+    if (pollTimerRef.current !== null) window.clearTimeout(pollTimerRef.current);
     setLoading(true);
     setError('');
     try {
+      const forceRefresh = forceRefreshRef.current;
+      forceRefreshRef.current = false;
       const { data, error: invokeError } = await supabase.functions.invoke<ReportResponse>('sicas-ccj-reports', {
         body: {
           reportType,
           page,
           pageSize,
+          forceRefresh,
           filters: compactFilters(appliedFilters),
         },
       });
-      if (invokeError || !data?.ok) throw new Error(getInvokeError(invokeError, data));
+      if (invokeError || !data?.ok) throw new Error(await getInvokeError(invokeError, data));
+      if (reportType === 'pendiente' && (data.status === 'queued' || data.status === 'running')) {
+        setRows([]);
+        setColumns(data.columns || FALLBACK_COLUMNS.pendiente);
+        setPagination({ page: 1, pageSize, total: 0, pages: 1 });
+        setSource(data.source || null);
+        setSyncProgress(data.progress || {});
+        pollTimerRef.current = window.setTimeout(() => setRefreshKey((value) => value + 1), 4000);
+        return;
+      }
+      setSyncProgress(null);
       setRows(data.rows || []);
       setColumns(data.columns || FALLBACK_COLUMNS[reportType]);
       setPagination(data.pagination || { page, pageSize, total: data.rows?.length || 0, pages: 1 });
       setSource(data.source || null);
     } catch (loadError) {
+      setSyncProgress(null);
       setRows([]);
       setColumns(FALLBACK_COLUMNS[reportType]);
       setPagination({ page, pageSize, total: 0, pages: 1 });
-      setError(getInvokeError(loadError));
+      setError(await getInvokeError(loadError));
     } finally {
       setLoading(false);
     }
@@ -149,6 +185,10 @@ export default function SicasCCJReports() {
   useEffect(() => {
     void loadReport();
   }, [loadReport]);
+
+  useEffect(() => () => {
+    if (pollTimerRef.current !== null) window.clearTimeout(pollTimerRef.current);
+  }, []);
 
   function selectReport(nextType: ReportType) {
     if (nextType === reportType) return;
@@ -159,6 +199,13 @@ export default function SicasCCJReports() {
     setDraftFilters(EMPTY_FILTERS);
     setAppliedFilters(EMPTY_FILTERS);
     setError('');
+    setSyncProgress(null);
+  }
+
+  function refreshReport() {
+    forceRefreshRef.current = true;
+    setPage(1);
+    setRefreshKey((value) => value + 1);
   }
 
   function applyFilters(event: React.FormEvent) {
@@ -194,7 +241,12 @@ export default function SicasCCJReports() {
           filters: compactFilters(appliedFilters),
         },
       });
-      if (invokeError || !data?.ok) throw new Error(getInvokeError(invokeError, data));
+      if (invokeError || !data?.ok) throw new Error(await getInvokeError(invokeError, data));
+      if (reportType === 'pendiente' && (data.status === 'queued' || data.status === 'running')) {
+        setSyncProgress(data.progress || {});
+        pollTimerRef.current = window.setTimeout(() => setRefreshKey((value) => value + 1), 4000);
+        throw new Error('La cartera pendiente se está actualizando. El Excel estará disponible al terminar la precarga.');
+      }
 
       const exportColumns = data.columns || FALLBACK_COLUMNS[reportType];
       const exportRows = (data.rows || []).map((row) => exportColumns.map((column) => row[column] ?? ''));
@@ -204,7 +256,7 @@ export default function SicasCCJReports() {
       const filename = reportType === 'efectuada' ? 'COBRANZA EFECTUADA.xlsx' : 'COBRANZA PENDIENTE.xlsx';
       XLSX.writeFile(workbook, filename, { compression: true });
     } catch (exportError) {
-      setError(getInvokeError(exportError));
+      setError(await getInvokeError(exportError));
     } finally {
       setExporting(false);
     }
@@ -232,10 +284,10 @@ export default function SicasCCJReports() {
                 <CheckCircle2 className="h-4 w-4" /> {source.api} · {source.keyCode}
               </span>
             )}
-            <Button variant="outline" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>
+            <Button variant="outline" onClick={refreshReport} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
             </Button>
-            <Button onClick={exportReport} disabled={loading || exporting}>
+            <Button onClick={exportReport} disabled={loading || exporting || Boolean(syncProgress)}>
               {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               {exporting ? 'Preparando Excel…' : 'Exportar Excel'}
             </Button>
@@ -335,6 +387,23 @@ export default function SicasCCJReports() {
           </div>
         )}
 
+        {syncProgress && !error && (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+              <div>
+                <p className="font-medium">Preparando la cartera pendiente completa</p>
+                <p className="mt-0.5 opacity-80">
+                  {(syncProgress.sourceRowsProcessed || 0).toLocaleString('es-MX')} registros revisados · {(syncProgress.resultRows || 0).toLocaleString('es-MX')} pendientes guardados. Puedes dejar esta pantalla abierta; se actualizará automáticamente.
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-blue-200/70 dark:bg-blue-950">
+              <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-600" />
+            </div>
+          </div>
+        )}
+
         <Card className="overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-neutral-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
             <div className="flex items-center gap-3">
@@ -342,7 +411,7 @@ export default function SicasCCJReports() {
               <div>
                 <p className="text-sm font-semibold text-neutral-900 dark:text-white">Cobranza {reportType}</p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {loading ? 'Consultando SICAS…' : `${pagination.total.toLocaleString('es-MX')} registros${activeFilterCount ? ` · ${activeFilterCount} filtros activos` : ''}`}
+                  {syncProgress ? 'Precargando todas las páginas de SICAS…' : loading ? 'Consultando SICAS…' : `${pagination.total.toLocaleString('es-MX')} registros${activeFilterCount ? ` · ${activeFilterCount} filtros activos` : ''}`}
                 </p>
               </div>
             </div>

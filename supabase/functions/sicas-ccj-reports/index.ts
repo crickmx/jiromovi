@@ -26,12 +26,20 @@ interface ReportFilters {
 }
 
 interface ReportRequest {
+  action?: "processPendingRun";
+  runId?: string;
   reportType?: ReportType;
   page?: number;
   pageSize?: number;
   exportAll?: boolean;
+  forceRefresh?: boolean;
   filters?: ReportFilters;
 }
+
+const PENDING_CHUNK_SIZE = 100;
+const PENDING_PAGES_PER_WORKER = 8;
+const PENDING_MAX_PAGES = 1000;
+const PENDING_CACHE_TTL_MS = 15 * 60_000;
 
 const COLUMNS: Record<ReportType, string[]> = {
   efectuada: [
@@ -327,18 +335,209 @@ async function readSicasReport(
   throw lastError || new Error("No fue posible consultar el reporte SICAS.");
 }
 
+function normalizeFiltersForCache(rawFilters: ReportFilters = {}): ReportFilters {
+  return Object.fromEntries(
+    Object.entries(rawFilters)
+      .map(([key, value]) => [key, sanitizeFilter(value)])
+      .filter(([, value]) => Boolean(value))
+      .sort(([left], [right]) => left.localeCompare(right)),
+  ) as ReportFilters;
+}
+
+async function buildCacheKey(filters: ReportFilters): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(filters)),
+  );
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function schedulePendingWorker(runId: string) {
+  const projectUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  EdgeRuntime.waitUntil(
+    fetch(`${projectUrl}/functions/v1/sicas-ccj-reports`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        Apikey: serviceRoleKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "processPendingRun", runId }),
+    }).then(async (response) => {
+      if (!response.ok) console.error("[SICAS CCJ worker chain]", response.status, await response.text());
+    }).catch((error) => console.error("[SICAS CCJ worker chain]", error)),
+  );
+}
+
+async function processPendingRun(
+  supabase: ReturnType<typeof createClient>,
+  runId: string,
+  username: string,
+  password: string,
+  codeAuth: string,
+) {
+  try {
+    const { data: run, error: runError } = await supabase.from("sicas_ccj_report_runs")
+      .select("id, filters, status, next_page")
+      .eq("id", runId)
+      .maybeSingle();
+    if (runError) throw runError;
+    if (!run || !["queued", "running"].includes(run.status)) return;
+
+    const startPage = Math.max(1, Number(run.next_page) || 1);
+    if (startPage > PENDING_MAX_PAGES) {
+      throw new Error(`SICAS superó el límite seguro de ${PENDING_MAX_PAGES * PENDING_CHUNK_SIZE} registros.`);
+    }
+    await supabase.from("sicas_ccj_report_runs").update({
+      status: "running",
+      ...(run.status === "queued" ? { started_at: new Date().toISOString() } : {}),
+      updated_at: new Date().toISOString(),
+      error: null,
+    }).eq("id", runId).eq("status", run.status);
+
+    const sicasToken = await obtainToken(username, password, codeAuth);
+    const pageNumbers = Array.from(
+      { length: Math.min(PENDING_PAGES_PER_WORKER, PENDING_MAX_PAGES - startPage + 1) },
+      (_, index) => startPage + index,
+    );
+    const pageResults = await Promise.all(pageNumbers.map((requestedPage) =>
+      readSicasReport(sicasToken, "pendiente", requestedPage, PENDING_CHUNK_SIZE, false, run.filters || {})
+    ));
+
+    const cacheRows: Array<{
+      run_id: string;
+      source_page: number;
+      source_index: number;
+      row_data: Record<string, unknown>;
+    }> = [];
+    let sourceRowsProcessed = 0;
+    let nextPage = startPage;
+    let completed = false;
+
+    for (let resultIndex = 0; resultIndex < pageResults.length; resultIndex++) {
+      const sourcePage = pageNumbers[resultIndex];
+      const rawRows = pageResults[resultIndex].rows;
+      sourceRowsProcessed += rawRows.length;
+      rawRows.forEach((rawRow, sourceIndex) => {
+        const row = normalizeRecord(rawRow, "pendiente");
+        if (String(row.Status_TXT || "").trim().toLocaleLowerCase("es-MX") === "pendiente") {
+          cacheRows.push({ run_id: runId, source_page: sourcePage, source_index: sourceIndex, row_data: row });
+        }
+      });
+      nextPage = sourcePage + 1;
+      if (rawRows.length < PENDING_CHUNK_SIZE) {
+        completed = true;
+        break;
+      }
+    }
+
+    if (cacheRows.length) {
+      const { error: rowsError } = await supabase.from("sicas_ccj_report_rows")
+        .upsert(cacheRows, { onConflict: "run_id,source_page,source_index" });
+      if (rowsError) throw rowsError;
+    }
+    const { count: resultRows, error: countError } = await supabase.from("sicas_ccj_report_rows")
+      .select("id", { count: "exact", head: true }).eq("run_id", runId);
+    if (countError) throw countError;
+
+    const { data: currentRun, error: currentError } = await supabase.from("sicas_ccj_report_runs")
+      .select("source_rows_processed").eq("id", runId).single();
+    if (currentError) throw currentError;
+    const now = new Date();
+    const update = completed
+      ? {
+        status: "completed",
+        next_page: nextPage,
+        source_rows_processed: Number(currentRun.source_rows_processed || 0) + sourceRowsProcessed,
+        result_rows: resultRows || 0,
+        completed_at: now.toISOString(),
+        expires_at: new Date(now.getTime() + PENDING_CACHE_TTL_MS).toISOString(),
+        updated_at: now.toISOString(),
+      }
+      : {
+        status: "running",
+        next_page: nextPage,
+        source_rows_processed: Number(currentRun.source_rows_processed || 0) + sourceRowsProcessed,
+        result_rows: resultRows || 0,
+        updated_at: now.toISOString(),
+      };
+    const { error: updateError } = await supabase.from("sicas_ccj_report_runs").update(update).eq("id", runId);
+    if (updateError) throw updateError;
+    if (!completed) schedulePendingWorker(runId);
+  } catch (error) {
+    console.error("[SICAS CCJ pending worker]", error);
+    await supabase.from("sicas_ccj_report_runs").update({
+      status: "failed",
+      error: error instanceof Error ? error.message : String(error),
+      updated_at: new Date().toISOString(),
+    }).eq("id", runId);
+  }
+}
+
+async function readCachedRows(
+  supabase: ReturnType<typeof createClient>,
+  runId: string,
+  page: number,
+  pageSize: number,
+  exportAll: boolean,
+) {
+  if (!exportAll) {
+    const from = (page - 1) * pageSize;
+    const { data, error } = await supabase.from("sicas_ccj_report_rows").select("row_data")
+      .eq("run_id", runId).order("source_page").order("source_index")
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    return (data || []).map((item) => item.row_data as Record<string, unknown>);
+  }
+  const rows: Record<string, unknown>[] = [];
+  for (let from = 0;; from += 1000) {
+    const { data, error } = await supabase.from("sicas_ccj_report_rows").select("row_data")
+      .eq("run_id", runId).order("source_page").order("source_index")
+      .range(from, from + 999);
+    if (error) throw error;
+    rows.push(...(data || []).map((item) => item.row_data as Record<string, unknown>));
+    if (!data || data.length < 1000) break;
+  }
+  return rows;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse(405, { ok: false, error: "Método no permitido." });
 
   try {
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      serviceRoleKey,
     );
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
     if (!token) return jsonResponse(401, { ok: false, error: "No autorizado." });
+
+    const body = await req.json().catch(() => ({})) as ReportRequest;
+    const { data: config } = await supabase.from("sicas_config")
+      .select("sicas_usuario, sicas_password, code_auth").limit(1).maybeSingle();
+    const username = Deno.env.get("SICAS_USUARIO") || Deno.env.get("SICAS_USERNAME") || config?.sicas_usuario || "";
+    const password = Deno.env.get("SICAS_PASSWORD") || config?.sicas_password || "";
+    const codeAuth = Deno.env.get("SICAS_CODE_AUTH") || config?.code_auth || "";
+
+    if (body.action === "processPendingRun") {
+      if (token !== serviceRoleKey || !body.runId) {
+        return jsonResponse(403, { ok: false, error: "Worker no autorizado." });
+      }
+      if (!username || !password) {
+        await supabase.from("sicas_ccj_report_runs").update({
+          status: "failed",
+          error: "Las credenciales REST de SICAS no están configuradas.",
+          updated_at: new Date().toISOString(),
+        }).eq("id", body.runId);
+        return jsonResponse(503, { ok: false, error: "Credenciales SICAS no configuradas." });
+      }
+      EdgeRuntime.waitUntil(processPendingRun(supabase, body.runId, username, password, codeAuth));
+      return jsonResponse(202, { ok: true, status: "worker_started", runId: body.runId });
+    }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return jsonResponse(401, { ok: false, error: "Sesión no válida." });
@@ -348,19 +547,115 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(403, { ok: false, error: "Este reporte es exclusivo para administradores." });
     }
 
-    const body = await req.json().catch(() => ({})) as ReportRequest;
     const reportType: ReportType = body.reportType === "pendiente" ? "pendiente" : "efectuada";
     const page = Math.max(1, Math.floor(Number(body.page) || 1));
     const pageSize = Math.min(100, Math.max(10, Math.floor(Number(body.pageSize) || 50)));
     const exportAll = body.exportAll === true;
 
-    const { data: config } = await supabase.from("sicas_config")
-      .select("sicas_usuario, sicas_password, code_auth").limit(1).maybeSingle();
-    const username = Deno.env.get("SICAS_USUARIO") || Deno.env.get("SICAS_USERNAME") || config?.sicas_usuario || "";
-    const password = Deno.env.get("SICAS_PASSWORD") || config?.sicas_password || "";
-    const codeAuth = Deno.env.get("SICAS_CODE_AUTH") || config?.code_auth || "";
     if (!username || !password) {
       return jsonResponse(503, { ok: false, error: "Las credenciales REST de SICAS no están configuradas." });
+    }
+
+    if (reportType === "pendiente") {
+      const filters = normalizeFiltersForCache(body.filters || {});
+      const cacheKey = await buildCacheKey(filters);
+      const now = new Date();
+      if (body.forceRefresh) {
+        await supabase.from("sicas_ccj_report_runs").update({
+          status: "failed",
+          error: "Precarga reemplazada por actualización manual.",
+          updated_at: now.toISOString(),
+        }).eq("cache_key", cacheKey).in("status", ["queued", "running"]);
+      }
+
+      if (!body.forceRefresh) {
+        const { data: completed, error: completedError } = await supabase.from("sicas_ccj_report_runs")
+          .select("id, result_rows, completed_at, expires_at")
+          .eq("cache_key", cacheKey).eq("status", "completed")
+          .gt("expires_at", now.toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (completedError) throw completedError;
+        if (completed) {
+          const cachedRows = await readCachedRows(supabase, completed.id, page, pageSize, exportAll);
+          const total = Number(completed.result_rows) || 0;
+          return jsonResponse(200, {
+            ok: true,
+            status: "completed",
+            reportType,
+            columns: COLUMNS.pendiente,
+            rows: cachedRows,
+            pagination: {
+              page,
+              pageSize: exportAll ? cachedRows.length : pageSize,
+              total,
+              pages: Math.max(1, Math.ceil(total / pageSize)),
+            },
+            progress: { resultRows: total, completedAt: completed.completed_at },
+            source: { api: "SICAS REST · caché asíncrono", keyCode: "HWS03669_008", live: true },
+          });
+        }
+      }
+
+      let { data: active, error: activeError } = await supabase.from("sicas_ccj_report_runs")
+        .select("id, status, next_page, source_rows_processed, result_rows, created_at, updated_at, error")
+        .eq("cache_key", cacheKey).in("status", ["queued", "running"])
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (activeError) throw activeError;
+      if (!active) {
+        if (!body.forceRefresh) {
+          const { data: recentFailure, error: failureError } = await supabase.from("sicas_ccj_report_runs")
+            .select("error, updated_at").eq("cache_key", cacheKey).eq("status", "failed")
+            .gt("updated_at", new Date(now.getTime() - 10 * 60_000).toISOString())
+            .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+          if (failureError) throw failureError;
+          if (recentFailure) {
+            return jsonResponse(502, {
+              ok: false,
+              error: recentFailure.error || "La precarga de SICAS no pudo completarse.",
+            });
+          }
+        }
+        await supabase.from("sicas_ccj_report_runs").delete()
+          .lt("created_at", new Date(now.getTime() - 7 * 24 * 60 * 60_000).toISOString())
+          .in("status", ["completed", "failed"]);
+        const { data: created, error: createError } = await supabase.from("sicas_ccj_report_runs")
+          .insert({
+            cache_key: cacheKey,
+            report_type: "pendiente",
+            filters,
+            status: "queued",
+            requested_by: user.id,
+          })
+          .select("id, status, next_page, source_rows_processed, result_rows, created_at, updated_at, error")
+          .single();
+        if (createError) {
+          if (createError.code !== "23505") throw createError;
+          const { data: raced, error: raceError } = await supabase.from("sicas_ccj_report_runs")
+            .select("id, status, next_page, source_rows_processed, result_rows, created_at, updated_at, error")
+            .eq("cache_key", cacheKey).in("status", ["queued", "running"]).limit(1).single();
+          if (raceError) throw raceError;
+          active = raced;
+        } else {
+          active = created;
+          schedulePendingWorker(created.id);
+        }
+      }
+      return jsonResponse(202, {
+        ok: true,
+        status: active.status,
+        reportType,
+        columns: COLUMNS.pendiente,
+        rows: [],
+        pagination: { page: 1, pageSize, total: 0, pages: 1 },
+        progress: {
+          runId: active.id,
+          nextPage: active.next_page,
+          sourceRowsProcessed: active.source_rows_processed,
+          resultRows: active.result_rows,
+          startedAt: active.created_at,
+          updatedAt: active.updated_at,
+        },
+        source: { api: "SICAS REST · precarga asíncrona", keyCode: "HWS03669_008", live: false },
+      });
     }
 
     const sicasToken = await obtainToken(username, password, codeAuth);
