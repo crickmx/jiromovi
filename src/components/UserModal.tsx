@@ -24,6 +24,17 @@ import { syncUserTramiteTeamMemberships } from '../lib/tramiteTeamAssignments';
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 
+type UsuarioModal = Usuario & {
+  rol_id?: string | null;
+  seguros_express_habilitado?: boolean | null;
+  ubicacion_lat?: number | null;
+  ubicacion_lng?: number | null;
+  ubicacion_direccion_manual?: string | null;
+  ubicacion_metodo?: string | null;
+  id_sicas?: string | null;
+  nombre_sicas?: string | null;
+};
+
 interface ModuloSistema {
   id: string;
   codigo: string;
@@ -56,6 +67,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   const isAdmin = currentUser?.rol === 'Administrador';
   const isSaveBlocked = isImpersonating;
   const { roles: catalogoRoles } = useRoles();
+  const editableUser = user as UsuarioModal | null;
 
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -135,41 +147,41 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   useEffect(() => {
     loadOficinas();
     loadModulosSistema();
-    if (user) {
+    if (editableUser) {
       setFormData({
-        nombre: user.nombre,
-        apellidos: user.apellidos,
-        rol: lockRoleToAgente ? 'Agente' : user.rol,
-        rol_id: (lockRoleToAgente ? '' : ((user as any).rol_id ?? '')) as string,
-        puesto: user.puesto,
-        oficina_id: user.oficina_id || '',
-        web_slug: user.web_slug || '',
-        fecha_nacimiento: user.fecha_nacimiento || '',
-        fecha_ingreso: user.fecha_ingreso || '',
-        celular_personal: user.celular_personal,
-        email_personal: user.email_personal,
-        celular_laboral: user.celular_laboral,
-        email_laboral: user.email_laboral,
-        extension_telefonica: user.extension_telefonica,
-        regimen_fiscal_id: user.regimen_fiscal_id || '',
-        banco: user.banco || '',
-        clabe: user.clabe || '',
-        dias_vacaciones_disponibles: user.dias_vacaciones_disponibles || 0,
-        equipo_computo: user.equipo_computo || '',
-        equipo_celular: user.equipo_celular || '',
-        plan_mkt_premium: user.plan_mkt_premium || false,
-        seguros_express_habilitado: (user as any).seguros_express_habilitado || false,
+        nombre: editableUser.nombre,
+        apellidos: editableUser.apellidos,
+        rol: lockRoleToAgente ? 'Agente' : editableUser.rol,
+        rol_id: lockRoleToAgente ? '' : (editableUser.rol_id ?? ''),
+        puesto: editableUser.puesto,
+        oficina_id: editableUser.oficina_id || '',
+        web_slug: editableUser.web_slug || '',
+        fecha_nacimiento: editableUser.fecha_nacimiento || '',
+        fecha_ingreso: editableUser.fecha_ingreso || '',
+        celular_personal: editableUser.celular_personal,
+        email_personal: editableUser.email_personal,
+        celular_laboral: editableUser.celular_laboral,
+        email_laboral: editableUser.email_laboral,
+        extension_telefonica: editableUser.extension_telefonica,
+        regimen_fiscal_id: editableUser.regimen_fiscal_id || '',
+        banco: editableUser.banco || '',
+        clabe: editableUser.clabe || '',
+        dias_vacaciones_disponibles: editableUser.dias_vacaciones_disponibles || 0,
+        equipo_computo: editableUser.equipo_computo || '',
+        equipo_celular: editableUser.equipo_celular || '',
+        plan_mkt_premium: editableUser.plan_mkt_premium || false,
+        seguros_express_habilitado: editableUser.seguros_express_habilitado || false,
       });
       setUbic({
-        lat: (user as any).ubicacion_lat ?? null,
-        lng: (user as any).ubicacion_lng ?? null,
-        direccion_manual: (user as any).ubicacion_direccion_manual ?? null,
-        metodo: (user as any).ubicacion_metodo ?? null,
+        lat: editableUser.ubicacion_lat ?? null,
+        lng: editableUser.ubicacion_lng ?? null,
+        direccion_manual: editableUser.ubicacion_direccion_manual ?? null,
+        metodo: editableUser.ubicacion_metodo ?? null,
       });
-      loadPermisosAdicionales(user.id);
+      loadPermisosAdicionales(editableUser.id);
 
       // Prellenar el chip de enlace SICAS si el usuario ya tiene id_sicas.
-      const existingIdSicas = (user as any).id_sicas as string | null | undefined;
+      const existingIdSicas = editableUser.id_sicas;
       if (existingIdSicas && String(existingIdSicas).trim()) {
         const vendId = String(existingIdSicas).trim();
         getSicasVendorByVendId(vendId).then((v) => {
@@ -177,9 +189,9 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             v ?? {
               id: '',
               vend_id: vendId,
-              vend_nombre: ((user as any).nombre_sicas as string) || vendId,
+              vend_nombre: editableUser.nombre_sicas || vendId,
               desp_nombre: null,
-              movi_user_id: user.id,
+              movi_user_id: editableUser.id,
               status: 'active',
             }
           );
@@ -191,7 +203,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
       }
       setSicasTouched(false);
     }
-  }, [user]);
+  }, [editableUser]);
 
   // Búsqueda de vendedores SICAS (con debounce) mientras el buscador está abierto.
   useEffect(() => {
@@ -429,7 +441,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
           if (url) logoUrl = url;
         }
 
-        const updateData: Partial<Usuario> = {
+        const updateData: Partial<UsuarioModal> = {
           nombre: formData.nombre,
           apellidos: formData.apellidos,
           rol: formData.rol,
@@ -457,32 +469,56 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         };
 
         // seguros.express: habilitación (solo admin) + ubicación (editable por admin).
-        const ud = updateData as any;
-        ud.seguros_express_habilitado = formData.seguros_express_habilitado;
-        ud.ubicacion_lat = ubic.lat;
-        ud.ubicacion_lng = ubic.lng;
-        ud.ubicacion_direccion_manual = ubic.direccion_manual;
-        ud.ubicacion_metodo = ubic.metodo;
+        updateData.seguros_express_habilitado = formData.seguros_express_habilitado;
+        updateData.ubicacion_lat = ubic.lat;
+        updateData.ubicacion_lng = ubic.lng;
+        updateData.ubicacion_direccion_manual = ubic.direccion_manual;
+        updateData.ubicacion_metodo = ubic.metodo;
         const ubicCambio =
-          ((user as any).ubicacion_lat ?? null) !== ubic.lat ||
-          ((user as any).ubicacion_lng ?? null) !== ubic.lng ||
-          ((user as any).ubicacion_direccion_manual ?? null) !== ubic.direccion_manual ||
-          ((user as any).ubicacion_metodo ?? null) !== ubic.metodo;
-        if (ubicCambio) ud.ubicacion_updated_at = new Date().toISOString();
+          (editableUser?.ubicacion_lat ?? null) !== ubic.lat ||
+          (editableUser?.ubicacion_lng ?? null) !== ubic.lng ||
+          (editableUser?.ubicacion_direccion_manual ?? null) !== ubic.direccion_manual ||
+          (editableUser?.ubicacion_metodo ?? null) !== ubic.metodo;
+        if (ubicCambio) updateData.ubicacion_updated_at = new Date().toISOString();
 
-        // Enlace SICAS: solo se escribe si el admin tocó el control (evita pisar
-        // un nombre_sicas/id_sicas existente cuando no se modificó el enlace).
-        if (sicasTouched) {
-          ud.id_sicas = sicasLink?.vend_id ?? null;
-          ud.nombre_sicas = sicasLink?.vend_nombre ?? null;
+        // Edición server-side con service role para evitar bloqueos de RLS.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setError('No hay sesión activa');
+          setLoading(false);
+          return;
         }
 
-        const { error: updateError } = await supabase
-          .from('usuarios')
-          .update(updateData)
-          .eq('id', user.id);
+        const updateRequest = {
+          userId: user.id,
+          userData: {
+            ...updateData,
+            ...(sicasTouched ? {
+              id_sicas: sicasLink?.vend_id ?? null,
+              nombre_sicas: sicasLink?.vend_nombre ?? null,
+            } : {}),
+          },
+        };
 
-        if (updateError) throw updateError;
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/update-user`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify(updateRequest),
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          const errorMessage = result.error || 'Error al actualizar el usuario';
+          const detailsMessage = result.details ? ` (${result.details})` : '';
+          throw new Error(errorMessage + detailsMessage);
+        }
 
         await persistSicasLink(user.id);
 
@@ -561,55 +597,74 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         }
 
         // Si se creó el usuario y hay imágenes, subirlas ahora
+        let avatarUrl: string | null = null;
+        let logoUrl: string | null = null;
         if (result.userId && (avatarFile || logoFile)) {
           const userId = result.userId;
 
           if (avatarFile) {
-            const avatarUrl = await uploadImage(avatarFile, 'avatars', userId);
-            if (avatarUrl) {
-              await supabase
-                .from('usuarios')
-                .update({ imagen_perfil_url: avatarUrl })
-                .eq('id', userId);
-            }
+            avatarUrl = await uploadImage(avatarFile, 'avatars', userId);
           }
 
           if (logoFile) {
-            const logoUrl = await uploadImage(logoFile, 'usuarios-logos', userId);
-            if (logoUrl) {
-              await supabase
-                .from('usuarios')
-                .update({ mi_logotipo_url: logoUrl })
-                .eq('id', userId);
-            }
+            logoUrl = await uploadImage(logoFile, 'usuarios-logos', userId);
           }
         }
 
         // Asignar el rol del catálogo (rol_id). La edge function crea con `rol` (base);
         // aquí fijamos el rol específico elegido (que el trigger de BD solo pone por defecto).
-        if (result.userId && formData.rol_id) {
-          await supabase.from('usuarios').update({ rol_id: formData.rol_id } as any).eq('id', result.userId);
-        }
+        if (result.userId) {
+          const postCreateUpdate: Record<string, unknown> = {};
+          if (formData.rol_id) postCreateUpdate.rol_id = formData.rol_id;
+          if (avatarUrl) postCreateUpdate.imagen_perfil_url = avatarUrl;
+          if (logoUrl) postCreateUpdate.mi_logotipo_url = logoUrl;
+          if (sicasTouched) {
+            postCreateUpdate.id_sicas = sicasLink?.vend_id ?? null;
+            postCreateUpdate.nombre_sicas = sicasLink?.vend_nombre ?? null;
+          }
 
-        // Guardar permisos adicionales si es Gerente
-        if (result.userId && formData.rol === 'Gerente' && isAdmin) {
-          await savePermisosAdicionales(result.userId);
-        }
+          if (Object.keys(postCreateUpdate).length > 0) {
+            const { data: { session: postCreateSession } } = await supabase.auth.getSession();
+            if (!postCreateSession) {
+              throw new Error('No hay sesión activa');
+            }
 
-        // Enlace SICAS del usuario recién creado
-        if (result.userId && sicasTouched && sicasLink) {
-          await supabase
-            .from('usuarios')
-            .update({ id_sicas: sicasLink.vend_id, nombre_sicas: sicasLink.vend_nombre } as any)
-            .eq('id', result.userId);
-          await persistSicasLink(result.userId);
+            const updateResponse = await fetch(`${supabaseUrl}/functions/v1/update-user`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${postCreateSession.access_token}`,
+              },
+              body: JSON.stringify({
+                userId: result.userId,
+                userData: postCreateUpdate,
+              }),
+            });
+
+            const updateResult = await updateResponse.json();
+            if (!updateResponse.ok) {
+              const errorMessage = updateResult.error || 'Error al completar el guardado del usuario';
+              const detailsMessage = updateResult.details ? ` (${updateResult.details})` : '';
+              throw new Error(errorMessage + detailsMessage);
+            }
+          }
+
+          // Guardar permisos adicionales si es Gerente
+          if (formData.rol === 'Gerente' && isAdmin) {
+            await savePermisosAdicionales(result.userId);
+          }
+
+          // Enlace SICAS del usuario recién creado
+          if (sicasTouched && sicasLink) {
+            await persistSicasLink(result.userId);
+          }
         }
       }
 
       localStorage.removeItem(DRAFT_KEY);
       onSave();
-    } catch (err: any) {
-      setError(err.message || 'Error al guardar usuario');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al guardar usuario');
       setLoading(false);
     }
   };
@@ -861,7 +916,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                     value={formData.rol_id || catalogoRoles.find((r) => r.nombre === formData.rol)?.id || ''}
                     onChange={(e) => {
                       const r = catalogoRoles.find((x) => x.id === e.target.value);
-                      if (r) setFormData({ ...formData, rol_id: r.id, rol: r.rol_base as any });
+                      if (r) setFormData({ ...formData, rol_id: r.id, rol: r.rol_base as 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' });
                     }}
                     required
                     disabled={lockRoleToAgente || (!isAdmin && !isGerente)}
