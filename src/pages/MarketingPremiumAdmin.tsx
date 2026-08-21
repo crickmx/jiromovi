@@ -132,6 +132,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [tramitesAgente, setTramitesAgente] = useState<TramiteResumen[]>([]);
   const [cargandoTramites, setCargandoTramites] = useState(false);
   const [generandoTramite, setGenerandoTramite] = useState(false);
+  const [debugTramites, setDebugTramites] = useState<{ agenteId: string; error: string | null; count: number } | null>(null);
 
   const [nuevoAgente, setNuevoAgente] = useState({ nombre: '', apellidos: '', email_laboral: '', celular_laboral: '' });
   const [creandoAgente, setCreandoAgente] = useState(false);
@@ -205,6 +206,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   async function cargarTramitesAgente(agenteId: string) {
     setCargandoTramites(true);
     setTramitesAgente([]);
+    setDebugTramites(null);
     try {
       // Construir mapa de labels a partir de los triggers premium configurados
       const tipoMap: Record<string, string> = {};
@@ -224,14 +226,33 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
         });
       }
 
-      // Todos los tickets del agente (RLS ahora incluye equipo MKT)
-      const { data: tickets, error: errTickets } = await supabase
-        .from('tickets')
-        .select('id, folio, tipo_tramite, created_at, custom_estatus_label, creado_por')
-        .or(`agente_id.eq.${agenteId},agente_usuario_id.eq.${agenteId}`)
-        .order('created_at', { ascending: false });
+      // Intentar primero con RPC SECURITY DEFINER (bypasea RLS)
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_tickets_agente_premium', { p_agente_id: agenteId });
 
-      if (errTickets) console.error('[MKT historial] tickets error:', errTickets);
+      let tickets: any[] | null = null;
+      let errorMsg: string | null = null;
+
+      if (!rpcError && rpcData !== null) {
+        tickets = rpcData as any[];
+      } else {
+        // Fallback: query directa (requiere política RLS v8+)
+        const { data: ticketsDirecto, error: errTickets } = await supabase
+          .from('tickets')
+          .select('id, folio, tipo_tramite, created_at, custom_estatus_label, creado_por')
+          .or(`agente_id.eq.${agenteId},agente_usuario_id.eq.${agenteId}`)
+          .order('created_at', { ascending: false });
+
+        tickets = ticketsDirecto;
+        errorMsg = rpcError
+          ? `RPC: ${rpcError.message} | Directo: ${errTickets?.message ?? 'ok'}`
+          : (errTickets?.message ?? null);
+
+        if (errTickets) console.error('[MKT historial] tickets error:', errTickets);
+        if (rpcError) console.error('[MKT historial] rpc error:', rpcError);
+      }
+
+      setDebugTramites({ agenteId, error: errorMsg, count: tickets?.length ?? 0 });
 
       setTramitesAgente(
         (tickets ?? []).map((t: any) => ({
@@ -1102,6 +1123,13 @@ ALTER TABLE usuarios
                         {generandoTramite ? 'Generando…' : 'Generar trámite'}
                       </button>
                     </div>
+                    {debugTramites && (
+                      <div className="text-xs font-mono bg-neutral-100 dark:bg-white/5 rounded-lg px-2 py-1 space-y-0.5 text-neutral-500 dark:text-white/40">
+                        <div>ID: {debugTramites.agenteId}</div>
+                        <div>Encontrados: {debugTramites.count}</div>
+                        {debugTramites.error && <div className="text-red-500">Error: {debugTramites.error}</div>}
+                      </div>
+                    )}
                     {cargandoTramites ? (
                       <p className="text-xs text-neutral-400">Cargando…</p>
                     ) : tramitesAgente.length === 0 ? (
