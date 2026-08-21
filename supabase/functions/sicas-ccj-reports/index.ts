@@ -26,12 +26,20 @@ interface ReportFilters {
 }
 
 interface ReportRequest {
+  action?: "processReportRun" | "processPendingRun" | "scheduledSync";
+  runId?: string;
   reportType?: ReportType;
   page?: number;
   pageSize?: number;
   exportAll?: boolean;
+  forceRefresh?: boolean;
   filters?: ReportFilters;
 }
+
+const REPORT_CHUNK_SIZE = 100;
+const REPORT_PAGES_PER_WORKER = 1;
+const REPORT_MAX_PAGES = 1000;
+const DEFAULT_SYNC_INTERVAL_HOURS = 4;
 
 const COLUMNS: Record<ReportType, string[]> = {
   efectuada: [
@@ -120,6 +128,12 @@ function formatDateValue(value: unknown): unknown {
   return text;
 }
 
+function toFiniteNumber(value: unknown): number | null {
+  if (value === "" || value === null || value === undefined) return null;
+  const numeric = typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
 function normalizeRecord(record: Record<string, unknown>, reportType: ReportType) {
   const source = new Map<string, unknown>();
   for (const [key, value] of Object.entries(record)) source.set(normalizeKey(key), value);
@@ -138,11 +152,20 @@ function normalizeRecord(record: Record<string, unknown>, reportType: ReportType
 
     if (DATE_COLUMNS.has(column)) value = formatDateValue(value);
     if (NUMERIC_COLUMNS.has(column) && value !== "" && value !== null && value !== undefined) {
-      const numeric = typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
-      value = Number.isFinite(numeric) ? numeric : value;
+      const numeric = toFiniteNumber(value);
+      value = numeric ?? value;
     }
     result[column] = value ?? "";
   }
+
+  if (reportType === "efectuada") {
+    const primaNeta = toFiniteNumber(result.PrimaNeta);
+    const tipoCambio = toFiniteNumber(result.TCDocto);
+    result["IMPORTE PESOS"] = primaNeta !== null && tipoCambio !== null
+      ? Math.round((primaNeta + tipoCambio + Number.EPSILON) * 100) / 100
+      : "";
+  }
+
   return result;
 }
 
@@ -180,7 +203,7 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
     if (filters.despacho) conditions.push(condition("Despacho", 0, 1, `*${filters.despacho}*`, `*${filters.despacho}*`, 1, 0, "VCatDespachos.DespNombre"));
     if (filters.agente) conditions.push(condition("Agente", 0, 0, filters.agente, filters.agente, 1, 0, "VCatAgentes.CAgente"));
   } else {
-    direct.push(condition("Status", 0, 0, "Pendiente", "Pendiente", 1, 0, "Status_TXT"));
+    conditions.push(condition("Status", 0, 0, "Pendiente", "Pendiente", 1, 0, "VDatDocumentos.Status_TXT"));
     if (filters.fechaDesde && filters.fechaHasta) {
       const from = toSicasDate(filters.fechaDesde);
       const to = toSicasDate(filters.fechaHasta);
@@ -201,11 +224,21 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
 
 async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
   let response: Response | null = null;
+  let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt++) {
-    response = await fetch(url, init);
-    if (![408, 429, 500, 502, 503, 504].includes(response.status)) return response;
-    await response.text();
+    try {
+      response = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
+      if (![408, 429, 500, 502, 503, 504].includes(response.status)) return response;
+      await response.text();
+    } catch (error) {
+      lastError = error;
+    }
     if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  if (!response) {
+    throw new Error(lastError instanceof Error
+      ? `SICAS no respondió a tiempo: ${lastError.message}`
+      : "SICAS no respondió a tiempo.");
   }
   return response!;
 }
@@ -221,7 +254,7 @@ async function parseJsonResponse(response: Response): Promise<Record<string, unk
   }
   if (!response.ok) {
     const message = (parsed as Record<string, unknown>)?.Error || (parsed as Record<string, unknown>)?.Message;
-    throw new Error(String(message || `SICAS respondió HTTP ${response.status}.`));
+    throw new Error(`SICAS HTTP ${response.status}: ${String(message || text).slice(0, 500)}`);
   }
   return parsed as Record<string, unknown>;
 }
@@ -327,18 +360,452 @@ async function readSicasReport(
   throw lastError || new Error("No fue posible consultar el reporte SICAS.");
 }
 
+function normalizeFiltersForCache(rawFilters: ReportFilters = {}): ReportFilters {
+  return Object.fromEntries(
+    Object.entries(rawFilters)
+      .map(([key, value]) => [key, sanitizeFilter(value)])
+      .filter(([, value]) => Boolean(value))
+      .sort(([left], [right]) => left.localeCompare(right)),
+  ) as ReportFilters;
+}
+
+async function sha256(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function buildCacheKey(reportType: ReportType): Promise<string> {
+  return `${reportType}:${await sha256("full-local-sync")}`;
+}
+
+function scheduleReportWorker(runId: string) {
+  const projectUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  EdgeRuntime.waitUntil(
+    fetch(`${projectUrl}/functions/v1/sicas-ccj-reports`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        Apikey: serviceRoleKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "processReportRun", runId }),
+    }).then(async (response) => {
+      if (!response.ok) console.error("[SICAS CCJ worker chain]", response.status, await response.text());
+    }).catch((error) => console.error("[SICAS CCJ worker chain]", error)),
+  );
+}
+
+function toIsoDate(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
+}
+
+async function buildRecordKey(
+  raw: Record<string, unknown>,
+  row: Record<string, unknown>,
+  reportType: ReportType,
+): Promise<string> {
+  const rawByKey = new Map(Object.entries(raw).map(([key, value]) => [normalizeKey(key), value]));
+  const idCandidates = reportType === "efectuada"
+    ? ["IDRecibo", "IDDocto", "IDDocumento"]
+    : ["IDDocto", "IDDocumento", "IDRecibo"];
+  const ids = idCandidates
+    .map((key) => rawByKey.get(normalizeKey(key)))
+    .filter((value) => value !== null && value !== undefined && String(value).trim() !== "")
+    .map(String);
+  if (ids.length) {
+    const discriminator = reportType === "efectuada"
+      ? [row.Documento, row.Serie, row.Endoso, row["Fecha de Pago"], row.FDesde, row.FHasta, row.CAgente]
+      : [row.Documento, row.Serie, row.Endoso, row.FLimPago, row.FDesde, row.FHasta, row.NombreCompleto];
+    return `id:${await sha256(JSON.stringify([ids, discriminator]))}`;
+  }
+
+  const identity = reportType === "efectuada"
+    ? [row.Documento, row.Serie, row.Endoso, row["Fecha de Pago"], row.PrimaNeta, row.ClaveVend, row.CAgente]
+    : [row.Documento, row.Serie, row.Endoso, row.FLimPago, row.PrimaNeta, row.NombreCompleto, row.Concepto, row.FPago];
+  return `natural:${await sha256(JSON.stringify(identity))}`;
+}
+
+function recordProjection(
+  reportType: ReportType,
+  row: Record<string, unknown>,
+  sourcePage: number,
+  sourceIndex: number,
+) {
+  return {
+    report_type: reportType,
+    row_data: row,
+    document: String(row.Documento || "") || null,
+    company: String(row["Nombre Compañía"] || "") || null,
+    vendor: String(row.VendNombre || row.ClaveVend || "") || null,
+    despacho: String(row.DespNombre || "") || null,
+    agent: String(row.CAgente || row["Clave de Agente"] || "") || null,
+    ramo: String(row.RamosNombre || "") || null,
+    subramo: String(row["Sub Ramo"] || row.SRamoNombre || "") || null,
+    gerencia: String(row.GerenciaNombre || "") || null,
+    report_date: toIsoDate(reportType === "efectuada" ? row["Fecha de Pago"] : row.FLimPago),
+    source_page: sourcePage,
+    source_index: sourceIndex,
+  };
+}
+
+async function processReportRun(
+  supabase: ReturnType<typeof createClient>,
+  runId: string,
+  username: string,
+  password: string,
+  codeAuth: string,
+) {
+  try {
+    const { data: run, error: runError } = await supabase.from("sicas_ccj_report_runs")
+      .select("id, report_type, status, next_page")
+      .eq("id", runId)
+      .maybeSingle();
+    if (runError) throw runError;
+    if (!run || !["queued", "running"].includes(run.status)) return;
+    const reportType = run.report_type as ReportType;
+
+    const startPage = Math.max(1, Number(run.next_page) || 1);
+    if (startPage > REPORT_MAX_PAGES) {
+      throw new Error(`SICAS superó el límite seguro de ${REPORT_MAX_PAGES * REPORT_CHUNK_SIZE} registros.`);
+    }
+    await supabase.from("sicas_ccj_report_runs").update({
+      status: "running",
+      ...(run.status === "queued" ? { started_at: new Date().toISOString() } : {}),
+      updated_at: new Date().toISOString(),
+      error: null,
+    }).eq("id", runId).eq("status", run.status);
+
+    const sicasToken = await obtainToken(username, password, codeAuth);
+    const pageNumbers = Array.from(
+      { length: Math.min(REPORT_PAGES_PER_WORKER, REPORT_MAX_PAGES - startPage + 1) },
+      (_, index) => startPage + index,
+    );
+    const pageResults: Awaited<ReturnType<typeof readSicasReport>>[] = [];
+    // SICAS rechaza ráfagas concurrentes en algunos reportes. Consumimos varias
+    // páginas por ejecución, pero una por una, para respetar el servicio origen.
+    for (const requestedPage of pageNumbers) {
+      pageResults.push(await readSicasReport(sicasToken, reportType, requestedPage, REPORT_CHUNK_SIZE, false, {}));
+    }
+
+    const synchronizedRows: Array<Record<string, unknown> & { record_key: string; data_hash: string }> = [];
+    let sourceRowsProcessed = 0;
+    let nextPage = startPage;
+    let completed = false;
+
+    for (let resultIndex = 0; resultIndex < pageResults.length; resultIndex++) {
+      const sourcePage = pageNumbers[resultIndex];
+      const rawRows = pageResults[resultIndex].rows;
+      const control = pageResults[resultIndex].control;
+      const totalPages = Number(control.Pages ?? control.TotalPages ?? 0) || 0;
+      sourceRowsProcessed += rawRows.length;
+      for (let sourceIndex = 0; sourceIndex < rawRows.length; sourceIndex++) {
+        const rawRow = rawRows[sourceIndex];
+        const row = normalizeRecord(rawRow, reportType);
+        if (reportType === "pendiente" && String(row.Status_TXT || "").trim().toLocaleLowerCase("es-MX") !== "pendiente") continue;
+        synchronizedRows.push({
+          ...recordProjection(reportType, row, sourcePage, sourceIndex),
+          record_key: await buildRecordKey(rawRow, row, reportType),
+          data_hash: await sha256(JSON.stringify(row)),
+        });
+      }
+      nextPage = sourcePage + 1;
+      if (rawRows.length < REPORT_CHUNK_SIZE || (totalPages > 0 && sourcePage >= totalPages)) {
+        completed = true;
+        break;
+      }
+    }
+
+    let insertedRows = 0;
+    let updatedRows = 0;
+    let unchangedRows = 0;
+    if (synchronizedRows.length) {
+      // SICAS puede repetir una misma fila dentro de una página. Postgres no permite
+      // actualizar dos veces la misma llave en un solo UPSERT, así que consolidamos
+      // duplicados idénticos antes de comparar y persistir.
+      const uniqueRows = Array.from(new Map(
+        synchronizedRows.map((row) => [String(row.record_key), row]),
+      ).values());
+      const keys = uniqueRows.map((row) => String(row.record_key));
+      const { data: existing, error: existingError } = await supabase.from("sicas_ccj_records")
+        .select("record_key, data_hash, updated_at")
+        .eq("report_type", reportType)
+        .in("record_key", keys);
+      if (existingError) throw existingError;
+      const existingByKey = new Map((existing || []).map((row) => [row.record_key, row]));
+      const nowIso = new Date().toISOString();
+      const upserts = uniqueRows.map((row) => {
+        const previous = existingByKey.get(String(row.record_key));
+        if (!previous) insertedRows++;
+        else if (previous.data_hash !== row.data_hash) updatedRows++;
+        else unchangedRows++;
+        return {
+          ...row,
+          seen_run_id: runId,
+          is_active: true,
+          last_seen_at: nowIso,
+          updated_at: previous && previous.data_hash === row.data_hash ? previous.updated_at : nowIso,
+        };
+      });
+      const { error: rowsError } = await supabase.from("sicas_ccj_records")
+        .upsert(upserts, { onConflict: "report_type,record_key" });
+      if (rowsError) throw rowsError;
+    }
+
+    const { count: resultRows, error: countError } = await supabase.from("sicas_ccj_records")
+      .select("record_key", { count: "exact", head: true })
+      .eq("report_type", reportType).eq("seen_run_id", runId);
+    if (countError) throw countError;
+
+    const { data: currentRun, error: currentError } = await supabase.from("sicas_ccj_report_runs")
+      .select("source_rows_processed, inserted_rows, updated_rows, unchanged_rows")
+      .eq("id", runId).single();
+    if (currentError) throw currentError;
+    const now = new Date();
+    let deactivatedRows = 0;
+    if (completed) {
+      const { data: deactivated, error: deactivateError } = await supabase.from("sicas_ccj_records")
+        .update({ is_active: false, updated_at: now.toISOString() })
+        .eq("report_type", reportType).eq("is_active", true).neq("seen_run_id", runId)
+        .select("record_key");
+      if (deactivateError) throw deactivateError;
+      deactivatedRows = deactivated?.length || 0;
+    }
+    const update = completed
+      ? {
+        status: "completed",
+        next_page: nextPage,
+        source_rows_processed: Number(currentRun.source_rows_processed || 0) + sourceRowsProcessed,
+        result_rows: resultRows || 0,
+        completed_at: now.toISOString(),
+        expires_at: null,
+        inserted_rows: Number(currentRun.inserted_rows || 0) + insertedRows,
+        updated_rows: Number(currentRun.updated_rows || 0) + updatedRows,
+        unchanged_rows: Number(currentRun.unchanged_rows || 0) + unchangedRows,
+        deactivated_rows: deactivatedRows,
+        updated_at: now.toISOString(),
+      }
+      : {
+        status: "running",
+        next_page: nextPage,
+        source_rows_processed: Number(currentRun.source_rows_processed || 0) + sourceRowsProcessed,
+        result_rows: resultRows || 0,
+        inserted_rows: Number(currentRun.inserted_rows || 0) + insertedRows,
+        updated_rows: Number(currentRun.updated_rows || 0) + updatedRows,
+        unchanged_rows: Number(currentRun.unchanged_rows || 0) + unchangedRows,
+        updated_at: now.toISOString(),
+      };
+    const { error: updateError } = await supabase.from("sicas_ccj_report_runs").update(update).eq("id", runId);
+    if (updateError) throw updateError;
+    if (!completed) scheduleReportWorker(runId);
+  } catch (error) {
+    console.error("[SICAS CCJ report worker]", error);
+    const errorMessage = error instanceof Error
+      ? error.message
+      : (() => {
+        try {
+          return JSON.stringify(error);
+        } catch {
+          return String(error);
+        }
+      })();
+    await supabase.from("sicas_ccj_report_runs").update({
+      status: "failed",
+      error: errorMessage,
+      updated_at: new Date().toISOString(),
+    }).eq("id", runId);
+  }
+}
+
+async function latestRun(supabase: ReturnType<typeof createClient>, reportType: ReportType, statuses: string[]) {
+  const { data, error } = await supabase.from("sicas_ccj_report_runs")
+    .select("id, status, next_page, source_rows_processed, result_rows, inserted_rows, updated_rows, unchanged_rows, deactivated_rows, trigger_source, started_at, completed_at, updated_at, error")
+    .eq("report_type", reportType).in("status", statuses)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function ensureSync(
+  supabase: ReturnType<typeof createClient>,
+  reportType: ReportType,
+  triggerSource: "automatic" | "manual" | "initial",
+  requestedBy: string | null,
+  force: boolean,
+) {
+  const active = await latestRun(supabase, reportType, ["queued", "running"]);
+  if (active) {
+    // También sirve como mecanismo de recuperación si una invocación anterior
+    // terminó antes de poder encadenar al siguiente bloque.
+    scheduleReportWorker(active.id);
+    return active;
+  }
+
+  if (!force) {
+    const completed = await latestRun(supabase, reportType, ["completed"]);
+    const { data: config } = await supabase.from("sicas_ccj_sync_config")
+      .select("interval_hours").eq("id", true).maybeSingle();
+    const intervalHours = Number(config?.interval_hours) || DEFAULT_SYNC_INTERVAL_HOURS;
+    if (completed?.completed_at && new Date(completed.completed_at).getTime() > Date.now() - intervalHours * 60 * 60_000) {
+      return null;
+    }
+  }
+
+  const cacheKey = await buildCacheKey(reportType);
+  const { data: created, error } = await supabase.from("sicas_ccj_report_runs")
+    .insert({
+      cache_key: cacheKey,
+      report_type: reportType,
+      filters: {},
+      status: "queued",
+      requested_by: requestedBy,
+      trigger_source: triggerSource,
+    })
+    .select("id, status, next_page, source_rows_processed, result_rows, inserted_rows, updated_rows, unchanged_rows, deactivated_rows, trigger_source, started_at, completed_at, updated_at, error")
+    .single();
+  if (error) {
+    if (error.code === "23505") return await latestRun(supabase, reportType, ["queued", "running"]);
+    throw error;
+  }
+  scheduleReportWorker(created.id);
+  return created;
+}
+
+function applyLocalFilters(query: any, filters: ReportFilters) {
+  let filtered = query;
+  if (filters.fechaDesde) filtered = filtered.gte("report_date", filters.fechaDesde);
+  if (filters.fechaHasta) filtered = filtered.lte("report_date", filters.fechaHasta);
+  if (filters.documento) filtered = filtered.ilike("document", `%${sanitizeFilter(filters.documento)}%`);
+  if (filters.compania) filtered = filtered.ilike("company", `%${sanitizeFilter(filters.compania)}%`);
+  if (filters.vendedor) filtered = filtered.ilike("vendor", `%${sanitizeFilter(filters.vendedor)}%`);
+  if (filters.despacho) filtered = filtered.ilike("despacho", `%${sanitizeFilter(filters.despacho)}%`);
+  if (filters.agente) filtered = filtered.ilike("agent", `%${sanitizeFilter(filters.agente)}%`);
+  if (filters.ramo) filtered = filtered.ilike("ramo", `%${sanitizeFilter(filters.ramo)}%`);
+  if (filters.subramo) filtered = filtered.ilike("subramo", `%${sanitizeFilter(filters.subramo)}%`);
+  if (filters.gerencia) filtered = filtered.ilike("gerencia", `%${sanitizeFilter(filters.gerencia)}%`);
+  return filtered;
+}
+
+async function readLocalRecords(
+  supabase: ReturnType<typeof createClient>,
+  reportType: ReportType,
+  filters: ReportFilters,
+  page: number,
+  pageSize: number,
+  exportAll: boolean,
+) {
+  if (!exportAll) {
+    const from = (page - 1) * pageSize;
+    const query = supabase.from("sicas_ccj_records")
+      .select("row_data", { count: "exact" })
+      .eq("report_type", reportType).eq("is_active", true)
+      .order("source_page").order("source_index")
+      .range(from, from + pageSize - 1);
+    const { data, count, error } = await applyLocalFilters(query, filters);
+    if (error) throw error;
+    return { rows: (data || []).map((item: any) => item.row_data), total: count || 0 };
+  }
+
+  const rows: Record<string, unknown>[] = [];
+  for (let from = 0;; from += 1000) {
+    const query = supabase.from("sicas_ccj_records").select("row_data")
+      .eq("report_type", reportType).eq("is_active", true)
+      .order("source_page").order("source_index")
+      .range(from, from + 999);
+    const { data, error } = await applyLocalFilters(query, filters);
+    if (error) throw error;
+    rows.push(...(data || []).map((item: any) => item.row_data));
+    if (!data || data.length < 1000) break;
+  }
+  return { rows, total: rows.length };
+}
+
+function progressFromRun(run: any) {
+  if (!run) return undefined;
+  return {
+    runId: run.id,
+    nextPage: run.next_page,
+    sourceRowsProcessed: run.source_rows_processed,
+    resultRows: run.result_rows,
+    insertedRows: run.inserted_rows,
+    updatedRows: run.updated_rows,
+    unchangedRows: run.unchanged_rows,
+    deactivatedRows: run.deactivated_rows,
+    triggerSource: run.trigger_source,
+    startedAt: run.started_at,
+    updatedAt: run.updated_at,
+    completedAt: run.completed_at,
+  };
+}
+
+async function cronAuthorized(supabase: ReturnType<typeof createClient>, req: Request) {
+  const supplied = req.headers.get("X-Sicas-CCJ-Cron") || "";
+  if (!supplied) return false;
+  const { data, error } = await supabase.from("sicas_ccj_sync_config")
+    .select("cron_secret_hash").eq("id", true).maybeSingle();
+  if (error || !data?.cron_secret_hash) return false;
+  return await sha256(supplied) === data.cron_secret_hash;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse(405, { ok: false, error: "Método no permitido." });
 
   try {
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      serviceRoleKey,
     );
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
     if (!token) return jsonResponse(401, { ok: false, error: "No autorizado." });
+
+    const body = await req.json().catch(() => ({})) as ReportRequest;
+    const { data: config } = await supabase.from("sicas_config")
+      .select("sicas_usuario, sicas_password, code_auth").limit(1).maybeSingle();
+    const username = Deno.env.get("SICAS_USUARIO") || Deno.env.get("SICAS_USERNAME") || config?.sicas_usuario || "";
+    const password = Deno.env.get("SICAS_PASSWORD") || config?.sicas_password || "";
+    const codeAuth = Deno.env.get("SICAS_CODE_AUTH") || config?.code_auth || "";
+
+    if (body.action === "processReportRun" || body.action === "processPendingRun") {
+      if (token !== serviceRoleKey || !body.runId) {
+        return jsonResponse(403, { ok: false, error: "Worker no autorizado." });
+      }
+      if (!username || !password) {
+        await supabase.from("sicas_ccj_report_runs").update({
+          status: "failed",
+          error: "Las credenciales REST de SICAS no están configuradas.",
+          updated_at: new Date().toISOString(),
+        }).eq("id", body.runId);
+        return jsonResponse(503, { ok: false, error: "Credenciales SICAS no configuradas." });
+      }
+      EdgeRuntime.waitUntil(processReportRun(supabase, body.runId, username, password, codeAuth));
+      return jsonResponse(202, { ok: true, status: "worker_started", runId: body.runId });
+    }
+
+    if (body.action === "scheduledSync") {
+      if (!await cronAuthorized(supabase, req)) {
+        return jsonResponse(403, { ok: false, error: "Cron no autorizado." });
+      }
+      if (!username || !password) {
+        return jsonResponse(503, { ok: false, error: "Credenciales SICAS no configuradas." });
+      }
+      const [efectuada, pendiente] = await Promise.all([
+        ensureSync(supabase, "efectuada", "automatic", null, true),
+        ensureSync(supabase, "pendiente", "automatic", null, true),
+      ]);
+      return jsonResponse(202, {
+        ok: true,
+        status: "queued",
+        runs: { efectuada: progressFromRun(efectuada), pendiente: progressFromRun(pendiente) },
+      });
+    }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return jsonResponse(401, { ok: false, error: "Sesión no válida." });
@@ -348,38 +815,45 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(403, { ok: false, error: "Este reporte es exclusivo para administradores." });
     }
 
-    const body = await req.json().catch(() => ({})) as ReportRequest;
     const reportType: ReportType = body.reportType === "pendiente" ? "pendiente" : "efectuada";
     const page = Math.max(1, Math.floor(Number(body.page) || 1));
     const pageSize = Math.min(100, Math.max(10, Math.floor(Number(body.pageSize) || 50)));
     const exportAll = body.exportAll === true;
+    const filters = normalizeFiltersForCache(body.filters || {});
 
-    const { data: config } = await supabase.from("sicas_config")
-      .select("sicas_usuario, sicas_password, code_auth").limit(1).maybeSingle();
-    const username = Deno.env.get("SICAS_USUARIO") || Deno.env.get("SICAS_USERNAME") || config?.sicas_usuario || "";
-    const password = Deno.env.get("SICAS_PASSWORD") || config?.sicas_password || "";
-    const codeAuth = Deno.env.get("SICAS_CODE_AUTH") || config?.code_auth || "";
-    if (!username || !password) {
+    if (body.forceRefresh && (!username || !password)) {
       return jsonResponse(503, { ok: false, error: "Las credenciales REST de SICAS no están configuradas." });
     }
 
-    const sicasToken = await obtainToken(username, password, codeAuth);
-    const { rows, control, keyCode } = await readSicasReport(
-      sicasToken, reportType, page, pageSize, exportAll, body.filters || {},
-    );
-    const normalizedRows = rows
-      .map((row) => normalizeRecord(row, reportType))
-      .filter((row) => reportType !== "pendiente" || String(row.Status_TXT || "").trim().toLocaleLowerCase("es-MX") === "pendiente");
-    const total = Number(control.MaxRecords ?? control.TotalRecords ?? control.Records ?? normalizedRows.length) || normalizedRows.length;
-    const pages = Number(control.Pages ?? control.TotalPages ?? (exportAll ? 1 : Math.ceil(total / pageSize))) || 1;
+    let active = await latestRun(supabase, reportType, ["queued", "running"]);
+    if (body.forceRefresh) {
+      active = await ensureSync(supabase, reportType, "manual", user.id, true);
+    } else if (!active && username && password) {
+      active = await ensureSync(supabase, reportType, "automatic", user.id, false);
+    }
+
+    const local = await readLocalRecords(supabase, reportType, filters, page, pageSize, exportAll);
+    const completed = await latestRun(supabase, reportType, ["completed"]);
+    if (!active && local.total === 0 && username && password) {
+      active = await ensureSync(supabase, reportType, "initial", user.id, true);
+    }
+    const syncRun = active || completed;
+    const keyCode = reportType === "efectuada" ? "H02761" : "HWS03669_008";
 
     return jsonResponse(200, {
       ok: true,
+      status: active?.status || "completed",
       reportType,
       columns: COLUMNS[reportType],
-      rows: normalizedRows,
-      pagination: { page, pageSize: exportAll ? normalizedRows.length : pageSize, total, pages },
-      source: { api: "SICAS REST", keyCode, live: true },
+      rows: local.rows,
+      pagination: {
+        page,
+        pageSize: exportAll ? local.rows.length : pageSize,
+        total: local.total,
+        pages: Math.max(1, Math.ceil(local.total / pageSize)),
+      },
+      progress: progressFromRun(syncRun),
+      source: { api: "Base local · sincronizada con SICAS", keyCode, live: true },
     });
   } catch (error) {
     console.error("[SICAS CCJ Reports]", error);

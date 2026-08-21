@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import * as XLSX from "npm:xlsx";
 
 const LECTOR_URL = "https://lector.movi.digital";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -48,6 +49,41 @@ function buildMessage(campos: Record<string, string>, aseguradora?: string, subR
     campos.serie && `Serie: ${campos.serie}`,
   ].filter(Boolean);
   return lineas.join("\n");
+}
+
+const SICAS_HEADERS = [
+  "Entidad", "Apellido Paterno", "Apellido Materno", "Nombre",
+  "Razón Social", "R.F.C.", "Grupo", "Ejecutivo de Cuenta", "Despacho",
+  "Tipo Documento", "Documento", "Agente", "Forma Pago", "Moneda",
+  "Sub Ramo", "Vendedor", "Renovación", "Fecha Antigüedad", "Desde", "Hasta",
+  "Estatus", "Prima Neta", "Descuento", "Recargos", "Derechos", "Sub Total",
+  "IVA", "Prima Total", "Concepto", "Serie", "Descripción", "Modelo", "Motor", "Placas",
+];
+
+function parseName(nombreCompleto: string | null, esMoral: boolean) {
+  if (esMoral || !nombreCompleto) return { apellidoP: "", apellidoM: "", nombre: nombreCompleto ?? "" };
+  const parts = nombreCompleto.trim().split(/\s+/);
+  if (parts.length === 1) return { apellidoP: "", apellidoM: "", nombre: parts[0] };
+  if (parts.length === 2) return { apellidoP: parts[0], apellidoM: "", nombre: parts[1] };
+  return { apellidoP: parts[0], apellidoM: parts[1], nombre: parts.slice(2).join(" ") };
+}
+
+function buildSicasRow(d: Record<string, unknown>): unknown[] {
+  const moral = d.entidad === 1;
+  const { apellidoP, apellidoM, nombre } = parseName(d.nombre_completo as string | null, moral);
+  return [
+    d.entidad === 0 ? "Física" : d.entidad === 1 ? "Moral" : "",
+    apellidoP, apellidoM, nombre,
+    d.razon_social ?? "", d.rfc ?? "", "", d.ejecutivo_cuenta ?? "", "",
+    d.tipo_documento ?? "Póliza", d.documento ?? "", d.agente_clave ?? "",
+    d.forma_pago ?? "", d.moneda ?? "", d.sub_ramo ?? "", "",
+    d.renovacion ?? "", d.fecha_antiguedad ?? "", d.desde ?? "", d.hasta ?? "",
+    "Vigente",
+    d.prima_neta ?? "", d.descuento ?? "", d.recargos ?? "", d.derechos ?? "",
+    d.sub_total ?? "", d.iva ?? "", d.prima_total ?? "",
+    d.concepto ?? "", d.serie ?? "", d.descripcion_veh ?? "",
+    d.modelo ?? "", d.motor ?? "", d.placas ?? "",
+  ];
 }
 
 type NotifConfig = {
@@ -196,6 +232,53 @@ Deno.serve(async (req: Request) => {
     }, { onConflict: "archivo_id" });
 
     if (saveErr) throw new Error(`Error guardando: ${saveErr.message}`);
+
+    // 8b. Generar y adjuntar XLSX para SICAS
+    if (ticket.agente_id) {
+      try {
+        const datosRow: Record<string, unknown> = {
+          entidad, nombre_completo: campos.nombre_cliente ?? null,
+          razon_social: entidad === 1 ? (campos.nombre_cliente ?? null) : null,
+          rfc: rfc ?? null, ejecutivo_cuenta: null, renovacion: null,
+          tipo_documento: "Póliza", documento: campos.documento ?? null,
+          agente_clave: campos.agente_clave ?? null, forma_pago: campos.forma_pago ?? null,
+          moneda: campos.moneda ?? null, sub_ramo: extracted.sub_ramo ?? null,
+          desde: parseDate(campos.desde), hasta: parseDate(campos.hasta),
+          prima_neta: parseNum(campos.prima_neta), descuento: parseNum(campos.descuento),
+          recargos: parseNum(campos.recargos), derechos: parseNum(campos.derechos),
+          sub_total: parseNum(campos.sub_total), iva: parseNum(campos.iva),
+          prima_total: parseNum(campos.prima_total), concepto: campos.descripcion_veh ?? null,
+          serie: campos.serie ?? null, descripcion_veh: campos.descripcion_veh ?? null,
+          modelo: campos.modelo ?? null, motor: campos.motor ?? null, placas: campos.placas ?? null,
+        };
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([SICAS_HEADERS, buildSicasRow(datosRow)]);
+        XLSX.utils.book_append_sheet(wb, ws, "SICAS");
+        const xlsxArr: number[] = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+        const xlsxBytes = new Uint8Array(xlsxArr);
+        const xlsxName = `${ticket.folio ?? ticket_id}-SICAS.xlsx`;
+        const xlsxPath = `sicas-exports/${ticket_id}/${xlsxName}`;
+        const { error: uploadXlsxErr } = await sb.storage
+          .from(STORAGE_BUCKET)
+          .upload(xlsxPath, xlsxBytes, {
+            contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            upsert: true,
+          });
+        if (!uploadXlsxErr) {
+          const { data: { publicUrl: xlsxUrl } } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(xlsxPath);
+          await sb.from("ticket_archivos").insert({
+            ticket_id,
+            usuario_id: ticket.agente_id,
+            nombre: xlsxName,
+            url: xlsxUrl,
+            tipo: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            tamano: xlsxBytes.byteLength,
+          });
+        }
+      } catch (_xlsxErr) {
+        // ponytail: silenciar error de XLSX para no bloquear el flujo principal
+      }
+    }
 
     const mensaje = buildMessage(campos, extracted.aseguradora, extracted.sub_ramo, ticket.folio);
     const ticketUrl = `/tramites/${ticket_id}`;
