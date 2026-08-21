@@ -71,15 +71,18 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
   };
 
   const [extractionStatus, setExtractionStatus] = useState<Record<string, { estado: 'pendiente' | 'ok' | 'error'; mensaje?: string }>>({});
+  const [tiposConfigAdjunto, setTiposConfigAdjunto] = useState<{ categoria_id: string; requerido: boolean; dispara_extraccion: boolean }[]>([]);
 
   // Category picker state
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [pendingFileTypes, setPendingFileTypes] = useState<Record<number, string>>({});
   const [selectedCategoriaId, setSelectedCategoriaId] = useState('');
   const [categoriaError, setCategoriaError] = useState(false);
 
   useEffect(() => {
     loadArchivos();
     loadCategorias();
+    loadTiposConfig();
 
     const subscription = supabase
       .channel(`tramite_archivos_${tramiteId}`)
@@ -121,6 +124,16 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       .eq('activo', true)
       .order('orden');
     if (data) setCategorias(data as Categoria[]);
+  };
+
+  const loadTiposConfig = async () => {
+    const { data: ticket } = await supabase.from('tickets').select('tipo_tramite').eq('id', tramiteId).single();
+    if (!ticket?.tipo_tramite) return;
+    const { data: tipo } = await supabase.from('ticket_tipos').select('id').eq('value', ticket.tipo_tramite).single();
+    if (!tipo?.id) return;
+    const { data: campos } = await supabase.from('tramite_tipo_campos').select('config').eq('tramite_tipo_id', tipo.id).eq('tipo', 'adjunto');
+    const configs = (campos || []).flatMap(c => (c.config?.tipos_config || []) as { categoria_id: string; requerido: boolean; dispara_extraccion: boolean }[]);
+    setTiposConfigAdjunto(configs.filter(tc => tc.categoria_id));
   };
 
   const loadArchivos = async () => {
@@ -177,7 +190,9 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    setPendingFiles(Array.from(files));
+    const arr = Array.from(files);
+    setPendingFiles(arr);
+    setPendingFileTypes(tiposConfigAdjunto.length > 0 ? Object.fromEntries(arr.map((_, i) => [i, ''])) : {});
     setSelectedCategoriaId('');
     setCategoriaError(false);
     e.target.value = '';
@@ -185,24 +200,27 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
 
   // Step 2: confirm category and upload
   const handleConfirmUpload = async () => {
-    if (!selectedCategoriaId) {
-      setCategoriaError(true);
-      return;
-    }
     const files = pendingFiles!;
-    setPendingFiles(null);
-    await doUpload(files, selectedCategoriaId);
+    if (tiposConfigAdjunto.length > 0) {
+      if (files.some((_, i) => !pendingFileTypes[i])) { setCategoriaError(true); return; }
+      setPendingFiles(null);
+      await doUpload(files.map((f, i) => ({ file: f, categoriaId: pendingFileTypes[i] })));
+    } else {
+      if (!selectedCategoriaId) { setCategoriaError(true); return; }
+      setPendingFiles(null);
+      await doUpload(files.map(f => ({ file: f, categoriaId: selectedCategoriaId })));
+    }
   };
 
-  const doUpload = async (files: File[], categoriaId: string) => {
+  const doUpload = async (items: { file: File; categoriaId: string }[]) => {
     if (!usuario) return;
     setUploading(true);
     const tempFiles: Archivo[] = [];
     const uploadedFileIds: string[] = [];
-    const categoriaObj = categorias.find(c => c.id === categoriaId);
 
     try {
-      for (const file of files) {
+      for (const { file, categoriaId } of items) {
+        const categoriaObj = categorias.find(c => c.id === categoriaId);
         const tempId = `temp-${Date.now()}-${Math.random()}`;
         const optimisticFile: Archivo = {
           id: tempId,
@@ -263,7 +281,10 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
           prev.map(a => a.id === tempId ? data as Archivo : a)
         );
 
-        if ((data as Archivo).categoria?.nombre === 'Póliza PDF') {
+        const debeExtraer = tiposConfigAdjunto.some(
+          tc => tc.dispara_extraccion && tc.categoria_id === insertData.categoria_id
+        );
+        if (debeExtraer) {
           triggerPolizaExtraccion(insertData.id);
         }
       }
@@ -820,29 +841,60 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
             </div>
 
             <div className="px-5 py-4 space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                  Categoría <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedCategoriaId}
-                  onChange={(e) => { setSelectedCategoriaId(e.target.value); setCategoriaError(false); }}
-                  className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-                    categoriaError ? 'border-red-400 bg-red-50' : 'border-neutral-200'
-                  }`}
-                >
-                  <option value="">Selecciona una categoría...</option>
-                  {categorias.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
+              {tiposConfigAdjunto.length > 0 ? (
+                /* Per-file type selector */
+                <div className="space-y-2">
+                  {(pendingFiles || []).map((f, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs text-neutral-500 truncate flex-1 min-w-0" title={f.name}>{f.name}</span>
+                      <select
+                        value={pendingFileTypes[i] || ''}
+                        onChange={(e) => { setPendingFileTypes(prev => ({ ...prev, [i]: e.target.value })); setCategoriaError(false); }}
+                        className={`shrink-0 w-36 px-2 py-1.5 text-xs border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          categoriaError && !pendingFileTypes[i] ? 'border-red-400 bg-red-50' : 'border-neutral-200'
+                        }`}
+                      >
+                        <option value="">Tipo...</option>
+                        {tiposConfigAdjunto.map(tc => {
+                          const cat = categorias.find(c => c.id === tc.categoria_id);
+                          return cat ? <option key={tc.categoria_id} value={tc.categoria_id}>{cat.nombre}</option> : null;
+                        })}
+                      </select>
+                    </div>
                   ))}
-                </select>
-                {categoriaError && (
-                  <p className="flex items-center gap-1 mt-1.5 text-xs text-red-600">
-                    <AlertCircle className="w-3 h-3 shrink-0" />
-                    Debes seleccionar una categoría para continuar
-                  </p>
-                )}
-              </div>
+                  {categoriaError && (
+                    <p className="flex items-center gap-1 text-xs text-red-600">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      Elige el tipo de cada archivo
+                    </p>
+                  )}
+                </div>
+              ) : (
+                /* Single category for all files (legacy) */
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1.5">
+                    Categoría <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedCategoriaId}
+                    onChange={(e) => { setSelectedCategoriaId(e.target.value); setCategoriaError(false); }}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                      categoriaError ? 'border-red-400 bg-red-50' : 'border-neutral-200'
+                    }`}
+                  >
+                    <option value="">Selecciona una categoría...</option>
+                    {categorias.map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                  {categoriaError && (
+                    <p className="flex items-center gap-1 mt-1.5 text-xs text-red-600">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      Debes seleccionar una categoría para continuar
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="px-5 py-4 border-t border-neutral-100 flex justify-end gap-2">

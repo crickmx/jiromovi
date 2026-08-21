@@ -708,6 +708,31 @@ export function TramiteDetalle() {
       return;
     }
 
+    // Validar tipos de archivo requeridos por campo adjunto
+    const adjuntosConReq = camposDinamicos.filter(c =>
+      c.tipo === 'adjunto' &&
+      (c.config?.tipos_config as any[] | undefined)?.some((tc: any) => tc.requerido)
+    );
+    if (adjuntosConReq.length > 0) {
+      const { data: archivosSubidos } = await supabase
+        .from('ticket_archivos')
+        .select('categoria_id')
+        .eq('ticket_id', tramite.id)
+        .is('eliminado_at', null);
+      const categoriasSubidas = new Set((archivosSubidos || []).map((a: any) => a.categoria_id).filter(Boolean));
+      for (const campo of adjuntosConReq) {
+        const faltantes = (campo.config.tipos_config as { categoria_id: string; requerido: boolean }[])
+          .filter(tc => tc.requerido && !categoriasSubidas.has(tc.categoria_id));
+        if (faltantes.length > 0) {
+          const { data: cats } = await supabase
+            .from('maestro_adjunto_categorias').select('nombre').in('id', faltantes.map(tc => tc.categoria_id));
+          const nombres = (cats || []).map((c: any) => c.nombre).join(', ');
+          showToast(`"${campo.label}" requiere al menos un archivo de tipo: ${nombres}`, 'error');
+          return;
+        }
+      }
+    }
+
     // Trigger check con el estatus elegido
     let silent: PendingTrigger[] = [];
     if (estatusCampoDinamico && tipoUUID && chosenSlug && !tramite.parent_ticket_id) {

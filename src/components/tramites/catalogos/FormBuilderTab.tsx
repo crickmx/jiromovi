@@ -767,18 +767,72 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">Categoría del archivo</label>
-                      <select
-                        value={editCampoConfig.categoria_id || ''}
-                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, categoria_id: e.target.value || null })}
-                        className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg bg-white"
+                      <label className="block text-xs font-medium text-neutral-600 mb-1.5">Categorías de archivo</label>
+                      {((editCampoConfig.tipos_config || []) as { categoria_id: string; requerido: boolean; dispara_extraccion: boolean }[]).map((tc, i) => (
+                        <div key={i} className="flex items-center gap-1.5 mb-2 p-2 bg-neutral-50 rounded-lg border border-neutral-200">
+                          <select
+                            value={tc.categoria_id}
+                            onChange={(e) => {
+                              const list = [...(editCampoConfig.tipos_config || [])];
+                              list[i] = { ...list[i], categoria_id: e.target.value };
+                              setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                            }}
+                            className="flex-1 min-w-0 px-2 py-1 text-xs border border-neutral-300 rounded bg-white"
+                          >
+                            <option value="">— Elegir —</option>
+                            {adjuntoCategorias.map(cat => <option key={cat.id} value={cat.id}>{cat.nombre}</option>)}
+                          </select>
+                          <label className="flex items-center gap-1 text-[10px] text-neutral-600 cursor-pointer shrink-0" title="Obligatorio antes de avanzar estatus">
+                            <input
+                              type="checkbox"
+                              checked={tc.requerido}
+                              onChange={(e) => {
+                                const list = [...(editCampoConfig.tipos_config || [])];
+                                list[i] = { ...list[i], requerido: e.target.checked };
+                                setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                              }}
+                              className="rounded"
+                            />
+                            Req.
+                          </label>
+                          <label className="flex items-center gap-1 text-[10px] text-neutral-600 cursor-pointer shrink-0" title="Dispara extracción de datos del PDF">
+                            <input
+                              type="checkbox"
+                              checked={tc.dispara_extraccion}
+                              onChange={(e) => {
+                                const list = [...(editCampoConfig.tipos_config || [])];
+                                list[i] = { ...list[i], dispara_extraccion: e.target.checked };
+                                setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                              }}
+                              className="rounded"
+                            />
+                            PDF
+                          </label>
+                          <button
+                            onClick={() => {
+                              const list = (editCampoConfig.tipos_config || []).filter((_: any, j: number) => j !== i);
+                              setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                            }}
+                            className="p-0.5 hover:bg-red-50 rounded text-neutral-400 hover:text-red-500 shrink-0"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          const list = [...(editCampoConfig.tipos_config || []), { categoria_id: '', requerido: false, dispara_extraccion: false }];
+                          setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                        }}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 mt-0.5"
                       >
-                        <option value="">— Usuario elige al adjuntar —</option>
-                        {adjuntoCategorias.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-                        ))}
-                      </select>
-                      <p className="text-[10px] text-neutral-400 mt-1">Si se define aquí, el archivo se categoriza automáticamente sin pedirle al usuario.</p>
+                        <Plus className="w-3 h-3" />
+                        Agregar tipo
+                      </button>
+                      <p className="text-[10px] text-neutral-400 mt-1.5">
+                        <span className="font-medium">Req.</span> = obligatorio antes de avanzar estatus ·{' '}
+                        <span className="font-medium">PDF</span> = dispara extracción de datos
+                      </p>
                     </div>
                   </>
                 )}
