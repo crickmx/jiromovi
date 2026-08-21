@@ -128,6 +128,12 @@ function formatDateValue(value: unknown): unknown {
   return text;
 }
 
+function toFiniteNumber(value: unknown): number | null {
+  if (value === "" || value === null || value === undefined) return null;
+  const numeric = typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
 function normalizeRecord(record: Record<string, unknown>, reportType: ReportType) {
   const source = new Map<string, unknown>();
   for (const [key, value] of Object.entries(record)) source.set(normalizeKey(key), value);
@@ -146,11 +152,20 @@ function normalizeRecord(record: Record<string, unknown>, reportType: ReportType
 
     if (DATE_COLUMNS.has(column)) value = formatDateValue(value);
     if (NUMERIC_COLUMNS.has(column) && value !== "" && value !== null && value !== undefined) {
-      const numeric = typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
-      value = Number.isFinite(numeric) ? numeric : value;
+      const numeric = toFiniteNumber(value);
+      value = numeric ?? value;
     }
     result[column] = value ?? "";
   }
+
+  if (reportType === "efectuada") {
+    const primaNeta = toFiniteNumber(result.PrimaNeta);
+    const tipoCambio = toFiniteNumber(result.TCDocto);
+    result["IMPORTE PESOS"] = primaNeta !== null && tipoCambio !== null
+      ? Math.round((primaNeta + tipoCambio + Number.EPSILON) * 100) / 100
+      : "";
+  }
+
   return result;
 }
 
