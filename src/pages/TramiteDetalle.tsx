@@ -1096,12 +1096,20 @@ export function TramiteDetalle() {
             if (trigger.adjunto_categorias_ids?.length > 0) {
               const { data: archivos } = await supabase
                 .from('ticket_archivos')
-                .select('usuario_id, nombre, url, tipo, tamano')
+                .select('usuario_id, nombre, url, tipo, tamano, categoria_id')
                 .eq('ticket_id', snap.id);
               if (archivos?.length) {
-                await supabase.from('ticket_archivos').insert(
+                const { data: copiados } = await supabase.from('ticket_archivos').insert(
                   archivos.map(a => ({ ...a, ticket_id: childTicket.id }))
-                );
+                ).select('id, tipo');
+                // Disparar extracción PDF para los archivos PDF copiados (fire & forget)
+                for (const a of copiados || []) {
+                  if (a.tipo === 'application/pdf') {
+                    supabase.functions.invoke('process-poliza-pdf', {
+                      body: { ticket_id: childTicket.id, archivo_id: a.id },
+                    }).catch(() => {});
+                  }
+                }
               }
             }
 
