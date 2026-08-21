@@ -37,7 +37,7 @@ interface ReportRequest {
 }
 
 const REPORT_CHUNK_SIZE = 100;
-const REPORT_PAGES_PER_WORKER = 8;
+const REPORT_PAGES_PER_WORKER = 1;
 const REPORT_MAX_PAGES = 1000;
 const DEFAULT_SYNC_INTERVAL_HOURS = 4;
 
@@ -224,11 +224,21 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
 
 async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
   let response: Response | null = null;
+  let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt++) {
-    response = await fetch(url, init);
-    if (![408, 429, 500, 502, 503, 504].includes(response.status)) return response;
-    await response.text();
+    try {
+      response = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
+      if (![408, 429, 500, 502, 503, 504].includes(response.status)) return response;
+      await response.text();
+    } catch (error) {
+      lastError = error;
+    }
     if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  if (!response) {
+    throw new Error(lastError instanceof Error
+      ? `SICAS no respondió a tiempo: ${lastError.message}`
+      : "SICAS no respondió a tiempo.");
   }
   return response!;
 }
@@ -244,7 +254,7 @@ async function parseJsonResponse(response: Response): Promise<Record<string, unk
   }
   if (!response.ok) {
     const message = (parsed as Record<string, unknown>)?.Error || (parsed as Record<string, unknown>)?.Message;
-    throw new Error(String(message || `SICAS respondió HTTP ${response.status}.`));
+    throw new Error(`SICAS HTTP ${response.status}: ${String(message || text).slice(0, 500)}`);
   }
   return parsed as Record<string, unknown>;
 }
@@ -476,9 +486,12 @@ async function processReportRun(
       { length: Math.min(REPORT_PAGES_PER_WORKER, REPORT_MAX_PAGES - startPage + 1) },
       (_, index) => startPage + index,
     );
-    const pageResults = await Promise.all(pageNumbers.map((requestedPage) =>
-      readSicasReport(sicasToken, reportType, requestedPage, REPORT_CHUNK_SIZE, false, {})
-    ));
+    const pageResults: Awaited<ReturnType<typeof readSicasReport>>[] = [];
+    // SICAS rechaza ráfagas concurrentes en algunos reportes. Consumimos varias
+    // páginas por ejecución, pero una por una, para respetar el servicio origen.
+    for (const requestedPage of pageNumbers) {
+      pageResults.push(await readSicasReport(sicasToken, reportType, requestedPage, REPORT_CHUNK_SIZE, false, {}));
+    }
 
     const synchronizedRows: Array<Record<string, unknown> & { record_key: string; data_hash: string }> = [];
     let sourceRowsProcessed = 0;
@@ -626,7 +639,12 @@ async function ensureSync(
   force: boolean,
 ) {
   const active = await latestRun(supabase, reportType, ["queued", "running"]);
-  if (active) return active;
+  if (active) {
+    // También sirve como mecanismo de recuperación si una invocación anterior
+    // terminó antes de poder encadenar al siguiente bloque.
+    scheduleReportWorker(active.id);
+    return active;
+  }
 
   if (!force) {
     const completed = await latestRun(supabase, reportType, ["completed"]);
