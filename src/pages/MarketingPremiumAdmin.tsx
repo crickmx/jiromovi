@@ -72,7 +72,7 @@ interface TramiteResumen {
   folio: string;
   tipo_tramite: string;
   tipo_label: string;
-  created_at: string;
+  fecha_creacion: string;
   custom_estatus_label: string | null;
   creado_por: string | null;
 }
@@ -239,9 +239,9 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
         // Fallback: query directa (requiere política RLS v8+)
         const { data: ticketsDirecto, error: errTickets } = await supabase
           .from('tickets')
-          .select('id, folio, tipo_tramite, created_at, custom_estatus_label, creado_por')
+          .select('id, folio, tipo_tramite, fecha_creacion, custom_estatus_label, creado_por')
           .or(`agente_id.eq.${agenteId},agente_usuario_id.eq.${agenteId}`)
-          .order('created_at', { ascending: false });
+          .order('fecha_creacion', { ascending: false });
 
         tickets = ticketsDirecto;
         errorMsg = rpcError
@@ -314,7 +314,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     doc.setFont('helvetica', 'bold');
     doc.text('Fecha:', pageWidth / 2, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(format(new Date(tramite.created_at), "d 'de' MMMM yyyy", { locale: es }), pageWidth / 2 + 16, y);
+    doc.text(format(new Date(tramite.fecha_creacion), "d 'de' MMMM yyyy", { locale: es }), pageWidth / 2 + 16, y);
     y += 6;
     doc.setFont('helvetica', 'bold');
     doc.text('Tipo de trámite:', 14, y);
@@ -1150,7 +1150,7 @@ ALTER TABLE usuarios
                                 <span className="text-xs text-neutral-500 dark:text-white/50 truncate">{t.tipo_label}</span>
                               </div>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-xs text-neutral-400">{formatFecha(t.created_at)}</span>
+                                <span className="text-xs text-neutral-400">{formatFecha(t.fecha_creacion)}</span>
                                 {t.custom_estatus_label && (
                                   <span className="text-xs px-1.5 py-0.5 rounded-md bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/60">{t.custom_estatus_label}</span>
                                 )}
