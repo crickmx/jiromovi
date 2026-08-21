@@ -227,7 +227,7 @@ async function fetchWithRetry(url: string, init: RequestInit): Promise<Response>
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      response = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
+      response = await fetch(url, { ...init, signal: AbortSignal.timeout(45_000) });
       if (![408, 429, 500, 502, 503, 504].includes(response.status)) return response;
       await response.text();
     } catch (error) {
