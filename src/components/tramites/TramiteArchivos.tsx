@@ -321,7 +321,11 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
         setExtractionStatus(prev => { const s = { ...prev }; delete s[archivoId]; return s; });
       } else if (result.ok) {
         setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'ok' } }));
-        showToast('Datos de póliza extraídos correctamente. Excel SICAS generado.', 'success');
+        if (result.xlsx_error) {
+          showToast(`Datos extraídos, pero falló el Excel: ${result.xlsx_error}`, 'error');
+        } else {
+          showToast('Datos de póliza extraídos correctamente. Excel SICAS generado.', 'success');
+        }
       } else {
         const msg = result.error ?? 'Error al extraer datos del PDF';
         setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'error', mensaje: msg } }));
