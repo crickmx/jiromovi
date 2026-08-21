@@ -188,7 +188,7 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
     if (filters.despacho) conditions.push(condition("Despacho", 0, 1, `*${filters.despacho}*`, `*${filters.despacho}*`, 1, 0, "VCatDespachos.DespNombre"));
     if (filters.agente) conditions.push(condition("Agente", 0, 0, filters.agente, filters.agente, 1, 0, "VCatAgentes.CAgente"));
   } else {
-    direct.push(condition("Status", 0, 0, "Pendiente", "Pendiente", 1, 0, "Status_TXT"));
+    conditions.push(condition("Status", 0, 0, "Pendiente", "Pendiente", 1, 0, "VDatDocumentos.Status_TXT"));
     if (filters.fechaDesde && filters.fechaHasta) {
       const from = toSicasDate(filters.fechaDesde);
       const to = toSicasDate(filters.fechaHasta);
@@ -418,6 +418,8 @@ async function processPendingRun(
     for (let resultIndex = 0; resultIndex < pageResults.length; resultIndex++) {
       const sourcePage = pageNumbers[resultIndex];
       const rawRows = pageResults[resultIndex].rows;
+      const control = pageResults[resultIndex].control;
+      const totalPages = Number(control.Pages ?? control.TotalPages ?? 0) || 0;
       sourceRowsProcessed += rawRows.length;
       rawRows.forEach((rawRow, sourceIndex) => {
         const row = normalizeRecord(rawRow, "pendiente");
@@ -426,7 +428,7 @@ async function processPendingRun(
         }
       });
       nextPage = sourcePage + 1;
-      if (rawRows.length < PENDING_CHUNK_SIZE) {
+      if (rawRows.length < PENDING_CHUNK_SIZE || (totalPages > 0 && sourcePage >= totalPages)) {
         completed = true;
         break;
       }
