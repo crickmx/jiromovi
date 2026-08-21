@@ -26,7 +26,7 @@ interface ReportFilters {
 }
 
 interface ReportRequest {
-  action?: "processPendingRun";
+  action?: "processReportRun" | "processPendingRun" | "scheduledSync";
   runId?: string;
   reportType?: ReportType;
   page?: number;
@@ -36,10 +36,10 @@ interface ReportRequest {
   filters?: ReportFilters;
 }
 
-const PENDING_CHUNK_SIZE = 100;
-const PENDING_PAGES_PER_WORKER = 8;
-const PENDING_MAX_PAGES = 1000;
-const PENDING_CACHE_TTL_MS = 15 * 60_000;
+const REPORT_CHUNK_SIZE = 100;
+const REPORT_PAGES_PER_WORKER = 8;
+const REPORT_MAX_PAGES = 1000;
+const DEFAULT_SYNC_INTERVAL_HOURS = 4;
 
 const COLUMNS: Record<ReportType, string[]> = {
   efectuada: [
@@ -359,15 +359,19 @@ function normalizeFiltersForCache(rawFilters: ReportFilters = {}): ReportFilters
   ) as ReportFilters;
 }
 
-async function buildCacheKey(filters: ReportFilters): Promise<string> {
+async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(JSON.stringify(filters)),
+    new TextEncoder().encode(value),
   );
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function schedulePendingWorker(runId: string) {
+async function buildCacheKey(reportType: ReportType): Promise<string> {
+  return `${reportType}:${await sha256("full-local-sync")}`;
+}
+
+function scheduleReportWorker(runId: string) {
   const projectUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   EdgeRuntime.waitUntil(
@@ -378,14 +382,69 @@ function schedulePendingWorker(runId: string) {
         Apikey: serviceRoleKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ action: "processPendingRun", runId }),
+      body: JSON.stringify({ action: "processReportRun", runId }),
     }).then(async (response) => {
       if (!response.ok) console.error("[SICAS CCJ worker chain]", response.status, await response.text());
     }).catch((error) => console.error("[SICAS CCJ worker chain]", error)),
   );
 }
 
-async function processPendingRun(
+function toIsoDate(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
+}
+
+async function buildRecordKey(
+  raw: Record<string, unknown>,
+  row: Record<string, unknown>,
+  reportType: ReportType,
+): Promise<string> {
+  const rawByKey = new Map(Object.entries(raw).map(([key, value]) => [normalizeKey(key), value]));
+  const idCandidates = reportType === "efectuada"
+    ? ["IDRecibo", "IDDocto", "IDDocumento"]
+    : ["IDDocto", "IDDocumento", "IDRecibo"];
+  const ids = idCandidates
+    .map((key) => rawByKey.get(normalizeKey(key)))
+    .filter((value) => value !== null && value !== undefined && String(value).trim() !== "")
+    .map(String);
+  if (ids.length) {
+    const discriminator = reportType === "efectuada"
+      ? [row.Documento, row.Serie, row.Endoso, row["Fecha de Pago"], row.FDesde, row.FHasta, row.CAgente]
+      : [row.Documento, row.Serie, row.Endoso, row.FLimPago, row.FDesde, row.FHasta, row.NombreCompleto];
+    return `id:${await sha256(JSON.stringify([ids, discriminator]))}`;
+  }
+
+  const identity = reportType === "efectuada"
+    ? [row.Documento, row.Serie, row.Endoso, row["Fecha de Pago"], row.PrimaNeta, row.ClaveVend, row.CAgente]
+    : [row.Documento, row.Serie, row.Endoso, row.FLimPago, row.PrimaNeta, row.NombreCompleto, row.Concepto, row.FPago];
+  return `natural:${await sha256(JSON.stringify(identity))}`;
+}
+
+function recordProjection(
+  reportType: ReportType,
+  row: Record<string, unknown>,
+  sourcePage: number,
+  sourceIndex: number,
+) {
+  return {
+    report_type: reportType,
+    row_data: row,
+    document: String(row.Documento || "") || null,
+    company: String(row["Nombre Compañía"] || "") || null,
+    vendor: String(row.VendNombre || row.ClaveVend || "") || null,
+    despacho: String(row.DespNombre || "") || null,
+    agent: String(row.CAgente || row["Clave de Agente"] || "") || null,
+    ramo: String(row.RamosNombre || "") || null,
+    subramo: String(row["Sub Ramo"] || row.SRamoNombre || "") || null,
+    gerencia: String(row.GerenciaNombre || "") || null,
+    report_date: toIsoDate(reportType === "efectuada" ? row["Fecha de Pago"] : row.FLimPago),
+    source_page: sourcePage,
+    source_index: sourceIndex,
+  };
+}
+
+async function processReportRun(
   supabase: ReturnType<typeof createClient>,
   runId: string,
   username: string,
@@ -394,15 +453,16 @@ async function processPendingRun(
 ) {
   try {
     const { data: run, error: runError } = await supabase.from("sicas_ccj_report_runs")
-      .select("id, filters, status, next_page")
+      .select("id, report_type, status, next_page")
       .eq("id", runId)
       .maybeSingle();
     if (runError) throw runError;
     if (!run || !["queued", "running"].includes(run.status)) return;
+    const reportType = run.report_type as ReportType;
 
     const startPage = Math.max(1, Number(run.next_page) || 1);
-    if (startPage > PENDING_MAX_PAGES) {
-      throw new Error(`SICAS superó el límite seguro de ${PENDING_MAX_PAGES * PENDING_CHUNK_SIZE} registros.`);
+    if (startPage > REPORT_MAX_PAGES) {
+      throw new Error(`SICAS superó el límite seguro de ${REPORT_MAX_PAGES * REPORT_CHUNK_SIZE} registros.`);
     }
     await supabase.from("sicas_ccj_report_runs").update({
       status: "running",
@@ -413,19 +473,14 @@ async function processPendingRun(
 
     const sicasToken = await obtainToken(username, password, codeAuth);
     const pageNumbers = Array.from(
-      { length: Math.min(PENDING_PAGES_PER_WORKER, PENDING_MAX_PAGES - startPage + 1) },
+      { length: Math.min(REPORT_PAGES_PER_WORKER, REPORT_MAX_PAGES - startPage + 1) },
       (_, index) => startPage + index,
     );
     const pageResults = await Promise.all(pageNumbers.map((requestedPage) =>
-      readSicasReport(sicasToken, "pendiente", requestedPage, PENDING_CHUNK_SIZE, false, run.filters || {})
+      readSicasReport(sicasToken, reportType, requestedPage, REPORT_CHUNK_SIZE, false, {})
     ));
 
-    const cacheRows: Array<{
-      run_id: string;
-      source_page: number;
-      source_index: number;
-      row_data: Record<string, unknown>;
-    }> = [];
+    const synchronizedRows: Array<Record<string, unknown> & { record_key: string; data_hash: string }> = [];
     let sourceRowsProcessed = 0;
     let nextPage = startPage;
     let completed = false;
@@ -436,32 +491,78 @@ async function processPendingRun(
       const control = pageResults[resultIndex].control;
       const totalPages = Number(control.Pages ?? control.TotalPages ?? 0) || 0;
       sourceRowsProcessed += rawRows.length;
-      rawRows.forEach((rawRow, sourceIndex) => {
-        const row = normalizeRecord(rawRow, "pendiente");
-        if (String(row.Status_TXT || "").trim().toLocaleLowerCase("es-MX") === "pendiente") {
-          cacheRows.push({ run_id: runId, source_page: sourcePage, source_index: sourceIndex, row_data: row });
-        }
-      });
+      for (let sourceIndex = 0; sourceIndex < rawRows.length; sourceIndex++) {
+        const rawRow = rawRows[sourceIndex];
+        const row = normalizeRecord(rawRow, reportType);
+        if (reportType === "pendiente" && String(row.Status_TXT || "").trim().toLocaleLowerCase("es-MX") !== "pendiente") continue;
+        synchronizedRows.push({
+          ...recordProjection(reportType, row, sourcePage, sourceIndex),
+          record_key: await buildRecordKey(rawRow, row, reportType),
+          data_hash: await sha256(JSON.stringify(row)),
+        });
+      }
       nextPage = sourcePage + 1;
-      if (rawRows.length < PENDING_CHUNK_SIZE || (totalPages > 0 && sourcePage >= totalPages)) {
+      if (rawRows.length < REPORT_CHUNK_SIZE || (totalPages > 0 && sourcePage >= totalPages)) {
         completed = true;
         break;
       }
     }
 
-    if (cacheRows.length) {
-      const { error: rowsError } = await supabase.from("sicas_ccj_report_rows")
-        .upsert(cacheRows, { onConflict: "run_id,source_page,source_index" });
+    let insertedRows = 0;
+    let updatedRows = 0;
+    let unchangedRows = 0;
+    if (synchronizedRows.length) {
+      // SICAS puede repetir una misma fila dentro de una página. Postgres no permite
+      // actualizar dos veces la misma llave en un solo UPSERT, así que consolidamos
+      // duplicados idénticos antes de comparar y persistir.
+      const uniqueRows = Array.from(new Map(
+        synchronizedRows.map((row) => [String(row.record_key), row]),
+      ).values());
+      const keys = uniqueRows.map((row) => String(row.record_key));
+      const { data: existing, error: existingError } = await supabase.from("sicas_ccj_records")
+        .select("record_key, data_hash, updated_at")
+        .eq("report_type", reportType)
+        .in("record_key", keys);
+      if (existingError) throw existingError;
+      const existingByKey = new Map((existing || []).map((row) => [row.record_key, row]));
+      const nowIso = new Date().toISOString();
+      const upserts = uniqueRows.map((row) => {
+        const previous = existingByKey.get(String(row.record_key));
+        if (!previous) insertedRows++;
+        else if (previous.data_hash !== row.data_hash) updatedRows++;
+        else unchangedRows++;
+        return {
+          ...row,
+          seen_run_id: runId,
+          is_active: true,
+          last_seen_at: nowIso,
+          updated_at: previous && previous.data_hash === row.data_hash ? previous.updated_at : nowIso,
+        };
+      });
+      const { error: rowsError } = await supabase.from("sicas_ccj_records")
+        .upsert(upserts, { onConflict: "report_type,record_key" });
       if (rowsError) throw rowsError;
     }
-    const { count: resultRows, error: countError } = await supabase.from("sicas_ccj_report_rows")
-      .select("id", { count: "exact", head: true }).eq("run_id", runId);
+
+    const { count: resultRows, error: countError } = await supabase.from("sicas_ccj_records")
+      .select("record_key", { count: "exact", head: true })
+      .eq("report_type", reportType).eq("seen_run_id", runId);
     if (countError) throw countError;
 
     const { data: currentRun, error: currentError } = await supabase.from("sicas_ccj_report_runs")
-      .select("source_rows_processed").eq("id", runId).single();
+      .select("source_rows_processed, inserted_rows, updated_rows, unchanged_rows")
+      .eq("id", runId).single();
     if (currentError) throw currentError;
     const now = new Date();
+    let deactivatedRows = 0;
+    if (completed) {
+      const { data: deactivated, error: deactivateError } = await supabase.from("sicas_ccj_records")
+        .update({ is_active: false, updated_at: now.toISOString() })
+        .eq("report_type", reportType).eq("is_active", true).neq("seen_run_id", runId)
+        .select("record_key");
+      if (deactivateError) throw deactivateError;
+      deactivatedRows = deactivated?.length || 0;
+    }
     const update = completed
       ? {
         status: "completed",
@@ -469,7 +570,11 @@ async function processPendingRun(
         source_rows_processed: Number(currentRun.source_rows_processed || 0) + sourceRowsProcessed,
         result_rows: resultRows || 0,
         completed_at: now.toISOString(),
-        expires_at: new Date(now.getTime() + PENDING_CACHE_TTL_MS).toISOString(),
+        expires_at: null,
+        inserted_rows: Number(currentRun.inserted_rows || 0) + insertedRows,
+        updated_rows: Number(currentRun.updated_rows || 0) + updatedRows,
+        unchanged_rows: Number(currentRun.unchanged_rows || 0) + unchangedRows,
+        deactivated_rows: deactivatedRows,
         updated_at: now.toISOString(),
       }
       : {
@@ -477,46 +582,156 @@ async function processPendingRun(
         next_page: nextPage,
         source_rows_processed: Number(currentRun.source_rows_processed || 0) + sourceRowsProcessed,
         result_rows: resultRows || 0,
+        inserted_rows: Number(currentRun.inserted_rows || 0) + insertedRows,
+        updated_rows: Number(currentRun.updated_rows || 0) + updatedRows,
+        unchanged_rows: Number(currentRun.unchanged_rows || 0) + unchangedRows,
         updated_at: now.toISOString(),
       };
     const { error: updateError } = await supabase.from("sicas_ccj_report_runs").update(update).eq("id", runId);
     if (updateError) throw updateError;
-    if (!completed) schedulePendingWorker(runId);
+    if (!completed) scheduleReportWorker(runId);
   } catch (error) {
-    console.error("[SICAS CCJ pending worker]", error);
+    console.error("[SICAS CCJ report worker]", error);
+    const errorMessage = error instanceof Error
+      ? error.message
+      : (() => {
+        try {
+          return JSON.stringify(error);
+        } catch {
+          return String(error);
+        }
+      })();
     await supabase.from("sicas_ccj_report_runs").update({
       status: "failed",
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
       updated_at: new Date().toISOString(),
     }).eq("id", runId);
   }
 }
 
-async function readCachedRows(
+async function latestRun(supabase: ReturnType<typeof createClient>, reportType: ReportType, statuses: string[]) {
+  const { data, error } = await supabase.from("sicas_ccj_report_runs")
+    .select("id, status, next_page, source_rows_processed, result_rows, inserted_rows, updated_rows, unchanged_rows, deactivated_rows, trigger_source, started_at, completed_at, updated_at, error")
+    .eq("report_type", reportType).in("status", statuses)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function ensureSync(
   supabase: ReturnType<typeof createClient>,
-  runId: string,
+  reportType: ReportType,
+  triggerSource: "automatic" | "manual" | "initial",
+  requestedBy: string | null,
+  force: boolean,
+) {
+  const active = await latestRun(supabase, reportType, ["queued", "running"]);
+  if (active) return active;
+
+  if (!force) {
+    const completed = await latestRun(supabase, reportType, ["completed"]);
+    const { data: config } = await supabase.from("sicas_ccj_sync_config")
+      .select("interval_hours").eq("id", true).maybeSingle();
+    const intervalHours = Number(config?.interval_hours) || DEFAULT_SYNC_INTERVAL_HOURS;
+    if (completed?.completed_at && new Date(completed.completed_at).getTime() > Date.now() - intervalHours * 60 * 60_000) {
+      return null;
+    }
+  }
+
+  const cacheKey = await buildCacheKey(reportType);
+  const { data: created, error } = await supabase.from("sicas_ccj_report_runs")
+    .insert({
+      cache_key: cacheKey,
+      report_type: reportType,
+      filters: {},
+      status: "queued",
+      requested_by: requestedBy,
+      trigger_source: triggerSource,
+    })
+    .select("id, status, next_page, source_rows_processed, result_rows, inserted_rows, updated_rows, unchanged_rows, deactivated_rows, trigger_source, started_at, completed_at, updated_at, error")
+    .single();
+  if (error) {
+    if (error.code === "23505") return await latestRun(supabase, reportType, ["queued", "running"]);
+    throw error;
+  }
+  scheduleReportWorker(created.id);
+  return created;
+}
+
+function applyLocalFilters(query: any, filters: ReportFilters) {
+  let filtered = query;
+  if (filters.fechaDesde) filtered = filtered.gte("report_date", filters.fechaDesde);
+  if (filters.fechaHasta) filtered = filtered.lte("report_date", filters.fechaHasta);
+  if (filters.documento) filtered = filtered.ilike("document", `%${sanitizeFilter(filters.documento)}%`);
+  if (filters.compania) filtered = filtered.ilike("company", `%${sanitizeFilter(filters.compania)}%`);
+  if (filters.vendedor) filtered = filtered.ilike("vendor", `%${sanitizeFilter(filters.vendedor)}%`);
+  if (filters.despacho) filtered = filtered.ilike("despacho", `%${sanitizeFilter(filters.despacho)}%`);
+  if (filters.agente) filtered = filtered.ilike("agent", `%${sanitizeFilter(filters.agente)}%`);
+  if (filters.ramo) filtered = filtered.ilike("ramo", `%${sanitizeFilter(filters.ramo)}%`);
+  if (filters.subramo) filtered = filtered.ilike("subramo", `%${sanitizeFilter(filters.subramo)}%`);
+  if (filters.gerencia) filtered = filtered.ilike("gerencia", `%${sanitizeFilter(filters.gerencia)}%`);
+  return filtered;
+}
+
+async function readLocalRecords(
+  supabase: ReturnType<typeof createClient>,
+  reportType: ReportType,
+  filters: ReportFilters,
   page: number,
   pageSize: number,
   exportAll: boolean,
 ) {
   if (!exportAll) {
     const from = (page - 1) * pageSize;
-    const { data, error } = await supabase.from("sicas_ccj_report_rows").select("row_data")
-      .eq("run_id", runId).order("source_page").order("source_index")
+    const query = supabase.from("sicas_ccj_records")
+      .select("row_data", { count: "exact" })
+      .eq("report_type", reportType).eq("is_active", true)
+      .order("source_page").order("source_index")
       .range(from, from + pageSize - 1);
+    const { data, count, error } = await applyLocalFilters(query, filters);
     if (error) throw error;
-    return (data || []).map((item) => item.row_data as Record<string, unknown>);
+    return { rows: (data || []).map((item: any) => item.row_data), total: count || 0 };
   }
+
   const rows: Record<string, unknown>[] = [];
   for (let from = 0;; from += 1000) {
-    const { data, error } = await supabase.from("sicas_ccj_report_rows").select("row_data")
-      .eq("run_id", runId).order("source_page").order("source_index")
+    const query = supabase.from("sicas_ccj_records").select("row_data")
+      .eq("report_type", reportType).eq("is_active", true)
+      .order("source_page").order("source_index")
       .range(from, from + 999);
+    const { data, error } = await applyLocalFilters(query, filters);
     if (error) throw error;
-    rows.push(...(data || []).map((item) => item.row_data as Record<string, unknown>));
+    rows.push(...(data || []).map((item: any) => item.row_data));
     if (!data || data.length < 1000) break;
   }
-  return rows;
+  return { rows, total: rows.length };
+}
+
+function progressFromRun(run: any) {
+  if (!run) return undefined;
+  return {
+    runId: run.id,
+    nextPage: run.next_page,
+    sourceRowsProcessed: run.source_rows_processed,
+    resultRows: run.result_rows,
+    insertedRows: run.inserted_rows,
+    updatedRows: run.updated_rows,
+    unchangedRows: run.unchanged_rows,
+    deactivatedRows: run.deactivated_rows,
+    triggerSource: run.trigger_source,
+    startedAt: run.started_at,
+    updatedAt: run.updated_at,
+    completedAt: run.completed_at,
+  };
+}
+
+async function cronAuthorized(supabase: ReturnType<typeof createClient>, req: Request) {
+  const supplied = req.headers.get("X-Sicas-CCJ-Cron") || "";
+  if (!supplied) return false;
+  const { data, error } = await supabase.from("sicas_ccj_sync_config")
+    .select("cron_secret_hash").eq("id", true).maybeSingle();
+  if (error || !data?.cron_secret_hash) return false;
+  return await sha256(supplied) === data.cron_secret_hash;
 }
 
 Deno.serve(async (req: Request) => {
@@ -540,7 +755,7 @@ Deno.serve(async (req: Request) => {
     const password = Deno.env.get("SICAS_PASSWORD") || config?.sicas_password || "";
     const codeAuth = Deno.env.get("SICAS_CODE_AUTH") || config?.code_auth || "";
 
-    if (body.action === "processPendingRun") {
+    if (body.action === "processReportRun" || body.action === "processPendingRun") {
       if (token !== serviceRoleKey || !body.runId) {
         return jsonResponse(403, { ok: false, error: "Worker no autorizado." });
       }
@@ -552,8 +767,26 @@ Deno.serve(async (req: Request) => {
         }).eq("id", body.runId);
         return jsonResponse(503, { ok: false, error: "Credenciales SICAS no configuradas." });
       }
-      EdgeRuntime.waitUntil(processPendingRun(supabase, body.runId, username, password, codeAuth));
+      EdgeRuntime.waitUntil(processReportRun(supabase, body.runId, username, password, codeAuth));
       return jsonResponse(202, { ok: true, status: "worker_started", runId: body.runId });
+    }
+
+    if (body.action === "scheduledSync") {
+      if (!await cronAuthorized(supabase, req)) {
+        return jsonResponse(403, { ok: false, error: "Cron no autorizado." });
+      }
+      if (!username || !password) {
+        return jsonResponse(503, { ok: false, error: "Credenciales SICAS no configuradas." });
+      }
+      const [efectuada, pendiente] = await Promise.all([
+        ensureSync(supabase, "efectuada", "automatic", null, true),
+        ensureSync(supabase, "pendiente", "automatic", null, true),
+      ]);
+      return jsonResponse(202, {
+        ok: true,
+        status: "queued",
+        runs: { efectuada: progressFromRun(efectuada), pendiente: progressFromRun(pendiente) },
+      });
     }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
@@ -568,130 +801,41 @@ Deno.serve(async (req: Request) => {
     const page = Math.max(1, Math.floor(Number(body.page) || 1));
     const pageSize = Math.min(100, Math.max(10, Math.floor(Number(body.pageSize) || 50)));
     const exportAll = body.exportAll === true;
+    const filters = normalizeFiltersForCache(body.filters || {});
 
-    if (!username || !password) {
+    if (body.forceRefresh && (!username || !password)) {
       return jsonResponse(503, { ok: false, error: "Las credenciales REST de SICAS no están configuradas." });
     }
 
-    if (reportType === "pendiente") {
-      const filters = normalizeFiltersForCache(body.filters || {});
-      const cacheKey = await buildCacheKey(filters);
-      const now = new Date();
-      if (body.forceRefresh) {
-        await supabase.from("sicas_ccj_report_runs").update({
-          status: "failed",
-          error: "Precarga reemplazada por actualización manual.",
-          updated_at: now.toISOString(),
-        }).eq("cache_key", cacheKey).in("status", ["queued", "running"]);
-      }
-
-      if (!body.forceRefresh) {
-        const { data: completed, error: completedError } = await supabase.from("sicas_ccj_report_runs")
-          .select("id, result_rows, completed_at, expires_at")
-          .eq("cache_key", cacheKey).eq("status", "completed")
-          .gt("expires_at", now.toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
-        if (completedError) throw completedError;
-        if (completed) {
-          const cachedRows = await readCachedRows(supabase, completed.id, page, pageSize, exportAll);
-          const total = Number(completed.result_rows) || 0;
-          return jsonResponse(200, {
-            ok: true,
-            status: "completed",
-            reportType,
-            columns: COLUMNS.pendiente,
-            rows: cachedRows,
-            pagination: {
-              page,
-              pageSize: exportAll ? cachedRows.length : pageSize,
-              total,
-              pages: Math.max(1, Math.ceil(total / pageSize)),
-            },
-            progress: { resultRows: total, completedAt: completed.completed_at },
-            source: { api: "SICAS REST · caché asíncrono", keyCode: "HWS03669_008", live: true },
-          });
-        }
-      }
-
-      let { data: active, error: activeError } = await supabase.from("sicas_ccj_report_runs")
-        .select("id, status, next_page, source_rows_processed, result_rows, created_at, updated_at, error")
-        .eq("cache_key", cacheKey).in("status", ["queued", "running"])
-        .order("created_at", { ascending: false }).limit(1).maybeSingle();
-      if (activeError) throw activeError;
-      if (!active) {
-        if (!body.forceRefresh) {
-          const { data: recentFailure, error: failureError } = await supabase.from("sicas_ccj_report_runs")
-            .select("error, updated_at").eq("cache_key", cacheKey).eq("status", "failed")
-            .gt("updated_at", new Date(now.getTime() - 10 * 60_000).toISOString())
-            .order("updated_at", { ascending: false }).limit(1).maybeSingle();
-          if (failureError) throw failureError;
-          if (recentFailure) {
-            return jsonResponse(502, {
-              ok: false,
-              error: recentFailure.error || "La precarga de SICAS no pudo completarse.",
-            });
-          }
-        }
-        await supabase.from("sicas_ccj_report_runs").delete()
-          .lt("created_at", new Date(now.getTime() - 7 * 24 * 60 * 60_000).toISOString())
-          .in("status", ["completed", "failed"]);
-        const { data: created, error: createError } = await supabase.from("sicas_ccj_report_runs")
-          .insert({
-            cache_key: cacheKey,
-            report_type: "pendiente",
-            filters,
-            status: "queued",
-            requested_by: user.id,
-          })
-          .select("id, status, next_page, source_rows_processed, result_rows, created_at, updated_at, error")
-          .single();
-        if (createError) {
-          if (createError.code !== "23505") throw createError;
-          const { data: raced, error: raceError } = await supabase.from("sicas_ccj_report_runs")
-            .select("id, status, next_page, source_rows_processed, result_rows, created_at, updated_at, error")
-            .eq("cache_key", cacheKey).in("status", ["queued", "running"]).limit(1).single();
-          if (raceError) throw raceError;
-          active = raced;
-        } else {
-          active = created;
-          schedulePendingWorker(created.id);
-        }
-      }
-      return jsonResponse(202, {
-        ok: true,
-        status: active.status,
-        reportType,
-        columns: COLUMNS.pendiente,
-        rows: [],
-        pagination: { page: 1, pageSize, total: 0, pages: 1 },
-        progress: {
-          runId: active.id,
-          nextPage: active.next_page,
-          sourceRowsProcessed: active.source_rows_processed,
-          resultRows: active.result_rows,
-          startedAt: active.created_at,
-          updatedAt: active.updated_at,
-        },
-        source: { api: "SICAS REST · precarga asíncrona", keyCode: "HWS03669_008", live: false },
-      });
+    let active = await latestRun(supabase, reportType, ["queued", "running"]);
+    if (body.forceRefresh) {
+      active = await ensureSync(supabase, reportType, "manual", user.id, true);
+    } else if (!active && username && password) {
+      active = await ensureSync(supabase, reportType, "automatic", user.id, false);
     }
 
-    const sicasToken = await obtainToken(username, password, codeAuth);
-    const { rows, control, keyCode } = await readSicasReport(
-      sicasToken, reportType, page, pageSize, exportAll, body.filters || {},
-    );
-    const normalizedRows = rows
-      .map((row) => normalizeRecord(row, reportType))
-      .filter((row) => reportType !== "pendiente" || String(row.Status_TXT || "").trim().toLocaleLowerCase("es-MX") === "pendiente");
-    const total = Number(control.MaxRecords ?? control.TotalRecords ?? control.Records ?? normalizedRows.length) || normalizedRows.length;
-    const pages = Number(control.Pages ?? control.TotalPages ?? (exportAll ? 1 : Math.ceil(total / pageSize))) || 1;
+    const local = await readLocalRecords(supabase, reportType, filters, page, pageSize, exportAll);
+    const completed = await latestRun(supabase, reportType, ["completed"]);
+    if (!active && local.total === 0 && username && password) {
+      active = await ensureSync(supabase, reportType, "initial", user.id, true);
+    }
+    const syncRun = active || completed;
+    const keyCode = reportType === "efectuada" ? "H02761" : "HWS03669_008";
 
     return jsonResponse(200, {
       ok: true,
+      status: active?.status || "completed",
       reportType,
       columns: COLUMNS[reportType],
-      rows: normalizedRows,
-      pagination: { page, pageSize: exportAll ? normalizedRows.length : pageSize, total, pages },
-      source: { api: "SICAS REST", keyCode, live: true },
+      rows: local.rows,
+      pagination: {
+        page,
+        pageSize: exportAll ? local.rows.length : pageSize,
+        total: local.total,
+        pages: Math.max(1, Math.ceil(local.total / pageSize)),
+      },
+      progress: progressFromRun(syncRun),
+      source: { api: "Base local · sincronizada con SICAS", keyCode, live: true },
     });
   } catch (error) {
     console.error("[SICAS CCJ Reports]", error);

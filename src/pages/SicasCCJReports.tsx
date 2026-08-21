@@ -47,6 +47,11 @@ interface ReportResponse {
     nextPage?: number;
     sourceRowsProcessed?: number;
     resultRows?: number;
+    insertedRows?: number;
+    updatedRows?: number;
+    unchangedRows?: number;
+    deactivatedRows?: number;
+    triggerSource?: 'automatic' | 'manual' | 'initial';
     startedAt?: string;
     updatedAt?: string;
     completedAt?: string;
@@ -199,16 +204,18 @@ export default function SicasCCJReports() {
       }, signal);
       if (requestId !== requestIdRef.current) return;
       if (invokeError || !data?.ok) throw new Error(await getInvokeError(invokeError, data));
-      if (reportType === 'pendiente' && (data.status === 'queued' || data.status === 'running')) {
+      const isSyncing = data.status === 'queued' || data.status === 'running';
+      setSyncProgress(isSyncing ? (data.progress || {}) : null);
+      if (isSyncing) {
+        pollTimerRef.current = window.setTimeout(() => setRefreshKey((value) => value + 1), 4000);
+      }
+      if (isSyncing && !(data.rows || []).length) {
         setRows([]);
-        setColumns(data.columns || FALLBACK_COLUMNS.pendiente);
+        setColumns(data.columns || FALLBACK_COLUMNS[reportType]);
         setPagination({ page: 1, pageSize, total: 0, pages: 1 });
         setSource(data.source || null);
-        setSyncProgress(data.progress || {});
-        pollTimerRef.current = window.setTimeout(() => setRefreshKey((value) => value + 1), 4000);
         return;
       }
-      setSyncProgress(null);
       setRows(data.rows || []);
       setColumns(data.columns || FALLBACK_COLUMNS[reportType]);
       setPagination(data.pagination || { page, pageSize, total: data.rows?.length || 0, pages: 1 });
@@ -286,11 +293,7 @@ export default function SicasCCJReports() {
         filters: compactFilters(appliedFilters),
       });
       if (invokeError || !data?.ok) throw new Error(await getInvokeError(invokeError, data));
-      if (reportType === 'pendiente' && (data.status === 'queued' || data.status === 'running')) {
-        setSyncProgress(data.progress || {});
-        pollTimerRef.current = window.setTimeout(() => setRefreshKey((value) => value + 1), 4000);
-        throw new Error('La cartera pendiente se está actualizando. El Excel estará disponible al terminar la precarga.');
-      }
+      if (data.status === 'queued' || data.status === 'running') setSyncProgress(data.progress || {});
 
       const exportColumns = data.columns || FALLBACK_COLUMNS[reportType];
       const exportRows = (data.rows || []).map((row) => exportColumns.map((column) => row[column] ?? ''));
@@ -316,11 +319,11 @@ export default function SicasCCJReports() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
-              <Database className="h-4 w-4" /> Datos en vivo desde SICAS
+              <Database className="h-4 w-4" /> Base local sincronizada con SICAS
             </div>
             <h1 className="text-2xl font-semibold tracking-tight text-neutral-950 dark:text-white">Reportes SICAS CCJ</h1>
             <p className="mt-1 max-w-3xl text-sm text-neutral-500 dark:text-neutral-400">
-              Consulta cobranza efectuada y pendiente directamente en SICAS, y exporta cada resultado con las mismas columnas y orden de los archivos operativos.
+              Consulta cobranza efectuada y pendiente desde la base local, sincronizada automáticamente con SICAS cada 4 horas.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -329,8 +332,8 @@ export default function SicasCCJReports() {
                 <CheckCircle2 className="h-4 w-4" /> {source.api} · {source.keyCode}
               </span>
             )}
-            <Button variant="outline" onClick={refreshReport} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
+            <Button variant="outline" onClick={refreshReport} disabled={loading || Boolean(syncProgress)}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Sincronizar ahora
             </Button>
             <Button onClick={exportReport} disabled={loading || exporting || Boolean(syncProgress)}>
               {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -437,9 +440,9 @@ export default function SicasCCJReports() {
             <div className="flex items-center gap-3">
               <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
               <div>
-                <p className="font-medium">Preparando la cartera pendiente completa</p>
+                <p className="font-medium">Sincronizando cobranza {reportType} con SICAS</p>
                 <p className="mt-0.5 opacity-80">
-                  {(syncProgress.sourceRowsProcessed || 0).toLocaleString('es-MX')} registros revisados · {(syncProgress.resultRows || 0).toLocaleString('es-MX')} pendientes guardados. Puedes dejar esta pantalla abierta; se actualizará automáticamente.
+                  {(syncProgress.sourceRowsProcessed || 0).toLocaleString('es-MX')} registros revisados · {(syncProgress.resultRows || 0).toLocaleString('es-MX')} registros locales · {(syncProgress.insertedRows || 0).toLocaleString('es-MX')} nuevos · {(syncProgress.updatedRows || 0).toLocaleString('es-MX')} actualizados. Puedes seguir consultando la información almacenada mientras termina.
                 </p>
               </div>
             </div>
@@ -456,7 +459,7 @@ export default function SicasCCJReports() {
               <div>
                 <p className="text-sm font-semibold text-neutral-900 dark:text-white">Cobranza {reportType}</p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {syncProgress ? 'Precargando todas las páginas de SICAS…' : loading ? 'Consultando SICAS…' : `${pagination.total.toLocaleString('es-MX')} registros${activeFilterCount ? ` · ${activeFilterCount} filtros activos` : ''}`}
+                  {syncProgress ? 'Sincronizando en segundo plano…' : loading ? 'Consultando base local…' : `${pagination.total.toLocaleString('es-MX')} registros${activeFilterCount ? ` · ${activeFilterCount} filtros activos` : ''}`}
                 </p>
               </div>
             </div>
@@ -477,7 +480,7 @@ export default function SicasCCJReports() {
           <div className="relative min-h-[360px] overflow-x-auto">
             {loading && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-neutral-900/80">
-                <div className="flex items-center gap-3 text-sm font-medium text-neutral-600 dark:text-neutral-300"><Loader2 className="h-5 w-5 animate-spin text-blue-600" /> Consultando reporte en vivo…</div>
+                <div className="flex items-center gap-3 text-sm font-medium text-neutral-600 dark:text-neutral-300"><Loader2 className="h-5 w-5 animate-spin text-blue-600" /> Consultando base local…</div>
               </div>
             )}
             <table className="w-max min-w-full border-collapse text-left text-xs">
