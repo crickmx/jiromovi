@@ -463,7 +463,7 @@ async function processReportRun(
 ) {
   try {
     const { data: run, error: runError } = await supabase.from("sicas_ccj_report_runs")
-      .select("id, report_type, status, next_page")
+      .select("id, cache_key, report_type, filters, status, next_page, source_rows_processed, requested_by, trigger_source, retry_count")
       .eq("id", runId)
       .maybeSingle();
     if (runError) throw runError;
@@ -471,8 +471,27 @@ async function processReportRun(
     const reportType = run.report_type as ReportType;
 
     const startPage = Math.max(1, Number(run.next_page) || 1);
-    if (startPage > REPORT_MAX_PAGES) {
-      throw new Error(`SICAS superó el límite seguro de ${REPORT_MAX_PAGES * REPORT_CHUNK_SIZE} registros.`);
+    if (Number(run.source_rows_processed || 0) >= REPORT_MAX_PAGES * REPORT_CHUNK_SIZE) {
+      const continuationKey = `${run.cache_key}:continuacion:${startPage}`;
+      const { data: continuation, error: continuationError } = await supabase.from("sicas_ccj_report_runs")
+        .insert({
+          cache_key: continuationKey,
+          report_type: reportType,
+          filters: run.filters || {},
+          status: "queued",
+          next_page: startPage,
+          requested_by: run.requested_by,
+          trigger_source: run.trigger_source,
+        })
+        .select("id").single();
+      if (continuationError) throw continuationError;
+      await supabase.from("sicas_ccj_report_runs").update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("id", runId);
+      scheduleReportWorker(continuation.id);
+      return;
     }
     await supabase.from("sicas_ccj_report_runs").update({
       status: "running",
@@ -483,7 +502,7 @@ async function processReportRun(
 
     const sicasToken = await obtainToken(username, password, codeAuth);
     const pageNumbers = Array.from(
-      { length: Math.min(REPORT_PAGES_PER_WORKER, REPORT_MAX_PAGES - startPage + 1) },
+      { length: REPORT_PAGES_PER_WORKER },
       (_, index) => startPage + index,
     );
     const pageResults: Awaited<ReturnType<typeof readSicasReport>>[] = [];
@@ -567,15 +586,9 @@ async function processReportRun(
       .eq("id", runId).single();
     if (currentError) throw currentError;
     const now = new Date();
-    let deactivatedRows = 0;
-    if (completed) {
-      const { data: deactivated, error: deactivateError } = await supabase.from("sicas_ccj_records")
-        .update({ is_active: false, updated_at: now.toISOString() })
-        .eq("report_type", reportType).eq("is_active", true).neq("seen_run_id", runId)
-        .select("record_key");
-      if (deactivateError) throw deactivateError;
-      deactivatedRows = deactivated?.length || 0;
-    }
+    // La réplica es acumulativa: no desactivamos registros al cerrar un segmento,
+    // porque un histórico grande puede abarcar varios segmentos consecutivos.
+    const deactivatedRows = 0;
     const update = completed
       ? {
         status: "completed",
@@ -588,6 +601,7 @@ async function processReportRun(
         updated_rows: Number(currentRun.updated_rows || 0) + updatedRows,
         unchanged_rows: Number(currentRun.unchanged_rows || 0) + unchangedRows,
         deactivated_rows: deactivatedRows,
+        retry_count: 0,
         updated_at: now.toISOString(),
       }
       : {
@@ -598,6 +612,7 @@ async function processReportRun(
         inserted_rows: Number(currentRun.inserted_rows || 0) + insertedRows,
         updated_rows: Number(currentRun.updated_rows || 0) + updatedRows,
         unchanged_rows: Number(currentRun.unchanged_rows || 0) + unchangedRows,
+        retry_count: 0,
         updated_at: now.toISOString(),
       };
     const { error: updateError } = await supabase.from("sicas_ccj_report_runs").update(update).eq("id", runId);
@@ -614,11 +629,25 @@ async function processReportRun(
           return String(error);
         }
       })();
-    await supabase.from("sicas_ccj_report_runs").update({
-      status: "failed",
-      error: errorMessage,
-      updated_at: new Date().toISOString(),
-    }).eq("id", runId);
+    const { data: failedRun } = await supabase.from("sicas_ccj_report_runs")
+      .select("retry_count").eq("id", runId).maybeSingle();
+    const retryCount = Number(failedRun?.retry_count || 0);
+    const transient = /no respondió a tiempo|HTTP (408|429|5\d\d)/i.test(errorMessage);
+    if (transient && retryCount < 5) {
+      await supabase.from("sicas_ccj_report_runs").update({
+        status: "queued",
+        retry_count: retryCount + 1,
+        error: errorMessage,
+        updated_at: new Date().toISOString(),
+      }).eq("id", runId);
+      scheduleReportWorker(runId);
+    } else {
+      await supabase.from("sicas_ccj_report_runs").update({
+        status: "failed",
+        error: errorMessage,
+        updated_at: new Date().toISOString(),
+      }).eq("id", runId);
+    }
   }
 }
 
@@ -644,6 +673,18 @@ async function ensureSync(
     // terminó antes de poder encadenar al siguiente bloque.
     scheduleReportWorker(active.id);
     return active;
+  }
+
+  const resumable = await latestRun(supabase, reportType, ["failed"]);
+  if (resumable?.next_page > 1 && /no respondió a tiempo|límite seguro/i.test(String(resumable.error || ""))) {
+    await supabase.from("sicas_ccj_report_runs").update({
+      status: "queued",
+      retry_count: 0,
+      error: null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", resumable.id);
+    scheduleReportWorker(resumable.id);
+    return { ...resumable, status: "queued", error: null };
   }
 
   if (!force) {
