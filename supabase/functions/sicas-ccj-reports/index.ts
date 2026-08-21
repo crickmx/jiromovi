@@ -461,6 +461,7 @@ async function processReportRun(
   password: string,
   codeAuth: string,
 ) {
+  let workerToken = "";
   try {
     const { data: run, error: runError } = await supabase.from("sicas_ccj_report_runs")
       .select("id, cache_key, report_type, filters, status, next_page, source_rows_processed, requested_by, trigger_source, retry_count")
@@ -469,6 +470,21 @@ async function processReportRun(
     if (runError) throw runError;
     if (!run || !["queued", "running"].includes(run.status)) return;
     const reportType = run.report_type as ReportType;
+    workerToken = crypto.randomUUID();
+    const claimTime = new Date();
+    const leaseUntil = new Date(claimTime.getTime() + 110_000).toISOString();
+    const { data: claimed, error: claimError } = await supabase.from("sicas_ccj_report_runs").update({
+      status: "running",
+      worker_token: workerToken,
+      lease_until: leaseUntil,
+      ...(run.status === "queued" ? { started_at: claimTime.toISOString() } : {}),
+      updated_at: claimTime.toISOString(),
+      error: null,
+    }).eq("id", runId).in("status", ["queued", "running"])
+      .or(`lease_until.is.null,lease_until.lt.${claimTime.toISOString()}`)
+      .select("id").maybeSingle();
+    if (claimError) throw claimError;
+    if (!claimed) return;
 
     const startPage = Math.max(1, Number(run.next_page) || 1);
     if (Number(run.source_rows_processed || 0) >= REPORT_MAX_PAGES * REPORT_CHUNK_SIZE) {
@@ -488,18 +504,13 @@ async function processReportRun(
       await supabase.from("sicas_ccj_report_runs").update({
         status: "completed",
         completed_at: new Date().toISOString(),
+        worker_token: null,
+        lease_until: null,
         updated_at: new Date().toISOString(),
-      }).eq("id", runId);
+      }).eq("id", runId).eq("worker_token", workerToken);
       scheduleReportWorker(continuation.id);
       return;
     }
-    await supabase.from("sicas_ccj_report_runs").update({
-      status: "running",
-      ...(run.status === "queued" ? { started_at: new Date().toISOString() } : {}),
-      updated_at: new Date().toISOString(),
-      error: null,
-    }).eq("id", runId).eq("status", run.status);
-
     const sicasToken = await obtainToken(username, password, codeAuth);
     const pageNumbers = Array.from(
       { length: REPORT_PAGES_PER_WORKER },
@@ -602,6 +613,8 @@ async function processReportRun(
         unchanged_rows: Number(currentRun.unchanged_rows || 0) + unchangedRows,
         deactivated_rows: deactivatedRows,
         retry_count: 0,
+        worker_token: null,
+        lease_until: null,
         updated_at: now.toISOString(),
       }
       : {
@@ -613,9 +626,12 @@ async function processReportRun(
         updated_rows: Number(currentRun.updated_rows || 0) + updatedRows,
         unchanged_rows: Number(currentRun.unchanged_rows || 0) + unchangedRows,
         retry_count: 0,
+        worker_token: null,
+        lease_until: null,
         updated_at: now.toISOString(),
       };
-    const { error: updateError } = await supabase.from("sicas_ccj_report_runs").update(update).eq("id", runId);
+    const { error: updateError } = await supabase.from("sicas_ccj_report_runs").update(update)
+      .eq("id", runId).eq("worker_token", workerToken);
     if (updateError) throw updateError;
     if (!completed) scheduleReportWorker(runId);
   } catch (error) {
@@ -638,15 +654,19 @@ async function processReportRun(
         status: "queued",
         retry_count: retryCount + 1,
         error: errorMessage,
+        worker_token: null,
+        lease_until: null,
         updated_at: new Date().toISOString(),
-      }).eq("id", runId);
+      }).eq("id", runId).eq("worker_token", workerToken);
       scheduleReportWorker(runId);
     } else {
       await supabase.from("sicas_ccj_report_runs").update({
         status: "failed",
         error: errorMessage,
+        worker_token: null,
+        lease_until: null,
         updated_at: new Date().toISOString(),
-      }).eq("id", runId);
+      }).eq("id", runId).eq("worker_token", workerToken);
     }
   }
 }
@@ -669,9 +689,10 @@ async function ensureSync(
 ) {
   const active = await latestRun(supabase, reportType, ["queued", "running"]);
   if (active) {
-    // También sirve como mecanismo de recuperación si una invocación anterior
-    // terminó antes de poder encadenar al siguiente bloque.
-    scheduleReportWorker(active.id);
+    // Las consultas del panel no deben lanzar trabajadores duplicados. Solo
+    // iniciamos una cola nueva o recuperamos una ejecución sin actividad.
+    const stale = !active.updated_at || new Date(active.updated_at).getTime() < Date.now() - 2 * 60_000;
+    if (active.status === "queued" || stale) scheduleReportWorker(active.id);
     return active;
   }
 
