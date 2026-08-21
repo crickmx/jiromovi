@@ -151,6 +151,7 @@ export default function BonosPage() {
   }, [isImpersonating]);
 
   useEffect(() => {
+    if (activePath === SICAS_CCJ_REPORTS_PATH) return;
     if (ssoConfirmedRef.current) return;
     setError(false);
     setErrorReason(null);
@@ -172,7 +173,7 @@ export default function BonosPage() {
     });
     return () => clearSsoTimeout();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildSsoUrl, retryCount, clearSsoTimeout]);
+  }, [activePath, buildSsoUrl, retryCount, clearSsoTimeout]);
 
   const retryCountRef = useRef(retryCount);
   retryCountRef.current = retryCount;
@@ -335,7 +336,11 @@ export default function BonosPage() {
     );
   }
 
-  const visibleSections = SECTIONS.filter(s => s.show(perms));
+  const visibleSections = SECTIONS.filter(s =>
+    s.path === SICAS_CCJ_REPORTS_PATH
+      ? activePath === SICAS_CCJ_REPORTS_PATH || s.show(perms)
+      : s.show(perms),
+  );
   const activeSection = visibleSections.find(s => s.path === activePath);
 
   const SectionNav = ({ onSelect }: { onSelect?: () => void }) => (
@@ -446,13 +451,15 @@ export default function BonosPage() {
               `}</style>
             </div>
           )}
-          <iframe
-            ref={iframeRef}
-            src={src || undefined}
-            className="w-full h-full border-0 block"
-            allow="clipboard-write"
-            style={{ margin: 0, padding: 0 }}
-          />
+          {activePath !== SICAS_CCJ_REPORTS_PATH && (
+            <iframe
+              ref={iframeRef}
+              src={src || undefined}
+              className="w-full h-full border-0 block"
+              allow="clipboard-write"
+              style={{ margin: 0, padding: 0 }}
+            />
+          )}
         </div>
       </div>
     </div>

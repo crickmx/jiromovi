@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as XLSX from 'xlsx';
 import {
   AlertCircle,
   CheckCircle2,
@@ -115,6 +114,48 @@ async function getInvokeError(error: unknown, data?: Partial<ReportResponse> | n
   return 'No fue posible consultar SICAS. Intenta nuevamente.';
 }
 
+async function getAccessToken(forceRefresh = false) {
+  if (!forceRefresh) {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (!error && session?.access_token) {
+      const expiresSoon = !session.expires_at || session.expires_at * 1000 <= Date.now() + 60_000;
+      if (!expiresSoon) return session.access_token;
+    }
+  }
+
+  const { data: { session }, error } = await supabase.auth.refreshSession();
+  if (error || !session?.access_token) {
+    throw new Error('Tu sesión expiró. Recarga la página o vuelve a iniciar sesión.');
+  }
+  return session.access_token;
+}
+
+function isUnauthorized(error: unknown, data?: Partial<ReportResponse> | null) {
+  if (data?.error === 'Sesión no válida.') return true;
+  if (!error || typeof error !== 'object') return false;
+  if ('context' in error && error.context instanceof Response) return error.context.status === 401;
+  return false;
+}
+
+async function invokeReport(body: Record<string, unknown>, signal?: AbortSignal) {
+  let accessToken = await getAccessToken();
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = await supabase.functions.invoke<ReportResponse>('sicas-ccj-reports', {
+      body,
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal,
+    });
+    if (attempt === 0 && isUnauthorized(result.error, result.data)) {
+      accessToken = await getAccessToken(true);
+      continue;
+    }
+    return result;
+  }
+
+  throw new Error('Tu sesión expiró. Recarga la página o vuelve a iniciar sesión.');
+}
+
 export default function SicasCCJReports() {
   const [reportType, setReportType] = useState<ReportType>('efectuada');
   const [draftFilters, setDraftFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -133,6 +174,7 @@ export default function SicasCCJReports() {
   const [syncProgress, setSyncProgress] = useState<ReportResponse['progress'] | null>(null);
   const pollTimerRef = useRef<number | null>(null);
   const forceRefreshRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   const dateLabel = reportType === 'efectuada' ? 'Fecha de pago' : 'Fecha límite de pago';
   const activeFilterCount = useMemo(
@@ -140,22 +182,22 @@ export default function SicasCCJReports() {
     [appliedFilters],
   );
 
-  const loadReport = useCallback(async () => {
+  const loadReport = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++requestIdRef.current;
     if (pollTimerRef.current !== null) window.clearTimeout(pollTimerRef.current);
     setLoading(true);
     setError('');
     try {
       const forceRefresh = forceRefreshRef.current;
       forceRefreshRef.current = false;
-      const { data, error: invokeError } = await supabase.functions.invoke<ReportResponse>('sicas-ccj-reports', {
-        body: {
-          reportType,
-          page,
-          pageSize,
-          forceRefresh,
-          filters: compactFilters(appliedFilters),
-        },
-      });
+      const { data, error: invokeError } = await invokeReport({
+        reportType,
+        page,
+        pageSize,
+        forceRefresh,
+        filters: compactFilters(appliedFilters),
+      }, signal);
+      if (requestId !== requestIdRef.current) return;
       if (invokeError || !data?.ok) throw new Error(await getInvokeError(invokeError, data));
       if (reportType === 'pendiente' && (data.status === 'queued' || data.status === 'running')) {
         setRows([]);
@@ -172,21 +214,25 @@ export default function SicasCCJReports() {
       setPagination(data.pagination || { page, pageSize, total: data.rows?.length || 0, pages: 1 });
       setSource(data.source || null);
     } catch (loadError) {
+      if (requestId !== requestIdRef.current || signal?.aborted) return;
       setSyncProgress(null);
       setRows([]);
       setColumns(FALLBACK_COLUMNS[reportType]);
       setPagination({ page, pageSize, total: 0, pages: 1 });
       setError(await getInvokeError(loadError));
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [appliedFilters, page, pageSize, refreshKey, reportType]);
 
   useEffect(() => {
-    void loadReport();
+    const controller = new AbortController();
+    void loadReport(controller.signal);
+    return () => controller.abort();
   }, [loadReport]);
 
   useEffect(() => () => {
+    requestIdRef.current += 1;
     if (pollTimerRef.current !== null) window.clearTimeout(pollTimerRef.current);
   }, []);
 
@@ -234,12 +280,10 @@ export default function SicasCCJReports() {
     setExporting(true);
     setError('');
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke<ReportResponse>('sicas-ccj-reports', {
-        body: {
-          reportType,
-          exportAll: true,
-          filters: compactFilters(appliedFilters),
-        },
+      const { data, error: invokeError } = await invokeReport({
+        reportType,
+        exportAll: true,
+        filters: compactFilters(appliedFilters),
       });
       if (invokeError || !data?.ok) throw new Error(await getInvokeError(invokeError, data));
       if (reportType === 'pendiente' && (data.status === 'queued' || data.status === 'running')) {
@@ -250,6 +294,7 @@ export default function SicasCCJReports() {
 
       const exportColumns = data.columns || FALLBACK_COLUMNS[reportType];
       const exportRows = (data.rows || []).map((row) => exportColumns.map((column) => row[column] ?? ''));
+      const XLSX = await import('xlsx');
       const worksheet = XLSX.utils.aoa_to_sheet([exportColumns, ...exportRows]);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Hoja1');
