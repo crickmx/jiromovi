@@ -318,15 +318,19 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       });
       const result = await resp.json();
       if (result.estado === 'no_configurado') {
-        // Extracción no habilitada para este tipo de trámite — no mostrar badge
         setExtractionStatus(prev => { const s = { ...prev }; delete s[archivoId]; return s; });
       } else if (result.ok) {
         setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'ok' } }));
+        showToast('Datos de póliza extraídos correctamente. Excel SICAS generado.', 'success');
       } else {
-        setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'error', mensaje: result.error ?? 'Error al extraer datos del PDF' } }));
+        const msg = result.error ?? 'Error al extraer datos del PDF';
+        setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'error', mensaje: msg } }));
+        showToast(`Error en extracción: ${msg}`, 'error');
       }
     } catch (err: any) {
-      setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'error', mensaje: err?.message ?? 'Error de red' } }));
+      const msg = err?.message ?? 'Error de red al contactar el extractor';
+      setExtractionStatus(prev => ({ ...prev, [archivoId]: { estado: 'error', mensaje: msg } }));
+      showToast(`Error en extracción: ${msg}`, 'error');
     }
   };
 
@@ -670,6 +674,22 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                 {archivo.usuarios && (
                   <p className="text-[11px] text-neutral-400 dark:text-white/30 mt-0.5 truncate">
                     {archivo.usuarios.nombre_completo}
+                  </p>
+                )}
+                {extractionStatus[archivo.id]?.estado === 'pendiente' && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin shrink-0" /> Extrayendo datos…
+                  </p>
+                )}
+                {extractionStatus[archivo.id]?.estado === 'ok' && (
+                  <p className="text-[11px] text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                    <Check className="w-3 h-3 shrink-0" /> Datos extraídos · Excel generado
+                  </p>
+                )}
+                {extractionStatus[archivo.id]?.estado === 'error' && (
+                  <p className="text-[11px] text-red-500 mt-1 leading-tight" title={extractionStatus[archivo.id].mensaje}>
+                    <AlertCircle className="w-3 h-3 inline mr-0.5 shrink-0" />
+                    Error: {extractionStatus[archivo.id].mensaje?.slice(0, 60) ?? 'Error al extraer datos'}
                   </p>
                 )}
                 {puedeEditarCategoria ? (
