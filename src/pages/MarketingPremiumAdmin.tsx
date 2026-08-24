@@ -259,6 +259,16 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     }
   }
 
+  async function eliminarTramite(tramiteId: string) {
+    if (!confirm('¿Eliminar este trámite? Esta acción no se puede deshacer.')) return;
+    const { error } = await supabase
+      .from('tickets')
+      .update({ eliminado_at: new Date().toISOString(), eliminado_por: usuario?.id })
+      .eq('id', tramiteId);
+    if (error) { alert('Error al eliminar el trámite'); return; }
+    setTramitesAgente(prev => prev.filter(t => t.id !== tramiteId));
+  }
+
   async function descargarPDFTramitePremium(tramite: TramiteResumen, agente: Agente) {
     const METODO_LABELS: Record<string, string> = {
       deposito_jiro: 'Depósito a cuenta Jiro',
@@ -1154,6 +1164,13 @@ ALTER TABLE usuarios
                               className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-400 hover:text-neutral-600 transition shrink-0"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => eliminarTramite(t.id)}
+                              title="Eliminar trámite"
+                              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-neutral-400 hover:text-red-500 transition shrink-0"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))}
