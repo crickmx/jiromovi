@@ -234,50 +234,52 @@ Deno.serve(async (req: Request) => {
     if (saveErr) throw new Error(`Error guardando: ${saveErr.message}`);
 
     // 8b. Generar y adjuntar XLSX para SICAS
-    if (ticket.agente_id) {
-      try {
-        const datosRow: Record<string, unknown> = {
-          entidad, nombre_completo: campos.nombre_cliente ?? null,
-          razon_social: entidad === 1 ? (campos.nombre_cliente ?? null) : null,
-          rfc: rfc ?? null, ejecutivo_cuenta: null, renovacion: null,
-          tipo_documento: "Póliza", documento: campos.documento ?? null,
-          agente_clave: campos.agente_clave ?? null, forma_pago: campos.forma_pago ?? null,
-          moneda: campos.moneda ?? null, sub_ramo: extracted.sub_ramo ?? null,
-          desde: parseDate(campos.desde), hasta: parseDate(campos.hasta),
-          prima_neta: parseNum(campos.prima_neta), descuento: parseNum(campos.descuento),
-          recargos: parseNum(campos.recargos), derechos: parseNum(campos.derechos),
-          sub_total: parseNum(campos.sub_total), iva: parseNum(campos.iva),
-          prima_total: parseNum(campos.prima_total), concepto: campos.descripcion_veh ?? null,
-          serie: campos.serie ?? null, descripcion_veh: campos.descripcion_veh ?? null,
-          modelo: campos.modelo ?? null, motor: campos.motor ?? null, placas: campos.placas ?? null,
-        };
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet([SICAS_HEADERS, buildSicasRow(datosRow)]);
-        XLSX.utils.book_append_sheet(wb, ws, "SICAS");
-        const xlsxArr: number[] = XLSX.write(wb, { type: "array", bookType: "xlsx" });
-        const xlsxBytes = new Uint8Array(xlsxArr);
-        const xlsxName = `${ticket.folio ?? ticket_id}-SICAS.xlsx`;
-        const xlsxPath = `sicas-exports/${ticket_id}/${xlsxName}`;
-        const { error: uploadXlsxErr } = await sb.storage
-          .from(STORAGE_BUCKET)
-          .upload(xlsxPath, xlsxBytes, {
-            contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            upsert: true,
-          });
-        if (!uploadXlsxErr) {
-          const { data: { publicUrl: xlsxUrl } } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(xlsxPath);
-          await sb.from("ticket_archivos").insert({
-            ticket_id,
-            usuario_id: ticket.agente_id,
-            nombre: xlsxName,
-            url: xlsxUrl,
-            tipo: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            tamano: xlsxBytes.byteLength,
-          });
-        }
-      } catch (_xlsxErr) {
-        // ponytail: silenciar error de XLSX para no bloquear el flujo principal
-      }
+    let xlsxError: string | null = null;
+    try {
+      const datosRow: Record<string, unknown> = {
+        entidad, nombre_completo: campos.nombre_cliente ?? null,
+        razon_social: entidad === 1 ? (campos.nombre_cliente ?? null) : null,
+        rfc: rfc ?? null, ejecutivo_cuenta: null, renovacion: null,
+        tipo_documento: "Póliza", documento: campos.documento ?? null,
+        agente_clave: campos.agente_clave ?? null, forma_pago: campos.forma_pago ?? null,
+        moneda: campos.moneda ?? null, sub_ramo: extracted.sub_ramo ?? null,
+        desde: parseDate(campos.desde), hasta: parseDate(campos.hasta),
+        prima_neta: parseNum(campos.prima_neta), descuento: parseNum(campos.descuento),
+        recargos: parseNum(campos.recargos), derechos: parseNum(campos.derechos),
+        sub_total: parseNum(campos.sub_total), iva: parseNum(campos.iva),
+        prima_total: parseNum(campos.prima_total), concepto: campos.descripcion_veh ?? null,
+        serie: campos.serie ?? null, descripcion_veh: campos.descripcion_veh ?? null,
+        modelo: campos.modelo ?? null, motor: campos.motor ?? null, placas: campos.placas ?? null,
+      };
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([SICAS_HEADERS, buildSicasRow(datosRow)]);
+      XLSX.utils.book_append_sheet(wb, ws, "SICAS");
+      const xlsxArr: number[] = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      const xlsxBytes = new Uint8Array(xlsxArr);
+      const xlsxName = `${ticket.folio ?? ticket_id}-SICAS.xlsx`;
+      // Path dentro del folder del ticket para respetar las políticas del bucket
+      const xlsxPath = `${ticket_id}/sicas/${xlsxName}`;
+      const { error: uploadXlsxErr } = await sb.storage
+        .from(STORAGE_BUCKET)
+        .upload(xlsxPath, xlsxBytes, {
+          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          upsert: true,
+        });
+      if (uploadXlsxErr) throw new Error(`Upload XLSX: ${uploadXlsxErr.message}`);
+      const { data: { publicUrl: xlsxUrl } } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(xlsxPath);
+      const { error: insertXlsxErr } = await sb.from("ticket_archivos").insert({
+        ticket_id,
+        usuario_id: ticket.agente_id ?? null,
+        nombre: xlsxName,
+        url: xlsxUrl,
+        tipo: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        tamano: xlsxBytes.byteLength,
+        categoria_id: catRow?.id ?? null,
+      });
+      if (insertXlsxErr) throw new Error(`Insert ticket_archivos XLSX: ${insertXlsxErr.message}`);
+    } catch (xlsxErr) {
+      xlsxError = xlsxErr instanceof Error ? xlsxErr.message : "Error generando XLSX";
+      console.error("XLSX generation error:", xlsxError);
     }
 
     const mensaje = buildMessage(campos, extracted.aseguradora, extracted.sub_ramo, ticket.folio);
@@ -341,7 +343,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return json({ ok: true, estado: extracted.estado || "ok" });
+    return json({ ok: true, estado: extracted.estado || "ok", ...(xlsxError ? { xlsx_error: xlsxError } : {}) });
 
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error interno";
