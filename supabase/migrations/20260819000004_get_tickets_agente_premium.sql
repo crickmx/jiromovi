@@ -2,6 +2,9 @@
 -- de Marketing Premium. Usa SECURITY DEFINER para bypasear RLS (el caller
 -- no siempre tiene rol Administrador/Gerente), pero verifica que el caller
 -- tenga acceso al módulo de Marketing antes de devolver datos.
+--
+-- Nota: usar tickets.columna en vez de alias t.columna para evitar
+-- ambigüedad con los OUT parameters del RETURNS TABLE.
 
 CREATE OR REPLACE FUNCTION public.get_tickets_agente_premium(p_agente_id uuid)
 RETURNS TABLE (
@@ -41,16 +44,16 @@ BEGIN
 
   RETURN QUERY
   SELECT
-    t.id,
-    t.folio,
-    t.tipo_tramite,
-    t.fecha_creacion,
-    t.custom_estatus_label,
-    t.creado_por
-  FROM tickets t
-  WHERE t.agente_id = p_agente_id
-     OR t.agente_usuario_id = p_agente_id
-  ORDER BY t.fecha_creacion DESC;
+    tickets.id,
+    tickets.folio,
+    tickets.tipo_tramite,
+    tickets.fecha_creacion,
+    tickets.custom_estatus_label,
+    tickets.creado_por
+  FROM tickets
+  WHERE tickets.agente_id = p_agente_id
+     OR tickets.agente_usuario_id = p_agente_id
+  ORDER BY tickets.fecha_creacion DESC;
 END;
 $$;
 
