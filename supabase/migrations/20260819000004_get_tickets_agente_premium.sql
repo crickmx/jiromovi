@@ -3,12 +3,14 @@
 -- no siempre tiene rol Administrador/Gerente), pero verifica que el caller
 -- tenga acceso al módulo de Marketing antes de devolver datos.
 --
--- Nota: usar tickets.columna en vez de alias t.columna para evitar
--- ambigüedad con los OUT parameters del RETURNS TABLE.
+-- Nota: RETURNS TABLE usa ticket_id (no id) para evitar ambigüedad con
+-- los OUT parameters de PostgreSQL. Frontend mapea r.ticket_id → id.
 
-CREATE OR REPLACE FUNCTION public.get_tickets_agente_premium(p_agente_id uuid)
+DROP FUNCTION IF EXISTS public.get_tickets_agente_premium(uuid);
+
+CREATE FUNCTION public.get_tickets_agente_premium(p_agente_id uuid)
 RETURNS TABLE (
-  id                   uuid,
+  ticket_id            uuid,
   folio                text,
   tipo_tramite         text,
   fecha_creacion       timestamptz,
@@ -43,17 +45,11 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT
-    tickets.id,
-    tickets.folio,
-    tickets.tipo_tramite,
-    tickets.fecha_creacion,
-    tickets.custom_estatus_label,
-    tickets.creado_por
-  FROM tickets
-  WHERE tickets.agente_id = p_agente_id
-     OR tickets.agente_usuario_id = p_agente_id
-  ORDER BY tickets.fecha_creacion DESC;
+  SELECT t.id, t.folio, t.tipo_tramite, t.fecha_creacion, t.custom_estatus_label, t.creado_por
+  FROM tickets t
+  WHERE (t.agente_id = p_agente_id OR t.agente_usuario_id = p_agente_id)
+    AND t.eliminado_at IS NULL
+  ORDER BY t.fecha_creacion DESC;
 END;
 $$;
 
