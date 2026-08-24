@@ -239,6 +239,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
           .from('tickets')
           .select('id, folio, tipo_tramite, fecha_creacion, custom_estatus_label, creado_por')
           .or(`agente_id.eq.${agenteId},agente_usuario_id.eq.${agenteId}`)
+          .is('eliminado_at', null)
           .order('fecha_creacion', { ascending: false });
 
         tickets = ticketsDirecto;
@@ -265,7 +266,11 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       .from('tickets')
       .update({ eliminado_at: new Date().toISOString(), eliminado_por: usuario?.id })
       .eq('id', tramiteId);
-    if (error) { alert('Error al eliminar el trámite'); return; }
+    if (error) {
+      console.error('[MKT] eliminar tramite error:', error);
+      alert(`Error al eliminar: ${error.message}`);
+      return;
+    }
     setTramitesAgente(prev => prev.filter(t => t.id !== tramiteId));
   }
 
