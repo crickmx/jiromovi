@@ -1974,6 +1974,17 @@ export function TramiteDetalle() {
                               categoria_id: catId,
                             }).select('id').single();
                             newArchivos.push({ id: archivoData?.id || '', nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size, categoria_id: catId ?? undefined });
+                            if (archivoData?.id && file.type === 'application/pdf') {
+                              const debeExtraer = tiposConfig.some(tc => tc.dispara_extraccion && tc.categoria_id === catId);
+                              if (debeExtraer) {
+                                supabase.functions.invoke('process-poliza-pdf', {
+                                  body: { ticket_id: tramite.id, archivo_id: archivoData.id },
+                                }).then(({ data: r }) => {
+                                  if (r?.ok) showToast(r.xlsx_error ? `Datos extraídos. Error Excel: ${r.xlsx_error}` : 'Datos de póliza extraídos. Excel SICAS generado.', r.xlsx_error ? 'error' : 'success');
+                                  else if (r) showToast(`Error en extracción: ${r.error ?? 'Error desconocido'}`, 'error');
+                                }).catch(() => {});
+                              }
+                            }
                           }
                           set(newArchivos);
                         };
