@@ -281,6 +281,7 @@ Deno.serve(async (req: Request) => {
         });
       if (uploadXlsxErr) throw new Error(`Upload XLSX: ${uploadXlsxErr.message}`);
       const { data: { publicUrl: xlsxUrl } } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(xlsxPath);
+      await sb.from("ticket_archivos").delete().eq("ticket_id", ticket_id).ilike("nombre", "%-SICAS.xlsx");
       const { error: insertXlsxErr } = await sb.from("ticket_archivos").insert({
         ticket_id,
         usuario_id: ticket.agente_id ?? null,

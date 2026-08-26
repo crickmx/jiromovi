@@ -87,6 +87,7 @@ export function TramiteDetalle() {
   const [selectedEstatus, setSelectedEstatus] = useState('');
   const [selectedPrioridad, setSelectedPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
   const [saving, setSaving] = useState(false);
+  const [pendingExtractions, setPendingExtractions] = useState<{ archivo_id: string }[]>([]);
   const [showCerrarMenu, setShowCerrarMenu] = useState(false);
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -1170,6 +1171,27 @@ export function TramiteDetalle() {
           ? `Guardado. ${createdFolios.length === 1 ? 'Trámite creado' : 'Trámites creados'}: ${createdFolios.join(', ')}`
           : 'Cambios guardados con éxito'
       );
+
+      // Procesar extracciones PDF pendientes
+      const extractions = [...pendingExtractions];
+      if (extractions.length > 0) {
+        setPendingExtractions([]);
+        for (let i = 0; i < extractions.length; i++) {
+          const label = extractions.length > 1 ? ` (${i + 1}/${extractions.length})` : '';
+          try {
+            showToast(`Extrayendo datos de póliza${label}...`);
+            const { data: r } = await supabase.functions.invoke('process-poliza-pdf', {
+              body: { ticket_id: tramite.id, archivo_id: extractions[i].archivo_id },
+            });
+            if (r?.ok && !r.xlsx_error) showToast(`Datos de póliza extraídos${label}. Excel SICAS generado.`);
+            else if (r?.xlsx_error) showToast(`Datos extraídos${label}. Error en Excel: ${r.xlsx_error}`, 'error');
+            else showToast(`Error extrayendo póliza${label}: ${r?.error ?? 'Error desconocido'}`, 'error');
+          } catch {
+            showToast(`Error conectando con el extractor${label}`, 'error');
+          }
+        }
+        await loadTramite();
+      }
     } catch (err: any) {
       console.error('Error updating tramite:', err);
       showToast('Error al guardar los cambios', 'error');
@@ -1977,12 +1999,7 @@ export function TramiteDetalle() {
                             if (archivoData?.id && file.type === 'application/pdf') {
                               const debeExtraer = tiposConfig.some(tc => tc.dispara_extraccion && tc.categoria_id === catId);
                               if (debeExtraer) {
-                                supabase.functions.invoke('process-poliza-pdf', {
-                                  body: { ticket_id: tramite.id, archivo_id: archivoData.id },
-                                }).then(({ data: r }) => {
-                                  if (r?.ok) showToast(r.xlsx_error ? `Datos extraídos. Error Excel: ${r.xlsx_error}` : 'Datos de póliza extraídos. Excel SICAS generado.', r.xlsx_error ? 'error' : 'success');
-                                  else if (r) showToast(`Error en extracción: ${r.error ?? 'Error desconocido'}`, 'error');
-                                }).catch(() => {});
+                                setPendingExtractions(prev => [...prev, { archivo_id: archivoData.id }]);
                               }
                             }
                           }
