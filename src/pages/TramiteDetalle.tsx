@@ -737,8 +737,7 @@ export function TramiteDetalle() {
       const { data: archivosSubidos } = await supabase
         .from('ticket_archivos')
         .select('categoria_id')
-        .eq('ticket_id', tramite.id)
-        .is('eliminado_at', null);
+        .eq('ticket_id', tramite.id);
       const categoriasSubidas = new Set((archivosSubidos || []).map((a: any) => a.categoria_id).filter(Boolean));
       for (const campo of adjuntosConReq) {
         const faltantes = (campo.config.tipos_config as { categoria_id: string; requerido: boolean }[])
