@@ -129,6 +129,7 @@ export function TramiteDetalle() {
     usuario_id?: string; usuario_nombre?: string;
   }[]>([]);
   const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
+  const [adjuntoCatNombres, setAdjuntoCatNombres] = useState<Record<string, string>>({});
   const [tipoUUID, setTipoUUID] = useState<string | null>(null);
 
   // Trigger modal
@@ -448,6 +449,22 @@ export function TramiteDetalle() {
 
     if (!campos?.length) { setCamposDinamicos([]); return; }
     setCamposDinamicos(campos as CampoDinamico[]);
+
+    // Cargar nombres de categorías para campos adjunto con tipos_config
+    const catIds = new Set<string>();
+    (campos as CampoDinamico[]).forEach(c => {
+      if (c.tipo === 'adjunto') {
+        ((c.config?.tipos_config || []) as any[]).forEach((tc: any) => { if (tc.categoria_id) catIds.add(tc.categoria_id); });
+      }
+    });
+    if (catIds.size > 0) {
+      const { data: cats } = await supabase.from('maestro_adjunto_categorias').select('id, nombre').in('id', [...catIds]);
+      if (cats) {
+        const map: Record<string, string> = {};
+        (cats as any[]).forEach(c => { map[c.id] = c.nombre; });
+        setAdjuntoCatNombres(map);
+      }
+    }
 
     // Cargar respuestas existentes
     const { data: respuestas } = await supabase
@@ -1889,14 +1906,18 @@ export function TramiteDetalle() {
                         );
                       })()}
                       {campo.tipo === 'adjunto' && (() => {
-                        type ArchivoRef = { id: string; nombre: string; url: string; tipo: string; tamano: number };
+                        type ArchivoRef = { id: string; nombre: string; url: string; tipo: string; tamano: number; categoria_id?: string };
                         const archivos: ArchivoRef[] = Array.isArray(val) ? val : [];
                         const maxFiles = campo.config.max_archivos || 1;
                         const maxMb = campo.config.max_mb || 10;
                         const accept = (campo.config.tipos_mime || []).join(',') || undefined;
                         const remaining = maxFiles - archivos.length;
+                        const tiposConfig = ((campo.config.tipos_config || []) as { categoria_id: string; requerido: boolean; dispara_extraccion: boolean }[]).filter(tc => tc.categoria_id);
+                        // Categoría por defecto: primera de tipos_config, o la raíz (legacy)
+                        const defaultCatId = tiposConfig.length > 0 ? tiposConfig[0].categoria_id : (campo.config.categoria_id || null);
 
-                        const uploadFiles = async (files: FileList | File[]) => {
+                        const uploadFiles = async (files: FileList | File[], catOverride?: string) => {
+                          const catId = catOverride ?? defaultCatId;
                           const toUpload = Array.from(files).slice(0, remaining);
                           const newArchivos = [...archivos];
                           for (const file of toUpload) {
@@ -1912,11 +1933,17 @@ export function TramiteDetalle() {
                             const { data: archivoData } = await supabase.from('ticket_archivos').insert({
                               ticket_id: tramite.id, usuario_id: usuario?.id,
                               nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
-                              categoria_id: campo.config.categoria_id || null,
+                              categoria_id: catId,
                             }).select('id').single();
-                            newArchivos.push({ id: archivoData?.id || '', nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size });
+                            newArchivos.push({ id: archivoData?.id || '', nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size, categoria_id: catId ?? undefined });
                           }
                           set(newArchivos);
+                        };
+
+                        const changeCat = async (archivo: ArchivoRef, newCatId: string, idx: number) => {
+                          if (archivo.id) await supabase.from('ticket_archivos').update({ categoria_id: newCatId }).eq('id', archivo.id);
+                          const updated = archivos.map((a, i) => i === idx ? { ...a, categoria_id: newCatId } : a);
+                          set(updated);
                         };
 
                         return (
@@ -1924,6 +1951,23 @@ export function TramiteDetalle() {
                             {archivos.map((archivo, i) => (
                               <div key={archivo.id || i} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
                                 <span className="text-sm flex-1 truncate">{archivo.nombre}</span>
+                                {tiposConfig.length === 1 ? (
+                                  <span className="text-[11px] text-neutral-500 bg-neutral-200 rounded px-1.5 py-0.5 shrink-0">
+                                    {adjuntoCatNombres[archivo.categoria_id ?? ''] ?? adjuntoCatNombres[tiposConfig[0].categoria_id] ?? ''}
+                                  </span>
+                                ) : tiposConfig.length > 1 ? (
+                                  <select
+                                    value={archivo.categoria_id ?? ''}
+                                    onChange={e => changeCat(archivo, e.target.value, i)}
+                                    className="text-[11px] border border-neutral-300 rounded px-1 py-0.5 bg-white shrink-0 max-w-[130px]"
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    <option value="">— Tipo —</option>
+                                    {tiposConfig.map(tc => (
+                                      <option key={tc.categoria_id} value={tc.categoria_id}>{adjuntoCatNombres[tc.categoria_id] ?? tc.categoria_id}</option>
+                                    ))}
+                                  </select>
+                                ) : null}
                                 <span className="text-xs text-neutral-400 shrink-0">{(archivo.tamano / 1024).toFixed(0)} KB</span>
                                 <a href={archivo.url} target="_blank" rel="noopener noreferrer"
                                   className="p-1 text-blue-500 hover:text-blue-700 transition-colors shrink-0" title="Descargar">
@@ -1955,6 +1999,7 @@ export function TramiteDetalle() {
                                 </span>
                                 <span className="text-xs text-neutral-400 text-center">
                                   {accept ? (campo.config.tipos_mime || []).join(', ').replace(/[^/]+\//g, '').toUpperCase() + ' · ' : ''}máx. {maxMb} MB{remaining > 1 ? ` · hasta ${remaining} archivos` : ''}
+                                  {defaultCatId && adjuntoCatNombres[defaultCatId] ? ` · ${adjuntoCatNombres[defaultCatId]}` : ''}
                                 </span>
                                 <input
                                   type="file"
