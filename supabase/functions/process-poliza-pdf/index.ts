@@ -190,18 +190,14 @@ Deno.serve(async (req: Request) => {
       method: "POST",
       body: formData,
     });
-    if (!extractResp.ok) {
-      const errText = await extractResp.text();
-      throw new Error(`Extractor error ${extractResp.status}: ${errText}`);
-    }
 
-    const extracted: {
-      aseguradora?: string;
-      ramo?: string;
-      sub_ramo?: string;
-      estado?: string;
-      campos?: Record<string, string>;
-    } = await extractResp.json();
+    let extracted: { aseguradora?: string; ramo?: string; sub_ramo?: string; estado?: string; campos?: Record<string, string> } = {};
+    let extraccionError: string | null = null;
+    if (!extractResp.ok) {
+      extraccionError = `Extractor error ${extractResp.status}: ${await extractResp.text().catch(() => "")}`;
+    } else {
+      try { extracted = await extractResp.json(); } catch { extraccionError = "Respuesta del extractor no es JSON válido"; }
+    }
 
     const campos = extracted.campos || {};
     const rfc = campos.rfc;
@@ -211,7 +207,8 @@ Deno.serve(async (req: Request) => {
     const { error: saveErr } = await sb.from("poliza_datos_extraidos").upsert({
       ticket_id,
       archivo_id,
-      estado: extracted.estado || "ok",
+      estado: extraccionError ? "error" : (extracted.estado || "ok"),
+      error_detalle: extraccionError ?? null,
       aseguradora: extracted.aseguradora ?? null,
       ramo: extracted.ramo ?? null,
       sub_ramo: extracted.sub_ramo ?? null,
@@ -365,7 +362,7 @@ Deno.serve(async (req: Request) => {
       mensaje: `Datos extraídos de póliza:\n${mensaje}`,
     }).catch(() => {}); // fire-and-forget, no bloquea si falla
 
-    return json({ ok: true, estado: extracted.estado || "ok", ...(xlsxError ? { xlsx_error: xlsxError } : {}) });
+    return json({ ok: true, estado: extraccionError ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}) });
 
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error interno";

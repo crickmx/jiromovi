@@ -1182,7 +1182,8 @@ export function TramiteDetalle() {
             const { data: r } = await supabase.functions.invoke('process-poliza-pdf', {
               body: { ticket_id: tramite.id, archivo_id: extractions[i].archivo_id },
             });
-            if (r?.ok && !r.xlsx_error) showToast(`Datos de póliza extraídos${label}. Excel SICAS generado.`);
+            if (r?.ok && !r.extraccion_error && !r.xlsx_error) showToast(`Datos de póliza extraídos${label}. Excel SICAS generado.`);
+            else if (r?.ok && r.extraccion_error) showToast(`Excel generado con datos parciales${label}. Error en extracción: ${r.extraccion_error}`, 'error');
             else if (r?.xlsx_error) showToast(`Datos extraídos${label}. Error en Excel: ${r.xlsx_error}`, 'error');
             else showToast(`Error extrayendo póliza${label}: ${r?.error ?? 'Error desconocido'}`, 'error');
           } catch {
