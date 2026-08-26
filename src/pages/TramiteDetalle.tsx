@@ -88,6 +88,7 @@ export function TramiteDetalle() {
   const [selectedPrioridad, setSelectedPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
   const [saving, setSaving] = useState(false);
   const [pendingExtractions, setPendingExtractions] = useState<{ archivo_id: string }[]>([]);
+  const [extractionStatus, setExtractionStatus] = useState<Record<string, string>>({});
   const [showCerrarMenu, setShowCerrarMenu] = useState(false);
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -492,6 +493,17 @@ export function TramiteDetalle() {
         else vals[campo.id] = r.valor_json;
       }
       setRespuestasDinamicas(vals);
+    }
+
+    // Cargar estado de extracción por archivo
+    const { data: extData } = await supabase
+      .from('poliza_datos_extraidos')
+      .select('archivo_id, estado')
+      .eq('ticket_id', id);
+    if (extData) {
+      const statusMap: Record<string, string> = {};
+      extData.forEach((r: any) => { statusMap[r.archivo_id] = r.estado; });
+      setExtractionStatus(statusMap);
     }
   };
 
@@ -2017,6 +2029,15 @@ export function TramiteDetalle() {
                             {archivos.map((archivo, i) => (
                               <div key={archivo.id || i} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
                                 <span className="text-sm flex-1 truncate">{archivo.nombre}</span>
+                                {(() => {
+                                  const isPending = pendingExtractions.some(p => p.archivo_id === archivo.id);
+                                  const st = extractionStatus[archivo.id];
+                                  if (isPending) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0 font-medium whitespace-nowrap">⏳ Pendiente</span>;
+                                  if (st === 'ok') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0 font-medium whitespace-nowrap">✓ Datos extraídos</span>;
+                                  if (st === 'error') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0 font-medium whitespace-nowrap">⚠ Sin extracción</span>;
+                                  if (st === 'pendiente') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0 font-medium whitespace-nowrap">↻ Procesando...</span>;
+                                  return null;
+                                })()}
                                 {tiposConfig.length === 1 ? (
                                   <span className="text-[11px] text-neutral-500 bg-neutral-200 rounded px-1.5 py-0.5 shrink-0">
                                     {adjuntoCatNombres[archivo.categoria_id ?? ''] ?? adjuntoCatNombres[tiposConfig[0].categoria_id] ?? ''}
