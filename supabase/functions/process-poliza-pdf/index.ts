@@ -69,6 +69,7 @@ const SICAS_HEADERS = [
   "Sub Ramo", "Vendedor", "Renovación", "Fecha Antigüedad", "Desde", "Hasta",
   "Estatus", "Prima Neta", "Descuento", "Recargos", "Derechos", "Sub Total",
   "IVA", "Prima Total", "Concepto", "Serie", "Descripción", "Modelo", "Motor", "Placas",
+  "Nombre Archivo", "Observaciones",
 ];
 
 function parseName(nombreCompleto: string | null, esMoral: boolean) {
@@ -80,13 +81,13 @@ function parseName(nombreCompleto: string | null, esMoral: boolean) {
   return { apellidoP: parts[parts.length - 2], apellidoM: parts[parts.length - 1], nombre: parts.slice(0, -2).join(" ") };
 }
 
-function buildSicasRow(d: Record<string, unknown>): unknown[] {
+function buildSicasRow(d: Record<string, unknown>, despacho: string | null, nombreArchivo: string): unknown[] {
   const moral = d.entidad === 1;
   const { apellidoP, apellidoM, nombre } = parseName(d.nombre_completo as string | null, moral);
   return [
     d.entidad === 0 ? "Física" : d.entidad === 1 ? "Moral" : "",
     apellidoP, apellidoM, nombre,
-    d.razon_social ?? "", d.rfc ?? "", "", d.ejecutivo_cuenta ?? "", "Oficina Jiro",
+    d.razon_social ?? "", d.rfc ?? "", "", d.ejecutivo_cuenta ?? "", despacho ?? "",
     d.tipo_documento ?? "Póliza", d.documento ?? "", d.agente_clave ?? "",
     d.forma_pago ?? "", d.moneda ?? "", d.sub_ramo ?? "", d.vendedor ?? "",
     d.renovacion ?? "", d.fecha_antiguedad ?? "", d.desde ?? "", d.hasta ?? "",
@@ -95,6 +96,8 @@ function buildSicasRow(d: Record<string, unknown>): unknown[] {
     d.sub_total ?? "", d.iva ?? "", d.prima_total ?? "",
     d.concepto ?? "", d.serie ?? "", d.descripcion_veh ?? "",
     d.modelo ?? "", d.motor ?? "", d.placas ?? "",
+    nombreArchivo,
+    d.observaciones ?? "",
   ];
 }
 
@@ -130,6 +133,15 @@ Deno.serve(async (req: Request) => {
   if (!ticket) return json({ ok: false, error: `Ticket no encontrado: ${ticketErr?.message}` }, 404);
   const agente = ticket.agente as { nombre_sicas: string | null; nombre: string | null } | null;
   const agenteSicasNombre = agente?.nombre_sicas || agente?.nombre || null;
+
+  // 1b. Obtener valor del campo "Oficina Jiro" para columna Despacho en SICAS
+  const { data: respData } = await sb
+    .from("tramite_respuestas")
+    .select("valor_texto, campo:tramite_tipo_campos!campo_id(tipo)")
+    .eq("tramite_id", ticket_id);
+  const despacho = (respData ?? [])
+    .find((r: any) => r.campo?.tipo === "oficina_jiro")
+    ?.valor_texto ?? null;
 
   // 2. Verificar si hay config activa para este tipo de trámite
   const [{ data: tipoRow }, { data: catRow }] = await Promise.all([
@@ -252,32 +264,31 @@ Deno.serve(async (req: Request) => {
 
     if (saveErr) throw new Error(`Error guardando: ${saveErr.message}`);
 
-    // 8b. Generar y adjuntar XLSX para SICAS
+    // 8b. Generar y adjuntar XLSX para SICAS — una fila por cada archivo del ticket
     let xlsxError: string | null = null;
     try {
-      const datosRow: Record<string, unknown> = {
-        entidad, nombre_completo: campos.nombre_cliente ?? null,
-        razon_social: entidad === 1 ? (campos.nombre_cliente ?? null) : null,
-        rfc: rfc ?? null, ejecutivo_cuenta: null, renovacion: null, vendedor: agenteSicasNombre,
-        tipo_documento: "Póliza", documento: campos.documento ?? null,
-        agente_clave: campos.agente_clave ?? null, forma_pago: campos.forma_pago ?? null,
-        moneda: campos.moneda ?? null, sub_ramo: extracted.sub_ramo ?? null,
-        desde: parseDate(campos.desde), hasta: parseDate(campos.hasta),
-        prima_neta: parseNum(campos.prima_neta), descuento: parseNum(campos.descuento),
-        recargos: parseNum(campos.recargos), derechos: parseNum(campos.derechos),
-        sub_total: parseNum(campos.sub_total), iva: parseNum(campos.iva),
-        prima_total: parseNum(campos.prima_total), concepto: campos.descripcion_veh ?? null,
-        serie: campos.serie ?? null, descripcion_veh: campos.descripcion_veh ?? null,
-        modelo: campos.modelo ?? null, motor: campos.motor ?? null, placas: campos.placas ?? null,
-      };
+      const { data: todosExtraidos, error: qErr } = await sb
+        .from("poliza_datos_extraidos")
+        .select("*, archivo:ticket_archivos!archivo_id(nombre)")
+        .eq("ticket_id", ticket_id);
+      if (qErr) throw new Error(`Query extraídos: ${qErr.message}`);
+
+      const filas = (todosExtraidos ?? []).map((d: any) =>
+        buildSicasRow(
+          { ...d, vendedor: agenteSicasNombre },
+          despacho,
+          d.archivo?.nombre ?? ""
+        )
+      );
+
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet([SICAS_HEADERS, buildSicasRow(datosRow)]);
+      const ws = XLSX.utils.aoa_to_sheet([SICAS_HEADERS, ...filas]);
       XLSX.utils.book_append_sheet(wb, ws, "SICAS");
       const xlsxArr: number[] = XLSX.write(wb, { type: "array", bookType: "xlsx" });
       const xlsxBytes = new Uint8Array(xlsxArr);
       const xlsxName = `${ticket.folio ?? ticket_id}-SICAS.xlsx`;
-      // Path dentro del folder del ticket para respetar las políticas del bucket
       const xlsxPath = `${ticket_id}/sicas/${xlsxName}`;
+
       const { error: uploadXlsxErr } = await sb.storage
         .from(STORAGE_BUCKET)
         .upload(xlsxPath, xlsxBytes, {
@@ -285,6 +296,7 @@ Deno.serve(async (req: Request) => {
           upsert: true,
         });
       if (uploadXlsxErr) throw new Error(`Upload XLSX: ${uploadXlsxErr.message}`);
+
       const { data: { publicUrl: xlsxUrl } } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(xlsxPath);
       await sb.from("ticket_archivos").delete().eq("ticket_id", ticket_id).ilike("nombre", "%-SICAS.xlsx");
       const { error: insertXlsxErr } = await sb.from("ticket_archivos").insert({
@@ -364,11 +376,13 @@ Deno.serve(async (req: Request) => {
     }
 
     // 11. Insertar comentario con datos extraídos en el trámite
-    await sb.from("ticket_comentarios").insert({
-      ticket_id,
-      usuario_id: ticket.agente_id ?? null,
-      mensaje: `Datos extraídos de póliza:\n${mensaje}`,
-    }).catch(() => {}); // fire-and-forget, no bloquea si falla
+    try {
+      await sb.from("ticket_comentarios").insert({
+        ticket_id,
+        usuario_id: ticket.agente_id ?? null,
+        mensaje: `Datos extraídos de póliza:\n${mensaje}`,
+      });
+    } catch {} // fire-and-forget
 
     return json({ ok: true, estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!aseguradoraSoportada && !extraccionError ? { extraccion_error: `Aseguradora no soportada: ${extracted.aseguradora ?? "desconocida"}` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}) });
 
