@@ -122,13 +122,13 @@ Deno.serve(async (req: Request) => {
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   // 1. Obtener ticket
-  const { data: ticket } = await sb
+  const { data: ticket, error: ticketErr } = await sb
     .from("tickets")
-    .select("tipo_tramite, agente_id, folio, usuarios(nombre_sicas, nombre)")
+    .select("tipo_tramite, agente_id, folio, agente:usuarios!agente_id(nombre_sicas, nombre)")
     .eq("id", ticket_id)
     .single();
-  if (!ticket) return json({ ok: false, error: "Ticket no encontrado" }, 404);
-  const agente = ticket.usuarios as { nombre_sicas: string | null; nombre: string | null } | null;
+  if (!ticket) return json({ ok: false, error: `Ticket no encontrado: ${ticketErr?.message}` }, 404);
+  const agente = ticket.agente as { nombre_sicas: string | null; nombre: string | null } | null;
   const agenteSicasNombre = agente?.nombre_sicas || agente?.nombre || null;
 
   // 2. Verificar si hay config activa para este tipo de trámite
@@ -203,12 +203,20 @@ Deno.serve(async (req: Request) => {
     const rfc = campos.rfc;
     const entidad = rfc ? (rfc.length <= 12 ? 1 : 0) : null;
 
+    const ASEGURADORAS_SOPORTADAS = ["gnp", "qualitas", "quálitas"];
+    const aseguradoraNorm = (extracted.aseguradora ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const aseguradoraSoportada = !extraccionError && ASEGURADORAS_SOPORTADAS.some(a => aseguradoraNorm.includes(a));
+    const observaciones = extraccionError || (!aseguradoraSoportada && extracted.aseguradora)
+      ? "El sistema no pudo extraer de forma automática los datos para este archivo, favor de capturar manualmente"
+      : null;
+
     // 8. Guardar en poliza_datos_extraidos
     const { error: saveErr } = await sb.from("poliza_datos_extraidos").upsert({
       ticket_id,
       archivo_id,
-      estado: extraccionError ? "error" : (extracted.estado || "ok"),
+      estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"),
       error_detalle: extraccionError ?? null,
+      observaciones,
       aseguradora: extracted.aseguradora ?? null,
       ramo: extracted.ramo ?? null,
       sub_ramo: extracted.sub_ramo ?? null,
@@ -362,7 +370,7 @@ Deno.serve(async (req: Request) => {
       mensaje: `Datos extraídos de póliza:\n${mensaje}`,
     }).catch(() => {}); // fire-and-forget, no bloquea si falla
 
-    return json({ ok: true, estado: extraccionError ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}) });
+    return json({ ok: true, estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!aseguradoraSoportada && !extraccionError ? { extraccion_error: `Aseguradora no soportada: ${extracted.aseguradora ?? "desconocida"}` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}) });
 
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error interno";
