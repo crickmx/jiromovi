@@ -1894,6 +1894,31 @@ export function TramiteDetalle() {
                         const maxFiles = campo.config.max_archivos || 1;
                         const maxMb = campo.config.max_mb || 10;
                         const accept = (campo.config.tipos_mime || []).join(',') || undefined;
+                        const remaining = maxFiles - archivos.length;
+
+                        const uploadFiles = async (files: FileList | File[]) => {
+                          const toUpload = Array.from(files).slice(0, remaining);
+                          const newArchivos = [...archivos];
+                          for (const file of toUpload) {
+                            if (file.size > maxMb * 1024 * 1024) {
+                              alert(`"${file.name}" excede el límite de ${maxMb} MB.`);
+                              continue;
+                            }
+                            const ext = file.name.split('.').pop();
+                            const fileName = `${tramite.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+                            const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(fileName, file);
+                            if (upErr) { alert('Error al subir: ' + upErr.message); continue; }
+                            const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(fileName);
+                            const { data: archivoData } = await supabase.from('ticket_archivos').insert({
+                              ticket_id: tramite.id, usuario_id: usuario?.id,
+                              nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
+                              categoria_id: campo.config.categoria_id || null,
+                            }).select('id').single();
+                            newArchivos.push({ id: archivoData?.id || '', nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size });
+                          }
+                          set(newArchivos);
+                        };
+
                         return (
                           <div className="space-y-2">
                             {archivos.map((archivo, i) => (
@@ -1913,33 +1938,31 @@ export function TramiteDetalle() {
                                 )}
                               </div>
                             ))}
-                            {editable && archivos.length < maxFiles && (
-                              <label className="flex flex-col items-center justify-center gap-2 px-4 py-6 border-[3px] border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors group">
+                            {editable && remaining > 0 && (
+                              <label
+                                className="flex flex-col items-center justify-center gap-2 px-4 py-6 border-[3px] border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors group"
+                                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-blue-400', '!bg-blue-50'); }}
+                                onDragLeave={e => e.currentTarget.classList.remove('border-blue-400', '!bg-blue-50')}
+                                onDrop={async e => {
+                                  e.preventDefault();
+                                  e.currentTarget.classList.remove('border-blue-400', '!bg-blue-50');
+                                  await uploadFiles(e.dataTransfer.files);
+                                }}
+                              >
                                 <Paperclip className="w-7 h-7 text-neutral-300 group-hover:text-blue-400 transition-colors" />
-                                <span className="text-sm font-medium text-neutral-500 group-hover:text-blue-500 transition-colors">Adjuntar archivo</span>
-                                {accept && <span className="text-xs text-neutral-400">{(campo.config.tipos_mime || []).join(', ').replace(/[^/]+\//g, '').toUpperCase()} · máx. {maxMb} MB</span>}
+                                <span className="text-sm font-medium text-neutral-500 group-hover:text-blue-500 transition-colors">
+                                  {remaining > 1 ? 'Adjuntar archivos' : 'Adjuntar archivo'}
+                                </span>
+                                <span className="text-xs text-neutral-400 text-center">
+                                  {accept ? (campo.config.tipos_mime || []).join(', ').replace(/[^/]+\//g, '').toUpperCase() + ' · ' : ''}máx. {maxMb} MB{remaining > 1 ? ` · hasta ${remaining} archivos` : ''}
+                                </span>
                                 <input
                                   type="file"
                                   accept={accept}
+                                  multiple={remaining > 1}
                                   className="hidden"
                                   onChange={async e => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    if (file.size > maxMb * 1024 * 1024) {
-                                      alert(`Archivo demasiado grande. Máximo ${maxMb} MB.`);
-                                      return;
-                                    }
-                                    const ext = file.name.split('.').pop();
-                                    const fileName = `${tramite.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-                                    const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(fileName, file);
-                                    if (upErr) { alert('Error al subir: ' + upErr.message); return; }
-                                    const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(fileName);
-                                    const { data: archivoData } = await supabase.from('ticket_archivos').insert({
-                                      ticket_id: tramite.id, usuario_id: usuario?.id,
-                                      nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
-                                      categoria_id: campo.config.categoria_id || null,
-                                    }).select('id').single();
-                                    set([...archivos, { id: archivoData?.id || '', nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size }]);
+                                    if (e.target.files?.length) await uploadFiles(e.target.files);
                                     e.target.value = '';
                                   }}
                                 />
