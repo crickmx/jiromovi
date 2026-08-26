@@ -343,6 +343,13 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // 11. Insertar comentario con datos extraídos en el trámite
+    await sb.from("ticket_comentarios").insert({
+      ticket_id,
+      usuario_id: ticket.agente_id ?? null,
+      mensaje: `Datos extraídos de póliza:\n${mensaje}`,
+    }).catch(() => {}); // fire-and-forget, no bloquea si falla
+
     return json({ ok: true, estado: extracted.estado || "ok", ...(xlsxError ? { xlsx_error: xlsxError } : {}) });
 
   } catch (err) {

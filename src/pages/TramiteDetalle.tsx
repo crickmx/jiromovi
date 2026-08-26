@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
+import { ArrowLeft, Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
@@ -131,6 +130,7 @@ export function TramiteDetalle() {
   const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
   const [adjuntoCatNombres, setAdjuntoCatNombres] = useState<Record<string, string>>({});
   const [tipoUUID, setTipoUUID] = useState<string | null>(null);
+  const [tipoInfo, setTipoInfo] = useState<{ label: string; color: string; area: string | null } | null>(null);
 
   // Trigger modal
   const [triggerModalOpen, setTriggerModalOpen] = useState(false);
@@ -342,9 +342,11 @@ export function TramiteDetalle() {
       ticketData.creado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.creado_por).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.modificado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.modificado_por).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.cerrado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.cerrado_por).maybeSingle() : Promise.resolve({ data: null }),
-      supabase.from('ticket_tipos').select('es_interno').eq('value', ticketData.tipo_tramite).maybeSingle(),
+      supabase.from('ticket_tipos').select('es_interno, label, color, area').eq('value', ticketData.tipo_tramite).maybeSingle(),
     ]);
     setTipoEsInterno((tipoRes.data as any)?.es_interno ?? false);
+    const _td = tipoRes.data as any;
+    if (_td) setTipoInfo({ label: _td.label ?? ticketData.tipo_tramite, color: _td.color ?? '#6B7280', area: _td.area ?? null });
 
     // Construir el objeto final
     const tramiteCompleto = {
@@ -1415,180 +1417,215 @@ export function TramiteDetalle() {
     );
   }
 
+  const tipoContrastColor = (() => {
+    const hex = tipoInfo?.color;
+    if (!hex || !/^#[0-9A-Fa-f]{6}$/i.test(hex)) return '#FFFFFF';
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const lin = (c: number) => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return L > 0.179 ? '#111827' : '#FFFFFF';
+  })();
+
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-soft border border-neutral-200 dark:border-neutral-700 p-6">
-        <PageHeader
-          title={`Tramite ${tramite.folio}`}
-          icon={ClipboardList}
-          backTo="/tramites"
-          backLabel="Volver a Tramites"
-          badge={
-            <div className="flex items-center gap-3">
-              {(() => {
-                const label = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
-                const color = tramite.custom_estatus_color ?? tramite.estatus?.color;
-                const staticBadge = label ? (
+      <div className="rounded-3xl shadow-soft overflow-hidden border border-neutral-200 dark:border-neutral-700">
+        {/* Colored tipo header */}
+        <div style={{ backgroundColor: tipoInfo?.color ?? '#6B7280' }} className="px-6 pt-4 pb-5">
+          <button
+            onClick={() => navigate('/tramites')}
+            className="inline-flex items-center gap-1.5 text-sm mb-4 transition-opacity hover:opacity-100"
+            style={{ color: tipoContrastColor, opacity: 0.7 }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Volver a Trámites</span>
+          </button>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              {tipoInfo?.area && (
+                <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: tipoContrastColor, opacity: 0.65 }}>{tipoInfo.area}</p>
+              )}
+              <h1 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: tipoContrastColor }}>
+                {tipoInfo?.label ?? tramite.tipo_tramite}
+              </h1>
+              <p className="text-sm mt-0.5" style={{ color: tipoContrastColor, opacity: 0.65 }}>Folio {tramite.folio}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mt-1">
+              {/* Status badge */}
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const label = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
+                  const color = tramite.custom_estatus_color ?? tramite.estatus?.color;
+                  const staticBadge = label ? (
+                    <span
+                      className="px-3 py-1 rounded-full text-sm font-semibold"
+                      style={{
+                        backgroundColor: (color ?? '#888') + '20',
+                        color: color ?? '#888',
+                        borderColor: color ?? '#888',
+                        borderWidth: '1px'
+                      }}
+                    >
+                      {label}
+                    </span>
+                  ) : null;
+
+                  if (!estatusCampoDinamico || !canEdit || isCerrado) return staticBadge;
+
+                  const opciones = estatusCampoDinamico.config.opciones || [];
+                  const actual = opciones.find(o => o.slug === selectedEstatusSlug);
+                  const getColorEstatusDinamico = (clasificacion?: string | null) =>
+                    clasificacion === 'inicio' ? '#3B82F6'
+                    : clasificacion === 'terminacion' ? '#059669'
+                    : clasificacion === 'en_espera' ? '#F59E0B'
+                    : '#6B7280';
+                  const selColor = getColorEstatusDinamico(actual?.clasificacion);
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: tipoContrastColor, opacity: 0.7 }}>Estatus</span>
+                      <select
+                        value={selectedEstatusSlug}
+                        onChange={(e) => setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: e.target.value }))}
+                        className="pl-3 pr-7 py-1.5 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
+                        style={{ borderColor: selColor, color: selColor, backgroundColor: selColor + '10' }}
+                      >
+                        {opciones.map(opt => (
+                          <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
+                {isCerrado && (
+                  <span className="text-sm" style={{ color: tipoContrastColor, opacity: 0.75 }}>
+                    Cerrado el {new Date(tramite.cerrado_en!).toLocaleDateString('es-MX')}
+                  </span>
+                )}
+                {!canEdit && !isCerrado && !isAdmin && !isGerente && (
                   <span
-                    className="px-3 py-1 rounded-full text-sm font-semibold"
+                    className="px-2.5 py-1 rounded-full text-xs font-semibold"
                     style={{
-                      backgroundColor: (color ?? '#888') + '20',
-                      color: color ?? '#888',
-                      borderColor: color ?? '#888',
-                      borderWidth: '1px'
+                      backgroundColor: tipoContrastColor === '#FFFFFF' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)',
+                      color: tipoContrastColor,
+                      border: `1px solid ${tipoContrastColor}50`,
                     }}
                   >
-                    {label}
+                    Solo lectura
                   </span>
-                ) : null;
-
-                if (!estatusCampoDinamico || !canEdit || isCerrado) return staticBadge;
-
-                const opciones = estatusCampoDinamico.config.opciones || [];
-                const actual = opciones.find(o => o.slug === selectedEstatusSlug);
-                const getColorEstatusDinamico = (clasificacion?: string | null) =>
-                  clasificacion === 'inicio' ? '#3B82F6'
-                  : clasificacion === 'terminacion' ? '#059669'
-                  : clasificacion === 'en_espera' ? '#F59E0B'
-                  : '#6B7280';
-                const selColor = getColorEstatusDinamico(actual?.clasificacion);
-                return (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-neutral-500 dark:text-white/50 uppercase tracking-wide">Estatus</span>
-                    <select
-                      value={selectedEstatusSlug}
-                      onChange={(e) => setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: e.target.value }))}
-                      className="pl-3 pr-7 py-1.5 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
-                      style={{ borderColor: selColor, color: selColor, backgroundColor: selColor + '10' }}
-                    >
-                      {opciones.map(opt => (
-                        <option key={opt.slug} value={opt.slug}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })()}
-              {isCerrado && (
-                <span className="text-sm text-neutral-500 dark:text-white/50">
-                  Cerrado el {new Date(tramite.cerrado_en!).toLocaleDateString('es-MX')}
-                </span>
-              )}
-              {!canEdit && !isCerrado && !isAdmin && !isGerente && (
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-500 border border-neutral-200 dark:bg-neutral-700 dark:text-white/50 dark:border-neutral-600">
-                  Solo lectura
-                </span>
-              )}
-            </div>
-          }
-          actions={
-            <div className="flex items-center space-x-2">
-              {canEdit && !isCerrado && (
-                <>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className={`flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold cursor-pointer disabled:opacity-50 ${!isDirty && !saving ? 'opacity-50' : ''}`}
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>{saving ? 'Guardando...' : 'Guardar'}</span>
-                  </button>
-                  {!estatusCampoDinamico && <div className="relative" ref={cerrarMenuRef}>
+                )}
+              </div>
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                {canEdit && !isCerrado && (
+                  <>
                     <button
-                      onClick={() => setShowCerrarMenu(v => !v)}
+                      onClick={handleSave}
                       disabled={saving}
-                      className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                      className={`flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold cursor-pointer disabled:opacity-50 ${!isDirty && !saving ? 'opacity-50' : ''}`}
                     >
-                      <XCircle className="w-4 h-4" />
-                      <span>Cerrar Trámite</span>
-                      <ChevronDown className="w-4 h-4" />
+                      <Save className="w-4 h-4" />
+                      <span>{saving ? 'Guardando...' : 'Guardar'}</span>
                     </button>
-                    {showCerrarMenu && cerrarOptions.length > 0 && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-20 overflow-hidden">
-                        <div className="px-4 py-2 text-xs font-semibold text-neutral-500 dark:text-white/50 bg-neutral-50 dark:bg-neutral-700 border-b border-neutral-200 dark:border-neutral-600">
-                          Cerrar con estatus:
+                    {!estatusCampoDinamico && <div className="relative" ref={cerrarMenuRef}>
+                      <button
+                        onClick={() => setShowCerrarMenu(v => !v)}
+                        disabled={saving}
+                        className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        <span>Cerrar Trámite</span>
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      {showCerrarMenu && cerrarOptions.length > 0 && (
+                        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-20 overflow-hidden">
+                          <div className="px-4 py-2 text-xs font-semibold text-neutral-500 dark:text-white/50 bg-neutral-50 dark:bg-neutral-700 border-b border-neutral-200 dark:border-neutral-600">
+                            Cerrar con estatus:
+                          </div>
+                          {cerrarOptions.map(estatus => (
+                            <button
+                              key={estatus.id}
+                              onClick={() => handleCerrarCon(estatus.id)}
+                              className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all flex items-center space-x-2"
+                            >
+                              <span
+                                className="w-2.5 h-2.5 rounded-full"
+                                style={{ backgroundColor: estatus.color }}
+                              />
+                              <span className="text-sm font-medium text-neutral-900 dark:text-white">{estatus.nombre}</span>
+                            </button>
+                          ))}
                         </div>
-                        {cerrarOptions.map(estatus => (
-                          <button
-                            key={estatus.id}
-                            onClick={() => handleCerrarCon(estatus.id)}
-                            className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all flex items-center space-x-2"
-                          >
-                            <span
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: estatus.color }}
-                            />
-                            <span className="text-sm font-medium text-neutral-900 dark:text-white">{estatus.nombre}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>}
-                </>
-              )}
-              {canEdit && isCerrado && (
-                <button
-                  onClick={handleReabrir}
-                  disabled={saving}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Reabrir Tramite</span>
-                </button>
-              )}
+                      )}
+                    </div>}
+                  </>
+                )}
+                {canEdit && isCerrado && (
+                  <button
+                    onClick={handleReabrir}
+                    disabled={saving}
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Reabrir Tramite</span>
+                  </button>
+                )}
+              </div>
             </div>
-          }
-        />
-
-
-        {!canEdit && !isCerrado && (
-          <div className="mt-4 flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-            <p className="text-sm text-amber-700">
-              {isCommercialViewerOnly
-                ? 'Visualización de solo lectura. Puedes agregar comentarios pero no editar este trámite.'
-                : 'No tienes permiso para editar este tipo de trámite. Puedes consultar, comentar y adjuntar archivos.'}
-            </p>
           </div>
-        )}
+        </div>
 
-        <div className="flex space-x-2 border-b border-neutral-200 mt-6">
-          {(['detalles', 'comentarios', 'archivos', 'historial'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-semibold transition-all capitalize ${
-                activeTab === tab
-                  ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-          {tramite.tipo_tramite === 'solicitud_comisiones_pendientes' && (
-            <button
-              onClick={() => setActiveTab('comisiones')}
-              className={`px-6 py-3 font-semibold transition-all capitalize ${
-                activeTab === 'comisiones'
-                  ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              comisiones
-            </button>
+        {/* White body: readonly banner + tabs */}
+        <div className="bg-white dark:bg-neutral-800 px-6 pt-4 pb-0">
+          {!canEdit && !isCerrado && (
+            <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <p className="text-sm text-amber-700">
+                {isCommercialViewerOnly
+                  ? 'Visualización de solo lectura. Puedes agregar comentarios pero no editar este trámite.'
+                  : 'No tienes permiso para editar este tipo de trámite. Puedes consultar, comentar y adjuntar archivos.'}
+              </p>
+            </div>
           )}
-          {esReporteBug && (
-            <button
-              onClick={() => setActiveTab('diagnostico')}
-              className={`px-6 py-3 font-semibold transition-all capitalize ${
-                activeTab === 'diagnostico'
-                  ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              diagnóstico
-            </button>
-          )}
+          <div className="flex space-x-2 border-b border-neutral-200">
+            {(['detalles', 'comentarios', 'archivos', 'historial'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-3 font-semibold transition-all capitalize ${
+                  activeTab === tab
+                    ? 'text-accent border-b-2 border-accent'
+                    : 'text-neutral-600 hover:text-neutral-900'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+            {tramite.tipo_tramite === 'solicitud_comisiones_pendientes' && (
+              <button
+                onClick={() => setActiveTab('comisiones')}
+                className={`px-6 py-3 font-semibold transition-all capitalize ${
+                  activeTab === 'comisiones'
+                    ? 'text-accent border-b-2 border-accent'
+                    : 'text-neutral-600 hover:text-neutral-900'
+                }`}
+              >
+                comisiones
+              </button>
+            )}
+            {esReporteBug && (
+              <button
+                onClick={() => setActiveTab('diagnostico')}
+                className={`px-6 py-3 font-semibold transition-all capitalize ${
+                  activeTab === 'diagnostico'
+                    ? 'text-accent border-b-2 border-accent'
+                    : 'text-neutral-600 hover:text-neutral-900'
+                }`}
+              >
+                diagnóstico
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
