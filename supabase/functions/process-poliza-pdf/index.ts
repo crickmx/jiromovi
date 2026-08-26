@@ -26,12 +26,23 @@ function parseNum(v: string | null | undefined): number | null {
   return isNaN(n) ? null : n;
 }
 
+const MONTH_MAP: Record<string, string> = {
+  ene: "01", feb: "02", mar: "03", abr: "04", may: "05", jun: "06",
+  jul: "07", ago: "08", sep: "09", oct: "10", nov: "11", dic: "12",
+  jan: "01", apr: "04", aug: "08", dec: "12",
+};
+
 function parseDate(v: string | null | undefined): string | null {
   if (!v || v === "No encontrada") return null;
-  const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  // dd/mm/yyyy or dd-mm-yyyy
+  const m = v.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
   if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-  const m2 = v.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
+  // dd/Mon/yyyy (e.g. 27/Feb/2026)
+  const m2 = v.match(/(\d{1,2})[\/\-]([A-Za-z]{3})[\/\-](\d{4})/);
+  if (m2) {
+    const mon = MONTH_MAP[m2[2].toLowerCase()];
+    if (mon) return `${m2[3]}-${mon}-${m2[1].padStart(2, "0")}`;
+  }
   return null;
 }
 
@@ -64,8 +75,9 @@ function parseName(nombreCompleto: string | null, esMoral: boolean) {
   if (esMoral || !nombreCompleto) return { apellidoP: "", apellidoM: "", nombre: nombreCompleto ?? "" };
   const parts = nombreCompleto.trim().split(/\s+/);
   if (parts.length === 1) return { apellidoP: "", apellidoM: "", nombre: parts[0] };
-  if (parts.length === 2) return { apellidoP: parts[0], apellidoM: "", nombre: parts[1] };
-  return { apellidoP: parts[0], apellidoM: parts[1], nombre: parts.slice(2).join(" ") };
+  if (parts.length === 2) return { apellidoP: parts[1], apellidoM: "", nombre: parts[0] };
+  // Format from PDF: NOMBRE(S) AP_PATERNO AP_MATERNO
+  return { apellidoP: parts[parts.length - 2], apellidoM: parts[parts.length - 1], nombre: parts.slice(0, -2).join(" ") };
 }
 
 function buildSicasRow(d: Record<string, unknown>): unknown[] {
@@ -74,9 +86,9 @@ function buildSicasRow(d: Record<string, unknown>): unknown[] {
   return [
     d.entidad === 0 ? "Física" : d.entidad === 1 ? "Moral" : "",
     apellidoP, apellidoM, nombre,
-    d.razon_social ?? "", d.rfc ?? "", "", d.ejecutivo_cuenta ?? "", "",
+    d.razon_social ?? "", d.rfc ?? "", "", d.ejecutivo_cuenta ?? "", "Oficina Jiro",
     d.tipo_documento ?? "Póliza", d.documento ?? "", d.agente_clave ?? "",
-    d.forma_pago ?? "", d.moneda ?? "", d.sub_ramo ?? "", "",
+    d.forma_pago ?? "", d.moneda ?? "", d.sub_ramo ?? "", d.vendedor ?? "",
     d.renovacion ?? "", d.fecha_antiguedad ?? "", d.desde ?? "", d.hasta ?? "",
     "Vigente",
     d.prima_neta ?? "", d.descuento ?? "", d.recargos ?? "", d.derechos ?? "",
@@ -112,10 +124,12 @@ Deno.serve(async (req: Request) => {
   // 1. Obtener ticket
   const { data: ticket } = await sb
     .from("tickets")
-    .select("tipo_tramite, agente_id, folio")
+    .select("tipo_tramite, agente_id, folio, usuarios(nombre_sicas, nombre)")
     .eq("id", ticket_id)
     .single();
   if (!ticket) return json({ ok: false, error: "Ticket no encontrado" }, 404);
+  const agente = ticket.usuarios as { nombre_sicas: string | null; nombre: string | null } | null;
+  const agenteSicasNombre = agente?.nombre_sicas || agente?.nombre || null;
 
   // 2. Verificar si hay config activa para este tipo de trámite
   const [{ data: tipoRow }, { data: catRow }] = await Promise.all([
@@ -239,7 +253,7 @@ Deno.serve(async (req: Request) => {
       const datosRow: Record<string, unknown> = {
         entidad, nombre_completo: campos.nombre_cliente ?? null,
         razon_social: entidad === 1 ? (campos.nombre_cliente ?? null) : null,
-        rfc: rfc ?? null, ejecutivo_cuenta: null, renovacion: null,
+        rfc: rfc ?? null, ejecutivo_cuenta: null, renovacion: null, vendedor: agenteSicasNombre,
         tipo_documento: "Póliza", documento: campos.documento ?? null,
         agente_clave: campos.agente_clave ?? null, forma_pago: campos.forma_pago ?? null,
         moneda: campos.moneda ?? null, sub_ramo: extracted.sub_ramo ?? null,
