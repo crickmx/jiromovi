@@ -38,7 +38,7 @@ export default function CompartirTableroModal({
     try {
       setLoading(true);
       setError('');
-      const results = await buscarUsuariosParaCompartir(searchQuery);
+      const results = await buscarUsuariosParaCompartir(boardId, searchQuery);
       const filtrados = results.filter((u) => u.id !== user?.id);
       setUsuarios(filtrados);
     } catch (err: any) {
