@@ -1047,6 +1047,7 @@ export function TramiteDetalle() {
 
             let _equipoExplicito = false;
             for (const m of mappings || []) {
+              if (m.valor_fijo === '__manual__') continue;
               let srcVal: any = null;
               if (m.valor_fijo != null) {
                 let tpl = m.valor_fijo;

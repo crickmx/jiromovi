@@ -609,7 +609,9 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
     if (newMappings.length > 0) setLocalMappings(prev => [...prev, ...newMappings]);
   };
 
-  const configuredCount = localMappings.filter(m => m.target_campo_id).length;
+  const autoCount = localMappings.filter(m => m.target_campo_id && m.valor_fijo !== '__manual__').length;
+  const manualCount = localMappings.filter(m => m.target_campo_id && m.valor_fijo === '__manual__').length;
+  const configuredCount = autoCount + manualCount;
   const totalCampos = targetCampos.filter(c => c.tipo !== 'estatus').length;
 
   return (
@@ -624,9 +626,19 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-neutral-800">{trigger.nombre}</span>
             {!trigger.activo && <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">Inactivo</span>}
-            {configuredCount > 0 && (
+            {autoCount > 0 && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
-                {configuredCount}/{totalCampos} campos mapeados
+                {autoCount} auto
+              </span>
+            )}
+            {manualCount > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">
+                {manualCount} manual
+              </span>
+            )}
+            {configuredCount > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-400">
+                {totalCampos - configuredCount} sin config
               </span>
             )}
           </div>
@@ -702,7 +714,11 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
                 <p className="text-[10px] text-neutral-400">
                   {configuredCount === 0
                     ? 'Sin mapeos — los campos quedarán en blanco al crear el hijo.'
-                    : `${configuredCount} de ${totalCampos} campo${totalCampos !== 1 ? 's' : ''} con origen configurado.`}
+                    : [
+                        autoCount > 0 && `${autoCount} auto`,
+                        manualCount > 0 && `${manualCount} manual`,
+                        (totalCampos - configuredCount) > 0 && `${totalCampos - configuredCount} sin configurar`,
+                      ].filter(Boolean).join(' · ')}
                 </p>
                 <button
                   onClick={() => onSaveMappings(localMappings)}
@@ -737,6 +753,7 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const currentSource = !mapping ? ''
+    : mapping.valor_fijo === '__manual__' ? '__manual__'
     : mapping.valor_fijo !== null ? 'fijo'
     : mapping.source_sistema_key ? `s:${mapping.source_sistema_key}`
     : mapping.source_campo_id ? `c:${mapping.source_campo_id}`
@@ -821,6 +838,7 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
   const handleChange = (val: string) => {
     setUsePlantilla(false);
     if (!val) { onSet(null); return; }
+    if (val === '__manual__') { onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: '__manual__' }); return; }
     if (val === 'fijo') { onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: '' }); return; }
     if (val === 'plantilla') { setUsePlantilla(true); onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: '' }); return; }
     if (val.startsWith('c:')) { onSet({ source_campo_id: val.slice(2), source_sistema_key: null, valor_fijo: null }); return; }
@@ -843,11 +861,13 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
   const compatible = sourceCampos.filter(c => c.tipo === campo.tipo);
   const selectDisplayValue = usePlantilla ? 'plantilla' : currentSource;
 
+  const isManual = currentSource === '__manual__';
+
   return (
-    <div className={`flex ${usePlantilla ? 'items-start' : 'items-center'} gap-3 px-4 py-2.5 transition-colors ${hasMapping ? 'bg-blue-50/40' : 'hover:bg-neutral-50/50'}`}>
+    <div className={`flex ${usePlantilla ? 'items-start' : 'items-center'} gap-3 px-4 py-2.5 transition-colors ${isManual ? 'bg-amber-50/40' : hasMapping ? 'bg-blue-50/40' : 'hover:bg-neutral-50/50'}`}>
       {/* Target campo label */}
       <div className="w-44 shrink-0">
-        <p className={`text-xs font-medium truncate ${hasMapping ? 'text-blue-700' : 'text-neutral-700'}`}>{campo.label}</p>
+        <p className={`text-xs font-medium truncate ${isManual ? 'text-amber-700' : hasMapping ? 'text-blue-700' : 'text-neutral-700'}`}>{campo.label}</p>
         <p className="text-[10px] text-neutral-400">{campo.tipo}</p>
       </div>
 
@@ -860,9 +880,10 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
           <select
             value={selectDisplayValue}
             onChange={e => handleChange(e.target.value)}
-            className={`flex-1 min-w-0 px-2 py-1.5 border rounded-lg text-xs bg-white focus:ring-1 focus:outline-none transition-colors ${hasMapping ? 'border-blue-300 focus:ring-blue-400' : 'border-neutral-200 focus:ring-blue-400'}`}
+            className={`flex-1 min-w-0 px-2 py-1.5 border rounded-lg text-xs bg-white focus:ring-1 focus:outline-none transition-colors ${isManual ? 'border-amber-300 focus:ring-amber-400' : hasMapping ? 'border-blue-300 focus:ring-blue-400' : 'border-neutral-200 focus:ring-blue-400'}`}
           >
-            <option value="">— No copiar</option>
+            <option value="">— No copiar (dejar vacío)</option>
+            <option value="__manual__">Llenar manualmente después</option>
             {compatible.length > 0 && (
               <optgroup label={`Campos del padre (${campo.tipo})`}>
                 {compatible.map(c => <option key={c.id} value={`c:${c.id}`}>{c.label}</option>)}
