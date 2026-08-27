@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase';
 import { obtenerCamposTramiteTipo } from './storeUtils';
+import { adjuntarComprobantePremium } from './mktPremiumPdf';
 
 export interface MktPremiumTrigger {
   id: string;
@@ -259,6 +260,18 @@ export async function dispararTriggersPremium(params: {
       if (todasRespuestas.length > 0) {
         await supabase.from('tramite_respuestas').insert(todasRespuestas);
       }
+
+      // Adjuntar comprobante PDF al ticket (fire-and-forget)
+      adjuntarComprobantePremium({
+        ticketId: ticket.id,
+        folio: ticket.folio,
+        fechaCreacion: ticket.fecha_creacion,
+        tipoLabel: tipoInfo.label,
+        agente: params.agente,
+        form: params.form,
+        usuarioId: params.usuarioId,
+        creadorNombre: params.usuarioNombre || '—',
+      }).catch(err => console.error('[MKT] adjuntarComprobantePremium:', err));
 
       resultado.creados.push({ folio: ticket.folio, tipoLabel: tipoInfo.label });
     } catch (err: any) {
