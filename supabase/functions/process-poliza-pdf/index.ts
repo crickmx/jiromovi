@@ -218,7 +218,7 @@ Deno.serve(async (req: Request) => {
     const ASEGURADORAS_SOPORTADAS = ["gnp", "qualitas", "quálitas"];
     const aseguradoraNorm = (extracted.aseguradora ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
     const aseguradoraSoportada = !extraccionError && ASEGURADORAS_SOPORTADAS.some(a => aseguradoraNorm.includes(a));
-    const observaciones = extraccionError || (!aseguradoraSoportada && extracted.aseguradora)
+    const observaciones = (extraccionError || !aseguradoraSoportada)
       ? "El sistema no pudo extraer de forma automática los datos para este archivo, favor de capturar manualmente"
       : null;
 
@@ -270,7 +270,8 @@ Deno.serve(async (req: Request) => {
       const { data: todosExtraidos, error: qErr } = await sb
         .from("poliza_datos_extraidos")
         .select("*, archivo:ticket_archivos!archivo_id(nombre)")
-        .eq("ticket_id", ticket_id);
+        .eq("ticket_id", ticket_id)
+        .not("archivo_id", "is", null); // excluir filas huérfanas de archivos borrados
       if (qErr) throw new Error(`Query extraídos: ${qErr.message}`);
 
       const filas = (todosExtraidos ?? []).map((d: any) =>
@@ -314,7 +315,10 @@ Deno.serve(async (req: Request) => {
       console.error("XLSX generation error:", xlsxError);
     }
 
-    const mensaje = buildMessage(campos, extracted.aseguradora, extracted.sub_ramo, ticket.folio);
+    const fracaso = extraccionError || !aseguradoraSoportada;
+    const mensaje = fracaso
+      ? `No fue posible extraer automáticamente los datos del archivo "${archivo.nombre}".\n${observaciones ?? "Favor de capturar manualmente."}`
+      : buildMessage(campos, extracted.aseguradora, extracted.sub_ramo, ticket.folio);
     const ticketUrl = `/tramites/${ticket_id}`;
 
     // 9. Notificar al agente
@@ -375,16 +379,24 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 11. Insertar comentario con datos extraídos en el trámite
-    try {
-      await sb.from("ticket_comentarios").insert({
+    // 11. Insertar comentario en el trámite
+    const comentarioTexto = fracaso ? mensaje : `Datos extraídos de póliza:\n${mensaje}`;
+    let comentarioPendiente: string | null = null;
+    if (ticket.agente_id) {
+      const { error: commentErr } = await sb.from("ticket_comentarios").insert({
         ticket_id,
-        usuario_id: ticket.agente_id ?? null,
-        mensaje: `Datos extraídos de póliza:\n${mensaje}`,
+        usuario_id: ticket.agente_id,
+        mensaje: comentarioTexto,
       });
-    } catch {} // fire-and-forget
+      if (commentErr) {
+        console.error("Error insertando comentario:", JSON.stringify(commentErr));
+        comentarioPendiente = comentarioTexto;
+      }
+    } else {
+      comentarioPendiente = comentarioTexto;
+    }
 
-    return json({ ok: true, estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!aseguradoraSoportada && !extraccionError ? { extraccion_error: `Aseguradora no soportada: ${extracted.aseguradora ?? "desconocida"}` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}) });
+    return json({ ok: true, estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!aseguradoraSoportada && !extraccionError ? { extraccion_error: `Aseguradora no soportada: ${extracted.aseguradora ?? "desconocida"}` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}), ...(comentarioPendiente ? { comentario_pendiente: comentarioPendiente } : {}) });
 
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error interno";
