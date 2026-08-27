@@ -1,3 +1,12 @@
+/*
+  Search users that may be invited to a shared CRM board.
+
+  The UI previously queried `usuarios` directly. That depends on the caller's
+  directory RLS policies and caused the search to fail for otherwise eligible
+  board owners/admins. This function exposes only the data needed for inviting
+  eligible active users, after validating the caller's global and board roles.
+*/
+
 CREATE OR REPLACE FUNCTION public.crm_search_shareable_users(
   p_board_id uuid,
   p_query text
@@ -24,7 +33,8 @@ BEGIN
     RAISE EXCEPTION 'Ingresa al menos 2 caracteres para buscar usuarios';
   END IF;
 
-  SELECT u.rol INTO v_caller_role
+  SELECT u.rol
+    INTO v_caller_role
   FROM public.usuarios u
   WHERE u.id = auth.uid();
 
@@ -54,10 +64,10 @@ BEGIN
   RETURN QUERY
   SELECT
     u.id,
-    btrim(CONCAT_WS(' ', u.nombre, u.apellidos)),
-    COALESCE(o.nombre, 'Sin oficina'),
+    btrim(CONCAT_WS(' ', u.nombre, u.apellidos)) AS nombre_completo,
+    COALESCE(o.nombre, 'Sin oficina') AS oficina_nombre,
     u.rol,
-    u.imagen_perfil_url
+    u.imagen_perfil_url AS avatar_url
   FROM public.usuarios u
   LEFT JOIN public.oficinas o ON o.id = u.oficina_id
   WHERE u.rol IN ('Empleado', 'Gerente', 'Administrador')

@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Search, UserPlus, CircleAlert as AlertCircle } from 'lucide-react';
 import { buscarUsuariosParaCompartir, invitarMiembro } from '../../lib/crmUtils';
 import type { SearchableUser, MemberRole } from '../../lib/crmTypes';
 import { useAuth } from '../../contexts/AuthContext';
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? (err.message || fallback) : fallback;
+}
 
 interface CompartirTableroModalProps {
   isOpen: boolean;
@@ -26,28 +30,30 @@ export default function CompartirTableroModal({
   const [error, setError] = useState('');
   const { usuario: user } = useAuth();
 
-  useEffect(() => {
-    if (searchQuery.length >= 2) {
-      buscarUsuarios();
-    } else {
-      setUsuarios([]);
-    }
-  }, [searchQuery]);
-
-  const buscarUsuarios = async () => {
+  const buscarUsuarios = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
       const results = await buscarUsuariosParaCompartir(boardId, searchQuery);
       const filtrados = results.filter((u) => u.id !== user?.id);
       setUsuarios(filtrados);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error buscando usuarios:', err);
-      setError('Error al buscar usuarios');
+      setError(getErrorMessage(err, 'Error al buscar usuarios'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [boardId, searchQuery, user?.id]);
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      if (searchQuery.length >= 2) {
+        void buscarUsuarios();
+      } else {
+        setUsuarios([]);
+      }
+    });
+  }, [searchQuery, buscarUsuarios]);
 
   const handleInvitar = async (userId: string, role: MemberRole) => {
     try {
@@ -57,9 +63,9 @@ export default function CompartirTableroModal({
       onMemberAdded();
       setSearchQuery('');
       setUsuarios([]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error invitando miembro:', err);
-      setError(err.message || 'Error al invitar miembro');
+      setError(getErrorMessage(err, 'Error al invitar miembro'));
     } finally {
       setInviting(false);
     }
