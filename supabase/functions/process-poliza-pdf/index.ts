@@ -380,15 +380,23 @@ Deno.serve(async (req: Request) => {
     }
 
     // 11. Insertar comentario en el trámite
-    try {
-      await sb.from("ticket_comentarios").insert({
+    const comentarioTexto = fracaso ? mensaje : `Datos extraídos de póliza:\n${mensaje}`;
+    let comentarioPendiente: string | null = null;
+    if (ticket.agente_id) {
+      const { error: commentErr } = await sb.from("ticket_comentarios").insert({
         ticket_id,
-        usuario_id: ticket.agente_id ?? null,
-        mensaje: fracaso ? mensaje : `Datos extraídos de póliza:\n${mensaje}`,
+        usuario_id: ticket.agente_id,
+        mensaje: comentarioTexto,
       });
-    } catch {} // fire-and-forget
+      if (commentErr) {
+        console.error("Error insertando comentario:", JSON.stringify(commentErr));
+        comentarioPendiente = comentarioTexto;
+      }
+    } else {
+      comentarioPendiente = comentarioTexto;
+    }
 
-    return json({ ok: true, estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!aseguradoraSoportada && !extraccionError ? { extraccion_error: `Aseguradora no soportada: ${extracted.aseguradora ?? "desconocida"}` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}) });
+    return json({ ok: true, estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!aseguradoraSoportada && !extraccionError ? { extraccion_error: `Aseguradora no soportada: ${extracted.aseguradora ?? "desconocida"}` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}), ...(comentarioPendiente ? { comentario_pendiente: comentarioPendiente } : {}) });
 
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error interno";
