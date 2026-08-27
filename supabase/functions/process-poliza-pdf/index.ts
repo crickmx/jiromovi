@@ -218,7 +218,7 @@ Deno.serve(async (req: Request) => {
     const ASEGURADORAS_SOPORTADAS = ["gnp", "qualitas", "quálitas"];
     const aseguradoraNorm = (extracted.aseguradora ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
     const aseguradoraSoportada = !extraccionError && ASEGURADORAS_SOPORTADAS.some(a => aseguradoraNorm.includes(a));
-    const observaciones = extraccionError || (!aseguradoraSoportada && extracted.aseguradora)
+    const observaciones = (extraccionError || !aseguradoraSoportada)
       ? "El sistema no pudo extraer de forma automática los datos para este archivo, favor de capturar manualmente"
       : null;
 
