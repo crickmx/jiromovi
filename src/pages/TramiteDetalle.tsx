@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
+import { ArrowLeft, Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
@@ -88,6 +87,8 @@ export function TramiteDetalle() {
   const [selectedEstatus, setSelectedEstatus] = useState('');
   const [selectedPrioridad, setSelectedPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
   const [saving, setSaving] = useState(false);
+  const [pendingExtractions, setPendingExtractions] = useState<{ archivo_id: string }[]>([]);
+  const [extractionStatus, setExtractionStatus] = useState<Record<string, string>>({});
   const [showCerrarMenu, setShowCerrarMenu] = useState(false);
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -129,7 +130,9 @@ export function TramiteDetalle() {
     usuario_id?: string; usuario_nombre?: string;
   }[]>([]);
   const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
+  const [adjuntoCatNombres, setAdjuntoCatNombres] = useState<Record<string, string>>({});
   const [tipoUUID, setTipoUUID] = useState<string | null>(null);
+  const [tipoInfo, setTipoInfo] = useState<{ label: string; color: string; area: string | null } | null>(null);
 
   // Trigger modal
   const [triggerModalOpen, setTriggerModalOpen] = useState(false);
@@ -341,9 +344,11 @@ export function TramiteDetalle() {
       ticketData.creado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.creado_por).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.modificado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.modificado_por).maybeSingle() : Promise.resolve({ data: null }),
       ticketData.cerrado_por ? supabase.from('usuarios').select('id, nombre_completo').eq('id', ticketData.cerrado_por).maybeSingle() : Promise.resolve({ data: null }),
-      supabase.from('ticket_tipos').select('es_interno').eq('value', ticketData.tipo_tramite).maybeSingle(),
+      supabase.from('ticket_tipos').select('es_interno, label, color, area').eq('value', ticketData.tipo_tramite).maybeSingle(),
     ]);
     setTipoEsInterno((tipoRes.data as any)?.es_interno ?? false);
+    const _td = tipoRes.data as any;
+    if (_td) setTipoInfo({ label: _td.label ?? ticketData.tipo_tramite, color: _td.color ?? '#6B7280', area: _td.area ?? null });
 
     // Construir el objeto final
     const tramiteCompleto = {
@@ -449,6 +454,22 @@ export function TramiteDetalle() {
     if (!campos?.length) { setCamposDinamicos([]); return; }
     setCamposDinamicos(campos as CampoDinamico[]);
 
+    // Cargar nombres de categorías para campos adjunto con tipos_config
+    const catIds = new Set<string>();
+    (campos as CampoDinamico[]).forEach(c => {
+      if (c.tipo === 'adjunto') {
+        ((c.config?.tipos_config || []) as any[]).forEach((tc: any) => { if (tc.categoria_id) catIds.add(tc.categoria_id); });
+      }
+    });
+    if (catIds.size > 0) {
+      const { data: cats } = await supabase.from('maestro_adjunto_categorias').select('id, nombre').in('id', [...catIds]);
+      if (cats) {
+        const map: Record<string, string> = {};
+        (cats as any[]).forEach(c => { map[c.id] = c.nombre; });
+        setAdjuntoCatNombres(map);
+      }
+    }
+
     // Cargar respuestas existentes
     const { data: respuestas } = await supabase
       .from('tramite_respuestas')
@@ -472,6 +493,17 @@ export function TramiteDetalle() {
         else vals[campo.id] = r.valor_json;
       }
       setRespuestasDinamicas(vals);
+    }
+
+    // Cargar estado de extracción por archivo
+    const { data: extData } = await supabase
+      .from('poliza_datos_extraidos')
+      .select('archivo_id, estado')
+      .eq('ticket_id', id);
+    if (extData) {
+      const statusMap: Record<string, string> = {};
+      extData.forEach((r: any) => { statusMap[r.archivo_id] = r.estado; });
+      setExtractionStatus(statusMap);
     }
   };
 
@@ -717,8 +749,7 @@ export function TramiteDetalle() {
       const { data: archivosSubidos } = await supabase
         .from('ticket_archivos')
         .select('categoria_id')
-        .eq('ticket_id', tramite.id)
-        .is('eliminado_at', null);
+        .eq('ticket_id', tramite.id);
       const categoriasSubidas = new Set((archivosSubidos || []).map((a: any) => a.categoria_id).filter(Boolean));
       for (const campo of adjuntosConReq) {
         const faltantes = (campo.config.tipos_config as { categoria_id: string; requerido: boolean }[])
@@ -1028,6 +1059,7 @@ export function TramiteDetalle() {
 
             let _equipoExplicito = false;
             for (const m of mappings || []) {
+              if (m.valor_fijo === '__manual__') continue;
               let srcVal: any = null;
               if (m.valor_fijo != null) {
                 let tpl = m.valor_fijo;
@@ -1150,6 +1182,28 @@ export function TramiteDetalle() {
           ? `Guardado. ${createdFolios.length === 1 ? 'Trámite creado' : 'Trámites creados'}: ${createdFolios.join(', ')}`
           : 'Cambios guardados con éxito'
       );
+
+      // Procesar extracciones PDF pendientes
+      const extractions = [...pendingExtractions];
+      if (extractions.length > 0) {
+        setPendingExtractions([]);
+        for (let i = 0; i < extractions.length; i++) {
+          const label = extractions.length > 1 ? ` (${i + 1}/${extractions.length})` : '';
+          try {
+            showToast(`Extrayendo datos de póliza${label}...`);
+            const { data: r } = await supabase.functions.invoke('process-poliza-pdf', {
+              body: { ticket_id: tramite.id, archivo_id: extractions[i].archivo_id },
+            });
+            if (r?.ok && !r.extraccion_error && !r.xlsx_error) showToast(`Datos de póliza extraídos${label}. Excel SICAS generado.`);
+            else if (r?.ok && r.extraccion_error) showToast(`Excel generado con datos parciales${label}. Error en extracción: ${r.extraccion_error}`, 'error');
+            else if (r?.xlsx_error) showToast(`Datos extraídos${label}. Error en Excel: ${r.xlsx_error}`, 'error');
+            else showToast(`Error extrayendo póliza${label}: ${r?.error ?? 'Error desconocido'}`, 'error');
+          } catch {
+            showToast(`Error conectando con el extractor${label}`, 'error');
+          }
+        }
+        await loadTramite();
+      }
     } catch (err: any) {
       console.error('Error updating tramite:', err);
       showToast('Error al guardar los cambios', 'error');
@@ -1398,180 +1452,215 @@ export function TramiteDetalle() {
     );
   }
 
+  const tipoContrastColor = (() => {
+    const hex = tipoInfo?.color;
+    if (!hex || !/^#[0-9A-Fa-f]{6}$/i.test(hex)) return '#FFFFFF';
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const lin = (c: number) => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return L > 0.179 ? '#111827' : '#FFFFFF';
+  })();
+
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-soft border border-neutral-200 dark:border-neutral-700 p-6">
-        <PageHeader
-          title={`Tramite ${tramite.folio}`}
-          icon={ClipboardList}
-          backTo="/tramites"
-          backLabel="Volver a Tramites"
-          badge={
-            <div className="flex items-center gap-3">
-              {(() => {
-                const label = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
-                const color = tramite.custom_estatus_color ?? tramite.estatus?.color;
-                const staticBadge = label ? (
+      <div className="rounded-3xl shadow-soft overflow-hidden border border-neutral-200 dark:border-neutral-700">
+        {/* Colored tipo header */}
+        <div style={{ backgroundColor: tipoInfo?.color ?? '#6B7280' }} className="px-6 pt-4 pb-5">
+          <button
+            onClick={() => navigate('/tramites')}
+            className="inline-flex items-center gap-1.5 text-sm mb-4 transition-opacity hover:opacity-100"
+            style={{ color: tipoContrastColor, opacity: 0.7 }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Volver a Trámites</span>
+          </button>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              {tipoInfo?.area && (
+                <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: tipoContrastColor, opacity: 0.65 }}>{tipoInfo.area}</p>
+              )}
+              <h1 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: tipoContrastColor }}>
+                {tipoInfo?.label ?? tramite.tipo_tramite}
+              </h1>
+              <p className="text-sm mt-0.5" style={{ color: tipoContrastColor, opacity: 0.65 }}>Folio {tramite.folio}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mt-1">
+              {/* Status badge */}
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const label = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
+                  const color = tramite.custom_estatus_color ?? tramite.estatus?.color;
+                  const staticBadge = label ? (
+                    <span
+                      className="px-3 py-1 rounded-full text-sm font-semibold"
+                      style={{
+                        backgroundColor: (color ?? '#888') + '20',
+                        color: color ?? '#888',
+                        borderColor: color ?? '#888',
+                        borderWidth: '1px'
+                      }}
+                    >
+                      {label}
+                    </span>
+                  ) : null;
+
+                  if (!estatusCampoDinamico || !canEdit || isCerrado) return staticBadge;
+
+                  const opciones = estatusCampoDinamico.config.opciones || [];
+                  const actual = opciones.find(o => o.slug === selectedEstatusSlug);
+                  const getColorEstatusDinamico = (clasificacion?: string | null) =>
+                    clasificacion === 'inicio' ? '#3B82F6'
+                    : clasificacion === 'terminacion' ? '#059669'
+                    : clasificacion === 'en_espera' ? '#F59E0B'
+                    : '#6B7280';
+                  const selColor = getColorEstatusDinamico(actual?.clasificacion);
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: tipoContrastColor, opacity: 0.7 }}>Estatus</span>
+                      <select
+                        value={selectedEstatusSlug}
+                        onChange={(e) => setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: e.target.value }))}
+                        className="pl-3 pr-7 py-1.5 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
+                        style={{ borderColor: selColor, color: selColor, backgroundColor: selColor + '10' }}
+                      >
+                        {opciones.map(opt => (
+                          <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
+                {isCerrado && (
+                  <span className="text-sm" style={{ color: tipoContrastColor, opacity: 0.75 }}>
+                    Cerrado el {new Date(tramite.cerrado_en!).toLocaleDateString('es-MX')}
+                  </span>
+                )}
+                {!canEdit && !isCerrado && !isAdmin && !isGerente && (
                   <span
-                    className="px-3 py-1 rounded-full text-sm font-semibold"
+                    className="px-2.5 py-1 rounded-full text-xs font-semibold"
                     style={{
-                      backgroundColor: (color ?? '#888') + '20',
-                      color: color ?? '#888',
-                      borderColor: color ?? '#888',
-                      borderWidth: '1px'
+                      backgroundColor: tipoContrastColor === '#FFFFFF' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)',
+                      color: tipoContrastColor,
+                      border: `1px solid ${tipoContrastColor}50`,
                     }}
                   >
-                    {label}
+                    Solo lectura
                   </span>
-                ) : null;
-
-                if (!estatusCampoDinamico || !canEdit || isCerrado) return staticBadge;
-
-                const opciones = estatusCampoDinamico.config.opciones || [];
-                const actual = opciones.find(o => o.slug === selectedEstatusSlug);
-                const getColorEstatusDinamico = (clasificacion?: string | null) =>
-                  clasificacion === 'inicio' ? '#3B82F6'
-                  : clasificacion === 'terminacion' ? '#059669'
-                  : clasificacion === 'en_espera' ? '#F59E0B'
-                  : '#6B7280';
-                const selColor = getColorEstatusDinamico(actual?.clasificacion);
-                return (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-neutral-500 dark:text-white/50 uppercase tracking-wide">Estatus</span>
-                    <select
-                      value={selectedEstatusSlug}
-                      onChange={(e) => setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: e.target.value }))}
-                      className="pl-3 pr-7 py-1.5 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
-                      style={{ borderColor: selColor, color: selColor, backgroundColor: selColor + '10' }}
-                    >
-                      {opciones.map(opt => (
-                        <option key={opt.slug} value={opt.slug}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })()}
-              {isCerrado && (
-                <span className="text-sm text-neutral-500 dark:text-white/50">
-                  Cerrado el {new Date(tramite.cerrado_en!).toLocaleDateString('es-MX')}
-                </span>
-              )}
-              {!canEdit && !isCerrado && !isAdmin && !isGerente && (
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-500 border border-neutral-200 dark:bg-neutral-700 dark:text-white/50 dark:border-neutral-600">
-                  Solo lectura
-                </span>
-              )}
-            </div>
-          }
-          actions={
-            <div className="flex items-center space-x-2">
-              {canEdit && !isCerrado && (
-                <>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className={`flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold cursor-pointer disabled:opacity-50 ${!isDirty && !saving ? 'opacity-50' : ''}`}
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>{saving ? 'Guardando...' : 'Guardar'}</span>
-                  </button>
-                  {!estatusCampoDinamico && <div className="relative" ref={cerrarMenuRef}>
+                )}
+              </div>
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                {canEdit && !isCerrado && (
+                  <>
                     <button
-                      onClick={() => setShowCerrarMenu(v => !v)}
+                      onClick={handleSave}
                       disabled={saving}
-                      className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                      className={`flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold cursor-pointer disabled:opacity-50 ${!isDirty && !saving ? 'opacity-50' : ''}`}
                     >
-                      <XCircle className="w-4 h-4" />
-                      <span>Cerrar Trámite</span>
-                      <ChevronDown className="w-4 h-4" />
+                      <Save className="w-4 h-4" />
+                      <span>{saving ? 'Guardando...' : 'Guardar'}</span>
                     </button>
-                    {showCerrarMenu && cerrarOptions.length > 0 && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-20 overflow-hidden">
-                        <div className="px-4 py-2 text-xs font-semibold text-neutral-500 dark:text-white/50 bg-neutral-50 dark:bg-neutral-700 border-b border-neutral-200 dark:border-neutral-600">
-                          Cerrar con estatus:
+                    {!estatusCampoDinamico && <div className="relative" ref={cerrarMenuRef}>
+                      <button
+                        onClick={() => setShowCerrarMenu(v => !v)}
+                        disabled={saving}
+                        className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        <span>Cerrar Trámite</span>
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      {showCerrarMenu && cerrarOptions.length > 0 && (
+                        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-20 overflow-hidden">
+                          <div className="px-4 py-2 text-xs font-semibold text-neutral-500 dark:text-white/50 bg-neutral-50 dark:bg-neutral-700 border-b border-neutral-200 dark:border-neutral-600">
+                            Cerrar con estatus:
+                          </div>
+                          {cerrarOptions.map(estatus => (
+                            <button
+                              key={estatus.id}
+                              onClick={() => handleCerrarCon(estatus.id)}
+                              className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all flex items-center space-x-2"
+                            >
+                              <span
+                                className="w-2.5 h-2.5 rounded-full"
+                                style={{ backgroundColor: estatus.color }}
+                              />
+                              <span className="text-sm font-medium text-neutral-900 dark:text-white">{estatus.nombre}</span>
+                            </button>
+                          ))}
                         </div>
-                        {cerrarOptions.map(estatus => (
-                          <button
-                            key={estatus.id}
-                            onClick={() => handleCerrarCon(estatus.id)}
-                            className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all flex items-center space-x-2"
-                          >
-                            <span
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ backgroundColor: estatus.color }}
-                            />
-                            <span className="text-sm font-medium text-neutral-900 dark:text-white">{estatus.nombre}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>}
-                </>
-              )}
-              {canEdit && isCerrado && (
-                <button
-                  onClick={handleReabrir}
-                  disabled={saving}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Reabrir Tramite</span>
-                </button>
-              )}
+                      )}
+                    </div>}
+                  </>
+                )}
+                {canEdit && isCerrado && (
+                  <button
+                    onClick={handleReabrir}
+                    disabled={saving}
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Reabrir Tramite</span>
+                  </button>
+                )}
+              </div>
             </div>
-          }
-        />
-
-
-        {!canEdit && !isCerrado && (
-          <div className="mt-4 flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-            <p className="text-sm text-amber-700">
-              {isCommercialViewerOnly
-                ? 'Visualización de solo lectura. Puedes agregar comentarios pero no editar este trámite.'
-                : 'No tienes permiso para editar este tipo de trámite. Puedes consultar, comentar y adjuntar archivos.'}
-            </p>
           </div>
-        )}
+        </div>
 
-        <div className="flex space-x-2 border-b border-neutral-200 mt-6">
-          {(['detalles', 'comentarios', 'archivos', 'historial'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-semibold transition-all capitalize ${
-                activeTab === tab
-                  ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-          {tramite.tipo_tramite === 'solicitud_comisiones_pendientes' && (
-            <button
-              onClick={() => setActiveTab('comisiones')}
-              className={`px-6 py-3 font-semibold transition-all capitalize ${
-                activeTab === 'comisiones'
-                  ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              comisiones
-            </button>
+        {/* White body: readonly banner + tabs */}
+        <div className="bg-white dark:bg-neutral-800 px-6 pt-4 pb-0">
+          {!canEdit && !isCerrado && (
+            <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <p className="text-sm text-amber-700">
+                {isCommercialViewerOnly
+                  ? 'Visualización de solo lectura. Puedes agregar comentarios pero no editar este trámite.'
+                  : 'No tienes permiso para editar este tipo de trámite. Puedes consultar, comentar y adjuntar archivos.'}
+              </p>
+            </div>
           )}
-          {esReporteBug && (
-            <button
-              onClick={() => setActiveTab('diagnostico')}
-              className={`px-6 py-3 font-semibold transition-all capitalize ${
-                activeTab === 'diagnostico'
-                  ? 'text-accent border-b-2 border-accent'
-                  : 'text-neutral-600 hover:text-neutral-900'
-              }`}
-            >
-              diagnóstico
-            </button>
-          )}
+          <div className="flex space-x-2 border-b border-neutral-200">
+            {(['detalles', 'comentarios', 'archivos', 'historial'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-3 font-semibold transition-all capitalize ${
+                  activeTab === tab
+                    ? 'text-accent border-b-2 border-accent'
+                    : 'text-neutral-600 hover:text-neutral-900'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+            {tramite.tipo_tramite === 'solicitud_comisiones_pendientes' && (
+              <button
+                onClick={() => setActiveTab('comisiones')}
+                className={`px-6 py-3 font-semibold transition-all capitalize ${
+                  activeTab === 'comisiones'
+                    ? 'text-accent border-b-2 border-accent'
+                    : 'text-neutral-600 hover:text-neutral-900'
+                }`}
+              >
+                comisiones
+              </button>
+            )}
+            {esReporteBug && (
+              <button
+                onClick={() => setActiveTab('diagnostico')}
+                className={`px-6 py-3 font-semibold transition-all capitalize ${
+                  activeTab === 'diagnostico'
+                    ? 'text-accent border-b-2 border-accent'
+                    : 'text-neutral-600 hover:text-neutral-900'
+                }`}
+              >
+                diagnóstico
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1889,16 +1978,83 @@ export function TramiteDetalle() {
                         );
                       })()}
                       {campo.tipo === 'adjunto' && (() => {
-                        type ArchivoRef = { id: string; nombre: string; url: string; tipo: string; tamano: number };
+                        type ArchivoRef = { id: string; nombre: string; url: string; tipo: string; tamano: number; categoria_id?: string };
                         const archivos: ArchivoRef[] = Array.isArray(val) ? val : [];
                         const maxFiles = campo.config.max_archivos || 1;
                         const maxMb = campo.config.max_mb || 10;
                         const accept = (campo.config.tipos_mime || []).join(',') || undefined;
+                        const remaining = maxFiles - archivos.length;
+                        const tiposConfig = ((campo.config.tipos_config || []) as { categoria_id: string; requerido: boolean; dispara_extraccion: boolean }[]).filter(tc => tc.categoria_id);
+                        // Categoría por defecto: primera de tipos_config, o la raíz (legacy)
+                        const defaultCatId = tiposConfig.length > 0 ? tiposConfig[0].categoria_id : (campo.config.categoria_id || null);
+
+                        const uploadFiles = async (files: FileList | File[], catOverride?: string) => {
+                          const catId = catOverride ?? defaultCatId;
+                          const toUpload = Array.from(files).slice(0, remaining);
+                          const newArchivos = [...archivos];
+                          for (const file of toUpload) {
+                            if (file.size > maxMb * 1024 * 1024) {
+                              alert(`"${file.name}" excede el límite de ${maxMb} MB.`);
+                              continue;
+                            }
+                            const ext = file.name.split('.').pop();
+                            const fileName = `${tramite.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+                            const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(fileName, file);
+                            if (upErr) { alert('Error al subir: ' + upErr.message); continue; }
+                            const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(fileName);
+                            const { data: archivoData } = await supabase.from('ticket_archivos').insert({
+                              ticket_id: tramite.id, usuario_id: usuario?.id,
+                              nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
+                              categoria_id: catId,
+                            }).select('id').single();
+                            newArchivos.push({ id: archivoData?.id || '', nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size, categoria_id: catId ?? undefined });
+                            if (archivoData?.id && file.type === 'application/pdf') {
+                              const debeExtraer = tiposConfig.some(tc => tc.dispara_extraccion && tc.categoria_id === catId);
+                              if (debeExtraer) {
+                                setPendingExtractions(prev => [...prev, { archivo_id: archivoData.id }]);
+                              }
+                            }
+                          }
+                          set(newArchivos);
+                        };
+
+                        const changeCat = async (archivo: ArchivoRef, newCatId: string, idx: number) => {
+                          if (archivo.id) await supabase.from('ticket_archivos').update({ categoria_id: newCatId }).eq('id', archivo.id);
+                          const updated = archivos.map((a, i) => i === idx ? { ...a, categoria_id: newCatId } : a);
+                          set(updated);
+                        };
+
                         return (
                           <div className="space-y-2">
                             {archivos.map((archivo, i) => (
                               <div key={archivo.id || i} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
                                 <span className="text-sm flex-1 truncate">{archivo.nombre}</span>
+                                {(() => {
+                                  const isPending = pendingExtractions.some(p => p.archivo_id === archivo.id);
+                                  const st = extractionStatus[archivo.id];
+                                  if (isPending) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0 font-medium whitespace-nowrap">⏳ Pendiente</span>;
+                                  if (st === 'ok') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0 font-medium whitespace-nowrap">✓ Datos extraídos</span>;
+                                  if (st === 'error') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0 font-medium whitespace-nowrap">⚠ Sin extracción</span>;
+                                  if (st === 'pendiente') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0 font-medium whitespace-nowrap">↻ Procesando...</span>;
+                                  return null;
+                                })()}
+                                {tiposConfig.length === 1 ? (
+                                  <span className="text-[11px] text-neutral-500 bg-neutral-200 rounded px-1.5 py-0.5 shrink-0">
+                                    {adjuntoCatNombres[archivo.categoria_id ?? ''] ?? adjuntoCatNombres[tiposConfig[0].categoria_id] ?? ''}
+                                  </span>
+                                ) : tiposConfig.length > 1 ? (
+                                  <select
+                                    value={archivo.categoria_id ?? ''}
+                                    onChange={e => changeCat(archivo, e.target.value, i)}
+                                    className="text-[11px] border border-neutral-300 rounded px-1 py-0.5 bg-white shrink-0 max-w-[130px]"
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    <option value="">— Tipo —</option>
+                                    {tiposConfig.map(tc => (
+                                      <option key={tc.categoria_id} value={tc.categoria_id}>{adjuntoCatNombres[tc.categoria_id] ?? tc.categoria_id}</option>
+                                    ))}
+                                  </select>
+                                ) : null}
                                 <span className="text-xs text-neutral-400 shrink-0">{(archivo.tamano / 1024).toFixed(0)} KB</span>
                                 <a href={archivo.url} target="_blank" rel="noopener noreferrer"
                                   className="p-1 text-blue-500 hover:text-blue-700 transition-colors shrink-0" title="Descargar">
@@ -1913,33 +2069,32 @@ export function TramiteDetalle() {
                                 )}
                               </div>
                             ))}
-                            {editable && archivos.length < maxFiles && (
-                              <label className="flex flex-col items-center justify-center gap-2 px-4 py-6 border-[3px] border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors group">
+                            {editable && remaining > 0 && (
+                              <label
+                                className="flex flex-col items-center justify-center gap-2 px-4 py-6 border-[3px] border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors group"
+                                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-blue-400', '!bg-blue-50'); }}
+                                onDragLeave={e => e.currentTarget.classList.remove('border-blue-400', '!bg-blue-50')}
+                                onDrop={async e => {
+                                  e.preventDefault();
+                                  e.currentTarget.classList.remove('border-blue-400', '!bg-blue-50');
+                                  await uploadFiles(e.dataTransfer.files);
+                                }}
+                              >
                                 <Paperclip className="w-7 h-7 text-neutral-300 group-hover:text-blue-400 transition-colors" />
-                                <span className="text-sm font-medium text-neutral-500 group-hover:text-blue-500 transition-colors">Adjuntar archivo</span>
-                                {accept && <span className="text-xs text-neutral-400">{(campo.config.tipos_mime || []).join(', ').replace(/[^/]+\//g, '').toUpperCase()} · máx. {maxMb} MB</span>}
+                                <span className="text-sm font-medium text-neutral-500 group-hover:text-blue-500 transition-colors">
+                                  {remaining > 1 ? 'Adjuntar archivos' : 'Adjuntar archivo'}
+                                </span>
+                                <span className="text-xs text-neutral-400 text-center">
+                                  {accept ? (campo.config.tipos_mime || []).join(', ').replace(/[^/]+\//g, '').toUpperCase() + ' · ' : ''}máx. {maxMb} MB{remaining > 1 ? ` · hasta ${remaining} archivos` : ''}
+                                  {defaultCatId && adjuntoCatNombres[defaultCatId] ? ` · ${adjuntoCatNombres[defaultCatId]}` : ''}
+                                </span>
                                 <input
                                   type="file"
                                   accept={accept}
+                                  multiple={remaining > 1}
                                   className="hidden"
                                   onChange={async e => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    if (file.size > maxMb * 1024 * 1024) {
-                                      alert(`Archivo demasiado grande. Máximo ${maxMb} MB.`);
-                                      return;
-                                    }
-                                    const ext = file.name.split('.').pop();
-                                    const fileName = `${tramite.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-                                    const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(fileName, file);
-                                    if (upErr) { alert('Error al subir: ' + upErr.message); return; }
-                                    const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(fileName);
-                                    const { data: archivoData } = await supabase.from('ticket_archivos').insert({
-                                      ticket_id: tramite.id, usuario_id: usuario?.id,
-                                      nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
-                                      categoria_id: campo.config.categoria_id || null,
-                                    }).select('id').single();
-                                    set([...archivos, { id: archivoData?.id || '', nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size }]);
+                                    if (e.target.files?.length) await uploadFiles(e.target.files);
                                     e.target.value = '';
                                   }}
                                 />

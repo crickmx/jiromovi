@@ -178,11 +178,13 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
 
   const handleDeleteArchivo = async (archivoId: string) => {
     if (!usuario) return;
-    if (!confirm('¿Mover este archivo a la papelera?')) return;
-    await supabase.from('ticket_archivos').update({
-      eliminado_at: new Date().toISOString(),
-      eliminado_por: usuario.id,
-    }).eq('id', archivoId);
+    if (!confirm('¿Eliminar este archivo permanentemente? Esta acción no se puede deshacer.')) return;
+    const archivo = archivos.find(a => a.id === archivoId);
+    if (archivo?.url) {
+      const match = archivo.url.match(/ticket-archivos\/(.+)$/);
+      if (match) await supabase.storage.from('ticket-archivos').remove([decodeURIComponent(match[1])]).catch(() => {});
+    }
+    await supabase.from('ticket_archivos').delete().eq('id', archivoId);
     setArchivos(prev => prev.filter(a => a.id !== archivoId));
   };
 
