@@ -665,38 +665,18 @@ export async function obtenerMiembrosTablero(boardId: string): Promise<CRMBoardM
   return (data || []) as CRMBoardMemberDetail[];
 }
 
-export async function buscarUsuariosParaCompartir(query: string): Promise<SearchableUser[]> {
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select(
-      `
-      id,
-      nombre,
-      apellidos,
-      rol,
-      oficina_id,
-      imagen_perfil_url,
-      oficinas!inner(nombre)
-    `
-    )
-    .or(
-      `nombre.ilike.%${query}%,apellidos.ilike.%${query}%,email_laboral.ilike.%${query}%`
-    )
-    .in('rol', ['Empleado', 'Gerente', 'Administrador'])
-    .eq('activo', true)
-    .limit(20);
+export async function buscarUsuariosParaCompartir(
+  boardId: string,
+  query: string
+): Promise<SearchableUser[]> {
+  const { data, error } = await supabase.rpc('crm_search_shareable_users', {
+    p_board_id: boardId,
+    p_query: query.trim(),
+  });
 
   if (error) throw error;
 
-  return (
-    data?.map((u: any) => ({
-      id: u.id,
-      nombre_completo: `${u.nombre} ${u.apellidos}`,
-      oficina_nombre: u.oficinas?.nombre || 'Sin oficina',
-      rol: u.rol,
-      avatar_url: u.imagen_perfil_url,
-    })) || []
-  );
+  return (data || []) as SearchableUser[];
 }
 
 export async function eliminarTablero(boardId: string): Promise<void> {
