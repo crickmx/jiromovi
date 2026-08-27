@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus, FileText, ExternalLink, Download } from 'lucide-react';
+import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus, FileText, ExternalLink, Download, Paperclip } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl } from '../lib/supabase';
@@ -16,6 +16,7 @@ import {
   guardarMapeoCampoTriggerPremium,
   PLACEHOLDERS_TRIGGER_PREMIUM,
 } from '../lib/mktPremiumTriggers';
+import { adjuntarComprobantePremium } from '../lib/mktPremiumPdf';
 import { obtenerCamposTramiteTipo } from '../lib/storeUtils';
 import { UserModal } from '../components/UserModal';
 import { format } from 'date-fns';
@@ -132,6 +133,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [tramitesAgente, setTramitesAgente] = useState<TramiteResumen[]>([]);
   const [cargandoTramites, setCargandoTramites] = useState(false);
   const [generandoTramite, setGenerandoTramite] = useState(false);
+  const [adjuntandoPdfId, setAdjuntandoPdfId] = useState<string | null>(null);
 
   const [nuevoAgente, setNuevoAgente] = useState({ nombre: '', apellidos: '', email_laboral: '', celular_laboral: '' });
   const [creandoAgente, setCreandoAgente] = useState(false);
@@ -272,6 +274,39 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       return;
     }
     setTramitesAgente(prev => prev.filter(t => t.id !== tramiteId));
+  }
+
+  async function adjuntarPDFATramite(tramite: TramiteResumen) {
+    if (!seleccionado || !usuario) return;
+    setAdjuntandoPdfId(tramite.id);
+    try {
+      await adjuntarComprobantePremium({
+        ticketId: tramite.id,
+        folio: tramite.folio,
+        fechaCreacion: tramite.fecha_creacion,
+        tipoLabel: tramite.tipo_label,
+        agente: {
+          id: seleccionado.id,
+          nombre: seleccionado.nombre,
+          apellidos: seleccionado.apellidos,
+          oficina: seleccionado.oficina,
+        },
+        form: {
+          mkt_premium_plan: seleccionado.mkt_premium_plan ?? '',
+          mkt_premium_metodo_pago: seleccionado.mkt_premium_metodo_pago ?? '',
+          mkt_premium_parcialidades: seleccionado.mkt_premium_parcialidades ? String(seleccionado.mkt_premium_parcialidades) : '',
+          mkt_premium_fecha_inicio: seleccionado.mkt_premium_fecha_inicio ?? '',
+          mkt_premium_fecha_pago: seleccionado.mkt_premium_fecha_pago ?? '',
+        },
+        usuarioId: usuario.id,
+        creadorNombre: `${usuario.nombre} ${usuario.apellidos ?? ''}`.trim(),
+      });
+      alert(`Comprobante adjuntado al trámite ${tramite.folio}`);
+    } catch (err: any) {
+      alert(`Error al adjuntar: ${err?.message || 'error desconocido'}`);
+    } finally {
+      setAdjuntandoPdfId(null);
+    }
   }
 
   async function descargarPDFTramitePremium(tramite: TramiteResumen, agente: Agente) {
@@ -1162,6 +1197,16 @@ ALTER TABLE usuarios
                               className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-neutral-400 hover:text-purple-600 transition shrink-0"
                             >
                               <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => adjuntarPDFATramite(t)}
+                              title="Adjuntar comprobante PDF a archivos"
+                              disabled={adjuntandoPdfId === t.id}
+                              className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-neutral-400 hover:text-emerald-600 transition shrink-0 disabled:opacity-50"
+                            >
+                              {adjuntandoPdfId === t.id
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Paperclip className="w-3.5 h-3.5" />}
                             </button>
                             <button
                               onClick={() => navigate(`/tramites/${t.id}`)}
