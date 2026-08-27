@@ -270,7 +270,8 @@ Deno.serve(async (req: Request) => {
       const { data: todosExtraidos, error: qErr } = await sb
         .from("poliza_datos_extraidos")
         .select("*, archivo:ticket_archivos!archivo_id(nombre)")
-        .eq("ticket_id", ticket_id);
+        .eq("ticket_id", ticket_id)
+        .not("archivo_id", "is", null); // excluir filas huérfanas de archivos borrados
       if (qErr) throw new Error(`Query extraídos: ${qErr.message}`);
 
       const filas = (todosExtraidos ?? []).map((d: any) =>
@@ -314,7 +315,10 @@ Deno.serve(async (req: Request) => {
       console.error("XLSX generation error:", xlsxError);
     }
 
-    const mensaje = buildMessage(campos, extracted.aseguradora, extracted.sub_ramo, ticket.folio);
+    const fracaso = extraccionError || !aseguradoraSoportada;
+    const mensaje = fracaso
+      ? `No fue posible extraer automáticamente los datos del archivo "${archivo.nombre}".\n${observaciones ?? "Favor de capturar manualmente."}`
+      : buildMessage(campos, extracted.aseguradora, extracted.sub_ramo, ticket.folio);
     const ticketUrl = `/tramites/${ticket_id}`;
 
     // 9. Notificar al agente
@@ -375,12 +379,12 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 11. Insertar comentario con datos extraídos en el trámite
+    // 11. Insertar comentario en el trámite
     try {
       await sb.from("ticket_comentarios").insert({
         ticket_id,
         usuario_id: ticket.agente_id ?? null,
-        mensaje: `Datos extraídos de póliza:\n${mensaje}`,
+        mensaje: fracaso ? mensaje : `Datos extraídos de póliza:\n${mensaje}`,
       });
     } catch {} // fire-and-forget
 
