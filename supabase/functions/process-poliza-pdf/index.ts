@@ -267,11 +267,15 @@ Deno.serve(async (req: Request) => {
     // 8a. Si el extractor corrió pero no soporta la combinación → encolar para entrenamiento
     const enviarEntrenamiento = !extraccionError && !aseguradoraSoportada;
     if (enviarEntrenamiento) {
+      // El bucket ticket-archivos es privado; guardamos el path para que lector
+      // pueda generar signed URLs con su propio cliente autenticado de Supabase.
+      const archivoPath = archivo.url.split("/storage/v1/object/public/ticket-archivos/")[1] ?? null;
       await sb.from("lector_cola_entrenamiento").upsert(
         {
           ticket_id,
           archivo_id,
           archivo_url: archivo.url,
+          archivo_path: archivoPath,
           aseguradora: extracted.aseguradora ?? null,
           estado: "pendiente",
         },
