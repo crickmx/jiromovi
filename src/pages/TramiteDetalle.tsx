@@ -89,6 +89,7 @@ export function TramiteDetalle() {
   const [saving, setSaving] = useState(false);
   const [pendingExtractions, setPendingExtractions] = useState<{ archivo_id: string }[]>([]);
   const [extractionStatus, setExtractionStatus] = useState<Record<string, string>>({});
+  const [entrenamientoStatus, setEntrenamientoStatus] = useState<Record<string, string>>({});
   const [showCerrarMenu, setShowCerrarMenu] = useState(false);
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -504,6 +505,17 @@ export function TramiteDetalle() {
       const statusMap: Record<string, string> = {};
       extData.forEach((r: any) => { statusMap[r.archivo_id] = r.estado; });
       setExtractionStatus(statusMap);
+    }
+
+    // Cargar estado de cola de entrenamiento por archivo
+    const { data: colaData } = await supabase
+      .from('lector_cola_entrenamiento')
+      .select('archivo_id, estado')
+      .eq('ticket_id', id);
+    if (colaData) {
+      const colaMap: Record<string, string> = {};
+      colaData.forEach((r: any) => { if (r.archivo_id) colaMap[r.archivo_id] = r.estado; });
+      setEntrenamientoStatus(colaMap);
     }
   };
 
@@ -1201,6 +1213,7 @@ export function TramiteDetalle() {
                 mensaje: r.comentario_pendiente,
               });
             }
+            if (r?.enviado_entrenamiento) showToast(`PDF enviado a la cola de entrenamiento en lector.movi.digital`);
             if (r?.ok && !r.extraccion_error && !r.xlsx_error) showToast(`Datos de póliza extraídos${label}. Excel SICAS generado.`);
             else if (r?.ok && r.extraccion_error) showToast(`Excel generado con datos parciales${label}. Error en extracción: ${r.extraccion_error}`, 'error');
             else if (r?.xlsx_error) showToast(`Datos extraídos${label}. Error en Excel: ${r.xlsx_error}`, 'error');
@@ -2039,8 +2052,11 @@ export function TramiteDetalle() {
                                 {(() => {
                                   const isPending = pendingExtractions.some(p => p.archivo_id === archivo.id);
                                   const st = extractionStatus[archivo.id];
+                                  const enCola = entrenamientoStatus[archivo.id];
                                   if (isPending) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0 font-medium whitespace-nowrap">⏳ Pendiente</span>;
                                   if (st === 'ok') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0 font-medium whitespace-nowrap">✓ Datos extraídos</span>;
+                                  if (enCola === 'pendiente') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 shrink-0 font-medium whitespace-nowrap">📚 En entrenamiento</span>;
+                                  if (enCola === 'procesado') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-500 shrink-0 font-medium whitespace-nowrap">✓ Entrenado</span>;
                                   if (st === 'error') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0 font-medium whitespace-nowrap">⚠ Sin extracción</span>;
                                   if (st === 'pendiente') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0 font-medium whitespace-nowrap">↻ Procesando...</span>;
                                   return null;

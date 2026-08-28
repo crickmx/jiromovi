@@ -264,6 +264,21 @@ Deno.serve(async (req: Request) => {
 
     if (saveErr) throw new Error(`Error guardando: ${saveErr.message}`);
 
+    // 8a. Si el extractor corrió pero no soporta la combinación → encolar para entrenamiento
+    const enviarEntrenamiento = !extraccionError && !aseguradoraSoportada;
+    if (enviarEntrenamiento) {
+      await sb.from("lector_cola_entrenamiento").upsert(
+        {
+          ticket_id,
+          archivo_id,
+          archivo_url: archivo.url,
+          aseguradora: extracted.aseguradora ?? null,
+          estado: "pendiente",
+        },
+        { onConflict: "archivo_id", ignoreDuplicates: true }
+      );
+    }
+
     // 8b. Generar y adjuntar XLSX para SICAS — una fila por cada archivo del ticket
     let xlsxError: string | null = null;
     try {
@@ -396,7 +411,7 @@ Deno.serve(async (req: Request) => {
       comentarioPendiente = comentarioTexto;
     }
 
-    return json({ ok: true, estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!aseguradoraSoportada && !extraccionError ? { extraccion_error: `Aseguradora no soportada: ${extracted.aseguradora ?? "desconocida"}` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}), ...(comentarioPendiente ? { comentario_pendiente: comentarioPendiente } : {}) });
+    return json({ ok: true, estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!aseguradoraSoportada && !extraccionError ? { extraccion_error: `Aseguradora no soportada: ${extracted.aseguradora ?? "desconocida"}` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}), ...(comentarioPendiente ? { comentario_pendiente: comentarioPendiente } : {}), ...(enviarEntrenamiento ? { enviado_entrenamiento: true } : {}) });
 
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error interno";
