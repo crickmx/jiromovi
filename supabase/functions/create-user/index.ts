@@ -325,16 +325,34 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const memberships = selectedGroupIds.map((grupoId) => ({ grupo_id: grupoId, usuario_id: authData.user.id }));
-      const { error: membershipError } = await supabaseAdmin
-        .from('tramites_grupos_miembros')
-        .insert(memberships);
-
-      if (membershipError) {
+      const selectedGroups = (activeGroups ?? []).filter((group) => selectedSet.has(group.id));
+      const selectedCategories = new Set(selectedGroups.map((group) => String(group.area_categoria || '').trim()));
+      if (selectedCategories.size !== selectedGroups.length) {
         await supabaseAdmin.from('usuarios').delete().eq('id', authData.user.id);
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
         return new Response(
-          JSON.stringify({ error: 'No se pudieron guardar los equipos de trámite: ' + membershipError.message }),
+          JSON.stringify({ error: 'Selecciona solo un equipo por categoría de trámite' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Estos equipos atienden al agente; el agente NO es miembro operativo.
+      const assignments = selectedGroups.map((group) => ({
+        grupo_id: group.id,
+        usuario_id: authData.user.id,
+        area: String(group.area_categoria || '').trim(),
+        activo: true,
+        created_by: currentUser.id,
+      }));
+      const { error: assignmentError } = await supabaseAdmin
+        .from('tramites_grupos_reglas')
+        .insert(assignments);
+
+      if (assignmentError) {
+        await supabaseAdmin.from('usuarios').delete().eq('id', authData.user.id);
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        return new Response(
+          JSON.stringify({ error: 'No se pudieron guardar los equipos que atienden al agente: ' + assignmentError.message }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
