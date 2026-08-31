@@ -33,11 +33,19 @@ CREATE POLICY "store_catalogos_admin_all" ON store_catalogos
   FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol = 'Administrador')
-    OR EXISTS (SELECT 1 FROM store_equipos_acceso WHERE usuario_id = auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM tramites_grupos_miembros tgm
+      JOIN store_equipos_acceso sea ON sea.grupo_id = tgm.grupo_id
+      WHERE tgm.usuario_id = auth.uid()
+    )
   )
   WITH CHECK (
     EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol = 'Administrador')
-    OR EXISTS (SELECT 1 FROM store_equipos_acceso WHERE usuario_id = auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM tramites_grupos_miembros tgm
+      JOIN store_equipos_acceso sea ON sea.grupo_id = tgm.grupo_id
+      WHERE tgm.usuario_id = auth.uid()
+    )
   );
 
 CREATE POLICY "store_catalogo_productos_anon_select" ON store_catalogo_productos
@@ -52,9 +60,17 @@ CREATE POLICY "store_catalogo_productos_admin_all" ON store_catalogo_productos
   FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol = 'Administrador')
-    OR EXISTS (SELECT 1 FROM store_equipos_acceso WHERE usuario_id = auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM tramites_grupos_miembros tgm
+      JOIN store_equipos_acceso sea ON sea.grupo_id = tgm.grupo_id
+      WHERE tgm.usuario_id = auth.uid()
+    )
   )
   WITH CHECK (
     EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND rol = 'Administrador')
-    OR EXISTS (SELECT 1 FROM store_equipos_acceso WHERE usuario_id = auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM tramites_grupos_miembros tgm
+      JOIN store_equipos_acceso sea ON sea.grupo_id = tgm.grupo_id
+      WHERE tgm.usuario_id = auth.uid()
+    )
   );
