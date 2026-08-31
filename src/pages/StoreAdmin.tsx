@@ -46,6 +46,22 @@ export default function StoreAdmin() {
   // Inline edit en tabla de productos
   const [inlineEdit, setInlineEdit] = useState<{ id: string; campo: 'precio' | 'stock'; valor: string } | null>(null);
 
+  // Catálogos — asignación desde la lista de productos
+  const [todosCatalogos, setTodosCatalogos] = useState<{ id: string; nombre: string }[]>([]);
+  const [membresiaProducto, setMembresiaProducto] = useState<Record<string, string[]>>({}); // producto_id → catalog_ids[]
+  const [popoverCatalogos, setPopoverCatalogos] = useState<string | null>(null); // producto_id con popover abierto
+
+  // Cerrar popover de catálogos al hacer clic fuera
+  useEffect(() => {
+    if (!popoverCatalogos) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-catalogo-popover]')) setPopoverCatalogos(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [popoverCatalogos]);
+
   // Drag & drop para reordenar productos
   const dragIndex = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -75,6 +91,7 @@ export default function StoreAdmin() {
       const tieneAcceso = tienePermisoAdminEnModulo(usuario, MODULOS.STORE) || await tieneAccesoEquipoStore(usuario.id);
       if (!tieneAcceso) { navigate('/store'); return; }
       cargarDatos();
+      cargarCatalogos();
     })();
   }, [usuario]);
 
@@ -91,6 +108,37 @@ export default function StoreAdmin() {
       console.error('Error cargando datos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cargarCatalogos = async () => {
+    const [{ data: cats }, { data: membs }] = await Promise.all([
+      supabase.from('store_catalogos').select('id, nombre').order('nombre'),
+      supabase.from('store_catalogo_productos').select('catalogo_id, producto_id'),
+    ]);
+    setTodosCatalogos(cats ?? []);
+    const map: Record<string, string[]> = {};
+    for (const m of membs ?? []) {
+      if (!map[m.producto_id]) map[m.producto_id] = [];
+      map[m.producto_id].push(m.catalogo_id);
+    }
+    setMembresiaProducto(map);
+  };
+
+  const toggleMembresiaCatalogo = async (productoId: string, catalogoId: string, pertenece: boolean) => {
+    if (pertenece) {
+      await supabase.from('store_catalogo_productos').delete()
+        .eq('catalogo_id', catalogoId).eq('producto_id', productoId);
+      setMembresiaProducto(prev => ({
+        ...prev,
+        [productoId]: (prev[productoId] ?? []).filter(id => id !== catalogoId),
+      }));
+    } else {
+      await supabase.from('store_catalogo_productos').insert({ catalogo_id: catalogoId, producto_id: productoId, orden: 0 });
+      setMembresiaProducto(prev => ({
+        ...prev,
+        [productoId]: [...(prev[productoId] ?? []), catalogoId],
+      }));
     }
   };
 
@@ -428,6 +476,7 @@ export default function StoreAdmin() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Margen</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Disponibilidad</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Catálogos</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Acciones</th>
                     </tr>
                   </thead>
@@ -566,6 +615,53 @@ export default function StoreAdmin() {
                             {producto.activo ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                             {producto.activo ? 'Activo' : 'Inactivo'}
                           </button>
+                        </td>
+                        <td className="px-6 py-4 relative" data-catalogo-popover>
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {(membresiaProducto[producto.id] ?? []).map(cid => {
+                              const cat = todosCatalogos.find(c => c.id === cid);
+                              return cat ? (
+                                <span key={cid} className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+                                  {cat.nombre}
+                                </span>
+                              ) : null;
+                            })}
+                            {todosCatalogos.length > 0 && (
+                              <button
+                                onClick={() => setPopoverCatalogos(popoverCatalogos === producto.id ? null : producto.id)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full border border-neutral-200 dark:border-white/10 text-neutral-500 dark:text-white/50 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                                title="Asignar catálogos"
+                              >
+                                <BookOpen className="w-3 h-3" />
+                                {(membresiaProducto[producto.id] ?? []).length === 0 ? 'Asignar' : '+'}
+                              </button>
+                            )}
+                          </div>
+                          {popoverCatalogos === producto.id && (
+                            <div className="absolute z-50 left-0 mt-1 w-52 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-xl shadow-lg p-2">
+                              <p className="text-[10px] font-semibold text-neutral-400 dark:text-white/40 uppercase px-2 pb-1">Catálogos</p>
+                              {todosCatalogos.map(cat => {
+                                const pertenece = (membresiaProducto[producto.id] ?? []).includes(cat.id);
+                                return (
+                                  <label key={cat.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={pertenece}
+                                      onChange={() => toggleMembresiaCatalogo(producto.id, cat.id, pertenece)}
+                                      className="accent-blue-600"
+                                    />
+                                    <span className="text-sm text-neutral-800 dark:text-white">{cat.nombre}</span>
+                                  </label>
+                                );
+                              })}
+                              <button
+                                onClick={() => setPopoverCatalogos(null)}
+                                className="w-full mt-1 text-xs text-neutral-400 hover:text-neutral-600 py-1"
+                              >
+                                Cerrar
+                              </button>
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center gap-2">
