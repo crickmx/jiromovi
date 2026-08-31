@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon, GripVertical } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon, GripVertical, BookOpen } from 'lucide-react';
+import { CatalogosAdminPanel } from '../movistore/CatalogosAdminPanel';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -35,7 +36,7 @@ export default function StoreAdmin() {
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [loading, setLoading] = useState(true);
-  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias' | 'equipos' | 'triggers' | 'logos'>('productos');
+  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias' | 'equipos' | 'triggers' | 'logos' | 'catalogos'>('productos');
 
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [productoEditando, setProductoEditando] = useState<StoreProducto | null>(null);
@@ -324,6 +325,18 @@ export default function StoreAdmin() {
           >
             <ImageIcon className="w-5 h-5 inline mr-2" />
             Logos de asesores
+          </button>
+
+          <button
+            onClick={() => setVistaActual('catalogos')}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              vistaActual === 'catalogos'
+                ? 'bg-accent text-white'
+                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
+            }`}
+          >
+            <BookOpen className="w-5 h-5 inline mr-2" />
+            Catálogos
           </button>
         </div>
 
@@ -638,6 +651,8 @@ export default function StoreAdmin() {
           <EquiposAccesoPanel />
         ) : vistaActual === 'logos' ? (
           <LogosAsesoresPanel />
+        ) : vistaActual === 'catalogos' ? (
+          <CatalogosAdminPanel />
         ) : (
           <TriggersPanel />
         )}

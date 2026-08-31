@@ -9,10 +9,19 @@ const BRAND = '#2285de';
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
 
+interface Catalogo {
+  id: string;
+  nombre: string;
+  slug: string;
+  descripcion: string | null;
+  imagen_portada_url: string | null;
+}
+
 export function TiendaHome() {
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [catActiva, setCatActiva] = useState<string | null>(null);
+  const [catalogos, setCatalogos] = useState<Catalogo[]>([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -23,6 +32,13 @@ export function TiendaHome() {
       .eq('activo', true)
       .order('nombre')
       .then(({ data }) => setCategorias(data ?? []));
+
+    supabase
+      .from('store_catalogos')
+      .select('id, nombre, slug, descripcion, imagen_portada_url')
+      .eq('activo', true)
+      .order('nombre')
+      .then(({ data }) => setCatalogos(data ?? []));
   }, []);
 
   useEffect(() => {
@@ -45,12 +61,13 @@ export function TiendaHome() {
         <title>MOVI Tienda</title>
         <meta property="og:title" content="MOVI Tienda" />
         <meta property="og:description" content="Descubre los productos y servicios de MOVI Digital." />
-        <meta property="og:image" content="https://app.movi.digital/movirecurso_7.png" />
+        <meta property="og:image" content="https://app.movi.digital/logo_color.png" />
         <meta property="og:url" content="https://tienda.movi.digital/" />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content="https://app.movi.digital/movirecurso_7.png" />
+        <meta name="twitter:image" content="https://app.movi.digital/logo_color.png" />
       </Helmet>
+
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <span className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>MOVI</span>
@@ -59,6 +76,44 @@ export function TiendaHome() {
         </div>
       </header>
 
+      {/* Catálogos */}
+      {catalogos.length > 0 && (
+        <div className="bg-white border-b border-gray-100">
+          <div className="max-w-5xl mx-auto px-4 py-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Catálogos</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {catalogos.map(cat => (
+                <Link
+                  key={cat.id}
+                  to={`/catalogo/${cat.slug}`}
+                  className="group relative overflow-hidden rounded-2xl aspect-video bg-gray-100 shadow-sm hover:shadow-md transition-all"
+                >
+                  {cat.imagen_portada_url ? (
+                    <img
+                      src={cat.imagen_portada_url}
+                      alt={cat.nombre}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: BRAND }}>
+                      <span className="text-3xl">🗂️</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <p className="text-white text-sm font-semibold line-clamp-2 leading-snug">{cat.nombre}</p>
+                    {cat.descripcion && (
+                      <p className="text-white/70 text-xs mt-0.5 line-clamp-1">{cat.descripcion}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filtro por categoría */}
       {categorias.length > 0 && (
         <div className="bg-white border-b border-gray-100 overflow-x-auto">
           <div className="max-w-5xl mx-auto px-4 py-2.5 flex gap-2 whitespace-nowrap">
