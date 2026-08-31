@@ -1,16 +1,21 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-08-19)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-08-28)
 
-### 🔴 Feature activa: Adjuntos por tipo + extracción automática de pólizas PDF (2026-08-19)
+### 🔴 Feature activa: Adjuntos por tipo + extracción automática de pólizas PDF (2026-08-19 → en producción parcialmente)
 
-Lo que ya está hecho (committeado, falta desplegar):
-- **`supabase/migrations/20260819000001_poliza_pdf_extraccion.sql`** — tablas `poliza_datos_extraidos` y `poliza_pdf_extraccion_config`, categoría "Póliza PDF". **Falta correr en Supabase.**
-- **`supabase/functions/process-poliza-pdf/index.ts`** — edge function completa: descarga PDF, llama a `lector.movi.digital/api/extraer-poliza-registro`, guarda en `poliza_datos_extraidos`, notifica agente y equipos según config. **Falta redesplegar:** `supabase functions deploy process-poliza-pdf`.
-- **`src/components/tramites/catalogos/ExtraccionPdfTab.tsx`** — tab "Extracción PDF" en el editor de tipo de trámite (activo/notificaciones/plantillas).
+Lo que ya está hecho y en producción (✅):
+- **`supabase/migrations/20260819000001_poliza_pdf_extraccion.sql`** — tablas `poliza_datos_extraidos` y `poliza_pdf_extraccion_config`, categoría "Póliza PDF". Corrida en Supabase.
+- **`supabase/functions/process-poliza-pdf/index.ts`** — edge function completa: descarga PDF, llama a `lector.movi.digital/api/extraer-poliza-registro`, guarda en `poliza_datos_extraidos`, genera Excel multi-fila (todas las pólizas del ticket) en `ticket-archivos/{ticket_id}/sicas/{folio}-SICAS.xlsx`, inserta comentario en el ticket (fallback al frontend si el insert falla). Desplegada manualmente vía dashboard Supabase.
+- **`src/components/tramites/catalogos/ExtraccionPdfTab.tsx`** — tab "Extracción PDF" en el editor de tipo de trámite.
 - **`GestionCatalogosRegistro.tsx`** — tab "Extracción PDF" registrado como 7º tab.
-- **`TramiteArchivos.tsx`** — detecta categoría "Póliza PDF" al subir, llama edge function, muestra badge de estado (spinner/verde/rojo) en la tarjeta del archivo.
-- **`lector.movi.digital`** — endpoint Python `/api/extraer-poliza-registro` instalado y corriendo en el servidor como `lector-polizas.service`.
+- **`TramiteArchivos.tsx`** — detecta categoría "Póliza PDF" al subir, llama edge function, badges de estado (⏳/↻/✓/⚠/📚) en el campo adjunto.
+- **`src/pages/TramiteDetalle.tsx`** — `extractionStatus` + `entrenamientoStatus` states; comentario fallback si `r?.comentario_pendiente`; toast si `r?.enviado_entrenamiento`.
+- **`lector.movi.digital`** — endpoint Python `/api/extraer-poliza-registro` corriendo (GNP y Qualitas soportados; el resto genera observaciones).
+- **Migraciones 2026-08-26/27/28** — `observaciones` en `poliza_datos_extraidos`; trigger de archivos excluye eliminados; tabla `lector_cola_entrenamiento` con RLS + columnas de catalogación. Corridas en Supabase.
+- **Fix comentarios ANA/Mapfre (2026-08-27)** — fallback `comentario_pendiente` en el response de la edge function; el frontend lo inserta con el `usuario.id` del logueado.
+- **Fix observaciones vacías Excel (2026-08-27)** — condición simplificada a `(extraccionError || !aseguradoraSoportada)`.
+- **Cola de entrenamiento lector.movi.digital (2026-08-28)** — cuando `!extraccionError && !aseguradoraSoportada`, se registra en `lector_cola_entrenamiento`. Badge violeta "📚 En entrenamiento" en TramiteDetalle. Guía técnica para el dev del lector publicada en artifact.
 
 Lo que viene (plan acordado con Ricardo, retomar aquí):
 
@@ -406,6 +411,78 @@ Cuando un ejecutivo necesita apoyo de sus superiores, puede escalar un trámite 
 **Edge Function `escalar-tramite`** (`supabase/functions/escalar-tramite/index.ts`): recibe `{ticket_id, destinatario, comentario}`. Busca miembros del equipo con los roles correspondientes, les envía WhatsApp (`send-direct-whatsapp`), email (`send-direct-email`) e in-app (`crear_notificacion` RPC). Devuelve `{ok, notified}`.
 
 **⚠️ `origin/main` queda 1 commit adelante de `origin/main` remoto** (Ricardo eligió no pushear a main esta sesión). El commit `5d8f632e` está en `produccion` y en local `main`, pero NO en `origin/main`. Al iniciar la próxima sesión: `git push origin main` antes de cualquier otro trabajo si se quiere sincronizar.
+
+## Extracción de pólizas PDF → Excel SICAS (sesión 2026-08-26, en producción)
+
+### Flujo completo
+1. Agente adjunta PDFs al campo adjunto con `dispara_extraccion=true` en su `tipos_config`
+2. Al subir, se agrega `archivo_id` a `pendingExtractions` (state en `TramiteDetalle.tsx`)
+3. Al dar "Guardar cambios" (`proceedWithSave`), se llama la edge function `process-poliza-pdf` una vez por PDF, secuencialmente, con toast de progreso por archivo
+4. Edge function sube/reemplaza un Excel en `ticket-archivos/{ticket_id}/sicas/{folio}-SICAS.xlsx` con **una fila por cada archivo procesado del ticket** (no solo el actual)
+5. Badge de estado aparece junto al nombre de cada archivo en el campo adjunto
+
+### Edge function: `process-poliza-pdf`
+- Path: `supabase/functions/process-poliza-pdf/index.ts`
+- **Se despliega manualmente** desde el dashboard de Supabase — siempre recordar actualizar ahí después de cambios
+- Extractor Python en `https://lector.movi.digital/api/extraer-poliza-registro` — soporta GNP y Qualitas; el resto genera observaciones pero igual genera fila en Excel
+- Config en `poliza_pdf_extraccion_config`: debe haber fila activa para `(ticket_tipo_id, categoria_id)`. `categoria_id` debe coincidir exactamente con el ID de `maestro_adjunto_categorias` donde `nombre = 'Póliza PDF'`
+- FK join ambiguo para agente: usar `agente:usuarios!agente_id(nombre_sicas, nombre)`
+- **Vendedor**: `agente.nombre_sicas || agente.nombre` del ticket
+- **Despacho**: se obtiene de `tramite_respuestas` donde `campo.tipo = 'oficina_jiro'` y `tramite_id = ticket_id` → `valor_texto`. NO hardcodeado
+- **Excel multi-fila**: después de guardar el archivo actual en `poliza_datos_extraidos`, la función consulta TODOS los registros del ticket y genera el Excel completo con todas las filas — cada llamada regenera el Excel acumulado
+- **`.catch()` NO funciona en Deno** sobre PostgrestBuilder — usar `try { await sb.from(...).insert({...}); } catch {}` en su lugar
+- Excel headers: `["Entidad",...,"Placas","Nombre Archivo","Observaciones"]`
+
+### Archivos modificados (2026-08-26)
+- `supabase/functions/process-poliza-pdf/index.ts` — multi-fila, despacho real, .catch corregido, columnas nuevas
+- `src/pages/TramiteDetalle.tsx` — `extractionStatus` state, carga en loadTramite, badges en campo adjunto
+- `src/components/tramites/TramiteArchivos.tsx` — hard delete (storage + DB, no soft-delete)
+- `supabase/migrations/20260826000000_fix_ticket_archivos_limit_excludes_deleted.sql` — trigger solo cuenta archivos no eliminados (`AND eliminado_at IS NULL`)
+- `supabase/migrations/20260826000001_add_observaciones_to_poliza_datos_extraidos.sql` — `ALTER TABLE poliza_datos_extraidos ADD COLUMN IF NOT EXISTS observaciones text`
+
+---
+
+## Sesión 2026-08-27: fixes al sistema de extracción de pólizas
+
+### Comentarios para ANA/Mapfre (resuelto)
+- **Causa**: `ticket_comentarios.usuario_id NOT NULL`. Edge function pasaba `ticket.agente_id ?? null`; si `agente_id` es null → falla silenciosamente. Además `try {} catch {}` no captura errores del SDK de Supabase (que retornan `{ error }`, no lanzan).
+- **Fix**: edge function captura `{ error: commentErr }` explícitamente. Si el insert falla (por cualquier causa), devuelve `comentario_pendiente` en la respuesta. El frontend (`TramiteDetalle.tsx`, en `proceedWithSave`) lo inserta con `usuario?.id` del usuario logueado — siempre válido, siempre autenticado.
+
+### Observaciones vacías en Excel para ANA/Mapfre (resuelto)
+- **Causa**: condición `(!aseguradoraSoportada && extracted.aseguradora)` — si el extractor no identifica la aseguradora (devuelve `null`), `extracted.aseguradora = null` → `(true && null)` = falsy → `observaciones = null`.
+- **Fix**: simplificado a `(extraccionError || !aseguradoraSoportada)` — cubre todos los casos de falla sin depender de que el extractor haya identificado la aseguradora.
+
+---
+
+## Sesión 2026-08-28: cola de entrenamiento para lector.movi.digital
+
+### Flujo
+Cuando el extractor corre pero no soporta la combinación aseguradora/ramo/sub-ramo (`!extraccionError && !aseguradoraSoportada`), el PDF se registra automáticamente en `lector_cola_entrenamiento`. El equipo de lector.movi.digital ve esa cola, cataloga manualmente y marca como procesado.
+
+### Tabla `lector_cola_entrenamiento`
+Columnas: `id, ticket_id, archivo_id, archivo_url, archivo_path, aseguradora, ramo, sub_ramo, notas, estado ('pendiente'/'procesado'), creado_en, procesado_en`
+- `archivo_path` = ruta relativa dentro del bucket `ticket-archivos` (para `createSignedUrl`) — bucket privado, URLs directas no funcionan sin auth
+- RLS: authenticated con rol Administrador/Gerente/Empleado pueden SELECT; solo Administrador puede UPDATE; service_role sin restricciones
+
+### En TramiteDetalle.tsx
+- Nuevo state `entrenamientoStatus: Record<string, string>` cargado desde `lector_cola_entrenamiento` en `loadTramite`
+- Badge "📚 En entrenamiento" (violeta) tiene prioridad sobre "⚠ Sin extracción" en campo adjunto
+- Toast "PDF enviado a la cola de entrenamiento" cuando `r?.enviado_entrenamiento` es true
+
+### Bucket `ticket-archivos` es privado
+- `getPublicUrl()` devuelve URLs que no son accesibles sin auth
+- Para el lector.movi.digital usar `createSignedUrl(archivo_path, 3600)` — por eso se guarda `archivo_path` en la tabla
+
+### Pendiente del equipo de lector.movi.digital
+- Repo: `crickmx/lector-qualitas-bolt` (React 18 + Vite, sin Supabase, sin auth actualmente)
+- Guía técnica publicada en artifact: https://claude.ai/code/artifact/984e8e8b-b5ce-4b27-9e8f-646c557a568b
+- Credenciales: `VITE_SUPABASE_URL=https://qhwvuuyjhcennqccgvse.supabase.co` + `VITE_SUPABASE_ANON_KEY` (anon/public key del proyecto)
+
+### Migraciones aplicadas
+- `supabase/migrations/20260828000001_lector_cola_entrenamiento.sql` — crea la tabla + RLS
+- `supabase/migrations/20260828000002_lector_cola_entrenamiento_catalogacion.sql` — agrega ramo, sub_ramo, notas, archivo_path
+
+---
 
 ## RESUELTO — historial compacto
 - **2026-08-12**: bug de auto-asignación de responsable (folio TK37540 / trámite RA-2026-0221 y RA-2026-0231, "Cotización/Emisión" de Hector Hugo Hernandez Rufino → debía autoasignar al ejecutivo Yuri Aguilar González, equipo "Comercial Cápita"). Investigación larga con pistas falsas descartadas: 2 cuentas de usuario duplicadas con el mismo nombre y distinto correo (no era la causa — ambas resolvían al mismo equipo/ejecutivo); regla con `area = NULL` ("comodín") mal configurada (tampoco — ya estaba correcta desde antes). Causa real confirmada viendo el Payload/Response del RPC `get_grupo_para_ticket` en la pestaña Network: el equipo "Comercial Cápita" tenía habilitado el **Nivel 2** (`tramite_team_tipo_config`, pantalla "Equipos habilitados" — enrutamiento automático por oficina, que por diseño NUNCA trae ejecutivo) para `cotizacion_emision`, y ese nivel se evaluaba ANTES que el **Nivel 3** (`tramites_grupos_reglas`, agente + área con ejecutivo) — el equipo salía bien asignado, pero el ejecutivo nunca se aplicaba, sin ningún aviso cruzado entre las 2 pantallas de configuración. Fix: migración `20260730120000_fix_prioridad_ejecutivo_individual_sobre_equipo_oficina.sql` invierte el orden (la regla individual agente+área ahora gana sobre el enrutamiento automático por oficina) + avisos de prioridad agregados en `EquiposHabilitadosPanel.tsx` y `GestionGruposVisualizacion.tsx` para que esto no se repita sin notarse. De paso: `resolveGrupoParaTicket()` en `NuevoTramiteModal.tsx` ignoraba el `error` del RPC — ahora lo deja en consola si vuelve a fallar en silencio.
