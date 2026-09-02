@@ -140,7 +140,7 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
                 <div>
                   <h4 className="font-medium">Llena la Información</h4>
                   <p className="text-sm text-muted-foreground">
-                    Completa los datos de los usuarios en el archivo CSV. Los campos obligatorios son: email, password, nombre, apellidos, rol y oficina_nombre. Si el usuario tiene rol Agente, agrega 'tramite_group_ids' con 1 o más ids de equipos separados por '|'
+                    Completa los datos de los usuarios en el archivo CSV. Los campos obligatorios son: email, password, nombre, apellidos, rol y oficina_nombre. Si el usuario tiene rol Agente, agrega 'tramite_group_ids' con un equipo que lo atienda por cada categoría, separado por '|'. El agente no será miembro de esos equipos.
                   </p>
                 </div>
               </div>

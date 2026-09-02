@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "node scripts/postbuild.cjs",
+    "start": "node app.js",
+    "test:server": "node scripts/smoke-server.cjs",
     "type-check": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview"
