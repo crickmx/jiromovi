@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon, GripVertical, BookOpen } from 'lucide-react';
 import { CatalogosAdminPanel } from '../movistore/CatalogosAdminPanel';
+import { LogosAsesoresPanel } from '../components/logos/LogosAsesoresPanel';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -28,7 +29,6 @@ import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProdu
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
 import { BaseModal } from '../components/BaseModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
-import { obtenerTodosLogosAsesores, type LogoGuardadoConUsuario } from '../lib/logoUtils';
 
 export default function StoreAdmin() {
   const { usuario } = useAuth();
@@ -1722,50 +1722,7 @@ const FORMA_PAGO_OC_OPCIONES = ['Contado', '2 Parcialidades', '12 Meses'];
 interface StoreEstatusRow { id: string; nombre: string; }
 interface TicketTipoRow { id: string; nombre: string; value: string; }
 
-function LogosAsesoresPanel() {
-  const [logos, setLogos] = useState<LogoGuardadoConUsuario[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    obtenerTodosLogosAsesores().then(data => {
-      setLogos(data);
-      setLoading(false);
-    });
-  }, []);
-
-  if (loading) return <div className="text-center py-12 text-neutral-500">Cargando logos...</div>;
-
-  return (
-    <div>
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Logos subidos por asesores</h2>
-        <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
-          Todos los logos que los asesores han subido al personalizar productos de la tienda.
-        </p>
-      </div>
-      {logos.length === 0 ? (
-        <div className="text-sm text-neutral-400">Aún no hay logos subidos.</div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {logos.map(logo => (
-            <div key={logo.id} className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-3">
-              <img src={logo.url} alt={logo.nombre} className="w-full h-24 object-contain rounded-lg bg-neutral-50 dark:bg-white/5 mb-2" />
-              <p className="text-sm font-medium text-neutral-900 dark:text-white truncate" title={logo.usuario_nombre}>{logo.usuario_nombre}</p>
-              <p className="text-xs text-neutral-500 dark:text-white/50 truncate">{new Date(logo.created_at).toLocaleDateString('es-MX')}</p>
-              <a
-                href={logo.url}
-                download={`${logo.usuario_nombre}-${logo.nombre}`}
-                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent-hover transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" /> Descargar
-              </a>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// LogosAsesoresPanel was moved to src/components/logos/LogosAsesoresPanel.tsx
 
 function TriggersPanel() {
   const [triggers, setTriggers] = useState<StoreTrigger[]>([]);
