@@ -25,9 +25,9 @@ const TABS: { key: Tab; label: string; icon: typeof Bookmark; description: strin
   },
   {
     key: 'premium',
-    label: 'Plan Premium',
+    label: 'Gestión de asesores',
     icon: Sparkles,
-    description: 'Suscripciones y planes de agentes',
+    description: 'Plan Premium, logos y gestión de asesores',
   },
   {
     key: 'presupuestos',
