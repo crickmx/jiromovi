@@ -38,7 +38,17 @@ SET agente_id = COALESCE(
         ORDER BY sw.updated_at DESC NULLS LAST
         LIMIT 1
       ),
-      c.creado_por
+      c.creado_por,
+      -- Legacy contacts may predate creator/assignment tracking. Keep them
+      -- operational by assigning the MOVI administrator as migration owner.
+      (
+        SELECT u.id
+        FROM public.usuarios u
+        WHERE u.id = '5c22eb53-5090-49f7-9e36-7748baee5f2c'::uuid
+          AND u.activo = true
+          AND u.oficina_id IS NOT NULL
+        LIMIT 1
+      )
     )
 WHERE c.agente_id IS NULL;
 
@@ -74,7 +84,13 @@ DECLARE
   v_agent_id uuid;
   v_oficina_id uuid;
 BEGIN
-  v_agent_id := COALESCE(NEW.agente_id, NEW.creado_por, auth.uid());
+  IF TG_OP = 'INSERT' THEN
+    -- Manual creation always belongs to its creator. Lead/Seguwallet
+    -- assignment is applied afterwards by their synchronization triggers.
+    v_agent_id := COALESCE(NEW.creado_por, auth.uid());
+  ELSE
+    v_agent_id := COALESCE(NEW.agente_id, NEW.creado_por, auth.uid());
+  END IF;
 
   IF v_agent_id IS NULL THEN
     RAISE EXCEPTION 'Todo contacto debe tener un agente relacionado';
@@ -102,7 +118,7 @@ $$;
 
 DROP TRIGGER IF EXISTS trg_crm_contactos_owner ON public.crm_contactos;
 CREATE TRIGGER trg_crm_contactos_owner
-  BEFORE INSERT OR UPDATE OF agente_id, creado_por
+  BEFORE INSERT OR UPDATE OF agente_id, oficina_id, creado_por
   ON public.crm_contactos
   FOR EACH ROW
   EXECUTE FUNCTION public.set_crm_contacto_owner();
@@ -157,6 +173,35 @@ COMMENT ON COLUMN public.crm_contactos.agente_id IS
   'Agente comercial actual del contacto; puede cambiar por asignación del lead.';
 COMMENT ON COLUMN public.crm_contactos.oficina_id IS
   'Oficina del agente comercial; se mantiene automáticamente.';
+
+-- If an agent changes office, all owned contacts must follow that office.
+CREATE OR REPLACE FUNCTION public.sync_usuario_contactos_oficina()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.oficina_id IS NULL THEN
+    RAISE EXCEPTION 'Un usuario propietario de contactos debe tener oficina';
+  END IF;
+
+  UPDATE public.crm_contactos
+     SET oficina_id = NEW.oficina_id,
+         actualizado_en = now()
+   WHERE agente_id = NEW.id
+     AND oficina_id IS DISTINCT FROM NEW.oficina_id;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_usuarios_sync_contactos_oficina ON public.usuarios;
+CREATE TRIGGER trg_usuarios_sync_contactos_oficina
+  AFTER UPDATE OF oficina_id
+  ON public.usuarios
+  FOR EACH ROW
+  WHEN (NEW.oficina_id IS DISTINCT FROM OLD.oficina_id)
+  EXECUTE FUNCTION public.sync_usuario_contactos_oficina();
 
 -- Keep an already-created CRM contact aligned with an Express lead assignment.
 CREATE OR REPLACE FUNCTION public.sync_express_lead_contact_owner()

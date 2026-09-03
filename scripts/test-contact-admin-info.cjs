@@ -10,6 +10,7 @@ const ownershipMigrationPath = path.join(root, 'supabase/migrations/202609030000
 const migrationPath = path.join(root, 'supabase/migrations/20260903000002_contactos_admin_agente_oficina_propietario.sql');
 
 test('the unified contact contract includes agent and office labels', () => {
+  assert.match(types, /agente_id:\s*string/);
   assert.match(types, /agente_nombre:\s*string \| null/);
   assert.match(types, /oficina_nombre:\s*string \| null/);
 });
@@ -29,9 +30,12 @@ test('every CRM contact gets an explicit owner and office', () => {
   assert.match(migration, /NEW\.oficina_id := v_oficina_id/i);
   assert.match(migration, /ALTER COLUMN agente_id SET NOT NULL/i);
   assert.match(migration, /ALTER COLUMN oficina_id SET NOT NULL/i);
-  assert.match(migration, /BEFORE INSERT OR UPDATE OF agente_id, creado_por/i);
+  assert.match(migration, /BEFORE INSERT OR UPDATE OF agente_id, oficina_id, creado_por/i);
   assert.match(migration, /trg_crm_contactos_creator_immutable/i);
   assert.match(migration, /USING \(agente_id = \(SELECT auth\.uid\(\)\)\)/i);
+  assert.match(migration, /IF TG_OP = 'INSERT' THEN[\s\S]*?v_agent_id := COALESCE\(NEW\.creado_por, auth\.uid\(\)\)/s);
+  assert.match(migration, /UPDATE OF agente_id, oficina_id, creado_por/i);
+  assert.match(migration, /trg_usuarios_sync_contactos_oficina/i);
 });
 
 test('assigned leads transfer the contact to the assigned agent', () => {
@@ -43,8 +47,13 @@ test('assigned leads transfer the contact to the assigned agent', () => {
 test('the RPC resolves the explicit owner and office and only exposes labels to administrators', () => {
   assert.ok(fs.existsSync(migrationPath), 'ownership RPC migration must exist');
   const migration = fs.readFileSync(migrationPath, 'utf8');
+  assert.match(migration, /v_caller := auth\.uid\(\)/i);
+  assert.doesNotMatch(migration, /COALESCE\(p_user_id, auth\.uid\(\)\)/i);
+  assert.match(migration, /REVOKE ALL ON FUNCTION get_unified_contactos[\s\S]*?FROM PUBLIC/i);
   assert.match(migration, /LEFT JOIN usuarios owner ON owner\.id = c\.agente_id/i);
   assert.match(migration, /LEFT JOIN oficinas office ON office\.id = c\.oficina_id/i);
+  assert.match(migration, /c\.creado_por\s+AS cws_creado_por/i);
+  assert.match(migration, /c\.agente_id\s+AS cws_agente_id/i);
   assert.match(migration, /CASE WHEN v_rol = 'Administrador' THEN[\s\S]*?owner\.nombre_completo/s);
   assert.match(migration, /CASE WHEN v_rol = 'Administrador' THEN[\s\S]*?office\.nombre/s);
 });
