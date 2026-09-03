@@ -17,4 +17,6 @@ export interface UnifiedContacto {
   seguwallet_last_login: string | null;
   seguwallet_agent_id: string | null;
   sicas_count: number;
+  agente_nombre: string | null;
+  oficina_nombre: string | null;
 }
