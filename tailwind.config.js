@@ -128,3 +128,4 @@ export default {
     typography,
   ],
 }
+// Forzar redeploy después de cambios visuales en dashboard-editor
