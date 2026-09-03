@@ -71,7 +71,7 @@ BEGIN
       sw.status                                                 AS cws_sw_status,
       sw.profile_completed                                      AS cws_sw_profile_completed,
       sw.last_login_at                                          AS cws_sw_last_login,
-      sw.agent_id                                               AS cws_sw_agent_id,
+      sw.agent_user_id                                          AS cws_sw_agent_id,
       COALESCE((
         SELECT COUNT(*)::integer
           FROM seguwallet_customer_sicas_clients scsc
@@ -120,21 +120,21 @@ BEGIN
     SELECT
       sw2.id                                                    AS so_id,
       'seguwallet'::text                                        AS so_source,
-      COALESCE(sw2.nombre_completo, sw2.email, 'Sin nombre')   AS so_nombre_completo,
+      COALESCE(sw2.full_name, sw2.email, 'Sin nombre')         AS so_nombre_completo,
       sw2.email                                                 AS so_email,
       sw2.phone                                                 AS so_celular,
-      NULL::text                                               AS so_whatsapp,
+      sw2.whatsapp                                              AS so_whatsapp,
       'Cliente Seguwallet'::text                               AS so_tipo_contacto,
       CASE WHEN sw2.status = 'active' THEN 'activo' ELSE 'inactivo' END AS so_estatus,
       'seguwallet'::text                                        AS so_fuente_origen,
-      sw2.agent_id                                              AS so_creado_por,
+      sw2.agent_user_id                                         AS so_creado_por,
       sw2.created_at                                            AS so_fecha_creacion,
       sw2.updated_at                                            AS so_actualizado_en,
       sw2.id                                                    AS so_sw_id,
       sw2.status                                                AS so_sw_status,
       sw2.profile_completed                                     AS so_sw_profile_completed,
       sw2.last_login_at                                         AS so_sw_last_login,
-      sw2.agent_id                                              AS so_sw_agent_id,
+      sw2.agent_user_id                                         AS so_sw_agent_id,
       COALESCE((
         SELECT COUNT(*)::integer
           FROM seguwallet_customer_sicas_clients scsc2
@@ -143,22 +143,23 @@ BEGIN
       CASE WHEN v_rol = 'Administrador' THEN sw_owner.nombre_completo ELSE NULL END AS so_agente_nombre,
       CASE WHEN v_rol = 'Administrador' THEN sw_office.nombre ELSE NULL END AS so_oficina_nombre
     FROM seguwallet_customers sw2
-    LEFT JOIN usuarios sw_owner ON sw_owner.id = sw2.agent_id
+    LEFT JOIN usuarios sw_owner ON sw_owner.id = sw2.agent_user_id
     LEFT JOIN oficinas sw_office ON sw_office.id = sw_owner.oficina_id
     WHERE sw2.crm_contact_id IS NULL
+      AND sw2.deleted_at IS NULL
       AND (
         v_rol = 'Administrador'
         OR (
           v_rol IN ('Gerente','Empleado','Ejecutivo')
-          AND sw2.agent_id IN (
+          AND sw2.agent_user_id IN (
             SELECT u3.id FROM usuarios u3 WHERE u3.oficina_id = v_oficina_id
           )
         )
-        OR sw2.agent_id = v_caller
+        OR sw2.agent_user_id = v_caller
       )
       AND (
         p_search IS NULL
-        OR COALESCE(sw2.nombre_completo,'') ILIKE '%' || p_search || '%'
+        OR COALESCE(sw2.full_name,'') ILIKE '%' || p_search || '%'
         OR sw2.email                        ILIKE '%' || p_search || '%'
         OR sw2.phone                        ILIKE '%' || p_search || '%'
       )
