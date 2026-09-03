@@ -1,65 +1,82 @@
-import { useState, useEffect, useRef } from 'react';
-import { Download, Trash2, Upload, Loader2 } from 'lucide-react';
-import { obtenerTodosLogosAsesores, eliminarLogoPersonalizado, guardarLogoPersonalizado } from '@/lib/logoUtils';
-import type { LogoGuardadoConUsuario } from '@/lib/logoUtils';
+import { useState, useRef, useEffect } from 'react';
+import { Upload, X, Image as ImageIcon, Loader2, Search } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { uploadUserLogo, deleteUserLogo } from '@/lib/logoUtils';
+
+interface AsesorConLogo {
+  id: string;
+  nombre: string;
+  mi_logotipo_url: string | null;
+}
 
 export function LogosAsesoresPanel() {
-  const [logos, setLogos] = useState<LogoGuardadoConUsuario[]>([]);
+  const [asesores, setAsesores] = useState<AsesorConLogo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [eliminando, setEliminando] = useState<string | null>(null);
-  const [subiendo, setSubiendo] = useState<string | null>(null); // usuario_id durante upload
+  const [busqueda, setBusqueda] = useState('');
+  const [accion, setAccion] = useState<{ id: string; tipo: 'subiendo' | 'eliminando' } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadingForUserId = useRef<string | null>(null);
+  const targetUserId = useRef<string | null>(null);
 
-  const cargar = () =>
-    obtenerTodosLogosAsesores().then(data => {
-      setLogos(data);
-      setLoading(false);
-    });
+  const cargar = async () => {
+    const { data } = await supabase
+      .from('usuarios')
+      .select('id, nombre, mi_logotipo_url')
+      .not('rol', 'eq', 'Sistema')
+      .order('nombre');
+    setAsesores(data ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => { cargar(); }, []);
 
-  const handleEliminar = async (logo: LogoGuardadoConUsuario) => {
-    if (!confirm(`¿Eliminar el logo de ${logo.usuario_nombre}?`)) return;
-    setEliminando(logo.id);
-    await eliminarLogoPersonalizado(logo.id);
-    setLogos(prev => prev.filter(l => l.id !== logo.id));
-    setEliminando(null);
-  };
-
-  const handleSubirNuevo = (usuarioId: string) => {
-    uploadingForUserId.current = usuarioId;
+  const handleSubir = (userId: string) => {
+    targetUserId.current = userId;
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    const uid = uploadingForUserId.current;
+    const uid = targetUserId.current;
     if (!file || !uid) return;
     e.target.value = '';
-    setSubiendo(uid);
-    try {
-      await guardarLogoPersonalizado(uid, file);
-      await cargar();
-    } catch (err: any) {
-      alert('Error al subir logo: ' + (err.message || err));
-    } finally {
-      setSubiendo(null);
-      uploadingForUserId.current = null;
+    setError(null);
+    setAccion({ id: uid, tipo: 'subiendo' });
+    const result = await uploadUserLogo(uid, file);
+    if (result.success && result.url) {
+      setAsesores(prev => prev.map(a => a.id === uid ? { ...a, mi_logotipo_url: result.url! } : a));
+    } else {
+      setError(result.error || 'Error al subir el logo');
     }
+    setAccion(null);
+    targetUserId.current = null;
   };
 
-  if (loading) return <div className="text-center py-12 text-neutral-500">Cargando logos...</div>;
+  const handleEliminar = async (asesor: AsesorConLogo) => {
+    if (!confirm(`¿Eliminar el logo de ${asesor.nombre}?`)) return;
+    setError(null);
+    setAccion({ id: asesor.id, tipo: 'eliminando' });
+    const result = await deleteUserLogo(asesor.id);
+    if (result.success) {
+      setAsesores(prev => prev.map(a => a.id === asesor.id ? { ...a, mi_logotipo_url: null } : a));
+    } else {
+      setError(result.error || 'Error al eliminar el logo');
+    }
+    setAccion(null);
+  };
+
+  const filtrados = busqueda.trim()
+    ? asesores.filter(a => a.nombre.toLowerCase().includes(busqueda.toLowerCase()))
+    : asesores;
+
+  // Separar: primero los que tienen logo
+  const conLogo = filtrados.filter(a => a.mi_logotipo_url);
+  const sinLogo = filtrados.filter(a => !a.mi_logotipo_url);
+
+  if (loading) return <div className="text-center py-12 text-neutral-500">Cargando...</div>;
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Logos de asesores</h2>
-        <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
-          Logos personalizados que los asesores han guardado. Puedes eliminar o agregar logos desde aquí.
-        </p>
-      </div>
-
       <input
         ref={fileInputRef}
         type="file"
@@ -68,61 +85,125 @@ export function LogosAsesoresPanel() {
         onChange={handleFileChange}
       />
 
-      {logos.length === 0 ? (
-        <div className="text-sm text-neutral-400">Aún no hay logos guardados por asesores.</div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {logos.map(logo => (
-            <div
-              key={logo.id}
-              className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-3 flex flex-col"
-            >
-              <div className="relative mb-2">
-                <img
-                  src={logo.url}
-                  alt={logo.nombre}
-                  className="w-full h-24 object-contain rounded-lg bg-neutral-50 dark:bg-white/5"
-                />
-              </div>
-              <p className="text-sm font-medium text-neutral-900 dark:text-white truncate" title={logo.usuario_nombre}>
-                {logo.usuario_nombre}
-              </p>
-              <p className="text-xs text-neutral-400 dark:text-white/40 mb-3">
-                {new Date(logo.created_at).toLocaleDateString('es-MX')}
-              </p>
-              <div className="flex flex-col gap-1 mt-auto">
-                <a
-                  href={logo.url}
-                  download={`${logo.usuario_nombre}-${logo.nombre}`}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent-hover transition-colors"
-                >
-                  <Download className="w-3 h-3" /> Descargar
-                </a>
-                <button
-                  onClick={() => handleSubirNuevo(logo.usuario_id)}
-                  disabled={subiendo === logo.usuario_id}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50"
-                >
-                  {subiendo === logo.usuario_id
-                    ? <Loader2 className="w-3 h-3 animate-spin" />
-                    : <Upload className="w-3 h-3" />}
-                  Reemplazar
-                </button>
-                <button
-                  onClick={() => handleEliminar(logo)}
-                  disabled={eliminando === logo.id}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
-                >
-                  {eliminando === logo.id
-                    ? <Loader2 className="w-3 h-3 animate-spin" />
-                    : <Trash2 className="w-3 h-3" />}
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          ))}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Logos de asesores</h2>
+          <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">
+            Mismo logotipo que cada asesor ve en Mi Marca → Mi Logotipo. Se usa en PDFs y materiales.
+          </p>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <input
+            type="text"
+            placeholder="Buscar asesor..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            className="pl-9 pr-4 py-2 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-accent w-52"
+          />
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">
+          {error}
         </div>
       )}
+
+      {conLogo.length > 0 && (
+        <>
+          <p className="text-xs font-semibold text-neutral-400 dark:text-white/40 uppercase mb-3">Con logo ({conLogo.length})</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
+            {conLogo.map(asesor => (
+              <AsesorCard
+                key={asesor.id}
+                asesor={asesor}
+                accion={accion?.id === asesor.id ? accion.tipo : null}
+                onSubir={handleSubir}
+                onEliminar={handleEliminar}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {sinLogo.length > 0 && (
+        <>
+          <p className="text-xs font-semibold text-neutral-400 dark:text-white/40 uppercase mb-3">Sin logo ({sinLogo.length})</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {sinLogo.map(asesor => (
+              <AsesorCard
+                key={asesor.id}
+                asesor={asesor}
+                accion={accion?.id === asesor.id ? accion.tipo : null}
+                onSubir={handleSubir}
+                onEliminar={handleEliminar}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {filtrados.length === 0 && (
+        <p className="text-sm text-neutral-400 py-8 text-center">No se encontraron asesores.</p>
+      )}
+    </div>
+  );
+}
+
+function AsesorCard({
+  asesor,
+  accion,
+  onSubir,
+  onEliminar,
+}: {
+  asesor: AsesorConLogo;
+  accion: 'subiendo' | 'eliminando' | null;
+  onSubir: (id: string) => void;
+  onEliminar: (a: AsesorConLogo) => void;
+}) {
+  const ocupado = accion !== null;
+  return (
+    <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-4 flex flex-col items-center gap-3">
+      {/* Preview */}
+      <div className="w-full aspect-square rounded-lg border-2 border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 flex items-center justify-center overflow-hidden">
+        {asesor.mi_logotipo_url ? (
+          <img
+            src={asesor.mi_logotipo_url}
+            alt={asesor.nombre}
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <ImageIcon className="w-10 h-10 text-neutral-200 dark:text-white/20" />
+        )}
+      </div>
+
+      {/* Nombre */}
+      <p className="text-sm font-medium text-neutral-900 dark:text-white text-center leading-snug line-clamp-2 w-full" title={asesor.nombre}>
+        {asesor.nombre}
+      </p>
+
+      {/* Botones */}
+      <div className="flex gap-2 w-full">
+        <button
+          onClick={() => onSubir(asesor.id)}
+          disabled={ocupado}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/10 text-xs font-medium text-neutral-700 dark:text-white/70 hover:border-accent hover:text-accent disabled:opacity-50 transition-colors"
+        >
+          {accion === 'subiendo' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          {asesor.mi_logotipo_url ? 'Cambiar' : 'Subir'}
+        </button>
+        {asesor.mi_logotipo_url && (
+          <button
+            onClick={() => onEliminar(asesor)}
+            disabled={ocupado}
+            className="inline-flex items-center justify-center p-1.5 rounded-lg border border-neutral-200 dark:border-white/10 text-neutral-400 hover:border-red-300 hover:text-red-500 disabled:opacity-50 transition-colors"
+            title="Eliminar logo"
+          >
+            {accion === 'eliminando' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
