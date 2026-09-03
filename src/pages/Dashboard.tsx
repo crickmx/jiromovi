@@ -98,28 +98,32 @@ const BETA_FAVORITOS = [
 // ── WelcomeHero ─────────────────────────────────────────────────────────
 
 function WelcomeHero({ usuario }: { usuario: Usuario }) {
+  const accentColor = usuario.oficina?.accent_color || '#1e40af';
+  const bgColor = accentColor; // sólido
+
   return (
     <div
       className="relative overflow-hidden rounded-2xl px-6 py-5 min-h-[90px] flex items-center justify-between gap-4"
-      style={{ background: 'linear-gradient(140deg, #2A1860 0%, #180E40 55%, #0D0B24 100%)' }}
+      style={{ backgroundColor: bgColor }}
     >
+      {/* Decoración sutil */}
       <div
         className="absolute top-0 right-0 w-64 h-64 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(232,79,138,0.28), transparent 70%)' }}
+        style={{ background: `radial-gradient(circle, ${accentColor}30, transparent 70%)` }}
       />
       <div
         className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72 h-40 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(90,110,196,0.20), transparent 70%)' }}
+        style={{ background: `radial-gradient(circle, ${accentColor}20, transparent 70%)` }}
       />
 
       <div className="relative z-10 min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#F2A0C4' }}>
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-white/90">
           {getGreetingEmoji()} {getGreeting()}
         </p>
         <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
-          {usuario.nombre} <span style={{ color: '#F2A0C4' }}>{usuario.apellidos}</span>
+          {usuario.nombre} <span className="text-white">{usuario.apellidos}</span>
         </h1>
-        <p className="text-xs text-white/60 mt-1 truncate">
+        <p className="text-xs text-white/80 mt-1 truncate">
           {formatDate()}
           {usuario.oficina?.nombre ? ` · ${usuario.oficina.nombre}` : ''}
         </p>
@@ -127,8 +131,7 @@ function WelcomeHero({ usuario }: { usuario: Usuario }) {
 
       <div className="relative z-10 shrink-0">
         <span
-          className="px-3 py-1.5 rounded-full text-xs font-semibold text-white/90 border whitespace-nowrap"
-          style={{ backgroundColor: 'rgba(232,79,138,0.18)', borderColor: 'rgba(232,79,138,0.4)' }}
+          className="px-3 py-1.5 rounded-full text-xs font-semibold text-white/90 border border-white/30 bg-white/20 whitespace-nowrap"
         >
           {usuario.rol}
         </span>
