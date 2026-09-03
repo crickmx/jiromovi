@@ -347,12 +347,12 @@ function WidgetsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m
             onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey(w.widget_key); }}
             onDragLeave={() => setDragOverKey(prev => (prev === w.widget_key ? null : prev))}
             onDrop={(e) => { e.preventDefault(); handleDrop(zone, w.widget_key); }}
-            className={`flex items-center gap-3 px-4 py-3 transition-colors ${isDragOver ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
+            className={`flex items-center gap-3 px-4 py-3 transition-colors ${isDragOver ? 'bg-accent/10 dark:bg-accent/20' : ''}`}
           >
             <div className="cursor-grab text-surface-300 hover:text-surface-500 shrink-0">
               <GripVertical className="w-4 h-4" />
             </div>
-            <p className="text-sm font-medium text-surface—800 dark:text-white flex-1 min-w-0 truncate">
+            <p className="text-sm font-medium text-surface-800 dark:text-white flex-1 min-w-0 truncate">
               {WIDGET_LABELS[w.widget_key] ?? w.widget_key}
             </p>
             <SavingSlot saving={isSaving} />
