@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Bookmark, Camera, Sparkles, LayoutDashboard, Users, EyeOff, Wallet } from 'lucide-react';
+import { Bookmark, Sparkles, LayoutDashboard, Users, EyeOff, Wallet } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
 import RecursosMarca from './RecursosMarca';
-import FotosEstudioAdmin from './FotosEstudioAdmin';
 import MarketingPremiumAdmin from './MarketingPremiumAdmin';
 import MktPresupuestosAdmin from './MktPresupuestosAdmin';
-type Tab = 'brand-kit' | 'fotos' | 'premium' | 'presupuestos' | 'equipos';
+type Tab = 'brand-kit' | 'premium' | 'presupuestos' | 'equipos';
 
 const TABS: { key: Tab; label: string; icon: typeof Bookmark; description: string }[] = [
   {
@@ -16,12 +15,6 @@ const TABS: { key: Tab; label: string; icon: typeof Bookmark; description: strin
     label: 'Jiro Brand Kit',
     icon: Bookmark,
     description: 'Logos, plantillas y archivos oficiales de la marca Jiro',
-  },
-  {
-    key: 'fotos',
-    label: 'Fotos de Estudio',
-    icon: Camera,
-    description: 'Carpetas de fotos de estudio de cada agente',
   },
   {
     key: 'premium',
@@ -93,7 +86,6 @@ export default function MktAdminDashboard() {
 
       <div>
         {tab === 'brand-kit' && <RecursosMarca />}
-        {tab === 'fotos' && <FotosEstudioAdmin embedded />}
         {tab === 'premium' && <MarketingPremiumAdmin embedded />}
         {tab === 'presupuestos' && <MktPresupuestosAdmin embedded />}
         {tab === 'equipos' && esAdmin && <EquiposAccesoMktPanel />}

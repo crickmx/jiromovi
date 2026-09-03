@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus, FileText, ExternalLink, Download, Paperclip } from 'lucide-react';
+import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus, FileText, ExternalLink, Download, Paperclip, Camera, ZoomIn } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl } from '../lib/supabase';
@@ -89,6 +89,12 @@ interface DisenoAgente {
   created_at: string;
 }
 
+interface FotoEstudio {
+  name: string;
+  url: string;
+  size: number;
+}
+
 function emptyForm(a?: Agente | null): FormData {
   return {
     plan_mkt_premium: a?.plan_mkt_premium ?? false,
@@ -145,6 +151,14 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [errorLogo, setErrorLogo] = useState<string | null>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
 
+  const [fotosEstudio, setFotosEstudio] = useState<FotoEstudio[]>([]);
+  const [loadingFotos, setLoadingFotos] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [eliminandoFoto, setEliminandoFoto] = useState<string | null>(null);
+  const [fotoAmpliada, setFotoAmpliada] = useState<FotoEstudio | null>(null);
+  const [errorFotos, setErrorFotos] = useState<string | null>(null);
+  const fotosFileInputRef = useRef<HTMLInputElement>(null);
+
   async function handleSubirLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -175,6 +189,54 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       setErrorLogo(result.error || 'Error al eliminar el logo');
     }
     setAccionLogo(null);
+  }
+
+  async function cargarFotosAgente(userId: string) {
+    setLoadingFotos(true);
+    setErrorFotos(null);
+    setFotosEstudio([]);
+    const { data: archivos, error: listError } = await supabase.storage
+      .from('fotos-estudio')
+      .list(userId, { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
+    if (listError) { setErrorFotos('No se pudieron cargar las fotos.'); setLoadingFotos(false); return; }
+    const imagenes = (archivos ?? []).filter(f => f.name !== '.emptyFolderPlaceholder');
+    const fotosConUrl = await Promise.all(
+      imagenes.map(async (archivo) => {
+        const { data } = await supabase.storage.from('fotos-estudio').createSignedUrl(`${userId}/${archivo.name}`, 3600);
+        return { name: archivo.name, url: data?.signedUrl ?? '', size: archivo.metadata?.size ?? 0 };
+      })
+    );
+    setFotosEstudio(fotosConUrl.filter(f => f.url));
+    setLoadingFotos(false);
+  }
+
+  async function handleUploadFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!seleccionado || !e.target.files?.length) return;
+    setSubiendoFoto(true);
+    setErrorFotos(null);
+    const archivos = Array.from(e.target.files);
+    const resultados = await Promise.all(
+      archivos.map(async (archivo) => {
+        const ext = archivo.name.split('.').pop();
+        const nombre = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error } = await supabase.storage.from('fotos-estudio').upload(`${seleccionado.id}/${nombre}`, archivo, { contentType: archivo.type });
+        return error;
+      })
+    );
+    const errores = resultados.filter(Boolean);
+    if (errores.length) setErrorFotos(`Error al subir: ${(errores[0] as any)?.message ?? 'desconocido'}`);
+    e.target.value = '';
+    setSubiendoFoto(false);
+    await cargarFotosAgente(seleccionado.id);
+  }
+
+  async function handleEliminarFoto(foto: FotoEstudio) {
+    if (!seleccionado) return;
+    setEliminandoFoto(foto.name);
+    await supabase.storage.from('fotos-estudio').remove([`${seleccionado.id}/${foto.name}`]);
+    setEliminandoFoto(null);
+    setFotosEstudio(prev => prev.filter(f => f.name !== foto.name));
+    if (fotoAmpliada?.name === foto.name) setFotoAmpliada(null);
   }
 
   useEffect(() => {
@@ -240,6 +302,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     cancelarArchivoPendiente();
     cargarDisenosAgente(agente.id);
     cargarTramitesAgente(agente.id);
+    cargarFotosAgente(agente.id);
   }
 
   async function cargarTramitesAgente(agenteId: string) {
@@ -1325,6 +1388,49 @@ ALTER TABLE usuarios
                     <input ref={logoFileInputRef} type="file" accept="image/png,image/jpeg,image/jpg" className="hidden" onChange={handleSubirLogo} />
                   </div>
 
+                  {/* Fotos de estudio */}
+                  <div className="pt-6 border-t border-neutral-200 dark:border-white/8 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-purple-600" />
+                        <p className="text-sm font-semibold text-neutral-800 dark:text-white">
+                          Fotos de estudio {fotosEstudio.length > 0 && <span className="text-neutral-400 font-normal">({fotosEstudio.length})</span>}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => fotosFileInputRef.current?.click()}
+                        disabled={subiendoFoto}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium transition disabled:opacity-60"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        {subiendoFoto ? 'Subiendo…' : 'Subir fotos'}
+                      </button>
+                      <input ref={fotosFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadFoto} />
+                    </div>
+                    {errorFotos && <p className="text-sm text-red-500">{errorFotos}</p>}
+                    {loadingFotos ? (
+                      <p className="text-xs text-neutral-400 py-2">Cargando fotos…</p>
+                    ) : fotosEstudio.length === 0 ? (
+                      <p className="text-xs text-neutral-400 text-center py-3">Sin fotos de estudio para este asesor</p>
+                    ) : (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        {fotosEstudio.map(foto => (
+                          <div key={foto.name} className="group relative aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/8">
+                            <img src={foto.url} alt={foto.name} className="w-full h-full object-cover transition group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                              <button onClick={() => setFotoAmpliada(foto)} className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center hover:bg-white transition">
+                                <ZoomIn className="w-3.5 h-3.5 text-neutral-800" />
+                              </button>
+                              <button onClick={() => handleEliminarFoto(foto)} disabled={eliminandoFoto === foto.name} className="w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center hover:bg-red-600 transition disabled:opacity-60">
+                                <Trash2 className="w-3.5 h-3.5 text-white" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Contenido semanal de Publicidad */}
                   <div className="pt-6 border-t border-neutral-200 dark:border-white/8 space-y-3">
                     <div className="flex items-center gap-2">
@@ -1470,6 +1576,26 @@ ALTER TABLE usuarios
         onClose={() => setMostrarNuevoAgente(false)}
         onSave={() => { setMostrarNuevoAgente(false); cargarAgentes(); }}
       />
+    )}
+
+    {fotoAmpliada && (
+      <div
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={() => setFotoAmpliada(null)}
+      >
+        <button
+          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+          onClick={() => setFotoAmpliada(null)}
+        >
+          <X className="w-5 h-5 text-white" />
+        </button>
+        <img
+          src={fotoAmpliada.url}
+          alt={fotoAmpliada.name}
+          className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain"
+          onClick={e => e.stopPropagation()}
+        />
+      </div>
     )}
     </>
   );
