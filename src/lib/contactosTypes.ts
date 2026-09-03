@@ -9,6 +9,7 @@ export interface UnifiedContacto {
   estatus: string;
   fuente_origen: string | null;
   creado_por: string | null;
+  agente_id: string | null;
   fecha_creacion: string;
   actualizado_en: string | null;
   seguwallet_customer_id: string | null;

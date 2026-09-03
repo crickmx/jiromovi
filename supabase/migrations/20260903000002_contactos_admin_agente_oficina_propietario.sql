@@ -23,6 +23,7 @@ RETURNS TABLE(
   estatus                     text,
   fuente_origen               text,
   creado_por                  uuid,
+  agente_id                   uuid,
   fecha_creacion              timestamptz,
   actualizado_en              timestamptz,
   seguwallet_customer_id      uuid,
@@ -44,7 +45,8 @@ DECLARE
   v_rol         text;
   v_oficina_id  uuid;
 BEGIN
-  v_caller := COALESCE(p_user_id, auth.uid());
+  -- Never trust a caller-supplied user id for authorization.
+  v_caller := auth.uid();
 
   SELECT u.rol, u.oficina_id
     INTO v_rol, v_oficina_id
@@ -64,7 +66,8 @@ BEGIN
       c.tipo_contacto                                           AS cws_tipo_contacto,
       c.estatus                                                 AS cws_estatus,
       c.fuente_origen                                           AS cws_fuente_origen,
-      c.agente_id                                               AS cws_creado_por,
+      c.creado_por                                              AS cws_creado_por,
+      c.agente_id                                               AS cws_agente_id,
       c.fecha_creacion                                          AS cws_fecha_creacion,
       c.actualizado_en                                          AS cws_actualizado_en,
       sw.id                                                     AS cws_sw_id,
@@ -124,6 +127,7 @@ BEGIN
       CASE WHEN sw2.status = 'active' THEN 'activo' ELSE 'inactivo' END AS so_estatus,
       'seguwallet'::text                                        AS so_fuente_origen,
       sw2.agent_user_id                                         AS so_creado_por,
+      sw2.agent_user_id                                         AS so_agente_id,
       sw2.created_at                                            AS so_fecha_creacion,
       sw2.updated_at                                            AS so_actualizado_en,
       sw2.id                                                    AS so_sw_id,
@@ -172,6 +176,7 @@ BEGIN
     cws_estatus,
     cws_fuente_origen,
     cws_creado_por,
+    cws_agente_id,
     cws_fecha_creacion,
     cws_actualizado_en,
     cws_sw_id,
@@ -197,6 +202,7 @@ BEGIN
     so_estatus,
     so_fuente_origen,
     so_creado_por,
+    so_agente_id,
     so_fecha_creacion,
     so_actualizado_en,
     so_sw_id,
@@ -215,4 +221,5 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION get_unified_contactos(uuid, text, text, boolean, integer, integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION get_unified_contactos(uuid, text, text, boolean, integer, integer) TO authenticated;
