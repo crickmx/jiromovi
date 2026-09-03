@@ -246,8 +246,9 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setCargandoTramites(true);
     setTramitesAgente([]);
     try {
-      // Construir mapa de labels a partir de los triggers premium configurados
+      // Cargar tipos de trámite configurados en triggers de marketing
       const tipoMap: Record<string, string> = {};
+      const tipoValues: string[] = [];
       const { data: triggers } = await supabase
         .from('mkt_premium_triggers')
         .select('ticket_tipo_id')
@@ -260,8 +261,17 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
           .select('id, value, label')
           .in('id', tipoIds);
         (tipos ?? []).forEach((t: any) => {
-          if (t.value != null) tipoMap[t.value] = t.label || t.value;
+          if (t.value != null) {
+            tipoMap[t.value] = t.label || t.value;
+            tipoValues.push(t.value);
+          }
         });
+      }
+
+      // Sin tipos de marketing configurados: no mostrar nada
+      if (tipoValues.length === 0) {
+        setTramitesAgente([]);
+        return;
       }
 
       // Intentar primero con RPC SECURITY DEFINER (bypasea RLS)
@@ -272,13 +282,16 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
 
       if (!rpcError && rpcData !== null) {
         // RPC devuelve ticket_id en vez de id (para evitar ambigüedad en Postgres)
-        tickets = (rpcData as any[]).map((r: any) => ({ ...r, id: r.ticket_id ?? r.id }));
+        tickets = (rpcData as any[])
+          .map((r: any) => ({ ...r, id: r.ticket_id ?? r.id }))
+          .filter((t: any) => tipoValues.includes(t.tipo_tramite));
       } else {
-        // Fallback: query directa
+        // Fallback: query directa, filtrada por tipos de marketing
         const { data: ticketsDirecto, error: errTickets } = await supabase
           .from('tickets')
           .select('id, folio, tipo_tramite, fecha_creacion, custom_estatus_label, creado_por')
           .or(`agente_id.eq.${agenteId},agente_usuario_id.eq.${agenteId}`)
+          .in('tipo_tramite', tipoValues)
           .is('eliminado_at', null)
           .order('fecha_creacion', { ascending: false });
 
