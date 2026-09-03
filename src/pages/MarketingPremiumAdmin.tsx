@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Zap, Eye, EyeOff, Pencil, Plus, FileText, ExternalLink, Download, Paperclip } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import { resolveImageUrl } from '../lib/storageUtils';
 import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
+import { uploadUserLogo, deleteUserLogo } from '../lib/logoUtils';
 import { generarThumbnailVideo } from '../lib/videoThumbnail';
 import {
   dispararTriggersPremium,
@@ -38,6 +39,7 @@ interface Agente {
   mkt_premium_metodo_pago: MetodoPago | null;
   mkt_premium_parcialidades: number | null;
   oficina: { nombre: string } | null;
+  mi_logotipo_url: string | null;
 }
 
 interface FormData {
@@ -139,6 +141,42 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [creandoAgente, setCreandoAgente] = useState(false);
   const [errorNuevoAgente, setErrorNuevoAgente] = useState('');
 
+  const [accionLogo, setAccionLogo] = useState<'subiendo' | 'eliminando' | null>(null);
+  const [errorLogo, setErrorLogo] = useState<string | null>(null);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleSubirLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !seleccionado) return;
+    setErrorLogo(null);
+    setAccionLogo('subiendo');
+    const result = await uploadUserLogo(seleccionado.id, file);
+    if (result.success && result.url) {
+      const url = result.url;
+      setAgentes(prev => prev.map(a => a.id === seleccionado.id ? { ...a, mi_logotipo_url: url } : a));
+      setSeleccionado(prev => prev ? { ...prev, mi_logotipo_url: url } : prev);
+    } else {
+      setErrorLogo(result.error || 'Error al subir el logo');
+    }
+    setAccionLogo(null);
+  }
+
+  async function handleEliminarLogo() {
+    if (!seleccionado) return;
+    if (!confirm(`¿Eliminar el logo de ${seleccionado.nombre}?`)) return;
+    setErrorLogo(null);
+    setAccionLogo('eliminando');
+    const result = await deleteUserLogo(seleccionado.id);
+    if (result.success) {
+      setAgentes(prev => prev.map(a => a.id === seleccionado.id ? { ...a, mi_logotipo_url: null } : a));
+      setSeleccionado(prev => prev ? { ...prev, mi_logotipo_url: null } : prev);
+    } else {
+      setErrorLogo(result.error || 'Error al eliminar el logo');
+    }
+    setAccionLogo(null);
+  }
+
   useEffect(() => {
     (async () => {
       if (!usuario) { setVerificandoAcceso(false); return; }
@@ -156,7 +194,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     // Intentar query completa (requiere que las migraciones estén aplicadas)
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, oficinas:oficina_id(nombre)')
+      .select('id, nombre, apellidos, puesto, imagen_perfil_url, mi_logotipo_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, oficinas:oficina_id(nombre)')
       .eq('activo', true)
       .order('nombre');
 
@@ -164,7 +202,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       // Fallback: columnas base sin campos de detalle premium (migraciones pendientes)
       const { data: fallback } = await supabase
         .from('usuarios')
-        .select('id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, oficinas:oficina_id(nombre)')
+        .select('id, nombre, apellidos, puesto, imagen_perfil_url, mi_logotipo_url, plan_mkt_premium, oficinas:oficina_id(nombre)')
         .eq('activo', true)
         .order('nombre');
 
@@ -1226,6 +1264,52 @@ ALTER TABLE usuarios
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  {/* Logo personal */}
+                  <div className="pt-6 border-t border-neutral-200 dark:border-white/8 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-purple-600" />
+                      <p className="text-sm font-semibold text-neutral-800 dark:text-white">Logo personal</p>
+                    </div>
+                    <p className="text-xs text-neutral-400">
+                      Mismo logo que el asesor ve en Mi Marca → Mi Logotipo. Se usa en PDFs y materiales.
+                    </p>
+                    {errorLogo && (
+                      <p className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
+                        <AlertTriangle className="w-4 h-4 shrink-0" /> {errorLogo}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 rounded-xl border-2 border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
+                        {seleccionado.mi_logotipo_url ? (
+                          <img src={seleccionado.mi_logotipo_url} alt="Logo" className="w-full h-full object-contain" />
+                        ) : (
+                          <ImageIcon className="w-8 h-8 text-neutral-200 dark:text-white/15" />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => logoFileInputRef.current?.click()}
+                          disabled={accionLogo !== null}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/10 text-xs font-medium text-neutral-700 dark:text-white/70 hover:border-accent hover:text-accent disabled:opacity-50 transition-colors bg-white dark:bg-white/5"
+                        >
+                          {accionLogo === 'subiendo' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                          {seleccionado.mi_logotipo_url ? 'Cambiar logo' : 'Subir logo'}
+                        </button>
+                        {seleccionado.mi_logotipo_url && (
+                          <button
+                            onClick={handleEliminarLogo}
+                            disabled={accionLogo !== null}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/10 text-xs font-medium text-neutral-400 hover:border-red-300 hover:text-red-500 disabled:opacity-50 transition-colors bg-white dark:bg-white/5"
+                          >
+                            {accionLogo === 'eliminando' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                            Eliminar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <input ref={logoFileInputRef} type="file" accept="image/png,image/jpeg,image/jpg" className="hidden" onChange={handleSubirLogo} />
                   </div>
 
                   {/* Contenido semanal de Publicidad */}

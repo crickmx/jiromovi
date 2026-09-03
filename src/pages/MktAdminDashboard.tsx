@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bookmark, Camera, Sparkles, LayoutDashboard, Users, EyeOff, Wallet, Image as ImageIcon } from 'lucide-react';
+import { Bookmark, Camera, Sparkles, LayoutDashboard, Users, EyeOff, Wallet } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -8,9 +8,7 @@ import RecursosMarca from './RecursosMarca';
 import FotosEstudioAdmin from './FotosEstudioAdmin';
 import MarketingPremiumAdmin from './MarketingPremiumAdmin';
 import MktPresupuestosAdmin from './MktPresupuestosAdmin';
-import { LogosAsesoresPanel } from '../components/logos/LogosAsesoresPanel';
-
-type Tab = 'brand-kit' | 'fotos' | 'premium' | 'presupuestos' | 'logos' | 'equipos';
+type Tab = 'brand-kit' | 'fotos' | 'premium' | 'presupuestos' | 'equipos';
 
 const TABS: { key: Tab; label: string; icon: typeof Bookmark; description: string }[] = [
   {
@@ -36,12 +34,6 @@ const TABS: { key: Tab; label: string; icon: typeof Bookmark; description: strin
     label: 'Presupuestos',
     icon: Wallet,
     description: 'Presupuesto y gasto por campaña de redes sociales',
-  },
-  {
-    key: 'logos',
-    label: 'Logos de asesores',
-    icon: ImageIcon,
-    description: 'Logos personalizados guardados por los asesores',
   },
 ];
 
@@ -104,7 +96,6 @@ export default function MktAdminDashboard() {
         {tab === 'fotos' && <FotosEstudioAdmin embedded />}
         {tab === 'premium' && <MarketingPremiumAdmin embedded />}
         {tab === 'presupuestos' && <MktPresupuestosAdmin embedded />}
-        {tab === 'logos' && <LogosAsesoresPanel />}
         {tab === 'equipos' && esAdmin && <EquiposAccesoMktPanel />}
       </div>
     </div>
