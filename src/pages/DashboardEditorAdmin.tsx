@@ -10,6 +10,7 @@ import {
   useDashboardConfig, invalidateDashboardConfigCache,
   type DashboardVcard, type DashboardWidget,
 } from '../lib/useDashboardConfig';
+import { resolveDashboardIcon, DASHBOARD_ICON_OPTIONS } from '../lib/dashboardIcons';
 
 const WIDGET_LABELS: Record<string, string> = {
   favoritos: 'Mis Favoritos',
@@ -142,7 +143,7 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
       label: 'Nueva tarjeta',
       descripcion: '',
       route: '/',
-      emoji: '📦',
+      emoji: 'ShoppingBag',
       gradient_from: '#164281',
       gradient_to: '#082e6d',
       orden: nextOrden,
@@ -194,8 +195,12 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm"
                 style={{ background: `linear-gradient(145deg, ${card.gradient_from}, ${card.gradient_to})` }}
+                title={card.icon_key ?? card.emoji}
               >
-                {card.emoji}
+                {(() => {
+                  const Icon = resolveDashboardIcon(card.icon_key ?? card.emoji);
+                  return <Icon className="w-4 h-4 text-white" />;
+                })()}
               </div>
 
               <DebouncedInput
@@ -216,13 +221,15 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
                 placeholder="/ruta"
                 className="w-32 px-2.5 py-1.5 text-xs font-mono border border-surface-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
               />
-              <DebouncedInput
+              <select
                 value={card.emoji}
-                onSave={(v) => patch(card, { emoji: v })}
-                placeholder="🙂"
-                maxLength={4}
-                className="w-12 px-2 py-1.5 text-sm text-center border border-surface-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
-              />
+                onChange={(e) => patch(card, { emoji: e.target.value })}
+                className="w-56 px-2.5 py-1.5 text-sm border border-surface-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
+              >
+                {DASHBOARD_ICON_OPTIONS.map(opt => (
+                  <option key={opt.key} value={opt.key}>{opt.label}</option>
+                ))}
+              </select>
 
               <div className="flex items-center gap-1">
                 <input

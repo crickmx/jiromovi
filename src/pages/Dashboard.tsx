@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode, type ElementType } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { Bell, MoonStar, Sparkles, SunMedium, type LucideIcon } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { resolveDashboardIcon } from '../lib/dashboardIcons';
 import type { Usuario } from '../contexts/MoviAuthContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
@@ -27,11 +28,11 @@ function getGreeting(): string {
   return 'Buenas noches';
 }
 
-function getGreetingEmoji(): string {
+function getGreetingIcon(): LucideIcon {
   const h = new Date().getHours();
-  if (h < 12) return '☀️';
-  if (h < 19) return '🌤️';
-  return '🌙';
+  if (h < 12) return SunMedium;
+  if (h < 19) return Sparkles;
+  return MoonStar;
 }
 
 function formatDate(): string {
@@ -87,12 +88,12 @@ function SectionShell({
 // editor (son atajos, no tarjetas de módulo).
 
 const BETA_FAVORITOS = [
-  { label: 'Nuevo Trámite', emoji: '📋', route: '/tramites' },
-  { label: 'Avisos', emoji: '🔔', route: '/comunicados' },
-  { label: 'Fotos Estudio', emoji: '📸', route: '/mercadotecnia/fotos-estudio' },
-  { label: 'Mis Metas', emoji: '🎯', route: '/produccion' },
-  { label: 'Chat', emoji: '💬', route: '/centro-contacto/chat' },
-  { label: 'Mi Perfil', emoji: '👤', route: '/perfil' },
+  { label: 'Nuevo Trámite', iconKey: 'ClipboardList', route: '/tramites' },
+  { label: 'Avisos', iconKey: 'Bell', route: '/comunicados' },
+  { label: 'Fotos Estudio', iconKey: 'Camera', route: '/mercadotecnia/fotos-estudio' },
+  { label: 'Mis Metas', iconKey: 'Target', route: '/produccion' },
+  { label: 'Chat', iconKey: 'MessageSquare', route: '/centro-contacto/chat' },
+  { label: 'Mi Perfil', iconKey: 'User', route: '/perfil' },
 ] as const;
 
 // ── WelcomeHero ─────────────────────────────────────────────────────────
@@ -117,8 +118,12 @@ function WelcomeHero({ usuario }: { usuario: Usuario }) {
       />
 
       <div className="relative z-10 min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-white/90">
-          {getGreetingEmoji()} {getGreeting()}
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-white/90 flex items-center gap-1">
+          {(() => {
+            const GreetingIcon = getGreetingIcon();
+            return <GreetingIcon className="w-3.5 h-3.5" />;
+          })()}
+          <span>{getGreeting()}</span>
         </p>
         <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
           {usuario.nombre} <span className="text-white">{usuario.apellidos}</span>
@@ -159,8 +164,11 @@ function ModuleVCards({
           style={{ background: `linear-gradient(145deg, ${m.gradient_from}, ${m.gradient_to})` }}
         >
           <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/8 pointer-events-none" />
-          <div className="relative z-10 w-[30px] h-[30px] bg-white/18 rounded-lg text-sm flex items-center justify-center">
-            {m.emoji}
+          <div className="relative z-10 w-[30px] h-[30px] bg-white/18 rounded-lg flex items-center justify-center">
+            {(() => {
+              const Icon = resolveDashboardIcon(m.emoji);
+              return <Icon className="w-4 h-4 text-white" />;
+            })()}
           </div>
           <div className="relative z-10">
             <p className="text-sm font-bold text-white">{m.label}</p>
@@ -182,16 +190,19 @@ function FavoritosGrid({ onNavigate }: { onNavigate: (route: string) => void }) 
         ★ Mis Favoritos
       </p>
       <div className="grid grid-cols-2 gap-1.5">
-        {BETA_FAVORITOS.map(fav => (
-          <button
-            key={fav.route}
-            onClick={() => onNavigate(fav.route)}
-            className="bg-neutral-100 dark:bg-white/6 hover:bg-neutral-200 dark:hover:bg-white/10 border border-neutral-200 dark:border-white/8 rounded-xl p-2 flex flex-col items-center gap-1 text-center text-[9px] font-semibold text-neutral-600 dark:text-white/60 transition-colors cursor-pointer"
-          >
-            <span className="text-base">{fav.emoji}</span>
-            {fav.label}
-          </button>
-        ))}
+        {BETA_FAVORITOS.map(fav => {
+          const Icon = resolveDashboardIcon(fav.iconKey);
+          return (
+            <button
+              key={fav.route}
+              onClick={() => onNavigate(fav.route)}
+              className="bg-neutral-100 dark:bg-white/6 hover:bg-neutral-200 dark:hover:bg-white/10 border border-neutral-200 dark:border-white/8 rounded-xl p-2 flex flex-col items-center gap-1 text-center text-[9px] font-semibold text-neutral-600 dark:text-white/60 transition-colors cursor-pointer"
+            >
+              <Icon className="w-4 h-4 text-[#1B3A6B] dark:text-white/80" />
+              {fav.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -361,7 +372,7 @@ export default function Dashboard() {
   const narrowWidgets = enabledWidgets.filter(w => !w.full_width);
 
   const esAgente      = usuario.rol === 'Agente';
-  const esEjecutivo   = usuario.rol === 'Ejecutivo';
+  const esEjecutivo   = (usuario as { rol?: string }).rol === 'Ejecutivo';
   const esGerente     = usuario.rol === 'Gerente';
   const esDireccion   = usuario.rol === 'Administrador';
 

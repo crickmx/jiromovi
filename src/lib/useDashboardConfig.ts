@@ -12,6 +12,7 @@ export interface DashboardVcard {
   gradient_to: string;
   orden: number;
   activa: boolean;
+  icon_key?: string | null;
 }
 
 export interface DashboardWidget {
@@ -50,7 +51,10 @@ export function useDashboardConfig(): UseDashboardConfigReturn {
       supabase.from('dashboard_vcards').select('*').order('orden'),
       supabase.from('dashboard_widgets').select('*').order('orden'),
     ]);
-    const vcardsData = (v ?? []) as DashboardVcard[];
+    const vcardsData = (v ?? []).map((row: any) => ({
+      ...row,
+      icon_key: row.icon_key ?? row.emoji ?? null,
+    })) as DashboardVcard[];
     const widgetsData = (w ?? []) as DashboardWidget[];
     _cache = { vcards: vcardsData, widgets: widgetsData };
     _cacheTime = Date.now();
