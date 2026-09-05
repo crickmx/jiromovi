@@ -1,5 +1,13 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+// ATENCION 2026-08-05: servidor Yeastar migrado de 74.208.52.157 a 159.54.138.29.
+// Este certificado (UCCPBX_CA) esta pineado al servidor VIEJO -- si el nuevo PBX
+// genero un certificado self-signed distinto (lo normal en una instalacion nueva),
+// el handshake TLS va a fallar aunque el host/IP ya este actualizado abajo.
+// Para obtener el cert real del servidor nuevo, correr desde una maquina que
+// tenga alcance de red al PBX:
+//   openssl s_client -connect 159.54.138.29:8088 -servername www.UCCPBX.com </dev/null 2>/dev/null | openssl x509
+// y reemplazar el bloque completo de abajo con ese output.
 const UCCPBX_CA = `-----BEGIN CERTIFICATE-----
 MIIFHjCCAwYCCQDigYY7NhwbazANBgkqhkiG9w0BAQsFADBQMQswCQYDVQQGEwJD
 TjEPMA0GA1UECAwGRnVKaWFuMQ8wDQYDVQQHDAZYaWFNZW4xETAPBgNVBAoMCFNv
@@ -31,7 +39,7 @@ x+jvOfAzyAdqFmBaP4JXDWxzTEiiCD2iDY4EbYMASLORbmnwLGFV6ES8cp5F5PHX
 6LZwwpBN27UOUY29cNCFNZsF
 -----END CERTIFICATE-----`;
 
-const PBX_HOST = "74.208.52.157";
+const PBX_HOST = "159.54.138.29";
 const PBX_PORT = 8088;
 const UA = "Mozilla/5.0 (compatible; MOVI-CDR/1.0)";
 const ENCODED_FALLBACK = "MGVlZjM5OGZkYWFjZmUxNjk4ODcyMmVkZTU5NjQzNGM=";

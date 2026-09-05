@@ -46,13 +46,51 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: usuario } = await adminClient
+    const { data: usuarioRows } = await adminClient
       .from("usuarios")
       .select("id, nombre")
       .eq("extension_telefonica", extension)
-      .single();
+      .limit(1);
 
-    const usuarioId = usuario?.id || null;
+    const usuarioId = usuarioRows?.[0]?.id || null;
+
+    // Reconocer al que llama contra usuarios MOVI y contactos del CRM
+    // (mismo criterio de match que wazzup-webhook: ultimos 10 digitos)
+    const last10 = callerNumber.replace(/\D/g, "").slice(-10);
+    let callerName: string | null = null;
+
+    if (last10.length === 10) {
+      const { data: usuarioMatch } = await adminClient
+        .from("usuarios")
+        .select("nombre_completo")
+        .or(`celular_laboral.ilike.%${last10},celular_personal.ilike.%${last10}`)
+        .limit(1);
+      callerName = usuarioMatch?.[0]?.nombre_completo || null;
+
+      if (!callerName) {
+        const { data: crmMatch } = await adminClient
+          .from("crm_contactos")
+          .select("nombre_completo")
+          .ilike("celular", `%${last10}`)
+          .limit(1);
+        callerName = crmMatch?.[0]?.nombre_completo || null;
+      }
+
+      if (!callerName) {
+        const { data: contactoMatch } = await adminClient
+          .from("contactos")
+          .select("nombre, apellido")
+          .ilike("celular", `%${last10}`)
+          .limit(1);
+        if (contactoMatch?.[0]) {
+          callerName = [contactoMatch[0].nombre, contactoMatch[0].apellido]
+            .filter(Boolean)
+            .join(" ") || null;
+        }
+      }
+    }
+
+    const callerLabel = callerName ? `${callerName} (${callerNumber})` : callerNumber;
 
     await adminClient.from("llamadas_perdidas").insert({
       extension,
@@ -63,15 +101,20 @@ Deno.serve(async (req: Request) => {
     });
 
     if (usuarioId) {
-      await adminClient.from("notificaciones").insert({
+      const { error: notifError } = await adminClient.from("notificaciones").insert({
         tipo: "llamada_perdida",
         modulo: "telefonia",
         titulo: "Llamada perdida",
-        cuerpo: `Llamada perdida de ${callerNumber}`,
+        mensaje: `Llamada perdida de ${callerLabel}`,
         accion_url: "/admin/telefonia",
         leida: false,
         usuario_id: usuarioId,
+        metadata: { caller_number: callerNumber, caller_name: callerName },
       });
+
+      if (notifError) {
+        console.error("Error insertando notificacion:", notifError.message);
+      }
 
       // Send Web Push notification
       try {
@@ -84,7 +127,7 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             usuario_id: usuarioId,
             title: "Llamada perdida",
-            body: `Llamada perdida de ${callerNumber}`,
+            body: `Llamada perdida de ${callerLabel}`,
             url: "/admin/telefonia",
             tag: "missed-call",
           }),
@@ -95,7 +138,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, extension, caller: callerNumber }),
+      JSON.stringify({ success: true, extension, caller: callerNumber, caller_name: callerName }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
