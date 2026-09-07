@@ -49,14 +49,33 @@ export async function fetchModelosForMarcaAnio(marca: string, anio: number): Pro
 }
 
 export async function fetchVersiones(marca: string, anio: number, modelo: string): Promise<Vehiculo[]> {
+  const { data: officialLoaded } = await supabase.rpc('qualitas_catalog_is_loaded');
   const { data, error } = await supabase
     .from('multi_autos_catalogo_vehiculos')
     .select('*')
     .eq('marca', marca)
     .eq('anio', anio)
     .eq('modelo', modelo)
+    .eq('active', true)
+    .eq('catalog_source', officialLoaded ? 'qualitas_official' : 'legacy_seed')
     .order('version')
     .limit(500);
   if (error || !data) return [];
   return data.map((row) => rowToVehiculo(row as CatalogVehicleRow));
+}
+
+export interface CatalogSyncStatus {
+  status: 'pending' | 'running' | 'success' | 'failed' | 'awaiting_source';
+  last_success_at: string | null;
+  source_file_date: string | null;
+  row_count: number;
+}
+
+export async function fetchCatalogSyncStatus(): Promise<CatalogSyncStatus | null> {
+  const { data } = await supabase
+    .from('multi_autos_catalog_sync_status')
+    .select('status, last_success_at, source_file_date, row_count')
+    .eq('source', 'qualitas_official')
+    .maybeSingle();
+  return data as CatalogSyncStatus | null;
 }
