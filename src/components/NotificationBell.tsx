@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type MouseEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, Check, CheckCheck, X, Trash2, ListFilter as Filter, Mail, MessageSquare, Calendar, GraduationCap, MapPin, Palette, Users, Megaphone, ShoppingBag, Phone, MessageCircle } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -84,7 +84,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
       const target = event.target as Node;
       if (fixedPanel) {
         if (panelRef.current && !panelRef.current.contains(target) &&
@@ -148,12 +148,12 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
     return digits.slice(-10);
   };
 
-  const handleLlamarClick = (e: MouseEvent, notification: any) => {
+  const handleLlamarClick = (e: ReactMouseEvent<HTMLElement>, notification: any) => {
     e.stopPropagation();
     markAsRead(notification.id);
   };
 
-  const handleWhatsappClick = (e: MouseEvent, notification: any, numero: string) => {
+  const handleWhatsappClick = (e: ReactMouseEvent<HTMLButtonElement>, notification: any, numero: string) => {
     e.stopPropagation();
     markAsRead(notification.id);
     const nombre = notification.metadata?.caller_name || '';

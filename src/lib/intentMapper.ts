@@ -215,8 +215,10 @@ function getFallbackIntent(modulo: ModuleName): IntentCode | null {
     produccion: 'performance_summary',
     crm: 'client_outreach_plan',
     tramites: 'tramite_status_helper',
+    chat: 'navigation_help',
     notificaciones: 'navigation_help',
     education: 'navigation_help',
+    chava: 'navigation_help',
     general: 'navigation_help',
   };
 

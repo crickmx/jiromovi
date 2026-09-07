@@ -117,9 +117,9 @@ export function applyTheme(accentColor: string): void {
   );
 }
 
-/** Vuelve al tema azul corporativo de MOVI */
+/** Vuelve al tema azul corporativo de JIRO */
 export function resetTheme(): void {
-  applyTheme('#164281');
+  applyTheme('#1e40af');
 }
 
 /** Obtiene los colores del tema activo */

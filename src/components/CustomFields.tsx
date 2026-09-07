@@ -87,8 +87,8 @@ export function CustomFields({ usuarioId, editable = false }: CustomFieldsProps)
     const valor = valores[campo.id] || '';
     const isEditable = editable && campo.editable;
 
-    switch (campo.tipo) {
-      case 'numero':
+    switch (campo.tipo_campo) {
+      case 'number':
         return (
           <input
             type="number"
@@ -99,7 +99,7 @@ export function CustomFields({ usuarioId, editable = false }: CustomFieldsProps)
             className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
           />
         );
-      case 'fecha':
+      case 'date':
         return (
           <input
             type="date"
@@ -109,21 +109,6 @@ export function CustomFields({ usuarioId, editable = false }: CustomFieldsProps)
             required={campo.requerido}
             className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
           />
-        );
-      case 'booleano':
-        return (
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              checked={valor === 'true'}
-              onChange={(e) => handleChange(campo.id, e.target.checked ? 'true' : 'false')}
-              disabled={!isEditable}
-              className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-            />
-            <span className="ml-3 text-sm text-slate-600">
-              {valor === 'true' ? 'Sí' : 'No'}
-            </span>
-          </div>
         );
       default:
         return (
@@ -144,7 +129,7 @@ export function CustomFields({ usuarioId, editable = false }: CustomFieldsProps)
       {campos.map((campo) => (
         <div key={campo.id}>
           <label className="block text-sm font-medium text-slate-700 mb-2">
-            {campo.nombre}
+            {campo.etiqueta}
             {campo.requerido && <span className="text-red-500 ml-1">*</span>}
           </label>
           {renderField(campo)}

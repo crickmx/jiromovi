@@ -60,6 +60,7 @@ export function getModuleDisplayName(modulo: ModuleName): string {
     chat: 'Chat',
     notificaciones: 'Notificaciones',
     education: 'Academia',
+    chava: 'Chava',
     general: 'General',
   };
   return names[modulo] || 'General';

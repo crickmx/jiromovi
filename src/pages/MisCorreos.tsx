@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature } from '../lib/emailSignatureUtils';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface Email {
   id: string;

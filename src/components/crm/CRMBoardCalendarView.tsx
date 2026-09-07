@@ -124,7 +124,7 @@ export default function CRMBoardCalendarView({ tareas, boardId, onRefresh, loadi
                     </span>
                   )}
                   <button
-                    onClick={e => { e.stopPropagation(); setConfirmDelete({ id: tarea.id, nombre: tarea.titulo }); }}
+                    onClick={e => { e.stopPropagation(); setConfirmDelete({ id: tarea.id, nombre: tarea.titulo ?? '' }); }}
                     className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-50 text-red-400 transition-all"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

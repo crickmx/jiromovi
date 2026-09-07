@@ -48,13 +48,13 @@ export function ParticipantsList({
                     {participant.id === currentUserId && ' (Tú)'}
                   </p>
                   {participant.role === 'host' && (
-                    <Crown className="w-4 h-4 text-purple-600 flex-shrink-0" title="Anfitrión" />
+                    <Crown className="w-4 h-4 text-purple-600 flex-shrink-0" />
                   )}
                   {participant.isCohost && participant.role !== 'host' && (
-                    <Crown className="w-4 h-4 text-accent flex-shrink-0" title="Co-anfitrión" />
+                    <Crown className="w-4 h-4 text-accent flex-shrink-0" />
                   )}
                   {participant.isScreenSharing && (
-                    <Monitor className="w-4 h-4 text-green-600 flex-shrink-0" title="Compartiendo pantalla" />
+                    <Monitor className="w-4 h-4 text-green-600 flex-shrink-0" />
                   )}
                 </div>
                 <div className="flex items-center space-x-2 mt-1">

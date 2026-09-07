@@ -103,7 +103,7 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
               </div>
               <div>
                 <span className="text-neutral-600">Agente:</span>
-                <span className="ml-2 font-medium text-neutral-900">{detail.agent?.name}</span>
+                <span className="ml-2 font-medium text-neutral-900">{detail.agent?.name || `${detail.agent?.nombre ?? ''} ${detail.agent?.apellidos ?? ''}`.trim()}</span>
               </div>
               <div>
                 <span className="text-neutral-600">Ramo:</span>
@@ -116,13 +116,13 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
               <div>
                 <span className="text-neutral-600">Oficina:</span>
                 <span className="ml-2 font-medium text-neutral-900">
-                  {detail.agent?.office?.name || 'N/A'}
+                  {detail.agent?.office?.nombre || 'N/A'}
                 </span>
               </div>
               <div>
                 <span className="text-neutral-600">Prima Neta:</span>
                 <span className="ml-2 font-medium text-neutral-900">
-                  {formatCurrency(detail.prima_base)}
+                  {formatCurrency(detail.prima_base ?? detail.importe_base)}
                 </span>
               </div>
             </div>

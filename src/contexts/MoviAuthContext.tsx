@@ -22,17 +22,41 @@ export type Usuario = UsuarioRow & {
     domicilio: string | null;
   } | null;
   regimen_fiscal?: { id: string; name: string } | null;
+  nombres?: string | null;
+  apellido_paterno?: string | null;
+  apellido_materno?: string | null;
+  nombre_completo?: string | null;
+  nombre_publico?: string | null;
+  username?: string | null;
+  estado?: string | null;
+  celular?: string | null;
+  celular_laboral?: string | null;
+  email?: string | null;
+  email_laboral?: string | null;
+  email_cuenta?: string | null;
+  email_verificado?: boolean | null;
+  email_ultima_verificacion?: string | null;
+  full_name?: string | null;
+  url_web_jiro?: string | null;
+  imagen_perfil_url?: string | null;
+  agent_user_id?: string | null;
 };
 
 interface MoviAuthCtx {
   usuario: Usuario | null;
   realUsuario: Usuario | null;
+  office?: Usuario['oficina'] | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   reloadUsuario: () => Promise<void>;
   esUsuarioBeta: boolean;
   redirigiendoABeta: boolean;
+  maskAs: (usuario: Usuario) => Promise<boolean>;
+  unmask: () => Promise<void>;
+  isMasked: boolean;
+  customer: null;
+  agent: null;
 }
 
 const MoviAuthContext = createContext<MoviAuthCtx>({} as MoviAuthCtx);
@@ -44,7 +68,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
   const [esUsuarioBeta, setEsUsuarioBeta] = useState(false);
   const [redirigiendoABeta, setRedirigiendoABeta] = useState(false);
   const profileLoadedRef = useRef(false);
-  const { isImpersonating, impersonatedUser } = useImpersonation();
+  const { isImpersonating, impersonatedUser, startImpersonation, endImpersonation } = useImpersonation();
 
   async function loadProfile(userId: string) {
     console.log('[MoviAuth] loadProfile userId=', userId);
@@ -160,6 +184,14 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }
 
+  async function maskAs(usuarioTarget: Usuario): Promise<boolean> {
+    return startImpersonation({ platform: 'movi', userId: usuarioTarget.id });
+  }
+
+  async function unmask(): Promise<void> {
+    await endImpersonation();
+  }
+
   // During impersonation, expose the masked user as `usuario`
   // but always keep `realUsuario` pointing to the authenticated admin
   const usuario = (isImpersonating && impersonatedUser)
@@ -176,6 +208,11 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
       reloadUsuario,
       esUsuarioBeta,
       redirigiendoABeta,
+      maskAs,
+      unmask,
+      isMasked: isImpersonating,
+      customer: null,
+      agent: null,
     }}>
       {children}
     </MoviAuthContext.Provider>

@@ -10,6 +10,7 @@ import {
   useDashboardConfig, invalidateDashboardConfigCache,
   type DashboardVcard, type DashboardWidget,
 } from '../lib/useDashboardConfig';
+import { resolveDashboardIcon, DASHBOARD_ICON_OPTIONS } from '../lib/dashboardIcons';
 
 const WIDGET_LABELS: Record<string, string> = {
   favoritos: 'Mis Favoritos',
@@ -47,7 +48,7 @@ function DebouncedInput({ value, onSave, placeholder, className, maxLength }: {
       onChange={(e) => handleChange(e.target.value)}
       placeholder={placeholder}
       maxLength={maxLength}
-      className={className ?? 'px-2.5 py-1.5 text-sm border border-neutral-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none'}
+      className={className ?? 'px-2.5 py-1.5 text-sm border border-surface-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none'}
     />
   );
 }
@@ -55,7 +56,7 @@ function DebouncedInput({ value, onSave, placeholder, className, maxLength }: {
 function SavingSlot({ saving }: { saving: boolean }) {
   return (
     <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-      {saving && <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />}
+      {saving && <Loader2 className="w-4 h-4 animate-spin text-surface-400" />}
     </div>
   );
 }
@@ -142,9 +143,9 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
       label: 'Nueva tarjeta',
       descripcion: '',
       route: '/',
-      emoji: '📦',
-      gradient_from: '#5A6EC4',
-      gradient_to: '#333D90',
+      emoji: 'ShoppingBag',
+      gradient_from: '#164281',
+      gradient_to: '#082e6d',
       orden: nextOrden,
       updated_by: usuarioId,
     });
@@ -157,7 +158,7 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-surface-400" />
       </div>
     );
   }
@@ -165,7 +166,7 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
   return (
     <div>
       <div className="flex items-center justify-between mb-2 px-1">
-        <h2 className="text-sm font-semibold text-neutral-700 dark:text-white/80">Tarjetas del grid (columna izquierda)</h2>
+        <h2 className="text-sm font-semibold text-surface-700 dark:text-white/80">Tarjetas del grid (columna izquierda)</h2>
         <button
           onClick={handleCreate}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent/90 transition-colors"
@@ -173,7 +174,7 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
           <Plus className="w-3.5 h-3.5" /> Nueva tarjeta
         </button>
       </div>
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 divide-y divide-neutral-100 dark:divide-white/5 bg-white dark:bg-white/3">
+      <div className="rounded-2xl border border-surface-200 dark:border-white/10 divide-y divide-surface-100 dark:divide-white/5 bg-white dark:bg-white/3">
         {vcards.map((card, idx) => {
           const isSaving = savingKey === card.card_key;
           const isDragOver = dragOverIdx === idx;
@@ -185,44 +186,50 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
               onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverIdx(idx); }}
               onDragLeave={() => setDragOverIdx(prev => (prev === idx ? null : prev))}
               onDrop={(e) => { e.preventDefault(); handleDrop(idx); }}
-              className={`flex flex-wrap items-center gap-2.5 px-4 py-3 transition-colors ${isDragOver ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
+              className={`flex flex-wrap items-center gap-2.5 px-4 py-3 transition-colors ${isDragOver ? 'bg-accent/10 dark:bg-accent/20' : ''}`}
             >
-              <div className="cursor-grab text-neutral-300 hover:text-neutral-500 shrink-0">
+              <div className="cursor-grab text-surface-300 hover:text-surface-500 shrink-0">
                 <GripVertical className="w-4 h-4" />
               </div>
 
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm"
                 style={{ background: `linear-gradient(145deg, ${card.gradient_from}, ${card.gradient_to})` }}
+                title={card.icon_key ?? card.emoji}
               >
-                {card.emoji}
+                {(() => {
+                  const Icon = resolveDashboardIcon(card.icon_key ?? card.emoji);
+                  return <Icon className="w-4 h-4 text-white" />;
+                })()}
               </div>
 
               <DebouncedInput
                 value={card.label}
                 onSave={(v) => patch(card, { label: v })}
                 placeholder="Título"
-                className="w-36 px-2.5 py-1.5 text-sm font-medium border border-neutral-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-36 px-2.5 py-1.5 text-sm font-medium border border-surface-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
               />
               <DebouncedInput
                 value={card.descripcion}
                 onSave={(v) => patch(card, { descripcion: v })}
                 placeholder="Descripción"
-                className="w-44 px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-44 px-2.5 py-1.5 text-xs border border-surface-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
               />
               <DebouncedInput
                 value={card.route}
                 onSave={(v) => patch(card, { route: v })}
                 placeholder="/ruta"
-                className="w-32 px-2.5 py-1.5 text-xs font-mono border border-neutral-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-32 px-2.5 py-1.5 text-xs font-mono border border-surface-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
               />
-              <DebouncedInput
+              <select
                 value={card.emoji}
-                onSave={(v) => patch(card, { emoji: v })}
-                placeholder="🙂"
-                maxLength={4}
-                className="w-12 px-2 py-1.5 text-sm text-center border border-neutral-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
+                onChange={(e) => patch(card, { emoji: e.target.value })}
+                className="w-56 px-2.5 py-1.5 text-sm border border-surface-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
+              >
+                {DASHBOARD_ICON_OPTIONS.map(opt => (
+                  <option key={opt.key} value={opt.key}>{opt.label}</option>
+                ))}
+              </select>
 
               <div className="flex items-center gap-1">
                 <input
@@ -230,14 +237,14 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
                   value={card.gradient_from}
                   onChange={(e) => patch(card, { gradient_from: e.target.value })}
                   title="Color inicial del degradado"
-                  className="w-7 h-7 rounded cursor-pointer border border-neutral-200 dark:border-white/15"
+                  className="w-7 h-7 rounded cursor-pointer border border-surface-200 dark:border-white/15"
                 />
                 <input
                   type="color"
                   value={card.gradient_to}
                   onChange={(e) => patch(card, { gradient_to: e.target.value })}
                   title="Color final del degradado"
-                  className="w-7 h-7 rounded cursor-pointer border border-neutral-200 dark:border-white/15"
+                  className="w-7 h-7 rounded cursor-pointer border border-surface-200 dark:border-white/15"
                 />
               </div>
 
@@ -249,8 +256,8 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
                   title={card.activa ? 'Ocultar tarjeta' : 'Mostrar tarjeta'}
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                     card.activa
-                      ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400'
-                      : 'bg-neutral-100 dark:bg-white/[0.06] border-neutral-200 dark:border-white/10 text-neutral-500 dark:text-neutral-400'
+                      ? 'bg-accent/10 dark:bg-accent/20 border-accent/30 dark:border-accent/40 text-accent-foreground dark:text-accent-foreground'
+                      : 'bg-surface-100 dark:bg-white/[0.06] border-surface-200 dark:border-white/10 text-surface-500 dark:text-surface-400'
                   }`}
                 >
                   {card.activa ? <><Eye className="w-3 h-3" /> Activa</> : <><EyeOff className="w-3 h-3" /> Inactiva</>}
@@ -259,7 +266,7 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
                   onClick={() => handleDelete(card)}
                   disabled={isSaving}
                   title="Eliminar tarjeta"
-                  className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                  className="p-1.5 rounded-lg text-surface-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -268,7 +275,7 @@ function VcardsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
           );
         })}
         {vcards.length === 0 && (
-          <p className="px-4 py-8 text-sm text-center text-neutral-400">Sin tarjetas — crea la primera arriba.</p>
+          <p className="px-4 py-8 text-sm text-center text-surface-400">Sin tarjetas — crea la primera arriba.</p>
         )}
       </div>
     </div>
@@ -335,7 +342,7 @@ function WidgetsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m
   };
 
   const renderZone = (zone: DashboardWidget[], emptyLabel: string) => (
-    <div className="rounded-2xl border border-neutral-200 dark:border-white/10 divide-y divide-neutral-100 dark:divide-white/5 bg-white dark:bg-white/3">
+    <div className="rounded-2xl border border-surface-200 dark:border-white/10 divide-y divide-surface-100 dark:divide-white/5 bg-white dark:bg-white/3">
       {zone.map(w => {
         const isSaving = savingKey === w.widget_key;
         const isDragOver = dragOverKey === w.widget_key;
@@ -347,12 +354,12 @@ function WidgetsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m
             onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey(w.widget_key); }}
             onDragLeave={() => setDragOverKey(prev => (prev === w.widget_key ? null : prev))}
             onDrop={(e) => { e.preventDefault(); handleDrop(zone, w.widget_key); }}
-            className={`flex items-center gap-3 px-4 py-3 transition-colors ${isDragOver ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
+            className={`flex items-center gap-3 px-4 py-3 transition-colors ${isDragOver ? 'bg-accent/10 dark:bg-accent/20' : ''}`}
           >
-            <div className="cursor-grab text-neutral-300 hover:text-neutral-500 shrink-0">
+            <div className="cursor-grab text-surface-300 hover:text-surface-500 shrink-0">
               <GripVertical className="w-4 h-4" />
             </div>
-            <p className="text-sm font-medium text-neutral-800 dark:text-white flex-1 min-w-0 truncate">
+            <p className="text-sm font-medium text-surface-800 dark:text-white flex-1 min-w-0 truncate">
               {WIDGET_LABELS[w.widget_key] ?? w.widget_key}
             </p>
             <SavingSlot saving={isSaving} />
@@ -360,7 +367,7 @@ function WidgetsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m
               onClick={() => moveToZone(w)}
               disabled={isSaving}
               title={w.full_width ? 'Mover a la columna derecha' : 'Mover a ancho completo (izquierda)'}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors"
+              className="p-1.5 rounded-lg text-surface-400 hover:text-surface-700 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/8 transition-colors"
             >
               <ArrowLeftRight className="w-3.5 h-3.5" />
             </button>
@@ -370,8 +377,8 @@ function WidgetsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m
               title={w.activa ? 'Ocultar widget' : 'Mostrar widget'}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                 w.activa
-                  ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-neutral-100 dark:bg-white/[0.06] border-neutral-200 dark:border-white/10 text-neutral-500 dark:text-neutral-400'
+                  ? 'bg-accent/10 dark:bg-accent/20 border-accent/30 dark:border-accent/40 text-accent-foreground dark:text-accent-foreground'
+                  : 'bg-surface-100 dark:bg-white/[0.06] border-surface-200 dark:border-white/10 text-surface-500 dark:text-surface-400'
               }`}
             >
               {w.activa ? <><Eye className="w-3 h-3" /> Activo</> : <><EyeOff className="w-3 h-3" /> Inactivo</>}
@@ -380,7 +387,7 @@ function WidgetsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m
         );
       })}
       {zone.length === 0 && (
-        <p className="px-4 py-6 text-sm text-center text-neutral-400">{emptyLabel}</p>
+        <p className="px-4 py-6 text-sm text-center text-surface-400">{emptyLabel}</p>
       )}
     </div>
   );
@@ -388,7 +395,7 @@ function WidgetsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-surface-400" />
       </div>
     );
   }
@@ -396,11 +403,11 @@ function WidgetsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div>
-        <h2 className="text-sm font-semibold text-neutral-700 dark:text-white/80 mb-2 px-1">Ancho completo (bajo el grid, izquierda)</h2>
+        <h2 className="text-sm font-semibold text-surface-700 dark:text-white/80 mb-2 px-1">Ancho completo (bajo el grid, izquierda)</h2>
         {renderZone(wide, 'Ningún widget aquí — usa la flecha para mover uno.')}
       </div>
       <div>
-        <h2 className="text-sm font-semibold text-neutral-700 dark:text-white/80 mb-2 px-1">Columna derecha (angosta)</h2>
+        <h2 className="text-sm font-semibold text-surface-700 dark:text-white/80 mb-2 px-1">Columna derecha (angosta)</h2>
         {renderZone(narrow, 'Ningún widget aquí — usa la flecha para mover uno.')}
       </div>
     </div>
