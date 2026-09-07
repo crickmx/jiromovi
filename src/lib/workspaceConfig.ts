@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -173,6 +173,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/comisiones', label: 'Comisiones Admin', icon: Percent, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },
     { path: '/comisiones/regimen-fiscal', label: 'Régimen Fiscal', icon: Receipt, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/comisiones/mapeo-vendedores', label: 'Mapeo Vendedores', icon: GitBranch, visibleTo: ADMIN_ONLY },
+    { path: '/produccion/reportes-sicas-ccj', label: 'Reportes SICAS', icon: FileSpreadsheet, visibleTo: ADMIN_ONLY },
     { path: '/sicas/salud', label: 'SICAS Salud', icon: HeartPulse, visibleTo: ADMIN_ONLY },
     { path: '/seguwallet-admin', label: 'Seguwallet', icon: Wallet, visibleTo: ADMIN_ONLY },
     { path: '/firmas-email', label: 'Firmas Email', icon: PenLine, visibleTo: ADMIN_ONLY },
