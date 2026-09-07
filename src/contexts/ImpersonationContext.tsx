@@ -7,6 +7,24 @@ import { applyTheme } from '../lib/themeUtils';
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   permisosAdicionales?: string[];
   oficina?: { id: string; nombre: string; accent_color: string | null; logo_url: string | null } | null;
+  nombres?: string | null;
+  apellido_paterno?: string | null;
+  apellido_materno?: string | null;
+  nombre_completo?: string | null;
+  nombre_publico?: string | null;
+  username?: string | null;
+  estado?: string | null;
+  celular?: string | null;
+  celular_laboral?: string | null;
+  email?: string | null;
+  email_laboral?: string | null;
+  email_cuenta?: string | null;
+  email_verificado?: boolean | null;
+  email_ultima_verificacion?: string | null;
+  full_name?: string | null;
+  url_web_jiro?: string | null;
+  imagen_perfil_url?: string | null;
+  agent_user_id?: string | null;
 };
 
 interface SeguwalletCustomerMinimal {

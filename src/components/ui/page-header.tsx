@@ -6,8 +6,10 @@ import { cn } from '@/lib/utils';
 interface PageHeaderProps {
   title: string;
   description?: string;
+  subtitle?: string;
   icon?: LucideIcon;
   actions?: ReactNode;
+  action?: ReactNode | { label: string; onClick: () => void; icon?: LucideIcon; variant?: 'default' | 'outline' };
   children?: ReactNode;
   className?: string;
   backTo?: string;
@@ -23,8 +25,10 @@ interface PageHeaderProps {
 export function PageHeader({
   title,
   description,
+  subtitle,
   icon: Icon,
   actions,
+  action,
   children,
   className,
   backTo,
@@ -45,6 +49,7 @@ export function PageHeader({
   };
 
   const showBack = backTo || onBack;
+  const desc = description ?? subtitle;
 
   return (
     <div
@@ -87,18 +92,24 @@ export function PageHeader({
             </h1>
             {badge && badge}
           </div>
-          {description && (
+          {desc && (
             <p className={cn(
               "text-sm text-neutral-500 dark:text-white/50 leading-relaxed max-w-3xl",
               Icon && "ml-[44px]"
             )}>
-              {description}
+              {desc}
             </p>
           )}
         </div>
 
-        {actions && (
+        {(actions || action) && (
           <div className="flex-shrink-0 flex flex-wrap items-center gap-2">
+            {action && typeof action === 'object' && 'label' in action ? (
+              <button onClick={action.onClick} className={cn('inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors', action.variant === 'outline' ? 'border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-neutral-700 dark:text-white/80 hover:bg-neutral-50 dark:hover:bg-white/10' : 'bg-accent text-white hover:opacity-90')}>
+                {action.icon && <action.icon className="w-4 h-4" />}
+                <span>{action.label}</span>
+              </button>
+            ) : action}
             {actions}
           </div>
         )}

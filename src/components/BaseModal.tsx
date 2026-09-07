@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 interface BaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   /** Contenido extra pegado debajo del título, dentro del mismo header sticky (ej. barra de progreso). */

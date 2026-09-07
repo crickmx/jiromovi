@@ -26,6 +26,7 @@ export type ModuleName =
   | 'chat'
   | 'notificaciones'
   | 'education'
+  | 'chava'
   | 'general';
 
 export type ActionType =
@@ -155,7 +156,7 @@ export interface RAGSource {
 
 export interface AssistantMessage {
   id: string;
-  conversacion_id: string;
+  conversacion_id: string | null;
   rol: 'user' | 'assistant';
   contenido: string;
   respuesta_estructurada_json: StructuredResponse | null;
@@ -294,11 +295,13 @@ export interface CommissionAnomalyResponse {
 export interface PriorityListResponse {
   type: 'priority_list';
   items: PriorityItem[];
+  actions?: ActionButton[];
 }
 
 export interface OutreachPlanResponse {
   type: 'outreach_plan';
   clients: OutreachClient[];
+  actions?: ActionButton[];
 }
 
 export interface CrossSellResponse {
@@ -337,6 +340,7 @@ export interface TeamInsightsResponse {
 export interface NavigationHelpResponse {
   type: 'navigation_help';
   categories: NavigationCategory[];
+  actions?: ActionButton[];
 }
 
 export interface TextResponse {

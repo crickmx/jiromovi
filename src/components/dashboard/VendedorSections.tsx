@@ -426,7 +426,7 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
       .limit(4)
       .then(({ data }) => {
         if (active) {
-          setTramites((data ?? []) as TramiteReciente[]);
+          setTramites((data ?? []) as unknown as TramiteReciente[]);
           setLoading(false);
         }
       });

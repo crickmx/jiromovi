@@ -20,13 +20,16 @@ export interface CommissionAgent {
   id: string;
   nombre: string;
   apellidos: string;
+  name?: string;
   email_laboral: string;
   oficina_id: string | null;
+  office?: { id: string; nombre: string } | null;
   regimen_fiscal_id: string | null;
   created_at?: string;
   oficina?: {
     id: string;
     nombre: string;
+    name?: string;
   };
   regimen_fiscal?: CommissionFiscalRegime;
 }
@@ -89,6 +92,7 @@ export interface CommissionDetail {
   nombre_asegurado: string | null;
   prima_neta: number;
   importe_base: number;
+  prima_base?: number;
   porcentaje_comision: number;
   concepto: string | null;
   date_fpago: string;
@@ -98,6 +102,7 @@ export interface CommissionDetail {
   adjusted_by_user_id: string | null;
   adjusted_at: string | null;
   adjusted_commission_neta: number | null;
+  adjusted_commission_bruta?: number | null;
   adjust_reason: string | null;
   raw_row: Record<string, any>;
   created_at: string;

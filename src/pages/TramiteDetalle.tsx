@@ -110,7 +110,7 @@ export function TramiteDetalle() {
     id: string; key: string; label: string; tipo: string;
     requerido: boolean; ayuda: string | null;
     is_sistema: boolean; sistema_key: string | null;
-    config: { opciones?: CampoDinamicoOpt[]; max_length?: number; es_entero?: boolean; min_fecha?: string; max_fecha?: string };
+    config: { opciones?: CampoDinamicoOpt[]; max_length?: number; es_entero?: boolean; min_fecha?: string; max_fecha?: string; tipos_config?: any[]; condicion_activa?: boolean; campo_fuente?: string; condicion_operador?: string; condicion_valor?: string; filtrar_por_aseguradora?: boolean; max_archivos?: number; max_mb?: number; tipos_mime?: string[]; categoria_id?: string; instrucciones?: string };
     seccion_id: string | null;
   }
   interface RespuestaDinamica { id?: string; campo_id: string; valor_texto: string | null; valor_numerico: number | null; valor_fecha: string | null; valor_booleano: boolean | null; valor_json: any }

@@ -2068,7 +2068,7 @@ export function Tramites() {
                         style={dbColor ? { color: dbColor } : undefined}
                       >
                         Folio: {tramite.folio}
-                        {hasArchivos && <Paperclip className="w-3 h-3 shrink-0" title={`${tramite.ticket_archivos.length} archivo(s) adjunto(s)`} />}
+                        {hasArchivos && <Paperclip className="w-3 h-3 shrink-0" />}
                       </p>
                       <div className="flex items-center gap-1 shrink-0">
                         <button

@@ -259,7 +259,7 @@ export default function CalendarioEventos() {
     const ultimoDia = new Date(year, month + 1, 0);
     const diasPrevios = primerDia.getDay();
 
-    const dias = [];
+    const dias: { fecha: Date; esDelMes: boolean }[] = [];
 
     for (let i = 0; i < diasPrevios; i++) {
       const fecha = new Date(year, month, -diasPrevios + i + 1);

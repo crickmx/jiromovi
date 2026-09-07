@@ -200,13 +200,14 @@ export function TramiteDetalles({
           .in('grupo_id', grupos.map((g: Grupo) => g.id))
           .in('rol_en_equipo', ['lider', 'ejecutivo']);
         if (miembros) {
-          type Row = { usuario_id: string; usuarios: { id: string; nombre_completo: string } };
+          type Row = { usuario_id: string; usuarios: { id: string; nombre_completo: string }[] };
           const seen = new Set<string>();
           const members: TeamMember[] = [];
           for (const m of miembros as Row[]) {
-            if (!seen.has(m.usuario_id)) {
+            const u = m.usuarios?.[0];
+            if (!seen.has(m.usuario_id) && u) {
               seen.add(m.usuario_id);
-              members.push({ id: m.usuarios.id, nombre_completo: m.usuarios.nombre_completo });
+              members.push({ id: u.id, nombre_completo: u.nombre_completo });
             }
           }
           setTeamMembers(members);

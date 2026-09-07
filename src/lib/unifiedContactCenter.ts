@@ -25,6 +25,7 @@ export interface UnifiedConversation {
   participantIds?: string[];
   // wa_movi: agent user id
   agentUserId?: string | null;
+  raw?: Record<string, unknown>;
 }
 
 // ── Unified message shape ────────────────────────────────────────────────────

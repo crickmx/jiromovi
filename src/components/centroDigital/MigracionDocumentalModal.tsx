@@ -190,6 +190,7 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
       setIndexProgress(prev => ({
         processed: prev.processed + (json.processed || 0),
         successful: prev.successful + (json.indexed || 0),
+        duplicates: prev.duplicates + (json.duplicates || 0),
         errors: prev.errors + (json.errors || 0),
         remaining: json.remaining ?? 0,
       }));

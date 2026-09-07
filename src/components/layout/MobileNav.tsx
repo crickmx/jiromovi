@@ -6,6 +6,8 @@ import { useNotifications } from '../../contexts/NotificationContext';
 interface MobileNavProps {
   onOpenDrawer?: () => void;
   className?: string;
+  currentPath?: string;
+  onChavaClick?: () => void;
 }
 
 const NAV_ITEMS = [
@@ -14,7 +16,7 @@ const NAV_ITEMS = [
   { icon: MessageCircle, label: 'Contactos', href: '/contactos' },
 ];
 
-export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
+export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }: MobileNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { unreadCount } = useNotifications();
@@ -33,11 +35,15 @@ export function MobileNav({ onOpenDrawer, className }: MobileNavProps) {
       {/* Quick nav items */}
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
-        const active = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+        const pathname = currentPath ?? location.pathname;
+        const active = pathname === item.href || pathname.startsWith(item.href + '/');
         return (
           <button
             key={item.href}
-            onClick={() => navigate(item.href)}
+            onClick={() => {
+          if (item.href === '/chava' && onChavaClick) onChavaClick();
+          else navigate(item.href);
+        }}
             className={cn(
               'flex-1 flex flex-col items-center gap-1 py-2.5 px-2 transition-colors',
               active

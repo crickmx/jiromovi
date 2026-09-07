@@ -35,7 +35,7 @@ const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
 const AgendaPublica = lazy(() => import('./pages/AgendaPublica'));
 
 // ── Seguros Education (lazy) ──────────────────────────────────────────────
-const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEducationLanding').then(m => ({ default: m.default || m.SegurosEducationLanding })));
+const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEducationLanding'));
 
 // ── Seguros Express (lazy) ────────────────────────────────────────────────
 const SegurosExpressLanding = lazy(() => import('./seguros-express/SegurosExpressLanding'));
@@ -57,7 +57,7 @@ const isExpressSite    = HOST === 'seguros.express'
   || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'express');
 const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
-  || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'tienda');
+  || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────

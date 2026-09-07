@@ -97,9 +97,9 @@ export function TramitesWidget() {
         }
 
         // Ordenar por fecha y limitar a 5
-        setTramites(allTramites.slice(0, 5) as TramiteItem[]);
+        setTramites(allTramites.slice(0, 5) as unknown as TramiteItem[]);
       } else {
-        setTramites((directTramites || []) as TramiteItem[]);
+        setTramites((directTramites || []) as unknown as TramiteItem[]);
       }
     } catch (error) {
       console.error('Error loading tramites:', error);

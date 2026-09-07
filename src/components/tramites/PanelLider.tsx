@@ -117,16 +117,17 @@ export function PanelLider({ onClose }: Props) {
           id: string; nombre: string; color: string;
           area_categoria: string | null; activo: boolean;
           member_count: { count: number }[];
-        };
+        }[];
       };
-      const grupos: LiderEquipo[] = (data as Row[])
-        .filter(r => r.tramites_grupos_visualizacion.activo)
-        .map(r => ({
-          id: r.tramites_grupos_visualizacion.id,
-          nombre: r.tramites_grupos_visualizacion.nombre,
-          color: r.tramites_grupos_visualizacion.color,
-          area_categoria: r.tramites_grupos_visualizacion.area_categoria,
-          member_count: r.tramites_grupos_visualizacion.member_count?.[0]?.count ?? 0,
+      const grupos: LiderEquipo[] = (data as unknown as Row[])
+        .map(r => r.tramites_grupos_visualizacion?.[0])
+        .filter((g): g is NonNullable<typeof g> => Boolean(g && g.activo))
+        .map(g => ({
+          id: g.id,
+          nombre: g.nombre,
+          color: g.color,
+          area_categoria: g.area_categoria,
+          member_count: g.member_count?.[0]?.count ?? 0,
         }));
       setEquipos(grupos);
       if (grupos.length > 0) setSelectedId(grupos[0].id);

@@ -17,7 +17,7 @@ interface Sesion {
   descripcion: string | null;
   fecha_inicio: string;
   duracion_minutos: number;
-  instructor?: { id: string; nombre_completo: string } | null;
+  instructor?: { id: string; nombre_completo: string } | { id: string; nombre_completo: string }[] | null;
   esta_activa: boolean;
   estado: 'programada' | 'en_vivo' | 'finalizada' | 'cancelada';
   tipo: 'sesion' | 'evento';
@@ -183,7 +183,7 @@ export function ProximasCapacitaciones() {
                     {sesion.instructor && (
                       <span className="flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5" />
-                        {sesion.instructor.nombre_completo}
+                        {Array.isArray(sesion.instructor) ? sesion.instructor[0]?.nombre_completo : sesion.instructor.nombre_completo}
                       </span>
                     )}
                   </div>

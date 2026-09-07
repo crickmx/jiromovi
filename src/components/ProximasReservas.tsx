@@ -33,7 +33,7 @@ export function ProximasReservas() {
 
       const { data, error } = await supabase
         .from('reservas_espacio')
-        .select('*, areas(nombre)')
+        .select('*, areas:areas_id(nombre)')
         .eq('usuario_id', usuario.id)
         .in('estado', ['pendiente', 'aprobada'])
         .gte('fecha', today)
@@ -50,7 +50,8 @@ export function ProximasReservas() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '';
     const date = new Date(dateString + 'T00:00:00');
     return date.toLocaleDateString('es-MX', {
       day: 'numeric',
@@ -59,7 +60,7 @@ export function ProximasReservas() {
     });
   };
 
-  const formatTime = (timeString: string) => {
+  const formatTime = (timeString: string | null | undefined) => {
     if (!timeString) return '';
     return timeString.substring(0, 5);
   };
@@ -149,7 +150,7 @@ export function ProximasReservas() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
-                        {formatTime(reserva.hora_inicio)} - {formatTime(reserva.hora_fin)}
+                        {formatTime(reserva.hora_inicio ?? undefined)} - {formatTime(reserva.hora_fin ?? undefined)}
                       </span>
                     </div>
                     {reserva.notas && (

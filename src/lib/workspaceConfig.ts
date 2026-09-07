@@ -11,7 +11,7 @@ export type WorkspaceId =
   | 'seguros-education'
   | 'administracion';
 
-export type UserRole = 'Administrador' | 'Gerente' | 'Empleado' | 'Agente';
+export type UserRole = 'Administrador' | 'Gerente' | 'Empleado' | 'Agente' | 'Ejecutivo';
 
 export interface WorkspaceNavItem {
   path: string;

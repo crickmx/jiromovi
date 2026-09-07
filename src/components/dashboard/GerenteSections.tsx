@@ -370,7 +370,7 @@ function SolicitudesPanel({ usuario }: { usuario: Usuario }) {
       if (!active) return;
 
       const list = (raw ?? []).map(t => ({
-        ...(t as TicketAbierto),
+        ...(t as unknown as TicketAbierto),
         _agente_nombre: t.agente_id ? (nameMap.get(t.agente_id) ?? '—') : '—',
       }));
 

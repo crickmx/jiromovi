@@ -258,9 +258,11 @@ function HtmlEditor({ headerHtml, footerHtml, onChange, onRestoreDefaults }: Htm
 
 // ─── Channel Form ─────────────────────────────────────────────────────────────
 
+type NotificationChannelForm = Partial<NotificationChannel> & { config: Record<string, string>; branding: Record<string, string> };
+
 interface ChannelFormProps {
-  channel: Partial<NotificationChannel> & { config: Record<string, string>; branding: Record<string, string> };
-  onChange: (c: typeof channel) => void;
+  channel: NotificationChannelForm;
+  onChange: (c: NotificationChannelForm) => void;
   isNew: boolean;
 }
 
@@ -268,9 +270,9 @@ function ChannelForm({ channel, onChange, isNew }: ChannelFormProps) {
   const [showKey, setShowKey] = useState(false);
   const [brandingOpen, setBrandingOpen] = useState(false);
 
-  const set = (field: string, val: unknown) => onChange({ ...channel, [field]: val });
-  const setConfig = (k: string, v: string) => onChange({ ...channel, config: { ...channel.config, [k]: v } });
-  const setBranding = (k: string, v: string) => onChange({ ...channel, branding: { ...channel.branding, [k]: v } });
+  const set = (field: string, val: unknown) => onChange({ ...channel, [field]: val } as typeof channel);
+  const setConfig = (k: string, v: string) => onChange({ ...channel, config: { ...channel.config, [k]: v } } as typeof channel);
+  const setBranding = (k: string, v: string) => onChange({ ...channel, branding: { ...channel.branding, [k]: v } } as typeof channel);
 
   const isEmail = channel.type === 'email_resend';
 

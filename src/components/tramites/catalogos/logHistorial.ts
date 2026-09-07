@@ -6,7 +6,7 @@ export function logHistorial(
   accion: string,
   detalles: Record<string, any>,
   usuarioId?: string,
-  usuarioNombre?: string,
+  usuarioNombre?: string | null,
 ): void {
   supabase.from('tramite_tipo_historial').insert({
     tramite_tipo_id: tramiteTipoId,
