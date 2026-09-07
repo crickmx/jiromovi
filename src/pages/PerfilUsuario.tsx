@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Button } from '@/components/ui/button';
 import type { Database } from '../lib/database.types';
-import { syncUserTramiteTeamMemberships } from '../lib/tramiteTeamAssignments';
+import { syncUserTramiteTeamAssignments } from '../lib/tramiteTeamAssignments';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -198,7 +198,7 @@ export function PerfilUsuario() {
     } else {
       if (mustValidateTramiteTeams) {
         try {
-          await syncUserTramiteTeamMemberships(id, tramiteTeamIds);
+          await syncUserTramiteTeamAssignments(id, tramiteTeamIds);
         } catch (teamError: unknown) {
           const message = teamError instanceof Error ? teamError.message : 'error desconocido';
           setMessage({ type: 'error', text: `Usuario guardado, pero no se pudieron guardar los equipos: ${message}` });

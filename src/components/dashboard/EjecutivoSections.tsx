@@ -303,7 +303,7 @@ function CampañasPanel() {
                       {row.rank ?? ri + 1}
                     </span>
                     <p className="flex-1 min-w-0 text-[12px] font-bold text-neutral-900 dark:text-white truncate">
-                      {row.entity}
+                      {row.entity ?? row.entity_name ?? '—'}
                       {isMe && <span className="text-[10px] font-normal text-indigo-500 ml-1">tú</span>}
                     </p>
                     <div className="text-right flex-shrink-0">

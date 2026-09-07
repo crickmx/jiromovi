@@ -12,7 +12,7 @@ import { Skeleton } from './ui/skeleton';
 import { EmptyState } from './ui/empty-state';
 
 type SolicitudVacaciones = Database['public']['Tables']['solicitudes_vacaciones']['Row'] & {
-  empleado?: { nombre: string; apellidos: string } | null;
+  empleado?: { nombre_completo?: string | null; nombre?: string | null; apellidos?: string | null; oficinas?: { nombre: string } | null } | null;
   oficinas?: { nombre: string } | null;
 };
 
@@ -155,7 +155,7 @@ export function ResumenVacaciones() {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h3 className="font-semibold text-neutral-900 text-sm">
-                    {solicitud.empleado?.nombre_completo}
+                    {solicitud.empleado?.nombre_completo || [solicitud.empleado?.nombre, solicitud.empleado?.apellidos].filter(Boolean).join(' ')}
                   </h3>
                   {isAdmin && solicitud.empleado?.oficinas && (
                     <p className="text-xs text-neutral-600">{solicitud.empleado.oficinas.nombre}</p>

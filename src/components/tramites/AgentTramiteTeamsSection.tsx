@@ -26,6 +26,14 @@ function teamLabel(team: TramiteTeamOption) {
   return team.nombre || team.id;
 }
 
+function normalizeTeamCategory(value: string | null | undefined) {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
 export function AgentTramiteTeamsSection({
   userId,
   selectedIds,
@@ -85,9 +93,14 @@ export function AgentTramiteTeamsSection({
 
   const toggleTeam = (teamId: string) => {
     if (disabled) return;
-    const next = selectedIds.includes(teamId)
-      ? selectedIds.filter((id) => id !== teamId)
-      : [...selectedIds, teamId];
+    const team = teams.find((item) => item.id === teamId);
+    const categoryKey = normalizeTeamCategory(team?.area_categoria);
+    const idsInCategory = new Set(
+      teams
+        .filter((item) => normalizeTeamCategory(item.area_categoria) === categoryKey)
+        .map((item) => item.id),
+    );
+    const next = [...selectedIds.filter((id) => !idsInCategory.has(id)), teamId];
     onSelectedIdsChange(next);
   };
 
@@ -110,7 +123,7 @@ export function AgentTramiteTeamsSection({
           <div className="min-w-0">
             <p className="text-sm font-semibold text-neutral-900 dark:text-white">Asignación de equipos de trámites</p>
             <p className="text-xs text-neutral-600 dark:text-white/60 mt-0.5">
-              El agente debe tener al menos un equipo en cada categoría activa. Puedes elegir varios por categoría.
+              Selecciona el equipo que atenderá los trámites del agente en cada categoría. El agente no será miembro de esos equipos.
             </p>
           </div>
         </div>
@@ -141,7 +154,7 @@ export function AgentTramiteTeamsSection({
                       </span>
                     </div>
                     <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
-                      Selecciona al menos 1 equipo de esta categoría.
+                      Selecciona 1 equipo de esta categoría.
                     </p>
                   </div>
                   {hasSelection ? (
@@ -168,7 +181,8 @@ export function AgentTramiteTeamsSection({
                         }`}
                       >
                         <input
-                          type="checkbox"
+                          type="radio"
+                          name={`tramite-team-${category.key}`}
                           checked={checked}
                           onChange={() => toggleTeam(team.id)}
                           disabled={disabled}

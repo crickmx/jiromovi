@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Users, Phone, Mail, Wallet, X, LayoutGrid, List, Eye, UserPlus, ChevronDown, BadgeCheck, Clock, Ban, Wifi, WifiOff, CircleCheck as CheckCircle, Pencil, Database, Trash2, TriangleAlert as AlertTriangle, Loader as Loader2, User } from 'lucide-react';
+import { Search, Plus, Users, Phone, Mail, Wallet, X, LayoutGrid, List, Eye, UserPlus, ChevronDown, BadgeCheck, Clock, Ban, Wifi, WifiOff, CircleCheck as CheckCircle, Pencil, Database, Trash2, TriangleAlert as AlertTriangle, Loader as Loader2, User, Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
@@ -434,6 +434,9 @@ function TableView({
               <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 dark:text-white/50 uppercase tracking-wider">Estatus</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 dark:text-white/50 uppercase tracking-wider hidden md:table-cell">Seguwallet</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 dark:text-white/50 uppercase tracking-wider hidden lg:table-cell">SICAS</th>
+              {isAdmin && (
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 dark:text-white/50 uppercase tracking-wider hidden xl:table-cell">Agente / Oficina</th>
+              )}
               <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 dark:text-white/50 uppercase tracking-wider hidden lg:table-cell">Creado</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500 dark:text-white/50 uppercase tracking-wider">Acciones</th>
             </tr>
@@ -481,6 +484,20 @@ function TableView({
                     <span className="text-xs text-neutral-400 dark:text-white/30">—</span>
                   )}
                 </td>
+                {isAdmin && (
+                  <td className="px-4 py-3 hidden xl:table-cell">
+                    <div className="space-y-1 min-w-[150px]">
+                      <span className="text-xs font-medium text-neutral-700 dark:text-white/70 flex items-center gap-1.5">
+                        <User className="h-3 w-3 text-neutral-400" />
+                        {c.agente_nombre || 'Sin agente'}
+                      </span>
+                      <span className="text-[11px] text-neutral-500 dark:text-white/45 flex items-center gap-1.5">
+                        <Building2 className="h-3 w-3 text-neutral-400" />
+                        {c.oficina_nombre || 'Sin oficina'}
+                      </span>
+                    </div>
+                  </td>
+                )}
                 <td className="px-4 py-3 hidden lg:table-cell">
                   <span className="text-xs text-neutral-400 dark:text-white/40">{timeSince(c.fecha_creacion)}</span>
                 </td>
@@ -611,6 +628,21 @@ function CardsView({
               </span>
             )}
           </div>
+
+          {isAdmin && (
+            <div className="mb-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/60 px-3 py-2 space-y-1">
+              <div className="flex items-center gap-2 text-xs text-neutral-700 dark:text-white/70">
+                <User className="h-3 w-3 text-neutral-400" />
+                <span className="text-neutral-400 dark:text-white/40">Agente</span>
+                <span className="font-medium truncate">{c.agente_nombre || 'Sin agente'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-white/60">
+                <Building2 className="h-3 w-3 text-neutral-400" />
+                <span className="text-neutral-400 dark:text-white/40">Oficina</span>
+                <span className="truncate">{c.oficina_nombre || 'Sin oficina'}</span>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between pt-3 border-t border-neutral-100 dark:border-neutral-800">
             <span className="text-[10px] text-neutral-400 dark:text-white/40">

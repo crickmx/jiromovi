@@ -473,9 +473,9 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                           </div>
 
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            {tipo.enviar_notificacion && <Bell className="w-3.5 h-3.5 text-amber-500" title="Push / campanita" />}
-                            {tipo.enviar_whatsapp && <MessageCircle className="w-3.5 h-3.5 text-emerald-500" title="WhatsApp" />}
-                            {tipo.enviar_correo && <Mail className="w-3.5 h-3.5 text-blue-500" title="Correo" />}
+                            {tipo.enviar_notificacion && <Bell className="w-3.5 h-3.5 text-amber-500" />}
+                            {tipo.enviar_whatsapp && <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />}
+                            {tipo.enviar_correo && <Mail className="w-3.5 h-3.5 text-blue-500" />}
                           </div>
 
                           <button

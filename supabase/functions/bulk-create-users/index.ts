@@ -446,19 +446,31 @@ Deno.serve(async (req: Request) => {
             throw new Error('Uno o más equipos seleccionados no están activos');
           }
 
-          const memberships = selectedTramiteIds.map((grupoId) => ({
-            grupo_id: grupoId,
-            usuario_id: authUserId,
-          }));
-
-          const { error: membershipError } = await supabase
-            .from('tramites_grupos_miembros')
-            .insert(memberships);
-
-          if (membershipError) {
+          const selectedGroups = activeList.filter((group) => selectedSet.has(group.id));
+          const selectedCategories = new Set(selectedGroups.map((group) => normalizeCategory(group.area_categoria)));
+          if (selectedCategories.size !== selectedGroups.length) {
             await supabase.from('usuarios').delete().eq('id', authUserId);
             await supabase.auth.admin.deleteUser(authUserId);
-            throw new Error(`No se pudieron guardar los equipos de trámite: ${membershipError.message}`);
+            throw new Error('Selecciona solo un equipo por categoría de trámite');
+          }
+
+          // Los equipos atienden al agente; el agente no pertenece a ellos.
+          const assignments = selectedGroups.map((group) => ({
+            grupo_id: group.id,
+            usuario_id: authUserId,
+            area: String(group.area_categoria || '').trim(),
+            activo: true,
+            created_by: currentUser.id,
+          }));
+
+          const { error: assignmentError } = await supabase
+            .from('tramites_grupos_reglas')
+            .insert(assignments);
+
+          if (assignmentError) {
+            await supabase.from('usuarios').delete().eq('id', authUserId);
+            await supabase.auth.admin.deleteUser(authUserId);
+            throw new Error(`No se pudieron guardar los equipos que atienden al agente: ${assignmentError.message}`);
           }
         }
 

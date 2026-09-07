@@ -52,7 +52,7 @@ export default function TablerosSeccion() {
     if (!nombreNuevoTablero.trim()) return;
 
     try {
-      await crearTablero(nombreNuevoTablero, usuario?.oficina_id);
+      await crearTablero(nombreNuevoTablero, usuario?.oficina_id ?? undefined);
       setNombreNuevoTablero('');
       setCreandoTablero(false);
       await cargarTableros();

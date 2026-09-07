@@ -326,7 +326,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo, onBack }: ChatMess
     scrollToBottom();
 
     try {
-      let fileData = null;
+      let fileData: { archivo_url: string; archivo_nombre: string; archivo_tipo: string; archivo_tamano: number; tipo: string } | null = null;
 
       if (fileToSend) {
         console.log('[ChatMessages] Subiendo archivo adjunto...');

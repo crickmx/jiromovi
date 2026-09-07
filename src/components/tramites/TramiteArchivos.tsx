@@ -234,7 +234,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
           eliminado_at: null,
           categoria_id: categoriaId,
           categoria: categoriaObj ? { nombre: categoriaObj.nombre } : null,
-          usuarios: { nombre_completo: usuario.nombre_completo },
+          usuarios: { nombre_completo: String(usuario.nombre_completo ?? '') } as any,
         };
 
         tempFiles.push(optimisticFile);
@@ -292,7 +292,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       }
 
       if (uploadedFileIds.length > 0) {
-        dispatchDocumentNotification(uploadedFileIds, files);
+        dispatchDocumentNotification(uploadedFileIds, items.map(i => i.file));
       }
     } catch (err: any) {
       console.error('Error uploading file:', err);

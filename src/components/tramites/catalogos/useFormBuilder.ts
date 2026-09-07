@@ -206,7 +206,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
       setCampos(prev => [...prev, nuevo]);
       setShowAddField(false);
       startEditCampo(nuevo);
-      logHistorial(tipoId, 'campo_agregado', { campo_label: nuevo.label, campo_tipo: nuevo.tipo, campo_key: nuevo.key }, usuario?.id, usuario?.nombre_completo);
+      logHistorial(tipoId, 'campo_agregado', { campo_label: nuevo.label, campo_tipo: nuevo.tipo, campo_key: nuevo.key }, usuario?.id, usuario?.nombre_completo ?? null);
     }
   };
 

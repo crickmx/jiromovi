@@ -39,7 +39,7 @@ export function usePermisos(tipoId: string, usuarioId: string | undefined, showT
         miembros: (miembrosData || [])
           .filter(m => m.grupo_id === e.id)
           .map(m => {
-            const u = m.usuarios as { id: string; nombre_completo: string } | null;
+            const u = (m.usuarios as { id: string; nombre_completo: string }[] | null)?.[0];
             return { usuario_id: m.usuario_id, nombre_completo: u?.nombre_completo || '' };
           })
           .filter(m => m.nombre_completo),
@@ -69,7 +69,10 @@ export function usePermisos(tipoId: string, usuarioId: string | undefined, showT
     const vistosIds = new Set<string>();
     for (const eq of equiposConMiembros) {
       for (const m of eq.miembros) {
-        if (!vistosIds.has(m.usuario_id)) { todosLosUsuarios.push(m); vistosIds.add(m.usuario_id); }
+        if (!vistosIds.has(m.usuario_id)) {
+          todosLosUsuarios.push({ user_id: m.usuario_id, nombre_completo: m.nombre_completo });
+          vistosIds.add(m.usuario_id);
+        }
       }
     }
 

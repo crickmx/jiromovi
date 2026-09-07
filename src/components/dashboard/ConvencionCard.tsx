@@ -1,4 +1,4 @@
-import { Award, Flag, Star, Zap } from 'lucide-react';
+import { Award, Flag, Star, Zap, Palmtree, PlaneTakeoff, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMiResumen, type ConvencionStep } from '@/lib/useMiResumen';
 

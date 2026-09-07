@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { checkAndHandleVersionChange, getAppVersion } from './appVersion';
+import { getAppVersion } from './appVersion';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const VERSION_URL = '/version.json';
@@ -44,8 +44,6 @@ export function useAppUpdate() {
     if (!remote) return;
 
     if (remote.version === currentVersion) {
-      // Coinciden: limpia la marca para permitir una futura auto-recarga real.
-      try { sessionStorage.removeItem(RELOADED_FOR_KEY); } catch { /* ignore */ }
       return;
     }
 

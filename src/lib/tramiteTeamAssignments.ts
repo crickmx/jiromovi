@@ -102,45 +102,91 @@ export async function loadActiveTramiteTeams(): Promise<TramiteTeamOption[]> {
 
 export async function loadUserTramiteTeamIds(userId: string): Promise<string[]> {
   const { data, error } = await supabase
-    .from('tramites_grupos_miembros')
+    .from('tramites_grupos_reglas')
     .select('grupo_id')
-    .eq('usuario_id', userId);
+    .eq('usuario_id', userId)
+    .eq('activo', true);
 
   if (error) throw error;
   return Array.from(new Set((data ?? []).map((row) => row.grupo_id as string)));
 }
 
-export async function syncUserTramiteTeamMemberships(userId: string, selectedIds: string[]) {
+/**
+ * Guarda los equipos que ATIENDEN al agente.
+ *
+ * Un agente nunca es miembro operativo del equipo. La relación correcta vive
+ * en tramites_grupos_reglas (agente + área -> equipo), no en
+ * tramites_grupos_miembros (líderes/ejecutivos que trabajan dentro del equipo).
+ */
+export async function syncUserTramiteTeamAssignments(userId: string, selectedIds: string[]) {
   const uniqueIds = Array.from(new Set(selectedIds.filter(Boolean)));
+  const { data: selectedTeams, error: teamsError } = await supabase
+    .from('tramites_grupos_visualizacion')
+    .select('id, area_categoria')
+    .in('id', uniqueIds)
+    .eq('activo', true);
+
+  if (teamsError) throw teamsError;
+  if ((selectedTeams ?? []).length !== uniqueIds.length) {
+    throw new Error('Uno o más equipos seleccionados no existen o están inactivos');
+  }
+
+  const byCategory = new Map<string, { id: string; area: string }>();
+  for (const team of selectedTeams ?? []) {
+    const area = String(team.area_categoria ?? '').trim();
+    if (!area) throw new Error('Todos los equipos seleccionados deben tener una categoría');
+    const key = normalizeCategory(area);
+    if (byCategory.has(key)) {
+      throw new Error(`Selecciona solo un equipo para la categoría ${getTeamCategoryLabel(area)}`);
+    }
+    byCategory.set(key, { id: team.id as string, area });
+  }
+
   const { data: existingRows, error: existingError } = await supabase
-    .from('tramites_grupos_miembros')
-    .select('grupo_id')
+    .from('tramites_grupos_reglas')
+    .select('id, grupo_id, area, ejecutivo_id')
     .eq('usuario_id', userId);
 
   if (existingError) throw existingError;
 
-  const existingIds = Array.from(new Set((existingRows ?? []).map((row) => row.grupo_id as string)));
-  const existingSet = new Set(existingIds);
-  const selectedSet = new Set(uniqueIds);
-
-  const toAdd = uniqueIds.filter((id) => !existingSet.has(id));
-  const toRemove = existingIds.filter((id) => !selectedSet.has(id));
-
-  if (toAdd.length > 0) {
-    const { error: insertError } = await supabase
-      .from('tramites_grupos_miembros')
-      .insert(toAdd.map((grupoId) => ({ grupo_id: grupoId, usuario_id: userId })));
-
-    if (insertError) throw insertError;
+  for (const [categoryKey, selection] of byCategory) {
+    const existing = (existingRows ?? []).find((row) => normalizeCategory(row.area) === categoryKey);
+    if (existing) {
+      const groupChanged = existing.grupo_id !== selection.id;
+      const { error } = await supabase
+        .from('tramites_grupos_reglas')
+        .update({
+          grupo_id: selection.id,
+          area: selection.area,
+          activo: true,
+          ...(groupChanged ? { ejecutivo_id: null } : {}),
+        })
+        .eq('id', existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('tramites_grupos_reglas')
+        .insert({ usuario_id: userId, grupo_id: selection.id, area: selection.area, activo: true });
+      if (error) throw error;
+    }
   }
 
-  if (toRemove.length > 0) {
-    const { error: deleteError } = await supabase
-      .from('tramites_grupos_miembros')
-      .delete()
-      .eq('usuario_id', userId)
-      .in('grupo_id', toRemove);
-
-    if (deleteError) throw deleteError;
+  const selectedCategories = new Set(byCategory.keys());
+  const staleIds = (existingRows ?? [])
+    .filter((row) => !selectedCategories.has(normalizeCategory(row.area)))
+    .map((row) => row.id as string);
+  if (staleIds.length > 0) {
+    const { error } = await supabase
+      .from('tramites_grupos_reglas')
+      .update({ activo: false })
+      .in('id', staleIds);
+    if (error) throw error;
   }
+
+  // Limpia cualquier pertenencia incorrecta creada por versiones anteriores.
+  const { error: membershipError } = await supabase
+    .from('tramites_grupos_miembros')
+    .delete()
+    .eq('usuario_id', userId);
+  if (membershipError) throw membershipError;
 }

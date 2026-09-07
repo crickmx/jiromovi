@@ -64,6 +64,7 @@ export function UsuariosPendientes() {
         apellidos: usuario.apellidos,
         email: usuario.email_laboral || usuario.email_personal || '',
         telefono: usuario.telefono_movil || usuario.celular_personal || undefined,
+        userId: usuario.id,
       });
 
       await loadUsuariosPendientes();

@@ -48,6 +48,7 @@ export interface Database {
           es_espacio_jiro: boolean
           updated_at: string
           logo_url: string | null
+          accent_color: string | null
           ubicacion_lat: number | null
           ubicacion_lng: number | null
           ubicacion_updated_at: string | null
@@ -67,6 +68,7 @@ export interface Database {
           es_espacio_jiro?: boolean
           updated_at?: string
           logo_url?: string | null
+          accent_color?: string | null
           ubicacion_lat?: number | null
           ubicacion_lng?: number | null
           ubicacion_updated_at?: string | null
@@ -86,9 +88,203 @@ export interface Database {
           es_espacio_jiro?: boolean
           updated_at?: string
           logo_url?: string | null
+          accent_color?: string | null
           ubicacion_lat?: number | null
           ubicacion_lng?: number | null
           ubicacion_updated_at?: string | null
+        }
+      }
+      areas: {
+        Row: {
+          id: string
+          nombre: string
+          oficina_id: string | null
+          activo: boolean
+          detalles: string | null
+          disponibilidad_semanal: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nombre: string
+          oficina_id?: string | null
+          activo?: boolean
+          detalles?: string | null
+          disponibilidad_semanal?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nombre?: string
+          oficina_id?: string | null
+          activo?: boolean
+          detalles?: string | null
+          disponibilidad_semanal?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      reservas_espacio: {
+        Row: {
+          id: string
+          area_id: string
+          usuario_id: string
+          oficina_id: string | null
+          fecha: string | null
+          hora_inicio: string | null
+          hora_fin: string | null
+          notas: string | null
+          comentarios_gerente: string | null
+          comentarios_administrador: string | null
+          fecha_inicio: string
+          fecha_fin: string
+          estado: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          area_id: string
+          usuario_id: string
+          oficina_id?: string | null
+          fecha?: string | null
+          hora_inicio?: string | null
+          hora_fin?: string | null
+          notas?: string | null
+          comentarios_gerente?: string | null
+          comentarios_administrador?: string | null
+          fecha_inicio: string
+          fecha_fin: string
+          estado?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          area_id?: string
+          usuario_id?: string
+          oficina_id?: string | null
+          fecha?: string | null
+          hora_inicio?: string | null
+          hora_fin?: string | null
+          notas?: string | null
+          comentarios_gerente?: string | null
+          comentarios_administrador?: string | null
+          fecha_inicio?: string
+          fecha_fin?: string
+          estado?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      solicitudes_vacaciones: {
+        Row: {
+          id: string
+          usuario_id: string
+          fecha_inicio: string
+          fecha_fin: string
+          dias_solicitados: number
+          motivo: string | null
+          comentarios_gerente: string | null
+          comentarios_administrador: string | null
+          estado: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          usuario_id: string
+          fecha_inicio: string
+          fecha_fin: string
+          dias_solicitados?: number
+          motivo?: string | null
+          comentarios_gerente?: string | null
+          comentarios_administrador?: string | null
+          estado?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          usuario_id?: string
+          fecha_inicio?: string
+          fecha_fin?: string
+          dias_solicitados?: number
+          motivo?: string | null
+          comentarios_gerente?: string | null
+          comentarios_administrador?: string | null
+          estado?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      campos_personalizados_oficinas: {
+        Row: {
+          id: string
+          nombre_campo: string
+          etiqueta: string
+          tipo_campo: 'text' | 'number' | 'date' | 'dropdown' | 'textarea' | 'email' | 'tel' | 'url'
+          opciones: Json
+          orden: number
+          activo: boolean
+          editable: boolean
+          visible: boolean
+          requerido: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          nombre_campo: string
+          etiqueta: string
+          tipo_campo: 'text' | 'number' | 'date' | 'dropdown' | 'textarea' | 'email' | 'tel' | 'url'
+          opciones?: Json
+          orden?: number
+          activo?: boolean
+          editable?: boolean
+          visible?: boolean
+          requerido?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          nombre_campo?: string
+          etiqueta?: string
+          tipo_campo?: 'text' | 'number' | 'date' | 'dropdown' | 'textarea' | 'email' | 'tel' | 'url'
+          opciones?: Json
+          orden?: number
+          activo?: boolean
+          editable?: boolean
+          visible?: boolean
+          requerido?: boolean
+          created_at?: string
+        }
+      }
+      valores_campos_oficinas: {
+        Row: {
+          id: string
+          oficina_id: string
+          campo_id: string
+          valor: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          oficina_id: string
+          campo_id: string
+          valor?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          oficina_id?: string
+          campo_id?: string
+          valor?: string
+          created_at?: string
+          updated_at?: string
         }
       }
       roles: {
@@ -160,6 +356,14 @@ export interface Database {
           mkt_premium_fecha_pago: string | null
           mkt_premium_plan: 'mensual' | 'anual' | null
           mkt_premium_metodo_pago: 'deposito_jiro' | 'bono_anual' | 'comisiones' | null
+          nombre_completo?: string | null
+          nombre_publico?: string | null
+          web_slug?: string | null
+          dias_vacaciones_disponibles?: number | null
+          equipo_computo?: string | null
+          equipo_celular?: string | null
+          ubicacion_metodo?: 'manual' | 'oficina' | 'gps' | null
+          ubicacion_updated_at?: string | null
         }
         Insert: {
           id: string
@@ -233,6 +437,9 @@ export interface Database {
           opciones: Json
           orden: number
           activo: boolean
+          editable: boolean
+          visible: boolean
+          requerido: boolean
           created_at: string
         }
         Insert: {
@@ -395,6 +602,114 @@ export interface Database {
           sender_name?: string
           sender_id?: string | null
           message?: string
+          created_at?: string
+        }
+      }
+      education_sesiones_programadas: {
+        Row: {
+          id: string
+          titulo: string
+          descripcion: string | null
+          fecha: string | null
+          hora: string | null
+          publicada: boolean
+          estatus: string | null
+          compania: string | null
+          link_acceso: string | null
+          clave_acceso: string | null
+          minutos_anticipacion: number | null
+          duracion_minutos: number | null
+          created_at: string
+          updated_at: string
+          registros?: { count: number }[]
+        }
+        Insert: {
+          id?: string
+          titulo: string
+          descripcion?: string | null
+          fecha?: string | null
+          hora?: string | null
+          publicada?: boolean
+          estatus?: string | null
+          compania?: string | null
+          link_acceso?: string | null
+          clave_acceso?: string | null
+          minutos_anticipacion?: number | null
+          duracion_minutos?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          titulo?: string
+          descripcion?: string | null
+          fecha?: string | null
+          hora?: string | null
+          publicada?: boolean
+          estatus?: string | null
+          compania?: string | null
+          link_acceso?: string | null
+          clave_acceso?: string | null
+          minutos_anticipacion?: number | null
+          duracion_minutos?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      education_sesiones_registro: {
+        Row: {
+          id: string
+          sesion_id: string
+          usuario_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          sesion_id: string
+          usuario_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          sesion_id?: string
+          usuario_id?: string
+          created_at?: string
+        }
+      }
+      contact_center_smart_assistant_config: {
+        Row: {
+          agent_user_id: string
+          smart_assistant_enabled: boolean
+          smart_assistant_status: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Insert: {
+          agent_user_id: string
+          smart_assistant_enabled?: boolean
+          smart_assistant_status?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_user_id?: string
+          smart_assistant_enabled?: boolean
+          smart_assistant_status?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      whatsapp_form_sends_log: {
+        Row: {
+          id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
           created_at?: string
         }
       }

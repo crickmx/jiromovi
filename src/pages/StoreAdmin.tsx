@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon, GripVertical } from 'lucide-react';
+import { Store, Package, Plus, Pencil as Edit, Trash2, Eye, EyeOff, X, FolderOpen, DollarSign, Tag, Download, Upload, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Wrench, Users, Zap, Image as ImageIcon, GripVertical, BookOpen } from 'lucide-react';
+import { CatalogosAdminPanel } from '../movistore/CatalogosAdminPanel';
+import { LogosAsesoresPanel } from '../components/logos/LogosAsesoresPanel';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   obtenerTodosProductos,
@@ -27,7 +29,6 @@ import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProdu
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
 import { BaseModal } from '../components/BaseModal';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
-import { obtenerTodosLogosAsesores, type LogoGuardadoConUsuario } from '../lib/logoUtils';
 
 export default function StoreAdmin() {
   const { usuario } = useAuth();
@@ -35,7 +36,7 @@ export default function StoreAdmin() {
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [loading, setLoading] = useState(true);
-  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias' | 'equipos' | 'triggers' | 'logos'>('productos');
+  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias' | 'equipos' | 'triggers' | 'logos' | 'catalogos'>('productos');
 
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [productoEditando, setProductoEditando] = useState<StoreProducto | null>(null);
@@ -44,6 +45,22 @@ export default function StoreAdmin() {
 
   // Inline edit en tabla de productos
   const [inlineEdit, setInlineEdit] = useState<{ id: string; campo: 'precio' | 'stock'; valor: string } | null>(null);
+
+  // Catálogos — asignación desde la lista de productos
+  const [todosCatalogos, setTodosCatalogos] = useState<{ id: string; nombre: string }[]>([]);
+  const [membresiaProducto, setMembresiaProducto] = useState<Record<string, string[]>>({}); // producto_id → catalog_ids[]
+  const [popoverCatalogos, setPopoverCatalogos] = useState<string | null>(null); // producto_id con popover abierto
+
+  // Cerrar popover de catálogos al hacer clic fuera
+  useEffect(() => {
+    if (!popoverCatalogos) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-catalogo-popover]')) setPopoverCatalogos(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [popoverCatalogos]);
 
   // Drag & drop para reordenar productos
   const dragIndex = useRef<number | null>(null);
@@ -74,6 +91,7 @@ export default function StoreAdmin() {
       const tieneAcceso = tienePermisoAdminEnModulo(usuario, MODULOS.STORE) || await tieneAccesoEquipoStore(usuario.id);
       if (!tieneAcceso) { navigate('/store'); return; }
       cargarDatos();
+      cargarCatalogos();
     })();
   }, [usuario]);
 
@@ -90,6 +108,37 @@ export default function StoreAdmin() {
       console.error('Error cargando datos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cargarCatalogos = async () => {
+    const [{ data: cats }, { data: membs }] = await Promise.all([
+      supabase.from('store_catalogos').select('id, nombre').order('nombre'),
+      supabase.from('store_catalogo_productos').select('catalogo_id, producto_id'),
+    ]);
+    setTodosCatalogos(cats ?? []);
+    const map: Record<string, string[]> = {};
+    for (const m of membs ?? []) {
+      if (!map[m.producto_id]) map[m.producto_id] = [];
+      map[m.producto_id].push(m.catalogo_id);
+    }
+    setMembresiaProducto(map);
+  };
+
+  const toggleMembresiaCatalogo = async (productoId: string, catalogoId: string, pertenece: boolean) => {
+    if (pertenece) {
+      await supabase.from('store_catalogo_productos').delete()
+        .eq('catalogo_id', catalogoId).eq('producto_id', productoId);
+      setMembresiaProducto(prev => ({
+        ...prev,
+        [productoId]: (prev[productoId] ?? []).filter(id => id !== catalogoId),
+      }));
+    } else {
+      await supabase.from('store_catalogo_productos').insert({ catalogo_id: catalogoId, producto_id: productoId, orden: 0 });
+      setMembresiaProducto(prev => ({
+        ...prev,
+        [productoId]: [...(prev[productoId] ?? []), catalogoId],
+      }));
     }
   };
 
@@ -325,6 +374,18 @@ export default function StoreAdmin() {
             <ImageIcon className="w-5 h-5 inline mr-2" />
             Logos de asesores
           </button>
+
+          <button
+            onClick={() => setVistaActual('catalogos')}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              vistaActual === 'catalogos'
+                ? 'bg-accent text-white'
+                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
+            }`}
+          >
+            <BookOpen className="w-5 h-5 inline mr-2" />
+            Catálogos
+          </button>
         </div>
 
         {vistaActual === 'productos' ? (
@@ -415,6 +476,7 @@ export default function StoreAdmin() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Margen</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Disponibilidad</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Catálogos</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">Acciones</th>
                     </tr>
                   </thead>
@@ -554,6 +616,53 @@ export default function StoreAdmin() {
                             {producto.activo ? 'Activo' : 'Inactivo'}
                           </button>
                         </td>
+                        <td className="px-6 py-4 relative" data-catalogo-popover>
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {(membresiaProducto[producto.id] ?? []).map(cid => {
+                              const cat = todosCatalogos.find(c => c.id === cid);
+                              return cat ? (
+                                <span key={cid} className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+                                  {cat.nombre}
+                                </span>
+                              ) : null;
+                            })}
+                            {todosCatalogos.length > 0 && (
+                              <button
+                                onClick={() => setPopoverCatalogos(popoverCatalogos === producto.id ? null : producto.id)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full border border-neutral-200 dark:border-white/10 text-neutral-500 dark:text-white/50 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                                title="Asignar catálogos"
+                              >
+                                <BookOpen className="w-3 h-3" />
+                                {(membresiaProducto[producto.id] ?? []).length === 0 ? 'Asignar' : '+'}
+                              </button>
+                            )}
+                          </div>
+                          {popoverCatalogos === producto.id && (
+                            <div className="absolute z-50 left-0 mt-1 w-52 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-xl shadow-lg p-2">
+                              <p className="text-[10px] font-semibold text-neutral-400 dark:text-white/40 uppercase px-2 pb-1">Catálogos</p>
+                              {todosCatalogos.map(cat => {
+                                const pertenece = (membresiaProducto[producto.id] ?? []).includes(cat.id);
+                                return (
+                                  <label key={cat.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={pertenece}
+                                      onChange={() => toggleMembresiaCatalogo(producto.id, cat.id, pertenece)}
+                                      className="accent-blue-600"
+                                    />
+                                    <span className="text-sm text-neutral-800 dark:text-white">{cat.nombre}</span>
+                                  </label>
+                                );
+                              })}
+                              <button
+                                onClick={() => setPopoverCatalogos(null)}
+                                className="w-full mt-1 text-xs text-neutral-400 hover:text-neutral-600 py-1"
+                              >
+                                Cerrar
+                              </button>
+                            </div>
+                          )}
+                        </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center gap-2">
                             <button
@@ -638,6 +747,8 @@ export default function StoreAdmin() {
           <EquiposAccesoPanel />
         ) : vistaActual === 'logos' ? (
           <LogosAsesoresPanel />
+        ) : vistaActual === 'catalogos' ? (
+          <CatalogosAdminPanel />
         ) : (
           <TriggersPanel />
         )}
@@ -1611,50 +1722,7 @@ const FORMA_PAGO_OC_OPCIONES = ['Contado', '2 Parcialidades', '12 Meses'];
 interface StoreEstatusRow { id: string; nombre: string; }
 interface TicketTipoRow { id: string; nombre: string; value: string; }
 
-function LogosAsesoresPanel() {
-  const [logos, setLogos] = useState<LogoGuardadoConUsuario[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    obtenerTodosLogosAsesores().then(data => {
-      setLogos(data);
-      setLoading(false);
-    });
-  }, []);
-
-  if (loading) return <div className="text-center py-12 text-neutral-500">Cargando logos...</div>;
-
-  return (
-    <div>
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Logos subidos por asesores</h2>
-        <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
-          Todos los logos que los asesores han subido al personalizar productos de la tienda.
-        </p>
-      </div>
-      {logos.length === 0 ? (
-        <div className="text-sm text-neutral-400">Aún no hay logos subidos.</div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {logos.map(logo => (
-            <div key={logo.id} className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-3">
-              <img src={logo.url} alt={logo.nombre} className="w-full h-24 object-contain rounded-lg bg-neutral-50 dark:bg-white/5 mb-2" />
-              <p className="text-sm font-medium text-neutral-900 dark:text-white truncate" title={logo.usuario_nombre}>{logo.usuario_nombre}</p>
-              <p className="text-xs text-neutral-500 dark:text-white/50 truncate">{new Date(logo.created_at).toLocaleDateString('es-MX')}</p>
-              <a
-                href={logo.url}
-                download={`${logo.usuario_nombre}-${logo.nombre}`}
-                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent-hover transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" /> Descargar
-              </a>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// LogosAsesoresPanel was moved to src/components/logos/LogosAsesoresPanel.tsx
 
 function TriggersPanel() {
   const [triggers, setTriggers] = useState<StoreTrigger[]>([]);

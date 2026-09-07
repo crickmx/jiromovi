@@ -1,22 +1,16 @@
-export type TipoContacto = 'Persona' | 'Empresa';
+export type TipoContacto = 'Persona' | 'Empresa' | string;
 
-export type EstatusContacto =
-  | 'Prospecto'
-  | 'Cliente';
+export type EstatusContacto = 'Prospecto' | 'Cliente' | string;
 
-export type EstatusCotizacion =
-  | 'Nueva'
-  | 'Pendiente de Seguimiento'
-  | 'Aprobada'
-  | 'Rechazada/Perdida';
+export type EstatusCotizacion = string;
 
-export type TipoActividad = 'Llamada' | 'Email' | 'Reunión' | 'Otro';
+export type TipoActividad = string;
 
-export type EstatusTarea = 'Pendiente' | 'En Proceso' | 'Completada';
+export type EstatusTarea = string;
 
-export type PrioridadTarea = 'Alta' | 'Media' | 'Baja';
+export type PrioridadTarea = string;
 
-export type TipoCampoPersonalizado = 'Texto' | 'Número' | 'Fecha' | 'Selector';
+export type TipoCampoPersonalizado = string;
 
 export interface CRMContacto {
   id: string;
@@ -73,6 +67,8 @@ export interface CRMTarea {
   contacto_id?: string;
   board_id?: string | null;
   descripcion: string;
+  titulo?: string;
+  estado?: string;
   tipo_actividad: TipoActividad;
   fecha_vencimiento: string;
   estatus: EstatusTarea;

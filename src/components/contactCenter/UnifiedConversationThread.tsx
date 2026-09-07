@@ -121,11 +121,11 @@ function RichMessageBubble({
   onRetry?: () => void;
 }) {
   const type = msg.messageType;
-  const raw = msg.raw as Record<string, unknown> | undefined;
+  const raw = msg.raw as Record<string, any> | undefined;
   // For wa_personal messages the raw record has all the original columns
-  const mediaDownloadStatus = (raw?.media_download_status as string) || null;
-  const mediaCaption = (raw?.media_caption as string) || null;
-  const metadata = (raw?.metadata as Record<string, unknown>) || {};
+  const mediaDownloadStatus = raw?.media_download_status as string | null | undefined;
+  const mediaCaption = raw?.media_caption as string | null | undefined;
+  const metadata = (raw?.metadata as Record<string, any>) || {};
 
   const textColor = isOut ? 'text-white' : 'text-neutral-800 dark:text-white/80';
   const dimColor = isOut ? 'text-white/60' : 'text-neutral-400';
@@ -240,8 +240,8 @@ function RichMessageBubble({
                 <MapPin className="w-4 h-4 text-red-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={cn('text-xs font-medium', textColor)}>{(metadata.name as string) || msg.locationLabel || 'Ubicacion'}</p>
-                {metadata.address && <p className={cn('text-[10px] truncate', dimColor)}>{metadata.address as string}</p>}
+                <p className={cn('text-xs font-medium', textColor)}>{String(metadata.name ?? msg.locationLabel ?? 'Ubicacion')}</p>
+                {metadata.address != null && <p className={cn('text-[10px] truncate', dimColor)}>{String(metadata.address)}</p>}
               </div>
             </div>
             {(msg.locationLat || metadata.latitude) && (
@@ -946,11 +946,14 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
     if (!conversation.agentUserId) return;
     await callEdgeFn('contact-center-assistant-process', { action: 'cancel_session', agent_user_id: conversation.agentUserId }).catch(() => {});
     // Disable smart assistant in DB so the webhook stops auto-creating new sessions
-    await supabase
-      .from('contact_center_smart_assistant_config')
-      .update({ smart_assistant_enabled: false, smart_assistant_status: 'inactive' })
-      .eq('agent_user_id', conversation.agentUserId)
-      .catch(() => {});
+    try {
+      await supabase
+        .from('contact_center_smart_assistant_config')
+        .update({ smart_assistant_enabled: false, smart_assistant_status: 'inactive' })
+        .eq('agent_user_id', conversation.agentUserId);
+    } catch {
+      // ignore
+    }
     setAutoMode(false);
     setAutoSession(null);
   };

@@ -5,10 +5,13 @@ const BONOS_URL = import.meta.env.VITE_BONOS_URL || 'http://localhost:8003';
 
 export interface CampaniaGroupRow {
   entity_name: string;
+  entity?: string;
   rank: number;
   prima_ponderada: number;
   avance_pct: number | null;
+  pct_meta?: number | null;
   despacho: string;
+  descripcion?: string;
   is_me: boolean;
   prev: Omit<CampaniaGroupRow, 'is_me' | 'prev' | 'next'> | null;
   next: Omit<CampaniaGroupRow, 'is_me' | 'prev' | 'next'> | null;
@@ -17,6 +20,7 @@ export interface CampaniaGroupRow {
 export interface CampaniaActiva {
   id: number;
   nombre: string;
+  descripcion?: string;
   dias_restantes: number;
   total_participantes: number;
   group_rows: CampaniaGroupRow[];

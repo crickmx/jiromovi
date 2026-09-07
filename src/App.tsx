@@ -35,7 +35,7 @@ const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
 const AgendaPublica = lazy(() => import('./pages/AgendaPublica'));
 
 // ── Seguros Education (lazy) ──────────────────────────────────────────────
-const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEducationLanding').then(m => ({ default: m.default || m.SegurosEducationLanding })));
+const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEducationLanding'));
 
 // ── Seguros Express (lazy) ────────────────────────────────────────────────
 const SegurosExpressLanding = lazy(() => import('./seguros-express/SegurosExpressLanding'));
@@ -44,6 +44,7 @@ const SegurosExpressCotizar = lazy(() => import('./seguros-express/CotizarPage')
 // ── MOVI Tienda pública (lazy) ────────────────────────────────────────────
 const TiendaHome     = lazy(() => import('./movistore/TiendaHome').then(m => ({ default: m.TiendaHome })));
 const TiendaProducto = lazy(() => import('./movistore/TiendaProducto').then(m => ({ default: m.TiendaProducto })));
+const TiendaCatalogo = lazy(() => import('./movistore/TiendaCatalogo').then(m => ({ default: m.TiendaCatalogo })));
 
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
@@ -56,7 +57,7 @@ const isExpressSite    = HOST === 'seguros.express'
   || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'express');
 const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
-  || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'tienda');
+  || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
@@ -204,6 +205,7 @@ function MoviTiendaApp() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/producto/:id" element={<TiendaProducto />} />
+            <Route path="/catalogo/:slug" element={<TiendaCatalogo />} />
             <Route path="/*" element={<TiendaHome />} />
           </Routes>
         </Suspense>

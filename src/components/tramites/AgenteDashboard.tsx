@@ -79,7 +79,7 @@ export function AgenteDashboard() {
         .order('orden')
     ]);
 
-    const tickets = (ticketsRes.data || []) as TicketRecord[];
+    const tickets = (ticketsRes.data || []) as unknown as TicketRecord[];
     const allEstatus = estatusRes.data || [];
 
     const activos = tickets.filter(t => !t.cerrado_en);

@@ -8,7 +8,7 @@ type Registro = Database['public']['Tables']['education_sesiones_registro']['Row
 
 export type { SesionProgramada, SesionInsert, SesionUpdate, Registro };
 
-export interface SesionConRegistro extends SesionProgramada {
+export interface SesionConRegistro extends Omit<SesionProgramada, 'registros'> {
   total_registros?: number;
   usuario_registrado?: boolean;
   registros?: Registro[];
@@ -177,7 +177,7 @@ export function puedeIngresar(sesion: SesionProgramada): boolean {
   const tiempoAnticipacion = minutosAnticipacion * 60 * 1000;
 
   const puedeIngresarDesde = new Date(fechaHora.getTime() - tiempoAnticipacion);
-  const finSesion = new Date(fechaHora.getTime() + (sesion.duracion_minutos * 60 * 1000));
+  const finSesion = new Date(fechaHora.getTime() + ((sesion.duracion_minutos ?? 0) * 60 * 1000));
 
   return now >= puedeIngresarDesde && now <= finSesion && sesion.estatus !== 'cancelada';
 }
@@ -204,13 +204,13 @@ export function obtenerTiempoRestante(sesion: SesionProgramada): string | null {
 
 export function generarArchivoICS(sesion: SesionProgramada): string {
   const fechaHora = new Date(`${sesion.fecha}T${sesion.hora}`);
-  const fechaFin = new Date(fechaHora.getTime() + (sesion.duracion_minutos * 60 * 1000));
+  const fechaFin = new Date(fechaHora.getTime() + ((sesion.duracion_minutos ?? 0) * 60 * 1000));
 
   const formatFecha = (date: Date) => {
     return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   };
 
-  let descripcion = sesion.descripcion.replace(/\n/g, '\\n');
+  let descripcion = (sesion.descripcion ?? '').replace(/\n/g, '\\n');
   if (sesion.link_acceso) {
     descripcion += `\\n\\nEnlace de acceso: ${sesion.link_acceso}`;
   }

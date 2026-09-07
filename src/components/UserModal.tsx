@@ -19,7 +19,7 @@ import {
   matchOficinaId,
   type SicasVendorOption,
 } from '../lib/sicasVendorLink';
-import { syncUserTramiteTeamMemberships } from '../lib/tramiteTeamAssignments';
+import { syncUserTramiteTeamAssignments } from '../lib/tramiteTeamAssignments';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -528,7 +528,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         }
 
         if (mustValidateTramiteTeams) {
-          await syncUserTramiteTeamMemberships(user.id, tramiteTeamIds);
+          await syncUserTramiteTeamAssignments(user.id, tramiteTeamIds);
         }
       } else {
         // Crear usuario nuevo

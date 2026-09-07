@@ -223,7 +223,7 @@ export async function createRegistroActividad(data: {
   tipo_tramite?: string;
   activity_subtype_id: string;
   agente_usuario_id: string;
-  insurance_type_id: string;
+  insurance_type_id: string | null;
   insurers: string[];
   attending_user_id: string;
   request_datetime: string;
