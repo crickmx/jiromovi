@@ -52,6 +52,7 @@ function forceSignatureFont(html: string): string {
   return html.replace(/font-family\s*:\s*[^;}"]*/gi, `font-family:${SIGNATURE_FONT_STACK}`);
 }
 
+
 function renderTemplate(template: string, data: Record<string, string>): string {
   let result = template;
 
