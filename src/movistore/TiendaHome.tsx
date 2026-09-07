@@ -24,11 +24,13 @@ export function TiendaHome() {
   const [catalogos, setCatalogos] = useState<Catalogo[]>([]);
   const [cargando, setCargando] = useState(true);
 
+  const catActivaData = categorias.find(c => c.id === catActiva) ?? null;
+
   useEffect(() => {
     document.title = 'MOVI Tienda';
     supabase
       .from('store_categorias')
-      .select('*')
+      .select('id, nombre, descripcion, activo, created_at')
       .eq('activo', true)
       .order('nombre')
       .then(({ data }) => setCategorias(data ?? []));
@@ -141,6 +143,38 @@ export function TiendaHome() {
           </div>
         </div>
       )}
+
+      {/* Banner dinámico por categoría */}
+      <div className="max-w-5xl mx-auto px-4 pt-6 pb-2">
+        <div className="rounded-2xl px-6 py-5" style={{ background: `linear-gradient(135deg, ${BRAND}12 0%, ${BRAND}06 100%)`, border: `1px solid ${BRAND}22` }}>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: BRAND }}>
+            {catActivaData ? catActivaData.nombre : 'Catálogo MOVI Digital'}
+          </p>
+          {catActivaData ? (
+            <>
+              <h2 className="text-lg font-bold text-gray-800 leading-snug">
+                {catActivaData.descripcion
+                  ? catActivaData.descripcion
+                  : `Todo lo que necesitas en ${catActivaData.nombre}.`}
+              </h2>
+              {!catActivaData.descripcion && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Explora los productos y servicios disponibles en esta categoría.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <h2 className="text-lg font-bold text-gray-800 leading-snug">
+                Todo lo que necesitas para potenciar tu marca y operación.
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Explora artículos oficiales, servicios exclusivos y soluciones diseñadas para agentes y aliados MOVI Digital.
+              </p>
+            </>
+          )}
+        </div>
+      </div>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {cargando ? (
