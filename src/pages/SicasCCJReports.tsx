@@ -478,7 +478,7 @@ export default function SicasCCJReports() {
           </div>
 
           <div className="relative min-h-[360px] overflow-x-auto">
-            {loading && (
+            {loading && rows.length === 0 && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-neutral-900/80">
                 <div className="flex items-center gap-3 text-sm font-medium text-neutral-600 dark:text-neutral-300"><Loader2 className="h-5 w-5 animate-spin text-blue-600" /> Consultando base local…</div>
               </div>
@@ -514,11 +514,11 @@ export default function SicasCCJReports() {
           <div className="flex flex-col gap-3 border-t border-neutral-100 px-4 py-3 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:text-neutral-400">
             <span>Mostrando {firstRecord.toLocaleString('es-MX')}–{lastRecord.toLocaleString('es-MX')} de {pagination.total.toLocaleString('es-MX')}</span>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={loading || pagination.page <= 1}>
+              <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={(loading && rows.length === 0) || pagination.page <= 1}>
                 <ChevronLeft className="h-4 w-4" /> Anterior
               </Button>
               <span className="min-w-24 text-center">Página {pagination.page} de {Math.max(1, pagination.pages)}</span>
-              <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.min(pagination.pages, value + 1))} disabled={loading || pagination.page >= pagination.pages}>
+              <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.min(pagination.pages, value + 1))} disabled={(loading && rows.length === 0) || pagination.page >= pagination.pages}>
                 Siguiente <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
