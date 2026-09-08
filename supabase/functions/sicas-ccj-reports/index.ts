@@ -198,8 +198,12 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
       // La Fecha de Pago vive en la tabla de pagos (DatPagosRec), no en la del recibo
       // (VDatRecibos) -- confirmado con el log de campos crudos de SICAS y con el
       // ejemplo real de "Pago de Recibo" en WS_Ejemplos_PRIV.pdf (DatPagosRec.FPago).
-      // ChangeTable=-1 porque referencia una tabla distinta a la principal de la consulta.
-      conditions.push(condition("Fecha de pago", 3, 1, `${from}|${to}`, `${from}|${to}`, 0, -1, "DatPagosRec.FPago"));
+      // TipoFiltro=3 (Rango de) siempre truena con "Índice fuera de los límites de la
+      // matriz" en este endpoint sin importar el campo/parámetros -- parece no estar
+      // soportado aquí. Se usan 2 condiciones simples (Mayor/Menor Igual) en su lugar,
+      // que sí procesan sin crashear (nos dieron el error real que llevó al campo correcto).
+      conditions.push(condition("Fecha de pago desde", 5, 1, from, from, 0, -1, "DatPagosRec.FPago"));
+      conditions.push(condition("Fecha de pago hasta", 4, 1, to, to, 0, -1, "DatPagosRec.FPago"));
     }
     if (filters.compania) conditions.push(condition("Compañía", 0, 1, `*${filters.compania}*`, `*${filters.compania}*`, 1, 0, "VCatCias.CiaNombre"));
     if (filters.documento) conditions.push(condition("Documento", 0, 0, filters.documento, filters.documento, 1, -1, "VDatDocumentos.Documento"));
