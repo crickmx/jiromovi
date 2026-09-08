@@ -1,6 +1,48 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-08-28)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-08)
+
+### 🔴🔴 URGENTE — Sincronización SICAS CCJ "Efectuada" por Fecha de Pago (sesión 2026-09-08, EN PROGRESO)
+
+**Contexto del pedido:** Ricardo quería que la sincronización automática de "Cobranza Efectuada" (`supabase/functions/sicas-ccj-reports/index.ts`) dejara de recorrer el histórico completo de SICAS (15 años, ~181,844 registros) y en su lugar solo trajera desde el año pasado en adelante — más rápido y sin "absurdo" de resincronizar todo.
+
+**✅ Ya resuelto y en producción (main), no tocar de nuevo:**
+1. **Bug real de "0 filas"**: la sync nunca llegaba a lo reciente porque cada vez que fallaba por timeout (`Signal timed out.`), el siguiente ciclo del cron (cada 4h) reiniciaba desde la página 1 en vez de reanudar. Corregido en `ensureSync()`/`processReportRun()`: ahora reanuda corridas fallidas (`resumable?.next_page > 1`, sin filtrar por texto de error) y el regex de "error transitorio" reconoce `signal timed? ?out` además de HTTP 5xx.
+2. **`ensureSync`/`buildCacheKey` ahora incluyen los filtros** en el `cache_key` (antes ignoraba `filters` por completo) — permite que una corrida con ventana de fechas y una corrida sin filtro (histórico completo) no se pisen ni se resuman entre sí. `latestRunByCachePrefix()` nuevo, usa `LIKE 'cacheKey%'` para que también matchee las continuaciones (`cache_key:continuacion:N`).
+3. **`.npmrc` con `legacy-peer-deps=true`** — el merge de "Aula Virtual 100ms" (`99e3159c`) dejó el `package-lock.json` desincronizado de `package.json` (perdió las deps de `@100mslive/*` en el merge, "tomado de HEAD"). Regenerado el lockfile + agregado `.npmrc` para que Plesk no truene con ERESOLVE en cada deploy.
+4. **`package.json` build script** usa `node --max-old-space-size=4096 node_modules/vite/bin/vite.js build` — el chunk de `AulaVirtualSala` (~12.8MB, ya usa `lazy()` a nivel de ruta, eso está bien) tronaba el build en Plesk por out-of-memory.
+5. **Fix de parpadeo en `SicasCCJReports.tsx`**: el overlay de carga y los botones de paginación se apagaban/prendían cada 4s durante el polling de sync activo. Ahora el overlay/disabled solo aplican si `rows.length === 0` (carga inicial real).
+6. **bonos_jiro** (`apps/etl/pipeline_api.py`, rama `master`): nuevo `run_efectuada_catchup()` — corre después del jalón diario normal, recorre todo 2025+ en modo `append` para atrapar pólizas que una oficina registra con atraso (Fecha de Pago vieja, capturada hoy) que la ventana de 3 días hábiles nunca vería.
+
+**❌ SIGUE ROTO — el filtro de fecha de "efectuada" en sí (`buildConditions()` en `sicas-ccj-reports/index.ts`):**
+
+Se intentaron ~12 combinaciones distintas de parámetros para la condición de rango de "Fecha de Pago" contra el endpoint REST `/Report/ReadData` — TODAS truenan con `Internal error server. Índice fuera de los límites de la matriz.` (o, con la tabla/columna incorrecta, un error limpio de "columna no válida" que sirvió para descartar hipótesis). Se probó: `TipoFiltro=3` (Rango) con toda combinación de SubFiltro/PosTitle/ChangeTable; `TipoFiltro=4/5` (Menor/Mayor Igual, 2 condiciones) con los campos `VDatRecibos.FPago`, `DatPagosRec.FPago`, `VDatPagosRec.FPago`, `VDatRecibos.FechaPago`; con y sin hora en el valor de fecha (`00:00`/`23:59:59`, formato confirmado en el manual). Nada funcionó salvo el intento con columna claramente inexistente (`VDatRecibos.FPago`, sin crash, error limpio "columna no válida" — eso fue lo que nos llevó a descubrir el campo real `FechaPago` vía log de campos crudos, pero ni así funcionó la condición).
+
+**🔑 HALLAZGO CLAVE #1:** ya existían en este repo (¡desde antes de esta sesión, sin que lo supiéramos!) varios documentos de una sesión de Claude anterior que ya habían diagnosticado esto exacto:
+- `SICAS_REST_VS_SOAP_CONCLUSION.md`
+- `SICAS_PROCESARWS_DOCUMENTACION.md` — trae un **ejemplo XML completo y funcional** de "Cobranza con Filtros" combinando el filtro de Cobranza + rango de fechas, con KeyCode `H03430_001`.
+- `SICAS_SOAP_VS_REST_CODIGOS.md`
+
+Estos documentos dicen explícitamente: **los filtros complejos (`ConditionsAdd`) solo están soportados vía SOAP `ProcesarWS`, NO vía REST `/Report/ReadData`** — que es justo el endpoint que usa nuestro código (`readSicasReport()`/`SICAS_REST_BASE`). Esto explica el crash consistente sin importar qué parámetros probáramos: el endpoint REST simplemente no soporta condiciones complejas, punto.
+
+**🔑 HALLAZGO CLAVE #2 — MÁS IMPORTANTE, no lo dejes pasar mañana:** ya existe un **cliente SOAP completo y listo para usar**, construido en una sesión de Claude aún más antigua (22 de junio), nunca terminado de conectar al flujo de "efectuada":
+
+- **`supabase/functions/_shared/sicasSoapReportClient.ts`** — clase `SicasSoapReportClient` completa: arma el envelope SOAP (`ProcesarWS`), parsea la respuesta (soporta 3 formatos distintos: `DATAINFO/TableInfo`, `PROCESSDATA`, `NewDataSet`), maneja errores de autenticación, URL-encodea el password (espacios → `%20`, dato importante — nuestro `readSicasReport` REST no lo hace). Trae helpers estáticos ya armados: `createCobranzaFilter()` (idéntico a nuestro filtro "Cobranza" — `VDatRecibos.Status`, valores `3|4`), `createDateRangeFilterByCaptura()`/`createDateRangeFilterByVigencia()` (usan `flag1:0, flag2:-1` — **importante: usa `-1` en el segundo flag/ChangeTable de una condición de rango, justo la única combinación con TipoFiltro=3 que NO probamos ayer** — el comentario en el código dice *"Flags invertidos como en el ejemplo oficial"*).
+- **`export const SICAS_REPORT_KEYCODES`** en ese mismo archivo confirma: `COBRANZA_FILTROS: 'H03430_001'` (mismo que el doc), `POLIZAS_VIGENTES: 'H03400'`, `RENOVACIONES: 'H02761'` (¡el KeyCode que usamos para efectuada en REST es en realidad el de "Renovaciones" en SOAP! — posible pista de que H02761 nunca fue el código correcto para efectuada, solo el que "funcionó por accidente" para listar sin filtros).
+- **`supabase/functions/_shared/sicasSoapContracts.ts`** — constantes/guards compartidos del contrato SOAP.
+- **`supabase/functions/sicas-sync-cobranza/index.ts`** — función que YA usa este cliente (`createCobranzaFilter()` solo, sin fecha, apunta a una tabla vieja `sicas_cobranza_pendiente` que ya no se usa) — nunca se conectó al flujo real de sync. Nota útil en su código: **usar el endpoint `.com` no `.com.mx`** (`.com.mx` tiene certificado TLS inválido, `UnknownIssuer`) — el endpoint SOAP correcto por default ahí es `https://www.sicasonline.com/SICASOnline/WS_SICASOnline.asmx`, pero **ya existe un secret de Supabase `SICAS_SOAP_ENDPOINT`** que casi seguro trae la URL correcta y confirmada para esta instalación — usar ese, no adivinar.
+- El header del archivo `sicasSoapReportClient.ts` menciona **3 manuales PDF que NO tenemos** en `C:\Users\medau\Downloads\DOCUMENTACIÓN SICAS\`: `WS__Consultar_todas_las_polizas_con_FILTROS_PRIV.pdf`, `WS_Consulta_Cobranza_con_Filtro_Avanzado_PRIV.pdf` (¡este es literalmente el manual de "Cobranza con Filtro Avanzado" — exactamente lo que necesitamos!), `WS_Consulta_de_Renovaciones_PRIV.pdf`. Vale la pena pedírselos a Ricardo o a soporte de SICAS/BOGO antes de seguir adivinando — probablemente ahí está el formato 100% confirmado para el filtro de Fecha de Pago.
+
+**Plan concreto para mañana:**
+1. Pedirle a Ricardo (a) el ejemplo real de los reportes de Cobranza Efectuada/Pendiente que descarga de SICAS (para que las columnas extraídas coincidan exactamente), y (b) si tiene a la mano los 3 PDFs mencionados arriba (`WS_Consulta_Cobranza_con_Filtro_Avanzado_PRIV.pdf` es el más urgente).
+2. Revisar el secret de Supabase `SICAS_SOAP_ENDPOINT` (Project Settings → Edge Functions → Secrets) para confirmar la URL SOAP real ya validada, en vez de usar el default `.com` del código viejo.
+3. **No reinventar el cliente SOAP** — usar `SicasSoapReportClient` tal cual existe, solo agregar un helper de fecha para "Fecha de Pago" (probablemente `createDateRangeFilter(desde, hasta, textoDesde, textoHasta, 'VDatRecibos.FechaPago')` con `flag2: -1`, ya que esa combinación de ChangeTable=-1 en un TipoFiltro=3 real es la única que NO se probó ayer con el campo correcto).
+4. Conectar esto a `supabase/functions/sicas-ccj-reports/index.ts`: agregar una función `readSicasReportViaSOAP()` que envuelva `SicasSoapReportClient.executeReport()` y devuelva `{rows, control}` en el mismo formato que ya espera `processReportRun` (así se reusa toda la lógica de paginación/upsert sin tocarla). Usar esta función **solo** cuando `run.filters` traiga `fechaDesde`/`fechaHasta` para "efectuada" — dejar "pendiente" y el recorrido histórico sin filtro exactamente como están (ambos funcionan hoy vía REST).
+5. KeyCode a probar primero: `H03430_001` (`SICAS_REPORT_KEYCODES.COBRANZA_FILTROS`) — NO `H02761` (ese es "Renovaciones" en SOAP, aunque en REST "funcione" para el recorrido sin filtro).
+
+**Estado del código ahora mismo (rama `main`, desplegado en Supabase manualmente vía dashboard):** el filtro de fecha de "efectuada" SIGUE ACTIVO en el código REST con el intento más reciente (`VDatRecibos.FechaPago`, 2 condiciones tipo 4/5, con hora) — seguirá fallando (mismo error `Índice fuera de los límites de la matriz`) hasta que se implemente el camino SOAP. Mientras tanto la sync automática de efectuada simplemente no avanza (falla en la página 1 cada vez, sin dañar nada — no vuelve a hacer el recorrido histórico completo). "Pendiente" y el resto de "efectuada" (sin filtro) siguen funcionando normal.
+
+---
 
 ### 🔴 Feature activa: Adjuntos por tipo + extracción automática de pólizas PDF (2026-08-19 → en producción parcialmente)
 

@@ -4,7 +4,7 @@ Sistema integral de gestión: trámites, producción, bonos, tienda, aula virtua
 
 - **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS
 - **Backend:** Supabase (PostgreSQL + RLS + Edge Functions)
-- **Deploy:** `main` → Netlify (beta.movi.digital) | `produccion` → Plesk (produccion.movi.digital)
+- **Deploy:** `main` → Plesk vía Git+webhook (beta.movi.digital) | `produccion` → Plesk (produccion.movi.digital)
 - **GitHub:** https://github.com/crickmx/jiromovi
 
 ---
@@ -68,7 +68,7 @@ Proxy server-to-server autenticado sobre la tabla `sicas_ccj_records`. Permite a
 
 ### `sicas-ccj-reports`
 
-Sincroniza datos de SICAS CCJ a `sicas_ccj_records` cada 4 horas vía cron.
+Sincroniza datos de SICAS CCJ a `sicas_ccj_records` cada 4 horas vía cron. ⚠️ El filtro de fecha de "efectuada" no funciona todavía vía el endpoint REST de SICAS (`/Report/ReadData`) — ver `CLAUDE.md` para el diagnóstico completo y el plan (probable solución: SOAP `ProcesarWS`, cliente ya existente en `_shared/sicasSoapReportClient.ts`).
 
 ### `process-poliza-pdf`
 
