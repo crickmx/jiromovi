@@ -377,8 +377,20 @@ async function sha256(value: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function buildCacheKey(reportType: ReportType): Promise<string> {
-  return `${reportType}:${await sha256("full-local-sync")}`;
+async function buildCacheKey(reportType: ReportType, filters: ReportFilters = {}): Promise<string> {
+  const normalized = normalizeFiltersForCache(filters);
+  const filterKey = Object.keys(normalized).length ? JSON.stringify(normalized) : "full-local-sync";
+  return `${reportType}:${await sha256(filterKey)}`;
+}
+
+// Ventana por defecto de la sincronización automática: no interesa el histórico
+// completo de SICAS (llega hasta 2011), solo lo reciente/relevante para el negocio.
+function defaultAutoSyncFilters(reportType: ReportType): ReportFilters {
+  const currentYear = new Date().getUTCFullYear();
+  if (reportType === "efectuada") {
+    return { fechaDesde: `${currentYear - 1}-01-01`, fechaHasta: "2099-12-31" };
+  }
+  return { fechaDesde: `${currentYear - 1}-09-01`, fechaHasta: `${currentYear}-12-31` };
 }
 
 function scheduleReportWorker(runId: string) {
@@ -520,7 +532,7 @@ async function processReportRun(
     // SICAS rechaza ráfagas concurrentes en algunos reportes. Consumimos varias
     // páginas por ejecución, pero una por una, para respetar el servicio origen.
     for (const requestedPage of pageNumbers) {
-      pageResults.push(await readSicasReport(sicasToken, reportType, requestedPage, REPORT_CHUNK_SIZE, false, {}));
+      pageResults.push(await readSicasReport(sicasToken, reportType, requestedPage, REPORT_CHUNK_SIZE, false, (run.filters as ReportFilters) || {}));
     }
 
     const synchronizedRows: Array<Record<string, unknown> & { record_key: string; data_hash: string }> = [];
@@ -680,14 +692,29 @@ async function latestRun(supabase: ReturnType<typeof createClient>, reportType: 
   return data;
 }
 
+// A diferencia de latestRun (que agrupa por report_type sin importar el filtro),
+// esto solo mira corridas que pertenecen a la MISMA ventana de fechas (el cache_key
+// de una continuación es "<cacheKey>:continuacion:<page>", por eso el prefijo).
+async function latestRunByCachePrefix(supabase: ReturnType<typeof createClient>, cachePrefix: string, statuses: string[]) {
+  const { data, error } = await supabase.from("sicas_ccj_report_runs")
+    .select("id, status, next_page, source_rows_processed, result_rows, inserted_rows, updated_rows, unchanged_rows, deactivated_rows, trigger_source, started_at, completed_at, updated_at, error")
+    .like("cache_key", `${cachePrefix}%`).in("status", statuses)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 async function ensureSync(
   supabase: ReturnType<typeof createClient>,
   reportType: ReportType,
   triggerSource: "automatic" | "manual" | "initial",
   requestedBy: string | null,
   force: boolean,
+  filters: ReportFilters = {},
 ) {
-  const active = await latestRun(supabase, reportType, ["queued", "running"]);
+  const cacheKey = await buildCacheKey(reportType, filters);
+
+  const active = await latestRunByCachePrefix(supabase, cacheKey, ["queued", "running"]);
   if (active) {
     // Las consultas del panel no deben lanzar trabajadores duplicados. Solo
     // iniciamos una cola nueva o recuperamos una ejecución sin actividad.
@@ -696,7 +723,7 @@ async function ensureSync(
     return active;
   }
 
-  const resumable = await latestRun(supabase, reportType, ["failed"]);
+  const resumable = await latestRunByCachePrefix(supabase, cacheKey, ["failed"]);
   if (resumable?.next_page > 1) {
     await supabase.from("sicas_ccj_report_runs").update({
       status: "queued",
@@ -709,7 +736,7 @@ async function ensureSync(
   }
 
   if (!force) {
-    const completed = await latestRun(supabase, reportType, ["completed"]);
+    const completed = await latestRunByCachePrefix(supabase, cacheKey, ["completed"]);
     const { data: config } = await supabase.from("sicas_ccj_sync_config")
       .select("interval_hours").eq("id", true).maybeSingle();
     const intervalHours = Number(config?.interval_hours) || DEFAULT_SYNC_INTERVAL_HOURS;
@@ -718,12 +745,11 @@ async function ensureSync(
     }
   }
 
-  const cacheKey = await buildCacheKey(reportType);
   const { data: created, error } = await supabase.from("sicas_ccj_report_runs")
     .insert({
       cache_key: cacheKey,
       report_type: reportType,
-      filters: {},
+      filters,
       status: "queued",
       requested_by: requestedBy,
       trigger_source: triggerSource,
@@ -731,7 +757,7 @@ async function ensureSync(
     .select("id, status, next_page, source_rows_processed, result_rows, inserted_rows, updated_rows, unchanged_rows, deactivated_rows, trigger_source, started_at, completed_at, updated_at, error")
     .single();
   if (error) {
-    if (error.code === "23505") return await latestRun(supabase, reportType, ["queued", "running"]);
+    if (error.code === "23505") return await latestRunByCachePrefix(supabase, cacheKey, ["queued", "running"]);
     throw error;
   }
   scheduleReportWorker(created.id);
@@ -859,8 +885,8 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(503, { ok: false, error: "Credenciales SICAS no configuradas." });
       }
       const [efectuada, pendiente] = await Promise.all([
-        ensureSync(supabase, "efectuada", "automatic", null, true),
-        ensureSync(supabase, "pendiente", "automatic", null, true),
+        ensureSync(supabase, "efectuada", "automatic", null, true, defaultAutoSyncFilters("efectuada")),
+        ensureSync(supabase, "pendiente", "automatic", null, true, defaultAutoSyncFilters("pendiente")),
       ]);
       return jsonResponse(202, {
         ok: true,
@@ -889,15 +915,15 @@ Deno.serve(async (req: Request) => {
 
     let active = await latestRun(supabase, reportType, ["queued", "running"]);
     if (body.forceRefresh) {
-      active = await ensureSync(supabase, reportType, "manual", user.id, true);
+      active = await ensureSync(supabase, reportType, "manual", user.id, true, defaultAutoSyncFilters(reportType));
     } else if (!active && username && password) {
-      active = await ensureSync(supabase, reportType, "automatic", user.id, false);
+      active = await ensureSync(supabase, reportType, "automatic", user.id, false, defaultAutoSyncFilters(reportType));
     }
 
     const local = await readLocalRecords(supabase, reportType, filters, page, pageSize, exportAll);
     const completed = await latestRun(supabase, reportType, ["completed"]);
     if (!active && local.total === 0 && username && password) {
-      active = await ensureSync(supabase, reportType, "initial", user.id, true);
+      active = await ensureSync(supabase, reportType, "initial", user.id, true, defaultAutoSyncFilters(reportType));
     }
     const syncRun = active || completed;
     const keyCode = reportType === "efectuada" ? "H02761" : "HWS03669_008";
