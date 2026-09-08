@@ -193,14 +193,14 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
     // Confirmed in the supplied SICAS XML: 3 = Pagado, 4 = Liquidado.
     conditions.push(condition("Cobranza", 2, 0, "3|4", "Pagado|Liquidado", -1, 0, "VDatRecibos.Status"));
     if (filters.fechaDesde && filters.fechaHasta) {
-      const from = toSicasDate(filters.fechaDesde);
-      const to = toSicasDate(filters.fechaHasta);
-      // Cualquier tabla distinta de VDatRecibos (DatPagosRec, VDatPagosRec) truena con
-      // "Índice fuera de los límites de la matriz" -- igual que TipoFiltro=3. Solo
-      // VDatRecibos parece ser una tabla utilizable en estas condiciones (la usa
-      // "Cobranza", que sí funciona) -- con "FPago" dio "columna no válida" (tabla
-      // correcta, columna no). Se prueba con "FechaPago", el nombre real que devuelve
-      // SICAS en la respuesta cruda, dentro de la misma tabla VDatRecibos.
+      // El ejemplo real del manual (rango de fechas que sí funciona) siempre trae hora:
+      // "11/05/2020 00:00|11/05/2020 23:59:59". Mandábamos solo la fecha (sin hora) en
+      // todos los intentos anteriores -- posible causa real del "Índice fuera de los
+      // límites" (el parser de SICAS esperaría siempre fecha+hora). Se agrega la hora.
+      const from = `${toSicasDate(filters.fechaDesde)} 00:00`;
+      const to = `${toSicasDate(filters.fechaHasta)} 23:59:59`;
+      // VDatRecibos es la única tabla utilizable en estas condiciones (la usa "Cobranza",
+      // que sí funciona); "FechaPago" es el nombre real que devuelve SICAS en la respuesta.
       conditions.push(condition("Fecha de pago desde", 5, 1, from, from, 0, 0, "VDatRecibos.FechaPago"));
       conditions.push(condition("Fecha de pago hasta", 4, 1, to, to, 0, 0, "VDatRecibos.FechaPago"));
     }
@@ -212,8 +212,10 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
   } else {
     conditions.push(condition("Status", 0, 0, "Pendiente", "Pendiente", 1, 0, "VDatDocumentos.Status_TXT"));
     if (filters.fechaDesde && filters.fechaHasta) {
-      const from = toSicasDate(filters.fechaDesde);
-      const to = toSicasDate(filters.fechaHasta);
+      // Mismo ajuste de hora que en efectuada (ver comentario ahí) por consistencia,
+      // aunque esta condición no ha reportado el mismo error hasta ahora.
+      const from = `${toSicasDate(filters.fechaDesde)} 00:00`;
+      const to = `${toSicasDate(filters.fechaHasta)} 23:59:59`;
       conditions.push(condition("Límite de pago", 3, 1, `${from}|${to}`, `${from}|${to}`, 0, -1, "VDatDocumentos.FLimPago"));
     }
     if (filters.compania) conditions.push(condition("Compañía", 0, 1, `*${filters.compania}*`, `*${filters.compania}*`, 1, 0, "VCatCias.CiaNombre"));
