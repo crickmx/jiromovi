@@ -202,8 +202,8 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
       // matriz" en este endpoint sin importar el campo/parámetros -- parece no estar
       // soportado aquí. Se usan 2 condiciones simples (Mayor/Menor Igual) en su lugar,
       // que sí procesan sin crashear (nos dieron el error real que llevó al campo correcto).
-      conditions.push(condition("Fecha de pago desde", 5, 1, from, from, 0, -1, "DatPagosRec.FPago"));
-      conditions.push(condition("Fecha de pago hasta", 4, 1, to, to, 0, -1, "DatPagosRec.FPago"));
+      conditions.push(condition("Fecha de pago desde", 5, 1, from, from, 0, 0, "DatPagosRec.FPago"));
+      conditions.push(condition("Fecha de pago hasta", 4, 1, to, to, 0, 0, "DatPagosRec.FPago"));
     }
     if (filters.compania) conditions.push(condition("Compañía", 0, 1, `*${filters.compania}*`, `*${filters.compania}*`, 1, 0, "VCatCias.CiaNombre"));
     if (filters.documento) conditions.push(condition("Documento", 0, 0, filters.documento, filters.documento, 1, -1, "VDatDocumentos.Documento"));
