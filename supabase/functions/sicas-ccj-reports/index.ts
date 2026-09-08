@@ -386,9 +386,15 @@ async function buildCacheKey(reportType: ReportType, filters: ReportFilters = {}
 // Ventana por defecto de la sincronización automática: no interesa el histórico
 // completo de SICAS (llega hasta 2011), solo lo reciente/relevante para el negocio.
 function defaultAutoSyncFilters(reportType: ReportType): ReportFilters {
-  const currentYear = new Date().getUTCFullYear();
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
   if (reportType === "efectuada") {
-    return { fechaDesde: `${currentYear - 1}-01-01`, fechaHasta: "2099-12-31" };
+    // Tope cercano a hoy (+7 días de colchón por zona horaria) en vez de una
+    // fecha lejana: SICAS responde "Índice fuera de los límites de la matriz"
+    // (error interno de su servidor) si el rango de Fecha de Pago usa un tope
+    // demasiado extremo (se probó con 2099-12-31 y falló).
+    const tope = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    return { fechaDesde: `${currentYear - 1}-01-01`, fechaHasta: tope };
   }
   return { fechaDesde: `${currentYear - 1}-09-01`, fechaHasta: `${currentYear}-12-31` };
 }
