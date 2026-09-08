@@ -2,8 +2,13 @@ import fs from 'fs';
 import https from 'https';
 import http from 'http';
 
-const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTcyMDk5MCwiZXhwIjoyMDc3Mjk2OTkwfQ.lmkRTcDPdTCpw4EAaljO-BFwfOA2_CO1ztFG_RWV0NE';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error('Faltan SUPABASE_URL y/o SUPABASE_SERVICE_KEY en el entorno.');
+  process.exit(1);
+}
 
 const csvData = `Titulo,URL del Video,URL de la Imagen
 Gestión de Siniestros: Protocolo de Respuesta Inmediata,https://drive.google.com/file/d/1zuVK0nUcn5yVymf85jpyECnIa6jmdII4/view?usp=drivesdk,https://drive.google.com/file/d/1l3UVM1-7A_uB__8t7Et08s_TcEQSfLYv/view?usp=drivesdk

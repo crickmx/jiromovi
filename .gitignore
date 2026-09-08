@@ -24,3 +24,4 @@ dist-ssr
 infra/roundcube/.env
 *.local.mjs
 deploy-relay.php
+supabase/.temp/
