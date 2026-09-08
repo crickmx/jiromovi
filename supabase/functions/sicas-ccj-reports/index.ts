@@ -195,12 +195,11 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
     if (filters.fechaDesde && filters.fechaHasta) {
       const from = toSicasDate(filters.fechaDesde);
       const to = toSicasDate(filters.fechaHasta);
-      // Formato confirmado con un ejemplo real y funcional del manual WS_Ejemplos_PRIV.pdf
-      // (condición de rango de fecha sobre DatDocumentos.FCaptura): TipoFiltro=3, SubFiltro=1
-      // (Or), PosTitle=0, ChangeTable=-1 (la condición referencia una tabla distinta a la
-      // principal de la consulta). El intento anterior usaba ChangeTable=0, que no está
-      // documentado para este caso -- probablemente la causa real del error interno.
-      conditions.push(condition("Fecha de pago", 3, 1, `${from}|${to}`, `${from}|${to}`, 0, -1, "VDatRecibos.FPago"));
+      // La Fecha de Pago vive en la tabla de pagos (DatPagosRec), no en la del recibo
+      // (VDatRecibos) -- confirmado con el log de campos crudos de SICAS y con el
+      // ejemplo real de "Pago de Recibo" en WS_Ejemplos_PRIV.pdf (DatPagosRec.FPago).
+      // ChangeTable=-1 porque referencia una tabla distinta a la principal de la consulta.
+      conditions.push(condition("Fecha de pago", 3, 1, `${from}|${to}`, `${from}|${to}`, 0, -1, "DatPagosRec.FPago"));
     }
     if (filters.compania) conditions.push(condition("Compañía", 0, 1, `*${filters.compania}*`, `*${filters.compania}*`, 1, 0, "VCatCias.CiaNombre"));
     if (filters.documento) conditions.push(condition("Documento", 0, 0, filters.documento, filters.documento, 1, -1, "VDatDocumentos.Documento"));
@@ -394,11 +393,12 @@ function defaultAutoSyncFilters(reportType: ReportType): ReportFilters {
   const now = new Date();
   const currentYear = now.getUTCFullYear();
   if (reportType === "efectuada") {
-    // DIAGNOSTICO TEMPORAL: filtro de fecha desactivado a propósito para que esta
-    // consulta funcione (sin filtro ya sabemos que sirve) y dispare el log de
-    // "[SICAS raw keys]" en processReportRun. Revertir en cuanto tengamos el
-    // nombre real de la columna de Fecha de Pago.
-    return {};
+    // Tope cercano a hoy (+7 días de colchón por zona horaria) en vez de una
+    // fecha lejana: SICAS responde "Índice fuera de los límites de la matriz"
+    // (error interno de su servidor) si el rango de Fecha de Pago usa un tope
+    // demasiado extremo (se probó con 2099-12-31 y falló).
+    const tope = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    return { fechaDesde: `${currentYear - 1}-01-01`, fechaHasta: tope };
   }
   return { fechaDesde: `${currentYear - 1}-09-01`, fechaHasta: `${currentYear}-12-31` };
 }
@@ -555,10 +555,6 @@ async function processReportRun(
       const rawRows = pageResults[resultIndex].rows;
       const control = pageResults[resultIndex].control;
       const totalPages = Number(control.Pages ?? control.TotalPages ?? 0) || 0;
-      // DIAGNOSTICO TEMPORAL: ver los nombres de campo crudos que manda SICAS,
-      // para encontrar el nombre real de la columna de Fecha de Pago. Quitar
-      // una vez resuelto el filtro de rango de fechas.
-      if (rawRows.length) console.log("[SICAS raw keys]", reportType, Object.keys(rawRows[0]));
       sourceRowsProcessed += rawRows.length;
       for (let sourceIndex = 0; sourceIndex < rawRows.length; sourceIndex++) {
         const rawRow = rawRows[sourceIndex];
