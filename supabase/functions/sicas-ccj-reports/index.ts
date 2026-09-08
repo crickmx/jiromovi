@@ -195,7 +195,11 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
     if (filters.fechaDesde && filters.fechaHasta) {
       const from = toSicasDate(filters.fechaDesde);
       const to = toSicasDate(filters.fechaHasta);
-      conditions.push(condition("Fecha de pago", 3, 0, `${from}|${to}`, `${from}|${to}`, 0, 0, "VDatRecibos.FPago"));
+      // TipoFiltro=3 (Rango de) da "Índice fuera de los límites de la matriz" en este
+      // endpoint para este reporte; se usan 2 condiciones simples (Mayor/Menor Igual)
+      // en su lugar, documentadas y ya probadas (mismo patrón que "Cobranza").
+      conditions.push(condition("Fecha de pago desde", 5, 1, from, from, 0, 0, "VDatRecibos.FPago"));
+      conditions.push(condition("Fecha de pago hasta", 4, 1, to, to, 0, 0, "VDatRecibos.FPago"));
     }
     if (filters.compania) conditions.push(condition("Compañía", 0, 1, `*${filters.compania}*`, `*${filters.compania}*`, 1, 0, "VCatCias.CiaNombre"));
     if (filters.documento) conditions.push(condition("Documento", 0, 0, filters.documento, filters.documento, 1, -1, "VDatDocumentos.Documento"));
@@ -207,7 +211,8 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
     if (filters.fechaDesde && filters.fechaHasta) {
       const from = toSicasDate(filters.fechaDesde);
       const to = toSicasDate(filters.fechaHasta);
-      conditions.push(condition("Límite de pago", 3, 0, `${from}|${to}`, `${from}|${to}`, 0, 0, "VDatDocumentos.FLimPago"));
+      conditions.push(condition("Límite de pago desde", 5, 1, from, from, 0, 0, "VDatDocumentos.FLimPago"));
+      conditions.push(condition("Límite de pago hasta", 4, 1, to, to, 0, 0, "VDatDocumentos.FLimPago"));
     }
     if (filters.compania) conditions.push(condition("Compañía", 0, 1, `*${filters.compania}*`, `*${filters.compania}*`, 1, 0, "VCatCias.CiaNombre"));
     if (filters.documento) conditions.push(condition("Documento", 0, 0, filters.documento, filters.documento, 1, -1, "VDatDocumentos.Documento"));
