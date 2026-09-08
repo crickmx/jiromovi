@@ -195,15 +195,14 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
     if (filters.fechaDesde && filters.fechaHasta) {
       const from = toSicasDate(filters.fechaDesde);
       const to = toSicasDate(filters.fechaHasta);
-      // La Fecha de Pago vive en la tabla de pagos, no en la del recibo (VDatRecibos) --
-      // confirmado con el log de campos crudos de SICAS (trae "FechaPago" en la respuesta,
-      // junto con campos de VDatRecibos, así que esa tabla de pagos ya está unida en este
-      // reporte). "DatPagosRec" (sin V) dio el mismo crash que el rango -- probablemente
-      // porque esa tabla cruda no es un alias válido aquí. Todas las condiciones que sí
-      // funcionan usan el prefijo de vista "V" (VDatRecibos, VDatDocumentos, VCatCias...),
-      // así que se prueba con ese mismo patrón: VDatPagosRec.
-      conditions.push(condition("Fecha de pago desde", 5, 1, from, from, 0, 0, "VDatPagosRec.FPago"));
-      conditions.push(condition("Fecha de pago hasta", 4, 1, to, to, 0, 0, "VDatPagosRec.FPago"));
+      // Cualquier tabla distinta de VDatRecibos (DatPagosRec, VDatPagosRec) truena con
+      // "Índice fuera de los límites de la matriz" -- igual que TipoFiltro=3. Solo
+      // VDatRecibos parece ser una tabla utilizable en estas condiciones (la usa
+      // "Cobranza", que sí funciona) -- con "FPago" dio "columna no válida" (tabla
+      // correcta, columna no). Se prueba con "FechaPago", el nombre real que devuelve
+      // SICAS en la respuesta cruda, dentro de la misma tabla VDatRecibos.
+      conditions.push(condition("Fecha de pago desde", 5, 1, from, from, 0, 0, "VDatRecibos.FechaPago"));
+      conditions.push(condition("Fecha de pago hasta", 4, 1, to, to, 0, 0, "VDatRecibos.FechaPago"));
     }
     if (filters.compania) conditions.push(condition("Compañía", 0, 1, `*${filters.compania}*`, `*${filters.compania}*`, 1, 0, "VCatCias.CiaNombre"));
     if (filters.documento) conditions.push(condition("Documento", 0, 0, filters.documento, filters.documento, 1, -1, "VDatDocumentos.Documento"));
