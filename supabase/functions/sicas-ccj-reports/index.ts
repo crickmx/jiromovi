@@ -648,7 +648,7 @@ async function processReportRun(
     const { data: failedRun } = await supabase.from("sicas_ccj_report_runs")
       .select("retry_count").eq("id", runId).maybeSingle();
     const retryCount = Number(failedRun?.retry_count || 0);
-    const transient = /no respondió a tiempo|HTTP (408|429|5\d\d)/i.test(errorMessage);
+    const transient = /no respondió a tiempo|signal timed? ?out|HTTP (408|429|5\d\d)/i.test(errorMessage);
     if (transient && retryCount < 5) {
       await supabase.from("sicas_ccj_report_runs").update({
         status: "queued",
@@ -697,7 +697,7 @@ async function ensureSync(
   }
 
   const resumable = await latestRun(supabase, reportType, ["failed"]);
-  if (resumable?.next_page > 1 && /no respondió a tiempo|límite seguro/i.test(String(resumable.error || ""))) {
+  if (resumable?.next_page > 1) {
     await supabase.from("sicas_ccj_report_runs").update({
       status: "queued",
       retry_count: 0,
