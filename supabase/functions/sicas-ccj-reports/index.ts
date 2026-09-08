@@ -195,7 +195,7 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
     if (filters.fechaDesde && filters.fechaHasta) {
       const from = toSicasDate(filters.fechaDesde);
       const to = toSicasDate(filters.fechaHasta);
-      conditions.push(condition("Fecha de pago", 3, 1, `${from}|${to}`, `${from}|${to}`, 1, 0, "VDatRecibos.FPago"));
+      conditions.push(condition("Fecha de pago", 3, 0, `${from}|${to}`, `${from}|${to}`, 0, 0, "VDatRecibos.FPago"));
     }
     if (filters.compania) conditions.push(condition("Compañía", 0, 1, `*${filters.compania}*`, `*${filters.compania}*`, 1, 0, "VCatCias.CiaNombre"));
     if (filters.documento) conditions.push(condition("Documento", 0, 0, filters.documento, filters.documento, 1, -1, "VDatDocumentos.Documento"));
@@ -207,7 +207,7 @@ function buildConditions(reportType: ReportType, rawFilters: ReportFilters) {
     if (filters.fechaDesde && filters.fechaHasta) {
       const from = toSicasDate(filters.fechaDesde);
       const to = toSicasDate(filters.fechaHasta);
-      conditions.push(condition("Límite de pago", 3, 1, `${from}|${to}`, `${from}|${to}`, 1, 0, "VDatDocumentos.FLimPago"));
+      conditions.push(condition("Límite de pago", 3, 0, `${from}|${to}`, `${from}|${to}`, 0, 0, "VDatDocumentos.FLimPago"));
     }
     if (filters.compania) conditions.push(condition("Compañía", 0, 1, `*${filters.compania}*`, `*${filters.compania}*`, 1, 0, "VCatCias.CiaNombre"));
     if (filters.documento) conditions.push(condition("Documento", 0, 0, filters.documento, filters.documento, 1, -1, "VDatDocumentos.Documento"));
