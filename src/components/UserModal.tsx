@@ -321,19 +321,26 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
     setSicasResults([]);
   };
 
-  // Marca el vendedor SICAS como vinculado al usuario (movi_user_id + vendor_mappings).
-  // No es bloqueante: si falla, los campos id_sicas/nombre_sicas del usuario ya quedaron guardados.
+  // Marca el vendedor SICAS como vinculado al usuario (o desvinculado si se removió).
   const persistSicasLink = async (userId: string) => {
-    if (!sicasTouched || !sicasLink || !sicasLink.id) return;
+    if (!sicasTouched) return;
     try {
-      const { error: rpcError } = await supabase.rpc('link_vendor_to_user', {
-        p_vendor_id: sicasLink.id,
-        p_movi_user_id: userId,
-        p_linked_by: currentUser?.id ?? null,
-      });
-      if (rpcError) throw rpcError;
+      if (sicasLink && sicasLink.id) {
+        const { error: rpcError } = await supabase.rpc('link_vendor_to_user', {
+          p_vendor_id: sicasLink.id,
+          p_movi_user_id: userId,
+          p_linked_by: currentUser?.id ?? null,
+        });
+        if (rpcError) throw rpcError;
+      } else {
+        // Se desvinculó
+        await supabase.rpc('unlink_vendor_from_user', {
+          p_vendor_id: null,
+          p_movi_user_id: userId,
+        });
+      }
     } catch (err) {
-      console.error('Error vinculando vendedor SICAS al usuario:', err);
+      console.error('Error sincronizando enlace SICAS del usuario:', err);
     }
   };
 

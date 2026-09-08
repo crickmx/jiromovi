@@ -10,6 +10,7 @@ interface MoviUser {
   nombre_completo: string;
   email_laboral: string | null;
   email_personal: string | null;
+  id_sicas: string | null;
   nombre_sicas: string | null;
   rol: string;
   oficina_id: string | null;
@@ -75,7 +76,7 @@ export default function MapeoVendedoresAdmin() {
     try {
       const { data, error: fetchError } = await supabase
         .from('usuarios')
-        .select('id, nombre, apellidos, email_laboral, email_personal, nombre_sicas, rol, oficina_id')
+        .select('id, nombre, apellidos, email_laboral, email_personal, id_sicas, nombre_sicas, rol, oficina_id')
         .eq('estado', 'activo')
         .order('nombre', { ascending: true })
         .limit(2000);

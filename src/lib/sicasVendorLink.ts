@@ -167,3 +167,20 @@ export async function getSicasVendorByVendId(vendId: string): Promise<SicasVendo
   }
   return (data as SicasVendorOption) || null;
 }
+
+/** Desvincula un vendedor SICAS de un usuario MOVI de forma unificada */
+export async function unlinkSicasVendor(params: { vendorId?: string; moviUserId?: string }): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('unlink_vendor_from_user', {
+      p_vendor_id: params.vendorId || null,
+      p_movi_user_id: params.moviUserId || null,
+    });
+
+    if (error) throw error;
+    return { success: true, ...data };
+  } catch (err: any) {
+    console.error('Error desvinculando vendedor SICAS:', err);
+    return { success: false, error: err?.message || 'Error al desvincular' };
+  }
+}
+
