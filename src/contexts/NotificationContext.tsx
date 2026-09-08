@@ -177,7 +177,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             if (pushEnabledRef.current && 'Notification' in window && Notification.permission === 'granted') {
               showBrowserNotification(newNotification);
             }
-            playNotificationSound();
           }
         )
         .on(
@@ -207,7 +206,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             if (pushEnabledRef.current && 'Notification' in window && Notification.permission === 'granted') {
               showBrowserNotification(mapped);
             }
-            playNotificationSound();
           }
         )
         .on(
@@ -276,7 +274,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         badge: '/favicon.ico',
         tag: notification.id,
         requireInteraction: false,
-        silent: false,
+        silent: true,
       });
 
       notif.onclick = () => {
@@ -287,12 +285,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         notif.close();
       };
     }
-  };
-
-  const playNotificationSound = () => {
-    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZRQ8PWqzn77BdGAc+ltryxncsAyqAzvLZiTUIGGm98OCjUQ4MUKjk7rdmHgU3kNfyz34uBiZyx/D');
-    audio.volume = 0.3;
-    audio.play().catch(() => {});
   };
 
   const requestPushPermission = async () => {
