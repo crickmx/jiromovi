@@ -261,6 +261,17 @@ export default function SicasCCJReports() {
     setRefreshKey((value) => value + 1);
   }
 
+  async function stopSync() {
+    if (pollTimerRef.current !== null) window.clearTimeout(pollTimerRef.current);
+    setSyncProgress(null);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    await supabase.functions.invoke('sicas-ccj-reports', {
+      body: { action: 'cancelSync', reportType },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    }).catch(() => undefined);
+  }
+
   function applyFilters(event: React.FormEvent) {
     event.preventDefault();
     if ((draftFilters.fechaDesde && !draftFilters.fechaHasta) || (!draftFilters.fechaDesde && draftFilters.fechaHasta)) {
@@ -439,12 +450,19 @@ export default function SicasCCJReports() {
           <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
             <div className="flex items-center gap-3">
               <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
-              <div>
+              <div className="flex-1">
                 <p className="font-medium">Sincronizando cobranza {reportType} con SICAS</p>
                 <p className="mt-0.5 opacity-80">
                   {(syncProgress.sourceRowsProcessed || 0).toLocaleString('es-MX')} registros revisados · {(syncProgress.resultRows || 0).toLocaleString('es-MX')} registros locales · {(syncProgress.insertedRows || 0).toLocaleString('es-MX')} nuevos · {(syncProgress.updatedRows || 0).toLocaleString('es-MX')} actualizados. Puedes seguir consultando la información almacenada mientras termina.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={stopSync}
+                className="ml-2 shrink-0 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-500/30 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-950"
+              >
+                Detener
+              </button>
             </div>
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-blue-200/70 dark:bg-blue-950">
               <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-600" />

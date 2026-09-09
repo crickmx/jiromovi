@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { SicasSoapReportClient } from "./sicasSoapReportClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,7 +27,7 @@ interface ReportFilters {
 }
 
 interface ReportRequest {
-  action?: "processReportRun" | "processPendingRun" | "scheduledSync";
+  action?: "processReportRun" | "processPendingRun" | "scheduledSync" | "cancelSync";
   runId?: string;
   reportType?: ReportType;
   page?: number;
@@ -481,6 +482,37 @@ function recordProjection(
   };
 }
 
+async function readSicasReportViaSOAP(
+  username: string,
+  password: string,
+  filters: ReportFilters,
+): Promise<{ rows: Record<string, unknown>[]; control: Record<string, unknown>; keyCode: string }> {
+  const endpoint = Deno.env.get("SICAS_SOAP_ENDPOINT");
+  if (!endpoint) throw new Error("SICAS_SOAP_ENDPOINT no configurado.");
+
+  const client = new SicasSoapReportClient({ endpoint, username, password });
+  const soapFilters = [SicasSoapReportClient.createCobranzaFilter()];
+  if (filters.fechaDesde && filters.fechaHasta) {
+    const from = `${toSicasDate(filters.fechaDesde)} 00:00`;
+    const to = `${toSicasDate(filters.fechaHasta)} 23:59:59`;
+    soapFilters.push(SicasSoapReportClient.createDateRangeFilter(from, to, from, to, "VDatRecibos.FechaPago"));
+  }
+
+  const result = await client.executeReport({
+    keyCode: "H03430_001",
+    itemsPerPage: -1,
+    sortField: "DatRecibos.FDesde",
+    filters: soapFilters,
+  });
+
+  return {
+    rows: result.records as Record<string, unknown>[],
+    // Pages:1 hace que el loop de paginación marque completed en la primera pasada
+    control: { Pages: 1 },
+    keyCode: "H03430_001",
+  };
+}
+
 async function processReportRun(
   supabase: ReturnType<typeof createClient>,
   runId: string,
@@ -538,16 +570,24 @@ async function processReportRun(
       scheduleReportWorker(continuation.id);
       return;
     }
-    const sicasToken = await obtainToken(username, password, codeAuth);
     const pageNumbers = Array.from(
       { length: REPORT_PAGES_PER_WORKER },
       (_, index) => startPage + index,
     );
-    const pageResults: Awaited<ReturnType<typeof readSicasReport>>[] = [];
-    // SICAS rechaza ráfagas concurrentes en algunos reportes. Consumimos varias
-    // páginas por ejecución, pero una por una, para respetar el servicio origen.
-    for (const requestedPage of pageNumbers) {
-      pageResults.push(await readSicasReport(sicasToken, reportType, requestedPage, REPORT_CHUNK_SIZE, false, (run.filters as ReportFilters) || {}));
+    const runFilters = (run.filters as ReportFilters) || {};
+    const useSOAP = reportType === "efectuada" && !!runFilters.fechaDesde;
+    const pageResults: Array<{ rows: Record<string, unknown>[]; control: Record<string, unknown>; keyCode: string }> = [];
+    if (useSOAP) {
+      // SOAP ProcesarWS con H03430_001: soporta ConditionsAdd y devuelve todo en una llamada.
+      // REST /Report/ReadData no soporta ConditionsAdd para efectuada (retorna "Índice fuera de límites").
+      pageResults.push(await readSicasReportViaSOAP(username, password, runFilters));
+    } else {
+      const sicasToken = await obtainToken(username, password, codeAuth);
+      // SICAS rechaza ráfagas concurrentes en algunos reportes. Consumimos varias
+      // páginas por ejecución, pero una por una, para respetar el servicio origen.
+      for (const requestedPage of pageNumbers) {
+        pageResults.push(await readSicasReport(sicasToken, reportType, requestedPage, REPORT_CHUNK_SIZE, false, runFilters));
+      }
     }
 
     const synchronizedRows: Array<Record<string, unknown> & { record_key: string; data_hash: string }> = [];
@@ -919,6 +959,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const reportType: ReportType = body.reportType === "pendiente" ? "pendiente" : "efectuada";
+
+    if (body.action === "cancelSync") {
+      await supabase.from("sicas_ccj_report_runs")
+        .update({ status: "failed", error: "Cancelado manualmente.", worker_token: null, lease_until: null, updated_at: new Date().toISOString() })
+        .eq("report_type", reportType).in("status", ["queued", "running"]);
+      return jsonResponse(200, { ok: true });
+    }
+
     const page = Math.max(1, Math.floor(Number(body.page) || 1));
     const pageSize = Math.min(100, Math.max(10, Math.floor(Number(body.pageSize) || 50)));
     const exportAll = body.exportAll === true;
