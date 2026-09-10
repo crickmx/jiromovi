@@ -495,7 +495,7 @@ async function readSicasReportViaSOAP(
   if (filters.fechaDesde && filters.fechaHasta) {
     const from = `${toSicasDate(filters.fechaDesde)} 00:00`;
     const to = `${toSicasDate(filters.fechaHasta)} 23:59:59`;
-    soapFilters.push(SicasSoapReportClient.createDateRangeFilter(from, to, from, to, "VDatRecibos.FechaPago"));
+    soapFilters.push(SicasSoapReportClient.createDateRangeFilter(from, to, from, to, "DatPagosRec.FPago"));
   }
 
   const result = await client.executeReport({
