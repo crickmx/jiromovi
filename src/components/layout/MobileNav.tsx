@@ -12,7 +12,7 @@ interface MobileNavProps {
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Inicio', href: '/dashboard' },
-  { icon: ClipboardList, label: 'Trámites', href: '/tramites' },
+  // { icon: ClipboardList, label: 'Trámites', href: '/tramites' },
   { icon: MessageCircle, label: 'Contactos', href: '/contactos' },
 ];
 

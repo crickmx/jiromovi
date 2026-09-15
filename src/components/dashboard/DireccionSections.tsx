@@ -513,11 +513,11 @@ export function DireccionSections({ usuario: _usuario }: { usuario: Usuario }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <GerentesPanel />
         <ProduccionPanel />
         <MetasPanel />
-        <SolicitudesPanel />
+        {/* <SolicitudesPanel /> */}
       </div>
     </div>
   );

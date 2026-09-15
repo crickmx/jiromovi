@@ -207,10 +207,11 @@ export default function MoviFullRoutes() {
           <Route path="/mi-crm/leads-seguros-express" element={<ProtectedRoute><CRMLeadsSegurosExpress /></ProtectedRoute>} />
           <Route path="/admin/seguros-express" element={<ProtectedRoute requireAdmin><AdminSegurosExpress /></ProtectedRoute>} />
           <Route path="/admin/registro-at/contratos" element={<ProtectedRoute requireAdmin><AdminContratosAlta /></ProtectedRoute>} />
-          <Route path="/tramites" element={<ProtectedRoute><Tramites /></ProtectedRoute>} />
-          <Route path="/tramites/:id" element={<ProtectedRoute><TramiteDetalle /></ProtectedRoute>} />
+          {/* Módulo de Trámites desactivado / redirigido a Dashboard */}
+          <Route path="/tramites" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/tramites/:id" element={<Navigate to="/dashboard" replace />} />
           <Route path="/tareas/reporte/:tramiteId/:campoId" element={<ProtectedRoute><TareaReportePage /></ProtectedRoute>} />
-          <Route path="/tramites/reportes" element={<ProtectedRoute><TramitesReportes /></ProtectedRoute>} />
+          <Route path="/tramites/reportes" element={<Navigate to="/dashboard" replace />} />
           <Route path="/entrega-polizas" element={<ProtectedRoute><EntregaPolizas /></ProtectedRoute>} />
           <Route path="/mis-polizas" element={<ProtectedRoute><MisPolizas /></ProtectedRoute>} />
           <Route path="/mis-polizas/:id" element={<ProtectedRoute><PolizaDetalle /></ProtectedRoute>} />
@@ -323,7 +324,7 @@ export default function MoviFullRoutes() {
           <Route path="/admin/sidebar-editor" element={<ProtectedRoute requireAdmin><SidebarEditorAdmin /></ProtectedRoute>} />
           <Route path="/admin/dashboard-editor" element={<ProtectedRoute requireAdmin><DashboardEditorAdmin /></ProtectedRoute>} />
           <Route path="/admin/base-datos" element={<ProtectedRoute requireAdmin><BaseDatosMaestrosAdmin /></ProtectedRoute>} />
-          <Route path="/admin/tramites" element={<ProtectedRoute requireAdmin><AdminTramites /></ProtectedRoute>} />
+          <Route path="/admin/tramites" element={<Navigate to="/dashboard" replace />} />
           <Route path="/admin/reportes-bugs" element={<ProtectedRoute requireAdmin><AdminReportesBugs /></ProtectedRoute>} />
           <Route path="/admin/altas" element={<ProtectedRoute requireAdmin><AdminAltas /></ProtectedRoute>} />
           <Route path="/admin/dias-no-habiles" element={<ProtectedRoute requireAdmin><DiasNoHabiles /></ProtectedRoute>} />

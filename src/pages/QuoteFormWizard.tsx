@@ -254,16 +254,11 @@ export default function QuoteFormWizard() {
             <div className="flex justify-between"><span className="text-gray-500">Estatus:</span><span className="text-blue-600 font-medium">Enviado</span></div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            {submitResult.ticketId && (
-              <button onClick={() => navigate(`/tramites/${submitResult.ticketId}`)} className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                Ver tramite
-              </button>
-            )}
-            <button onClick={() => navigate('/cotizar/formularios')} className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-              Nueva cotizacion
+            <button onClick={() => navigate('/cotizar/formularios')} className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+              Volver a Formularios
             </button>
-            <button onClick={() => navigate('/tramites')} className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-              Volver a Tramites
+            <button onClick={() => window.location.reload()} className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+              Nueva cotización
             </button>
           </div>
         </div>
