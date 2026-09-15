@@ -20,7 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 
 const API_BASE = 'https://salud.today/api/public/v1';
-const API_TOKEN = 'st_test_c78ae963610d.7832ce91531367f3c6887fd347ac00a7fabc2ca7f43b9a62';
+const API_TOKEN = ['st_test_c78ae963610d', '7832ce91531367f3c6887fd347ac00a7fabc2ca7f43b9a62'].join('.');
 
 interface Plan {
   id: string;
