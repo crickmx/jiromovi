@@ -30,8 +30,51 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
-const API_BASE = 'https://salud.today/api/public/v1';
-const API_TOKEN = ['st_test_c78ae963610d', '7832ce91531367f3c6887fd347ac00a7fabc2ca7f43b9a62'].join('.');
+// Helper para llamar a la API de salud.today (vía Edge Function proxy para evitar bloqueos de CORS en el navegador)
+const callSaludToday = async (path: string, options: { method?: string; body?: any; headers?: Record<string, string> } = {}) => {
+  const method = options.method || 'GET';
+  const customHeaders = options.headers || {};
+  
+  // Intentar primero a través del proxy Edge Function de Supabase
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    
+    const proxyHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    if (customHeaders['Idempotency-Key']) {
+      proxyHeaders['Idempotency-Key'] = customHeaders['Idempotency-Key'];
+    }
+
+    const proxyRes = await fetch(`https://whnckbbksicffqjscmtl.supabase.co/functions/v1/saludtoday-proxy?path=${encodeURIComponent(path)}`, {
+      method,
+      headers: proxyHeaders,
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+
+    if (proxyRes.ok) {
+      return await proxyRes.json();
+    }
+  } catch (proxyErr) {
+    console.warn('Proxy request failed, fallbacking to direct fetch:', proxyErr);
+  }
+
+  // Fallback directo
+  const directHeaders: Record<string, string> = {
+    'Authorization': `Bearer ${API_TOKEN}`,
+    'Content-Type': 'application/json',
+    ...customHeaders
+  };
+
+  const res = await fetch(`${API_BASE}/${path.replace(/^\//, '')}`, {
+    method,
+    headers: directHeaders,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  return await res.json();
+};
 
 interface Plan {
   id: string;
@@ -145,10 +188,7 @@ export default function SaludToday() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/planes`, {
-        headers: { Authorization: `Bearer ${API_TOKEN}` }
-      });
-      const data = await res.json();
+      const data = await callSaludToday('planes');
       if (data.ok && data.data?.planes) {
         setPlanes(data.data.planes);
         if (data.data.planes.length > 0 && !selectedPlanId) {
@@ -167,10 +207,7 @@ export default function SaludToday() {
   const fetchMembresiasReporte = async () => {
     setLoadingReporte(true);
     try {
-      const res = await fetch(`${API_BASE}/membresias`, {
-        headers: { Authorization: `Bearer ${API_TOKEN}` }
-      });
-      const data = await res.json();
+      const data = await callSaludToday('membresias');
       if (data.ok && data.data?.membresias) {
         const rawMembresias = data.data.membresias;
         // Enriquecer con vendedor y oficina por defecto del usuario logueado o catálogos
@@ -242,17 +279,14 @@ export default function SaludToday() {
         payload.notas += ` | RFC: ${rfc} | Razón Social: ${empresaRazonSocial}`;
       }
 
-      const res = await fetch(`${API_BASE}/ventas`, {
+      const data = await callSaludToday('ventas', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${API_TOKEN}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey
         },
-        body: JSON.stringify(payload)
+        body: payload
       });
 
-      const data = await res.json();
       if (data.ok) {
         setSuccessMsg(`¡Emisión exitosa! Folio: ${data.data?.folio || data.data?.id || 'Generado'}`);
         setVentaResult(data.data);
