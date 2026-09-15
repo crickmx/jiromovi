@@ -1,7 +1,5 @@
-# Gitleaks ignore config
-[rules]
-[rules.allowlist]
-description = "Ignore hardcoded test keys and mock tokens"
+[allowlist]
+description = "Global allowlist"
 paths = [
   '''src/pages/SaludToday\.tsx''',
 ]
