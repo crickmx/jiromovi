@@ -113,6 +113,7 @@ const RegimenFiscalAdmin = lazy(() => import('./RegimenFiscalAdmin'));
 const RegimenFiscalEditor = lazy(() => import('./RegimenFiscalEditor'));
 const MapeoVendedoresAdmin = lazy(() => import('./MapeoVendedoresAdmin'));
 const SicasSaludAdmin = lazy(() => import('./SicasSaludAdmin'));
+const SaludToday = lazy(() => import('./SaludToday'));
 const AsistenteEntrenamiento = lazy(() => import('./AsistenteEntrenamiento'));
 const ChavaAdmin = lazy(() => import('./ChavaAdmin'));
 const ChavaInteligencia = lazy(() => import('./ChavaInteligencia'));
@@ -333,6 +334,9 @@ export default function MoviFullRoutes() {
           {/* Shared profile */}
           <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
           <Route path="/oficinas" element={<ProtectedRoute><Oficinas /></ProtectedRoute>} />
+
+          {/* Salud Today Module */}
+          <Route path="/saludtoday" element={<ProtectedRoute><SaludToday /></ProtectedRoute>} />
 
           {/* Catch-all within MOVI */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
