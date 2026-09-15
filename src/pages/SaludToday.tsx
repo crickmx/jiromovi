@@ -368,27 +368,12 @@ export default function SaludToday() {
       <div className="bg-white border-b border-slate-200/80 sticky top-0 z-20 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3 md:gap-4">
-            {/* MOVI Logo */}
-            <div className="flex items-center gap-2">
-              <img 
-                src="/logo_color.png" 
-                alt="MOVI Digital" 
-                className="h-7 w-auto object-contain"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 hidden sm:inline">
-                x
-              </span>
-            </div>
-
             {/* salud.today Logo */}
-            <div className="flex items-center gap-2 border-l sm:border-l-0 pl-3 sm:pl-0 border-slate-200">
+            <div className="flex items-center gap-2">
               <img 
                 src="/salud-today-logo.png" 
                 alt="salud.today" 
-                className="h-7 w-auto object-contain"
+                className="h-8 w-auto object-contain"
               />
             </div>
           </div>
