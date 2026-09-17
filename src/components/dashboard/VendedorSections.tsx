@@ -549,11 +549,11 @@ export function VendedorSections({ usuario }: { usuario: Usuario }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <ProduccionPanel />
         <MetasPanel />
         <CampanaPanel />
-        {/* <TramitePanel usuario={usuario} /> */}
+        <TramitePanel usuario={usuario} />
       </div>
     </div>
   );

@@ -442,10 +442,10 @@ export function EjecutivoSections({ usuario }: { usuario: Usuario }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <AsesoresPanel usuario={usuario} />
         <CampañasPanel />
-        {/* <TrámitesPanel usuario={usuario} /> */}
+        <TrámitesPanel usuario={usuario} />
       </div>
     </div>
   );

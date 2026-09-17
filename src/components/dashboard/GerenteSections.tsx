@@ -463,10 +463,10 @@ export function GerenteSections({ usuario }: { usuario: Usuario }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <EjecutivosPanel usuario={usuario} />
         <MetasPanel />
-        {/* <SolicitudesPanel usuario={usuario} /> */}
+        <SolicitudesPanel usuario={usuario} />
       </div>
     </div>
   );

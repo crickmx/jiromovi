@@ -58,8 +58,7 @@ export function Layout({ children }: LayoutProps) {
   const { botonActivo: bugReportActivo } = useBugReportConfig();
 
   const badgeCounts: Record<string, number> = {};
-  // Badge count de trámites temporalmente desactivado
-  // if (tramitesAttentionCount > 0) badgeCounts['/tramites'] = tramitesAttentionCount;
+  if (tramitesAttentionCount > 0) badgeCounts['/tramites'] = tramitesAttentionCount;
   if (storeAttentionCount > 0) badgeCounts['/store'] = storeAttentionCount;
 
   const workspaceBadges: Partial<Record<string, number>> = {};

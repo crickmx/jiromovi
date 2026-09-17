@@ -18,6 +18,7 @@ const MODULES = [
     iconColor: 'text-teal-600 dark:text-teal-400',
     logo: '/logo-bupa.png',
   },
+  /*
   {
     path: '/cotizar/formularios',
     label: 'Formularios de Cotizacion',
@@ -30,6 +31,7 @@ const MODULES = [
     iconColor: 'text-emerald-600 dark:text-emerald-400',
     logo: null,
   },
+  */
   {
     path: '/cotizar/a-la-medida',
     label: 'A la Medida',

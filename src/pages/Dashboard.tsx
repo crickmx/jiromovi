@@ -88,7 +88,7 @@ function SectionShell({
 // editor (son atajos, no tarjetas de módulo).
 
 const BETA_FAVORITOS = [
-  // { label: 'Nuevo Trámite', iconKey: 'ClipboardList', route: '/tramites' },
+  { label: 'Nuevo Trámite', iconKey: 'ClipboardList', route: '/tramites' },
   { label: 'Avisos', iconKey: 'Bell', route: '/comunicados' },
   { label: 'Fotos Estudio', iconKey: 'Camera', route: '/mercadotecnia/fotos-estudio' },
   { label: 'Mis Metas', iconKey: 'Target', route: '/produccion' },

@@ -62,7 +62,7 @@ const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
   icon: Briefcase,
   visibleTo: ALL_ROLES,
   items: [
-    // { path: '/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
+    { path: '/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
     { path: '/contactos', label: 'Contactos', icon: BookUser, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/mi-crm', label: 'CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/entrega-polizas', label: 'Entrega Pólizas', icon: PackageCheck, visibleTo: NOT_AGENT },
@@ -93,7 +93,7 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
   items: [
     { path: '/cotizar', label: 'Inicio', icon: House, visibleTo: ALL_ROLES },
     { path: '/cotizar/gmm-bx', label: 'GMM BX+', icon: HeartPulse, visibleTo: ADMIN_ONLY },
-    { path: '/cotizar/formularios', label: 'Formularios', icon: FormInput, visibleTo: ALL_ROLES, matchPrefix: true },
+    // { path: '/cotizar/formularios', label: 'Formularios', icon: FormInput, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: SlidersHorizontal, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/multicotizador', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },
     { path: '/cotizar/multicotizador-gmm', label: 'Multicotizador GMM', icon: Stethoscope, visibleTo: ALL_ROLES },
@@ -167,7 +167,7 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
     { path: '/admin-digital', label: 'Admin Digital', icon: LayoutTemplate, visibleTo: ADMIN_ONLY },
     { path: '/admin/importacion-masiva', label: 'Importación Masiva', icon: Database, visibleTo: ADMIN_ONLY },
     { path: '/admin/base-datos', label: 'Base de Datos', icon: HardDrive, visibleTo: ADMIN_ONLY },
-    // { path: '/admin/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ADMIN_ONLY, matchPrefix: true },
+    { path: '/admin/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ADMIN_ONLY, matchPrefix: true },
     { path: '/admin/dias-no-habiles', label: 'Días No Hábiles', icon: Calendar, visibleTo: ADMIN_ONLY },
     { path: '/admin/config-jornada', label: 'Jornada Laboral', icon: Clock, visibleTo: ADMIN_ONLY },
     { path: '/comisiones', label: 'Comisiones Admin', icon: Percent, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },
