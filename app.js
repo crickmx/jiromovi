@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 
 const APP_ROOT = fileURLToPath(new URL('.', import.meta.url));
 const DIST_ROOT = resolve(APP_ROOT, process.env.MOVI_DIST_DIR || 'dist');
+const DIST_BACKUP = resolve(APP_ROOT, 'dist_backup');
 const INDEX_FILE = join(DIST_ROOT, 'index.html');
+const INDEX_BACKUP = join(DIST_BACKUP, 'index.html');
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
 
@@ -100,7 +102,7 @@ const server = createServer((request, response) => {
   }
 
   if (request.url === '/healthz' || request.url?.startsWith('/healthz?')) {
-    const ready = existsSync(INDEX_FILE);
+    const ready = existsSync(INDEX_FILE) || existsSync(INDEX_BACKUP);
     sendText(
       response,
       ready ? 200 : 503,
@@ -108,12 +110,12 @@ const server = createServer((request, response) => {
       'application/json; charset=utf-8',
     );
     return;
-  }
+    }
 
-  if (!existsSync(INDEX_FILE)) {
+    if (!existsSync(INDEX_FILE) && !existsSync(INDEX_BACKUP)) {
     sendText(response, 503, maintenancePage(), 'text/html; charset=utf-8');
     return;
-  }
+    }
 
   let pathname;
   try {
@@ -124,12 +126,20 @@ const server = createServer((request, response) => {
   }
 
   const relativePath = normalize(pathname).replace(/^[/\\]+/, '');
-  const requestedPath = resolve(DIST_ROOT, relativePath);
-  const insideDist = requestedPath === DIST_ROOT || requestedPath.startsWith(`${DIST_ROOT}${sep}`);
+  let requestedPath = resolve(DIST_ROOT, relativePath);
+  let insideDist = requestedPath === DIST_ROOT || requestedPath.startsWith(`${DIST_ROOT}${sep}`);
 
   if (!insideDist) {
     sendText(response, 400, 'Ruta inválida');
     return;
+  }
+
+  // Fallback a dist_backup si el archivo solicitado no existe en dist/ durante un build en curso
+  if (relativePath && (!existsSync(requestedPath) || !statSync(requestedPath).isFile())) {
+    const backupPath = resolve(DIST_BACKUP, relativePath);
+    if (backupPath.startsWith(`${DIST_BACKUP}${sep}`) && existsSync(backupPath) && statSync(backupPath).isFile()) {
+      requestedPath = backupPath;
+    }
   }
 
   if (relativePath && existsSync(requestedPath) && statSync(requestedPath).isFile()) {
@@ -144,7 +154,8 @@ const server = createServer((request, response) => {
     return;
   }
 
-  sendFile(request, response, INDEX_FILE);
+  const activeIndex = existsSync(INDEX_FILE) ? INDEX_FILE : INDEX_BACKUP;
+  sendFile(request, response, activeIndex);
 });
 
 server.on('error', (error) => {

@@ -391,6 +391,28 @@ export class SicasSoapReportClient {
   }
 
   /**
+   * Helper: Crear filtro estándar de fecha 2020 a la fecha actual (Optimización global SICAS)
+   * Evita consultar registros anteriores a 2020 para mantener tiempos de respuesta óptimos.
+   */
+  static createDefaultSince2020Filter(fieldDb: string = 'DatDocumentos.FCaptura'): FilterCondition {
+    const today = new Date();
+    const todayStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()} 23:59:59`;
+    const monthsEs = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const todayText = `${String(today.getDate()).padStart(2, '0')}/${monthsEs[today.getMonth()]}/${today.getFullYear()}`;
+
+    return {
+      name: 'Desde|Hasta|Captura',
+      type: 3,
+      subtype: 1,
+      values: ['01/01/2020 00:00:00', todayStr],
+      texts: ['01/Ene/2020', todayText],
+      flag1: 0,
+      flag2: -1,
+      fieldDb,
+    };
+  }
+
+  /**
    * Helper: Crear filtro de fecha por CAPTURA (recomendado según ejemplo oficial)
    * Formato: DD/MM/YYYY HH:mm o DD/MM/YYYY HH:mm:ss
    */
@@ -580,6 +602,7 @@ export const SICAS_REPORT_KEYCODES = {
 
   // Cobranza
   COBRANZA_FILTROS: 'H03430_001',
+  COBRANZA_EFECTUADA: 'H03846_Cob',
 
   // Comisiones (por determinar los correctos)
   COMISIONES_PAGADAS: 'H03420',

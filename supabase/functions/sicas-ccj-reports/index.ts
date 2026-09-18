@@ -14,6 +14,7 @@ const SICAS_REST_BASE = Deno.env.get("SICAS_REST_API_URL") ||
 type ReportType = "efectuada" | "pendiente";
 
 interface ReportFilters {
+  reportType?: ReportType;
   fechaDesde?: string;
   fechaHasta?: string;
   compania?: string;
@@ -491,7 +492,10 @@ async function readSicasReportViaSOAP(
   if (!endpoint) throw new Error("SICAS_SOAP_ENDPOINT no configurado.");
 
   const client = new SicasSoapReportClient({ endpoint, username, password });
-  const soapFilters = [SicasSoapReportClient.createCobranzaFilter()];
+  const isEfectuada = filters.reportType === "efectuada" || (!filters.reportType && filters.fechaDesde);
+  const targetKeyCode = isEfectuada ? "H03846_Cob" : "H03430_001";
+  const soapFilters = isEfectuada ? [] : [SicasSoapReportClient.createCobranzaFilter()];
+
   if (filters.fechaDesde && filters.fechaHasta) {
     const from = `${toSicasDate(filters.fechaDesde)} 00:00`;
     const to = `${toSicasDate(filters.fechaHasta)} 23:59:59`;
@@ -499,7 +503,7 @@ async function readSicasReportViaSOAP(
   }
 
   const result = await client.executeReport({
-    keyCode: "H03430_001",
+    keyCode: targetKeyCode,
     itemsPerPage: -1,
     sortField: "DatRecibos.FDesde",
     filters: soapFilters,
@@ -509,7 +513,7 @@ async function readSicasReportViaSOAP(
     rows: result.records as Record<string, unknown>[],
     // Pages:1 hace que el loop de paginación marque completed en la primera pasada
     control: { Pages: 1 },
-    keyCode: "H03430_001",
+    keyCode: targetKeyCode,
   };
 }
 
@@ -575,10 +579,11 @@ async function processReportRun(
       (_, index) => startPage + index,
     );
     const runFilters = (run.filters as ReportFilters) || {};
+    runFilters.reportType = reportType;
     const useSOAP = reportType === "efectuada" && !!runFilters.fechaDesde;
     const pageResults: Array<{ rows: Record<string, unknown>[]; control: Record<string, unknown>; keyCode: string }> = [];
     if (useSOAP) {
-      // SOAP ProcesarWS con H03430_001: soporta ConditionsAdd y devuelve todo en una llamada.
+      // SOAP ProcesarWS con H03846_Cob: soporta ConditionsAdd y devuelve todo en una llamada sin timeout.
       // REST /Report/ReadData no soporta ConditionsAdd para efectuada (retorna "Índice fuera de límites").
       pageResults.push(await readSicasReportViaSOAP(username, password, runFilters));
     } else {

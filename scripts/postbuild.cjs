@@ -9,6 +9,15 @@ const notFoundPath = path.join(dist, "404.html");
 if (fs.existsSync(indexPath)) {
   fs.copyFileSync(indexPath, notFoundPath);
   console.log("✅ Copiado dist/index.html -> dist/404.html");
+
+  // ── 1.1 Respaldo a dist_backup para cero downtime en deploys de Plesk ─────
+  try {
+    const distBackup = path.join(__dirname, "..", "dist_backup");
+    fs.cpSync(dist, distBackup, { recursive: true });
+    console.log("✅ Respaldo generado en dist_backup/");
+  } catch (err) {
+    console.warn("⚠️ No se pudo generar dist_backup:", err.message);
+  }
 } else {
   console.error("❌ No existe dist/index.html. ¿Corriste build?");
   process.exit(1);
