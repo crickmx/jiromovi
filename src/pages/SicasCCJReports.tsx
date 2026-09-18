@@ -17,6 +17,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { TableSkeleton } from '../components/ui/loading-state';
 
 type ReportType = 'efectuada' | 'pendiente';
 type ReportRow = Record<string, string | number | null>;
@@ -496,11 +497,11 @@ export default function SicasCCJReports() {
           </div>
 
           <div className="relative min-h-[360px] overflow-x-auto">
-            {loading && rows.length === 0 && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-neutral-900/80">
-                <div className="flex items-center gap-3 text-sm font-medium text-neutral-600 dark:text-neutral-300"><Loader2 className="h-5 w-5 animate-spin text-blue-600" /> Consultando base local…</div>
+            {loading && rows.length === 0 ? (
+              <div className="p-4">
+                <TableSkeleton rows={8} columns={6} />
               </div>
-            )}
+            ) : (
             <table className="w-max min-w-full border-collapse text-left text-xs">
               <thead className="sticky top-0 z-10 bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
                 <tr>
@@ -527,6 +528,7 @@ export default function SicasCCJReports() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
 
           <div className="flex flex-col gap-3 border-t border-neutral-100 px-4 py-3 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:text-neutral-400">

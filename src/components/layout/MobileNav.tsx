@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, MessageCircle, Menu } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, MessageCircle, Menu, PlusCircle, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useNotifications } from '../../contexts/NotificationContext';
 
@@ -13,7 +13,8 @@ interface MobileNavProps {
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Inicio', href: '/dashboard' },
   { icon: ClipboardList, label: 'Trámites', href: '/tramites' },
-  { icon: MessageCircle, label: 'Contactos', href: '/contactos' },
+  { icon: PlusCircle, label: 'Nuevo', href: '/tramites?nuevo=1', isAction: true },
+  { icon: Search, label: 'Contactos', href: '/contactos' },
 ];
 
 export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }: MobileNavProps) {
@@ -36,16 +37,37 @@ export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const pathname = currentPath ?? location.pathname;
-        const active = pathname === item.href || pathname.startsWith(item.href + '/');
+        const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href.split('?')[0] + '/'));
+        const isAction = (item as any).isAction;
+
+        if (isAction) {
+          return (
+            <button
+              key={item.href}
+              onClick={() => {
+                if (window.navigator?.vibrate) window.navigator.vibrate(10);
+                navigate('/tramites');
+              }}
+              className="flex-1 flex flex-col items-center justify-center -mt-3 relative group"
+            >
+              <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-lg shadow-accent/30 group-active:scale-95 transition-transform">
+                <Icon className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-semibold text-accent mt-0.5">{item.label}</span>
+            </button>
+          );
+        }
+
         return (
           <button
             key={item.href}
             onClick={() => {
-          if (item.href === '/chava' && onChavaClick) onChavaClick();
-          else navigate(item.href);
-        }}
+              if (window.navigator?.vibrate) window.navigator.vibrate(5);
+              if (item.href === '/chava' && onChavaClick) onChavaClick();
+              else navigate(item.href);
+            }}
             className={cn(
-              'flex-1 flex flex-col items-center gap-1 py-2.5 px-2 transition-colors',
+              'flex-1 flex flex-col items-center gap-1 py-2 px-1 transition-colors',
               active
                 ? 'text-[rgb(var(--movi-accent-rgb))]'
                 : 'text-neutral-400 dark:text-white/35 active:text-neutral-600 dark:active:text-white/60'

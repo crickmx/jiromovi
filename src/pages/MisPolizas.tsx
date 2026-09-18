@@ -7,7 +7,8 @@ import {
   Shield,
 } from 'lucide-react';
 import type { SicasPoliza } from '../lib/misPolizasTypes';
-import { PageHeader } from '@/components/ui/page-header';
+import { PageHeader } from '../components/ui/page-header';
+import { TableSkeleton } from '../components/ui/loading-state';
 import { SicasDigitalCenterViewer } from '@/components/sicasDigitalCenter/SicasDigitalCenterViewer';
 
 interface Filters {
@@ -241,10 +242,24 @@ export default function MisPolizas() {
 
   if (loading && polizas.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-12 w-12 animate-spin text-accent mx-auto mb-4" />
-          <p className="text-neutral-600 dark:text-white/60">Cargando pólizas...</p>
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800 p-6 space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <PageHeader
+            title="Mis Pólizas"
+            description="Consulta tus pólizas vigentes y accede al Centro Digital"
+            icon={Shield}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white dark:bg-white/5 rounded-lg p-6 border border-neutral-200 dark:border-white/10 animate-pulse space-y-3">
+                <div className="h-4 bg-neutral-200 dark:bg-white/10 rounded w-1/2" />
+                <div className="h-8 bg-neutral-200 dark:bg-white/10 rounded w-3/4" />
+              </div>
+            ))}
+          </div>
+          <div className="bg-white dark:bg-white/5 rounded-lg border border-neutral-200 dark:border-white/10 p-4">
+            <TableSkeleton rows={8} columns={6} />
+          </div>
         </div>
       </div>
     );
