@@ -67,6 +67,62 @@ La función `buildConditionsAdd` del cliente SOAP ya produce este formato correc
 
 ---
 
+### 🟡 SIGUIENTE — Integración MOVI → cola de lector.movi.digital (preparado 2026-09-18, sin código todavía)
+
+**Lo que pidió Ricardo:** al adjuntar un PDF en un trámite, si ese campo dispara extracción, MOVI debe detectar automáticamente si la extracción está configurada **para esa compañía, ramo y subramo específico**. Si no logra extraer, el PDF debe irse a la cola de `lector.movi.digital` para que otro equipo lo catalogue y entrene el sistema.
+
+**API key:** el equipo del lector entregó `MOVI_BETA_API_KEY`. **NO va en el repo** (hay gitleaks en CI + `.env` ignorado). Va en Supabase Dashboard → Edge Functions → Secrets. La llamada DEBE salir de una edge function: si se hiciera desde React, la key quedaría expuesta en el bundle.
+
+#### Contrato del endpoint nuevo (doc del equipo del lector, septiembre 2026)
+
+`POST https://lector.movi.digital/api/integraciones/movi_beta/cola`
+- Header obligatorio: `X-API-Key: <MOVI_BETA_API_KEY>`
+- Body `multipart/form-data`: `ticket_id` (texto, obligatorio, se le hace trim) + `archivos` (repetir la key, **entre 1 y 30 PDFs**, cada uno ≤15 MB, extensión `.pdf`)
+- Éxito: **`202 Accepted`** → `{ticket_id, recibidos, duplicados[], cola_ids[]}`. No hay que consultar estado después; el entrenamiento lo gestiona su equipo.
+- Errores (se valida en orden, el primero corta): `401` API key inválida · `400` ticket_id vacío · `400` 0 o >30 archivos · `429` rate limit · `409` ticket_id ya recibido · `400` no es PDF · `400` >15 MB
+- **Si un solo archivo del lote falla por extensión o tamaño, se rechaza el request COMPLETO** — no hay guardado parcial.
+- `409` = tratar como éxito idempotente, no reintentar.
+- Duplicados: los detectan por hash SHA-256 del contenido, no por nombre.
+- **Rate limit:** ráfaga de 10 tickets de golpe; 6/min sostenido en reposo; sube solo a 60/min si se sostiene >3 req/min. Para backlogs grandes, espaciar ~1 req/seg.
+
+#### Estado real del código hoy (verificado 2026-09-18, no confiar en notas viejas)
+
+`supabase/functions/process-poliza-pdf/index.ts` es el corazón del flujo:
+- Recibe `{ticket_id, archivo_id}` — **una llamada por archivo** (`:115-123`).
+- Gate: exige `maestro_adjunto_categorias.nombre = 'Póliza PDF'` **hardcodeado** (`:149`) + fila activa en `poliza_pdf_extraccion_config`.
+- Descarga el PDF: regex sobre `ticket_archivos.url` → `createSignedUrl(path, 300)` → `fetch` → `arrayBuffer` (`:183-195`), y arma un `FormData` con `Blob` (`:198-199`). **Esto se reusa tal cual para el endpoint nuevo.**
+- Llama al extractor `POST https://lector.movi.digital/api/extraer-poliza-registro` **sin header de auth** (`:201-204`). Ese fetch ya existía; es solo para extraer, no para encolar.
+- `extraccionError` solo se llena si el HTTP falla o el JSON es inválido (`:208-212`). **No cubre "campos incompletos".**
+- `aseguradoraSoportada` = allowlist **hardcodeada de 2 aseguradoras**: `["gnp","qualitas","quálitas"]` (`:218-220`). **Ramo y subramo NUNCA se evalúan.**
+- Al fallar: `enviarEntrenamiento = !extraccionError && !aseguradoraSoportada` (`:268`) → `upsert` en la tabla `lector_cola_entrenamiento` (`:273-283`). **Cero HTTP hacia la cola del lector.**
+
+`lector_cola_entrenamiento` (migraciones `20260828000001` y `...02`): RLS da SELECT a `authenticated` con rol Admin/Gerente/Empleado, UPDATE solo Admin, ALL a `service_role`. **No hay política para `anon`** → el supuesto de que "el lector la lee con el anon key" nunca habría funcionado. Por eso existe el endpoint nuevo. Único lector en el repo: el badge en `TramiteDetalle.tsx:511-519`.
+
+Frontend (ya funciona, se reusa): `TramiteArchivos.tsx:308-334` dispara la función al subir; `TramiteDetalle.tsx:1199-1226` la dispara al guardar recorriendo `pendingExtractions` secuencialmente; badges `📚 En entrenamiento` / `✓ Entrenado` / `⚠ Sin extracción` en `:2056-2061`. El flag `dispara_extraccion` por campo (`config.tipos_config[]`) ya está activo y se edita en `FormBuilderTab.tsx:771-825`.
+
+#### Qué se reusa y qué se reemplaza
+
+| Se reusa tal cual | Se reemplaza |
+|---|---|
+| Descarga del PDF + `FormData` (`:183-199`) | El `upsert` a `lector_cola_entrenamiento` (`:269-284`) → pasa a ser `POST` al endpoint nuevo |
+| Gate de config y `pendingExtractions`/badges del frontend | Columnas `archivo_url`/`archivo_path` (existen solo por el supuesto de tabla compartida) |
+| `poliza_datos_extraidos` como registro de resultado | La condición de encolado (`:268`), ver decisión B |
+| Patrón `Deno.env.get` + header `x-api-key` (precedente: `whatsapp-session/index.ts:48,74`) | El modelo 1-llamada-por-archivo, ver decisión D |
+
+#### Decisiones abiertas ANTES de escribir código
+
+- **A. `ticket_id` parece de un solo uso.** Un `409` se trata como éxito, pero si un agente adjunta un PDF hoy y otro la semana entrante bajo el mismo folio, el segundo envío recibe `409` y **el PDF nuevo nunca llega a la cola, en silencio**. Opciones: (1) pedirles que permitan agregar archivos a un `ticket_id` existente, o (2) mandar un id compuesto (`FOLIO-1`, `FOLIO-2`) — se puede hacer solos pero rompe el 1:1 entre folio de MOVI y ticket del lector. **Preguntar al equipo del lector cuál prefieren.**
+- **B. Hueco real: si el extractor truena, no se encola nada.** `enviarEntrenamiento` exige `!extraccionError`, así que un timeout o 500 del extractor deja el PDF sin extraer Y sin encolar. Hay que ampliar la condición.
+- **C. La detección por compañía+ramo+subramo que pidió Ricardo NO EXISTE hoy.** El código solo compara el nombre de la aseguradora contra un array de 2 valores; ramo y subramo se guardan pero nunca se evalúan. Para cumplir el pedido hace falta un **catálogo de combinaciones soportadas** (aseguradora + ramo + subramo) con su propia tabla y UI de administración. **Es la pieza más grande del trabajo y conviene dimensionarla con Ricardo antes de empezar.**
+- **D. Agrupación por ticket.** Hoy es una llamada por archivo; el endpoint acepta hasta 30 por `ticket_id` y rechaza el lote completo si un archivo es inválido. Hay que decidir dónde se agrupa (el frontend ya recorre `pendingExtractions` secuencialmente en `proceedWithSave`) y validar tamaño/extensión **antes** de enviar para no tumbar el lote.
+- **E. Fuente de verdad del badge.** `entrenamientoStatus` lee `lector_cola_entrenamiento`. Si dejamos de escribir ahí, los badges se rompen. Propuesta: conservar la tabla como bitácora local (se llena con la respuesta del `202`, guardando `cola_ids`) en vez de borrarla.
+
+#### Primer paso de la próxima sesión
+
+Resolver C y A con Ricardo (C define el alcance real, A necesita respuesta del otro equipo), cargar `MOVI_BETA_API_KEY` en Supabase Secrets, y recién entonces tocar código.
+
+---
+
 ### 🔴 Feature activa: Adjuntos por tipo + extracción automática de pólizas PDF (2026-08-19 → en producción parcialmente)
 
 Lo que ya está hecho y en producción (✅):
