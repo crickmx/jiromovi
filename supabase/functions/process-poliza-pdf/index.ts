@@ -215,18 +215,18 @@ Deno.serve(async (req: Request) => {
     const rfc = campos.rfc;
     const entidad = rfc ? (rfc.length <= 12 ? 1 : 0) : null;
 
-    const ASEGURADORAS_SOPORTADAS = ["gnp", "qualitas", "quálitas"];
-    const aseguradoraNorm = (extracted.aseguradora ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    const aseguradoraSoportada = !extraccionError && ASEGURADORAS_SOPORTADAS.some(a => aseguradoraNorm.includes(a));
-    const observaciones = (extraccionError || !aseguradoraSoportada)
-      ? "El sistema no pudo extraer de forma automática los datos para este archivo, favor de capturar manualmente"
-      : null;
+    // El extractor es la única autoridad sobre si reconoció la póliza. Conforme
+    // lector.movi.digital soporte más aseguradoras/ramos, MOVI las acepta solo.
+    const extraccionOk = !extraccionError && extracted.estado === "ok";
+    const observaciones = extraccionOk
+      ? null
+      : "El sistema no pudo extraer de forma automática los datos para este archivo, favor de capturar manualmente";
 
     // 8. Guardar en poliza_datos_extraidos
     const { error: saveErr } = await sb.from("poliza_datos_extraidos").upsert({
       ticket_id,
       archivo_id,
-      estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"),
+      estado: extraccionOk ? "ok" : "error",
       error_detalle: extraccionError ?? null,
       observaciones,
       aseguradora: extracted.aseguradora ?? null,
@@ -264,8 +264,9 @@ Deno.serve(async (req: Request) => {
 
     if (saveErr) throw new Error(`Error guardando: ${saveErr.message}`);
 
-    // 8a. Si el extractor corrió pero no soporta la combinación → encolar para entrenamiento
-    const enviarEntrenamiento = !extraccionError && !aseguradoraSoportada;
+    // 8a. Todo PDF que no se extrajo bien va a la cola de entrenamiento, incluido
+    // cuando el extractor mismo falló — antes ese caso se perdía sin encolar.
+    const enviarEntrenamiento = !extraccionOk;
     if (enviarEntrenamiento) {
       // El bucket ticket-archivos es privado; guardamos el path para que lector
       // pueda generar signed URLs con su propio cliente autenticado de Supabase.
@@ -334,7 +335,7 @@ Deno.serve(async (req: Request) => {
       console.error("XLSX generation error:", xlsxError);
     }
 
-    const fracaso = extraccionError || !aseguradoraSoportada;
+    const fracaso = !extraccionOk;
     const mensaje = fracaso
       ? `No fue posible extraer automáticamente los datos del archivo "${archivo.nombre}".\n${observaciones ?? "Favor de capturar manualmente."}`
       : buildMessage(campos, extracted.aseguradora, extracted.sub_ramo, ticket.folio);
@@ -415,7 +416,7 @@ Deno.serve(async (req: Request) => {
       comentarioPendiente = comentarioTexto;
     }
 
-    return json({ ok: true, estado: (extraccionError || !aseguradoraSoportada) ? "error" : (extracted.estado || "ok"), ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!aseguradoraSoportada && !extraccionError ? { extraccion_error: `Aseguradora no soportada: ${extracted.aseguradora ?? "desconocida"}` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}), ...(comentarioPendiente ? { comentario_pendiente: comentarioPendiente } : {}), ...(enviarEntrenamiento ? { enviado_entrenamiento: true } : {}) });
+    return json({ ok: true, estado: extraccionOk ? "ok" : "error", ...(extraccionError ? { extraccion_error: extraccionError } : {}), ...(!extraccionOk && !extraccionError ? { extraccion_error: `Póliza no reconocida por el extractor (${extracted.aseguradora ?? "aseguradora desconocida"})` } : {}), ...(xlsxError ? { xlsx_error: xlsxError } : {}), ...(comentarioPendiente ? { comentario_pendiente: comentarioPendiente } : {}), ...(enviarEntrenamiento ? { enviado_entrenamiento: true } : {}) });
 
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error interno";
