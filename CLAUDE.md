@@ -115,12 +115,35 @@ Frontend (ya funciona, se reusa): `TramiteArchivos.tsx:308-334` dispara la funci
   **Diseño acordado, seguro bajo las dos lecturas:** usar el folio como prefijo y hacer el id único por envío (`TK-1234`, luego `TK-1234-2`, …). Así nunca se dispara el `409`, se conserva la legibilidad que ellos quieren, y no dependemos de cuál lectura es la correcta. **Confirmar empíricamente con una llamada de prueba al construir** — reenviar el mismo `ticket_id` y ver si responde `202` o `409`.
 - **B. ✅ RESUELTO 2026-09-18.** Antes `enviarEntrenamiento` exigía `!extraccionError`, así que un timeout o 500 del extractor dejaba el PDF sin extraer Y sin encolar. Ahora es `!extraccionOk` — todo lo que no sea éxito confirmado se encola.
 - **C. ✅ RESUELTO 2026-09-18 — no se construye catálogo.** Decisión de Ricardo: el extractor vive en el mismo `lector.movi.digital` y va soportando más compañías/ramos conforme el equipo lo entrena, así que MOVI no debe mantener su propia lista. Se **eliminó** la allowlist hardcodeada `["gnp","qualitas","quálitas"]` y ahora se confía en el veredicto propio del extractor (`estado: ok | no_reconocida | error`, ver `lector_endpoint.py:88`). Una aseguradora nueva entrenada en el lector queda soportada en MOVI sin tocar código. **No construir una tabla de combinaciones aseguradora+ramo+subramo** — sería una lista paralela que se desincroniza.
-- **D. Agrupación por ticket.** Hoy es una llamada por archivo; el endpoint acepta hasta 30 por `ticket_id` y rechaza el lote completo si un archivo es inválido. Hay que decidir dónde se agrupa (el frontend ya recorre `pendingExtractions` secuencialmente en `proceedWithSave`) y validar tamaño/extensión **antes** de enviar para no tumbar el lote.
-- **E. Fuente de verdad del badge.** `entrenamientoStatus` lee `lector_cola_entrenamiento`. Si dejamos de escribir ahí, los badges se rompen. Propuesta: conservar la tabla como bitácora local (se llena con la respuesta del `202`, guardando `cola_ids`) en vez de borrarla.
+- **D y E. ✅ RESUELTOS 2026-09-21 — implementados con patrón de bandeja de salida (outbox).** Ver abajo.
 
-#### Primer paso de la próxima sesión
+#### ✅ Implementación (2026-09-21) — arquitectura de outbox
 
-Resolver C y A con Ricardo (C define el alcance real, A necesita respuesta del otro equipo), cargar `MOVI_BETA_API_KEY` en Supabase Secrets, y recién entonces tocar código.
+Decisión: `lector_cola_entrenamiento` **se conserva** y pasa a ser la bandeja de salida. `process-poliza-pdf` **no cambió** — sigue escribiendo una fila por PDF fallido igual que siempre. Una pieza nueva drena esa bandeja.
+
+Por qué así y no un POST en línea dentro de `process-poliza-pdf`: la función es de un archivo por llamada, así que POSTear ahí dentro obligaba a un `ticket_id` por archivo (perdiendo la agrupación que el lector quiere) o a reusar el folio y caer justo en la ambigüedad del `409`. Además el badge del frontend lee esa tabla — conservarla lo deja funcionando sin tocar nada. Y si un envío falla, la fila se queda pendiente y se reintenta sola, en vez de perderse.
+
+**Piezas nuevas:**
+- `supabase/migrations/20260921000001_lector_cola_outbox.sql` — agrega a la tabla `enviado_en`, `ticket_id_enviado`, `intentos`, `error_envio` + índice parcial de pendientes + el cron cada 5 min. **Ojo:** `estado` ('pendiente'|'procesado') NO se tocó — ese describe si el equipo del lector ya catalogó el PDF de su lado, que es distinto de si nosotros ya lo enviamos.
+- `supabase/functions/enviar-cola-lector/index.ts` — agrupa pendientes por trámite, descarga los PDFs del bucket privado, valida tamaño/extensión **antes** de armar el lote (un archivo inválido tumbaría el envío completo), y hace el `POST` multipart con `X-API-Key`.
+
+**Detalles de la implementación que importan:**
+- El lector espera el **folio** (`TK4A92F`), no el uuid. La tabla guarda `ticket_id` como uuid, así que la función hace join a `tickets.folio`.
+- **Sufijo por envío:** el primer envío de un trámite usa el folio pelón; los siguientes usan `folio-2`, `folio-3`… calculados contando los `ticket_id_enviado` ya usados. Así nunca se dispara el `409` (decisión A).
+- **El `409` se trata como éxito** de todos modos: cubre el caso de que una corrida anterior haya POSTeado bien pero muriera antes de marcar la fila. El reintento manda el mismo id, recibe `409`, y marca como enviado. Recuperación correcta.
+- `429` corta la corrida completa; el cron retoma en 5 min.
+- Fallas transitorias suman `intentos` y reintentan hasta 5 veces. Fallas que no se arreglan reintentando (archivo >15 MB, ruta de storage rota) se marcan con `intentos = 5` y quedan visibles en `error_envio`.
+- Ritmo: máx 10 trámites por corrida con 1 seg entre envíos ≈ 2 envíos/min, muy por debajo de su límite de reposo de 6/min.
+
+#### Pasos para ponerlo en producción (pendientes de Ricardo)
+
+1. **Revisar si hay backlog** antes de prender el cron — la tabla acumula filas desde el 2026-08-28 y en cuanto el cron arranque las va a empezar a mandar todas: `select count(*) from lector_cola_entrenamiento where enviado_en is null;`
+2. Cargar `MOVI_BETA_API_KEY` en Supabase → Edge Functions → Secrets.
+3. Desplegar a mano desde el dashboard: `enviar-cola-lector` (nueva) y `process-poliza-pdf` (trae los fixes del 2026-09-18 que todavía no están en producción).
+4. Correr la migración con la GUC del JWT:
+   `set local app.lector_cron_service_key = '<JWT_service_role>';` y luego el archivo.
+5. **Verificar empíricamente lo de la decisión A**: reenviar un `ticket_id` ya usado y ver si responde `202` o `409`. Su doc dice `409`, Ricardo entendió que `202`. El diseño aguanta las dos, pero conviene saber cuál es.
+6. `produccion` está 3 commits atrás de `main` — merge si se quiere ahí también.
 
 ---
 
