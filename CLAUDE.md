@@ -135,15 +135,36 @@ Por qué así y no un POST en línea dentro de `process-poliza-pdf`: la función
 - Fallas transitorias suman `intentos` y reintentan hasta 5 veces. Fallas que no se arreglan reintentando (archivo >15 MB, ruta de storage rota) se marcan con `intentos = 5` y quedan visibles en `error_envio`.
 - Ritmo: máx 10 trámites por corrida con 1 seg entre envíos ≈ 2 envíos/min, muy por debajo de su límite de reposo de 6/min.
 
-#### Pasos para ponerlo en producción (pendientes de Ricardo)
+#### Puesta en producción — dónde quedó al cerrar el 2026-09-21
 
-1. **Revisar si hay backlog** antes de prender el cron — la tabla acumula filas desde el 2026-08-28 y en cuanto el cron arranque las va a empezar a mandar todas: `select count(*) from lector_cola_entrenamiento where enviado_en is null;`
-2. Cargar `MOVI_BETA_API_KEY` en Supabase → Edge Functions → Secrets.
-3. Desplegar a mano desde el dashboard: `enviar-cola-lector` (nueva) y `process-poliza-pdf` (trae los fixes del 2026-09-18 que todavía no están en producción).
-4. Correr la migración con la GUC del JWT:
-   `set local app.lector_cron_service_key = '<JWT_service_role>';` y luego el archivo.
-5. **Verificar empíricamente lo de la decisión A**: reenviar un `ticket_id` ya usado y ver si responde `202` o `409`. Su doc dice `409`, Ricardo entendió que `202`. El diseño aguanta las dos, pero conviene saber cuál es.
-6. `produccion` está 3 commits atrás de `main` — merge si se quiere ahí también.
+**Hecho:** la migración `20260921000001` se corrió en Supabase (Ricardo confirmó "listo"). El backlog de la tabla era poco, no hizo falta soltarlo por partes.
+
+**SIN VERIFICAR — primero que hay que hacer al retomar.** No alcanzamos a correr las consultas de comprobación, así que no sabemos si el cron quedó bien programado ni si llegó a enviar algo. **Tampoco quedó confirmado si el secret y los deploys se hicieron** — si faltan, el cron lleva fallando cada 5 min desde entonces (ruidoso, pero inofensivo: las filas se quedan pendientes y se reintentan).
+
+```sql
+-- 1. ¿Quedó programado?
+select jobname, schedule, active from cron.job where jobname = 'enviar-cola-lector';
+
+-- 2. ¿Corrió y cómo le fue?
+select status, return_message, start_time from cron.job_run_details
+where jobid = (select jobid from cron.job where jobname = 'enviar-cola-lector')
+order by start_time desc limit 5;
+
+-- 3. ¿Se están enviando?
+select count(*) filter (where enviado_en is not null)  as enviados,
+       count(*) filter (where enviado_en is null)      as pendientes,
+       count(*) filter (where error_envio is not null) as con_error
+from lector_cola_entrenamiento;
+```
+Si el paso 2 devuelve `failed` o el 3 muestra `con_error`, revisar `select error_envio from lector_cola_entrenamiento where error_envio is not null limit 3;`. Los dos errores más probables: `MOVI_BETA_API_KEY no configurada` (falta el secret) o un 404 (falta desplegar `enviar-cola-lector`).
+
+**Pendientes confirmados:**
+- Verificar/crear el secret `MOVI_BETA_API_KEY` en Supabase → Edge Functions → Secrets.
+- Verificar/desplegar a mano `enviar-cola-lector` (nueva) y `process-poliza-pdf` (trae los fixes del 2026-09-18, que **no están en producción todavía**).
+- **Comprobar empíricamente la decisión A**: reenviar un `ticket_id` ya usado y ver si responde `202` o `409`. Su doc dice `409`, Ricardo entendió que `202`. El diseño aguanta las dos, pero conviene saberlo.
+- `produccion` está 4 commits atrás de `main` — merge si se quiere ahí también (nada de esto es frontend, así que no urge).
+
+**Gotcha para futuras migraciones con este patrón:** `SET LOCAL` solo vive dentro de una transacción. Hay que envolver la migración completa en `BEGIN; SET LOCAL app.<clave> = '<JWT>'; …archivo… COMMIT;` y correrla de una sola vez. Si se corre suelta, Postgres descarta la GUC, las columnas se agregan pero el cron no se programa (sale un NOTICE diciéndolo).
 
 ---
 
