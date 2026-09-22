@@ -271,7 +271,7 @@ Deno.serve(async (req: Request) => {
       // El bucket ticket-archivos es privado; guardamos el path para que lector
       // pueda generar signed URLs con su propio cliente autenticado de Supabase.
       const archivoPath = archivo.url.split("/storage/v1/object/public/ticket-archivos/")[1] ?? null;
-      await sb.from("lector_cola_entrenamiento").upsert(
+      const { error: colaErr } = await sb.from("lector_cola_entrenamiento").upsert(
         {
           ticket_id,
           archivo_id,
@@ -282,6 +282,7 @@ Deno.serve(async (req: Request) => {
         },
         { onConflict: "archivo_id", ignoreDuplicates: true }
       );
+      if (colaErr) console.error("Error encolando a lector_cola_entrenamiento:", colaErr.message);
     }
 
     // 8b. Generar y adjuntar XLSX para SICAS — una fila por cada archivo del ticket
