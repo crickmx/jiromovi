@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as XLSX from "npm:xlsx";
 
 const LECTOR_URL = "https://lector.movi.digital";
+const MOVI_BETA_API_KEY = Deno.env.get("MOVI_BETA_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const STORAGE_BUCKET = "ticket-archivos";
@@ -195,11 +196,16 @@ Deno.serve(async (req: Request) => {
     const pdfBytes = await pdfResp.arrayBuffer();
 
     // 7. Llamar al extractor Python en lector.movi.digital
+    // Ruta síncrona autenticada por X-API-Key (server-to-server), NO /api/extraer
+    // (esa exige sesión de usuario logueado en el lector) ni /api/integraciones/
+    // movi_beta/cola (esa es async, para catalogación en background, nunca
+    // regresa datos extraídos).
     const formData = new FormData();
-    formData.append("files", new Blob([pdfBytes], { type: "application/pdf" }), archivo.nombre || "poliza.pdf");
+    formData.append("file", new Blob([pdfBytes], { type: "application/pdf" }), archivo.nombre || "poliza.pdf");
 
-    const extractResp = await fetch(`${LECTOR_URL}/api/extraer-poliza-registro`, {
+    const extractResp = await fetch(`${LECTOR_URL}/api/integraciones/movi_beta/extraer`, {
       method: "POST",
+      headers: { "X-API-Key": MOVI_BETA_API_KEY },
       body: formData,
     });
 
