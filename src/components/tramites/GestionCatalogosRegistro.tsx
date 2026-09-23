@@ -68,6 +68,7 @@ export function GestionCatalogosRegistro() {
   const [showNewTipoForm, setShowNewTipoForm] = useState(false);
   const [newTipo, setNewTipo] = useState({ label: '', area: '', color: '#0369a1' });
   const [searchTipo, setSearchTipo] = useState('');
+  const [mostrarInactivos, setMostrarInactivos] = useState(false);
   // Áreas: misma tabla maestra que usan la tab "Áreas" y el panel de Equipo — antes este
   // formulario usaba una lista hardcodeada (AREAS en types.ts) desconectada de la BD.
   const [areasDisponibles, setAreasDisponibles] = useState<{ id: string; nombre: string }[]>([]);
@@ -187,12 +188,20 @@ export function GestionCatalogosRegistro() {
     editConfig.es_interno !== (activeTipo.es_interno ?? false)
   );
 
+  // Los inactivos se ocultan por default: la lista es sobre todo para trabajar con los
+  // tipos en uso, y los dados de baja solo estorban. La búsqueda sí los alcanza, para
+  // poder encontrar uno viejo sin tener que prender el toggle.
+  const tiposVisibles = mostrarInactivos || searchTipo.trim()
+    ? tiposTramite
+    : tiposTramite.filter(t => t.activo);
+  const inactivosOcultos = tiposTramite.filter(t => !t.activo).length;
+
   const filteredTipos = searchTipo.trim()
-    ? tiposTramite.filter(t =>
+    ? tiposVisibles.filter(t =>
         t.label.toLowerCase().includes(searchTipo.toLowerCase()) ||
         t.value.toLowerCase().includes(searchTipo.toLowerCase())
       )
-    : tiposTramite;
+    : tiposVisibles;
 
   const tiposGrouped = [
     ...areasDisponibles.map(a => ({
@@ -616,7 +625,7 @@ export function GestionCatalogosRegistro() {
             <div>
               <h2 className="text-xl font-bold text-neutral-900">
                 Tipos de Trámite
-                <span className="ml-2 text-sm font-normal text-neutral-400">({tiposTramite.length})</span>
+                <span className="ml-2 text-sm font-normal text-neutral-400">({tiposVisibles.length})</span>
               </h2>
               {tramitesOpen && (
                 <p className="text-xs text-neutral-500 mt-0.5">Haz clic en editar para configurar campos y permisos</p>
@@ -642,6 +651,18 @@ export function GestionCatalogosRegistro() {
               placeholder="Buscar tipo de trámite..."
               className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
             />
+            {inactivosOcultos > 0 && (
+              <label className="flex items-center gap-2 mt-2 text-xs text-neutral-500 cursor-pointer select-none w-fit">
+                <input
+                  type="checkbox"
+                  checked={mostrarInactivos}
+                  onChange={(e) => setMostrarInactivos(e.target.checked)}
+                  className="rounded border-neutral-300 text-blue-600 focus:ring-blue-400"
+                />
+                Mostrar {inactivosOcultos} tipo{inactivosOcultos === 1 ? '' : 's'} inactivo{inactivosOcultos === 1 ? '' : 's'}
+                {searchTipo.trim() && <span className="text-neutral-400">— la búsqueda ya los incluye</span>}
+              </label>
+            )}
           </div>
         )}
 
