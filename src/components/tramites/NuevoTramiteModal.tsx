@@ -1304,7 +1304,10 @@ export function NuevoTramiteModal({
                 [campo.id]: agenteId,
                 ...(oficinaCampo ? { [oficinaCampo.id]: despacho?.nombre || '' } : {}),
               }));
-              if (agente?.usuario_id) setAsignado(agente.usuario_id);
+              // Limpiar si el agente nuevo no tiene cuenta: conservar la del anterior
+              // dejaba el trámite a nombre de quien no era, y ahora además mostraría
+              // una vista previa de asignación que no corresponde.
+              setAsignado(agente?.usuario_id ?? '');
             }}
             options={agenteOpts}
             placeholder="Selecciona usuario asignado..."
