@@ -540,9 +540,11 @@ export function TramiteDetalle() {
         });
         setAgentesVendedor(mapped);
       });
+    // Sin filtro por `username`: es nullable y un `neq` contra NULL excluiría a casi
+    // todos. La cuenta Sistema queda fuera sola por tener activo=false.
     supabase.from('usuarios')
       .select('id, nombre_completo')
-      .eq('activo', true).is('deleted_at', null).neq('username', 'sistema')
+      .eq('activo', true).is('deleted_at', null)
       .order('nombre_completo')
       .then(({ data }) => setUsuariosMovi((data || []) as { id: string; nombre_completo: string }[]));
   }, [camposDinamicos]);

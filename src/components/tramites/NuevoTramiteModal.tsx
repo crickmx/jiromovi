@@ -601,14 +601,16 @@ export function NuevoTramiteModal({
 
   const loadUsuarios = async () => {
     // Alimenta el selector de Solicitante: cualquier usuario activo puede serlo
-    // (un empleado también tiene producción propia). Se excluye la cuenta Sistema,
-    // que existe solo para firmar los trámites que genera el motor de recurrencias.
+    // (un empleado también tiene producción propia). La cuenta Sistema queda fuera
+    // sola porque se creó con activo=false.
+    // NO filtrar por `username`: esa columna se eliminó y se recreó como nullable
+    // (20251028185230 / 20251029201356), y un `neq` contra NULL no es verdadero en
+    // SQL — excluiría a casi todos los usuarios.
     const { data } = await supabase
       .from('usuarios')
       .select('id, nombre_completo, rol, oficina_id')
       .eq('activo', true)
       .is('deleted_at', null)
-      .neq('username', 'sistema')
       .order('nombre_completo');
 
     if (data) setUsuariosDisponibles(data as Usuario[]);
