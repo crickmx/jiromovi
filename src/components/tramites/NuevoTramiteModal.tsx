@@ -144,7 +144,6 @@ export function NuevoTramiteModal({
   ]);
 
   // --- Estado para Cotización / Emisión ---
-  const [ceAgenteUserId, setCeAgenteUserId] = useState('');
   const [ceRamoId, setCeRamoId] = useState('');            // UUID de maestro_ramos
   const [ceSelectedInsurers, setCeSelectedInsurers] = useState<string[]>([]); // nombres de maestro_companias
   const [ceRequestDatetime, setCeRequestDatetime] = useState(formatDateTimeForInput(new Date()));
@@ -534,7 +533,6 @@ export function NuevoTramiteModal({
     setError('');
 
     // Reset CE fields
-    setCeAgenteUserId('');
     setCeRamoId('');
     setCeSelectedInsurers([]);
     setCeRequestDatetime(formatDateTimeForInput(new Date()));
@@ -560,7 +558,6 @@ export function NuevoTramiteModal({
     setPrioridad(((draft.prioridad as string) || 'Baja') as 'Alta' | 'Media' | 'Baja');
     setDescripcion((draft.descripcion as string) || '');
     setPolizaNumero((draft.polizaNumero as string) || '');
-    setCeAgenteUserId((draft.ceAgenteUserId as string) || '');
     setCeRamoId((draft.ceRamoId as string) || '');
     setCeSelectedInsurers((draft.ceSelectedInsurers as string[]) || []);
     setComAgenteUserId((draft.comAgenteUserId as string) || '');
@@ -590,12 +587,12 @@ export function NuevoTramiteModal({
     if (!isOpen) return;
     saveDraft(DRAFT_KEY, {
       tipoTramite, asignado, prioridad, descripcion, polizaNumero,
-      ceAgenteUserId, ceRamoId, ceSelectedInsurers,
+      ceRamoId, ceSelectedInsurers,
       comAgenteUserId, comCliente, comPoliza, comAseguradora,
       comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega,
     });
   }, [isOpen, tipoTramite, asignado, prioridad, descripcion, polizaNumero,
-      ceAgenteUserId, ceRamoId, ceSelectedInsurers,
+      ceRamoId, ceSelectedInsurers,
       comAgenteUserId, comCliente, comPoliza, comAseguradora,
       comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega]);
 
@@ -633,6 +630,18 @@ export function NuevoTramiteModal({
     return row.grupo_id ? row : null;
   };
 
+  // Un agente siempre es el solicitante de su propio trámite. Antes esto solo se
+  // reflejaba en `asignado`, nunca en la respuesta del formulario, así que el trámite
+  // se guardaba con el Solicitante vacío y salía "Sin registrar" en el detalle.
+  useEffect(() => {
+    if (!isAgent || !usuario?.id) return;
+    const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+    if (!agCampo) return;
+    setRespuestasDinamicas(prev =>
+      prev[agCampo.id] === usuario.id ? prev : { ...prev, [agCampo.id]: usuario.id }
+    );
+  }, [camposDinamicos, isAgent, usuario?.id]);
+
   // Resuelve la asignación mientras se llena el formulario, para poder mostrarla
   // antes de guardar. El submit vuelve a resolverla por su cuenta — esto es solo
   // la vista previa, nunca la fuente de verdad.
@@ -648,7 +657,26 @@ export function NuevoTramiteModal({
       const res = await resolveGrupoParaTicket(agenteUserId, tipoTramite);
       if (cancelado) return;
       if (!res) {
-        setPreviewAsignacion({ estado: 'listo', equipo: null, responsable: null });
+        // Sin regla, cada flujo tiene su propio respaldo y la vista previa tiene que
+        // decir la verdad: un agente cae en el responsable de su oficina, y los tipos
+        // comerciales y Cotización/Emisión quedan a cargo de quien los crea.
+        const respaldoId = isAgent
+          ? autoResponsableId
+          : (isCommercialTicketType(tipoTramite) || tipoTramite === 'cotizacion_emision')
+            ? (usuario?.id ?? null)
+            : null;
+        if (!respaldoId) {
+          setPreviewAsignacion({ estado: 'listo', equipo: null, responsable: null });
+          return;
+        }
+        const { data: resp } = await supabase.from('usuarios')
+          .select('nombre_completo').eq('id', respaldoId).maybeSingle();
+        if (cancelado) return;
+        setPreviewAsignacion({
+          estado: 'listo',
+          equipo: null,
+          responsable: (resp as { nombre_completo?: string } | null)?.nombre_completo ?? null,
+        });
         return;
       }
       const [grupoRes, ejecRes] = await Promise.all([
@@ -665,7 +693,7 @@ export function NuevoTramiteModal({
       });
     })();
     return () => { cancelado = true; };
-  }, [asignado, tipoTramite, esInterno, usuario?.id]);
+  }, [asignado, tipoTramite, esInterno, usuario?.id, isAgent, autoResponsableId]);
 
   const loadLotesDisponibles = async (forUserId?: string) => {
     if (!usuario) return;
@@ -1292,6 +1320,19 @@ export function NuevoTramiteModal({
 
     if (campo.sistema_key === 'agente_vendedor') {
       if (esInterno) return null;
+      // Un agente solo levanta trámites a su nombre: el solicitante es él y no se elige.
+      // Se muestra igual que "Creado por" en vez de un selector deshabilitado y vacío.
+      if (isAgent) {
+        return (
+          <div key={campo.id}>
+            <label className="flex items-center gap-1 text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
+              <Lock className="w-3 h-3" />{campo.label}
+            </label>
+            <div className={violet}>{lock}{usuario?.nombre_completo || usuario?.nombre || 'Tu cuenta'}</div>
+            <p className="text-[11px] text-neutral-400 mt-1">Solicitante — este trámite va a tu nombre.</p>
+          </div>
+        );
+      }
       // El solicitante es un usuario MOVI, no un vendedor del catálogo SICAS. Es el
       // dato que de verdad necesita el trámite (alimenta las reglas de asignación,
       // las notificaciones y agente_id); el vendedor SICAS es metadato secundario.
@@ -1370,7 +1411,6 @@ export function NuevoTramiteModal({
     if (campo.sistema_key === 'estatus') return renderCampoDinamico(campo);
 
     if (campo.sistema_key === 'asignado_a') {
-      if (isAgent || tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite)) return null;
       // Solo informativo: el Responsable lo deciden las reglas de asignación. Desde que
       // el solicitante es un usuario MOVI, su cuenta siempre se conoce y no hay nada
       // que capturar aquí.
@@ -1542,7 +1582,9 @@ export function NuevoTramiteModal({
   const handleSubmitCotizacionEmision = async () => {
     if (!usuario) return;
 
-    const effectiveAgenteId = isAgent ? usuario.id : (ceAgenteUserId || (preloadedData?.instrucciones ? usuario.id : ''));
+    // El solicitante sale del campo compartido `agente_vendedor` (que escribe en
+    // `asignado`), no de un campo propio de este tipo.
+    const effectiveAgenteId = isAgent ? usuario.id : (asignado || (preloadedData?.instrucciones ? usuario.id : ''));
 
     // Resolve team assignment rules (same logic as handleSubmit for other tramite types)
     const grupoResult = await resolveGrupoParaTicket(effectiveAgenteId || null, 'cotizacion_emision');
@@ -2350,35 +2392,9 @@ export function NuevoTramiteModal({
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Agente - auto-asignado si es Agente */}
-              {isAgent ? (
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                    <User className="w-4 h-4 inline mr-1.5" />
-                    Agente
-                  </label>
-                  <div className="w-full px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm text-neutral-700">
-                    {usuario?.nombre_completo || 'Tu'}
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                    <User className="w-4 h-4 inline mr-1.5" />
-                    Agente *
-                  </label>
-                  <select
-                    value={ceAgenteUserId}
-                    onChange={(e) => setCeAgenteUserId(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                  >
-                    <option value="">Seleccione...</option>
-                    {ceAgenteUsers.map(user => (
-                      <option key={user.id} value={user.id}>{user.nombre_completo}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {/* El Agente de este tipo se eliminó: duplicaba al campo sistema
+                  `agente_vendedor` ("Solicitante"), que ahora es el único lugar
+                  donde se elige y el que alimenta las reglas de asignación. */}
 
               {/* Ramo (maestro_ramos, cascada inversa desde aseguradoras) */}
               <div>
