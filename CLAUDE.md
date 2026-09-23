@@ -2,7 +2,7 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-22)
 
-### 🟡 SIGUIENTE — Módulo Trámites: limpieza visual (✅ hecha) + auto-asignación real de Responsable (pendiente, sesión 2026-09-22)
+### 🟡 Módulo Trámites: limpieza visual (✅ hecha) + auto-asignación real de Responsable (✅ hecha 2026-09-23, falta probar en navegador) + usuario Sistema (✅ hecho)
 
 **Contexto de la sesión:** Ricardo pidió una revisión completa del módulo Trámites: (1) campos antiguos de la primera versión que no ha podido eliminar, (2) un mejor sistema para distinguir Solicitante/Creador/Responsable (hoy confuso), (3) una pasada de UI/UX en los formularios. Se investigó con 3 agentes en paralelo (legacy fields, mapeo de roles, crítica de diseño) antes de tocar nada — ver hallazgos abajo.
 
@@ -18,7 +18,7 @@
 Los 12 tipos de trámite legacy (`is_custom=false`, hardcodeados desde antes de que existiera `ticket_tipos`) siguen todos activos — confirmado con SQL real:
 `cotizacion_emision` (201 trámites, el más enterrado — tiene su propio subsistema paralelo "Registro de Actividades" repartido en ~7 archivos), `cobranza` (28), `registro_poliza` (20), `formulario_cotizacion` (17), `renovaciones` (14), `correccion_poliza_registrada` (8), `solicitud_comisiones_pendientes` (7), `correccion_comisiones` (5), `otros_comercial` (2), `cancelacion_poliza` (1), `correccion_poliza_endoso` (0), `cambio_bancario` (0). Ya existe precedente (`20260702000012_clonar_tipos_integrados_nuevo.sql`) que clonó los 12 en versiones `_nuevo` 100% configurables, pero ese trabajo quedó pausado — no se sabe si alguien los usa. Ricardo decidió: **arrancar por los cosmético primero (ya hecho), Legacy queda para después**, empezando lo más barato (`correccion_poliza_endoso`/`cambio_bancario`, 0 trámites activos, casi sin riesgo) antes de tocar `cotizacion_emision`.
 
-**❌ PENDIENTE — auto-asignación real de Responsable (2026-09-22, reglas de negocio que Ricardo aclaró EXPLÍCITAMENTE hoy, esto SÍ es lógica, no cosmético):**
+**✅ HECHO 2026-09-23 (commits `60e20700` + `0cc50fe0`) — auto-asignación real de Responsable.** Las reglas de negocio que Ricardo dictó el 2026-09-22 quedan abajo como referencia; el resumen de lo implementado va al final de esta sección.
 
 1. La mayoría de tipos de trámite deben auto-asignar Equipo + Responsable — ya existe el motor de 3 capas (`get_grupo_para_ticket()`, ver sección "Asignación por Trámites — 3 capas de auto-asignación" más abajo: nivel 1 `tramites_reglas_por_tipo` override agente+tipo, nivel 2 `tramite_team_tipo_config` por oficina, nivel 3 `tramites_grupos_reglas` agente+área legacy).
 2. Si las reglas asignan Equipo pero ningún Responsable individual → modo pool (ya existe, `isPoolMode` en `NuevoTramiteModal.tsx`), el trámite queda en la cola del equipo/área.
@@ -26,7 +26,21 @@ Los 12 tipos de trámite legacy (`is_custom=false`, hardcodeados desde antes de 
 4. **Si no hay ninguna regla de asignación** (ninguna de las 3 capas aplica): los líderes de equipo (`tramites_grupos_miembros.rol_en_equipo = 'lider'`) deben poder asignar manualmente.
 5. **Si no hay ningún equipo habilitado** para ese agente/vendedor + tipo de trámite (ni siquiera un pool): un Administrador asigna manualmente Y debe quedar disponible ahí mismo una forma de crear la regla correspondiente (nivel 1 o 2) para que la próxima vez sea automático.
 
-**Falta traducir a un plan concreto antes de tocar código** (siguiendo el patrón habitual con Ricardo — investigar, plan, preguntas de diseño antes de implementar): ¿cómo se ve el campo "Asignar a" cuando está bloqueado por auto-asignación vs. cuando un líder/admin sí puede editarlo? ¿de dónde sale el flujo de "crear regla" para el Admin cuando asigna manualmente por falta de equipo? ¿aplica a los 12 tipos Legacy también o solo a los tipos FormBuilder?
+**🔑 Lo que la investigación reveló y cambió el plan (2026-09-23):** el campo "Asignar a" **nunca fue un campo de Responsable**. Guarda la **cuenta MOVI del solicitante** y se llena solo al elegir al agente (`NuevoTramiteModal.tsx:1264`, `setAsignado(agente.usuario_id)`); su propósito real es proponer la vinculación cuando ese agente aún no tiene cuenta (flujo `maestro_mapeo_pendiente`, `:1770`). El pase cosmético del 2026-09-22 lo etiquetó "(Responsable)" y eso lo disfrazó de uno. De ahí salía el "pisado en silencio": al guardar, si ninguna regla aplicaba, ese mismo valor caía como responsable, dejando al solicitante como su propio responsable.
+
+También resultó que **las notificaciones de las reglas 2, 4 y 5 ya existían** (`:1808-1835`: avisa al responsable, o al líder si es pool, o a los Admins si no se resolvió nada) — no hubo que construir nada de eso. Y `isPoolMode` estaba hardcodeado a `false` (`:224`), así que su banner y su etiqueta alterna "Agente del Trámite" eran código muerto — ese es el origen de la etiqueta equivocada.
+
+**Lo implementado:**
+- El respaldo a `asignado` como responsable se reemplazó por `null`: sin regla, el trámite queda sin asignar y se dispara el aviso a Admin que ya existía (reglas 4 y 5 colapsadas en una, decisión de Ricardo).
+- El select libre de todos los usuarios **solo aparece cuando el agente no tiene cuenta vinculada** — su único caso de uso real. Se renombró a "Cuenta MOVI del solicitante".
+- En su lugar se muestra **a quién va a caer el trámite y por qué**, resolviendo el motor en un `useEffect` mientras se llena el formulario (antes solo se resolvía al guardar). Tres estados: verde con responsable + equipo, azul de cola cuando el equipo no trae ejecutivo, ámbar cuando no hay regla.
+- `asignado_a` entró en `AUTO_FILL_KEYS`: ya no hay nada que capturar, y exigirlo dejaba a los trámites internos (que no eligen agente) **sin poder guardarse** — regresión que se detectó y corrigió antes de subir.
+- Se eliminó `isPoolMode` y su código muerto.
+- Bug preexistente encontrado de paso (`0cc50fe0`): al cambiar a un agente sin cuenta vinculada, `asignado` conservaba la del agente anterior, así que el trámite quedaba a nombre de quien no era.
+
+**⚠️ SIN PROBAR EN NAVEGADOR.** Typecheck, build de producción y compilación en dev pasan limpios, pero la sesión no tenía herramienta de navegador — nadie ha visto la pantalla. Al retomar, verificar en beta: que la línea verde aparezca al elegir solicitante, que salga la azul cuando el equipo no tiene ejecutivo, la ámbar cuando no hay regla, y que el select de cuenta MOVI solo salga con agentes sin vincular.
+
+**❌ QUEDA PENDIENTE — la misma lógica duplicada en otros 3 lugares.** El arreglo solo cubre el alta manual. Siguen pisando igual: los triggers padre→hijo (`TramiteDetalle.tsx:1163-1171`), el flujo propio de `cotizacion_emision` (`NuevoTramiteModal.tsx:1480-1482`) y Store→Trámites (`StorePedidoDetalle.tsx`). Se acotó a propósito para verificar primero que el alta quede bien.
 
 ---
 
