@@ -1,8 +1,10 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-22)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-23)
 
-### 🟡 Módulo Trámites: limpieza visual (✅ hecha) + auto-asignación real de Responsable (✅ hecha 2026-09-23, falta probar en navegador) + usuario Sistema (✅ hecho)
+### 🟡 Módulo Trámites — sesión 2026-09-23 (TODO HECHO, NADA PROBADO EN NAVEGADOR)
+
+En una sola sesión: auto-asignación real del Responsable, usuario Sistema para trámites automáticos, inversión del Solicitante a usuarios MOVI, arreglos del flujo de agente, baja de 11 tipos Legacy y toggle de inactivos. El detalle de cada uno va abajo; **la advertencia de que nada se probó en pantalla está al final de la sección**.
 
 **Contexto de la sesión:** Ricardo pidió una revisión completa del módulo Trámites: (1) campos antiguos de la primera versión que no ha podido eliminar, (2) un mejor sistema para distinguir Solicitante/Creador/Responsable (hoy confuso), (3) una pasada de UI/UX en los formularios. Se investigó con 3 agentes en paralelo (legacy fields, mapeo de roles, crítica de diseño) antes de tocar nada — ver hallazgos abajo.
 
@@ -40,7 +42,55 @@ También resultó que **las notificaciones de las reglas 2, 4 y 5 ya existían**
 
 **⚠️ SIN PROBAR EN NAVEGADOR.** Typecheck, build de producción y compilación en dev pasan limpios, pero la sesión no tenía herramienta de navegador — nadie ha visto la pantalla. Al retomar, verificar en beta: que la línea verde aparezca al elegir solicitante, que salga la azul cuando el equipo no tiene ejecutivo, la ámbar cuando no hay regla, y que el select de cuenta MOVI solo salga con agentes sin vincular.
 
-**❌ QUEDA PENDIENTE — la misma lógica duplicada en otros 3 lugares.** El arreglo solo cubre el alta manual. Siguen pisando igual: los triggers padre→hijo (`TramiteDetalle.tsx:1163-1171`), el flujo propio de `cotizacion_emision` (`NuevoTramiteModal.tsx:1480-1482`) y Store→Trámites (`StorePedidoDetalle.tsx`). Se acotó a propósito para verificar primero que el alta quede bien.
+**❌ QUEDA PENDIENTE — la misma lógica duplicada en otros 2 lugares.** El arreglo cubre el alta manual y (desde `41d4633b`) `cotizacion_emision`. Siguen pisando igual: los triggers padre→hijo (`TramiteDetalle.tsx:1163-1171`) y Store→Trámites (`StorePedidoDetalle.tsx`).
+
+---
+
+#### ✅ Solicitante = usuario MOVI, ya no el catálogo SICAS (2026-09-23, commits `93711718` + `32017ba7`)
+
+**Lo que pidió Ricardo:** que la lista de "Agente / Vendedor" saliera de los usuarios que ya existen en MOVI en vez del catálogo de vendedores SICAS, y que si a un usuario le falta su vendedor SICAS se pueda ligar ahí mismo.
+
+**Por qué tenía razón:** el trámite necesita un **usuario MOVI** (alimenta `get_grupo_para_ticket`, las notificaciones y `agente_id`); el vendedor SICAS es metadato. El orden estaba invertido: se elegía el vendedor y luego el sistema intentaba resolver su cuenta MOVI, que muchas veces no existía.
+
+- La lista son **todos los usuarios activos** (decisión de Ricardo: "casi todos, aunque sean empleados, pueden tener rol de vendedor por tener producción"). La cuenta Sistema queda fuera sola por tener `activo=false`.
+- Si el usuario no tiene vendedor SICAS ligado, se elige ahí mismo: **Admin liga directo, el resto propone** y un Admin confirma. Eso ya lo imponía la RLS (`maestro_usuario_agente` solo acepta escritura de Administrador; `maestro_mapeo_pendiente` acepta de cualquiera), aquí solo se refleja en la UX.
+- **Beneficio de rebote:** `oficina_jiro` ahora sale de `usuarios.oficina_id`, la MISMA que lee el motor de reglas (`20260730120000...sql:56`). Antes venía del despacho SICAS —otra tabla— así que el formulario podía mostrar una oficina y las reglas usar otra.
+- `TramiteDetalle` resuelve el valor guardado contra usuarios y, si no aparece, contra el catálogo de vendedores: los trámites previos guardaron el UUID del vendedor y siguen mostrándose bien.
+
+**🔑 Trampa que costó un bug en producción (`32017ba7`):** `usuarios.username` **se eliminó y se recreó como nullable** (`20251028185230` / `20251029201356`), así que la mayoría de los usuarios la tiene vacía. Un `.neq('username','sistema')` no es verdadero contra NULL en SQL → el filtro excluyó a **todos** menos uno. **Nunca filtrar por `username` en este proyecto.**
+
+#### ✅ Flujo de agente y campo duplicado en Cotización/Emisión (2026-09-23, commit `41d4633b`)
+
+Ricardo entró como agente y reportó que "Usuario Asignado" salía vacío y que faltaba el Responsable. Resultó ser tres cosas:
+
+1. **Bug de datos, no cosmético:** un agente siempre es el solicitante de su propio trámite, pero eso solo se reflejaba en el state `asignado`, **nunca en la respuesta del formulario** → el trámite se guardaba con el Solicitante vacío y salía "Sin registrar" en el detalle. Ahora un `useEffect` llena la respuesta y el campo se muestra como texto bloqueado, igual que "Creado por".
+2. **El Responsable estaba oculto** para agentes, `cotizacion_emision` y los comerciales. Se quitó el ocultamiento (decisión: visible en todos). La vista previa ahora refleja el respaldo real de cada flujo: un agente cae en `getResponsableByOffice`, y comerciales y CE quedan a cargo de quien crea — antes habría dicho "no hay regla", que es falso.
+3. **Cotización/Emisión tenía su propio campo "Agente"** que duplicaba a `agente_vendedor`: dos selectores para lo mismo en la misma pantalla. Se eliminó el propio (`ceAgenteUserId`) y ese tipo pasa a usar el compartido. `ceAgenteUsers` se conserva porque también lo usan los comerciales.
+
+**Dos mecanismos distintos pueden bloquear el campo de Solicitante** — no confundirlos al diagnosticar: el `isAgent` que agregamos (muestra **el nombre** del usuario) y el `editable_para_rol` del FormBuilder (muestra un **selector gris vacío** con badge "Solo lectura"). El segundo se ajusta desde el editor del tipo, no en código.
+
+**⚠️ Sin validación de Solicitante en CE:** `agente_vendedor` está en `AUTO_FILL_KEYS`, así que `validateForm` lo salta aunque esté marcado requerido. Preexistente, no regresión. Sacarlo de esa lista es riesgoso: los tipos internos no renderizan el campo y quedarían bloqueados sin poder guardarse.
+
+#### ✅ Tipos Legacy dados de baja (2026-09-23, por SQL)
+
+Se desactivaron **11 de los 12 tipos Legacy** con `update ticket_tipos set activo=false`. **Se conservó `cotizacion_emision`** (201 trámites). Comercial: `correccion_poliza_endoso`, `renovaciones`, `cobranza`, `otros_comercial`, `formulario_cotizacion`. Operaciones: `correccion_poliza_registrada`, `correccion_comisiones`, `registro_poliza`, `solicitud_comisiones_pendientes`, `cambio_bancario`, `cancelacion_poliza`.
+
+**Por qué desactivar y NO borrar** (Ricardo pidió borrarlos por completo; no se puede): `ticket_tipos` → `tramite_tipo_campos` es **CASCADE**, y `tramite_respuestas.campo_id` referencia esos campos **con restricción**. Borrar el tipo o falla por FK, o se lleva por delante todas las respuestas de los trámites existentes — justo el historial que se quería conservar. La UI ya protege esto: el botón de borrar está oculto a propósito para los `is_custom=false`.
+
+Verificado antes de ejecutar: el alta filtra `activo=true` (desaparecen del selector), `TramiteDetalle` busca por `value` sin filtrar (los trámites viejos siguen abriéndose), las tarjetas de la lista usan `tipoDb?.color` con respaldo, y estos tipos tienen etiqueta estática en `registroActividadesTypes.ts` (no pierden el nombre). Lo único que se pierde: dejan de aparecer en el filtro "Tipo" de la lista.
+
+**⚠️ Dos tipos con nombre casi idéntico** — confirmar cuál antes de tocar: `registro_poliza` ("Registro de póliza", Legacy, desactivado) vs `registro_de_poliza` ("Registro de Póliza_RJR", **el que tiene la extracción automática de PDF** y alimenta la cola del lector).
+
+#### ✅ Toggle de tipos inactivos (2026-09-23, commit `625ee8cc`)
+
+`GestionCatalogosRegistro.tsx`: los inactivos se ocultan por default, con una casilla que dice cuántos son. La **búsqueda sí los alcanza** aunque el toggle esté apagado (buscar un tipo viejo por nombre no debería obligar a prender un filtro). El contador del encabezado refleja lo listado, no el total.
+
+#### ⚠️ NADA DE LO DE 2026-09-23 SE PROBÓ EN NAVEGADOR
+
+La sesión no tenía herramienta de navegador. Typecheck y build de producción pasan en todo, y varios bugs se encontraron por revisión del propio diff, pero **nadie vio la pantalla**. Lo que hay que verificar en beta al retomar:
+- Alta normal: la línea verde con responsable y equipo, la azul de cola, la ámbar sin regla, y el buscador de vendedor SICAS solo con usuarios sin ligar.
+- **Cotización/Emisión (201 trámites activos, el de mayor riesgo):** crear uno como agente y otro como interno. Su flujo de guardado es propio y se le quitó un campo.
+- Que la lista de Solicitante traiga a todos los usuarios activos.
 
 ---
 
@@ -179,7 +229,14 @@ Por qué así y no un POST en línea dentro de `process-poliza-pdf`: la función
 
 #### Puesta en producción — dónde quedó al cerrar el 2026-09-21
 
-**Hecho:** la migración `20260921000001` se corrió en Supabase (Ricardo confirmó "listo"). El backlog de la tabla era poco, no hizo falta soltarlo por partes.
+**Hecho:** la migración `20260921000001` se corrió en Supabase.
+
+**🔑 2026-09-22 — Ricardo encontró y corrigió dos bugs de fondo que explicaban por qué nada funcionaba:**
+- **`965746d8`** — el índice único de `lector_cola_entrenamiento(archivo_id)` era **parcial** (`WHERE archivo_id IS NOT NULL`), y Postgres exige un índice único NO parcial para un `ON CONFLICT (archivo_id)` sin `WHERE`. Tiraba `42P10` en cada intento y el `await` nunca revisaba el error → **jamás entró una sola fila a la cola**. Por eso "el backlog era poco": en realidad era cero. Migración `20260922000001` lo cambia a índice único normal.
+- **`3fff3dda`** — `process-poliza-pdf` llamaba a `POST /api/extraer-poliza-registro`, **una ruta que nunca existió** en el backend del lector. Los PDFs de Qualitas/GNP no fallaban por aseguradora no soportada: era un 404. Ahora apunta a `POST /api/integraciones/movi_beta/extraer` (síncrono, con `X-API-Key`, campo `file` en singular), agregada del lado del lector en su PR #15.
+
+**Contrato del endpoint de extracción, verificado el 2026-09-23** leyendo `api/routers/integraciones/movi_beta.py` en el repo del lector (`github.com/medaunbrauni/lector-polizas`, clonado en `C:\Users\RICARDO JIMENEZ\lector-polizas`): devuelve `{aseguradora, ramo, sub_ramo, estado, campos, error}` con `estado: "ok" | "no_reconocida" | "error"` — exactamente lo que espera nuestra condición `extracted.estado === "ok"`. **No hay que cambiar nada ahí.**
+Detalle menor pendiente: cuando devuelve `estado:"error"` también manda un campo `error` con el motivo, y MOVI no lo lee — se guarda `estado="error"` con `error_detalle` en null. Se arregla en una línea si se quiere esa trazabilidad.
 
 **SIN VERIFICAR — primero que hay que hacer al retomar.** No alcanzamos a correr las consultas de comprobación, así que no sabemos si el cron quedó bien programado ni si llegó a enviar algo. **Tampoco quedó confirmado si el secret y los deploys se hicieron** — si faltan, el cron lleva fallando cada 5 min desde entonces (ruidoso, pero inofensivo: las filas se quedan pendientes y se reintentan).
 
