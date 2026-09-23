@@ -111,7 +111,6 @@ export function NuevoTramiteModal({
   const [areaSeleccionada, setAreaSeleccionada] = useState<string>('');
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
   const [asignado, setAsignado] = useState<string>('');
-  const [propuestoNombreMOVI, setPropuestoNombreMOVI] = useState('');
   const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Baja');
   const [descripcion, setDescripcion] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
@@ -209,7 +208,9 @@ export function NuevoTramiteModal({
     id: string; nombre: string; despacho_id: string;
     usuario_id?: string; usuario_nombre?: string;
   }[]>([]);
-  const [despachos, setDespachos] = useState<{id: string; nombre: string}[]>([]);
+  const [oficinas, setOficinas] = useState<{id: string; nombre: string}[]>([]);
+  // Vendedor SICAS que se elige a mano cuando el solicitante no tiene uno ligado.
+  const [agenteSicasManual, setAgenteSicasManual] = useState('');
   // IDs de ticket_tipos que el usuario NO puede crear (calculado al cargar)
   const [tiposBlockedIds, setTiposBlockedIds] = useState<Set<string>>(new Set());
   // IDs de ticket_tipos donde el usuario puede crear pero NO editar
@@ -221,6 +222,9 @@ export function NuevoTramiteModal({
   const esInterno = tiposDb.find(t => t.value === tipoTramite)?.es_interno ?? false;
   const isEmpleadoOAgente = isAgent || usuario?.rol === 'Empleado';
   const canAssignOthers = !isAgent;
+  // Solo Administrador puede escribir en maestro_usuario_agente (lo impone su RLS).
+  // El resto propone el vínculo y un Admin lo confirma.
+  const esRolSistemaAdmin = usuario?.rol === 'Administrador';
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
   const [autoResponsableId, setAutoResponsableId] = useState<string | null>(null);
   // Vista previa de a quién va a caer el trámite según las reglas de asignación.
@@ -425,8 +429,11 @@ export function NuevoTramiteModal({
         });
         setAgentesVendedor(mapped);
       });
-    supabase.from('maestro_despachos').select('id, nombre').eq('activo', true).order('nombre')
-      .then(({ data }) => setDespachos((data || []) as {id: string; nombre: string}[]));
+    // La oficina del solicitante ahora sale de `usuarios.oficina_id`, que es la misma
+    // que usa el motor de reglas (get_grupo_para_ticket la lee de ahí). Antes venía del
+    // despacho del agente SICAS, que es otra tabla y podía no coincidir.
+    supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre')
+      .then(({ data }) => setOficinas((data || []) as { id: string; nombre: string }[]));
   }, [camposDinamicos]);
 
   // Cargar catálogos maestro para campos tipo aseguradora / ramo
@@ -593,9 +600,15 @@ export function NuevoTramiteModal({
       comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega]);
 
   const loadUsuarios = async () => {
+    // Alimenta el selector de Solicitante: cualquier usuario activo puede serlo
+    // (un empleado también tiene producción propia). Se excluye la cuenta Sistema,
+    // que existe solo para firmar los trámites que genera el motor de recurrencias.
     const { data } = await supabase
       .from('usuarios')
       .select('id, nombre_completo, rol, oficina_id')
+      .eq('activo', true)
+      .is('deleted_at', null)
+      .neq('username', 'sistema')
       .order('nombre_completo');
 
     if (data) setUsuariosDisponibles(data as Usuario[]);
@@ -823,13 +836,9 @@ export function NuevoTramiteModal({
   // Único punto de verdad de "¿este campo ya tiene respuesta?" — usado por validateForm()
   // y por la barra de progreso (que necesita el mismo criterio sin lanzar errores).
   const isCampoRespondido = (campo: CampoDinamico): boolean => {
-    if (campo.is_sistema && campo.sistema_key === 'asignado_a') {
-      if (asignado) return true;
-      const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
-      const agId = agCampo ? respuestasDinamicas[agCampo.id] : null;
-      const agSin = agId ? agentesVendedor.find(a => a.id === agId && !a.usuario_id) : null;
-      return !!agSin;
-    }
+    // El Responsable ya no se captura: lo resuelve el motor de reglas al guardar.
+    // (Además está en AUTO_FILL_KEYS, así que ni validateForm ni la barra lo miran.)
+    if (campo.is_sistema && campo.sistema_key === 'asignado_a') return true;
     if (campo.is_sistema && campo.sistema_key === 'prioridad') return !!prioridad;
     if (campo.is_sistema && campo.sistema_key === 'descripcion') return !!descripcion?.trim();
     if (campo.is_sistema && campo.sistema_key === 'fecha_promesa_entrega') return !!fechaPromesaEntrega;
@@ -1281,12 +1290,16 @@ export function NuevoTramiteModal({
 
     if (campo.sistema_key === 'agente_vendedor') {
       if (esInterno) return null;
+      // El solicitante es un usuario MOVI, no un vendedor del catálogo SICAS. Es el
+      // dato que de verdad necesita el trámite (alimenta las reglas de asignación,
+      // las notificaciones y agente_id); el vendedor SICAS es metadato secundario.
       const val = respuestasDinamicas[campo.id] || '';
-      const selectedAgente = agentesVendedor.find(a => a.id === val);
-      const agenteOpts = agentesVendedor.map(a => ({
-        label: a.usuario_nombre ?? `⚠ ${a.nombre}`,
-        value: a.id,
+      const usuarioOpts = usuariosDisponibles.map(u => ({
+        label: `${u.nombre_completo} (${u.rol})`,
+        value: u.id,
       }));
+      const vendedorLigado = val ? agentesVendedor.find(a => a.usuario_id === val) : undefined;
+      const vendedoresSinLigar = agentesVendedor.filter(a => !a.usuario_id);
       return (
         <div key={campo.id}>
           <label className="flex items-center gap-1 text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
@@ -1295,37 +1308,40 @@ export function NuevoTramiteModal({
           <p className="text-[11px] text-neutral-400 mb-1.5">Solicitante — para quién es este trámite.</p>
           <SearchableSelect
             value={val}
-            onChange={agenteId => {
-              const agente = agentesVendedor.find(a => a.id === agenteId);
+            onChange={userId => {
+              const u = usuariosDisponibles.find(x => x.id === userId);
               const oficinaCampo = camposDinamicos.find(c => c.sistema_key === 'oficina_jiro');
-              const despacho = agente ? despachos.find(d => d.id === agente.despacho_id) : null;
+              const oficina = u?.oficina_id ? oficinas.find(o => o.id === u.oficina_id) : null;
               setRespuestasDinamicas(prev => ({
                 ...prev,
-                [campo.id]: agenteId,
-                ...(oficinaCampo ? { [oficinaCampo.id]: despacho?.nombre || '' } : {}),
+                [campo.id]: userId,
+                ...(oficinaCampo ? { [oficinaCampo.id]: oficina?.nombre || '' } : {}),
               }));
-              // Limpiar si el agente nuevo no tiene cuenta: conservar la del anterior
-              // dejaba el trámite a nombre de quien no era, y ahora además mostraría
-              // una vista previa de asignación que no corresponde.
-              setAsignado(agente?.usuario_id ?? '');
+              setAsignado(userId);
+              setAgenteSicasManual('');
             }}
-            options={agenteOpts}
-            placeholder="Selecciona usuario asignado..."
+            options={usuarioOpts}
+            placeholder="Selecciona el solicitante..."
           />
-          {val && !selectedAgente?.usuario_id && (
+          {val && vendedorLigado && (
+            <p className="text-[11px] text-neutral-400 mt-1.5">
+              Vendedor SICAS: {vendedorLigado.nombre}
+            </p>
+          )}
+          {val && !vendedorLigado && (
             <div className="mt-2 space-y-2">
               <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
                 <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700">
-                  Este agente no tiene cuenta MOVI vinculada. Escribe el nombre de la cuenta que el Admin debe crear o vincular.
+                  Este usuario no tiene vendedor SICAS ligado. Puedes elegirlo aquí
+                  {esRolSistemaAdmin ? ' y queda ligado al guardar.' : '; un Administrador confirmará el vínculo.'}
                 </p>
               </div>
-              <input
-                type="text"
-                value={propuestoNombreMOVI}
-                onChange={e => setPropuestoNombreMOVI(e.target.value)}
-                placeholder="Nombre completo de la cuenta MOVI a crear…"
-                className="w-full px-3 py-2 text-sm border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white placeholder-neutral-400"
+              <SearchableSelect
+                value={agenteSicasManual}
+                onChange={setAgenteSicasManual}
+                options={vendedoresSinLigar.map(a => ({ label: a.nombre, value: a.id }))}
+                placeholder="Busca el vendedor SICAS…"
               />
             </div>
           )}
@@ -1353,12 +1369,9 @@ export function NuevoTramiteModal({
 
     if (campo.sistema_key === 'asignado_a') {
       if (isAgent || tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite)) return null;
-      // Este campo nunca fue el Responsable: guarda la cuenta MOVI del solicitante y
-      // se llena solo al elegir al agente. Lo único que queda por capturar aquí es el
-      // caso en que ese agente todavía no tiene cuenta vinculada.
-      const agCampoAsig = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
-      const agIdAsig = agCampoAsig ? respuestasDinamicas[agCampoAsig.id] : null;
-      const faltaCuentaMovi = !!agIdAsig && !agentesVendedor.find(a => a.id === agIdAsig)?.usuario_id;
+      // Solo informativo: el Responsable lo deciden las reglas de asignación. Desde que
+      // el solicitante es un usuario MOVI, su cuenta siempre se conoce y no hay nada
+      // que capturar aquí.
       return (
         <div key={campo.id} className="space-y-3">
           <div>
@@ -1391,29 +1404,6 @@ export function NuevoTramiteModal({
             )}
             <p className="text-[11px] text-neutral-400 mt-2">Lo definen las reglas de asignación. Se puede reasignar después desde el trámite.</p>
           </div>
-
-          {faltaCuentaMovi && (
-            <div>
-              <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                <User className="w-4 h-4 inline mr-2" />
-                Cuenta MOVI del solicitante
-                {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <p className="text-[11px] text-neutral-400 -mt-1 mb-2">
-                El agente que elegiste no tiene cuenta vinculada. Indica con cuál corresponde.
-              </p>
-              <select
-                value={asignado}
-                onChange={(e) => setAsignado(e.target.value)}
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                <option value="">Selecciona un usuario</option>
-                {usuariosDisponibles.map(u => (
-                  <option key={u.id} value={u.id}>{u.nombre_completo} ({u.rol})</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
       );
     }
@@ -1841,47 +1831,37 @@ export function NuevoTramiteModal({
         if (assignError) console.error('Error creating assignment:', assignError);
       }
 
-      // Proponer mapeo si el agente_vendedor seleccionado no tiene usuario MOVI vinculado
-      {
-        const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
-        if (agCampo) {
-          const agId   = respuestasDinamicas[agCampo.id];
-          const ag     = agentesVendedor.find(a => a.id === agId);
-          if (ag && !ag.usuario_id) {
-            let notifMsg = '';
-            if (asignado) {
-              // Vincular con usuario MOVI existente
-              await supabase.from('maestro_mapeo_pendiente').upsert(
-                { agente_id: agId, user_id_propuesto: asignado, propuesto_por: usuario.id, ticket_id: ticket.id },
-                { onConflict: 'agente_id,user_id_propuesto', ignoreDuplicates: true }
-              );
-              notifMsg = `${usuario.nombre_completo} propuso vincular al agente "${ag.nombre}" con un usuario MOVI en el trámite ${ticket.folio}.`;
-            } else if (propuestoNombreMOVI.trim()) {
-              // Solicitar creación de nueva cuenta MOVI
-              await supabase.from('maestro_mapeo_pendiente').insert({
-                agente_id: agId,
-                user_id_propuesto: null,
-                nombre_propuesto: propuestoNombreMOVI.trim(),
-                propuesto_por: usuario.id,
-                ticket_id: ticket.id,
-              });
-              notifMsg = `Se solicitó crear la cuenta MOVI "${propuestoNombreMOVI.trim()}" para el agente "${ag.nombre}" (trámite ${ticket.folio}).`;
-            } else {
-              notifMsg = `El agente "${ag.nombre}" no tiene cuenta MOVI vinculada (trámite ${ticket.folio}). Asígnale un usuario en Base de Datos → Vendedores.`;
-            }
-            const { data: adminsNotif } = await supabase.from('usuarios').select('id')
-              .eq('rol', 'Administrador').eq('activo', true);
-            for (const adm of (adminsNotif ?? [])) {
-              await crearNotificacion({
-                user_id: adm.id,
-                titulo: asignado ? 'Propuesta de mapeo pendiente' : 'Agente sin cuenta MOVI en trámite nuevo',
-                mensaje: notifMsg,
-                modulo: 'BaseDatosMaestros',
-                icono: 'link',
-                accion_url: '/admin/base-datos',
-                accion_texto: 'Ir a Mapeo',
-              });
-            }
+      // Ligar el solicitante con su vendedor SICAS cuando se eligió uno a mano.
+      // Admin liga directo; el resto propone y un Admin confirma — es lo que ya
+      // impone la RLS de maestro_usuario_agente, aquí solo se refleja en la UX.
+      if (agenteSicasManual && asignado) {
+        const vendedor = agentesVendedor.find(a => a.id === agenteSicasManual);
+        let ligadoDirecto = false;
+
+        if (esRolSistemaAdmin) {
+          const { error: errLink } = await supabase.from('maestro_usuario_agente')
+            .insert({ user_id: asignado, agente_id: agenteSicasManual, activo: true });
+          ligadoDirecto = !errLink;
+          if (errLink) console.error('[mapeo] No se pudo ligar directo, se propondrá:', errLink);
+        }
+
+        if (!ligadoDirecto) {
+          await supabase.from('maestro_mapeo_pendiente').upsert(
+            { agente_id: agenteSicasManual, user_id_propuesto: asignado, propuesto_por: usuario.id, ticket_id: ticket.id },
+            { onConflict: 'agente_id,user_id_propuesto', ignoreDuplicates: true }
+          );
+          const { data: adminsNotif } = await supabase.from('usuarios').select('id')
+            .eq('rol', 'Administrador').eq('activo', true);
+          for (const adm of (adminsNotif ?? [])) {
+            await crearNotificacion({
+              user_id: adm.id,
+              titulo: 'Propuesta de vínculo con vendedor SICAS',
+              mensaje: `${usuario.nombre_completo} propuso ligar al vendedor SICAS "${vendedor?.nombre ?? agenteSicasManual}" con un usuario MOVI en el trámite ${ticket.folio}.`,
+              modulo: 'BaseDatosMaestros',
+              icono: 'link',
+              accion_url: '/admin/base-datos',
+              accion_texto: 'Ir a Mapeo',
+            });
           }
         }
       }

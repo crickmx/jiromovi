@@ -130,6 +130,10 @@ export function TramiteDetalle() {
     id: string; nombre: string;
     usuario_id?: string; usuario_nombre?: string;
   }[]>([]);
+  // El Solicitante ahora es un usuario MOVI. Los trámites creados antes del cambio
+  // guardaron el UUID del vendedor SICAS, así que el render resuelve contra las dos
+  // listas: primero usuarios, y si no aparece, el catálogo de vendedores.
+  const [usuariosMovi, setUsuariosMovi] = useState<{ id: string; nombre_completo: string }[]>([]);
   const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
   const [adjuntoCatNombres, setAdjuntoCatNombres] = useState<Record<string, string>>({});
   const [tipoUUID, setTipoUUID] = useState<string | null>(null);
@@ -536,6 +540,11 @@ export function TramiteDetalle() {
         });
         setAgentesVendedor(mapped);
       });
+    supabase.from('usuarios')
+      .select('id, nombre_completo')
+      .eq('activo', true).is('deleted_at', null).neq('username', 'sistema')
+      .order('nombre_completo')
+      .then(({ data }) => setUsuariosMovi((data || []) as { id: string; nombre_completo: string }[]));
   }, [camposDinamicos]);
 
   // Cargar catálogos para campos aseguradora / ramo / codigo_postal
@@ -1766,12 +1775,22 @@ export function TramiteDetalle() {
                           )}
                           {adminEditable ? (
                             campo.sistema_key === 'agente_vendedor' ? (
-                              <select value={val ?? ''} onChange={e => set(e.target.value || null)} className={inputCls}>
-                                <option value="">Sin registrar</option>
-                                {agentesVendedor.map(a => (
-                                  <option key={a.id} value={a.id}>{a.usuario_nombre ?? a.nombre}</option>
-                                ))}
-                              </select>
+                              (() => {
+                                // Si el valor guardado es de antes del cambio (UUID de vendedor
+                                // SICAS), se agrega como opción extra para no perderlo en silencio
+                                // al abrir el select.
+                                const esValorViejo = !!val && !usuariosMovi.some(u => u.id === val);
+                                const viejo = esValorViejo ? agentesVendedor.find(a => a.id === val) : null;
+                                return (
+                                  <select value={val ?? ''} onChange={e => set(e.target.value || null)} className={inputCls}>
+                                    <option value="">Sin registrar</option>
+                                    {viejo && <option value={viejo.id}>{viejo.usuario_nombre ?? viejo.nombre} (vendedor SICAS)</option>}
+                                    {usuariosMovi.map(u => (
+                                      <option key={u.id} value={u.id}>{u.nombre_completo}</option>
+                                    ))}
+                                  </select>
+                                );
+                              })()
                             ) : (campo.sistema_key === 'fecha_creacion') ? (
                               <input type="date" value={val?.slice(0, 10) ?? ''} onChange={e => set(e.target.value || null)} className={inputCls} />
                             ) : (
@@ -1780,7 +1799,12 @@ export function TramiteDetalle() {
                           ) : (
                             (() => {
                               const displayVal = campo.sistema_key === 'agente_vendedor' && val
-                                ? (() => { const ag = agentesVendedor.find(a => a.id === val); return ag?.usuario_nombre ?? ag?.nombre ?? val; })()
+                                ? (() => {
+                                    const u = usuariosMovi.find(x => x.id === val);
+                                    if (u) return u.nombre_completo;
+                                    const ag = agentesVendedor.find(a => a.id === val);
+                                    return ag?.usuario_nombre ?? ag?.nombre ?? val;
+                                  })()
                                 : val;
                               return displayVal
                                 ? <div className={violet}>{displayVal}</div>
