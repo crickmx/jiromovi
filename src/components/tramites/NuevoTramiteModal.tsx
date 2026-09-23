@@ -221,9 +221,15 @@ export function NuevoTramiteModal({
   const esInterno = tiposDb.find(t => t.value === tipoTramite)?.es_interno ?? false;
   const isEmpleadoOAgente = isAgent || usuario?.rol === 'Empleado';
   const canAssignOthers = !isAgent;
-  const isPoolMode = false;
   const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
   const [autoResponsableId, setAutoResponsableId] = useState<string | null>(null);
+  // Vista previa de a quién va a caer el trámite según las reglas de asignación.
+  // Solo informativa: el responsable real lo decide el motor al guardar.
+  const [previewAsignacion, setPreviewAsignacion] = useState<
+    | { estado: 'cargando' }
+    | { estado: 'listo'; equipo: string | null; responsable: string | null }
+    | null
+  >(null);
 
   useEffect(() => {
     if (!ceShowInsurerDropdown) return;
@@ -612,6 +618,40 @@ export function NuevoTramiteModal({
     return row.grupo_id ? row : null;
   };
 
+  // Resuelve la asignación mientras se llena el formulario, para poder mostrarla
+  // antes de guardar. El submit vuelve a resolverla por su cuenta — esto es solo
+  // la vista previa, nunca la fuente de verdad.
+  useEffect(() => {
+    const agenteUserId = esInterno ? (usuario?.id ?? null) : (asignado || null);
+    if (!tipoTramite || !agenteUserId) {
+      setPreviewAsignacion(null);
+      return;
+    }
+    let cancelado = false;
+    setPreviewAsignacion({ estado: 'cargando' });
+    (async () => {
+      const res = await resolveGrupoParaTicket(agenteUserId, tipoTramite);
+      if (cancelado) return;
+      if (!res) {
+        setPreviewAsignacion({ estado: 'listo', equipo: null, responsable: null });
+        return;
+      }
+      const [grupoRes, ejecRes] = await Promise.all([
+        supabase.from('tramites_grupos_visualizacion').select('nombre').eq('id', res.grupo_id).maybeSingle(),
+        res.ejecutivo_id
+          ? supabase.from('usuarios').select('nombre_completo').eq('id', res.ejecutivo_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      if (cancelado) return;
+      setPreviewAsignacion({
+        estado: 'listo',
+        equipo: (grupoRes.data as { nombre?: string } | null)?.nombre ?? null,
+        responsable: (ejecRes.data as { nombre_completo?: string } | null)?.nombre_completo ?? null,
+      });
+    })();
+    return () => { cancelado = true; };
+  }, [asignado, tipoTramite, esInterno, usuario?.id]);
+
   const loadLotesDisponibles = async (forUserId?: string) => {
     if (!usuario) return;
 
@@ -775,7 +815,10 @@ export function NuevoTramiteModal({
   };
 
   // Sistema auto-fill: nunca se piden en el formulario, no cuentan para requerido/progreso.
-  const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por'];
+  // `asignado_a` entra aquí desde que el Responsable lo decide el motor de reglas:
+  // ya no hay nada que el usuario tenga que capturar, y exigirlo dejaba los trámites
+  // internos (que no eligen agente) sin forma de satisfacer la validación.
+  const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por', 'asignado_a'];
 
   // Único punto de verdad de "¿este campo ya tiene respuesta?" — usado por validateForm()
   // y por la barra de progreso (que necesita el mismo criterio sin lanzar errores).
@@ -1307,34 +1350,67 @@ export function NuevoTramiteModal({
 
     if (campo.sistema_key === 'asignado_a') {
       if (isAgent || tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite)) return null;
+      // Este campo nunca fue el Responsable: guarda la cuenta MOVI del solicitante y
+      // se llena solo al elegir al agente. Lo único que queda por capturar aquí es el
+      // caso en que ese agente todavía no tiene cuenta vinculada.
+      const agCampoAsig = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+      const agIdAsig = agCampoAsig ? respuestasDinamicas[agCampoAsig.id] : null;
+      const faltaCuentaMovi = !!agIdAsig && !agentesVendedor.find(a => a.id === agIdAsig)?.usuario_id;
       return (
         <div key={campo.id} className="space-y-3">
-          {isPoolMode && (
-            <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-sm text-amber-800">
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
-              <span>Este tipo de trámite se enviará a la <strong>cola de Mesa de Control</strong>. Un ejecutivo será asignado posteriormente.</span>
-            </div>
-          )}
           <div>
             <label className="block text-sm font-semibold text-neutral-900 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              {isPoolMode ? 'Agente del Trámite' : (campo.label || 'Asignar a')}
-              {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+              Responsable
             </label>
-            {!isPoolMode && (
-              <p className="text-[11px] text-neutral-400 -mt-1 mb-2">Responsable — quién debe atender este trámite.</p>
+            {previewAsignacion === null && (
+              <p className="text-sm text-neutral-500">Se define al elegir el solicitante y el tipo de trámite.</p>
             )}
-            <select
-              value={asignado}
-              onChange={(e) => setAsignado(e.target.value)}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              <option value="">{isPoolMode ? 'Selecciona el agente' : 'Selecciona un usuario'}</option>
-              {usuariosDisponibles.map(u => (
-                <option key={u.id} value={u.id}>{u.nombre_completo} ({u.rol})</option>
-              ))}
-            </select>
+            {previewAsignacion?.estado === 'cargando' && (
+              <p className="text-sm text-neutral-400">Calculando asignación…</p>
+            )}
+            {previewAsignacion?.estado === 'listo' && previewAsignacion.responsable && (
+              <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800">
+                Se asignará a <strong>{previewAsignacion.responsable}</strong>
+                {previewAsignacion.equipo && <> — equipo {previewAsignacion.equipo}</>}
+              </div>
+            )}
+            {previewAsignacion?.estado === 'listo' && !previewAsignacion.responsable && previewAsignacion.equipo && (
+              <div className="px-4 py-3 bg-sky-50 border border-sky-200 rounded-xl text-sm text-sky-800">
+                Entra a la cola del equipo <strong>{previewAsignacion.equipo}</strong>. Su líder definirá quién lo atiende.
+              </div>
+            )}
+            {previewAsignacion?.estado === 'listo' && !previewAsignacion.equipo && (
+              <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-sm text-amber-800">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
+                <span>No hay regla de asignación para este solicitante y tipo de trámite. Se avisará a un Administrador para que lo asigne.</span>
+              </div>
+            )}
+            <p className="text-[11px] text-neutral-400 mt-2">Lo definen las reglas de asignación. Se puede reasignar después desde el trámite.</p>
           </div>
+
+          {faltaCuentaMovi && (
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                <User className="w-4 h-4 inline mr-2" />
+                Cuenta MOVI del solicitante
+                {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              <p className="text-[11px] text-neutral-400 -mt-1 mb-2">
+                El agente que elegiste no tiene cuenta vinculada. Indica con cuál corresponde.
+              </p>
+              <select
+                value={asignado}
+                onChange={(e) => setAsignado(e.target.value)}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="">Selecciona un usuario</option>
+                {usuariosDisponibles.map(u => (
+                  <option key={u.id} value={u.id}>{u.nombre_completo} ({u.rol})</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       );
     }
@@ -1592,9 +1668,12 @@ export function NuevoTramiteModal({
       // grupoResult found + ejecutivo_id set  → auto-assign to that ejecutivo
       // grupoResult null                       → fall back to manual/auto logic
       const autoEjecutivoId = grupoResult?.ejecutivo_id ?? null;
+      // Sin regla no hay responsable: el trámite queda sin asignar y se avisa a Admin
+      // (más abajo). Antes caía en `asignado`, que es la cuenta MOVI del solicitante
+      // — eso dejaba al solicitante como su propio responsable.
       const responsableId = grupoResult !== null
         ? autoEjecutivoId
-        : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : asignado));
+        : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : null));
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
       const ticketData: any = {
