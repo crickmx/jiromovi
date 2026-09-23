@@ -119,7 +119,13 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
             </div>
 
             {showPreview ? (
-              <FormPreview campos={campos} />
+              <>
+                <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs font-medium text-blue-700 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5" />
+                  Vista previa — así lo ve quien llena el formulario, no es editable aquí.
+                </div>
+                <FormPreview campos={campos} />
+              </>
             ) : (
               <>
                 {/* ── Secciones ── */}
@@ -184,10 +190,10 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                                     {seccion.condicion_campo_id && ` · Condicionada a "${campos.find(c => c.id === seccion.condicion_campo_id)?.label ?? '—'}"`}
                                   </p>
                                 </div>
-                                <button onClick={() => { setEditingSeccion(seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-700">
+                                <button onClick={() => { setEditingSeccion(seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-700" title="Configurar sección" aria-label="Configurar sección">
                                   <Settings className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => handleDeleteSeccion(seccion)} className="p-1.5 hover:bg-red-50 rounded-lg text-neutral-300 hover:text-red-500">
+                                <button onClick={() => handleDeleteSeccion(seccion)} className="p-1.5 hover:bg-red-50 rounded-lg text-neutral-300 hover:text-red-500" title="Eliminar sección" aria-label="Eliminar sección">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
@@ -252,6 +258,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               onClick={() => isEditing ? closeCampoEditor() : startEditCampo(campo)}
                               className={`p-1.5 hover:bg-neutral-100 rounded-lg transition-colors ${isEditing ? 'text-violet-600' : 'text-neutral-400 hover:text-neutral-700'}`}
                               title="Configurar visibilidad"
+                              aria-label="Configurar visibilidad"
                             >
                               <Settings className="w-3.5 h-3.5" />
                             </button>
@@ -311,7 +318,9 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           <p className="text-[10px] text-neutral-400 font-mono">{isSistema ? (campo.sistema_key ?? campo.tipo) : campo.key}</p>
                         </div>
                         {campo.requerido && (
-                          <span className="text-[10px] text-red-500 font-mono shrink-0">req</span>
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 shrink-0" title="Campo requerido">
+                            req
+                          </span>
                         )}
                         {campo.seccion_id && (
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200 shrink-0 flex items-center gap-0.5">
@@ -333,6 +342,8 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         <button
                           onClick={() => editingCampo?.id === campo.id ? closeCampoEditor() : startEditCampo(campo)}
                           className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-400 hover:text-neutral-700"
+                          title="Configurar campo"
+                          aria-label="Configurar campo"
                         >
                           <Settings className="w-3.5 h-3.5" />
                         </button>
@@ -340,6 +351,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           onClick={() => handleDeleteCampo(campo)}
                           className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-neutral-300 hover:text-red-500"
                           title={isSistema ? 'Ocultar del formulario' : 'Eliminar campo'}
+                          aria-label={isSistema ? 'Ocultar del formulario' : 'Eliminar campo'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -363,7 +375,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
 
       {/* Right panel */}
       {(showAddField || editingCampo || showAddSeccion || editingSeccion) && (
-        <div className="w-64 border-l border-neutral-200 bg-neutral-50 p-4 shrink-0 animate-fade-in sticky top-0 max-h-screen overflow-y-auto">
+        <div className="w-80 border-l border-neutral-200 bg-neutral-50 p-4 shrink-0 animate-fade-in sticky top-0 max-h-screen overflow-y-auto">
           {(showAddSeccion || editingSeccion) && (
             <>
               <div className="flex items-center justify-between mb-3">

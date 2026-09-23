@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { User, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, Wrench, Link as LinkIcon } from 'lucide-react';
+import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, Wrench, Link as LinkIcon } from 'lucide-react';
 import { addUserToSicas, getSicasMappingStatusForUsers } from '../../lib/sicasUtils';
 import { crearNotificacionGlobal } from '../../lib/notificationHelpers';
 import { getEstatusColor } from '../../lib/registroActividadesTypes';
@@ -271,80 +271,88 @@ export function TramiteDetalles({
 
   return (
     <div className="space-y-6">
-      {/* Fila 1: Agente | Equipo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            <User className="w-4 h-4 inline mr-2" />
-            Agente
-          </label>
-          <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
-            {tramite.agente?.nombre_completo || 'Sin agente asignado'}
+      {/* Personas involucradas: Agente (solicitante) | Equipo | Responsable */}
+      <div className="p-4 border border-neutral-200 rounded-2xl bg-neutral-50/60 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700">
+          <Users className="w-4 h-4 text-accent" />
+          Personas involucradas
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <User className="w-4 h-4 inline mr-2" />
+              Agente
+            </label>
+            <p className="text-[11px] text-neutral-400 -mt-1 mb-2">Solicitante — para quién es este trámite.</p>
+            <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+              {tramite.agente?.nombre_completo || 'Sin agente asignado'}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <Wrench className="w-4 h-4 inline mr-2" />
+              Equipo
+            </label>
+            {canManageAssignment && onEquipoChange ? (
+              <select
+                value={selectedGrupoId}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedGrupoId(val);
+                  setSelectedResponsable('');
+                  onEquipoChange(val || null);
+                }}
+                className="w-full px-4 py-3 border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all cursor-pointer bg-amber-50 text-amber-900"
+              >
+                <option value="">Sin equipo asignado</option>
+                {grupos.map(g => (
+                  <option key={g.id} value={g.id}>{g.nombre}</option>
+                ))}
+              </select>
+            ) : (
+              <div className={`px-4 py-3 rounded-xl border ${selectedGrupoId ? 'bg-amber-50 border-amber-200 text-amber-900 font-medium' : 'bg-neutral-50 border-neutral-200 text-neutral-500'}`}>
+                {grupos.find(g => g.id === selectedGrupoId)?.nombre || 'Sin equipo asignado'}
+              </div>
+            )}
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            <Wrench className="w-4 h-4 inline mr-2" />
-            Equipo
-          </label>
-          {canManageAssignment && onEquipoChange ? (
-            <select
-              value={selectedGrupoId}
-              onChange={e => {
-                const val = e.target.value;
-                setSelectedGrupoId(val);
-                setSelectedResponsable('');
-                onEquipoChange(val || null);
-              }}
-              className="w-full px-4 py-3 border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all cursor-pointer bg-amber-50 text-amber-900"
-            >
-              <option value="">Sin equipo asignado</option>
-              {grupos.map(g => (
-                <option key={g.id} value={g.id}>{g.nombre}</option>
-              ))}
-            </select>
-          ) : (
-            <div className={`px-4 py-3 rounded-xl border ${selectedGrupoId ? 'bg-amber-50 border-amber-200 text-amber-900 font-medium' : 'bg-neutral-50 border-neutral-200 text-neutral-500'}`}>
-              {grupos.find(g => g.id === selectedGrupoId)?.nombre || 'Sin equipo asignado'}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Fila 2: Responsable */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            <UserCheck className="w-4 h-4 inline mr-2" />
-            Responsable
-            {canManageAssignment && selectedGrupoId && (
-              <span className="ml-2 text-xs font-normal text-neutral-400">
-                — miembros de {grupos.find(g => g.id === selectedGrupoId)?.nombre}
-              </span>
-            )}
-          </label>
-          {canManageAssignment && onResponsableChange ? (
-            <select
-              value={selectedResponsable}
-              onChange={e => {
-                setSelectedResponsable(e.target.value);
-                onResponsableChange(e.target.value);
-              }}
-              className="w-full px-4 py-3 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer bg-blue-50 text-blue-900"
-            >
-              <option value="">Sin responsable asignado</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>{m.nombre_completo}</option>
-              ))}
-            </select>
-          ) : (
-            <div className={`px-4 py-3 rounded-xl border ${tramite.assigned_to_user_id ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
-              {tramite.responsable?.nombre_completo || (
-                <span className="text-amber-700 font-medium">Sin responsable — pendiente de asignación</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <UserCheck className="w-4 h-4 inline mr-2" />
+              Responsable
+              {canManageAssignment && selectedGrupoId && (
+                <span className="ml-2 text-xs font-normal text-neutral-400">
+                  — miembros de {grupos.find(g => g.id === selectedGrupoId)?.nombre}
+                </span>
               )}
-            </div>
-          )}
+            </label>
+            <p className="text-[11px] text-neutral-400 -mt-1 mb-2">Quién debe atender este trámite.</p>
+            {canManageAssignment && onResponsableChange ? (
+              <select
+                value={selectedResponsable}
+                onChange={e => {
+                  setSelectedResponsable(e.target.value);
+                  onResponsableChange(e.target.value);
+                }}
+                className="w-full px-4 py-3 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer bg-blue-50 text-blue-900"
+              >
+                <option value="">Sin responsable asignado</option>
+                {teamMembers.map(m => (
+                  <option key={m.id} value={m.id}>{m.nombre_completo}</option>
+                ))}
+              </select>
+            ) : (
+              <div className={`px-4 py-3 rounded-xl border ${tramite.assigned_to_user_id ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
+                {tramite.responsable?.nombre_completo || (
+                  <span className="text-amber-700 font-medium">Sin responsable — pendiente de asignación</span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -591,7 +599,10 @@ export function TramiteDetalles({
       )}
 
       <div className="border-t border-neutral-200 pt-6">
-        <h3 className="text-lg font-semibold text-neutral-900 mb-4">Información del Tramite</h3>
+        <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+          <Clock className="w-4 h-4 text-neutral-400" />
+          Fechas y seguimiento
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <div className="flex items-center space-x-2 text-neutral-600 mb-1">

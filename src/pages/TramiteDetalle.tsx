@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers } from 'lucide-react';
+import { ArrowLeft, Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers, Pencil } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
@@ -1741,7 +1741,7 @@ export function TramiteDetalle() {
             {camposDinamicos.some(c => c.is_sistema && c.sistema_key !== 'estatus') && (
               <div className="mt-6 pt-6 border-t border-violet-100">
                 <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide flex items-center gap-1.5 mb-3">
-                  {isAdmin && !isCerrado ? '✏️' : '🔒'} Información del Trámite
+                  {isAdmin && !isCerrado ? <Pencil className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />} Información del Trámite
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {camposDinamicos
@@ -1758,6 +1758,12 @@ export function TramiteDetalle() {
                           <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
                             {campo.label}
                           </label>
+                          {campo.sistema_key === 'agente_vendedor' && (
+                            <p className="text-[11px] text-neutral-400 mb-1">Solicitante — para quién es este trámite.</p>
+                          )}
+                          {campo.sistema_key === 'creado_por' && (
+                            <p className="text-[11px] text-neutral-400 mb-1">Quién registró este trámite en el sistema.</p>
+                          )}
                           {adminEditable ? (
                             campo.sistema_key === 'agente_vendedor' ? (
                               <select value={val ?? ''} onChange={e => set(e.target.value || null)} className={inputCls}>
