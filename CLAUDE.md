@@ -1,6 +1,34 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-10)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-22)
+
+### 🟡 SIGUIENTE — Módulo Trámites: limpieza visual (✅ hecha) + auto-asignación real de Responsable (pendiente, sesión 2026-09-22)
+
+**Contexto de la sesión:** Ricardo pidió una revisión completa del módulo Trámites: (1) campos antiguos de la primera versión que no ha podido eliminar, (2) un mejor sistema para distinguir Solicitante/Creador/Responsable (hoy confuso), (3) una pasada de UI/UX en los formularios. Se investigó con 3 agentes en paralelo (legacy fields, mapeo de roles, crítica de diseño) antes de tocar nada — ver hallazgos abajo.
+
+**✅ YA HECHO (commit `64709bbf`, solo visual, sin tocar lógica ni datos):**
+- Nueva sección "Personas involucradas" en `NuevoTramiteModal.tsx` y `TramiteDetalles.tsx` que agrupa Agente/Vendedor (Solicitante), Creado Por, Asignar a (Responsable) con una línea de ayuda por campo.
+- 🔒 emoji → íconos Lucide consistentes.
+- Padding/foco de inputs unificado en `NuevoTramiteModal.tsx` (mezclaba `px-3 py-2`/ring azul con `px-4 py-2.5`/ring accent).
+- Selector de aseguradoras con chevron/estilo de select real.
+- Sección "Información del Tramite" (typo, duplicaba nombre con otra sección) renombrada a "Fechas y seguimiento" en `TramiteDetalles.tsx`.
+- `FormBuilderTab.tsx`: panel más ancho (`w-64`→`w-80`), tooltips/aria-label en botones de solo-ícono, badge "req" con estilo pill, banner de modo Vista previa.
+
+**❌ PENDIENTE — campos Legacy → FormBuilder (proyecto aparte, NO cosmético, mayor riesgo):**
+Los 12 tipos de trámite legacy (`is_custom=false`, hardcodeados desde antes de que existiera `ticket_tipos`) siguen todos activos — confirmado con SQL real:
+`cotizacion_emision` (201 trámites, el más enterrado — tiene su propio subsistema paralelo "Registro de Actividades" repartido en ~7 archivos), `cobranza` (28), `registro_poliza` (20), `formulario_cotizacion` (17), `renovaciones` (14), `correccion_poliza_registrada` (8), `solicitud_comisiones_pendientes` (7), `correccion_comisiones` (5), `otros_comercial` (2), `cancelacion_poliza` (1), `correccion_poliza_endoso` (0), `cambio_bancario` (0). Ya existe precedente (`20260702000012_clonar_tipos_integrados_nuevo.sql`) que clonó los 12 en versiones `_nuevo` 100% configurables, pero ese trabajo quedó pausado — no se sabe si alguien los usa. Ricardo decidió: **arrancar por los cosmético primero (ya hecho), Legacy queda para después**, empezando lo más barato (`correccion_poliza_endoso`/`cambio_bancario`, 0 trámites activos, casi sin riesgo) antes de tocar `cotizacion_emision`.
+
+**❌ PENDIENTE — auto-asignación real de Responsable (2026-09-22, reglas de negocio que Ricardo aclaró EXPLÍCITAMENTE hoy, esto SÍ es lógica, no cosmético):**
+
+1. La mayoría de tipos de trámite deben auto-asignar Equipo + Responsable — ya existe el motor de 3 capas (`get_grupo_para_ticket()`, ver sección "Asignación por Trámites — 3 capas de auto-asignación" más abajo: nivel 1 `tramites_reglas_por_tipo` override agente+tipo, nivel 2 `tramite_team_tipo_config` por oficina, nivel 3 `tramites_grupos_reglas` agente+área legacy).
+2. Si las reglas asignan Equipo pero ningún Responsable individual → modo pool (ya existe, `isPoolMode` en `NuevoTramiteModal.tsx`), el trámite queda en la cola del equipo/área.
+3. **Cambio pedido**: en "Personas involucradas", el campo "Asignar a" debería **auto-llenarse según esa configuración y NO dejar que el usuario elija manualmente** — hoy es un `<select>` libre (`renderCampoSistema`, sistema_key `asignado_a`, `NuevoTramiteModal.tsx` línea ~1300) que cualquiera puede cambiar, y el motor de 3 capas lo puede pisar en silencio después sin avisar (hallazgo de la investigación de hoy). Este es justo el tipo de cambio que la sesión de hoy decidió NO tocar (se acotó a "solo claridad visual") — queda para retomar mañana como su propio proyecto de lógica.
+4. **Si no hay ninguna regla de asignación** (ninguna de las 3 capas aplica): los líderes de equipo (`tramites_grupos_miembros.rol_en_equipo = 'lider'`) deben poder asignar manualmente.
+5. **Si no hay ningún equipo habilitado** para ese agente/vendedor + tipo de trámite (ni siquiera un pool): un Administrador asigna manualmente Y debe quedar disponible ahí mismo una forma de crear la regla correspondiente (nivel 1 o 2) para que la próxima vez sea automático.
+
+**Falta traducir a un plan concreto antes de tocar código** (siguiendo el patrón habitual con Ricardo — investigar, plan, preguntas de diseño antes de implementar): ¿cómo se ve el campo "Asignar a" cuando está bloqueado por auto-asignación vs. cuando un líder/admin sí puede editarlo? ¿de dónde sale el flujo de "crear regla" para el Admin cuando asigna manualmente por falta de equipo? ¿aplica a los 12 tipos Legacy también o solo a los tipos FormBuilder?
+
+---
 
 ### 🔴🔴 URGENTE — Sincronización SICAS CCJ "Efectuada" por Fecha de Pago (sesión 2026-09-10, EN PROGRESO)
 
