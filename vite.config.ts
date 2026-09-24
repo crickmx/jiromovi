@@ -7,13 +7,18 @@ import { execSync } from 'child_process'
 const APP_VERSION = String(Date.now())
 const BUILD_TIME = new Date().toISOString()
 
-let COMMIT_HASH = 'unknown'
-try {
-  COMMIT_HASH = execSync('git rev-parse --short HEAD', {
-    stdio: ['ignore', 'pipe', 'ignore'],
-  }).toString().trim()
-} catch {
-  // Los builds sin metadatos de Git (por ejemplo, un ZIP) siguen siendo válidos.
+let COMMIT_HASH = process.env.COMMIT_HASH?.trim()
+  || process.env.GITHUB_SHA?.slice(0, 7)
+  || 'unknown'
+
+if (COMMIT_HASH === 'unknown') {
+  try {
+    COMMIT_HASH = execSync('git rev-parse --short HEAD', {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).toString().trim()
+  } catch {
+    // Los builds sin metadatos de Git (por ejemplo, un ZIP) siguen siendo válidos.
+  }
 }
 
 // Escribe dist/version.json en cada build — useAppUpdate.ts lo consulta cada 5 min
