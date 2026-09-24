@@ -7,6 +7,11 @@ import { useImpersonation } from '../contexts/ImpersonationContext';
 export function BetaBanner() {
   const [saliendo, setSaliendo] = useState(false);
   const { isImpersonating } = useImpersonation();
+  const buildTime = new Intl.DateTimeFormat('es-MX', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Mexico_City',
+  }).format(new Date(__BUILD_TIME__));
 
   const handleVolver = async () => {
     setSaliendo(true);
@@ -28,13 +33,21 @@ export function BetaBanner() {
             Estás viendo la <strong className="font-bold">versión Beta</strong> de MOVI — puede presentar errores o fallas.
           </span>
         </div>
-        <button
-          onClick={handleVolver}
-          disabled={saliendo}
-          className="shrink-0 px-2.5 py-1 bg-white text-[#8E1A52] rounded text-xs font-bold hover:bg-pink-50 transition-colors disabled:opacity-60"
-        >
-          {saliendo ? 'Saliendo…' : 'Regresar a MOVI'}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="hidden sm:inline rounded bg-white/10 px-2 py-0.5 font-mono text-[10px]" title={`Build: ${buildTime}`}>
+            Commit: <strong>{__COMMIT_HASH__}</strong>
+          </span>
+          <span className="hidden xl:inline rounded bg-white/10 px-2 py-0.5 font-mono text-[10px]">
+            Build: {buildTime}
+          </span>
+          <button
+            onClick={handleVolver}
+            disabled={saliendo}
+            className="px-2.5 py-1 bg-white text-[#8E1A52] rounded text-xs font-bold hover:bg-pink-50 transition-colors disabled:opacity-60"
+          >
+            {saliendo ? 'Saliendo…' : 'Regresar a MOVI'}
+          </button>
+        </div>
       </div>
     </div>
   );

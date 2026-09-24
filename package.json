@@ -10,6 +10,7 @@
     "start": "node app.js",
     "test:server": "node scripts/smoke-server.cjs",
     "type-check": "tsc -b",
+    "check:deploy": "git diff --check && npm run build && git status --short",
     "lint": "eslint .",
     "preview": "vite preview"
   },

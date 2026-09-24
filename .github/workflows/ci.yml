@@ -29,3 +29,26 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-beta:
+    name: Deploy Beta through Plesk relay
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [production-build, secret-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger beta deployment
+        env:
+          PLESK_RELAY_URL: ${{ secrets.PLESK_RELAY_URL }}
+          PLESK_RELAY_TOKEN: ${{ secrets.PLESK_RELAY_TOKEN }}
+        run: |
+          if [ -z "$PLESK_RELAY_URL" ] || [ -z "$PLESK_RELAY_TOKEN" ]; then
+            echo "::warning::Auto-deploy omitido: configura PLESK_RELAY_URL y PLESK_RELAY_TOKEN en GitHub Actions secrets."
+            exit 0
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --max-time 180 \
+            --request POST "$PLESK_RELAY_URL" \
+            --header "Content-Type: application/json" \
+            --header "X-Relay-Token: $PLESK_RELAY_TOKEN" \
+            --data '{"target":"beta"}'
