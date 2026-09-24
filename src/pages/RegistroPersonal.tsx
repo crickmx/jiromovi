@@ -14,6 +14,8 @@ interface Oficina {
   nombre: string;
 }
 
+type RolRegistro = 'Empleado' | 'Agente';
+
 export default function RegistroPersonal() {
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,6 +25,7 @@ export default function RegistroPersonal() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const [formData, setFormData] = useState({
+    rol: 'Empleado' as RolRegistro,
     nombre: '',
     apellidos: '',
     puesto: '',
@@ -35,6 +38,9 @@ export default function RegistroPersonal() {
     imagen_perfil_url: '',
     equipo_computo: '',
     equipo_celular: '',
+    cedula_cnsf: '',
+    celular_personal: '',
+    email_personal: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -136,15 +142,25 @@ export default function RegistroPersonal() {
 
     if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es obligatorio';
     if (!formData.apellidos.trim()) newErrors.apellidos = 'Los apellidos son obligatorios';
-    if (!formData.puesto.trim()) newErrors.puesto = 'El puesto es obligatorio';
     if (!formData.oficina_id) newErrors.oficina_id = 'La oficina es obligatoria';
     if (!formData.fecha_nacimiento) newErrors.fecha_nacimiento = 'La fecha de nacimiento es obligatoria';
-    if (!formData.fecha_ingreso) newErrors.fecha_ingreso = 'La fecha de ingreso es obligatoria';
-    if (!formData.celular_laboral.trim()) newErrors.celular_laboral = 'El celular laboral es obligatorio';
-    if (!formData.email_laboral.trim()) {
-      newErrors.email_laboral = 'El email laboral es obligatorio';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_laboral)) {
-      newErrors.email_laboral = 'El email no es válido';
+    if (formData.rol === 'Empleado') {
+      if (!formData.puesto.trim()) newErrors.puesto = 'El puesto es obligatorio';
+      if (!formData.fecha_ingreso) newErrors.fecha_ingreso = 'La fecha de ingreso es obligatoria';
+      if (!formData.celular_laboral.trim()) newErrors.celular_laboral = 'El celular laboral es obligatorio';
+      if (!formData.email_laboral.trim()) {
+        newErrors.email_laboral = 'El email laboral es obligatorio';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_laboral)) {
+        newErrors.email_laboral = 'El email no es válido';
+      }
+    } else {
+      if (!formData.cedula_cnsf.trim()) newErrors.cedula_cnsf = 'La cédula CNSF es obligatoria';
+      if (!formData.celular_personal.trim()) newErrors.celular_personal = 'El celular personal es obligatorio';
+      if (!formData.email_personal.trim()) {
+        newErrors.email_personal = 'El email personal es obligatorio';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_personal)) {
+        newErrors.email_personal = 'El email no es válido';
+      }
     }
 
     setErrors(newErrors);
@@ -198,13 +214,16 @@ export default function RegistroPersonal() {
             userData: {
               nombre: formData.nombre.trim().toUpperCase(),
               apellidos: formData.apellidos.trim().toUpperCase(),
-              rol: 'Empleado',
-              email_laboral: formData.email_laboral.trim().toLowerCase(),
+              rol: formData.rol,
+              email_laboral: formData.rol === 'Empleado' ? formData.email_laboral.trim().toLowerCase() : '',
+              email_personal: formData.rol === 'Agente' ? formData.email_personal.trim().toLowerCase() : '',
               puesto: formData.puesto.trim(),
               oficina_id: formData.oficina_id,
               fecha_nacimiento: formData.fecha_nacimiento,
-              fecha_ingreso: formData.fecha_ingreso,
-              celular_laboral: formData.celular_laboral.trim(),
+              fecha_ingreso: formData.rol === 'Empleado' ? formData.fecha_ingreso : '',
+              celular_laboral: formData.rol === 'Empleado' ? formData.celular_laboral.trim() : '',
+              celular_personal: formData.rol === 'Agente' ? formData.celular_personal.trim() : '',
+              cedula_cnsf: formData.rol === 'Agente' ? formData.cedula_cnsf.trim() : '',
               extension_telefonica: formData.extension_telefonica.trim(),
               imagen_perfil_url: formData.imagen_perfil_url || '/display-avatar.png',
               equipo_computo: formData.equipo_computo.trim(),
@@ -270,7 +289,7 @@ export default function RegistroPersonal() {
           </div>
           <PageHeader
             title="Registro de Personal"
-            description="Pre-registro para empleados de JIRO"
+            description="Pre-registro para empleados y agentes de JIRO"
             icon={UserPlus}
           />
         </div>
@@ -283,6 +302,45 @@ export default function RegistroPersonal() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
+              ¿Cómo te vas a registrar?
+            </h2>
+            <p className="text-sm text-neutral-500 dark:text-white/60 mb-4">
+              Selecciona el tipo de perfil para mostrar únicamente los datos que te corresponden.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(['Empleado', 'Agente'] as RolRegistro[]).map((rol) => (
+                <button
+                  key={rol}
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, rol });
+                    setErrors({});
+                    setError(null);
+                  }}
+                  className={`rounded-xl border-2 p-5 text-left transition-all ${
+                    formData.rol === rol
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-neutral-200 dark:border-white/10 hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-neutral-900 dark:text-white">{rol}</p>
+                      <p className="text-sm text-neutral-500 dark:text-white/60 mt-1">
+                        {rol === 'Empleado'
+                          ? 'Personal interno con correo y línea laboral JIRO.'
+                          : 'Agente de seguros con cédula CNSF y datos personales.'}
+                      </p>
+                    </div>
+                    {formData.rol === rol && <CheckCircle className="w-6 h-6 text-primary shrink-0" />}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </Card>
+
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
               Datos Personales
@@ -322,26 +380,28 @@ export default function RegistroPersonal() {
                 {errors.fecha_nacimiento && <p className="text-sm text-red-500 mt-1">{errors.fecha_nacimiento}</p>}
               </div>
 
-              <div>
-                <Label htmlFor="fecha_ingreso">Fecha de Ingreso *</Label>
-                <Input
-                  id="fecha_ingreso"
-                  type="date"
-                  value={formData.fecha_ingreso}
-                  onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
-                  className={errors.fecha_ingreso ? 'border-red-500' : ''}
-                />
-                {errors.fecha_ingreso && <p className="text-sm text-red-500 mt-1">{errors.fecha_ingreso}</p>}
-              </div>
+              {formData.rol === 'Empleado' && (
+                <div>
+                  <Label htmlFor="fecha_ingreso">Fecha de Ingreso *</Label>
+                  <Input
+                    id="fecha_ingreso"
+                    type="date"
+                    value={formData.fecha_ingreso}
+                    onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
+                    className={errors.fecha_ingreso ? 'border-red-500' : ''}
+                  />
+                  {errors.fecha_ingreso && <p className="text-sm text-red-500 mt-1">{errors.fecha_ingreso}</p>}
+                </div>
+              )}
             </div>
           </Card>
 
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
-              Datos Laborales
+              {formData.rol === 'Empleado' ? 'Datos Laborales' : 'Datos del Agente'}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              {formData.rol === 'Empleado' && <div>
                 <Label htmlFor="puesto">Puesto *</Label>
                 <Input
                   id="puesto"
@@ -350,7 +410,7 @@ export default function RegistroPersonal() {
                   className={errors.puesto ? 'border-red-500' : ''}
                 />
                 {errors.puesto && <p className="text-sm text-red-500 mt-1">{errors.puesto}</p>}
-              </div>
+              </div>}
 
               <div>
                 <Label htmlFor="oficina_id">Oficina *</Label>
@@ -372,7 +432,7 @@ export default function RegistroPersonal() {
                 {errors.oficina_id && <p className="text-sm text-red-500 mt-1">{errors.oficina_id}</p>}
               </div>
 
-              <div>
+              {formData.rol === 'Empleado' && <div>
                 <Label htmlFor="celular_laboral">Celular Laboral (Línea JIRO) *</Label>
                 <Input
                   id="celular_laboral"
@@ -383,9 +443,9 @@ export default function RegistroPersonal() {
                   className={errors.celular_laboral ? 'border-red-500' : ''}
                 />
                 {errors.celular_laboral && <p className="text-sm text-red-500 mt-1">{errors.celular_laboral}</p>}
-              </div>
+              </div>}
 
-              <div>
+              {formData.rol === 'Empleado' && <div>
                 <Label htmlFor="email_laboral">E-Mail Laboral (JIRO) *</Label>
                 <Input
                   id="email_laboral"
@@ -396,9 +456,9 @@ export default function RegistroPersonal() {
                   className={errors.email_laboral ? 'border-red-500' : ''}
                 />
                 {errors.email_laboral && <p className="text-sm text-red-500 mt-1">{errors.email_laboral}</p>}
-              </div>
+              </div>}
 
-              <div>
+              {formData.rol === 'Empleado' && <div>
                 <Label htmlFor="extension_telefonica">Extensión Telefónica</Label>
                 <Input
                   id="extension_telefonica"
@@ -406,11 +466,51 @@ export default function RegistroPersonal() {
                   value={formData.extension_telefonica}
                   onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
                 />
-              </div>
+              </div>}
+
+              {formData.rol === 'Agente' && (
+                <>
+                  <div>
+                    <Label htmlFor="cedula_cnsf">Cédula CNSF *</Label>
+                    <Input
+                      id="cedula_cnsf"
+                      placeholder="Ej: A123456"
+                      value={formData.cedula_cnsf}
+                      onChange={(e) => setFormData({ ...formData, cedula_cnsf: e.target.value })}
+                      className={errors.cedula_cnsf ? 'border-red-500' : ''}
+                    />
+                    {errors.cedula_cnsf && <p className="text-sm text-red-500 mt-1">{errors.cedula_cnsf}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="celular_personal">Celular Personal *</Label>
+                    <Input
+                      id="celular_personal"
+                      type="tel"
+                      placeholder="5512345678"
+                      value={formData.celular_personal}
+                      onChange={(e) => setFormData({ ...formData, celular_personal: e.target.value })}
+                      className={errors.celular_personal ? 'border-red-500' : ''}
+                    />
+                    {errors.celular_personal && <p className="text-sm text-red-500 mt-1">{errors.celular_personal}</p>}
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="email_personal">E-Mail Personal *</Label>
+                    <Input
+                      id="email_personal"
+                      type="email"
+                      placeholder="nombre@correo.com"
+                      value={formData.email_personal}
+                      onChange={(e) => setFormData({ ...formData, email_personal: e.target.value })}
+                      className={errors.email_personal ? 'border-red-500' : ''}
+                    />
+                    {errors.email_personal && <p className="text-sm text-red-500 mt-1">{errors.email_personal}</p>}
+                  </div>
+                </>
+              )}
             </div>
           </Card>
 
-          <Card className="p-6">
+          {formData.rol === 'Empleado' && <Card className="p-6">
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
               Equipos Asignados
             </h2>
@@ -441,7 +541,7 @@ export default function RegistroPersonal() {
                 </p>
               </div>
             </div>
-          </Card>
+          </Card>}
 
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
