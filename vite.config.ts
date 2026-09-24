@@ -12,12 +12,20 @@ let COMMIT_HASH = process.env.COMMIT_HASH?.trim()
   || 'unknown'
 
 if (COMMIT_HASH === 'unknown') {
-  try {
-    COMMIT_HASH = execSync('git rev-parse --short HEAD', {
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).toString().trim()
-  } catch {
-    // Los builds sin metadatos de Git (por ejemplo, un ZIP) siguen siendo válidos.
+  const gitCommands = [
+    'git rev-parse --short HEAD',
+    'git --git-dir=../git/main/.git rev-parse --short HEAD',
+  ]
+
+  for (const command of gitCommands) {
+    try {
+      COMMIT_HASH = execSync(command, {
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).toString().trim()
+      break
+    } catch {
+      // Prueba la siguiente ubicación conocida del repositorio.
+    }
   }
 }
 
