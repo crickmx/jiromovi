@@ -14,6 +14,7 @@ let COMMIT_HASH = process.env.COMMIT_HASH?.trim()
 if (COMMIT_HASH === 'unknown') {
   const gitCommands = [
     'git rev-parse --short HEAD',
+    'git --git-dir=../git/main rev-parse --short HEAD',
     'git --git-dir=../git/main/.git rev-parse --short HEAD',
   ]
 
