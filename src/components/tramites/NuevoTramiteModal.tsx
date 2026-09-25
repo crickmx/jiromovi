@@ -17,7 +17,6 @@ import {
 } from '../../lib/registroActividadesUtils';
 import {
   REGISTRO_ACTIVIDAD_ESTATUS,
-  isEstatusFinal,
   getTipoTramitesByArea,
   getTipoTramiteArea,
   AREA_CONFIG,
@@ -147,8 +146,6 @@ export function NuevoTramiteModal({
   const [ceRamoId, setCeRamoId] = useState('');            // UUID de maestro_ramos
   const [ceSelectedInsurers, setCeSelectedInsurers] = useState<string[]>([]); // nombres de maestro_companias
   const [ceRequestDatetime, setCeRequestDatetime] = useState(formatDateTimeForInput(new Date()));
-  const [ceCompletionDatetime, setCeCompletionDatetime] = useState('');
-  const [ceEstatusNombre, setCeEstatusNombre] = useState('Iniciado');
   const [ceShowInsurerDropdown, setCeShowInsurerDropdown] = useState(false);
   const [ceInsurerSearchTerm, setCeInsurerSearchTerm] = useState('');
 
@@ -489,12 +486,6 @@ export function NuevoTramiteModal({
   }, [tipoTramite]);
 
 
-  useEffect(() => {
-    if (isEstatusFinal(ceEstatusNombre) && !ceCompletionDatetime) {
-      setCeCompletionDatetime(formatDateTimeForInput(new Date()));
-    }
-  }, [ceEstatusNombre]);
-
   const loadCeCatalogs = async () => {
     if (!usuario) return;
     try {
@@ -545,8 +536,6 @@ export function NuevoTramiteModal({
     setCeRamoId('');
     setCeSelectedInsurers([]);
     setCeRequestDatetime(formatDateTimeForInput(new Date()));
-    setCeCompletionDatetime('');
-    setCeEstatusNombre('Iniciado');
     setCeShowInsurerDropdown(false);
     setCeInsurerSearchTerm('');
 
@@ -583,8 +572,6 @@ export function NuevoTramiteModal({
     setLoteSeleccionado('');
     setDocumentoSeleccionado('');
     setCeRequestDatetime(formatDateTimeForInput(new Date()));
-    setCeCompletionDatetime('');
-    setCeEstatusNombre('Iniciado');
     setCeShowInsurerDropdown(false);
     setCeInsurerSearchTerm('');
     setFechaPromesaEntrega((draft.fechaPromesaEntrega as string) || '');
@@ -1617,7 +1604,7 @@ export function NuevoTramiteModal({
       insurers: ceSelectedInsurers,  // array de nombres de maestro_companias
       attending_user_id: effectiveAttendingId,
       request_datetime: new Date().toISOString(),
-      estatus_nombre: isAgent ? 'Iniciado' : ceEstatusNombre,
+      estatus_nombre: 'Iniciado',
       prioridad: isAgent ? 'Media' : prioridad,
       instrucciones: descripcion
     };
@@ -2364,50 +2351,10 @@ export function NuevoTramiteModal({
         {/* ===== SECCIÓN COTIZACIÓN / EMISIÓN ===== */}
         {tipoTramite === 'cotizacion_emision' && (
           <div className="space-y-4">
-            {/* Pipeline de estatus - solo para no-agentes */}
-            {!isAgent && (
-              <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
-                <label className="block text-xs font-semibold text-neutral-700 mb-3 uppercase tracking-wide">
-                  Estatus del Trámite
-                </label>
-                <div className="flex flex-wrap items-center gap-1">
-                  {REGISTRO_ACTIVIDAD_ESTATUS.map((est, idx) => {
-                    const isActive = ceEstatusNombre === est.nombre;
-                    const isPassed = REGISTRO_ACTIVIDAD_ESTATUS.findIndex(e => e.nombre === ceEstatusNombre) > idx;
-                    const isLast = idx === REGISTRO_ACTIVIDAD_ESTATUS.length - 1;
-                    return (
-                      <div key={est.nombre} className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setCeEstatusNombre(est.nombre)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-200 ${
-                            isActive
-                              ? 'text-white border-transparent shadow-md scale-105'
-                              : isPassed
-                              ? 'text-white border-transparent opacity-60'
-                              : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-400'
-                          }`}
-                          style={{
-                            backgroundColor: (isActive || isPassed) ? est.color : undefined,
-                            borderColor: isActive ? est.color : undefined,
-                          }}
-                        >
-                          {(isActive || isPassed) && <CheckCircle2 className="w-3 h-3" />}
-                          {est.nombre}
-                        </button>
-                        {!isLast && <ChevronRight className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />}
-                      </div>
-                    );
-                  })}
-                </div>
-                {isEstatusFinal(ceEstatusNombre) && (
-                  <div className="mt-3 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 bg-neutral-100 text-neutral-600">
-                    <Lock className="w-3.5 h-3.5" />
-                    Este es un estatus final. El trámite quedará cerrado.
-                  </div>
-                )}
-              </div>
-            )}
+            {/* El pipeline de estatus clickeable se eliminó: igual que el resto de los
+                tipos, un trámite nace en "Iniciado" y se avanza desde el encabezado del
+                detalle, que es donde vive el flujo completo con su comentario obligatorio
+                y sus triggers. `ceEstatusNombre` se queda fijo en 'Iniciado'. */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* El Agente de este tipo se eliminó: duplicaba al campo sistema
