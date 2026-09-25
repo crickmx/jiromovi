@@ -94,7 +94,26 @@ La sesión no tenía herramienta de navegador. Typecheck y build de producción 
 
 ---
 
-### 🔴🔴 URGENTE — Sincronización SICAS CCJ "Efectuada" por Fecha de Pago (sesión 2026-09-10, EN PROGRESO)
+### ⏸️ PAUSADO — Sincronización SICAS (crons apagados 2026-09-25)
+
+**La carga automática de producción desde SICAS está DETENIDA a propósito.** Si en una sesión futura parece que "la sincronización no corre", NO es un bug: Ricardo la pausó el 2026-09-25 porque no estaba funcionando y necesita una reunión con el equipo de SICAS para resolverlo de fondo.
+
+Se desactivaron estos cuatro (con `update cron.job set active = false`, NO `unschedule` — así conservan su JWT y se reactivan con una línea):
+`sicas-ccj-sync-cada-4h`, `sicas-incremental-sync-30min`, `sicas-bulk-sync-continue`, `sicas-stale-sync-check`.
+
+Siguen corriendo a propósito: `qualitas-catalog-daily-sync` (otro proveedor) y `enviar-cola-lector`.
+
+**Para reactivar tras la reunión:**
+```sql
+update cron.job set active = true
+where jobname in ('sicas-ccj-sync-cada-4h','sicas-incremental-sync-30min',
+                  'sicas-bulk-sync-continue','sicas-stale-sync-check');
+```
+Ojo al reanudar `sicas-bulk-sync-continue`: debería retomar donde se quedó (la lógica de reanudación se arregló en septiembre), pero si la pausa duró semanas conviene revisar en qué página quedó antes de prenderlo.
+
+---
+
+### 🔴🔴 Filtro de fecha de "Efectuada" — sigue roto (sesión 2026-09-10, bloqueado)
 
 **Contexto del pedido:** Ricardo quería que la sincronización automática de "Cobranza Efectuada" (`supabase/functions/sicas-ccj-reports/index.ts`) dejara de recorrer el histórico completo de SICAS (15 años, ~181,844 registros) y en su lugar solo trajera desde el año pasado en adelante — más rápido y sin "absurdo" de resincronizar todo.
 
