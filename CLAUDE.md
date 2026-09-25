@@ -159,7 +159,7 @@ La función `buildConditionsAdd` del cliente SOAP ya produce este formato correc
 
 ---
 
-### 🟡 SIGUIENTE — Integración MOVI → cola de lector.movi.digital (preparado 2026-09-18, sin código todavía)
+### ✅ RESUELTO — Integración MOVI → cola de lector.movi.digital (en producción 2026-09-25)
 
 **Lo que pidió Ricardo:** al adjuntar un PDF en un trámite, si ese campo dispara extracción, MOVI debe detectar automáticamente si la extracción está configurada **para esa compañía, ramo y subramo específico**. Si no logra extraer, el PDF debe irse a la cola de `lector.movi.digital` para que otro equipo lo catalogue y entrene el sistema.
 
@@ -238,7 +238,7 @@ Por qué así y no un POST en línea dentro de `process-poliza-pdf`: la función
 **Contrato del endpoint de extracción, verificado el 2026-09-23** leyendo `api/routers/integraciones/movi_beta.py` en el repo del lector (`github.com/medaunbrauni/lector-polizas`, clonado en `C:\Users\RICARDO JIMENEZ\lector-polizas`): devuelve `{aseguradora, ramo, sub_ramo, estado, campos, error}` con `estado: "ok" | "no_reconocida" | "error"` — exactamente lo que espera nuestra condición `extracted.estado === "ok"`. **No hay que cambiar nada ahí.**
 Detalle menor pendiente: cuando devuelve `estado:"error"` también manda un campo `error` con el motivo, y MOVI no lo lee — se guarda `estado="error"` con `error_detalle` en null. Se arregla en una línea si se quiere esa trazabilidad.
 
-**SIN VERIFICAR — primero que hay que hacer al retomar.** No alcanzamos a correr las consultas de comprobación, así que no sabemos si el cron quedó bien programado ni si llegó a enviar algo. **Tampoco quedó confirmado si el secret y los deploys se hicieron** — si faltan, el cron lleva fallando cada 5 min desde entonces (ruidoso, pero inofensivo: las filas se quedan pendientes y se reintentan).
+**✅ FUNCIONANDO — confirmado por Ricardo el 2026-09-25.** El secret, los deploys y el cron quedaron. Las consultas de abajo se conservan solo como diagnóstico si algún día deja de enviar.
 
 ```sql
 -- 1. ¿Quedó programado?
