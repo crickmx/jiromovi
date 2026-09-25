@@ -180,8 +180,23 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
 
   const handleAddCampo = async (tipo: CampoTipo) => {
     const meta = CAMPO_TIPOS.find(t => t.tipo === tipo);
-    const label = (meta?.label || 'Campo') + ' ' + (campos.length + 1);
+    const base = meta?.label || 'Campo';
+
+    // La clave salía de `campos.length + 1`, pero `loadCampos` solo trae los activos:
+    // un campo oculto —o uno borrado y vuelto a agregar— conserva su `key` en la base y
+    // hacía chocar el índice único (tramite_tipo_id, key), con un error de Postgres crudo
+    // en pantalla. Se consultan las claves realmente ocupadas, activas o no.
+    const { data: existentes } = await supabase
+      .from('tramite_tipo_campos')
+      .select('key, display_order')
+      .eq('tramite_tipo_id', tipoId);
+    const ocupadas = new Set((existentes ?? []).map(c => c.key));
+    let n = campos.length + 1;
+    while (ocupadas.has(slugify(`${base} ${n}`))) n++;
+
+    const label = `${base} ${n}`;
     const key = slugify(label);
+    const siguienteOrden = Math.max(0, ...(existentes ?? []).map(c => c.display_order ?? 0)) + 1;
     const defaultConfig: Record<string, any> = {};
     if (tipo === 'texto_corto') defaultConfig.max_length = 255;
     if (tipo === 'texto_largo') defaultConfig.max_length = 2000;
@@ -203,7 +218,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
 
     const { data, error } = await supabase
       .from('tramite_tipo_campos')
-      .insert({ tramite_tipo_id: tipoId, key, label, tipo, requerido: false, display_order: campos.length + 1, config: defaultConfig, activo: true })
+      .insert({ tramite_tipo_id: tipoId, key, label, tipo, requerido: false, display_order: siguienteOrden, config: defaultConfig, activo: true })
       .select()
       .single();
 
