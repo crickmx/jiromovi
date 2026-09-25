@@ -14,6 +14,7 @@ export interface SeccionMinima {
   condicion_campo_id?: string | null;
   condicion_operador?: 'igual_a' | 'distinto_a' | 'tiene_valor' | null;
   condicion_valor?: string | null;
+  sistema_key?: string | null;
 }
 
 export interface CampoConSeccion {

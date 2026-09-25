@@ -83,6 +83,8 @@ export interface TramiteSeccion {
   condicion_operador: 'igual_a' | 'distinto_a' | 'tiene_valor' | null;
   condicion_valor: string | null;
   activo: boolean;
+  /** No nulo = sección de sistema: no se borra ni se le sacan campos. */
+  sistema_key: string | null;
 }
 
 export type RolVisibilidad = 'todos' | 'Empleado' | 'Gerente' | 'Administrador';

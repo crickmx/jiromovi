@@ -127,6 +127,13 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
   };
 
   const handleDeleteSeccion = async (seccion: TramiteSeccion) => {
+    // Las secciones de sistema existen en todos los tipos por diseño. Sí se pueden
+    // renombrar y mover, pero no borrar — el trigger las volvería a crear y el tipo
+    // quedaría con sus campos de personas sueltos hasta entonces.
+    if (seccion.sistema_key) {
+      showToast('Esta sección es parte del sistema y no se puede eliminar. Puedes renombrarla o moverla.', 'error');
+      return;
+    }
     if (!confirm(`¿Eliminar la sección "${seccion.nombre}"? Sus campos quedarán sin sección (no se eliminan).`)) return;
     const { error } = await supabase.from('tramite_tipo_secciones').delete().eq('id', seccion.id);
     if (error) { showToast('Error al eliminar la sección: ' + error.message, 'error'); return; }
@@ -395,6 +402,13 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     if (idx === null) return;
     const campo = campos[idx];
     if (!campo || isLocked(campo) || campo.seccion_id === seccionId) return;
+    // Los campos de una sección de sistema se reordenan dentro de ella, pero no salen:
+    // la sección existe justamente para garantizar que esos datos estén siempre juntos.
+    const seccionActual = secciones.find(s => s.id === campo.seccion_id);
+    if (seccionActual?.sistema_key) {
+      showToast(`"${campo.label}" pertenece a "${seccionActual.nombre}" y no puede moverse fuera.`, 'error');
+      return;
+    }
     setCampos(prev => prev.map(c => c.id === campo.id ? { ...c, seccion_id: seccionId } : c));
     const { error } = await supabase.from('tramite_tipo_campos').update({ seccion_id: seccionId }).eq('id', campo.id);
     if (error) { showToast('Error al asignar el campo a la sección: ' + error.message, 'error'); return; }

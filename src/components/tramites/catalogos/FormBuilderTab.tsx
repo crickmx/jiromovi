@@ -636,21 +636,40 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
 
               <div className="space-y-3">
                 {/* Sección — aplica a cualquier tipo de campo, incluidos sistema/estatus */}
-                {secciones.length > 0 && (
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-600 mb-1 flex items-center gap-1">
-                      <Layers className="w-3 h-3" /> Sección
-                    </label>
-                    <select
-                      value={editCampoSeccionId ?? ''}
-                      onChange={(e) => setEditCampoSeccionId(e.target.value || null)}
-                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
-                    >
-                      <option value="">Sin sección</option>
-                      {secciones.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                    </select>
-                  </div>
-                )}
+                {secciones.length > 0 && (() => {
+                  // Un campo que pertenece a una sección de sistema no sale de ahí.
+                  // Se muestra cuál es, pero sin dejar cambiarla.
+                  const seccionDelCampo = secciones.find(s => s.id === editCampoSeccionId);
+                  const fijaPorSistema = !!seccionDelCampo?.sistema_key;
+                  return (
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1 flex items-center gap-1">
+                        <Layers className="w-3 h-3" /> Sección
+                      </label>
+                      {fijaPorSistema ? (
+                        <>
+                          <div className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg bg-neutral-50 text-neutral-500 flex items-center gap-1.5">
+                            <Lock className="w-3 h-3 shrink-0" />
+                            {seccionDelCampo!.nombre}
+                          </div>
+                          <p className="text-[10px] text-neutral-400 mt-1">
+                            Este campo pertenece a una sección del sistema. Puedes reordenarlo dentro de ella, pero no sacarlo.
+                          </p>
+                        </>
+                      ) : (
+                        <select
+                          value={editCampoSeccionId ?? ''}
+                          onChange={(e) => setEditCampoSeccionId(e.target.value || null)}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          <option value="">Sin sección</option>
+                          {/* Las de sistema no se ofrecen: sus campos son fijos */}
+                          {secciones.filter(s => !s.sistema_key).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Etiqueta + ayuda + requerido — solo para no-locked y no-estatus */}
                 {(!editingCampo.is_sistema || !LOCKED_SISTEMA_KEYS.includes(editingCampo.sistema_key ?? '')) && editingCampo.tipo !== 'estatus' && (

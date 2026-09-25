@@ -452,7 +452,7 @@ export function TramiteDetalle() {
       .from('tramite_tipo_secciones')
       // Sin las 3 columnas de condición, una sección condicionada a un valor de campo se
       // mostraba siempre (ver nota en NuevoTramiteModal).
-      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, condicion_campo_id, condicion_operador, condicion_valor, activo')
+      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, condicion_campo_id, condicion_operador, condicion_valor, activo, sistema_key')
       .eq('tramite_tipo_id', tipoData.id)
       .eq('activo', true)
       .order('orden');

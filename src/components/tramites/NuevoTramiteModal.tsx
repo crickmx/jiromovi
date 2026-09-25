@@ -383,7 +383,7 @@ export function NuevoTramiteModal({
       // `seccionDesbloqueada` cae al camino viejo, así que una sección condicionada a un
       // valor de campo se mostraba SIEMPRE. El tipo TramiteSeccion sí las declara, por eso
       // nadie lo notó — la cadena del .select() no la valida TypeScript.
-      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, condicion_campo_id, condicion_operador, condicion_valor, activo')
+      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, condicion_campo_id, condicion_operador, condicion_valor, activo, sistema_key')
       .eq('tramite_tipo_id', tipoInfo.id)
       .eq('activo', true)
       .order('orden')
@@ -2875,24 +2875,16 @@ export function NuevoTramiteModal({
             );
           };
 
-          const PERSONAS_SISTEMA_KEYS = ['agente_vendedor', 'creado_por', 'asignado_a'];
-
+          // "Personas involucradas" era un agrupamiento pintado a mano aquí, y solo
+          // funcionaba mientras esos campos no tuvieran sección: si un admin les asignaba
+          // una, el grupo se deshacía. Ahora es una sección de sistema real
+          // (20260925000001_seccion_sistema_personas.sql), así que la agrupación sale del
+          // dato y es la misma en el alta y en el detalle.
           return agruparCamposPorSeccion(camposVisibles, secciones).map(grupo => {
             if (!grupo.seccion) {
-              const camposPersonas = grupo.campos.filter(c => c.is_sistema && PERSONAS_SISTEMA_KEYS.includes(c.sistema_key ?? ''));
-              const camposResto = grupo.campos.filter(c => !(c.is_sistema && PERSONAS_SISTEMA_KEYS.includes(c.sistema_key ?? '')));
               return (
                 <div key="sin-seccion" className="space-y-6">
-                  {camposPersonas.length > 0 && (
-                    <div className="p-4 border border-neutral-200 rounded-2xl bg-neutral-50/60 space-y-4">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700">
-                        <Users className="w-4 h-4 text-accent" />
-                        Personas involucradas
-                      </div>
-                      {camposPersonas.map(renderCampoConLock)}
-                    </div>
-                  )}
-                  {camposResto.map(renderCampoConLock)}
+                  {grupo.campos.map(renderCampoConLock)}
                 </div>
               );
             }
