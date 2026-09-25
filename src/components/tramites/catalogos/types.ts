@@ -85,6 +85,8 @@ export interface TramiteSeccion {
   activo: boolean;
   /** No nulo = sección de sistema: no se borra ni se le sacan campos. */
   sistema_key: string | null;
+  /** Config libre por sección. Hoy solo la usa el header, para su fondo. */
+  config: Record<string, any>;
 }
 
 export type RolVisibilidad = 'todos' | 'Empleado' | 'Gerente' | 'Administrador';

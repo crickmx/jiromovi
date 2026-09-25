@@ -4,6 +4,7 @@ import { useFormBuilder, LOCKED_SISTEMA_KEYS, CONFIGURABLE_SISTEMA_KEYS, SISTEMA
 import { FormPreview } from './FormPreview';
 import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, ROL_VISIBILIDAD_OPCIONES, slugify, type CampoTipo, type RolVisibilidad } from './types';
 import { supabase } from '../../../lib/supabase';
+import { estiloHeader, CLASE_VELO, type FondoHeader } from '../../../lib/tramiteHeader';
 
 interface Props {
   tipoId: string;
@@ -46,6 +47,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
     condicion_campo_id: null as string | null,
     condicion_operador: 'igual_a' as 'igual_a' | 'distinto_a' | 'tiene_valor',
     condicion_valor: '' as string,
+    fondo: {} as FondoHeader,
   });
   // Modo de desbloqueo: mutuamente excluyentes en la UI (aunque coexistan en BD)
   const [seccionModo, setSeccionModo] = useState<'ninguno' | 'seccion' | 'campo'>('ninguno');
@@ -89,6 +91,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
         condicion_campo_id: editingSeccion.condicion_campo_id,
         condicion_operador: editingSeccion.condicion_operador ?? 'igual_a',
         condicion_valor: editingSeccion.condicion_valor ?? '',
+        fondo: (editingSeccion.config?.fondo ?? {}) as FondoHeader,
       });
       setSeccionModo(editingSeccion.condicion_campo_id ? 'campo' : editingSeccion.depende_de_seccion_id ? 'seccion' : 'ninguno');
     } else if (showAddSeccion) {
@@ -96,6 +99,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
         nombre: '', descripcion: '', opcional: false,
         depende_de_seccion_id: null, condicion_campo_id: null,
         condicion_operador: 'igual_a', condicion_valor: '',
+        fondo: {},
       });
       setSeccionModo('ninguno');
     }
@@ -331,14 +335,16 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         const esSistema = !!seccion.sistema_key;
                         const suyos = draggableCampos.filter(c => c.seccion_id === seccion.id);
                         const colapsada = colapsadas.has(seccion.id);
+                        const esHeader = seccion.sistema_key === 'header';
+                        const vistaFondo = esHeader ? estiloHeader(seccion.config?.fondo, null) : null;
                         return (
                           <div key={seccion.id} className={`border rounded-xl p-2.5 ${esSistema ? 'border-violet-200 bg-violet-50/30' : 'border-teal-200 bg-teal-50/20'}`}>
                             <div className="flex items-center gap-2 mb-2">
                               <div className="flex flex-col shrink-0">
-                                <button onClick={() => handleMoveSeccion(seccion, 'arriba')} disabled={i === 0} className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Subir">
+                                <button onClick={() => handleMoveSeccion(seccion, 'arriba')} disabled={i === 0 || esHeader} className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Subir">
                                   <ChevronUp className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => handleMoveSeccion(seccion, 'abajo')} disabled={i === secciones.length - 1} className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Bajar">
+                                <button onClick={() => handleMoveSeccion(seccion, 'abajo')} disabled={i === secciones.length - 1 || esHeader} className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Bajar">
                                   <ChevronDown className="w-3.5 h-3.5" />
                                 </button>
                               </div>
@@ -374,6 +380,14 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             </div>
                             {!colapsada && (
                               <>
+                                {vistaFondo && (
+                                  <div style={vistaFondo.style} className="relative h-12 rounded-lg overflow-hidden border border-neutral-200 mb-2">
+                                    {vistaFondo.conVelo && <div className={CLASE_VELO} />}
+                                    <div className="relative h-full flex items-center px-3 gap-2">
+                                      <span className="text-[11px] font-bold" style={{ color: vistaFondo.textColor }}>Área · Nombre del trámite · Folio</span>
+                                    </div>
+                                  </div>
+                                )}
                                 {contenedor(seccion.id, suyos)}
                                 {!esSistema && (
                                   <button
@@ -438,6 +452,75 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                     className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
+                {editingSeccion?.sistema_key === 'header' && (() => {
+                  const fondo = seccionForm.fondo ?? {};
+                  const tipo = fondo.tipo ?? 'color';
+                  const setFondo = (patch: Partial<FondoHeader>) =>
+                    setSeccionForm({ ...seccionForm, fondo: { ...fondo, ...patch } });
+                  const vista = estiloHeader(fondo, null);
+                  return (
+                    <div className="space-y-2 border border-neutral-200 rounded-lg p-2.5 bg-white">
+                      <label className="block text-xs font-medium text-neutral-600">Fondo del encabezado</label>
+
+                      {/* Vista previa con el mismo helper que usa el trámite real,
+                          para que lo que se ve aquí sea lo que se va a ver allá. */}
+                      <div style={vista.style} className="relative h-16 rounded-lg overflow-hidden border border-neutral-200">
+                        {vista.conVelo && <div className={CLASE_VELO} />}
+                        <div className="relative h-full flex items-center px-3">
+                          <span className="text-xs font-bold" style={{ color: vista.textColor }}>Folio TK0000</span>
+                        </div>
+                      </div>
+
+                      <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[10px] font-medium">
+                        {(['color', 'degradado', 'imagen'] as const).map((t, i) => (
+                          <button
+                            key={t}
+                            onClick={() => setFondo({ tipo: t })}
+                            className={`flex-1 py-1 capitalize transition-colors ${i > 0 ? 'border-l border-neutral-200' : ''} ${tipo === t ? 'bg-blue-500 text-white' : 'bg-white text-neutral-500 hover:bg-blue-50'}`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+
+                      {tipo !== 'imagen' && (
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={fondo.color ?? '#6B7280'} onChange={(e) => setFondo({ color: e.target.value })} className="h-7 w-10 rounded border border-neutral-300 cursor-pointer" title="Color inicial" />
+                          {tipo === 'degradado' && (
+                            <>
+                              <input type="color" value={fondo.color2 ?? '#111827'} onChange={(e) => setFondo({ color2: e.target.value })} className="h-7 w-10 rounded border border-neutral-300 cursor-pointer" title="Color final" />
+                              <input type="range" min={0} max={360} step={15} value={fondo.angulo ?? 135} onChange={(e) => setFondo({ angulo: Number(e.target.value) })} className="flex-1" title="Ángulo" />
+                              <span className="text-[10px] text-neutral-400 w-8 text-right">{fondo.angulo ?? 135}°</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {tipo === 'imagen' && (
+                        <div className="space-y-1.5">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const ruta = `${tipoId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                              const { error } = await supabase.storage.from('tramite-headers').upload(ruta, file, { upsert: true });
+                              if (error) { showToast('No se pudo subir la imagen: ' + error.message, 'error'); return; }
+                              const { data } = supabase.storage.from('tramite-headers').getPublicUrl(ruta);
+                              setFondo({ imagen_url: data.publicUrl });
+                            }}
+                            className="w-full text-[11px] file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-blue-50 file:text-blue-600 file:text-[11px]"
+                          />
+                          <p className="text-[10px] text-neutral-400">
+                            Se aplica un velo oscuro encima para que el título y el folio siempre se lean.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div>
                   <label className="block text-xs font-medium text-neutral-600 mb-1">Descripción</label>
                   <textarea

@@ -15,6 +15,7 @@ import { TriggerConfirmModal, type PendingTrigger, type ExistingChild } from '..
 import { calcularDiasHabilesEntre } from '../lib/diasHabiles';
 import type { TramiteSeccion } from '../components/tramites/catalogos/types';
 import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada } from '../lib/tramiteSecciones';
+import { estiloHeader, CLASE_VELO } from '../lib/tramiteHeader';
 import TOTPDecryptModal from '../components/tramites/TOTPDecryptModal';
 
 interface TramiteEstatus {
@@ -452,7 +453,7 @@ export function TramiteDetalle() {
       .from('tramite_tipo_secciones')
       // Sin las 3 columnas de condición, una sección condicionada a un valor de campo se
       // mostraba siempre (ver nota en NuevoTramiteModal).
-      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, condicion_campo_id, condicion_operador, condicion_valor, activo, sistema_key')
+      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, condicion_campo_id, condicion_operador, condicion_valor, activo, sistema_key, config')
       .eq('tramite_tipo_id', tipoData.id)
       .eq('activo', true)
       .order('orden');
@@ -1492,22 +1493,20 @@ export function TramiteDetalle() {
     );
   }
 
-  const tipoContrastColor = (() => {
-    const hex = tipoInfo?.color;
-    if (!hex || !/^#[0-9A-Fa-f]{6}$/i.test(hex)) return '#FFFFFF';
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-    const lin = (c: number) => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    return L > 0.179 ? '#111827' : '#FFFFFF';
-  })();
+  // El fondo del encabezado se configura desde el FormBuilder, en la sección de
+  // sistema "header". Si el tipo no la tiene todavía, cae al color del tipo — que
+  // es exactamente lo que se pintaba antes.
+  const seccionHeader = secciones.find(s => s.sistema_key === 'header');
+  const header = estiloHeader(seccionHeader?.config?.fondo, tipoInfo?.color);
+  const tipoContrastColor = header.textColor;
 
   return (
     <div className="space-y-6">
       <div className="rounded-3xl shadow-soft overflow-hidden border border-neutral-200 dark:border-neutral-700">
-        {/* Colored tipo header */}
-        <div style={{ backgroundColor: tipoInfo?.color ?? '#6B7280' }} className="px-6 pt-4 pb-5">
+        {/* Encabezado del tipo — fondo configurable (color, degradado o imagen) */}
+        <div style={header.style} className="relative px-6 pt-4 pb-5">
+          {header.conVelo && <div className={CLASE_VELO} />}
+          <div className="relative">
           <button
             onClick={() => navigate('/tramites')}
             className="inline-flex items-center gap-1.5 text-sm mb-4 transition-opacity hover:opacity-100"
@@ -1647,6 +1646,7 @@ export function TramiteDetalle() {
                 )}
               </div>
             </div>
+          </div>
           </div>
         </div>
 
