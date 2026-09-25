@@ -1175,9 +1175,16 @@ export function TramiteDetalle() {
                 p_agente_id: snap.agente.id,
                 p_tipo_tramite: targetTipo.value,
               });
-              if (grupoData) {
-                const grupoUpd: Record<string, string> = { grupo_asignado_id: (grupoData as any).grupo_id };
-                if ((grupoData as any).ejecutivo_id) grupoUpd.assigned_to_user_id = (grupoData as any).ejecutivo_id;
+              // El RPC devuelve una tabla, así que `data` es un arreglo. Antes se leía
+              // `grupoData.grupo_id` directo sobre el arreglo — siempre undefined — y como
+              // un arreglo vacío también es truthy, nunca se notaba: ningún trámite hijo
+              // recibía equipo ni responsable.
+              const grupoRow = Array.isArray(grupoData) && grupoData.length > 0
+                ? grupoData[0] as { grupo_id: string | null; ejecutivo_id: string | null }
+                : null;
+              if (grupoRow?.grupo_id) {
+                const grupoUpd: Record<string, string> = { grupo_asignado_id: grupoRow.grupo_id };
+                if (grupoRow.ejecutivo_id) grupoUpd.assigned_to_user_id = grupoRow.ejecutivo_id;
                 await supabase.from('tickets').update(grupoUpd).eq('id', childTicket.id);
               }
             }
