@@ -42,7 +42,9 @@ También resultó que **las notificaciones de las reglas 2, 4 y 5 ya existían**
 
 **⚠️ SIN PROBAR EN NAVEGADOR.** Typecheck, build de producción y compilación en dev pasan limpios, pero la sesión no tenía herramienta de navegador — nadie ha visto la pantalla. Al retomar, verificar en beta: que la línea verde aparezca al elegir solicitante, que salga la azul cuando el equipo no tiene ejecutivo, la ámbar cuando no hay regla, y que el select de cuenta MOVI solo salga con agentes sin vincular.
 
-**❌ QUEDA PENDIENTE — la misma lógica duplicada en otros 2 lugares.** El arreglo cubre el alta manual y (desde `41d4633b`) `cotizacion_emision`. Siguen pisando igual: los triggers padre→hijo (`TramiteDetalle.tsx:1163-1171`) y Store→Trámites (`StorePedidoDetalle.tsx`).
+**✅ RESUELTO 2026-09-25 (commit `5476dfdc`) — la duplicación resultó ser otra cosa.** Al revisarlo de verdad, Store→Trámites, Marketing Premium, alta beta y reporte de bugs **ya leían bien** el motor. El único roto era el trigger padre→hijo, y con un bug distinto al del alta: `get_grupo_para_ticket` devuelve una **tabla** (`data` es un arreglo) y ese código leía `grupoData.grupo_id` directo sobre el arreglo → siempre `undefined`. Como un arreglo vacío también es truthy, nunca entraba al camino de error. **Ningún trámite hijo creado por un trigger recibía equipo ni responsable**, en silencio. Los 6 llamadores ya son consistentes.
+
+**Patrón a recordar:** todo `supabase.rpc('get_grupo_para_ticket')` devuelve arreglo. Siempre `Array.isArray(data) && data.length > 0 ? data[0] : null`.
 
 ---
 
