@@ -98,7 +98,9 @@ La sesión no tenía herramienta de navegador. Typecheck y build de producción 
 
 **La carga automática de producción desde SICAS está DETENIDA a propósito.** Si en una sesión futura parece que "la sincronización no corre", NO es un bug: Ricardo la pausó el 2026-09-25 porque no estaba funcionando y necesita una reunión con el equipo de SICAS para resolverlo de fondo.
 
-Se desactivaron estos cuatro: `sicas-ccj-sync-cada-4h`, `sicas-incremental-sync-30min`, `sicas-bulk-sync-continue`, `sicas-stale-sync-check`.
+Se desactivaron estos cuatro: `sicas-ccj-sync-cada-4h`, `sicas-incremental-sync-2h`, `sicas-bulk-sync-continue`, `sicas-stale-sync-check`.
+
+**⚠️ Los nombres de los jobs NO coinciden con los de las migraciones** — a varios les cambiaron la frecuencia y con ella el nombre (el incremental es `-2h`, no `-30min` como dice `20260519204317...sql`). Siempre listar `cron.job` real antes de actuar, y **verificar después**: en esta sesión el incremental se quedó prendido justo por confiar en el nombre de la migración.
 
 **⚠️ `update cron.job set active = false` NO funciona** — el SQL Editor no tiene permiso de escritura sobre esa tabla (`42501: permission denied for table job`). Hay que usar la función de pg_cron, que sí es ejecutable y además conserva el job con su JWT (a diferencia de `unschedule`, que lo borra):
 ```sql
@@ -113,7 +115,7 @@ Siguen corriendo a propósito: `qualitas-catalog-daily-sync` (otro proveedor) y 
 ```sql
 select cron.alter_job(jobid, active := true)
 from cron.job
-where jobname in ('sicas-ccj-sync-cada-4h','sicas-incremental-sync-30min',
+where jobname in ('sicas-ccj-sync-cada-4h','sicas-incremental-sync-2h',
                   'sicas-bulk-sync-continue','sicas-stale-sync-check');
 ```
 Ojo al reanudar `sicas-bulk-sync-continue`: debería retomar donde se quedó (la lógica de reanudación se arregló en septiembre), pero si la pausa duró semanas conviene revisar en qué página quedó antes de prenderlo.
