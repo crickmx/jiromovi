@@ -33,14 +33,13 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
     editCampoSeccionId, setEditCampoSeccionId,
     savingCampo, dragging,
     handleAddCampo, handleAddSistemaCampo, handleDeleteCampo,
-    handleDragStart, handleDragOver, handleDrop, handleDropOnSeccion,
+    handleDragStart, handleDragOver, handleDropEnPosicion,
     secciones, loadingSecciones, loadSecciones,
     editingSeccion, setEditingSeccion,
     showAddSeccion, setShowAddSeccion,
     handleSaveSeccion, handleDeleteSeccion, handleMoveSeccion,
   } = useFormBuilder(tipoId, showToast);
 
-  const [seccionesOpen, setSeccionesOpen] = useState(true);
   const [seccionForm, setSeccionForm] = useState({
     nombre: '', descripcion: '', opcional: false,
     depende_de_seccion_id: null as string | null,
@@ -50,8 +49,8 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
   });
   // Modo de desbloqueo: mutuamente excluyentes en la UI (aunque coexistan en BD)
   const [seccionModo, setSeccionModo] = useState<'ninguno' | 'seccion' | 'campo'>('ninguno');
-  const [dragOverSeccionId, setDragOverSeccionId] = useState<string | null>(null);
-  const [dragOverSinSeccion, setDragOverSinSeccion] = useState(false);
+  // Dónde va a caer el campo que se está arrastrando: (sección destino, posición).
+  const [dropZone, setDropZone] = useState<{ seccionId: string | null; index: number } | null>(null);
   // Ramos y aseguradoras sacan sus opciones del catálogo en tiempo real, así que el
   // editor de condiciones no las conocía y caía a un texto libre. Escribir un nombre
   // que no coincidiera carácter por carácter dejaba la sección bloqueada para siempre,
@@ -71,9 +70,6 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
   }, []);
 
   useEffect(() => { loadCampos(); loadSecciones(); }, [tipoId]);
-
-  // Al empezar a arrastrar un campo, abre el panel de secciones para poder soltarlo ahí
-  useEffect(() => { if (dragging !== null) setSeccionesOpen(true); }, [dragging]);
 
   useEffect(() => {
     if (editingSeccion) {
@@ -158,100 +154,6 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
               </>
             ) : (
               <>
-                {/* ── Secciones ── */}
-                <div className="mb-4 border border-neutral-200 rounded-xl overflow-hidden">
-                  <button
-                    onClick={() => setSeccionesOpen(v => !v)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-neutral-50 hover:bg-neutral-100 transition-colors"
-                  >
-                    <span className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
-                      {seccionesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                      <Layers className="w-3.5 h-3.5" />
-                      Secciones ({secciones.length})
-                    </span>
-                  </button>
-                  {seccionesOpen && (
-                    <div className="p-3 space-y-2">
-                      {loadingSecciones ? (
-                        <p className="text-xs text-neutral-400">Cargando...</p>
-                      ) : secciones.length === 0 ? (
-                        <p className="text-xs text-neutral-400">Sin secciones — todos los campos se muestran en un solo bloque.</p>
-                      ) : (
-                        <>
-                          <p className="text-[10px] text-neutral-400 -mt-0.5">Arrastra un campo de la lista de abajo y suéltalo sobre una sección para asignarlo.</p>
-                          {secciones.map((seccion, i) => {
-                            const dependeDe = secciones.find(s => s.id === seccion.depende_de_seccion_id);
-                            const nCampos = campos.filter(c => c.seccion_id === seccion.id).length;
-                            const isDragOver = dragOverSeccionId === seccion.id;
-                            return (
-                              <div
-                                key={seccion.id}
-                                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverSeccionId(seccion.id); }}
-                                onDragLeave={() => setDragOverSeccionId(prev => (prev === seccion.id ? null : prev))}
-                                onDrop={(e) => { setDragOverSeccionId(null); handleDropOnSeccion(e, seccion.id); }}
-                                className={`flex items-center gap-2 border rounded-lg p-2 transition-colors ${
-                                  isDragOver ? 'border-blue-400 ring-2 ring-blue-200 bg-blue-50' : 'border-neutral-200 bg-white'
-                                }`}
-                              >
-                                <div className="flex flex-col shrink-0">
-                                  <button
-                                    onClick={() => handleMoveSeccion(seccion, 'arriba')}
-                                    disabled={i === 0}
-                                    className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
-                                    title="Subir"
-                                  >
-                                    <ChevronUp className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleMoveSeccion(seccion, 'abajo')}
-                                    disabled={i === secciones.length - 1}
-                                    className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
-                                    title="Bajar"
-                                  >
-                                    <ChevronDown className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-neutral-800 truncate">{seccion.nombre}</p>
-                                  <p className="text-[10px] text-neutral-400">
-                                    {nCampos} campo{nCampos !== 1 ? 's' : ''}
-                                    {seccion.opcional && ' · Opcional'}
-                                    {dependeDe && ` · Depende de "${dependeDe.nombre}"`}
-                                    {seccion.condicion_campo_id && ` · Condicionada a "${campos.find(c => c.id === seccion.condicion_campo_id)?.label ?? '—'}"`}
-                                  </p>
-                                </div>
-                                <button onClick={() => { setEditingSeccion(seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-700" title="Configurar sección" aria-label="Configurar sección">
-                                  <Settings className="w-3.5 h-3.5" />
-                                </button>
-                                <button onClick={() => handleDeleteSeccion(seccion)} className="p-1.5 hover:bg-red-50 rounded-lg text-neutral-300 hover:text-red-500" title="Eliminar sección" aria-label="Eliminar sección">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            );
-                          })}
-                          <div
-                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverSinSeccion(true); }}
-                            onDragLeave={() => setDragOverSinSeccion(false)}
-                            onDrop={(e) => { setDragOverSinSeccion(false); handleDropOnSeccion(e, null); }}
-                            className={`flex items-center gap-2 border border-dashed rounded-lg p-2 transition-colors ${
-                              dragOverSinSeccion ? 'border-blue-400 ring-2 ring-blue-200 bg-blue-50' : 'border-neutral-200 bg-neutral-50/60'
-                            }`}
-                          >
-                            <p className="text-[11px] text-neutral-400 flex-1">Sin sección — suelta aquí para quitar un campo de su sección</p>
-                          </div>
-                        </>
-                      )}
-                      <button
-                        onClick={() => { setShowAddSeccion(true); setEditingSeccion(null); closeCampoEditor(); setShowAddField(false); }}
-                        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-lg py-2 text-xs text-neutral-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Nueva sección
-                      </button>
-                    </div>
-                  )}
-                </div>
-
                 {/* ── Campos fijos del sistema (no movibles) ── */}
                 {lockedCampos.length > 0 && (
                   <div className="mb-4">
@@ -299,96 +201,171 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   </div>
                 )}
 
-                {/* ── Pool unificado: sistema configurables + custom ── */}
-                {draggableCampos.length > 0 && (
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                      Campos del formulario — arrastra para reordenar
-                    </p>
-                  </div>
-                )}
-
-                {draggableCampos.length === 0 && (
-                  <div className="text-center py-8 text-neutral-400 border-2 border-dashed border-neutral-200 rounded-xl mb-2">
-                    <p className="text-sm text-neutral-400">Sin campos en el formulario</p>
-                    <p className="text-xs mt-1">Agrega campos desde el panel derecho</p>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  {draggableCampos.map(campo => {
+                {/* ── Canvas: los campos viven dentro de su sección ── */}
+                {(() => {
+                  const renderFila = (campo: typeof campos[number]) => {
                     const idx = campos.findIndex(c => c.id === campo.id);
                     const isSistema = campo.is_sistema;
                     const meta = isSistema ? SISTEMA_TIPO_META[campo.tipo as CampoTipo] : null;
                     return (
-                      <div
-                        key={campo.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, idx)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, idx)}
-                        onDragEnd={() => {}}
-                        className={`flex items-center gap-2 border rounded-xl p-2.5 bg-white transition-opacity ${
-                          dragging === idx ? 'opacity-30' : 'opacity-100'
-                        } ${editingCampo?.id === campo.id
-                          ? isSistema ? 'border-violet-400 ring-1 ring-violet-200' : 'border-blue-400 ring-1 ring-blue-200'
-                          : 'border-neutral-200 hover:border-neutral-300'
-                        }`}
-                      >
-                        <div className="cursor-grab p-1 text-neutral-300 hover:text-neutral-500">
-                          <GripVertical className="w-4 h-4" />
-                        </div>
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-mono ${
-                          isSistema ? 'bg-violet-50 text-violet-600' : 'bg-blue-50 text-blue-600'
-                        }`}>
-                          {isSistema ? (meta?.icon ?? 'S') : (CAMPO_TIPOS.find(t => t.tipo === campo.tipo)?.icon ?? '?')}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-neutral-800 truncate">{campo.label}</p>
-                          <p className="text-[10px] text-neutral-400 font-mono">{isSistema ? (campo.sistema_key ?? campo.tipo) : campo.key}</p>
-                        </div>
-                        {campo.requerido && (
-                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 shrink-0" title="Campo requerido">
-                            req
-                          </span>
-                        )}
-                        {campo.seccion_id && (
-                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200 shrink-0 flex items-center gap-0.5">
-                            <Layers className="w-2.5 h-2.5" />
-                            {secciones.find(s => s.id === campo.seccion_id)?.nombre ?? '—'}
-                          </span>
-                        )}
-                        {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
-                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
-                            <Lock className="w-2.5 h-2.5" />
-                            {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
-                          </span>
-                        )}
-                        {isSistema && (
-                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
-                            {meta?.badge ?? 'Sistema'}
-                          </span>
-                        )}
-                        <button
-                          onClick={() => editingCampo?.id === campo.id ? closeCampoEditor() : startEditCampo(campo)}
-                          className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-400 hover:text-neutral-700"
-                          title="Configurar campo"
-                          aria-label="Configurar campo"
-                        >
-                          <Settings className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCampo(campo)}
-                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-neutral-300 hover:text-red-500"
-                          title={isSistema ? 'Ocultar del formulario' : 'Eliminar campo'}
-                          aria-label={isSistema ? 'Ocultar del formulario' : 'Eliminar campo'}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                          <div
+                            key={campo.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, idx)}
+                            className={`flex items-center gap-2 border rounded-xl p-2.5 bg-white transition-opacity ${
+                              dragging === idx ? 'opacity-30' : 'opacity-100'
+                            } ${editingCampo?.id === campo.id
+                              ? isSistema ? 'border-violet-400 ring-1 ring-violet-200' : 'border-blue-400 ring-1 ring-blue-200'
+                              : 'border-neutral-200 hover:border-neutral-300'
+                            }`}
+                          >
+                            <div className="cursor-grab p-1 text-neutral-300 hover:text-neutral-500">
+                              <GripVertical className="w-4 h-4" />
+                            </div>
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-mono ${
+                              isSistema ? 'bg-violet-50 text-violet-600' : 'bg-blue-50 text-blue-600'
+                            }`}>
+                              {isSistema ? (meta?.icon ?? 'S') : (CAMPO_TIPOS.find(t => t.tipo === campo.tipo)?.icon ?? '?')}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-neutral-800 truncate">{campo.label}</p>
+                              <p className="text-[10px] text-neutral-400 font-mono">{isSistema ? (campo.sistema_key ?? campo.tipo) : campo.key}</p>
+                            </div>
+                            {campo.requerido && (
+                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 shrink-0" title="Campo requerido">
+                                req
+                              </span>
+                            )}
+                            {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
+                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
+                                <Lock className="w-2.5 h-2.5" />
+                                {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
+                              </span>
+                            )}
+                            {isSistema && (
+                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
+                                {meta?.badge ?? 'Sistema'}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => editingCampo?.id === campo.id ? closeCampoEditor() : startEditCampo(campo)}
+                              className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-400 hover:text-neutral-700"
+                              title="Configurar campo"
+                              aria-label="Configurar campo"
+                            >
+                              <Settings className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCampo(campo)}
+                              className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-neutral-300 hover:text-red-500"
+                              title={isSistema ? 'Ocultar del formulario' : 'Eliminar campo'}
+                              aria-label={isSistema ? 'Ocultar del formulario' : 'Eliminar campo'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                     );
-                  })}
-                </div>
+                  };
+
+                  // Franja fina entre campos: recibe el drop y marca dónde va a caer.
+                  const zonaDrop = (seccionId: string | null, index: number, key: string) => {
+                    const activa = dropZone?.seccionId === seccionId && dropZone?.index === index;
+                    return (
+                      <div
+                        key={key}
+                        onDragOver={(e) => { handleDragOver(e); setDropZone({ seccionId, index }); }}
+                        onDragLeave={() => setDropZone(prev => (prev?.seccionId === seccionId && prev?.index === index ? null : prev))}
+                        onDrop={(e) => { setDropZone(null); handleDropEnPosicion(e, seccionId, index); }}
+                        className={`h-2 -my-0.5 rounded transition-all ${activa ? 'h-7 bg-blue-100 border-2 border-dashed border-blue-400' : ''}`}
+                      />
+                    );
+                  };
+
+                  const contenedor = (seccionId: string | null, lista: typeof campos) => (
+                    <div className="space-y-1.5">
+                      {zonaDrop(seccionId, 0, `dz-${seccionId ?? 'sin'}-0`)}
+                      {lista.map((campo, i) => (
+                        <div key={campo.id}>
+                          {renderFila(campo)}
+                          {zonaDrop(seccionId, i + 1, `dz-${seccionId ?? 'sin'}-${i + 1}`)}
+                        </div>
+                      ))}
+                      {lista.length === 0 && (
+                        <p className="text-[11px] text-neutral-400 italic py-1">Sin campos — arrastra uno aquí</p>
+                      )}
+                    </div>
+                  );
+
+                  const sinSeccion = draggableCampos.filter(c => !c.seccion_id);
+
+                  return (
+                    <div className="space-y-3">
+                      {draggableCampos.length === 0 && (
+                        <div className="text-center py-8 text-neutral-400 border-2 border-dashed border-neutral-200 rounded-xl">
+                          <p className="text-sm text-neutral-400">Sin campos en el formulario</p>
+                          <p className="text-xs mt-1">Agrega campos desde el panel derecho</p>
+                        </div>
+                      )}
+
+                      {(sinSeccion.length > 0 || secciones.length === 0) && (
+                        <div className="border border-neutral-200 rounded-xl p-2.5">
+                          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Sin sección</p>
+                          {contenedor(null, sinSeccion)}
+                        </div>
+                      )}
+
+                      {secciones.map((seccion, i) => {
+                        const dependeDe = secciones.find(s => s.id === seccion.depende_de_seccion_id);
+                        const esSistema = !!seccion.sistema_key;
+                        const suyos = draggableCampos.filter(c => c.seccion_id === seccion.id);
+                        return (
+                          <div key={seccion.id} className={`border rounded-xl p-2.5 ${esSistema ? 'border-violet-200 bg-violet-50/30' : 'border-teal-200 bg-teal-50/20'}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="flex flex-col shrink-0">
+                                <button onClick={() => handleMoveSeccion(seccion, 'arriba')} disabled={i === 0} className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Subir">
+                                  <ChevronUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => handleMoveSeccion(seccion, 'abajo')} disabled={i === secciones.length - 1} className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Bajar">
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <Layers className={`w-3.5 h-3.5 shrink-0 ${esSistema ? 'text-violet-500' : 'text-teal-600'}`} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-neutral-800 truncate flex items-center gap-1.5">
+                                  {seccion.nombre}
+                                  {esSistema && <Lock className="w-3 h-3 text-violet-400 shrink-0" />}
+                                </p>
+                                <p className="text-[10px] text-neutral-400">
+                                  {suyos.length} campo{suyos.length !== 1 ? 's' : ''}
+                                  {seccion.opcional && ' · Opcional'}
+                                  {dependeDe && ` · Depende de "${dependeDe.nombre}"`}
+                                  {seccion.condicion_campo_id && ` · Condicionada a "${campos.find(c => c.id === seccion.condicion_campo_id)?.label ?? '—'}"`}
+                                </p>
+                              </div>
+                              <button onClick={() => { setEditingSeccion(seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-white rounded-lg text-neutral-400 hover:text-neutral-700" title="Configurar sección" aria-label="Configurar sección">
+                                <Settings className="w-3.5 h-3.5" />
+                              </button>
+                              {!esSistema && (
+                                <button onClick={() => handleDeleteSeccion(seccion)} className="p-1.5 hover:bg-red-50 rounded-lg text-neutral-300 hover:text-red-500" title="Eliminar sección" aria-label="Eliminar sección">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            {contenedor(seccion.id, suyos)}
+                          </div>
+                        );
+                      })}
+
+                      <button
+                        onClick={() => { setShowAddSeccion(true); setEditingSeccion(null); closeCampoEditor(); setShowAddField(false); }}
+                        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-xl py-2 text-xs text-neutral-500 hover:border-teal-400 hover:text-teal-600 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Nueva sección
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 <button
                   onClick={() => { setShowAddField(!showAddField); closeCampoEditor(); }}

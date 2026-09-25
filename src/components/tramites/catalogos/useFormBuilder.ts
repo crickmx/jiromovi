@@ -372,47 +372,90 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    setDragging(null);
-    if (dragIdx.current === null || dragIdx.current === dropIndex) return;
-    if (isLocked(campos[dragIdx.current]) || isLocked(campos[dropIndex])) return;
-    const reordered = [...campos];
-    const [moved] = reordered.splice(dragIdx.current, 1);
-    reordered.splice(dropIndex, 0, moved);
-    // Asignar display_order secuencial solo a los campos no-bloqueados; los bloqueados conservan sus valores negativos
-    let order = 1;
-    const updated = reordered.map(c =>
-      isLocked(c) ? c : { ...c, display_order: order++ }
-    );
-    setCampos(updated);
-    dragIdx.current = null;
-    for (const c of updated) {
-      if (!isLocked(c)) {
-        await supabase.from('tramite_tipo_campos').update({ display_order: c.display_order }).eq('id', c.id);
-      }
-    }
-  };
-
-  const handleDropOnSeccion = async (e: React.DragEvent, seccionId: string | null) => {
+  /**
+   * Un solo drop decide sección Y posición.
+   *
+   * Antes eran dos caminos separados: `handleDrop` reordenaba con un índice plano sobre
+   * la lista completa, y `handleDropOnSeccion` cambiaba la sección sin tocar el orden —
+   * así que un campo movido a otra sección caía donde le tocara por el display_order que
+   * traía. Con los campos anidados dentro de su sección eso ya no tiene sentido.
+   *
+   * `display_order` se mantiene GLOBAL (no relativo a la sección): es lo que leen las
+   * otras 7 pantallas del proyecto, y `agruparCamposPorSeccion` ya parte por sección, así
+   * que el orden relativo dentro de cada una se respeta igual.
+   */
+  const handleDropEnPosicion = async (
+    e: React.DragEvent,
+    seccionDestinoId: string | null,
+    indexEnSeccion: number
+  ) => {
     e.preventDefault();
     setDragging(null);
     const idx = dragIdx.current;
     dragIdx.current = null;
     if (idx === null) return;
-    const campo = campos[idx];
-    if (!campo || isLocked(campo) || campo.seccion_id === seccionId) return;
-    // Los campos de una sección de sistema se reordenan dentro de ella, pero no salen:
-    // la sección existe justamente para garantizar que esos datos estén siempre juntos.
-    const seccionActual = secciones.find(s => s.id === campo.seccion_id);
-    if (seccionActual?.sistema_key) {
-      showToast(`"${campo.label}" pertenece a "${seccionActual.nombre}" y no puede moverse fuera.`, 'error');
+
+    const movido = campos[idx];
+    if (!movido || isLocked(movido)) return;
+
+    // Un campo de una sección de sistema se reordena dentro de ella, pero no sale.
+    const seccionActual = secciones.find(s => s.id === movido.seccion_id);
+    if (seccionActual?.sistema_key && seccionDestinoId !== movido.seccion_id) {
+      showToast(`"${movido.label}" pertenece a "${seccionActual.nombre}" y no puede moverse fuera.`, 'error');
       return;
     }
-    setCampos(prev => prev.map(c => c.id === campo.id ? { ...c, seccion_id: seccionId } : c));
-    const { error } = await supabase.from('tramite_tipo_campos').update({ seccion_id: seccionId }).eq('id', campo.id);
-    if (error) { showToast('Error al asignar el campo a la sección: ' + error.message, 'error'); return; }
-    showToast(seccionId ? 'Campo asignado a la sección' : 'Campo removido de la sección');
+    // Y tampoco se le meten campos ajenos.
+    const seccionDestino = secciones.find(s => s.id === seccionDestinoId);
+    if (seccionDestino?.sistema_key && seccionDestinoId !== movido.seccion_id) {
+      showToast(`"${seccionDestino.nombre}" es una sección del sistema: sus campos son fijos.`, 'error');
+      return;
+    }
+
+    // Orden visual actual: primero los sin sección, luego cada sección por su `orden`
+    // — el mismo criterio de agruparCamposPorSeccion, para que lo que se ve coincida.
+    const movibles = campos.filter(c => !isLocked(c));
+    const claveGrupo = (seccionId: string | null | undefined) =>
+      seccionId ? (secciones.find(s => s.id === seccionId)?.orden ?? 9999) + 1 : 0;
+    const ordenVisual = [...movibles].sort((a, b) =>
+      claveGrupo(a.seccion_id) - claveGrupo(b.seccion_id) || a.display_order - b.display_order
+    );
+
+    const sinMovido = ordenVisual.filter(c => c.id !== movido.id);
+    const delDestino = sinMovido.filter(c => (c.seccion_id ?? null) === seccionDestinoId);
+    const anclaPos = indexEnSeccion >= delDestino.length
+      ? sinMovido.length
+      : sinMovido.findIndex(c => c.id === delDestino[indexEnSeccion].id);
+
+    const reordenado = [...sinMovido];
+    reordenado.splice(anclaPos, 0, { ...movido, seccion_id: seccionDestinoId });
+
+    const nuevoOrden = new Map(reordenado.map((c, i) => [c.id, i + 1]));
+    const actualizados = campos.map(c => {
+      if (isLocked(c)) return c;
+      const display_order = nuevoOrden.get(c.id) ?? c.display_order;
+      const seccion_id = c.id === movido.id ? seccionDestinoId : c.seccion_id;
+      return { ...c, display_order, seccion_id };
+    });
+
+    // Solo se escriben las filas que de verdad cambiaron, y en paralelo. Antes se mandaba
+    // un UPDATE por campo en serie aunque no hubiera cambiado nada.
+    const cambiados = actualizados.filter(c => {
+      const antes = campos.find(o => o.id === c.id)!;
+      return antes.display_order !== c.display_order || (antes.seccion_id ?? null) !== (c.seccion_id ?? null);
+    });
+    if (cambiados.length === 0) return;
+
+    setCampos(actualizados);
+    const resultados = await Promise.all(cambiados.map(c =>
+      supabase.from('tramite_tipo_campos')
+        .update({ display_order: c.display_order, seccion_id: c.seccion_id ?? null })
+        .eq('id', c.id)
+    ));
+    const fallo = resultados.find(r => r.error);
+    if (fallo?.error) {
+      showToast('Error al reordenar: ' + fallo.error.message, 'error');
+      await loadCampos();
+    }
   };
 
   return {
@@ -430,7 +473,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     savingCampo,
     dragging,
     handleAddCampo, handleAddSistemaCampo, handleSaveCampo, handleDeleteCampo,
-    handleDragStart, handleDragOver, handleDrop, handleDropOnSeccion,
+    handleDragStart, handleDragOver, handleDropEnPosicion,
     // Secciones
     secciones, loadingSecciones, loadSecciones,
     editingSeccion, setEditingSeccion,
