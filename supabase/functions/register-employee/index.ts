@@ -12,12 +12,15 @@ interface RegisterEmployeeRequest {
     nombre: string;
     apellidos: string;
     rol: string;
-    email_laboral: string;
-    puesto: string;
+    email_laboral?: string;
+    email_personal?: string;
+    puesto?: string;
     oficina_id: string;
     fecha_nacimiento: string;
-    fecha_ingreso: string;
-    celular_laboral: string;
+    fecha_ingreso?: string;
+    celular_laboral?: string;
+    celular_personal?: string;
+    cedula_cnsf?: string;
     extension_telefonica?: string;
     imagen_perfil_url?: string;
     equipo_computo?: string;
@@ -56,7 +59,6 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    console.log('[register-employee] Request body:', JSON.stringify(body, null, 2));
 
     const { password, userData }: RegisterEmployeeRequest = body;
 
@@ -67,12 +69,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!userData.email_laboral || !password) {
+    const rol = userData.rol === 'Agente' ? 'Agente' : 'Empleado';
+    const emailAcceso = (rol === 'Agente' ? userData.email_personal : userData.email_laboral)?.trim().toLowerCase();
+
+    if (!emailAcceso || !password) {
       return new Response(
         JSON.stringify({
-          error: 'Email laboral and password are required',
+          error: 'El email de acceso y la contraseña son requeridos',
           details: {
-            email_laboral: userData.email_laboral ? 'provided' : 'missing',
+            email: emailAcceso ? 'provided' : 'missing',
             password: password ? 'provided' : 'missing'
           }
         }),
@@ -93,30 +98,77 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (rol === 'Agente' && (!userData.cedula_cnsf || !userData.celular_personal)) {
+      return new Response(
+        JSON.stringify({ error: 'La cédula CNSF y el celular personal son requeridos para agentes' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verificar si ya existe un usuario ACTIVO con ese correo
     const { data: existingUser } = await supabaseAdmin
       .from('usuarios')
-      .select('id')
-      .eq('email_laboral', userData.email_laboral)
+      .select('id, is_deleted, estado')
+      .or(`email_laboral.ilike.${emailAcceso},email_personal.ilike.${emailAcceso}`)
+      .eq('is_deleted', false)
+      .neq('estado', 'eliminado')
       .maybeSingle();
 
     if (existingUser) {
       return new Response(
-        JSON.stringify({ error: 'Ya existe un usuario con ese email laboral' }),
+        JSON.stringify({ error: 'Ya existe un usuario con ese email' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     console.log('[register-employee] Creating auth user...');
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: userData.email_laboral,
+    let { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: emailAcceso,
       password,
       email_confirm: true,
       user_metadata: {
         nombre: userData.nombre,
         apellidos: userData.apellidos,
-        rol: 'Empleado'
+        rol
       }
     });
+
+    // Auto-recuperación si el correo existía en auth.users por una cuenta eliminada/huérfana
+    if (authError && (authError.message?.toLowerCase().includes('already') || authError.status === 422)) {
+      console.log('[register-employee] Auth user may already exist from deleted account, attempting cleanup...');
+      const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
+      const existingAuth = userList?.users?.find(u => u.email?.toLowerCase() === emailAcceso.toLowerCase());
+      
+      if (existingAuth) {
+        // Verificar que no sea un usuario activo en usuarios
+        const { data: activeCheck } = await supabaseAdmin
+          .from('usuarios')
+          .select('id, is_deleted, estado')
+          .eq('id', existingAuth.id)
+          .eq('is_deleted', false)
+          .neq('estado', 'eliminado')
+          .maybeSingle();
+
+        if (!activeCheck) {
+          console.log('[register-employee] Purgando usuario auth huérfano/eliminado previo:', existingAuth.id);
+          await supabaseAdmin.from('usuarios').delete().eq('id', existingAuth.id);
+          await supabaseAdmin.auth.admin.deleteUser(existingAuth.id);
+
+          const retryCreate = await supabaseAdmin.auth.admin.createUser({
+            email: emailAcceso,
+            password,
+            email_confirm: true,
+            user_metadata: {
+              nombre: userData.nombre,
+              apellidos: userData.apellidos,
+              rol
+            }
+          });
+          authData = retryCreate.data;
+          authError = retryCreate.error;
+        }
+      }
+    }
 
     if (authError) {
       console.error('[register-employee] Auth error:', authError);
@@ -139,15 +191,16 @@ Deno.serve(async (req: Request) => {
       id: authData.user.id,
       nombre: userData.nombre.toUpperCase(),
       apellidos: userData.apellidos.toUpperCase(),
-      rol: 'Empleado',
-      email_laboral: userData.email_laboral.toLowerCase(),
-      puesto: userData.puesto,
+      rol,
+      email_laboral: rol === 'Empleado' ? emailAcceso.toLowerCase() : '',
+      email_personal: rol === 'Agente' ? emailAcceso.toLowerCase() : '',
+      puesto: rol === 'Empleado' ? userData.puesto || '' : 'Agente de Seguros',
       oficina_id: userData.oficina_id,
       fecha_nacimiento: userData.fecha_nacimiento,
-      fecha_ingreso: userData.fecha_ingreso,
-      celular_personal: '',
-      email_personal: '',
-      celular_laboral: userData.celular_laboral,
+      fecha_ingreso: rol === 'Empleado' ? userData.fecha_ingreso || null : null,
+      celular_personal: rol === 'Agente' ? userData.celular_personal || '' : '',
+      celular_laboral: rol === 'Empleado' ? userData.celular_laboral || '' : '',
+      cedula_cnsf: rol === 'Agente' ? userData.cedula_cnsf || '' : null,
       extension_telefonica: userData.extension_telefonica || '',
       equipo_computo: userData.equipo_computo || '',
       equipo_celular: userData.equipo_celular || '',
@@ -195,7 +248,8 @@ Deno.serve(async (req: Request) => {
             detalles: {
               nombre: userData.nombre,
               apellidos: userData.apellidos,
-              email_laboral: userData.email_laboral,
+              email: emailAcceso,
+              rol,
               puesto: userData.puesto,
               status: 'pendiente_activacion',
               oficina_id: userData.oficina_id,
@@ -216,11 +270,12 @@ Deno.serve(async (req: Request) => {
       const { error: notifError } = await supabaseAdmin.rpc('enviar_notificacion_completa', {
         p_tipo_codigo: 'nuevo_usuario_creado',
         p_user_id: authData.user.id,
-        p_titulo: 'Nuevo empleado registrado',
-        p_mensaje: `Se ha registrado un nuevo empleado: ${userData.nombre} ${userData.apellidos}`,
+        p_titulo: `Nuevo ${rol.toLowerCase()} registrado`,
+        p_mensaje: `Se ha registrado un nuevo ${rol.toLowerCase()}: ${userData.nombre} ${userData.apellidos}`,
         p_modulo: 'usuarios',
         p_datos_adicionales: {
-          email_laboral: userData.email_laboral,
+          email: emailAcceso,
+          rol,
           puesto: userData.puesto,
         },
         p_accion_url: `/usuario/${authData.user.id}`
@@ -237,7 +292,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         userId: authData.user.id,
-        message: 'Empleado registrado correctamente. El usuario quedó pendiente de activación.'
+        message: `${rol} registrado correctamente. El usuario quedó pendiente de activación.`
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
