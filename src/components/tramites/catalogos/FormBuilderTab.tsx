@@ -124,7 +124,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   <Eye className="w-3.5 h-3.5" />
                   Vista previa — así lo ve quien llena el formulario, no es editable aquí.
                 </div>
-                <FormPreview campos={campos} />
+                <FormPreview campos={campos} secciones={secciones} />
               </>
             ) : (
               <>

@@ -345,25 +345,71 @@ export function GestionCatalogosRegistro() {
       }).select().single();
       if (insError) throw insError;
 
+      // Las secciones van primero porque los campos las referencian. Se copian sin sus
+      // condiciones: `depende_de_seccion_id` apunta a otra sección y `condicion_campo_id`
+      // a un campo, y ninguno de los dos existe todavía en el clon. Se rellenan al final.
+      // Antes el clonado las perdía por completo y el tipo nuevo salía sin secciones.
+      const { data: seccionesOrigen, error: seccionesError } = await supabase
+        .from('tramite_tipo_secciones')
+        .select('id, nombre, descripcion, orden, opcional, depende_de_seccion_id, condicion_campo_id, condicion_operador, condicion_valor')
+        .eq('tramite_tipo_id', tipo.id)
+        .eq('activo', true)
+        .order('orden');
+      if (seccionesError) throw seccionesError;
+
+      // Se insertan de una en una para saber sin ambigüedad qué id nuevo corresponde a
+      // cada viejo — son pocas y un insert en lote no garantiza el orden de retorno.
+      const seccionIdMap = new Map<string, string>();
+      for (const s of seccionesOrigen ?? []) {
+        const { data: nuevaSeccion, error: insSecError } = await supabase
+          .from('tramite_tipo_secciones')
+          .insert({
+            tramite_tipo_id: nuevoTipo.id,
+            nombre: s.nombre, descripcion: s.descripcion, orden: s.orden,
+            opcional: s.opcional, activo: true,
+          })
+          .select('id')
+          .single();
+        if (insSecError) throw insSecError;
+        seccionIdMap.set(s.id, nuevaSeccion.id);
+      }
+
       const { data: campos, error: camposError } = await supabase
         .from('tramite_tipo_campos')
-        .select('key, label, tipo, requerido, ayuda, display_order, config, visible_para_rol, editable_para_rol')
+        .select('id, key, label, tipo, requerido, ayuda, display_order, config, visible_para_rol, editable_para_rol, seccion_id')
         .eq('tramite_tipo_id', tipo.id)
         .eq('is_sistema', false)
         .eq('activo', true)
         .order('display_order');
       if (camposError) throw camposError;
 
+      const campoIdMap = new Map<string, string>();
       if (campos && campos.length > 0) {
-        const { error: insCamposError } = await supabase.from('tramite_tipo_campos').insert(
+        const { data: nuevosCampos, error: insCamposError } = await supabase.from('tramite_tipo_campos').insert(
           campos.map(c => ({
             tramite_tipo_id: nuevoTipo.id,
             key: c.key, label: c.label, tipo: c.tipo, requerido: c.requerido, ayuda: c.ayuda,
             display_order: c.display_order, config: c.config, activo: true, is_sistema: false, sistema_key: null,
             visible_para_rol: c.visible_para_rol ?? 'todos', editable_para_rol: c.editable_para_rol ?? 'todos',
+            seccion_id: c.seccion_id ? seccionIdMap.get(c.seccion_id) ?? null : null,
           }))
-        );
+        ).select('id, key');
         if (insCamposError) throw insCamposError;
+        for (const nc of nuevosCampos ?? []) {
+          const origen = campos.find(c => c.key === nc.key);
+          if (origen) campoIdMap.set(origen.id, nc.id);
+        }
+      }
+
+      // Ya con ambos mapas, se traducen las condiciones de las secciones.
+      for (const s of seccionesOrigen ?? []) {
+        if (!s.depende_de_seccion_id && !s.condicion_campo_id) continue;
+        await supabase.from('tramite_tipo_secciones').update({
+          depende_de_seccion_id: s.depende_de_seccion_id ? seccionIdMap.get(s.depende_de_seccion_id) ?? null : null,
+          condicion_campo_id: s.condicion_campo_id ? campoIdMap.get(s.condicion_campo_id) ?? null : null,
+          condicion_operador: s.condicion_operador,
+          condicion_valor: s.condicion_valor,
+        }).eq('id', seccionIdMap.get(s.id)!);
       }
 
       const { data: permisosRol } = await supabase

@@ -377,7 +377,11 @@ export function NuevoTramiteModal({
       });
     supabase
       .from('tramite_tipo_secciones')
-      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, activo')
+      // Las 3 columnas de condición son indispensables: sin ellas llegan undefined y
+      // `seccionDesbloqueada` cae al camino viejo, así que una sección condicionada a un
+      // valor de campo se mostraba SIEMPRE. El tipo TramiteSeccion sí las declara, por eso
+      // nadie lo notó — la cadena del .select() no la valida TypeScript.
+      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, condicion_campo_id, condicion_operador, condicion_valor, activo')
       .eq('tramite_tipo_id', tipoInfo.id)
       .eq('activo', true)
       .order('orden')

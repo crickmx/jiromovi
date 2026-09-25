@@ -1,14 +1,15 @@
-import type { TipoCampo } from './types';
+import type { TipoCampo, TramiteSeccion } from './types';
+import { agruparCamposPorSeccion } from '../../../lib/tramiteSecciones';
 
-export function FormPreview({ campos }: { campos: TipoCampo[] }) {
+export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; secciones?: TramiteSeccion[] }) {
   if (campos.length === 0) return null;
-  const sistemaCampos = campos.filter(c => c.is_sistema).sort((a, b) => a.display_order - b.display_order);
-  const customCampos  = campos.filter(c => !c.is_sistema).sort((a, b) => a.display_order - b.display_order);
-  const ordered = [...sistemaCampos, ...customCampos];
-  return (
-    <div className="space-y-4 border border-neutral-200 rounded-xl p-4 bg-white">
-      <p className="text-[11px] text-neutral-400 text-center uppercase tracking-wider mb-2">Vista previa — solo lectura</p>
-      {ordered.map(campo => (
+  // La vista previa agrupa por sección igual que el formulario real. Antes aplanaba todo
+  // (sistema primero, luego custom) e ignoraba las secciones, así que no se parecía a lo
+  // que el usuario iba a ver — justo lo que una vista previa no debe hacer.
+  const ordenados = [...campos].sort((a, b) => a.display_order - b.display_order);
+  const grupos = agruparCamposPorSeccion(ordenados, secciones);
+
+  const renderCampo = (campo: TipoCampo) => (
         <div key={campo.id} className="space-y-1">
           <label className="block text-sm font-medium text-neutral-700">
             {campo.label}
@@ -179,6 +180,34 @@ export function FormPreview({ campos }: { campos: TipoCampo[] }) {
               Usuario que crea el trámite
             </div>
           )}
+        </div>
+  );
+
+  return (
+    <div className="space-y-4 border border-neutral-200 rounded-xl p-4 bg-white">
+      <p className="text-[11px] text-neutral-400 text-center uppercase tracking-wider mb-2">Vista previa — solo lectura</p>
+      {grupos.map((grupo, i) => (
+        <div key={grupo.seccion?.id ?? `sin-seccion-${i}`} className="space-y-4">
+          {grupo.seccion && (
+            <div className="pt-2 border-t border-neutral-100 first:border-t-0 first:pt-0">
+              <h4 className="text-sm font-semibold text-neutral-800">
+                {grupo.seccion.nombre}
+                {grupo.seccion.opcional && (
+                  <span className="ml-2 text-[10px] font-normal text-neutral-400 uppercase tracking-wide">Opcional</span>
+                )}
+              </h4>
+              {grupo.seccion.descripcion && (
+                <p className="text-xs text-neutral-400 mt-0.5">{grupo.seccion.descripcion}</p>
+              )}
+              {(grupo.seccion.condicion_campo_id || grupo.seccion.depende_de_seccion_id) && (
+                <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5 inline-flex items-center gap-1 mt-1">
+                  <span>⚡</span>
+                  <span>{grupo.seccion.condicion_campo_id ? 'Condicionada a un campo' : 'Se desbloquea al completar otra sección'}</span>
+                </p>
+              )}
+            </div>
+          )}
+          {grupo.campos.map(renderCampo)}
         </div>
       ))}
     </div>
