@@ -366,11 +366,16 @@ export function NuevoTramiteModal({
       .then(({ data }) => {
         const campos = (data as CampoDinamico[]) || [];
         setCamposDinamicos(campos);
-        // Auto-set el primer slug con clasificacion='inicio' del campo estatus
+        // El estatus ya no se elige al crear: todo trámite nace en su estatus inicial y
+        // se avanza después desde el encabezado del detalle. Se fija aquí para que la
+        // respuesta y `custom_estatus_label` se guarden igual que antes.
+        // El respaldo a la primera opción importa: sin él, un tipo sin ninguna opción
+        // marcada como 'inicio' crearía trámites sin estatus visible.
         const estatusCampo = campos.find(c => c.tipo === 'estatus');
-        const primeraOpcionInicio = estatusCampo?.config.opciones?.find(o => o.clasificacion === 'inicio');
-        if (estatusCampo && primeraOpcionInicio) {
-          setRespuestasDinamicas({ [estatusCampo.id]: primeraOpcionInicio.slug });
+        const opcionInicial = estatusCampo?.config.opciones?.find(o => o.clasificacion === 'inicio')
+          ?? estatusCampo?.config.opciones?.[0];
+        if (estatusCampo && opcionInicial) {
+          setRespuestasDinamicas({ [estatusCampo.id]: opcionInicial.slug });
         } else {
           setRespuestasDinamicas({});
         }
@@ -865,7 +870,10 @@ export function NuevoTramiteModal({
   // `asignado_a` entra aquí desde que el Responsable lo decide el motor de reglas:
   // ya no hay nada que el usuario tenga que capturar, y exigirlo dejaba los trámites
   // internos (que no eligen agente) sin forma de satisfacer la validación.
-  const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por', 'asignado_a'];
+  // `estatus` entra aquí desde que dejó de elegirse al crear: viene sembrado con
+  // `requerido=true` por create_all_sistema_campos(), así que sin esto validateForm
+  // bloquearía el alta exigiendo un campo que ya no se muestra.
+  const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por', 'asignado_a', 'estatus'];
 
   // Único punto de verdad de "¿este campo ya tiene respuesta?" — usado por validateForm()
   // y por la barra de progreso (que necesita el mismo criterio sin lanzar errores).
@@ -1412,7 +1420,10 @@ export function NuevoTramiteModal({
       );
     }
 
-    if (campo.sistema_key === 'estatus') return renderCampoDinamico(campo);
+    // El estatus no se elige al crear. Nace en su opción inicial (fijada al cargar el
+    // tipo) y se cambia después desde el encabezado del trámite, que es donde vive el
+    // flujo completo con su comentario obligatorio y sus triggers.
+    if (campo.sistema_key === 'estatus') return null;
 
     if (campo.sistema_key === 'asignado_a') {
       // Solo informativo: el Responsable lo deciden las reglas de asignación. Desde que
@@ -1850,7 +1861,10 @@ export function NuevoTramiteModal({
           }
         }
 
-        // Auto-cierre: si algún campo estatus tiene clasificacion 'terminacion'
+        // Auto-cierre: si algún campo estatus tiene clasificacion 'terminacion'.
+        // Ya no se alcanza eligiendo a mano (el campo dejó de mostrarse), pero sigue vivo
+        // para el tipo mal configurado que no tiene ninguna opción 'inicio' y cae al
+        // respaldo `opciones[0]` siendo esa de terminación.
         const hayTerminacion = camposDinamicos.some(c => {
           if (c.tipo !== 'estatus') return false;
           const slug = respuestasDinamicas[c.id];
