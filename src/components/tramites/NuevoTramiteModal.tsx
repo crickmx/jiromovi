@@ -6,7 +6,7 @@ import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import type { TramiteSeccion } from './catalogos/types';
-import { seccionDesbloqueada, agruparCamposPorSeccion } from '../../lib/tramiteSecciones';
+import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada } from '../../lib/tramiteSecciones';
 import {
   canAccessRegistroActividades,
   getUsersByOffice,
@@ -2926,7 +2926,7 @@ export function NuevoTramiteModal({
                         <p className="text-xs text-neutral-400 mt-0.5">{seccion.descripcion}</p>
                       )
                     ) : (
-                      <p className="text-xs text-neutral-400 mt-0.5">Completa la sección anterior para continuar</p>
+                      <p className="text-xs text-neutral-400 mt-0.5">{motivoSeccionBloqueada(seccion, secciones, camposDinamicos)}</p>
                     )}
                   </div>
                   {seccion.opcional && desbloqueada && (

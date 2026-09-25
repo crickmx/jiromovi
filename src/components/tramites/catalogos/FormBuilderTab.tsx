@@ -52,6 +52,23 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
   const [seccionModo, setSeccionModo] = useState<'ninguno' | 'seccion' | 'campo'>('ninguno');
   const [dragOverSeccionId, setDragOverSeccionId] = useState<string | null>(null);
   const [dragOverSinSeccion, setDragOverSinSeccion] = useState(false);
+  // Ramos y aseguradoras sacan sus opciones del catálogo en tiempo real, así que el
+  // editor de condiciones no las conocía y caía a un texto libre. Escribir un nombre
+  // que no coincidiera carácter por carácter dejaba la sección bloqueada para siempre,
+  // sin ninguna pista de por qué. Se cargan aquí para poder ofrecerlas como lista.
+  const [catalogoCondicion, setCatalogoCondicion] = useState<{ ramos: string[]; companias: string[] }>({ ramos: [], companias: [] });
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('maestro_ramos').select('nombre').order('nombre'),
+      supabase.from('maestro_companias').select('nombre').eq('activo', true).order('nombre'),
+    ]).then(([ramosRes, ciasRes]) => {
+      setCatalogoCondicion({
+        ramos: (ramosRes.data ?? []).map((r: { nombre: string }) => r.nombre),
+        companias: (ciasRes.data ?? []).map((c: { nombre: string }) => c.nombre),
+      });
+    });
+  }, []);
 
   useEffect(() => { loadCampos(); loadSecciones(); }, [tipoId]);
 
@@ -79,6 +96,19 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
       setSeccionModo('ninguno');
     }
   }, [editingSeccion, showAddSeccion]);
+
+  /**
+   * Opciones que se pueden elegir como "valor esperado" de una condición.
+   * Un ramo o una aseguradora no tienen `config.opciones` — su catálogo se carga en
+   * tiempo real — así que sin esto el editor caía a un texto libre y se podía escribir
+   * un nombre que nunca iba a coincidir, dejando la sección bloqueada sin explicación.
+   * El formulario guarda el NOMBRE en ambos casos, por eso label y valor son el mismo.
+   */
+  const opcionesDeCondicion = (campo: { tipo?: string; config?: any } | undefined) => {
+    if (campo?.tipo === 'ramo') return catalogoCondicion.ramos.map(n => ({ label: n, slug: n }));
+    if (campo?.tipo === 'aseguradora') return catalogoCondicion.companias.map(n => ({ label: n, slug: n }));
+    return (campo?.config?.opciones || []) as { label: string; slug: string }[];
+  };
 
   // Campos fijos (area, equipo, fecha_creacion, fecha_finalizacion) — nunca movibles
   const lockedCampos   = campos.filter(c => c.is_sistema && LOCKED_SISTEMA_KEYS.includes(c.sistema_key ?? '')).sort((a, b) => a.display_order - b.display_order);
@@ -455,7 +485,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                 {seccionModo === 'campo' && (() => {
                   const camposConOpciones = campos.filter(c => c.id !== undefined);
                   const fuenteCampo = campos.find(c => c.id === seccionForm.condicion_campo_id);
-                  const fuenteOpciones: { label: string; slug: string }[] = (fuenteCampo as any)?.config?.opciones || [];
+                  const fuenteOpciones: { label: string; slug: string }[] = opcionesDeCondicion(fuenteCampo);
                   return (
                     <div className="space-y-2 pl-3 border-l-2 border-amber-300">
                       <div>
@@ -1166,7 +1196,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         </select>
                         {(editCampoConfig.condicion_operador || 'igual_a') !== 'tiene_valor' && (() => {
                           const fuenteCampo = campos.find(c => c.key === editCampoConfig.campo_fuente);
-                          const fuenteOpciones: { label: string; slug: string }[] = (fuenteCampo as any)?.config?.opciones || [];
+                          const fuenteOpciones: { label: string; slug: string }[] = opcionesDeCondicion(fuenteCampo);
                           return fuenteOpciones.length > 0 ? (
                             <select
                               value={editCampoConfig.condicion_valor || ''}

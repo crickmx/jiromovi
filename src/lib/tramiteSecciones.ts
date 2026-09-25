@@ -66,6 +66,30 @@ export function seccionDesbloqueada(
   return seccionCompleta(origen.id, campos, respuestas);
 }
 
+/**
+ * Explica POR QUÉ una sección está bloqueada, para mostrárselo a quien llena el
+ * formulario. Antes las dos pantallas decían siempre "Completa la sección anterior",
+ * incluso cuando el bloqueo venía de una condición por valor de campo — el usuario no
+ * tenía forma de saber qué le faltaba.
+ */
+export function motivoSeccionBloqueada(
+  seccion: SeccionMinima,
+  secciones: SeccionMinima[],
+  campos: (CampoConSeccion & { label?: string })[]
+): string {
+  if (seccion.condicion_campo_id && seccion.condicion_operador) {
+    const fuente = campos.find(c => c.id === seccion.condicion_campo_id);
+    const nombre = fuente?.label ?? 'un campo anterior';
+    if (seccion.condicion_operador === 'tiene_valor') return `Responde "${nombre}" para continuar`;
+    const relacion = seccion.condicion_operador === 'igual_a' ? 'sea' : 'sea distinto de';
+    return `Se activa cuando "${nombre}" ${relacion} "${seccion.condicion_valor ?? ''}"`;
+  }
+  const origen = secciones.find(s => s.id === seccion.depende_de_seccion_id);
+  return origen
+    ? `Completa "${origen.nombre}" para continuar`
+    : 'Completa la sección anterior para continuar';
+}
+
 /** Agrupa campos por sección, respetando el orden de secciones; los campos sin sección van primero (grupo `seccion: null`). */
 export function agruparCamposPorSeccion<C extends CampoConSeccion>(
   campos: C[],

@@ -14,7 +14,7 @@ import { SearchableSelect } from '../components/tramites/catalogos/SearchableSel
 import { TriggerConfirmModal, type PendingTrigger, type ExistingChild } from '../components/tramites/TriggerConfirmModal';
 import { calcularDiasHabilesEntre } from '../lib/diasHabiles';
 import type { TramiteSeccion } from '../components/tramites/catalogos/types';
-import { seccionDesbloqueada, agruparCamposPorSeccion } from '../lib/tramiteSecciones';
+import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada } from '../lib/tramiteSecciones';
 import TOTPDecryptModal from '../components/tramites/TOTPDecryptModal';
 
 interface TramiteEstatus {
@@ -2279,7 +2279,7 @@ export function TramiteDetalle() {
                                 <p className="text-xs text-neutral-400 mt-0.5">{seccion.descripcion}</p>
                               )
                             ) : (
-                              <p className="text-xs text-neutral-400 mt-0.5">Completa la sección anterior para continuar</p>
+                              <p className="text-xs text-neutral-400 mt-0.5">{motivoSeccionBloqueada(seccion, secciones, camposDinamicos)}</p>
                             )}
                           </div>
                           {seccion.opcional && desbloqueada && (
