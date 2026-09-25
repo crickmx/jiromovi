@@ -1,6 +1,70 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-23)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-25)
+
+### 🟢 SIGUIENTE (lunes 2026-09-29) — rediseño del FormBuilder, sesión 2026-09-25
+
+**Lo que pidió Ricardo:** el FormBuilder era confuso — las secciones se editaban en un panel arriba y los campos en una lista plana abajo, con un dropdown para asignarlos. Quería los campos **visualmente dentro de sus secciones, estilo Google Forms**, arrastrables entre ellas; una sección obligatoria de personas; el estatus fuera del alta y fijo en el encabezado.
+
+Se investigó con **3 agentes en paralelo** (FormBuilder + drag&drop, ciclo de vida del estatus, siembra de campos de sistema) antes de tocar nada. Hallazgos clave abajo.
+
+#### ✅ Todo lo pedido quedó hecho y desplegado
+
+| Commit | Qué |
+|---|---|
+| `7a682856` | 3 bugs de secciones (ver abajo) |
+| `c72efb29` | El estatus deja de elegirse al crear |
+| `90ef5fac` | Quita el pipeline de estatus propio de `cotizacion_emision` |
+| `99f45ebd` | Condiciones que no se pueden configurar mal + mensaje que explica el bloqueo |
+| `71db111b` | "Personas y Asignación" pasa a ser sección de sistema real |
+| `4ae19f29` | Canvas anidado: campos dentro de sus secciones, drag & drop |
+| `92614c41` | Agregar campo chocaba con la clave de uno oculto |
+| `fa656150` | Agregar campo por sección, colapsarlas, panel siempre visible |
+| `874b0da5` | Sección "Encabezado" con fondo configurable |
+
+#### 🔑 Hallazgos que explican varios bugs a la vez
+
+**Patrón de fondo: el FormBuilder dejaba configurar cosas que el resto del sistema ignoraba.**
+- Una **sección condicionada a un valor de campo nunca se condicionaba**: los dos consumidores piden las columnas una por una y omitían las 3 de la condición. El tipo `TramiteSeccion` sí las declara — por eso nadie lo notó: **la cadena del `.select()` no la valida TypeScript**. Le costó tiempo real a Ricardo depurando su sección "Autos".
+- El **editor de condiciones caía a texto libre** para campos de `ramo`/`aseguradora` (su catálogo se carga en runtime, no tienen `config.opciones`), y la comparación es exacta. Escribir un nombre que no coincidiera carácter por carácter dejaba la sección bloqueada para siempre. Ahora se ofrecen los nombres reales del catálogo. Afectaba a los **dos** editores (sección y campo).
+- El **mensaje de bloqueo mentía**: decía siempre "Completa la sección anterior" aunque el bloqueo viniera de una condición de campo. Ahora dice qué falta.
+- La **vista previa ignoraba las secciones** y **clonar un tipo las perdía** (con referencia circular campos↔secciones: se copian en 3 pasos).
+
+**`display_order` es GLOBAL, no relativo a la sección.** Lo leen 7+ pantallas. Se conservó así a propósito: `agruparCamposPorSeccion` ya parte por sección, así que el orden relativo se respeta sin migrar nada. Los campos de sistema usan valores negativos fijos (−7 a −1) y quedan fuera de la renumeración.
+
+**El drag & drop tenía dos caminos que no se hablaban:** uno reordenaba por índice plano, el otro cambiaba de sección sin tocar el orden — por eso un campo movido caía en un lugar arbitrario. Ahora `handleDropEnPosicion(sección, índice)` decide ambas cosas, y solo persiste las filas que cambiaron, en paralelo (antes: un UPDATE por campo en serie, sin transacción).
+
+**Se hizo con arrastre nativo, SIN dnd-kit.** Se evaluó la librería y no hizo falta; si la sensación no alcanza, la estructura ya está lista para migrar solo el mecanismo.
+
+**El panel de configuración se iba de la vista** en formularios largos. La causa no era el `sticky`: el contenedor padre solo define `minHeight`, así que crecía con el contenido y el `overflow` interno quedaba inerte. Se acotó la altura (`h-[calc(100vh-20rem)]`) — **si queda corta o larga en otra pantalla, es solo ese número**.
+
+**Agregar un campo chocaba por clave duplicada.** Salía de `campos.length + 1`, pero `loadCampos` solo trae los activos: un campo oculto conserva su `key` y rompía el índice único `(tramite_tipo_id, key)`. Se consultan las claves realmente ocupadas. **Patrón a recordar: nada que se calcule contando lo visible describe lo que hay en la tabla.**
+
+#### Migraciones de esta sesión (ambas ya corridas por Ricardo)
+- `20260925000001_seccion_sistema_personas.sql` — sección "Personas y Asignación" en todos los tipos (3 personas + área, equipo, oficina). No se puede borrar ni sacarle campos; sí renombrar y mover.
+- `20260925000002_seccion_header_tramite.sql` — sección "Encabezado" (orden −1, no movible) + columna `config jsonb` en secciones + bucket público `tramite-headers`. El campo Estatus vive ahí.
+
+**Ninguna toca `create_all_sistema_campos()`** a propósito: esa función se reescribe entera en cada migración que la extiende y aquí la versión viva suele diferir de la del repo (pasó con `ejecutar_recurrencias`). Se usan triggers propios; el de personas se llama `trigger_z_...` porque Postgres dispara los AFTER en orden alfabético y debe correr **después** del que siembra los campos.
+
+#### ⚠️ Pendiente de probar (Ricardo estaba en eso al cerrar)
+El canvas anidado, el botón de agregar campo por sección, el colapso, el panel siempre visible y el fondo del encabezado. **Nada de esta sesión se probó en navegador desde el lado de Claude** (no hay herramienta). Ricardo sí alcanzó a ver el canvas nuevo y reportó 2 bugs que ya se corrigieron (clave duplicada, panel fuera de vista).
+
+#### ❌ Lo que quedó fuera a propósito
+- **El detalle del trámite no respeta secciones**: filtra `!is_sistema` antes de agrupar (`TramiteDetalle.tsx:1871`) y muestra todos los campos de sistema en su bloque "Información del Trámite". Reestructurarlo es un cambio visual grande que no se pidió.
+- **Sin validación de Solicitante en Cotización/Emisión**: `agente_vendedor` está en `AUTO_FILL_KEYS` y `validateForm` lo salta. Preexistente. Sacarlo de esa lista bloquearía los tipos internos, que no renderizan el campo.
+- La lógica de asignación **sigue duplicada en Store→Trámites** (el trigger padre→hijo ya se arregló, ver abajo).
+
+---
+
+### 🔴 REVISAR AL RETOMAR SICAS — Christofer avanzó sin que lo supiéramos
+
+El 2026-09-18, commit **`b9e2ad5b`**, Christofer configuró **`H03846_Cob` para cobranza efectuada** — justo el KeyCode que habíamos encontrado en el manual PDF y que estaba documentado como pendiente. También agregó `createDefaultSince2020Filter()` al cliente SOAP.
+
+**Antes de retomar el filtro de fecha de "efectuada", revisar si con ese cambio ya funciona**, en vez de arrancar desde donde lo dejó la sesión del 2026-09-10. La sección de SICAS de más abajo puede estar desactualizada en esa parte.
+
+Recordar que **los 4 crons de SICAS están pausados a propósito** (ver sección de abajo).
+
+---
 
 ### 🟡 Módulo Trámites — sesión 2026-09-23 (TODO HECHO, NADA PROBADO EN NAVEGADOR)
 
