@@ -103,7 +103,7 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
 const WORKSPACE_OPERACIONES: WorkspaceDefinition = {
   id: 'operaciones',
   label: 'Operaciones',
-  icon: Cog,
+  icon: Building2,
   visibleTo: ALL_ROLES,
   items: [
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
