@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const rol = userData.rol === 'Agente' ? 'Agente' : 'Empleado';
-    const emailAcceso = rol === 'Agente' ? userData.email_personal : userData.email_laboral;
+    const emailAcceso = (rol === 'Agente' ? userData.email_personal : userData.email_laboral)?.trim().toLowerCase();
 
     if (!emailAcceso || !password) {
       return new Response(
@@ -105,10 +105,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Verificar si ya existe un usuario ACTIVO con ese correo
     const { data: existingUser } = await supabaseAdmin
       .from('usuarios')
-      .select('id')
-      .or(`email_laboral.eq.${emailAcceso},email_personal.eq.${emailAcceso}`)
+      .select('id, is_deleted, estado')
+      .or(`email_laboral.ilike.${emailAcceso},email_personal.ilike.${emailAcceso}`)
+      .eq('is_deleted', false)
+      .neq('estado', 'eliminado')
       .maybeSingle();
 
     if (existingUser) {
@@ -119,7 +122,7 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('[register-employee] Creating auth user...');
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    let { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: emailAcceso,
       password,
       email_confirm: true,
@@ -129,6 +132,43 @@ Deno.serve(async (req: Request) => {
         rol
       }
     });
+
+    // Auto-recuperación si el correo existía en auth.users por una cuenta eliminada/huérfana
+    if (authError && (authError.message?.toLowerCase().includes('already') || authError.status === 422)) {
+      console.log('[register-employee] Auth user may already exist from deleted account, attempting cleanup...');
+      const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
+      const existingAuth = userList?.users?.find(u => u.email?.toLowerCase() === emailAcceso.toLowerCase());
+      
+      if (existingAuth) {
+        // Verificar que no sea un usuario activo en usuarios
+        const { data: activeCheck } = await supabaseAdmin
+          .from('usuarios')
+          .select('id, is_deleted, estado')
+          .eq('id', existingAuth.id)
+          .eq('is_deleted', false)
+          .neq('estado', 'eliminado')
+          .maybeSingle();
+
+        if (!activeCheck) {
+          console.log('[register-employee] Purgando usuario auth huérfano/eliminado previo:', existingAuth.id);
+          await supabaseAdmin.from('usuarios').delete().eq('id', existingAuth.id);
+          await supabaseAdmin.auth.admin.deleteUser(existingAuth.id);
+
+          const retryCreate = await supabaseAdmin.auth.admin.createUser({
+            email: emailAcceso,
+            password,
+            email_confirm: true,
+            user_metadata: {
+              nombre: userData.nombre,
+              apellidos: userData.apellidos,
+              rol
+            }
+          });
+          authData = retryCreate.data;
+          authError = retryCreate.error;
+        }
+      }
+    }
 
     if (authError) {
       console.error('[register-employee] Auth error:', authError);
