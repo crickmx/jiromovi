@@ -178,7 +178,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     setShowPreview(false);
   };
 
-  const handleAddCampo = async (tipo: CampoTipo) => {
+  const handleAddCampo = async (tipo: CampoTipo, seccionId: string | null = null) => {
     const meta = CAMPO_TIPOS.find(t => t.tipo === tipo);
     const base = meta?.label || 'Campo';
 
@@ -218,7 +218,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
 
     const { data, error } = await supabase
       .from('tramite_tipo_campos')
-      .insert({ tramite_tipo_id: tipoId, key, label, tipo, requerido: false, display_order: siguienteOrden, config: defaultConfig, activo: true })
+      .insert({ tramite_tipo_id: tipoId, key, label, tipo, requerido: false, display_order: siguienteOrden, config: defaultConfig, activo: true, seccion_id: seccionId })
       .select()
       .single();
 

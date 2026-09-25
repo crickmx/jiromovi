@@ -51,6 +51,14 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
   const [seccionModo, setSeccionModo] = useState<'ninguno' | 'seccion' | 'campo'>('ninguno');
   // Dónde va a caer el campo que se está arrastrando: (sección destino, posición).
   const [dropZone, setDropZone] = useState<{ seccionId: string | null; index: number } | null>(null);
+  // En qué sección se va a crear el campo que se elija en el panel de tipos.
+  const [addTargetSeccion, setAddTargetSeccion] = useState<string | null>(null);
+  const [colapsadas, setColapsadas] = useState<Set<string>>(new Set());
+  const toggleColapsada = (id: string) => setColapsadas(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   // Ramos y aseguradoras sacan sus opciones del catálogo en tiempo real, así que el
   // editor de condiciones no las conocía y caía a un texto libre. Escribir un nombre
   // que no coincidiera carácter por carácter dejaba la sección bloqueada para siempre,
@@ -115,7 +123,11 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
   const availableSistemaKeys = CONFIGURABLE_SISTEMA_KEYS.filter(sk => !addedSistemaKeys.includes(sk));
 
   return (
-    <div className="flex flex-1 overflow-hidden min-h-0">
+    // Altura acotada a propósito: el contenedor padre solo define minHeight, así que
+    // sin esto crece con el contenido, el overflow interno queda inerte y el panel de
+    // configuración se va hacia arriba fuera de la vista en formularios largos. Con un
+    // tope, cada columna scrollea por su lado y el panel siempre queda visible.
+    <div className="flex overflow-hidden min-h-0 h-[calc(100vh-20rem)] min-h-[480px]">
       {/* Canvas */}
       <div className="flex-1 p-4 overflow-auto">
         {loadingCampos ? (
@@ -318,6 +330,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         const dependeDe = secciones.find(s => s.id === seccion.depende_de_seccion_id);
                         const esSistema = !!seccion.sistema_key;
                         const suyos = draggableCampos.filter(c => c.seccion_id === seccion.id);
+                        const colapsada = colapsadas.has(seccion.id);
                         return (
                           <div key={seccion.id} className={`border rounded-xl p-2.5 ${esSistema ? 'border-violet-200 bg-violet-50/30' : 'border-teal-200 bg-teal-50/20'}`}>
                             <div className="flex items-center gap-2 mb-2">
@@ -329,6 +342,14 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                                   <ChevronDown className="w-3.5 h-3.5" />
                                 </button>
                               </div>
+                              <button
+                                onClick={() => toggleColapsada(seccion.id)}
+                                className="p-0.5 text-neutral-400 hover:text-neutral-700 shrink-0"
+                                title={colapsada ? 'Expandir sección' : 'Colapsar sección'}
+                                aria-label={colapsada ? 'Expandir sección' : 'Colapsar sección'}
+                              >
+                                {colapsada ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
                               <Layers className={`w-3.5 h-3.5 shrink-0 ${esSistema ? 'text-violet-500' : 'text-teal-600'}`} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-neutral-800 truncate flex items-center gap-1.5">
@@ -351,7 +372,20 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                                 </button>
                               )}
                             </div>
-                            {contenedor(seccion.id, suyos)}
+                            {!colapsada && (
+                              <>
+                                {contenedor(seccion.id, suyos)}
+                                {!esSistema && (
+                                  <button
+                                    onClick={() => { setAddTargetSeccion(seccion.id); setShowAddField(true); closeCampoEditor(); setShowAddSeccion(false); setEditingSeccion(null); }}
+                                    className="mt-1.5 w-full flex items-center justify-center gap-1.5 border border-dashed border-teal-300 rounded-lg py-1.5 text-[11px] text-teal-600 hover:bg-teal-50 hover:border-teal-400 transition-colors"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    Agregar campo a esta sección
+                                  </button>
+                                )}
+                              </>
+                            )}
                           </div>
                         );
                       })}
@@ -368,7 +402,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                 })()}
 
                 <button
-                  onClick={() => { setShowAddField(!showAddField); closeCampoEditor(); }}
+                  onClick={() => { setAddTargetSeccion(null); setShowAddField(!showAddField); closeCampoEditor(); }}
                   className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-xl py-2.5 text-sm text-neutral-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
@@ -382,7 +416,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
 
       {/* Right panel */}
       {(showAddField || editingCampo || showAddSeccion || editingSeccion) && (
-        <div className="w-80 border-l border-neutral-200 bg-neutral-50 p-4 shrink-0 animate-fade-in sticky top-0 max-h-screen overflow-y-auto">
+        <div className="w-80 border-l border-neutral-200 bg-neutral-50 p-4 shrink-0 animate-fade-in overflow-y-auto">
           {(showAddSeccion || editingSeccion) && (
             <>
               <div className="flex items-center justify-between mb-3">
@@ -528,12 +562,20 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
 
           {showAddField && !editingCampo && (
             <>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-1">
                 <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Tipo de campo</p>
-                <button onClick={() => setShowAddField(false)} className="p-1 hover:bg-neutral-200 rounded">
+                <button onClick={() => { setShowAddField(false); setAddTargetSeccion(null); }} className="p-1 hover:bg-neutral-200 rounded">
                   <X className="w-3.5 h-3.5 text-neutral-500" />
                 </button>
               </div>
+              {/* Dónde va a caer el campo nuevo — el menú se puede abrir desde el botón
+                  general o desde el pie de una sección, y no se distinguirían. */}
+              <p className="text-[10px] text-neutral-400 mb-3 flex items-center gap-1">
+                <Layers className="w-3 h-3 shrink-0" />
+                {addTargetSeccion
+                  ? `Se agregará a "${secciones.find(s => s.id === addTargetSeccion)?.nombre ?? '—'}"`
+                  : 'Se agregará sin sección'}
+              </p>
               <div className="space-y-3">
                 {/* Campos sistema configurables disponibles (no agregados aún) */}
                 {availableSistemaKeys.length > 0 && (
@@ -575,7 +617,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                       {tipos.map(({ tipo, label, icon, desc }) => (
                         <button
                           key={tipo}
-                          onClick={() => handleAddCampo(tipo)}
+                          onClick={() => handleAddCampo(tipo, addTargetSeccion)}
                           className="w-full flex items-center gap-2.5 p-2 bg-white border border-neutral-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
                         >
                           <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-xs font-bold text-blue-600 shrink-0 font-mono">
