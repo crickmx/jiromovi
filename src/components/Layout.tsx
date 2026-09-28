@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HorizontalNav } from './layout/HorizontalNav';
+import { DesktopHeader } from './layout/DesktopHeader';
+import { DesktopSidebar } from './layout/DesktopSidebar';
+import { Breadcrumbs } from './navigation/Breadcrumbs';
 import { MobileNav } from './layout/MobileNav';
 import { MobileDrawer } from './layout/MobileDrawer';
 import { ImpersonationBanner } from './ImpersonationBanner';
@@ -16,6 +18,9 @@ import { useTramitesAttentionCount } from '../hooks/useTramitesAttentionCount';
 import { useStoreAttentionCount } from '../hooks/useStoreAttentionCount';
 import { useBugReportConfig } from '../hooks/useBugReportConfig';
 import { FloatingBugReportButton } from './FloatingBugReportButton';
+import { NavigationPanel } from './navigation/NavigationPanel';
+
+const SIDEBAR_EXPANDED_KEY = 'movi:sidebar_expanded';
 
 // Routes that need full-height layout (no padding, overflow-hidden)
 const FULL_HEIGHT_PREFIXES = [
@@ -39,6 +44,19 @@ export function Layout({ children }: LayoutProps) {
   const bannerCount = (isImpersonating ? 1 : 0) + (isBeta || esUsuarioBeta ? 1 : 0);
   const bannerPt = bannerCount === 2 ? 'pt-[72px]' : bannerCount === 1 ? 'pt-9' : '';
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  // Preferencia de Sidebar expandido/colapsado (por default: expandido en pantallas >=1280px)
+  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_EXPANDED_KEY);
+      if (saved !== null) return saved === '1';
+      return typeof window !== 'undefined' ? window.innerWidth >= 1280 : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const [quickSearchOpen, setQuickSearchOpen] = useState(false);
 
   const userRole = (usuario?.rol as UserRole) || 'Agente';
   const oficinaId = (usuario as any)?.oficina_id ?? null;
@@ -66,6 +84,28 @@ export function Layout({ children }: LayoutProps) {
     setMobileDrawerOpen(false);
   }, [location.pathname]);
 
+  // Shortcut ⌘K / Ctrl+K para búsqueda rápida
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setQuickSearchOpen(o => !o);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleToggleSidebar = () => {
+    setSidebarExpanded(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_EXPANDED_KEY, next ? '1' : '0');
+      } catch {}
+      return next;
+    });
+  };
+
   async function handleSignOut() {
     await signOut();
     navigate('/login');
@@ -82,26 +122,57 @@ export function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className={`app-shell min-h-screen flex flex-col overflow-hidden bg-neutral-50 dark:bg-[#0e0e10] ${bannerPt}`}>
-      {/* Impersonation banner — fixed top, only during active session */}
+    <div className={`app-shell min-h-screen flex flex-col overflow-hidden bg-neutral-50 dark:bg-[#0c0c0e] ${bannerPt}`}>
+      {/* Impersonation banner & Beta Banner */}
       <ImpersonationBanner />
       {isBeta && <BetaBanner />}
       {!isBeta && esUsuarioBeta && <BackToBetaBanner />}
 
-      {/* ── Modern Horizontal Top Navigation Bar (Escritorio) ── */}
-      <HorizontalNav
-        workspace={workspace}
-        activeItem={activeItem}
+      {/* ── Encabezado Superior de Escritorio (52px) ── */}
+      <DesktopHeader
+        sidebarExpanded={sidebarExpanded}
+        onToggleSidebar={handleToggleSidebar}
         userRole={userRole}
         usuario={usuario}
         onSignOut={handleSignOut}
-        isModuleVisible={isModuleVisible}
-        oficinaId={oficinaId}
-        badgeCounts={badgeCounts}
-        topLevelBadges={topLevelBadges}
+        onOpenQuickSearch={() => setQuickSearchOpen(true)}
       />
 
-      {/* Mobile right-side drawer */}
+      {/* ── Cuerpo Principal de Escritorio (Sidebar Izquierdo + Área de Contenido) ── */}
+      <div className="flex-1 flex min-w-0 overflow-hidden relative">
+        {/* Barra Lateral Izquierda (Expandible / Colapsable con Acordeón) */}
+        <DesktopSidebar
+          expanded={sidebarExpanded}
+          workspace={workspace}
+          activeItem={activeItem}
+          userRole={userRole}
+          isModuleVisible={isModuleVisible}
+          oficinaId={oficinaId}
+          badgeCounts={badgeCounts}
+          topLevelBadges={topLevelBadges}
+        />
+
+        {/* Área de Contenido */}
+        {isFullHeight ? (
+          <main className="flex-1 flex flex-col overflow-hidden min-w-0 mobile-page-content md:!pb-0">
+            {children}
+          </main>
+        ) : (
+          <main className="flex-1 flex flex-col overflow-y-auto min-w-0 mobile-page-content md:!pb-0">
+            {/* Barra de Breadcrumbs sobre el contenido */}
+            <div className="hidden md:flex px-6 py-2.5 border-b border-neutral-200/60 dark:border-white/5 bg-white/40 dark:bg-white/[0.015] shrink-0 justify-between items-center">
+              <Breadcrumbs workspace={workspace} activeItem={activeItem} />
+            </div>
+
+            {/* Contenedor de Página */}
+            <div className="flex-1 p-4 md:p-6 max-w-screen-2xl mx-auto w-full">
+              {children}
+            </div>
+          </main>
+        )}
+      </div>
+
+      {/* Mobile right-side drawer (Intacto para teléfonos) */}
       <MobileDrawer
         open={mobileDrawerOpen}
         onClose={() => setMobileDrawerOpen(false)}
@@ -114,21 +185,22 @@ export function Layout({ children }: LayoutProps) {
         oficinaId={oficinaId}
       />
 
-      {/* Main content */}
-      {isFullHeight ? (
-        <main className="flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0">
-          {children}
-        </main>
-      ) : (
-        <main className="flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0">
-          <div className="px-4 md:px-8 py-4 md:py-6 max-w-screen-2xl mx-auto">
-            {children}
-          </div>
-        </main>
-      )}
-
-      {/* Mobile bottom navigation */}
+      {/* Mobile bottom navigation (Intacto para teléfonos) */}
       <MobileNav onOpenDrawer={() => setMobileDrawerOpen(true)} />
+
+      {/* Modal de Búsqueda Rápida (⌘K) */}
+      {quickSearchOpen && workspace && (
+        <NavigationPanel
+          workspace={workspace}
+          activeItem={activeItem}
+          userRole={userRole}
+          isModuleVisible={isModuleVisible}
+          oficinaId={oficinaId}
+          isOpen={quickSearchOpen}
+          onClose={() => setQuickSearchOpen(false)}
+          badgeCounts={badgeCounts}
+        />
+      )}
 
       {usuario && bugReportActivo && <FloatingBugReportButton />}
     </div>
