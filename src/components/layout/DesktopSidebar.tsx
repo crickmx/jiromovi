@@ -1,11 +1,11 @@
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ChevronDown,
   ChevronRight,
   LayoutGrid,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Pin,
+  PinOff,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,10 +36,11 @@ const BADGE_COLORS: Record<string, string> = {
 
 const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-2.5 py-1.5";
 const MAX_SIDEBAR_ITEMS = 8;
+const PINNED_KEY = 'movi:sidebar_pinned';
 
 interface DesktopSidebarProps {
-  expanded: boolean;
-  onToggleExpand: () => void;
+  isPinned: boolean;
+  onTogglePin: () => void;
   workspace: WorkspaceDefinition | null;
   activeItem: WorkspaceNavItem | null;
   userRole: UserRole;
@@ -52,8 +53,8 @@ interface DesktopSidebarProps {
 }
 
 export function DesktopSidebar({
-  expanded,
-  onToggleExpand,
+  isPinned,
+  onTogglePin,
   workspace,
   activeItem: _activeItem,
   userRole,
@@ -68,6 +69,13 @@ export function DesktopSidebar({
   const location = useLocation();
   const { resolved } = useSidebarConfig();
   const { getResolvedItems } = useSidebarItemsConfig();
+
+  // Estado de hover inteligente
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // La barra está expandida si está fijada por el usuario O si tiene el mouse encima
+  const isExpanded = isPinned || isHovered;
 
   // Acordeones abiertos
   const [openWorkspaces, setOpenWorkspaces] = useState<Record<string, boolean>>(() => {
@@ -84,6 +92,27 @@ export function DesktopSidebar({
       setOpenWorkspaces(prev => ({ ...prev, [workspace.id]: true }));
     }
   }, [workspace]);
+
+  // Manejadores de hover con debounce suave para evitar parpadeos
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 150);
+  };
+
+  // Navegar y colapsar automáticamente el menú
+  const handleNav = (path: string) => {
+    navigate(path);
+    if (!isPinned) {
+      setIsHovered(false);
+    }
+  };
 
   const toggleAccordion = (wsId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -113,135 +142,237 @@ export function DesktopSidebar({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <aside
-        aria-label="Menú lateral de navegación"
+      {/* 
+        Contenedor exterior: Mantiene el ancho base de 72px en el flujo de la página
+        mientras que el sidebar expandido por hover flota limpiamente por encima sin mover el contenido.
+      */}
+      <div
         className={cn(
-          'hidden md:flex flex-col h-full bg-white dark:bg-[#111114] border-r border-neutral-200/90 dark:border-white/[0.08] select-none shrink-0 transition-[width] duration-200 ease-in-out z-30 shadow-xs',
-          expanded ? 'w-[264px]' : 'w-[72px]'
+          'hidden md:block shrink-0 relative transition-[width] duration-200 ease-out z-40 select-none',
+          isPinned ? 'w-[264px]' : 'w-[72px]'
         )}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
-        {/* ── TOP: Encabezado del Menú Lateral (Logo + Toggle) ── */}
-        <div className="h-[56px] px-3.5 flex items-center justify-between border-b border-neutral-100 dark:border-white/[0.06] shrink-0">
-          {expanded ? (
-            <>
-              {/* Logo MOVI Expandido */}
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="flex items-center gap-2.5 py-1 px-1 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95 transition-all group"
-                title="Ir al Dashboard"
-              >
-                <img
-                  src="/movirecurso_7.png"
-                  alt="MOVI"
-                  className="h-6 w-6 object-contain dark:brightness-0 dark:invert group-hover:scale-105 transition-transform"
-                />
-                <div className="flex flex-col text-left">
-                  <span className="font-extrabold text-[13px] tracking-tight text-neutral-900 dark:text-white leading-tight">
-                    MOVI Digital
-                  </span>
-                  <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500">
-                    Plataforma de gestión
-                  </span>
-                </div>
-              </button>
-
-              {/* Botón Colapsar */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onToggleExpand}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-90 transition-all"
-                    aria-label="Colapsar menú"
-                  >
-                    <PanelLeftClose className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className={TOOLTIP_CLS}>
-                  Colapsar menú (72px)
-                </TooltipContent>
-              </Tooltip>
-            </>
-          ) : (
-            /* Logo MOVI Colapsado */
-            <div className="w-full flex items-center justify-center">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onToggleExpand}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95 transition-all group"
-                    aria-label="Expandir menú lateral"
-                  >
-                    <img
-                      src="/movirecurso_7.png"
-                      alt="MOVI"
-                      className="h-6 w-6 object-contain dark:brightness-0 dark:invert group-hover:scale-105 transition-transform"
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className={TOOLTIP_CLS}>
-                  Expandir menú lateral (264px)
-                </TooltipContent>
-              </Tooltip>
-            </div>
+        <aside
+          aria-label="Menú lateral inteligente"
+          className={cn(
+            'flex flex-col h-full bg-white dark:bg-[#111114] border-r border-neutral-200/90 dark:border-white/[0.08] transition-all duration-200 ease-out',
+            isExpanded
+              ? 'w-[264px] shadow-[6px_0_24px_rgba(0,0,0,0.08)] dark:shadow-[6px_0_28px_rgba(0,0,0,0.45)]'
+              : 'w-[72px] shadow-2xs',
+            !isPinned && isExpanded ? 'absolute top-0 left-0 bottom-0' : 'relative'
           )}
-        </div>
+        >
+          {/* ── TOP: Logo Oficial + Botón Pin / Fijar ── */}
+          <div className="h-[56px] px-3.5 flex items-center justify-between border-b border-neutral-100 dark:border-white/[0.06] shrink-0">
+            {isExpanded ? (
+              <>
+                {/* Logo MOVI Expandido */}
+                <button
+                  onClick={() => handleNav('/dashboard')}
+                  className="flex items-center gap-2.5 py-1 px-1 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95 transition-all group"
+                  title="Ir al Dashboard"
+                >
+                  <img
+                    src="/movirecurso_7.png"
+                    alt="MOVI"
+                    className="h-6 w-6 object-contain dark:brightness-0 dark:invert group-hover:scale-105 transition-transform"
+                  />
+                  <div className="flex flex-col text-left">
+                    <span className="font-extrabold text-[13px] tracking-tight text-neutral-900 dark:text-white leading-tight">
+                      MOVI Digital
+                    </span>
+                    <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500">
+                      Plataforma de gestión
+                    </span>
+                  </div>
+                </button>
 
-        {/* ── CUERPO: Lista de Navegación con Scroll Suave ── */}
-        <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-1">
-          {resolved.map(({ entry, separadorAntes, badge }, idx) => {
-            const customBadgeEl = badge ? (
-              <span
-                className={cn(
-                  'px-1.5 py-[1px] rounded-full text-[8px] font-bold leading-none whitespace-nowrap shrink-0',
-                  BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber
-                )}
-              >
-                {badge.texto}
-              </span>
-            ) : null;
+                {/* Botón Fijar / Desfijar */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={onTogglePin}
+                      className={cn(
+                        'w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90',
+                        isPinned
+                          ? 'bg-accent/10 text-accent font-semibold'
+                          : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
+                      )}
+                      aria-label={isPinned ? 'Desfijar menú (hover automático)' : 'Fijar menú abierto'}
+                    >
+                      {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className={TOOLTIP_CLS}>
+                    {isPinned ? 'Desfijar menú (se abre al acercar el cursor)' : 'Fijar menú siempre abierto'}
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            ) : (
+              /* Logo MOVI Colapsado */
+              <div className="w-full flex items-center justify-center">
+                <button
+                  onClick={() => handleNav('/dashboard')}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95 transition-all group"
+                  title="MOVI Digital"
+                >
+                  <img
+                    src="/movirecurso_7.png"
+                    alt="MOVI"
+                    className="h-6 w-6 object-contain dark:brightness-0 dark:invert group-hover:scale-105 transition-transform"
+                  />
+                </button>
+              </div>
+            )}
+          </div>
 
-            // ── Enlace Directo (Dashboard, Trámites, etc.) ──
-            if (entry.type === 'link') {
-              const item = entry.item;
-              if (!isTopLevelItemVisible(item, userRole)) return null;
-              if (isModuleVisible && !isModuleVisible(item.path, userRole, oficinaId)) return null;
-              const Icon = item.icon;
-              const isActive = isTopLevelActive(item.path, item.matchPrefix);
-              const tlBadge = topLevelBadges?.[item.path] ?? 0;
-
-              const badgeEl = tlBadge > 0 ? (
-                <span className="relative flex items-center justify-center shrink-0">
-                  <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" />
-                  <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
-                    {tlBadge > 99 ? '99+' : tlBadge}
-                  </span>
+          {/* ── CUERPO: Módulos y Acordeones ── */}
+          <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+            {resolved.map(({ entry, separadorAntes, badge }, idx) => {
+              const customBadgeEl = badge ? (
+                <span
+                  className={cn(
+                    'px-1.5 py-[1px] rounded-full text-[8px] font-bold leading-none whitespace-nowrap shrink-0',
+                    BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber
+                  )}
+                >
+                  {badge.texto}
                 </span>
               ) : null;
 
-              if (!expanded) {
+              // ── Enlace Directo (Dashboard, Trámites, etc.) ──
+              if (entry.type === 'link') {
+                const item = entry.item;
+                if (!isTopLevelItemVisible(item, userRole)) return null;
+                if (isModuleVisible && !isModuleVisible(item.path, userRole, oficinaId)) return null;
+                const Icon = item.icon;
+                const isActive = isTopLevelActive(item.path, item.matchPrefix);
+                const tlBadge = topLevelBadges?.[item.path] ?? 0;
+
+                const badgeEl = tlBadge > 0 ? (
+                  <span className="relative flex items-center justify-center shrink-0">
+                    <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" />
+                    <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                      {tlBadge > 99 ? '99+' : tlBadge}
+                    </span>
+                  </span>
+                ) : null;
+
+                if (!isExpanded) {
+                  return (
+                    <Fragment key={`link-${idx}`}>
+                      {separadorAntes && <div className="w-8 h-px bg-neutral-200 dark:bg-white/10 mx-auto my-1.5" />}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => handleNav(item.path)}
+                            className={cn(
+                              'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
+                              isActive
+                                ? 'bg-accent/10 dark:bg-accent/20 text-accent font-semibold shadow-2xs'
+                                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
+                            )}
+                          >
+                            <Icon className="w-4 h-4" />
+                            {badgeEl}
+                            {isActive && (
+                              <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent" />
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
+                          {badge ? `${item.label} · ${badge.texto}` : item.label}
+                        </TooltipContent>
+                      </Tooltip>
+                    </Fragment>
+                  );
+                }
+
                 return (
                   <Fragment key={`link-${idx}`}>
+                    {separadorAntes && <div className="h-px bg-neutral-100 dark:bg-white/5 my-1.5 mx-2" />}
+                    <button
+                      onClick={() => handleNav(item.path)}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group active:scale-[0.98]',
+                        isActive
+                          ? 'bg-accent/10 dark:bg-accent/15 text-accent font-semibold shadow-2xs'
+                          : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
+                      )}
+                    >
+                      <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-accent' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
+                      <span className="truncate flex-1">{item.label}</span>
+                      {badgeEl}
+                      {customBadgeEl}
+                      {isActive && (
+                        <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-accent" />
+                      )}
+                    </button>
+                  </Fragment>
+                );
+              }
+
+              // ── Workspace Acordeón (Herramientas, Cotizar, Admin, etc.) ──
+              const ws = entry.workspace;
+              if (!isWorkspaceVisible(ws, userRole)) return null;
+              if (isModuleVisible) {
+                const anyVisible = ws.items.some(item =>
+                  isTopLevelItemVisible(item as any, userRole) &&
+                  isModuleVisible(item.path, userRole, oficinaId)
+                );
+                if (!anyVisible) return null;
+              }
+
+              const Icon = ws.icon;
+              const isWsActive = ws.id === (workspace?.id ?? null);
+              const isOpen = openWorkspaces[ws.id] ?? isWsActive;
+
+              // Sub-items del workspace
+              const resolvedGroups = getResolvedItems(ws).map(g => ({
+                ...g,
+                items: g.items.filter(e =>
+                  e.kind === 'item' &&
+                  isItemVisible(e.item, userRole) &&
+                  (isModuleVisible ? isModuleVisible(e.item.path, userRole, oficinaId) : true)
+                ),
+              })).filter(g => g.items.length > 0);
+
+              const allWsItems: WorkspaceNavItem[] = [];
+              for (const g of resolvedGroups) {
+                for (const e of g.items) {
+                  if (e.kind === 'item') allWsItems.push(e.item);
+                }
+              }
+
+              const firstPath = allWsItems[0]?.path || '/dashboard';
+              const isExtensive = allWsItems.length > MAX_SIDEBAR_ITEMS;
+              const visibleSubItems = isExtensive ? allWsItems.slice(0, MAX_SIDEBAR_ITEMS) : allWsItems;
+
+              if (!isExpanded) {
+                return (
+                  <Fragment key={ws.id}>
                     {separadorAntes && <div className="w-8 h-px bg-neutral-200 dark:bg-white/10 mx-auto my-1.5" />}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
-                          onClick={() => navigate(item.path)}
+                          onClick={() => handleNav(firstPath)}
                           className={cn(
                             'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
-                            isActive
+                            isWsActive
                               ? 'bg-accent/10 dark:bg-accent/20 text-accent font-semibold shadow-2xs'
                               : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
                           )}
                         >
                           <Icon className="w-4 h-4" />
-                          {badgeEl}
-                          {isActive && (
+                          {isWsActive && (
                             <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent" />
                           )}
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
-                        {badge ? `${item.label} · ${badge.texto}` : item.label}
+                        {badge ? `${ws.label} · ${badge.texto}` : ws.label}
                       </TooltipContent>
                     </Tooltip>
                   </Fragment>
@@ -249,286 +380,198 @@ export function DesktopSidebar({
               }
 
               return (
-                <Fragment key={`link-${idx}`}>
+                <div key={ws.id} className="space-y-0.5">
                   {separadorAntes && <div className="h-px bg-neutral-100 dark:bg-white/5 my-1.5 mx-2" />}
-                  <button
-                    onClick={() => navigate(item.path)}
+
+                  {/* Encabezado Acordeón */}
+                  <div
+                    onClick={() => handleNav(firstPath)}
                     className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group active:scale-[0.98]',
-                      isActive
+                      'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group cursor-pointer active:scale-[0.98]',
+                      isWsActive
                         ? 'bg-accent/10 dark:bg-accent/15 text-accent font-semibold shadow-2xs'
                         : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
                     )}
                   >
-                    <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-accent' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
-                    <span className="truncate flex-1">{item.label}</span>
-                    {badgeEl}
-                    {customBadgeEl}
-                    {isActive && (
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isWsActive ? 'text-accent' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
+                      <span className="truncate">{ws.label}</span>
+                      {customBadgeEl}
+                    </div>
+
+                    {allWsItems.length > 0 && (
+                      <button
+                        onClick={(e) => toggleAccordion(ws.id, e)}
+                        className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors ml-1"
+                        aria-label={isOpen ? `Colapsar ${ws.label}` : `Expandir ${ws.label}`}
+                      >
+                        {isOpen ? (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    )}
+
+                    {isWsActive && (
                       <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-accent" />
                     )}
-                  </button>
-                </Fragment>
-              );
-            }
-
-            // ── Workspace Acordeón (Herramientas, Cotizar, Admin, etc.) ──
-            const ws = entry.workspace;
-            if (!isWorkspaceVisible(ws, userRole)) return null;
-            if (isModuleVisible) {
-              const anyVisible = ws.items.some(item =>
-                isTopLevelItemVisible(item as any, userRole) &&
-                isModuleVisible(item.path, userRole, oficinaId)
-              );
-              if (!anyVisible) return null;
-            }
-
-            const Icon = ws.icon;
-            const isWsActive = ws.id === (workspace?.id ?? null);
-            const isOpen = openWorkspaces[ws.id] ?? isWsActive;
-
-            // Sub-items del workspace
-            const resolvedGroups = getResolvedItems(ws).map(g => ({
-              ...g,
-              items: g.items.filter(e =>
-                e.kind === 'item' &&
-                isItemVisible(e.item, userRole) &&
-                (isModuleVisible ? isModuleVisible(e.item.path, userRole, oficinaId) : true)
-              ),
-            })).filter(g => g.items.length > 0);
-
-            const allWsItems: WorkspaceNavItem[] = [];
-            for (const g of resolvedGroups) {
-              for (const e of g.items) {
-                if (e.kind === 'item') allWsItems.push(e.item);
-              }
-            }
-
-            const firstPath = allWsItems[0]?.path || '/dashboard';
-            const isExtensive = allWsItems.length > MAX_SIDEBAR_ITEMS;
-            const visibleSubItems = isExtensive ? allWsItems.slice(0, MAX_SIDEBAR_ITEMS) : allWsItems;
-
-            if (!expanded) {
-              return (
-                <Fragment key={ws.id}>
-                  {separadorAntes && <div className="w-8 h-px bg-neutral-200 dark:bg-white/10 mx-auto my-1.5" />}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => navigate(firstPath)}
-                        className={cn(
-                          'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
-                          isWsActive
-                            ? 'bg-accent/10 dark:bg-accent/20 text-accent font-semibold shadow-2xs'
-                            : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
-                        )}
-                      >
-                        <Icon className="w-4 h-4" />
-                        {isWsActive && (
-                          <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent" />
-                        )}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
-                      {badge ? `${ws.label} · ${badge.texto}` : ws.label}
-                    </TooltipContent>
-                  </Tooltip>
-                </Fragment>
-              );
-            }
-
-            return (
-              <div key={ws.id} className="space-y-0.5">
-                {separadorAntes && <div className="h-px bg-neutral-100 dark:bg-white/5 my-1.5 mx-2" />}
-
-                {/* Encabezado Acordeón */}
-                <div
-                  onClick={() => navigate(firstPath)}
-                  className={cn(
-                    'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group cursor-pointer active:scale-[0.98]',
-                    isWsActive
-                      ? 'bg-accent/10 dark:bg-accent/15 text-accent font-semibold shadow-2xs'
-                      : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
-                  )}
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isWsActive ? 'text-accent' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
-                    <span className="truncate">{ws.label}</span>
-                    {customBadgeEl}
                   </div>
 
-                  {allWsItems.length > 0 && (
-                    <button
-                      onClick={(e) => toggleAccordion(ws.id, e)}
-                      className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors ml-1"
-                      aria-label={isOpen ? `Colapsar ${ws.label}` : `Expandir ${ws.label}`}
-                    >
-                      {isOpen ? (
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      ) : (
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  )}
+                  {/* Sub-Items Expandidos con Sangría Moderada */}
+                  {isOpen && allWsItems.length > 0 && (
+                    <div className="pl-6 pr-1 py-0.5 space-y-0.5 border-l-2 border-neutral-100 dark:border-white/5 ml-4">
+                      {visibleSubItems.map(item => {
+                        const active = isSubItemActive(item);
+                        const SubIcon = item.icon;
+                        const badgeCount = badgeCounts?.[item.path] ?? 0;
 
-                  {isWsActive && (
-                    <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-accent" />
+                        return (
+                          <button
+                            key={item.path}
+                            onClick={() => handleNav(item.path)}
+                            className={cn(
+                              'w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium transition-colors text-left group',
+                              active
+                                ? 'bg-accent/10 dark:bg-accent/20 text-accent font-semibold'
+                                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
+                            )}
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <SubIcon className={cn('w-3.5 h-3.5 shrink-0 transition-colors', active ? 'text-accent' : 'text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300')} />
+                              <span className="truncate">{item.label}</span>
+                            </div>
+
+                            {badgeCount > 0 && (
+                              <span className="px-1.5 py-0.2 bg-red-500 text-white text-[8px] font-bold rounded-full shrink-0">
+                                {badgeCount > 99 ? '99+' : badgeCount}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      {/* Botón "Ver todas las opciones" para menús extensos */}
+                      {isExtensive && (
+                        <button
+                          onClick={() => setPanelWorkspace(ws)}
+                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-accent hover:bg-accent/10 transition-colors text-left"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+                          <span>Ver todas ({allWsItems.length}) ▾</span>
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Sub-Items Expandidos con Sangría Moderada */}
-                {isOpen && allWsItems.length > 0 && (
-                  <div className="pl-6 pr-1 py-0.5 space-y-0.5 border-l-2 border-neutral-100 dark:border-white/5 ml-4">
-                    {visibleSubItems.map(item => {
-                      const active = isSubItemActive(item);
-                      const SubIcon = item.icon;
-                      const badgeCount = badgeCounts?.[item.path] ?? 0;
-
-                      return (
-                        <button
-                          key={item.path}
-                          onClick={() => navigate(item.path)}
-                          className={cn(
-                            'w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium transition-colors text-left group',
-                            active
-                              ? 'bg-accent/10 dark:bg-accent/20 text-accent font-semibold'
-                              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
-                          )}
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <SubIcon className={cn('w-3.5 h-3.5 shrink-0 transition-colors', active ? 'text-accent' : 'text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300')} />
-                            <span className="truncate">{item.label}</span>
-                          </div>
-
-                          {badgeCount > 0 && (
-                            <span className="px-1.5 py-0.2 bg-red-500 text-white text-[8px] font-bold rounded-full shrink-0">
-                              {badgeCount > 99 ? '99+' : badgeCount}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-
-                    {/* Botón "Ver todas las opciones" para menús extensos */}
-                    {isExtensive && (
-                      <button
-                        onClick={() => setPanelWorkspace(ws)}
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-accent hover:bg-accent/10 transition-colors text-left"
-                      >
-                        <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
-                        <span>Ver todas ({allWsItems.length}) ▾</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ── FOOTER: Perfil del Usuario + Acciones Globales (Notificaciones, Tema, Logout) ── */}
-        <div className="p-3 border-t border-neutral-100 dark:border-white/[0.06] bg-neutral-50/60 dark:bg-white/[0.015] shrink-0 space-y-2">
-          {/* Perfil del Usuario */}
-          {expanded ? (
-            <button
-              onClick={() => navigate('/perfil')}
-              className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-200/60 dark:hover:bg-white/5 active:scale-95 transition-all text-left group"
-            >
-              <Avatar className="h-8 w-8 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10 shrink-0">
-                <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
-                <AvatarFallback className="text-[11px] font-bold rounded-lg bg-accent text-accent-foreground">
-                  {getInitials()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate leading-tight group-hover:text-accent">
-                  {usuario?.nombre} {usuario?.apellidos}
-                </span>
-                <span className="text-[10px] text-neutral-400 capitalize truncate mt-0.5">
-                  {usuario?.rol || 'Usuario'}
-                </span>
-              </div>
-            </button>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => navigate('/perfil')}
-                  className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/5 active:scale-95 transition-all"
-                >
-                  <Avatar className="h-7 w-7 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10">
-                    <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
-                    <AvatarFallback className="text-[10px] font-bold rounded-lg bg-accent text-accent-foreground">
-                      {getInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className={TOOLTIP_CLS}>
-                {usuario?.nombre} {usuario?.apellidos} · Mi Perfil
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          {/* Fila de Utilidades: Chava IA, Campana, Tema, Logout */}
-          <div className={cn(
-            'flex items-center gap-1.5',
-            expanded ? 'justify-between px-1' : 'flex-col justify-center'
-          )}>
-            {/* Chava IA — Solo Administrador */}
-            {userRole === 'Administrador' && (
+          {/* ── FOOTER: Perfil del Usuario + Acciones Globales ── */}
+          <div className="p-3 border-t border-neutral-100 dark:border-white/[0.06] bg-neutral-50/60 dark:bg-white/[0.015] shrink-0 space-y-2">
+            {/* Perfil del Usuario */}
+            {isExpanded ? (
+              <button
+                onClick={() => handleNav('/perfil')}
+                className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-200/60 dark:hover:bg-white/5 active:scale-95 transition-all text-left group"
+              >
+                <Avatar className="h-8 w-8 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10 shrink-0">
+                  <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
+                  <AvatarFallback className="text-[11px] font-bold rounded-lg bg-accent text-accent-foreground">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate leading-tight group-hover:text-accent">
+                    {usuario?.nombre} {usuario?.apellidos}
+                  </span>
+                  <span className="text-[10px] text-neutral-400 capitalize truncate mt-0.5">
+                    {usuario?.rol || 'Usuario'}
+                  </span>
+                </div>
+              </button>
+            ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => navigate('/chava')}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/10 active:scale-90 transition-transform"
+                    onClick={() => handleNav('/perfil')}
+                    className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/5 active:scale-95 transition-all"
                   >
-                    <ChavaOrbIcon size="sm" sidebarVariant />
+                    <Avatar className="h-7 w-7 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10">
+                      <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
+                      <AvatarFallback className="text-[10px] font-bold rounded-lg bg-accent text-accent-foreground">
+                        {getInitials()}
+                      </AvatarFallback>
+                    </Avatar>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side={expanded ? 'top' : 'right'} className={TOOLTIP_CLS}>
-                  Chava IA
+                <TooltipContent side="right" className={TOOLTIP_CLS}>
+                  {usuario?.nombre} {usuario?.apellidos} · Mi Perfil
                 </TooltipContent>
               </Tooltip>
             )}
 
-            {/* Notificaciones */}
-            <NotificationBell compact fixedPanel />
+            {/* Fila de Utilidades: Chava IA, Campana, Tema, Logout */}
+            <div className={cn(
+              'flex items-center gap-1.5',
+              isExpanded ? 'justify-between px-1' : 'flex-col justify-center'
+            )}>
+              {/* Chava IA — Solo Administrador */}
+              {userRole === 'Administrador' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => handleNav('/chava')}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/10 active:scale-90 transition-transform"
+                    >
+                      <ChavaOrbIcon size="sm" sidebarVariant />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side={isExpanded ? 'top' : 'right'} className={TOOLTIP_CLS}>
+                    Chava IA
+                  </TooltipContent>
+                </Tooltip>
+              )}
 
-            {/* Toggle Tema */}
-            <ThemeToggle compact />
+              {/* Notificaciones */}
+              <NotificationBell compact fixedPanel />
 
-            {/* Cerrar Sesión */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onSignOut}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-90 transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side={expanded ? 'top' : 'right'} className={TOOLTIP_CLS}>
-                Cerrar Sesión
-              </TooltipContent>
-            </Tooltip>
+              {/* Toggle Tema */}
+              <ThemeToggle compact />
+
+              {/* Cerrar Sesión */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onSignOut}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-90 transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={isExpanded ? 'top' : 'right'} className={TOOLTIP_CLS}>
+                  Cerrar Sesión
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      {/* Flyout Panel para Módulos Extensos (ej. Admin) */}
-      {panelWorkspace && (
-        <NavigationPanel
-          workspace={panelWorkspace}
-          activeItem={_activeItem}
-          userRole={userRole}
-          isModuleVisible={isModuleVisible}
-          oficinaId={oficinaId}
-          isOpen={!!panelWorkspace}
-          onClose={() => setPanelWorkspace(null)}
-          badgeCounts={badgeCounts}
-        />
-      )}
+        {/* Flyout Panel para Módulos Extensos (ej. Admin) */}
+        {panelWorkspace && (
+          <NavigationPanel
+            workspace={panelWorkspace}
+            activeItem={_activeItem}
+            userRole={userRole}
+            isModuleVisible={isModuleVisible}
+            oficinaId={oficinaId}
+            isOpen={!!panelWorkspace}
+            onClose={() => setPanelWorkspace(null)}
+            badgeCounts={badgeCounts}
+          />
+        )}
+      </div>
     </TooltipProvider>
   );
 }
