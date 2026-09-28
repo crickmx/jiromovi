@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle, Lock, Eye, EyeOff, Phone, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { BetaBanner } from '../components/BetaBanner';
+import { isBetaHost } from '../lib/betaAccess';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -56,6 +58,7 @@ export default function MoviLogin() {
   useEffect(() => { document.title = 'MOVI Digital'; }, []);
 
   const navigate = useNavigate();
+  const isBeta = isBetaHost();
   const [step, setStep] = useState<Step>('main');
   const [mode, setMode] = useState<'password' | 'express'>(getLoginPreference);
   const [identifier, setIdentifier] = useState('');
@@ -313,7 +316,8 @@ export default function MoviLogin() {
 
   return (
     <>
-      <div className="relative min-h-screen flex flex-col overflow-hidden">
+      {isBeta && <BetaBanner />}
+      <div className={`relative min-h-screen flex flex-col overflow-hidden ${isBeta ? 'pt-9' : ''}`}>
         <BackgroundLayer />
 
         <div className="relative z-10 flex flex-1 min-h-screen">
