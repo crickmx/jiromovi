@@ -16,6 +16,35 @@ Lo que pidió Ricardo al cerrar el 2026-09-28:
 
 ---
 
+### ✅ Sesión 2026-09-28 — triggers, RFC/CURP, código postal y catálogo de vehículos
+
+| Commit | Qué |
+|---|---|
+| `7b1644de` | "Auto-asignar" del trigger ahora sí aplica las reglas + menú filtrado por tipo de campo |
+| `48b816b4` | RFC y CURP: validación, extracción y mapeo a otros campos |
+| `4d7c4e1d` | Código postal: mapeo + colonia escrita a mano |
+| `b9f817e1` | Campo Vehículo con catálogo AMIS en cascada |
+
+#### 🔑 Hallazgos que conviene no volver a descubrir
+
+**El RFC no contiene sexo ni entidad.** Ricardo los pidió creyendo que sí. Del RFC salen tipo de persona, fecha (nacimiento si es física, constitución si es moral) y si trae homoclave; **sexo y entidad solo están en el CURP**. Por eso la extracción se construyó para ambos campos. El dígito verificador se trata como *advertencia*, no error: hay RFCs antiguos que no cuadran y rechazarlos bloquearía capturas legítimas. Lógica en `src/lib/rfcCurp.ts`, con autocomprobación en `src/lib/rfcCurp.test.mjs` (`npx tsx src/lib/rfcCurp.test.mjs`).
+
+**"Auto-asignar (reglas del equipo)" existía en el menú de triggers pero no hacía nada** — su rama era `{ srcVal = null; continue; }`, indistinguible de "No copiar". Las reglas sí se aplicaban al hijo, pero por accidente: porque nadie había mapeado el equipo. ⚠️ **Cambio de comportamiento**: los triggers que hoy asignan sin tener nada mapeado dejaron de hacerlo. Hay que abrirlos y elegir "Auto-asignar" explícitamente. La query para encontrarlos está en el mensaje del commit `7b1644de`.
+
+**El catálogo AMIS no tiene año, y no es un defecto.** AMIS describe *versiones*, no años-modelo. Ricardo sospechaba que el año estaba en los últimos 2 dígitos de la clave; se validó contra las 18,216 filas y **no**: la distribución cae en escalera (01 → 792 veces, 02 → 708, 03 → 620, 04 → 539…), que es la firma de un consecutivo, no de años. El año se captura aparte en el formulario.
+
+**Marca + modelo + versión NO identifica una clave AMIS.** 2,842 de 6,790 combinaciones (42%) apuntan a varias claves — NISSAN/VERSA/SENSE son dos (manual y automática), KENWORTH llega a 75 — porque lo que las distingue vive en la descripción. Por eso la cascada tiene **cuatro** niveles; el último solo aparece cuando hay que desempatar.
+
+**Las opciones de la cascada salen de un RPC, no de un select desde el navegador.** Pedir "las marcas" traería las 17,588 filas para quedarse con 332 valores distintos (~2 MB cada vez que se abre el selector). Mismo criterio si se agregan más cascadas.
+
+#### Datos cargados
+`catalogo_vehiculos`: **17,588 versiones, 332 marcas**, importadas por CSV desde `Catalogo AMIS.xlsx`. Se descartaron 628 filas (609 con marca/modelo `-` — bicicletas y similares — y 19 sin marca). El CSV quedó en la carpeta Downloads de Ricardo (`catalogo_vehiculos.csv`) por si hay que recargarlo.
+
+#### ⚠️ Sin probar en navegador
+Nada de esta sesión se probó en pantalla desde el lado de Claude. Al retomar, verificar: que el mapeo del RFC llene los campos configurados (**hay que configurarlo primero en el FormBuilder**, si no no hace nada), la opción "Otra — escribir la colonia", y la cascada del vehículo — sobre todo que NISSAN/VERSA/SENSE muestre el cuarto selector y que elegir modelo sin marca acote las marcas.
+
+---
+
 ### 🟢 SIGUIENTE (lunes 2026-09-29) — rediseño del FormBuilder, sesión 2026-09-25
 
 **Lo que pidió Ricardo:** el FormBuilder era confuso — las secciones se editaban en un panel arriba y los campos en una lista plana abajo, con un dropdown para asignarlos. Quería los campos **visualmente dentro de sus secciones, estilo Google Forms**, arrastrables entre ellas; una sección obligatoria de personas; el estatus fuera del alta y fijo en el encabezado.
