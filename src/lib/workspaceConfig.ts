@@ -1,13 +1,14 @@
-import { LayoutDashboard, Briefcase, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Wrench, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
+  | 'herramientas'
   | 'comercial'
+  | 'operaciones'
   | 'centro-contacto'
   | 'cotizar'
   | 'produccion'
   | 'mercadotecnia'
-  | 'operaciones'
   | 'seguros-education'
   | 'administracion';
 
@@ -50,24 +51,27 @@ const NO_EMPLEADO_AGENTE: UserRole[] = ['Administrador', 'Gerente'];
 
 export const TOP_LEVEL_ITEMS: TopLevelNavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },
+  { path: '/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
   { path: '/chava', label: 'Chava', icon: BrainCircuit, visibleTo: ADMIN_ONLY },
   { path: '/centro-digital', label: 'Centro Digital', icon: Monitor, visibleTo: ALL_ROLES },
   { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
   { path: '/comunicados', label: 'Comunicados', icon: Newspaper, visibleTo: ALL_ROLES, matchPrefix: true },
 ];
 
-const WORKSPACE_COMERCIAL: WorkspaceDefinition = {
-  id: 'comercial',
-  label: 'Comercial',
-  icon: Briefcase,
+const WORKSPACE_HERRAMIENTAS: WorkspaceDefinition = {
+  id: 'herramientas',
+  label: 'Herramientas',
+  icon: Wrench,
   visibleTo: ALL_ROLES,
   items: [
-    { path: '/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
+    { path: '/mi-crm', label: 'Mi CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/contactos', label: 'Contactos', icon: BookUser, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/mi-crm', label: 'CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/entrega-polizas', label: 'Entrega Pólizas', icon: PackageCheck, visibleTo: NOT_AGENT },
     { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileSearch, visibleTo: NOT_AGENT },
     { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
+    { path: '/espacio-jiro', label: 'Espacio JIRO', icon: Landmark, visibleTo: ALL_ROLES },
+    { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
+    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, visibleTo: NOT_AGENT },
   ],
 };
 
@@ -97,18 +101,6 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
     { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: SlidersHorizontal, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/multicotizador', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },
     { path: '/cotizar/multicotizador-gmm', label: 'Multicotizador GMM', icon: Stethoscope, visibleTo: ALL_ROLES },
-  ],
-};
-
-const WORKSPACE_OPERACIONES: WorkspaceDefinition = {
-  id: 'operaciones',
-  label: 'Operaciones',
-  icon: Building2,
-  visibleTo: ALL_ROLES,
-  items: [
-    { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
-    { path: '/espacio-jiro', label: 'Espacio JIRO', icon: Landmark, visibleTo: ALL_ROLES },
-    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, visibleTo: NOT_AGENT },
   ],
 };
 
@@ -197,25 +189,24 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
 };
 
 export const WORKSPACES: WorkspaceDefinition[] = [
-  WORKSPACE_COMERCIAL,
+  WORKSPACE_HERRAMIENTAS,
   WORKSPACE_CENTRO_CONTACTO,
   WORKSPACE_COTIZAR,
   WORKSPACE_PRODUCCION,
-  WORKSPACE_OPERACIONES,
+  WORKSPACE_ADMIN,
   WORKSPACE_MERCADOTECNIA,
   WORKSPACE_SEGUROS_EDUCATION,
-  WORKSPACE_ADMIN,
 ];
 
 export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
+  { type: 'link', item: { path: '/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] } },
   { type: 'link', item: { path: '/centro-digital', label: 'Centro Digital', icon: Monitor, visibleTo: ALL_ROLES } },
-  { type: 'workspace', workspace: WORKSPACE_COMERCIAL },
+  { type: 'workspace', workspace: WORKSPACE_HERRAMIENTAS },
   { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
   { type: 'workspace', workspace: WORKSPACE_COTIZAR },
   { type: 'workspace', workspace: WORKSPACE_PRODUCCION },
   { type: 'workspace', workspace: WORKSPACE_ADMIN },
-  { type: 'workspace', workspace: WORKSPACE_OPERACIONES },
   { type: 'workspace', workspace: WORKSPACE_MERCADOTECNIA },
   { type: 'workspace', workspace: WORKSPACE_SEGUROS_EDUCATION },
   { type: 'link', item: { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES } },
@@ -305,7 +296,7 @@ export function resolveWorkspaceItems(
 ): ResolvedItemGroup[] {
   const configByPath = new Map(itemConfigs.map(c => [c.item_path, c]));
   const gruposDeEsteWorkspace = grupos
-    .filter(g => g.workspace_id === workspace.id)
+    .filter(g => g.workspace_id === workspace.id || (workspace.id === 'herramientas' && (g.workspace_id === 'comercial' || g.workspace_id === 'operaciones')))
     .sort((a, b) => a.orden - b.orden);
   const gruposIds = new Set(gruposDeEsteWorkspace.map(g => g.id));
 
@@ -326,7 +317,7 @@ export function resolveWorkspaceItems(
   });
 
   const separadoresConMeta: Entrada[] = separadores
-    .filter(s => s.workspace_id === workspace.id)
+    .filter(s => s.workspace_id === workspace.id || (workspace.id === 'herramientas' && (s.workspace_id === 'comercial' || s.workspace_id === 'operaciones')))
     .map(s => ({
       kind: 'separador',
       id: s.id,
