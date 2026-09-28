@@ -171,4 +171,9 @@ export const DATOS_EXTRAIBLES = {
     { clave: 'sexo',     label: 'Sexo' },
     { clave: 'entidad',  label: 'Entidad de registro' },
   ],
+  codigo_postal: [
+    { clave: 'colonia',   label: 'Colonia' },
+    { clave: 'municipio', label: 'Municipio' },
+    { clave: 'estado',    label: 'Estado' },
+  ],
 } as const;

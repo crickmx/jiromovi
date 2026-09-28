@@ -870,22 +870,29 @@ export function NuevoTramiteModal({
    *
    * Solo escribe en campos vacíos: si alguien ya capturó algo a mano, se respeta.
    */
-  const aplicarExtraccion = (campo: CampoDinamico, valor: string) => {
+  const aplicarExtraccion = (campo: CampoDinamico, valor: string | Record<string, any>) => {
     const mapeo = (campo.config?.mapeo_extraccion ?? {}) as Record<string, string>;
     if (Object.keys(mapeo).length === 0) return;
 
     const datos: Record<string, string | undefined> = {};
     if (campo.tipo === 'rfc') {
-      const a = analizarRFC(valor);
+      const a = analizarRFC(String(valor));
       if (!a.valido) return;
       datos.fecha = a.fecha;
       datos.tipo_persona = a.tipoPersona === 'fisica' ? 'Física' : a.tipoPersona === 'moral' ? 'Moral' : undefined;
     } else if (campo.tipo === 'curp') {
-      const a = analizarCURP(valor);
+      const a = analizarCURP(String(valor));
       if (!a.valido) return;
       datos.fecha = a.fecha;
       datos.sexo = a.sexo === 'H' ? 'Hombre' : a.sexo === 'M' ? 'Mujer' : undefined;
       datos.entidad = a.entidadNombre;
+    } else if (campo.tipo === 'codigo_postal') {
+      // Aquí el valor ya viene resuelto por el catálogo (o escrito a mano), así
+      // que no hay nada que deducir: solo se reparte a los campos mapeados.
+      const cp = (typeof valor === 'object' ? valor : {}) as Record<string, string>;
+      datos.colonia = cp.colonia || undefined;
+      datos.municipio = cp.municipio || undefined;
+      datos.estado = cp.estado || undefined;
     }
 
     setRespuestasDinamicas(prev => {
@@ -1180,21 +1187,93 @@ export function NuevoTramiteModal({
                 className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               />
               {cpState.loading && <p className="text-xs text-neutral-400">Buscando colonias...</p>}
+
+              {/* El catálogo no siempre está completo: colonias nuevas o CPs que aún
+                  no aparecen. En vez de dejar al usuario atorado, se permite
+                  describir la colonia a mano — y queda marcado como tal. */}
               {cpState.colonias.length > 0 && (
                 <select
-                  value={stored?.colonia || ''}
+                  value={(stored as any)?.colonia_descrita ? '__otra__' : (stored?.colonia || '')}
                   onChange={e => {
+                    if (e.target.value === '__otra__') {
+                      // Municipio y estado son iguales para todas las colonias de un CP,
+                      // así que se conservan del catálogo aunque la colonia sea manual.
+                      const ref = cpState.colonias[0];
+                      const nuevoVal = { codigo: stored?.codigo, colonia: '', municipio: ref?.municipio ?? '', estado: ref?.estado ?? '', colonia_descrita: true };
+                      set(nuevoVal);
+                      aplicarExtraccion(campo, nuevoVal);
+                      return;
+                    }
                     const col = cpState.colonias.find(c => c.colonia === e.target.value);
-                    if (col) set({ codigo: stored?.codigo, ...col });
+                    if (col) {
+                      const nuevoVal = { codigo: stored?.codigo, ...col };
+                      set(nuevoVal);
+                      aplicarExtraccion(campo, nuevoVal);
+                    }
                   }}
                   className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
                 >
                   <option value="">Selecciona colonia...</option>
                   {cpState.colonias.map(c => <option key={c.colonia} value={c.colonia}>{c.colonia}</option>)}
+                  <option value="__otra__">Otra — escribir la colonia</option>
                 </select>
               )}
-              {stored?.municipio && (
+
+              {/* CP de 5 dígitos que el catálogo no conoce: se captura todo a mano. */}
+              {!cpState.loading && cpState.colonias.length === 0 && (stored?.codigo?.length === 5) && (
+                <p className="text-xs text-amber-600 flex items-start gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  Este código postal no está en el catálogo. Escribe los datos a mano.
+                </p>
+              )}
+
+              {((stored as any)?.colonia_descrita || (!cpState.loading && cpState.colonias.length === 0 && stored?.codigo?.length === 5)) && (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={stored?.colonia || ''}
+                    onChange={e => {
+                      const nuevoVal = { ...(stored ?? {}), codigo: stored?.codigo, colonia: e.target.value, colonia_descrita: true };
+                      set(nuevoVal);
+                      aplicarExtraccion(campo, nuevoVal);
+                    }}
+                    placeholder="Colonia (escríbela)"
+                    className="w-full px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                  />
+                  {cpState.colonias.length === 0 && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={stored?.municipio || ''}
+                        onChange={e => {
+                          const nuevoVal = { ...(stored ?? {}), municipio: e.target.value, colonia_descrita: true };
+                          set(nuevoVal);
+                          aplicarExtraccion(campo, nuevoVal);
+                        }}
+                        placeholder="Municipio"
+                        className="px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={stored?.estado || ''}
+                        onChange={e => {
+                          const nuevoVal = { ...(stored ?? {}), estado: e.target.value, colonia_descrita: true };
+                          set(nuevoVal);
+                          aplicarExtraccion(campo, nuevoVal);
+                        }}
+                        placeholder="Estado"
+                        className="px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {stored?.municipio && !(stored as any)?.colonia_descrita && (
                 <p className="text-xs text-neutral-500">{stored.municipio}, {stored.estado}</p>
+              )}
+              {(stored as any)?.colonia_descrita && stored?.municipio && cpState.colonias.length > 0 && (
+                <p className="text-xs text-neutral-500">{stored.municipio}, {stored.estado} · colonia escrita a mano</p>
               )}
             </div>
           );

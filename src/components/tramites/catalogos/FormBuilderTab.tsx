@@ -1190,14 +1190,14 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                 {/* A qué campos del mismo formulario van los datos que se sacan del
                     RFC o del CURP. Se elige aquí en vez de adivinarlo por tipo: si hay
                     dos campos de fecha, adivinar llenaría el equivocado sin avisar. */}
-                {(editingCampo.tipo === 'rfc' || editingCampo.tipo === 'curp') && (() => {
-                  const extraibles = DATOS_EXTRAIBLES[editingCampo.tipo as 'rfc' | 'curp'];
+                {(editingCampo.tipo === 'rfc' || editingCampo.tipo === 'curp' || editingCampo.tipo === 'codigo_postal') && (() => {
+                  const extraibles = DATOS_EXTRAIBLES[editingCampo.tipo as keyof typeof DATOS_EXTRAIBLES];
                   const mapeo = (editCampoConfig.mapeo_extraccion ?? {}) as Record<string, string>;
                   const destinos = campos.filter(c => c.id !== editingCampo.id && !c.is_sistema);
                   return (
                     <div className="border border-neutral-200 rounded-lg p-2.5 bg-white space-y-2">
                       <label className="block text-xs font-medium text-neutral-600">
-                        Al capturar el {editingCampo.tipo === 'rfc' ? 'RFC' : 'CURP'}, llenar
+                        Al capturar el {editingCampo.tipo === 'rfc' ? 'RFC' : editingCampo.tipo === 'curp' ? 'CURP' : 'código postal'}, llenar
                       </label>
                       {destinos.length === 0 ? (
                         <p className="text-[10px] text-neutral-400 italic">
