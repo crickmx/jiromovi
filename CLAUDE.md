@@ -1,6 +1,20 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-25)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-28)
+
+### 🟢 SIGUIENTE (martes 2026-09-29) — Aseguradoras: orden, preferentes y selección múltiple
+
+Lo que pidió Ricardo al cerrar el 2026-09-28:
+
+1. **Invertir la dependencia ramo ↔ aseguradora.** Hoy va al revés de lo que se quiere: el campo `ramo` filtra POR aseguradora (`config.filtrar_por_aseguradora`, ver `NuevoTramiteModal.tsx` en el render de `campo.tipo === 'ramo'`), así que primero se elige aseguradora. Se quiere **elegir el ramo primero** y que las aseguradoras se acoten a las que lo manejan. La tabla `combinaciones` (compania_id + ramo_id) ya tiene el dato para hacerlo en ambos sentidos — es el mismo patrón bidireccional que se usó en `SelectorVehiculo.tsx`.
+
+2. **Aseguradoras preferentes / de convenio.** 🔑 **YA EXISTE el dato**: `maestro_companias` tiene una columna `convenio boolean NOT NULL DEFAULT false`, y su propio COMMENT dice "convenio=true indica compañía preferente/con convenio". **Antes de crear nada, revisar si está poblada** (`select convenio, count(*) from maestro_companias group by 1`). Lo que falta es (a) confirmar si hay pantalla en Admin para editarla y, si no, agregarla, y (b) decidir si "preferente" y "de convenio" son lo mismo o dos conceptos distintos — Ricardo los nombró por separado, así que **preguntarlo antes de asumir** que una sola columna alcanza.
+
+3. **Orden y advertencia en el selector.** Mostrar primero las preferentes; las demás ocultas bajo un "mostrar más". Al elegir una NO preferente, lanzar una advertencia antes de continuar.
+
+4. **Permitir elegir una o más aseguradoras.** Hoy el campo `aseguradora` es de selección única. Ojo: `cotizacion_emision` ya tiene su propio multi-selector (`ceSelectedInsurers`), así que revisar si conviene unificarlos en vez de tener dos.
+
+---
 
 ### 🟢 SIGUIENTE (lunes 2026-09-29) — rediseño del FormBuilder, sesión 2026-09-25
 
