@@ -25,7 +25,7 @@ export type CampoTipo =
   | 'texto_corto' | 'texto_largo' | 'numerico' | 'adjunto'
   | 'estatus' | 'fecha' | 'booleano' | 'dropdown' | 'seleccion_multiple'
   | 'aseguradora' | 'ramo' | 'rfc' | 'codigo_postal'
-  | 'telefono' | 'email' | 'curp' | 'porcentaje'
+  | 'telefono' | 'email' | 'curp' | 'porcentaje' | 'vehiculo'
   // ── Campos Sistema fijos (no movibles) ─────────────────────────────────────
   | 'area' | 'equipo' | 'agente_vendedor' | 'oficina_jiro'
   | 'fecha_creacion' | 'fecha_finalizacion' | 'creado_por'
@@ -155,6 +155,7 @@ export const CAMPO_TIPOS: { tipo: CampoTipo; label: string; icon: string; desc: 
   { tipo: 'numerico',           label: 'Numérico',            icon: '#',   desc: 'Decimal, entero o moneda MXN',         grupo: 'Número' },
   { tipo: 'porcentaje',         label: 'Porcentaje',          icon: '%',   desc: 'Valor 0–100 con símbolo %',            grupo: 'Número' },
   { tipo: 'codigo_postal',      label: 'Código Postal',       icon: 'CP',  desc: '5 dígitos, valida vs catálogo CP',     grupo: 'Número' },
+  { tipo: 'vehiculo',           label: 'Vehículo (AMIS)',     icon: 'VH',  desc: 'Marca → modelo → versión, del catálogo', grupo: 'Selección' },
   // ── Fecha ─────────────────────────────────────────────────────────────────
   { tipo: 'fecha',              label: 'Fecha',               icon: 'D',   desc: 'Selector de fecha con límites',        grupo: 'Fecha' },
   // ── Selección ─────────────────────────────────────────────────────────────

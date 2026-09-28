@@ -8,6 +8,7 @@ import { BaseModal } from '../BaseModal';
 import type { TramiteSeccion } from './catalogos/types';
 import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada } from '../../lib/tramiteSecciones';
 import { analizarRFC, analizarCURP, RFC_GENERICO_NACIONAL, ENTIDADES_CURP } from '../../lib/rfcCurp';
+import { SelectorVehiculo, type VehiculoSeleccionado } from './SelectorVehiculo';
 import {
   canAccessRegistroActividades,
   getUsersByOffice,
@@ -1159,6 +1160,13 @@ export function NuevoTramiteModal({
           );
         })()}
 
+        {campo.tipo === 'vehiculo' && (
+          <SelectorVehiculo
+            value={val as VehiculoSeleccionado | undefined}
+            onChange={v => set(v)}
+          />
+        )}
+
         {campo.tipo === 'codigo_postal' && (() => {
           const cpState = cpSearchState[campo.id] || { colonias: [], loading: false };
           const stored = val as { codigo?: string; colonia?: string; municipio?: string; estado?: string } | undefined;
@@ -2050,7 +2058,7 @@ export function NuevoTramiteModal({
               valor_numerico: ['numerico', 'porcentaje'].includes(c.tipo) ? Number(val) : null,
               valor_fecha:    c.tipo === 'fecha' ? String(val) : null,
               valor_booleano: c.tipo === 'booleano' ? Boolean(val) : null,
-              valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'reporte_protegido'].includes(c.tipo) ? val : null,
+              valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'reporte_protegido', 'vehiculo'].includes(c.tipo) ? val : null,
             };
           });
         if (respuestas.length > 0) {

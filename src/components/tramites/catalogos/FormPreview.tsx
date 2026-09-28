@@ -85,6 +85,16 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm font-medium">%</span>
             </div>
           )}
+          {campo.tipo === 'vehiculo' && (
+            <div className="space-y-1.5 opacity-60">
+              {['Marca…', 'Modelo…', 'Versión…'].map(p => (
+                <select key={p} disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
+                  <option>{p}</option>
+                </select>
+              ))}
+              <p className="text-[10px] text-neutral-400">Catálogo AMIS · el año se captura aparte</p>
+            </div>
+          )}
           {campo.tipo === 'codigo_postal' && (
             <input disabled type="text" placeholder="00000"
               className="w-28 px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed font-mono" />

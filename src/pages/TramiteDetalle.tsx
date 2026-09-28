@@ -16,6 +16,7 @@ import { calcularDiasHabilesEntre } from '../lib/diasHabiles';
 import type { TramiteSeccion } from '../components/tramites/catalogos/types';
 import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada } from '../lib/tramiteSecciones';
 import { estiloHeader, CLASE_VELO } from '../lib/tramiteHeader';
+import { SelectorVehiculo, type VehiculoSeleccionado } from '../components/tramites/SelectorVehiculo';
 import TOTPDecryptModal from '../components/tramites/TOTPDecryptModal';
 
 interface TramiteEstatus {
@@ -942,7 +943,7 @@ export function TramiteDetalle() {
             valor_numerico: ['numerico', 'porcentaje'].includes(campo.tipo) ? Number(val) : null,
             valor_fecha:    campo.tipo === 'fecha' ? String(val) : null,
             valor_booleano: campo.tipo === 'booleano' ? Boolean(val) : null,
-            valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto', 'reporte_protegido'].includes(campo.tipo) ? val : null,
+            valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto', 'reporte_protegido', 'vehiculo'].includes(campo.tipo) ? val : null,
           };
 
           if (existing?.id) {
@@ -1136,7 +1137,7 @@ export function TramiteDetalle() {
                   valor_numerico: ['numerico', 'porcentaje'].includes(tc.tipo) ? Number(srcVal) : null,
                   valor_fecha:    tc.tipo === 'fecha' ? String(srcVal) : null,
                   valor_booleano: tc.tipo === 'booleano' ? Boolean(srcVal) : null,
-                  valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto'].includes(tc.tipo) ? srcVal : null,
+                  valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'adjunto', 'vehiculo'].includes(tc.tipo) ? srcVal : null,
                 });
                 if (tc.tipo === 'equipo') {
                   try {
@@ -2010,6 +2011,14 @@ export function TramiteDetalle() {
                           <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-700">{val || '—'}</div>
                         );
                       })()}
+                      {campo.tipo === 'vehiculo' && (
+                        <SelectorVehiculo
+                          value={val as VehiculoSeleccionado | undefined}
+                          onChange={v => set(v)}
+                          disabled={!canEdit || isCerrado}
+                        />
+                      )}
+
                       {campo.tipo === 'codigo_postal' && (() => {
                         const cpState = cpSearchState[campo.id] || { colonias: [], loading: false };
                         const stored = val as { codigo?: string; colonia?: string; municipio?: string; estado?: string } | undefined;
