@@ -40,8 +40,7 @@ Lo que pidió Ricardo al cerrar el 2026-09-28:
 #### Datos cargados
 `catalogo_vehiculos`: **17,588 versiones, 332 marcas**, importadas por CSV desde `Catalogo AMIS.xlsx`. Se descartaron 628 filas (609 con marca/modelo `-` — bicicletas y similares — y 19 sin marca). El CSV quedó en la carpeta Downloads de Ricardo (`catalogo_vehiculos.csv`) por si hay que recargarlo.
 
-#### ⚠️ Sin probar en navegador
-Nada de esta sesión se probó en pantalla desde el lado de Claude. Al retomar, verificar: que el mapeo del RFC llene los campos configurados (**hay que configurarlo primero en el FormBuilder**, si no no hace nada), la opción "Otra — escribir la colonia", y la cascada del vehículo — sobre todo que NISSAN/VERSA/SENSE muestre el cuarto selector y que elegir modelo sin marca acote las marcas.
+#### ✅ Probado en navegador — Ricardo confirmó el 2026-09-28 que todo funciona bien.
 
 ---
 
@@ -89,8 +88,7 @@ Se investigó con **3 agentes en paralelo** (FormBuilder + drag&drop, ciclo de v
 
 **Ninguna toca `create_all_sistema_campos()`** a propósito: esa función se reescribe entera en cada migración que la extiende y aquí la versión viva suele diferir de la del repo (pasó con `ejecutar_recurrencias`). Se usan triggers propios; el de personas se llama `trigger_z_...` porque Postgres dispara los AFTER en orden alfabético y debe correr **después** del que siembra los campos.
 
-#### ⚠️ Pendiente de probar (Ricardo estaba en eso al cerrar)
-El canvas anidado, el botón de agregar campo por sección, el colapso, el panel siempre visible y el fondo del encabezado. **Nada de esta sesión se probó en navegador desde el lado de Claude** (no hay herramienta). Ricardo sí alcanzó a ver el canvas nuevo y reportó 2 bugs que ya se corrigieron (clave duplicada, panel fuera de vista).
+#### ✅ Probado en navegador — Ricardo confirmó el 2026-09-28 que todo funciona bien.
 
 #### ❌ Lo que quedó fuera a propósito
 - **El detalle del trámite no respeta secciones**: filtra `!is_sistema` antes de agrupar (`TramiteDetalle.tsx:1871`) y muestra todos los campos de sistema en su bloque "Información del Trámite". Reestructurarlo es un cambio visual grande que no se pidió.
@@ -147,7 +145,7 @@ También resultó que **las notificaciones de las reglas 2, 4 y 5 ya existían**
 - Se eliminó `isPoolMode` y su código muerto.
 - Bug preexistente encontrado de paso (`0cc50fe0`): al cambiar a un agente sin cuenta vinculada, `asignado` conservaba la del agente anterior, así que el trámite quedaba a nombre de quien no era.
 
-**⚠️ SIN PROBAR EN NAVEGADOR.** Typecheck, build de producción y compilación en dev pasan limpios, pero la sesión no tenía herramienta de navegador — nadie ha visto la pantalla. Al retomar, verificar en beta: que la línea verde aparezca al elegir solicitante, que salga la azul cuando el equipo no tiene ejecutivo, la ámbar cuando no hay regla, y que el select de cuenta MOVI solo salga con agentes sin vincular.
+**✅ Probado en navegador.** Ricardo confirmó el 2026-09-28 que funciona bien.
 
 **✅ RESUELTO 2026-09-25 (commit `5476dfdc`) — la duplicación resultó ser otra cosa.** Al revisarlo de verdad, Store→Trámites, Marketing Premium, alta beta y reporte de bugs **ya leían bien** el motor. El único roto era el trigger padre→hijo, y con un bug distinto al del alta: `get_grupo_para_ticket` devuelve una **tabla** (`data` es un arreglo) y ese código leía `grupoData.grupo_id` directo sobre el arreglo → siempre `undefined`. Como un arreglo vacío también es truthy, nunca entraba al camino de error. **Ningún trámite hijo creado por un trigger recibía equipo ni responsable**, en silencio. Los 6 llamadores ya son consistentes.
 
@@ -194,12 +192,7 @@ Verificado antes de ejecutar: el alta filtra `activo=true` (desaparecen del sele
 
 `GestionCatalogosRegistro.tsx`: los inactivos se ocultan por default, con una casilla que dice cuántos son. La **búsqueda sí los alcanza** aunque el toggle esté apagado (buscar un tipo viejo por nombre no debería obligar a prender un filtro). El contador del encabezado refleja lo listado, no el total.
 
-#### ⚠️ NADA DE LO DE 2026-09-23 SE PROBÓ EN NAVEGADOR
-
-La sesión no tenía herramienta de navegador. Typecheck y build de producción pasan en todo, y varios bugs se encontraron por revisión del propio diff, pero **nadie vio la pantalla**. Lo que hay que verificar en beta al retomar:
-- Alta normal: la línea verde con responsable y equipo, la azul de cola, la ámbar sin regla, y el buscador de vendedor SICAS solo con usuarios sin ligar.
-- **Cotización/Emisión (201 trámites activos, el de mayor riesgo):** crear uno como agente y otro como interno. Su flujo de guardado es propio y se le quitó un campo.
-- Que la lista de Solicitante traiga a todos los usuarios activos.
+#### ✅ Probado en navegador — Ricardo confirmó el 2026-09-28 que todo funciona bien.
 
 ---
 
