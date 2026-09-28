@@ -1084,6 +1084,11 @@ export function TramiteDetalle() {
               .order('orden');
 
             let _equipoExplicito = false;
+            // "Auto-asignar (reglas del equipo)" ahora sí significa algo: corre
+            // get_grupo_para_ticket para el hijo. Antes esta opción hacía `continue` y no
+            // escribía nada, así que era indistinguible de "No copiar" — y las reglas se
+            // aplicaban por accidente, solo porque nadie había mapeado el equipo.
+            let _autoAsignar = false;
             for (const m of mappings || []) {
               if (m.valor_fijo === '__manual__') continue;
               let srcVal: any = null;
@@ -1104,7 +1109,7 @@ export function TramiteDetalle() {
                 else if (m.source_sistema_key === 'responsable_padre') {
                   srcVal = (snap as any).responsable?.nombre_completo ?? null;
                 }
-                else if (m.source_sistema_key === 'autoasignar') { srcVal = null; continue; }
+                else if (m.source_sistema_key === 'autoasignar') { _autoAsignar = true; continue; }
                 else {
                   // agente_vendedor, oficina_jiro y otros: buscar el campo por tipo o sistema_key
                   const campoOrigen = camposDinamicos.find(
@@ -1173,7 +1178,7 @@ export function TramiteDetalle() {
 
             // 8. Auto-asignación de equipo al hijo (misma lógica que NuevoTramiteModal)
             // Skipped when equipo was explicitly set via field mapping
-            if (!_equipoExplicito && snap.agente?.id) {
+            if (_autoAsignar && snap.agente?.id) {
               const { data: grupoData } = await supabase.rpc('get_grupo_para_ticket', {
                 p_agente_id: snap.agente.id,
                 p_tipo_tramite: targetTipo.value,
@@ -1186,9 +1191,14 @@ export function TramiteDetalle() {
                 ? grupoData[0] as { grupo_id: string | null; ejecutivo_id: string | null }
                 : null;
               if (grupoRow?.grupo_id) {
-                const grupoUpd: Record<string, string> = { grupo_asignado_id: grupoRow.grupo_id };
+                // Un equipo mapeado a mano gana sobre la regla: si alguien lo eligió
+                // explícitamente, no se le pisa; solo se completa el responsable.
+                const grupoUpd: Record<string, string> = {};
+                if (!_equipoExplicito) grupoUpd.grupo_asignado_id = grupoRow.grupo_id;
                 if (grupoRow.ejecutivo_id) grupoUpd.assigned_to_user_id = grupoRow.ejecutivo_id;
-                await supabase.from('tickets').update(grupoUpd).eq('id', childTicket.id);
+                if (Object.keys(grupoUpd).length) {
+                  await supabase.from('tickets').update(grupoUpd).eq('id', childTicket.id);
+                }
               }
             }
 

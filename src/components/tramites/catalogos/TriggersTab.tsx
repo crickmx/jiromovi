@@ -60,15 +60,28 @@ const PRIORIDADES: Array<{ value: string; label: string }> = [
   { value: 'Baja',    label: 'Baja' },
 ];
 
-const SISTEMA_KEYS: Array<{ value: string; label: string }> = [
+/**
+ * Fuentes del sistema para un mapeo. `aplicaA` acota en qué campo destino tiene
+ * sentido cada una: antes se ofrecían las 7 en todos los campos, así que se podía
+ * elegir "Auto-asignar" en uno de texto o "Número de póliza" en uno de fecha — y
+ * el mapeo se guardaba sin hacer nada.
+ */
+const SISTEMA_KEYS: Array<{ value: string; label: string; aplicaA?: string[] }> = [
   { value: 'asignado',          label: 'Responsable asignado' },
-  { value: 'prioridad',         label: 'Prioridad' },
-  { value: 'agente_vendedor',   label: 'Agente / Vendedor' },
-  { value: 'oficina_jiro',      label: 'Oficina JIRO' },
-  { value: 'poliza_numero',     label: 'Número de póliza' },
-  { value: 'responsable_padre', label: 'Responsable del trámite padre' },
-  { value: 'autoasignar',       label: 'Auto-asignar (reglas del equipo)' },
+  { value: 'prioridad',         label: 'Prioridad',                        aplicaA: ['prioridad', 'texto_corto', 'dropdown'] },
+  { value: 'agente_vendedor',   label: 'Agente / Vendedor',                aplicaA: ['agente_vendedor', 'texto_corto'] },
+  { value: 'oficina_jiro',      label: 'Oficina JIRO',                     aplicaA: ['oficina_jiro', 'texto_corto'] },
+  { value: 'poliza_numero',     label: 'Número de póliza',                 aplicaA: ['texto_corto', 'texto_largo'] },
+  { value: 'responsable_padre', label: 'Responsable del trámite padre',    aplicaA: ['asignado_a', 'texto_corto'] },
+  // Las reglas de asignación (get_grupo_para_ticket) solo resuelven equipo y
+  // responsable. En cualquier otro campo no habría nada que escribir.
+  { value: 'autoasignar',       label: 'Auto-asignar (reglas del equipo)', aplicaA: ['equipo', 'asignado_a'] },
 ];
+
+/** Las del sistema que tienen sentido para este campo destino. */
+function sistemaKeysPara(campo: { tipo: string; sistema_key?: string | null }) {
+  return SISTEMA_KEYS.filter(k => !k.aplicaA || k.aplicaA.includes(campo.sistema_key ?? '') || k.aplicaA.includes(campo.tipo));
+}
 
 function mkKey() { return Math.random().toString(36).slice(2); }
 
@@ -894,9 +907,11 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
                 {sourceCampos.filter(c => c.tipo !== campo.tipo).map(c => <option key={c.id} value={`c:${c.id}`}>{c.label} ({c.tipo})</option>)}
               </optgroup>
             )}
-            <optgroup label="Del sistema">
-              {SISTEMA_KEYS.map(s => <option key={s.value} value={`s:${s.value}`}>{s.label}</option>)}
-            </optgroup>
+            {sistemaKeysPara(campo).length > 0 && (
+              <optgroup label="Del sistema">
+                {sistemaKeysPara(campo).map(s => <option key={s.value} value={`s:${s.value}`}>{s.label}</option>)}
+              </optgroup>
+            )}
             <option value="fijo">✏ Valor fijo…</option>
             {isTextoCampo && <option value="plantilla">✏ Plantilla con variables…</option>}
           </select>
