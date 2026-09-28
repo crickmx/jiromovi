@@ -21,29 +21,33 @@ export function BetaBanner() {
 
   return (
     <div
-      className="fixed left-0 right-0 z-[9998] text-white shadow-md"
-      style={{ top: isImpersonating ? '36px' : '0px', height: '36px', background: 'linear-gradient(135deg, #8E1A52, #6B1140)' }}
+      className="fixed left-0 right-0 z-[9998] text-white shadow-md border-b border-orange-600/40"
+      style={{
+        top: isImpersonating ? '36px' : '0px',
+        height: '36px',
+        background: 'linear-gradient(135deg, #EA580C 0%, #C2410C 60%, #9A3412 100%)',
+      }}
       role="status"
       aria-live="polite"
     >
       <div className="h-full max-w-screen-2xl mx-auto px-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-amber-200" />
           <span className="text-xs font-medium truncate">
-            Estás viendo la <strong className="font-bold">versión Beta</strong> de MOVI — puede presentar errores o fallas.
+            Estás viendo la <strong className="font-bold text-amber-100">versión Beta</strong> de MOVI — entorno de pruebas.
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="hidden sm:inline rounded bg-white/10 px-2 py-0.5 font-mono text-[10px]" title={`Build: ${buildTime}`}>
+          <span className="hidden sm:inline rounded bg-black/20 text-white px-2 py-0.5 font-mono text-[10px]" title={`Build: ${buildTime}`}>
             Commit: <strong>{__COMMIT_HASH__}</strong>
           </span>
-          <span className="hidden xl:inline rounded bg-white/10 px-2 py-0.5 font-mono text-[10px]">
+          <span className="hidden xl:inline rounded bg-black/20 text-white px-2 py-0.5 font-mono text-[10px]">
             Build: {buildTime}
           </span>
           <button
             onClick={handleVolver}
             disabled={saliendo}
-            className="px-2.5 py-1 bg-white text-[#8E1A52] rounded text-xs font-bold hover:bg-pink-50 transition-colors disabled:opacity-60"
+            className="px-2.5 py-1 bg-white text-[#C2410C] rounded text-xs font-bold hover:bg-orange-50 transition-colors shadow-sm disabled:opacity-60"
           >
             {saliendo ? 'Saliendo…' : 'Regresar a MOVI'}
           </button>

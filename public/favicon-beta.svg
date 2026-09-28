@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <!-- Fondo redondeado oscuro cálido -->
+  <rect width="64" height="64" rx="14" fill="#140A00"/>
+  
+  <!-- Icono MOVI en Naranja Calabaza Halloween -->
+  <g transform="translate(8, 6)">
+    <!-- Silueta Principal Naranja Intenso -->
+    <path fill="url(#pumpkin_grad)" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z"/>
+    
+    <!-- Brillo superior cálido -->
+    <path fill="url(#pumpkin_glow)" opacity="0.6" d="M10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L34 28 20 12h-7L10.013.474z"/>
+  </g>
+
+  <!-- Badge BETA en Naranja Calabaza Neón -->
+  <g transform="translate(24, 44)">
+    <rect width="36" height="16" rx="5" fill="#FF5400" stroke="#FFFFFF" stroke-width="1.5" />
+    <text x="18" y="11.5" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9" font-weight="900" text-anchor="middle" letter-spacing="1">BETA</text>
+  </g>
+
+  <defs>
+    <linearGradient id="pumpkin_grad" x1="0" y1="0" x2="48" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF7A00"/>
+      <stop offset="40%" stop-color="#FF5400"/>
+      <stop offset="100%" stop-color="#C23600"/>
+    </linearGradient>
+    <linearGradient id="pumpkin_glow" x1="10" y1="0" x2="30" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFE066"/>
+      <stop offset="100%" stop-color="#FF7A00" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>
