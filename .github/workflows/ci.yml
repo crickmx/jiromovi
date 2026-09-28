@@ -31,6 +31,120 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy-beta:
+    name: Deploy Beta
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [production-build, secret-scan]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-beta
+      cancel-in-progress: false
+    # Secretos a nivel job: asi los "if" de los pasos si pueden verlos.
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH_BETA || '/var/www/vhosts/movi.digital/beta.movi.digital/dist' }}
+      ENV_FILE_BETA: ${{ secrets.ENV_FILE_BETA }}
+      PLESK_RELAY_URL: ${{ secrets.PLESK_RELAY_URL }}
+      PLESK_RELAY_TOKEN: ${{ secrets.PLESK_RELAY_TOKEN }}
+    steps:
+      # SSH solo si estan los 4 secretos; si falta alguno se usa el relay de Plesk (como hoy).
+      # ENV_FILE_BETA = contenido completo del .env del servidor (VITE_SUPABASE_URL, etc.).
+      # Sin el, el build de GitHub saldria sin variables y beta quedaria en blanco.
+      - name: Elegir metodo de despliegue
+        id: mode
+        run: |
+          if [ -n "$SSH_HOST" ] && [ -n "$SSH_USER" ] && [ -n "$SSH_KEY" ] && [ -n "$ENV_FILE_BETA" ]; then
+            echo "method=ssh" >> "$GITHUB_OUTPUT"
+            echo "Despliegue por SSH"
+          else
+            echo "method=relay" >> "$GITHUB_OUTPUT"
+            echo "Faltan secretos SSH/ENV_FILE_BETA: se usa el relay de Plesk"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.mode.outputs.method == 'ssh'
+
+      - uses: actions/setup-node@v4
+        if: steps.mode.outputs.method == 'ssh'
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Build con variables de beta
+        if: steps.mode.outputs.method == 'ssh'
+        run: |
+          printf '%s\n' "$ENV_FILE_BETA" > .env
+          npm install --legacy-peer-deps
+          npm run build
+          rm -f .env
+          if ! grep -rqs "supabase.co" dist/; then
+            echo "::error::El build no contiene la URL de Supabase; revisa ENV_FILE_BETA. No se despliega."
+            exit 1
+          fi
+
+      - name: Subir dist/ por SSH (rsync)
+        if: steps.mode.outputs.method == 'ssh'
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          rsync -az --delete \
+            --filter='P .htaccess' --filter='P .well-known/' \
+            -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT -o StrictHostKeyChecking=yes" \
+            dist/ "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/"
+          rm -f ~/.ssh/deploy_key
+          echo "Beta desplegado por SSH"
+
+      - name: Trigger beta deployment (relay de Plesk)
+        if: steps.mode.outputs.method == 'relay'
+        run: |
+          if [ -z "$PLESK_RELAY_URL" ] || [ -z "$PLESK_RELAY_TOKEN" ]; then
+            echo "::warning::Auto-deploy omitido: configura PLESK_RELAY_URL y PLESK_RELAY_TOKEN en GitHub Actions secrets."
+            exit 0
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --max-time 180 \
+            --request POST "$PLESK_RELAY_URL" \
+            --header "Content-Type: application/json" \
+            --header "X-Relay-Token: $PLESK_RELAY_TOKEN" \
+            --data '{"target":"beta"}'
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  production-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --legacy-peer-deps
+      - run: npm run build
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-beta:
     name: Deploy Beta through Plesk relay
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [production-build, secret-scan]
