@@ -1,7 +1,6 @@
-import { type ReactNode, useState, useEffect } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { PrimarySidebar } from './layout/PrimarySidebar';
-import { SecondarySidebar } from './layout/SecondarySidebar';
+import { HorizontalNav } from './layout/HorizontalNav';
 import { MobileNav } from './layout/MobileNav';
 import { MobileDrawer } from './layout/MobileDrawer';
 import { ImpersonationBanner } from './ImpersonationBanner';
@@ -39,9 +38,6 @@ export function Layout({ children }: LayoutProps) {
   const hasTopBanner = isImpersonating || isBeta || esUsuarioBeta;
   const bannerCount = (isImpersonating ? 1 : 0) + (isBeta || esUsuarioBeta ? 1 : 0);
   const bannerPt = bannerCount === 2 ? 'pt-[72px]' : bannerCount === 1 ? 'pt-9' : '';
-  const [secondaryCollapsed, setSecondaryCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem('movi:secondaryCollapsed') === '1'; } catch { return false; }
-  });
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const userRole = (usuario?.rol as UserRole) || 'Agente';
@@ -65,8 +61,6 @@ export function Layout({ children }: LayoutProps) {
   if (tramitesAttentionCount > 0) topLevelBadges['/tramites'] = tramitesAttentionCount;
   if (storeAttentionCount > 0) topLevelBadges['/store'] = storeAttentionCount;
 
-  const workspaceBadges: Partial<Record<string, number>> = {};
-
   // Auto-close drawer on route change
   useEffect(() => {
     setMobileDrawerOpen(false);
@@ -88,45 +82,24 @@ export function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="app-shell flex overflow-hidden bg-neutral-50 dark:bg-[#0e0e10]">
+    <div className={`app-shell min-h-screen flex flex-col overflow-hidden bg-neutral-50 dark:bg-[#0e0e10] ${bannerPt}`}>
       {/* Impersonation banner — fixed top, only during active session */}
       <ImpersonationBanner />
       {isBeta && <BetaBanner />}
       {!isBeta && esUsuarioBeta && <BackToBetaBanner />}
 
-      {/* Primary rail sidebar — hidden on mobile */}
-      <div className={`hidden md:flex ${bannerPt}`}>
-        <PrimarySidebar
-          activeWorkspaceId={workspace?.id ?? null}
-          userRole={userRole}
-          usuario={usuario}
-          onSignOut={handleSignOut}
-          isModuleVisible={isModuleVisible}
-          oficinaId={oficinaId}
-          workspaceBadges={workspaceBadges}
-          topLevelBadges={topLevelBadges}
-        />
-      </div>
-
-      {/* Secondary sidebar — only when inside a workspace, hidden on mobile */}
-      {workspace && workspace.id !== 'produccion' && (
-        <div className={`hidden md:flex ${bannerPt}`}>
-          <SecondarySidebar
-            workspace={workspace}
-            activeItem={activeItem}
-            userRole={userRole}
-            collapsed={secondaryCollapsed}
-            onToggleCollapse={() => setSecondaryCollapsed(c => {
-              const next = !c;
-              try { localStorage.setItem('movi:secondaryCollapsed', next ? '1' : '0'); } catch { /* ignore */ }
-              return next;
-            })}
-            isModuleVisible={isModuleVisible}
-            oficinaId={oficinaId}
-            badgeCounts={badgeCounts}
-          />
-        </div>
-      )}
+      {/* ── Modern Horizontal Top Navigation Bar (Escritorio) ── */}
+      <HorizontalNav
+        workspace={workspace}
+        activeItem={activeItem}
+        userRole={userRole}
+        usuario={usuario}
+        onSignOut={handleSignOut}
+        isModuleVisible={isModuleVisible}
+        oficinaId={oficinaId}
+        badgeCounts={badgeCounts}
+        topLevelBadges={topLevelBadges}
+      />
 
       {/* Mobile right-side drawer */}
       <MobileDrawer
@@ -141,14 +114,14 @@ export function Layout({ children }: LayoutProps) {
         oficinaId={oficinaId}
       />
 
-      {/* Main content — shift down when banner is visible */}
+      {/* Main content */}
       {isFullHeight ? (
-        <main className={`flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0 ${bannerPt}`}>
+        <main className="flex-1 overflow-hidden min-w-0 flex flex-col mobile-page-content md:!pb-0">
           {children}
         </main>
       ) : (
-        <main className={`flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0 ${bannerPt}`}>
-          <div className="px-4 md:px-6 py-4 md:py-6 max-w-screen-2xl mx-auto">
+        <main className="flex-1 overflow-y-auto min-w-0 mobile-page-content md:!pb-0">
+          <div className="px-4 md:px-8 py-4 md:py-6 max-w-screen-2xl mx-auto">
             {children}
           </div>
         </main>
