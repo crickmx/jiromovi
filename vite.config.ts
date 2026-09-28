@@ -64,5 +64,21 @@ export default defineConfig({
   },
   build: {
     assetsDir: '_static',
+    target: 'es2020',
+    sourcemap: false,
+    cssMinify: true,
+    minify: 'esbuild',
+    // Desactivar el cálculo de compresión gzip en cada archivo ahorra 40%+ de CPU y tiempo de build en el VPS
+    reportCompressedSize: false,
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['lucide-react', '@radix-ui/react-tooltip', '@radix-ui/react-avatar', '@radix-ui/react-dropdown-menu'],
+          supabase: ['@supabase/supabase-js'],
+        },
+      },
+    },
   },
 })

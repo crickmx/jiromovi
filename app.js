@@ -110,12 +110,12 @@ const server = createServer((request, response) => {
       'application/json; charset=utf-8',
     );
     return;
-    }
+  }
 
-    if (!existsSync(INDEX_FILE) && !existsSync(INDEX_BACKUP)) {
+  if (!existsSync(INDEX_FILE) && !existsSync(INDEX_BACKUP)) {
     sendText(response, 503, maintenancePage(), 'text/html; charset=utf-8');
     return;
-    }
+  }
 
   let pathname;
   try {
@@ -167,4 +167,3 @@ server.listen(PORT, HOST, () => {
   console.log(`[movi-server] MOVI Digital disponible en ${HOST}:${PORT}`);
   console.log(`[movi-server] Sirviendo archivos desde ${DIST_ROOT}`);
 });
-
