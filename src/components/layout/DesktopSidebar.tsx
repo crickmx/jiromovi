@@ -1,6 +1,14 @@
-import { Fragment, useState, useEffect, useMemo } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight, LayoutGrid, Sparkles } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  LayoutGrid,
+  PanelLeftClose,
+  PanelLeftOpen,
+  LogOut,
+  Sparkles,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   isWorkspaceVisible,
@@ -9,11 +17,14 @@ import {
   type WorkspaceDefinition,
   type WorkspaceNavItem,
   type UserRole,
-  type NavEntry,
 } from '@/lib/workspaceConfig';
 import { useSidebarConfig } from '@/hooks/useSidebarConfig';
 import { useSidebarItemsConfig } from '@/hooks/useSidebarItemsConfig';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { NotificationBell } from '../NotificationBell';
+import { ThemeToggle } from '../ThemeToggle';
+import { ChavaOrbIcon } from '../chava/ChavaOrbIcon';
 import { NavigationPanel } from '../navigation/NavigationPanel';
 
 const BADGE_COLORS: Record<string, string> = {
@@ -30,9 +41,12 @@ const MAX_SIDEBAR_ITEMS = 8;
 
 interface DesktopSidebarProps {
   expanded: boolean;
+  onToggleSidebar: () => void;
   workspace: WorkspaceDefinition | null;
   activeItem: WorkspaceNavItem | null;
   userRole: UserRole;
+  usuario: { nombre?: string; apellidos?: string; imagen_perfil_url?: string; rol?: string } | null;
+  onSignOut: () => void;
   isModuleVisible?: (key: string, role: string, oficina_id?: string | null) => boolean;
   oficinaId?: string | null;
   badgeCounts?: Record<string, number>;
@@ -41,9 +55,12 @@ interface DesktopSidebarProps {
 
 export function DesktopSidebar({
   expanded,
+  onToggleSidebar,
   workspace,
   activeItem: _activeItem,
   userRole,
+  usuario,
+  onSignOut,
   isModuleVisible,
   oficinaId,
   badgeCounts,
@@ -60,7 +77,7 @@ export function DesktopSidebar({
     return {};
   });
 
-  // Panel lateral flyout para workspaces extensos
+  // Panel lateral flyout para workspaces extensos (ej. Admin con 26 items)
   const [panelWorkspace, setPanelWorkspace] = useState<WorkspaceDefinition | null>(null);
 
   // Mantener automáticamente abierto el workspace activo
@@ -73,6 +90,12 @@ export function DesktopSidebar({
   const toggleWorkspaceAccordion = (wsId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenWorkspaces(prev => ({ ...prev, [wsId]: !prev[wsId] }));
+  };
+
+  const getInitials = () => {
+    const n = usuario?.nombre?.[0] || '';
+    const a = usuario?.apellidos?.[0] || '';
+    return `${n}${a}`.toUpperCase();
   };
 
   const isTopLevelActive = (path: string, matchPrefix?: boolean) => {
@@ -95,11 +118,53 @@ export function DesktopSidebar({
       <aside
         aria-label="Barra lateral de navegación"
         className={cn(
-          'hidden md:flex flex-col bg-white dark:bg-[#111114] border-r border-neutral-200/90 dark:border-white/[0.08] select-none shrink-0 transition-[width] duration-200 ease-in-out z-30',
+          'hidden md:flex flex-col h-full bg-white dark:bg-[#111114] border-r border-neutral-200/90 dark:border-white/[0.08] select-none shrink-0 transition-[width] duration-200 ease-in-out z-30',
           expanded ? 'w-[264px]' : 'w-[72px]'
         )}
       >
-        {/* Lista de Navegación con Scroll Interno Suave */}
+        {/* ── TOP: Logo MOVI + Botón Colapsar/Expandir ── */}
+        <div className="h-14 px-3.5 flex items-center justify-between border-b border-neutral-100 dark:border-white/[0.06] shrink-0">
+          {/* Logo */}
+          <button
+            onClick={() => navigate('/dashboard')}
+            className={cn(
+              'flex items-center gap-2.5 p-1 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95 transition-all group min-w-0',
+              !expanded && 'mx-auto'
+            )}
+            title="MOVI Digital"
+          >
+            <img
+              src="/movirecurso_7.png"
+              alt="MOVI"
+              className="h-6 w-6 object-contain dark:brightness-0 dark:invert group-hover:scale-105 transition-transform shrink-0"
+            />
+            {expanded && (
+              <span className="font-extrabold text-sm tracking-tight text-neutral-900 dark:text-white truncate">
+                MOVI Digital
+              </span>
+            )}
+          </button>
+
+          {/* Botón Colapsar / Expandir (Solo visible cuando está expandido arriba) */}
+          {expanded && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onToggleSidebar}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors"
+                  aria-label="Colapsar menú"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className={TOOLTIP_CLS}>
+                Colapsar barra lateral
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+
+        {/* ── MIDDLE: Navegación Principal con Scroll Suave ── */}
         <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-1">
           {resolved.map(({ entry, separadorAntes, badge }, idx) => {
             const customBadgeEl = badge ? (
@@ -113,7 +178,7 @@ export function DesktopSidebar({
               </span>
             ) : null;
 
-            // ── Enlace Directo (Dashboard, Trámites, etc.) ──
+            // Enlace Directo (Dashboard, Trámites, Centro Digital, etc.)
             if (entry.type === 'link') {
               const item = entry.item;
               if (!isTopLevelItemVisible(item, userRole)) return null;
@@ -185,7 +250,7 @@ export function DesktopSidebar({
               );
             }
 
-            // ── Workspace Acordeón (Herramientas, Cotizar, Admin, etc.) ──
+            // Workspace con Acordeón (Herramientas, Cotizar, Admin, etc.)
             const ws = entry.workspace;
             if (!isWorkspaceVisible(ws, userRole)) return null;
             if (isModuleVisible) {
@@ -289,7 +354,7 @@ export function DesktopSidebar({
                   )}
                 </div>
 
-                {/* Sub-Items Expandidos con Indentación */}
+                {/* Sub-Items Expandidos */}
                 {isOpen && allWsItems.length > 0 && (
                   <div className="pl-6 pr-1 py-0.5 space-y-0.5 border-l-2 border-neutral-100 dark:border-white/5 ml-4">
                     {visibleSubItems.map(item => {
@@ -322,7 +387,7 @@ export function DesktopSidebar({
                       );
                     })}
 
-                    {/* Botón "Ver todas las opciones" para menús extensos */}
+                    {/* Botón "Ver todas las opciones" */}
                     {isExtensive && (
                       <button
                         onClick={() => setPanelWorkspace(ws)}
@@ -337,6 +402,111 @@ export function DesktopSidebar({
               </div>
             );
           })}
+        </div>
+
+        {/* ── BOTTOM: Utilidades Integradas (Alertas, Tema, Perfil, Salir, Chava) ── */}
+        <div className="border-t border-neutral-100 dark:border-white/[0.06] p-2.5 space-y-2 shrink-0">
+          {/* Fila de controles rápidos (Chava, Alertas, Tema, Toggle Colapsar) */}
+          <div className={cn('flex items-center justify-between gap-1', !expanded && 'flex-col gap-2')}>
+            {/* Chava IA — Administrador */}
+            {userRole === 'Administrador' && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => navigate('/chava')}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-90 transition-transform"
+                  >
+                    <ChavaOrbIcon size="sm" sidebarVariant />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className={TOOLTIP_CLS}>
+                  Chava IA
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Campana de Notificaciones */}
+            <NotificationBell compact fixedPanel />
+
+            {/* Toggle Tema Claro / Oscuro */}
+            <ThemeToggle compact />
+
+            {/* Botón Colapsar/Expandir en Modo Colapsado */}
+            {!expanded && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onToggleSidebar}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors"
+                  >
+                    <PanelLeftOpen className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className={TOOLTIP_CLS}>
+                  Expandir menú lateral
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+
+          {/* Cápsula de Perfil de Usuario */}
+          {expanded ? (
+            <div className="flex items-center justify-between gap-2 p-1.5 rounded-xl bg-neutral-50 dark:bg-white/3 border border-neutral-200/60 dark:border-white/5">
+              <button
+                onClick={() => navigate('/perfil')}
+                className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-80 transition-opacity text-left"
+              >
+                <Avatar className="h-8 w-8 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10 shrink-0">
+                  <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
+                  <AvatarFallback className="text-[10px] font-bold rounded-lg bg-accent text-accent-foreground">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">
+                    {usuario?.nombre} {usuario?.apellidos}
+                  </p>
+                  <p className="text-[10px] text-neutral-400 capitalize truncate">
+                    {usuario?.rol || 'Usuario'}
+                  </p>
+                </div>
+              </button>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onSignOut}
+                    className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
+                    title="Cerrar Sesión"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className={TOOLTIP_CLS}>
+                  Cerrar Sesión
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => navigate('/perfil')}
+                  className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center hover:opacity-80 transition-opacity"
+                >
+                  <Avatar className="h-8 w-8 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10">
+                    <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
+                    <AvatarFallback className="text-[10px] font-bold rounded-lg bg-accent text-accent-foreground">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className={TOOLTIP_CLS}>
+                {usuario?.nombre} {usuario?.apellidos} · Mi Perfil
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </aside>
 
