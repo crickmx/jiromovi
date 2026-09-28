@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import type { TramiteSeccion } from './catalogos/types';
 import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada } from '../../lib/tramiteSecciones';
+import { analizarRFC, analizarCURP, RFC_GENERICO_NACIONAL, ENTIDADES_CURP } from '../../lib/rfcCurp';
 import {
   canAccessRegistroActividades,
   getUsersByOffice,
@@ -110,6 +111,8 @@ export function NuevoTramiteModal({
   const [areaSeleccionada, setAreaSeleccionada] = useState<string>('');
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
   const [asignado, setAsignado] = useState<string>('');
+  // RFCs sin homoclave que el usuario confirmó a mano, por id de campo.
+  const [rfcConfirmado, setRfcConfirmado] = useState<Record<string, boolean>>({});
   const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Baja');
   const [descripcion, setDescripcion] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
@@ -860,6 +863,58 @@ export function NuevoTramiteModal({
   // `estatus` entra aquí desde que dejó de elegirse al crear: viene sembrado con
   // `requerido=true` por create_all_sistema_campos(), así que sin esto validateForm
   // bloquearía el alta exigiendo un campo que ya no se muestra.
+  /**
+   * Llena los campos mapeados con lo que se puede deducir de un RFC o un CURP.
+   * El mapeo lo define el admin en el FormBuilder (`config.mapeo_extraccion`);
+   * aquí no se adivina nada por tipo de campo.
+   *
+   * Solo escribe en campos vacíos: si alguien ya capturó algo a mano, se respeta.
+   */
+  const aplicarExtraccion = (campo: CampoDinamico, valor: string) => {
+    const mapeo = (campo.config?.mapeo_extraccion ?? {}) as Record<string, string>;
+    if (Object.keys(mapeo).length === 0) return;
+
+    const datos: Record<string, string | undefined> = {};
+    if (campo.tipo === 'rfc') {
+      const a = analizarRFC(valor);
+      if (!a.valido) return;
+      datos.fecha = a.fecha;
+      datos.tipo_persona = a.tipoPersona === 'fisica' ? 'Física' : a.tipoPersona === 'moral' ? 'Moral' : undefined;
+    } else if (campo.tipo === 'curp') {
+      const a = analizarCURP(valor);
+      if (!a.valido) return;
+      datos.fecha = a.fecha;
+      datos.sexo = a.sexo === 'H' ? 'Hombre' : a.sexo === 'M' ? 'Mujer' : undefined;
+      datos.entidad = a.entidadNombre;
+    }
+
+    setRespuestasDinamicas(prev => {
+      const siguiente = { ...prev };
+      let cambio = false;
+      for (const [clave, destinoId] of Object.entries(mapeo)) {
+        const texto = datos[clave];
+        if (!texto || !destinoId) continue;
+        const actual = siguiente[destinoId];
+        if (actual !== undefined && actual !== null && actual !== '') continue;
+
+        // En un dropdown hay que guardar el slug de la opción, no la etiqueta.
+        const destino = camposDinamicos.find(c => c.id === destinoId);
+        let aEscribir: string = texto;
+        if (destino && (destino.tipo === 'dropdown' || destino.tipo === 'seleccion_multiple')) {
+          const normaliza = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const opcion = (destino.config?.opciones ?? []).find(
+            (op: { label: string; slug: string }) => normaliza(op.label) === normaliza(texto) || normaliza(op.slug) === normaliza(texto)
+          );
+          if (!opcion) continue; // sin opción equivalente, mejor no inventar
+          aEscribir = opcion.slug;
+        }
+        siguiente[destinoId] = aEscribir;
+        cambio = true;
+      }
+      return cambio ? siguiente : prev;
+    });
+  };
+
   const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por', 'asignado_a', 'estatus'];
 
   // Único punto de verdad de "¿este campo ya tiene respuesta?" — usado por validateForm()
@@ -925,6 +980,32 @@ export function NuevoTramiteModal({
       if (comisionesPendientes.length === 0) {
         setError('Debe agregar al menos 1 comisión pendiente');
         return false;
+      }
+    }
+
+    // RFC y CURP: no dejar guardar con un valor mal formado, y exigir la
+    // confirmación explícita cuando falta la homoclave.
+    for (const campo of camposDinamicos) {
+      if (!canSeeCampo(campo)) continue;
+      const valor = String(respuestasDinamicas[campo.id] ?? '');
+      if (!valor) continue;
+      if (campo.tipo === 'rfc') {
+        const a = analizarRFC(valor);
+        if (!a.valido) {
+          setError(`El RFC de "${campo.label}" no es válido: ${a.error ?? 'revisa el formato'}`);
+          return false;
+        }
+        if (!a.tieneHomoclave && !rfcConfirmado[campo.id]) {
+          setError(`El RFC de "${campo.label}" no trae homoclave. Confirma que es correcto para continuar.`);
+          return false;
+        }
+      }
+      if (campo.tipo === 'curp') {
+        const a = analizarCURP(valor);
+        if (!a.valido) {
+          setError(`El CURP de "${campo.label}" no es válido: ${a.error ?? 'revisa el formato'}`);
+          return false;
+        }
       }
     }
 
@@ -1159,28 +1240,114 @@ export function NuevoTramiteModal({
           />
         )}
 
-        {campo.tipo === 'rfc' && (
-          <input
-            type="text"
-            value={val || ''}
-            onChange={e => set(e.target.value.toUpperCase().slice(0, 13))}
-            placeholder="RFC (12 ó 13 caracteres)"
-            maxLength={13}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent font-mono uppercase"
-          />
-        )}
+        {campo.tipo === 'rfc' && (() => {
+          const a = analizarRFC(String(val || ''));
+          const escrito = String(val || '').length > 0;
+          const faltaConfirmar = a.valido && !a.tieneHomoclave && !rfcConfirmado[campo.id];
+          return (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={val || ''}
+                  onChange={e => {
+                    const nuevo = e.target.value.toUpperCase().slice(0, 13);
+                    set(nuevo);
+                    aplicarExtraccion(campo, nuevo);
+                    // Si cambia el RFC, la confirmación anterior deja de valer.
+                    setRfcConfirmado(prev => ({ ...prev, [campo.id]: false }));
+                  }}
+                  placeholder="RFC (12 ó 13 caracteres)"
+                  maxLength={13}
+                  className={`flex-1 px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 font-mono uppercase ${
+                    escrito && !a.valido ? 'border-red-300 focus:ring-red-400' : 'border-neutral-300 focus:ring-accent'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => { set(RFC_GENERICO_NACIONAL); aplicarExtraccion(campo, RFC_GENERICO_NACIONAL); }}
+                  className="px-2.5 py-2 text-[11px] rounded-xl border border-neutral-300 text-neutral-500 hover:bg-neutral-50 shrink-0"
+                  title="Para cuando no se cuenta con el RFC del cliente"
+                >
+                  Genérico
+                </button>
+              </div>
 
-        {campo.tipo === 'curp' && (
-          <input
-            type="text"
-            value={val || ''}
-            onChange={e => set(e.target.value.toUpperCase().slice(0, 18))}
-            placeholder="CURP (18 caracteres)"
-            maxLength={18}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent font-mono uppercase"
-          />
-        )}
+              {escrito && !a.valido && a.error && (
+                <p className="text-xs text-red-600 flex items-start gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {a.error}
+                </p>
+              )}
 
+              {a.valido && a.advertencia && (
+                <p className="text-xs text-amber-600 flex items-start gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {a.advertencia}
+                </p>
+              )}
+
+              {faltaConfirmar && (
+                <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg space-y-1.5">
+                  <p className="text-xs text-amber-700 flex items-start gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    Este RFC no trae homoclave. Verifica que sea correcto antes de continuar.
+                  </p>
+                  <label className="flex items-center gap-2 text-xs text-amber-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!rfcConfirmado[campo.id]}
+                      onChange={e => setRfcConfirmado(prev => ({ ...prev, [campo.id]: e.target.checked }))}
+                      className="rounded border-amber-300"
+                    />
+                    Confirmo que el RFC es correcto
+                  </label>
+                </div>
+              )}
+
+              {a.valido && !a.esGenerico && a.fecha && (
+                <p className="text-[11px] text-neutral-400">
+                  Persona {a.tipoPersona === 'fisica' ? 'física' : 'moral'} ·{' '}
+                  {a.tipoPersona === 'fisica' ? 'Nacimiento' : 'Constitución'}: {a.fecha.split('-').reverse().join('/')}
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
+        {campo.tipo === 'curp' && (() => {
+          const a = analizarCURP(String(val || ''));
+          const escrito = String(val || '').length > 0;
+          return (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={val || ''}
+                onChange={e => {
+                  const nuevo = e.target.value.toUpperCase().slice(0, 18);
+                  set(nuevo);
+                  aplicarExtraccion(campo, nuevo);
+                }}
+                placeholder="CURP (18 caracteres)"
+                maxLength={18}
+                className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 font-mono uppercase ${
+                  escrito && !a.valido ? 'border-red-300 focus:ring-red-400' : 'border-neutral-300 focus:ring-accent'
+                }`}
+              />
+              {escrito && !a.valido && a.error && (
+                <p className="text-xs text-red-600 flex items-start gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {a.error}
+                </p>
+              )}
+              {a.valido && (
+                <p className="text-[11px] text-neutral-400">
+                  {a.sexo === 'H' ? 'Hombre' : 'Mujer'} · Nacimiento: {a.fecha?.split('-').reverse().join('/')} · {a.entidadNombre}
+                </p>
+              )}
+            </div>
+          );
+        })()}
         {campo.tipo === 'porcentaje' && (
           <div className="relative">
             <input

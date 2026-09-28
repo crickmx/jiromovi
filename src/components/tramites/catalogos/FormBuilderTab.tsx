@@ -5,6 +5,7 @@ import { FormPreview } from './FormPreview';
 import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, ROL_VISIBILIDAD_OPCIONES, slugify, type CampoTipo, type RolVisibilidad } from './types';
 import { supabase } from '../../../lib/supabase';
 import { estiloHeader, CLASE_VELO, type FondoHeader } from '../../../lib/tramiteHeader';
+import { DATOS_EXTRAIBLES } from '../../../lib/rfcCurp';
 
 interface Props {
   tipoId: string;
@@ -1185,6 +1186,50 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                     </select>
                   </div>
                 )}
+
+                {/* A qué campos del mismo formulario van los datos que se sacan del
+                    RFC o del CURP. Se elige aquí en vez de adivinarlo por tipo: si hay
+                    dos campos de fecha, adivinar llenaría el equivocado sin avisar. */}
+                {(editingCampo.tipo === 'rfc' || editingCampo.tipo === 'curp') && (() => {
+                  const extraibles = DATOS_EXTRAIBLES[editingCampo.tipo as 'rfc' | 'curp'];
+                  const mapeo = (editCampoConfig.mapeo_extraccion ?? {}) as Record<string, string>;
+                  const destinos = campos.filter(c => c.id !== editingCampo.id && !c.is_sistema);
+                  return (
+                    <div className="border border-neutral-200 rounded-lg p-2.5 bg-white space-y-2">
+                      <label className="block text-xs font-medium text-neutral-600">
+                        Al capturar el {editingCampo.tipo === 'rfc' ? 'RFC' : 'CURP'}, llenar
+                      </label>
+                      {destinos.length === 0 ? (
+                        <p className="text-[10px] text-neutral-400 italic">
+                          Agrega otros campos al formulario para poder mapearlos.
+                        </p>
+                      ) : (
+                        extraibles.map(d => (
+                          <div key={d.clave} className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-neutral-500 w-28 shrink-0 leading-tight">{d.label}</span>
+                            <span className="text-neutral-300 text-[10px]">→</span>
+                            <select
+                              value={mapeo[d.clave] ?? ''}
+                              onChange={(e) => {
+                                const siguiente = { ...mapeo };
+                                if (e.target.value) siguiente[d.clave] = e.target.value;
+                                else delete siguiente[d.clave];
+                                setEditCampoConfig({ ...editCampoConfig, mapeo_extraccion: siguiente });
+                              }}
+                              className="flex-1 min-w-0 px-2 py-1 text-[11px] border border-neutral-300 rounded-lg bg-white"
+                            >
+                              <option value="">— No llenar nada</option>
+                              {destinos.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                            </select>
+                          </div>
+                        ))
+                      )}
+                      <p className="text-[10px] text-neutral-400">
+                        Se llenan solos al escribir, y solo si el campo destino está vacío.
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {editingCampo.tipo === 'telefono' && (
                   <div>
