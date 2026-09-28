@@ -1,6 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { DesktopHeader } from './layout/DesktopHeader';
 import { DesktopSidebar } from './layout/DesktopSidebar';
 import { Breadcrumbs } from './navigation/Breadcrumbs';
 import { MobileNav } from './layout/MobileNav';
@@ -18,7 +17,6 @@ import { useTramitesAttentionCount } from '../hooks/useTramitesAttentionCount';
 import { useStoreAttentionCount } from '../hooks/useStoreAttentionCount';
 import { useBugReportConfig } from '../hooks/useBugReportConfig';
 import { FloatingBugReportButton } from './FloatingBugReportButton';
-import { NavigationPanel } from './navigation/NavigationPanel';
 
 const SIDEBAR_EXPANDED_KEY = 'movi:sidebar_expanded';
 
@@ -56,8 +54,6 @@ export function Layout({ children }: LayoutProps) {
     }
   });
 
-  const [quickSearchOpen, setQuickSearchOpen] = useState(false);
-
   const userRole = (usuario?.rol as UserRole) || 'Agente';
   const oficinaId = (usuario as any)?.oficina_id ?? null;
   const { isVisible } = useModuleVisibility();
@@ -83,18 +79,6 @@ export function Layout({ children }: LayoutProps) {
   useEffect(() => {
     setMobileDrawerOpen(false);
   }, [location.pathname]);
-
-  // Shortcut ⌘K / Ctrl+K para búsqueda rápida
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setQuickSearchOpen(o => !o);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   const handleToggleSidebar = () => {
     setSidebarExpanded(prev => {
@@ -122,49 +106,42 @@ export function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className={`app-shell min-h-screen flex flex-col overflow-hidden bg-neutral-50 dark:bg-[#0c0c0e] ${bannerPt}`}>
+    <div className={`app-shell h-screen flex flex-col overflow-hidden bg-neutral-50 dark:bg-[#0c0c0e] ${bannerPt}`}>
       {/* Impersonation banner & Beta Banner */}
       <ImpersonationBanner />
       {isBeta && <BetaBanner />}
       {!isBeta && esUsuarioBeta && <BackToBetaBanner />}
 
-      {/* ── Encabezado Superior de Escritorio (52px) ── */}
-      <DesktopHeader
-        sidebarExpanded={sidebarExpanded}
-        onToggleSidebar={handleToggleSidebar}
-        userRole={userRole}
-        usuario={usuario}
-        onSignOut={handleSignOut}
-        onOpenQuickSearch={() => setQuickSearchOpen(true)}
-      />
-
-      {/* ── Cuerpo Principal de Escritorio (Sidebar Izquierdo + Área de Contenido) ── */}
+      {/* ── Estructura de Escritorio: Menú Lateral Único + Área de Contenido ── */}
       <div className="flex-1 flex min-w-0 overflow-hidden relative">
-        {/* Barra Lateral Izquierda (Expandible / Colapsable con Acordeón) */}
+        {/* Barra Lateral Izquierda Unificada */}
         <DesktopSidebar
           expanded={sidebarExpanded}
+          onToggleSidebar={handleToggleSidebar}
           workspace={workspace}
           activeItem={activeItem}
           userRole={userRole}
+          usuario={usuario}
+          onSignOut={handleSignOut}
           isModuleVisible={isModuleVisible}
           oficinaId={oficinaId}
           badgeCounts={badgeCounts}
           topLevelBadges={topLevelBadges}
         />
 
-        {/* Área de Contenido */}
+        {/* Área de Contenido Principal */}
         {isFullHeight ? (
           <main className="flex-1 flex flex-col overflow-hidden min-w-0 mobile-page-content md:!pb-0">
             {children}
           </main>
         ) : (
           <main className="flex-1 flex flex-col overflow-y-auto min-w-0 mobile-page-content md:!pb-0">
-            {/* Barra de Breadcrumbs sobre el contenido */}
+            {/* Breadcrumbs de orientación */}
             <div className="hidden md:flex px-6 py-2.5 border-b border-neutral-200/60 dark:border-white/5 bg-white/40 dark:bg-white/[0.015] shrink-0 justify-between items-center">
               <Breadcrumbs workspace={workspace} activeItem={activeItem} />
             </div>
 
-            {/* Contenedor de Página */}
+            {/* Contenido de la página */}
             <div className="flex-1 p-4 md:p-6 max-w-screen-2xl mx-auto w-full">
               {children}
             </div>
@@ -187,20 +164,6 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Mobile bottom navigation (Intacto para teléfonos) */}
       <MobileNav onOpenDrawer={() => setMobileDrawerOpen(true)} />
-
-      {/* Modal de Búsqueda Rápida (⌘K) */}
-      {quickSearchOpen && workspace && (
-        <NavigationPanel
-          workspace={workspace}
-          activeItem={activeItem}
-          userRole={userRole}
-          isModuleVisible={isModuleVisible}
-          oficinaId={oficinaId}
-          isOpen={quickSearchOpen}
-          onClose={() => setQuickSearchOpen(false)}
-          badgeCounts={badgeCounts}
-        />
-      )}
 
       {usuario && bugReportActivo && <FloatingBugReportButton />}
     </div>
