@@ -1,9 +1,9 @@
-import { Fragment, useRef } from 'react';
+import { Fragment } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isWorkspaceVisible, isTopLevelItemVisible, isItemVisible } from '@/lib/workspaceConfig';
-import type { WorkspaceDefinition, WorkspaceNavItem, WorkspaceId, UserRole } from '@/lib/workspaceConfig';
+import type { WorkspaceDefinition, WorkspaceNavItem, UserRole } from '@/lib/workspaceConfig';
 import { useSidebarConfig } from '../../hooks/useSidebarConfig';
 import { useSidebarItemsConfig } from '../../hooks/useSidebarItemsConfig';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -18,10 +18,9 @@ const BADGE_COLORS: Record<string, string> = {
   blue: 'bg-blue-500 text-white',
   red: 'bg-red-500 text-white',
   purple: 'bg-purple-500 text-white',
-  orange: 'bg-orange-500 text-white',
 };
 
-const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-3 py-1.5";
+const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-2.5 py-1";
 
 interface Props {
   workspace: WorkspaceDefinition | null;
@@ -50,7 +49,6 @@ export function HorizontalNav({
   const location = useLocation();
   const { resolved } = useSidebarConfig();
   const { getResolvedItems } = useSidebarItemsConfig();
-  const subNavRef = useRef<HTMLDivElement>(null);
 
   const getInitials = () => {
     const n = usuario?.nombre?.[0] || '';
@@ -91,36 +89,36 @@ export function HorizontalNav({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="hidden md:flex flex-col w-full shrink-0 z-30 select-none shadow-sm">
-        {/* ── TIER 1: Barra Principal Superior (Dark Charcoal / Brand Header) ── */}
-        <div className="h-14 bg-[#141417] text-white border-b border-white/[0.08] px-4 flex items-center justify-between gap-4">
+      <header className="hidden md:flex flex-col w-full shrink-0 z-30 select-none shadow-xs">
+        {/* ── TIER 1: Barra Principal Superior Compacta (Tema Dinámico MOVI) ── */}
+        <div className="h-12 bg-white dark:bg-[#111113] border-b border-neutral-200/80 dark:border-white/[0.08] px-3.5 flex items-center justify-between gap-3">
           
           {/* Logo MOVI */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2.5 px-2 py-1 rounded-xl hover:bg-white/5 active:scale-95 transition-all group"
-              title="Ir al Dashboard"
+              className="flex items-center gap-2 p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95 transition-all group"
+              title="Dashboard"
             >
               <img
                 src="/movirecurso_7.png"
                 alt="MOVI"
-                className="h-6 w-6 object-contain brightness-0 invert group-hover:scale-105 transition-transform"
+                className="h-5 w-5 object-contain dark:brightness-0 dark:invert group-hover:scale-105 transition-transform"
               />
-              <span className="font-extrabold text-sm tracking-tight text-white hidden lg:inline">
+              <span className="font-bold text-xs tracking-tight text-neutral-900 dark:text-white hidden lg:inline">
                 MOVI
               </span>
             </button>
-            <div className="w-px h-6 bg-white/10 hidden sm:block" />
+            <div className="w-px h-4 bg-neutral-200 dark:bg-white/10 hidden sm:block" />
           </div>
 
-          {/* Menú Principal Horizontal (Workspaces & Top Links) */}
-          <nav className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth py-1">
+          {/* Menú Principal Horizontal (Compacto sin scroll forzado) */}
+          <nav className="flex items-center gap-0.5 justify-center flex-1 min-w-0 flex-wrap">
             {resolved.map(({ entry, separadorAntes, badge }, idx) => {
               const customBadgeEl = badge ? (
                 <span
                   className={cn(
-                    'px-1.5 py-[1px] rounded-full text-[8px] font-bold leading-none whitespace-nowrap',
+                    'px-1 py-[0.5px] rounded-full text-[8px] font-bold leading-none whitespace-nowrap',
                     BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber
                   )}
                 >
@@ -138,24 +136,24 @@ export function HorizontalNav({
 
                 return (
                   <Fragment key={`link-${idx}`}>
-                    {separadorAntes && <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />}
+                    {separadorAntes && <div className="w-px h-3.5 bg-neutral-200 dark:bg-white/10 mx-0.5 shrink-0" />}
                     <button
                       onClick={() => navigate(item.path)}
                       className={cn(
-                        'flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12.5px] font-medium shrink-0 transition-all duration-150 relative group',
+                        'flex items-center gap-1.5 px-2 py-1 rounded-lg text-[12px] font-medium shrink-0 transition-all duration-150 relative',
                         isActive
-                          ? 'bg-orange-500/20 text-orange-400 font-semibold ring-1 ring-orange-500/40 shadow-sm'
-                          : 'text-neutral-300 hover:text-white hover:bg-white/8 active:scale-95'
+                          ? 'bg-accent/10 text-accent font-semibold dark:bg-accent/15'
+                          : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95'
                       )}
                     >
-                      <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-orange-400' : 'text-neutral-400 group-hover:text-white')} />
+                      <Icon className={cn('w-3.5 h-3.5 shrink-0 transition-colors', isActive ? 'text-accent' : 'text-neutral-400 dark:text-neutral-500')} />
                       <span className="whitespace-nowrap">{item.label}</span>
 
                       {/* Attention Badge */}
                       {tlBadge > 0 && (
                         <span className="relative flex items-center justify-center shrink-0">
                           <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" />
-                          <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                          <span className="relative min-w-[14px] h-3.5 px-1 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
                             {tlBadge > 99 ? '99+' : tlBadge}
                           </span>
                         </span>
@@ -163,9 +161,9 @@ export function HorizontalNav({
 
                       {customBadgeEl}
 
-                      {/* Active indicator bar */}
+                      {/* Active line indicator */}
                       {isActive && (
-                        <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-orange-500 rounded-full" />
+                        <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-accent rounded-full" />
                       )}
                     </button>
                   </Fragment>
@@ -191,23 +189,23 @@ export function HorizontalNav({
 
               return (
                 <Fragment key={ws.id}>
-                  {separadorAntes && <div className="w-px h-5 bg-white/10 mx-1 shrink-0" />}
+                  {separadorAntes && <div className="w-px h-3.5 bg-neutral-200 dark:bg-white/10 mx-0.5 shrink-0" />}
                   <button
                     onClick={() => navigate(firstPath)}
                     className={cn(
-                      'flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12.5px] font-medium shrink-0 transition-all duration-150 relative group',
+                      'flex items-center gap-1.5 px-2 py-1 rounded-lg text-[12px] font-medium shrink-0 transition-all duration-150 relative',
                       isActive
-                        ? 'bg-orange-500/20 text-orange-400 font-semibold ring-1 ring-orange-500/40 shadow-sm'
-                        : 'text-neutral-300 hover:text-white hover:bg-white/8 active:scale-95'
+                        ? 'bg-accent/10 text-accent font-semibold dark:bg-accent/15'
+                        : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95'
                     )}
                   >
-                    <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-orange-400' : 'text-neutral-400 group-hover:text-white')} />
+                    <Icon className={cn('w-3.5 h-3.5 shrink-0 transition-colors', isActive ? 'text-accent' : 'text-neutral-400 dark:text-neutral-500')} />
                     <span className="whitespace-nowrap">{ws.label}</span>
                     {customBadgeEl}
 
-                    {/* Active indicator bar */}
+                    {/* Active line indicator */}
                     {isActive && (
-                      <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-orange-500 rounded-full" />
+                      <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-accent rounded-full" />
                     )}
                   </button>
                 </Fragment>
@@ -215,15 +213,15 @@ export function HorizontalNav({
             })}
           </nav>
 
-          {/* Utilidades Derecha (Chava, Alertas, Tema, Perfil, Salir) */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Utilidades Derecha Compactas (Chava, Alertas, Tema, Perfil, Salir) */}
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Chava IA — Admin only */}
             {userRole === 'Administrador' && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => navigate('/chava')}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-90 transition-transform"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-90 transition-transform"
                   >
                     <ChavaOrbIcon size="sm" sidebarVariant />
                   </button>
@@ -240,22 +238,22 @@ export function HorizontalNav({
             {/* Toggle Tema */}
             <ThemeToggle compact />
 
-            <div className="w-px h-5 bg-white/10 mx-0.5" />
+            <div className="w-px h-4 bg-neutral-200 dark:bg-white/10 mx-0.5" />
 
             {/* Perfil Usuario Capsule */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => navigate('/perfil')}
-                  className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-white/10 active:scale-95 transition-all text-left"
+                  className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95 transition-all text-left"
                 >
-                  <Avatar className="h-7 w-7 rounded-lg ring-1 ring-white/20">
-                    <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
-                    <AvatarFallback className="text-[10px] font-bold rounded-lg bg-orange-500 text-white">
+                  <Avatar className="h-6 w-6 rounded-md ring-1 ring-neutral-200 dark:ring-white/10">
+                    <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-md" />
+                    <AvatarFallback className="text-[9px] font-bold rounded-md bg-accent text-accent-foreground">
                       {getInitials()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-xs font-semibold text-neutral-200 truncate max-w-[100px] hidden xl:inline">
+                  <span className="text-[11.5px] font-semibold text-neutral-700 dark:text-neutral-200 truncate max-w-[90px] hidden xl:inline">
                     {usuario?.nombre}
                   </span>
                 </button>
@@ -270,9 +268,9 @@ export function HorizontalNav({
               <TooltipTrigger asChild>
                 <button
                   onClick={onSignOut}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 hover:text-red-400 hover:bg-red-500/10 active:scale-90 transition-colors"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-90 transition-colors"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className={TOOLTIP_CLS}>
@@ -282,32 +280,29 @@ export function HorizontalNav({
           </div>
         </div>
 
-        {/* ── TIER 2: Sub-Barra de Navegación del Workspace Activo ── */}
+        {/* ── TIER 2: Sub-Barra Contextual Compacta (34px de altura) ── */}
         {hasSubNav && (
-          <div
-            ref={subNavRef}
-            className="h-11 bg-white dark:bg-[#111113] border-b border-neutral-200/90 dark:border-white/[0.07] px-4 flex items-center gap-2 overflow-x-auto no-scrollbar shadow-[0_1px_4px_rgba(0,0,0,0.03)]"
-          >
+          <div className="h-[34px] bg-neutral-50/90 dark:bg-[#0a0a0c] border-b border-neutral-200/80 dark:border-white/[0.06] px-3.5 flex items-center gap-1.5 justify-center flex-wrap">
             {/* Workspace Label Badge */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-300 font-bold text-[11px] uppercase tracking-wider shrink-0">
-              <workspace.icon className="w-3.5 h-3.5 text-orange-500" />
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-200/70 dark:bg-white/10 text-neutral-700 dark:text-neutral-200 font-bold text-[10px] uppercase tracking-wider shrink-0">
+              <workspace.icon className="w-3 h-3 text-accent" />
               <span>{workspace.label}</span>
             </div>
 
-            <div className="w-px h-5 bg-neutral-200 dark:bg-white/10 shrink-0 mx-1" />
+            <div className="w-px h-3.5 bg-neutral-300 dark:bg-white/10 shrink-0 mx-0.5" />
 
             {/* Sub-Items Tabs */}
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+            <div className="flex items-center gap-0.5 flex-wrap">
               {gruposResueltos.map(({ grupo, items }) => (
-                <div key={grupo?.id ?? '_sin_grupo'} className="flex items-center gap-1 shrink-0">
+                <div key={grupo?.id ?? '_sin_grupo'} className="flex items-center gap-0.5 shrink-0">
                   {grupo && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 px-1.5 shrink-0">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 px-1 shrink-0">
                       {grupo.nombre}:
                     </span>
                   )}
                   {items.map((entry) => {
                     if (entry.kind === 'separador') {
-                      return <div key={`sep-${entry.id}`} className="w-px h-4 bg-neutral-200 dark:bg-white/10 mx-1 shrink-0" />;
+                      return <div key={`sep-${entry.id}`} className="w-px h-3 bg-neutral-200 dark:bg-white/10 mx-0.5 shrink-0" />;
                     }
 
                     const { item, badge: customBadge } = entry;
@@ -320,26 +315,26 @@ export function HorizontalNav({
                         key={item.path}
                         onClick={() => navigate(item.path)}
                         className={cn(
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium shrink-0 transition-all duration-150 relative group',
+                          'flex items-center gap-1 px-2 py-0.5 rounded-md text-[11.5px] font-medium shrink-0 transition-all duration-150',
                           active
-                            ? 'bg-orange-50 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400 font-semibold shadow-xs ring-1 ring-orange-500/30'
-                            : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
+                            ? 'bg-accent/10 dark:bg-accent/20 text-accent font-semibold shadow-xs ring-1 ring-accent/30'
+                            : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
                         )}
                       >
-                        <Icon className={cn('w-3.5 h-3.5 shrink-0 transition-colors', active ? 'text-orange-500' : 'text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200')} />
+                        <Icon className={cn('w-3 h-3 shrink-0 transition-colors', active ? 'text-accent' : 'text-neutral-400 dark:text-neutral-500')} />
                         <span className="whitespace-nowrap">{item.label}</span>
 
                         {badge > 0 && (
                           <span className="relative flex items-center justify-center shrink-0">
                             <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" />
-                            <span className="relative min-w-[15px] h-3.5 px-1 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
+                            <span className="relative min-w-[13px] h-3 px-1 bg-red-500 text-white text-[7.5px] font-bold rounded-full flex items-center justify-center leading-none">
                               {badge > 99 ? '99+' : badge}
                             </span>
                           </span>
                         )}
 
                         {customBadge && (
-                          <span className={cn('px-1.5 py-[1px] rounded-full text-[8px] font-bold leading-none whitespace-nowrap', BADGE_COLORS[customBadge.color] ?? BADGE_COLORS.amber)}>
+                          <span className={cn('px-1 py-[0.5px] rounded-full text-[7.5px] font-bold leading-none whitespace-nowrap', BADGE_COLORS[customBadge.color] ?? BADGE_COLORS.amber)}>
                             {customBadge.texto}
                           </span>
                         )}
