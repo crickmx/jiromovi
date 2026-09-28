@@ -61,8 +61,11 @@ export function Layout({ children }: LayoutProps) {
   if (tramitesAttentionCount > 0) badgeCounts['/tramites'] = tramitesAttentionCount;
   if (storeAttentionCount > 0) badgeCounts['/store'] = storeAttentionCount;
 
+  const topLevelBadges: Record<string, number> = {};
+  if (tramitesAttentionCount > 0) topLevelBadges['/tramites'] = tramitesAttentionCount;
+  if (storeAttentionCount > 0) topLevelBadges['/store'] = storeAttentionCount;
+
   const workspaceBadges: Partial<Record<string, number>> = {};
-  if (tramitesAttentionCount > 0) workspaceBadges['comercial'] = tramitesAttentionCount;
 
   // Auto-close drawer on route change
   useEffect(() => {
@@ -101,7 +104,7 @@ export function Layout({ children }: LayoutProps) {
           isModuleVisible={isModuleVisible}
           oficinaId={oficinaId}
           workspaceBadges={workspaceBadges}
-          topLevelBadges={storeAttentionCount > 0 ? { '/store': storeAttentionCount } : {}}
+          topLevelBadges={topLevelBadges}
         />
       </div>
 
