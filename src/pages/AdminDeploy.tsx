@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
 import { RefreshCw, Rocket, Clock, CircleCheck as CheckCircle2, CircleX as XCircle, ShieldCheck } from 'lucide-react';
 
-const RECAPTCHA_SITE_KEY = (import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI ?? '') as string;
+const RECAPTCHA_SITE_KEY =
+  ((import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI ?? import.meta.env.VITE_RECAPTCHA_SITE_KEY ?? '') as string);
 
 interface DeployTrigger {
   id: string;

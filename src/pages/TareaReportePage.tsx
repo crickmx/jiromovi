@@ -9,10 +9,10 @@ import { supabase } from '../lib/supabase';
 declare global {
   interface Window { grecaptcha: any; }
 }
-// Site key propio de MOVI, separado del que usan seguros.express / lead público —
-// debe pertenecer al MISMO registro de reCAPTCHA en Google que RECAPTCHA_SECRET_KEY_MOVI
-// (edge function procesar-reporte-protegido), o la verificación del token siempre falla.
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI as string | undefined;
+
+const RECAPTCHA_SITE_KEY =
+  (import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI as string | undefined) ||
+  (import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined);
 
 // ── IndexedDB helpers ──────────────────────────────────────────────────────
 const IDB_NAME = 'jiromovi_reportes';
@@ -216,11 +216,17 @@ export default function TareaReportePage() {
   async function getCaptchaToken(): Promise<string | null> {
     if (!RECAPTCHA_SITE_KEY || !window.grecaptcha) return null;
     return new Promise(resolve => {
-      window.grecaptcha.ready(() => {
-        window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'reporte_submit' })
-          .then((token: string) => resolve(token))
-          .catch(() => resolve(null));
-      });
+      const timer = setTimeout(() => resolve(null), 3500);
+      try {
+        window.grecaptcha.ready(() => {
+          window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'reporte_submit' })
+            .then((token: string) => { clearTimeout(timer); resolve(token); })
+            .catch(() => { clearTimeout(timer); resolve(null); });
+        });
+      } catch {
+        clearTimeout(timer);
+        resolve(null);
+      }
     });
   }
 

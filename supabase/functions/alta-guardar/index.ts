@@ -38,19 +38,41 @@ function limpiarCampos(input: Record<string, unknown>): Record<string, unknown> 
 }
 
 async function verificarRecaptcha(token: string | undefined): Promise<boolean> {
-  const secret = Deno.env.get('RECAPTCHA_SECRET_KEY') || '';
-  if (!secret) return true; // si no está configurado, no bloquea (igual que otras functions)
-  try {
-    const r = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `secret=${secret}&response=${token || ''}`,
-    });
-    const j = await r.json();
-    return !!j.success && (typeof j.score !== 'number' || j.score >= 0.5);
-  } catch {
-    return true; // no bloquear por caída de Google
+  const secrets = [
+    Deno.env.get('RECAPTCHA_SECRET_KEY_MOVI'),
+    Deno.env.get('RECAPTCHA_SECRET_KEY'),
+  ].filter(Boolean) as string[];
+
+  // Si ningún secret está configurado en el backend, no bloqueamos
+  if (secrets.length === 0) return true;
+
+  if (!token) {
+    console.warn('[alta-guardar] Token de reCAPTCHA ausente en iniciar');
+    return false;
   }
+
+  for (const secret of secrets) {
+    try {
+      const r = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `secret=${secret}&response=${token}`,
+      });
+      const j = await r.json();
+      if (j.success && (typeof j.score !== 'number' || j.score >= 0.3)) {
+        return true;
+      }
+      console.warn('[alta-guardar] siteverify intento fallido con secret:', {
+        success: j.success,
+        score: j.score,
+        'error-codes': j['error-codes'],
+      });
+    } catch (err) {
+      console.error('[alta-guardar] error al contactar Google:', err);
+      return true; // no bloquear por caída de red con Google
+    }
+  }
+  return false;
 }
 
 /** Carga un alta validando el resume_token. */

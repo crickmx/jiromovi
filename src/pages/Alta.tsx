@@ -42,7 +42,10 @@ const BRANDS: Record<BrandKey, BrandCfg> = {
   },
 };
 
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+const RECAPTCHA_SITE_KEY =
+  (import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI as string | undefined) ||
+  (import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined);
+
 const SUMSUB_SDK_SRC = 'https://static.sumsub.com/idensic/static/sns-websdk-builder.js';
 
 function useRecaptchaLoader() {
@@ -57,11 +60,30 @@ function useRecaptchaLoader() {
     document.head.appendChild(s);
   }, []);
 }
+
 async function ejecutarRecaptcha(): Promise<string> {
+  const siteKey = RECAPTCHA_SITE_KEY;
+  if (!siteKey) return '';
   const g = (window as unknown as { grecaptcha?: { ready: (cb: () => void) => void; execute: (k: string, o: object) => Promise<string> } }).grecaptcha;
-  if (!RECAPTCHA_SITE_KEY || !g) return '';
+  if (!g) return '';
   return new Promise<string>((resolve) => {
-    g.ready(() => g.execute(RECAPTCHA_SITE_KEY!, { action: 'submit_alta' }).then(resolve).catch(() => resolve('')));
+    const timer = setTimeout(() => resolve(''), 3500);
+    try {
+      g.ready(() => {
+        g.execute(siteKey, { action: 'submit_alta' })
+          .then((t) => {
+            clearTimeout(timer);
+            resolve(t);
+          })
+          .catch(() => {
+            clearTimeout(timer);
+            resolve('');
+          });
+      });
+    } catch {
+      clearTimeout(timer);
+      resolve('');
+    }
   });
 }
 

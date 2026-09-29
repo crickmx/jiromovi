@@ -54,6 +54,20 @@ export interface DocumentoRegistrado {
   mime_type: string;
 }
 
+const MENSAJES_ERROR: Record<string, string> = {
+  RECAPTCHA_FALLIDO: 'No se pudo verificar la validación de seguridad (reCAPTCHA). Por favor recarga la página o intenta de nuevo.',
+  ALTA_NO_ENCONTRADA: 'No se encontró el registro de alta. Por favor inicia nuevamente.',
+  TOKEN_INVALIDO: 'Sesión no válida o expirada. Por favor recarga la página.',
+  FALTA_ALTA_O_TOKEN: 'Faltan datos de sesión para guardar el progreso.',
+  EXTENSION_NO_PERMITIDA: 'El formato de archivo no está permitido. Usa PDF, JPG, PNG o WEBP.',
+  NO_SE_PUDO_FIRMAR_SUBIDA: 'No se pudo autorizar la subida del archivo. Intenta de nuevo.',
+  NO_SE_PUDO_REGISTRAR_DOC: 'No se pudo registrar el documento cargado.',
+};
+
+function humanizarError(errCode: string): string {
+  return MENSAJES_ERROR[errCode] || errCode;
+}
+
 const LS_KEY = 'alta_onboarding_session';
 
 export function guardarSesionLocal(s: AltaSession): void {
@@ -69,12 +83,17 @@ export function limpiarSesionLocal(): void {
 async function invoke<T>(action: string, body: Record<string, unknown>, fn = 'alta-guardar'): Promise<T> {
   const { data, error } = await supabase.functions.invoke(fn, { body: { action, ...body } });
   if (error) {
-    // El cuerpo de error de la function suele traer {error, detalle}
     let detalle = error.message;
-    try { const ctx = await (error as { context?: Response }).context?.json?.(); if (ctx?.error) detalle = ctx.error; } catch { /* ignore */ }
-    throw new Error(detalle || 'Error de red');
+    try {
+      const ctx = await (error as { context?: Response }).context?.json?.();
+      if (ctx?.error) detalle = humanizarError(ctx.error);
+    } catch { /* ignore */ }
+    throw new Error(humanizarError(detalle) || 'Error de red');
   }
-  if (data && (data as { error?: string }).error) throw new Error((data as { error: string; faltantes?: string[] }).error);
+  if (data && (data as { error?: string }).error) {
+    const errCode = (data as { error: string }).error;
+    throw new Error(humanizarError(errCode));
+  }
   return data as T;
 }
 
