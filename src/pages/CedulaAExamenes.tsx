@@ -24,7 +24,8 @@ export default function CedulaAExamenes() {
     if (usuario) {
       cargarExamenes();
     }
-  }, [usuario]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.id]);
 
   const cargarExamenes = async () => {
     try {

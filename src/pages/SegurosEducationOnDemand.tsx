@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { trackCourseStart } from '../lib/activityLogger';
@@ -28,15 +28,32 @@ interface Lesson {
   video_url: string;
   duracion: number;
   fecha_creacion: string;
+  oficinas_asignadas?: string[] | null;
   progreso?: number;
   completado?: boolean;
   tiempo_reproduccion?: number;
 }
 
+// No depende del estado del componente; vive fuera para poder usarse en callbacks memoizados.
+const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
+  const toast = document.createElement('div');
+  const bgColor = type === 'success'
+    ? 'bg-emerald-500'
+    : type === 'error'
+    ? 'bg-red-500'
+    : 'bg-amber-500';
+  toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 max-w-md ${bgColor}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, type === 'warning' ? 5000 : 3000);
+};
+
 export function SegurosEducationOnDemand() {
   const { usuario } = useAuth();
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [filteredLessons, setFilteredLessons] = useState<Lesson[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,10 +82,12 @@ export function SegurosEducationOnDemand() {
   const [pendingDocuments, setPendingDocuments] = useState<File[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Solo cuando cambia el usuario (no cada vez que se recrea el objeto por un refresh de token).
   useEffect(() => {
     checkAdminPermissions();
     fetchData();
-  }, [usuario]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.id]);
 
   const checkAdminPermissions = async () => {
     if (!usuario) {
@@ -102,73 +121,51 @@ export function SegurosEducationOnDemand() {
     setIsAdmin(false);
   };
 
-  useEffect(() => {
-    filterLessons();
-  }, [searchTerm, selectedCategory, lessons]);
 
   const fetchData = async () => {
     if (!usuario) return;
 
     try {
-      setLoading(true);
+      // El spinner de página completa solo en la carga inicial; los refrescos no desmontan el reproductor.
+      if (lessons.length === 0) setLoading(true);
+      const puedeAdministrar = usuario.rol === 'Administrador' || usuario.rol === 'Gerente';
 
-      // Fetch categories
-      const { data: cats } = await supabase
-        .from('seguros_categories')
-        .select('*')
-        .order('nombre');
-      setCategories(cats || []);
+      // 4 consultas en paralelo en lugar de 3 en serie + 2 por lección.
+      const [catsRes, ofisRes, lessonsRes, progressRes] = await Promise.all([
+        supabase.from('seguros_categories').select('id, nombre, descripcion').order('nombre'),
+        puedeAdministrar
+          ? supabase.from('oficinas').select('id, nombre').order('nombre')
+          : Promise.resolve({ data: [] as Oficina[] }),
+        supabase
+          .from('seguros_lessons')
+          .select('id, titulo, descripcion, miniatura_url, video_url, duracion, fecha_creacion, oficinas_asignadas, seguros_lesson_categories(seguros_categories(id, nombre))')
+          .order('fecha_creacion', { ascending: false }),
+        supabase
+          .from('seguros_progress')
+          .select('lesson_id, progreso, completado, tiempo_reproduccion')
+          .eq('user_id', usuario.id),
+      ]);
 
-      // Fetch oficinas
-      const { data: ofis } = await supabase
-        .from('oficinas')
-        .select('id, nombre')
-        .order('nombre');
-      setOficinas(ofis || []);
+      setCategories(catsRes.data || []);
+      setOficinas(ofisRes.data || []);
 
-      // Fetch lessons with progress and categories
-      const { data: lessonsData } = await supabase
-        .from('seguros_lessons')
-        .select('*')
-        .order('fecha_creacion', { ascending: false });
+      const progressByLesson = new Map((progressRes.data || []).map((p) => [p.lesson_id, p]));
+      type LessonRow = Omit<Lesson, 'categorias'> & {
+        seguros_lesson_categories: { seguros_categories: { id: string; nombre: string } | null }[] | null;
+      };
 
-      if (lessonsData) {
-        const lessonsWithProgress = await Promise.all(
-          lessonsData.map(async (lesson) => {
-            // Get progress
-            const { data: progress } = await supabase
-              .from('seguros_progress')
-              .select('progreso, completado, tiempo_reproduccion')
-              .eq('lesson_id', lesson.id)
-              .eq('user_id', usuario.id)
-              .maybeSingle();
-
-            // Get categories via junction table
-            const { data: lessonCategories } = await supabase
-              .from('seguros_lesson_categories')
-              .select(`
-                category_id,
-                seguros_categories(id, nombre)
-              `)
-              .eq('lesson_id', lesson.id);
-
-            const categorias = lessonCategories?.map(lc => ({
-              id: lc.seguros_categories.id,
-              nombre: lc.seguros_categories.nombre
-            })) || [];
-
-            return {
-              ...lesson,
-              categorias,
-              progreso: progress?.progreso || 0,
-              completado: progress?.completado || false,
-              tiempo_reproduccion: progress?.tiempo_reproduccion || 0,
-            };
-          })
-        );
-
-        setLessons(lessonsWithProgress);
-      }
+      setLessons(((lessonsRes.data || []) as unknown as LessonRow[]).map(({ seguros_lesson_categories, ...lesson }) => {
+        const progress = progressByLesson.get(lesson.id);
+        return {
+          ...lesson,
+          categorias: (seguros_lesson_categories || [])
+            .map((lc) => lc.seguros_categories)
+            .filter((c): c is { id: string; nombre: string } => !!c),
+          progreso: progress?.progreso || 0,
+          completado: progress?.completado || false,
+          tiempo_reproduccion: progress?.tiempo_reproduccion || 0,
+        };
+      }));
     } catch (error) {
       console.error('Error fetching data:', error);
       showToast('Error al cargar datos', 'error');
@@ -177,26 +174,15 @@ export function SegurosEducationOnDemand() {
     }
   };
 
-  const filterLessons = () => {
-    let filtered = [...lessons];
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (lesson) =>
-          lesson.titulo.toLowerCase().includes(term) ||
-          (lesson.descripcion && lesson.descripcion.toLowerCase().includes(term))
-      );
-    }
-
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(
-        (lesson) => lesson.categorias?.some(cat => cat.id === selectedCategory)
-      );
-    }
-
-    setFilteredLessons(filtered);
-  };
+  const filteredLessons = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return lessons.filter((lesson) =>
+      (!term ||
+        lesson.titulo.toLowerCase().includes(term) ||
+        (lesson.descripcion && lesson.descripcion.toLowerCase().includes(term))) &&
+      (selectedCategory === 'all' || lesson.categorias?.some(cat => cat.id === selectedCategory))
+    );
+  }, [lessons, searchTerm, selectedCategory]);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;
@@ -630,7 +616,7 @@ export function SegurosEducationOnDemand() {
       titulo: lesson.titulo,
       descripcion: lesson.descripcion || '',
       categoria_ids: lesson.categorias?.map(c => c.id) || [],
-      oficinas_asignadas: [],
+      oficinas_asignadas: lesson.oficinas_asignadas ?? [],
     });
     setShowUploadModal(true);
   };
@@ -660,15 +646,21 @@ export function SegurosEducationOnDemand() {
     }
   };
 
+  // Resuelve 0 si el navegador no puede leer el formato (p. ej. AVI/MOV) para no colgar la subida.
   const getVideoDuration = (file: File): Promise<number> => {
     return new Promise((resolve) => {
       const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.onloadedmetadata = () => {
-        window.URL.revokeObjectURL(video.src);
-        resolve(video.duration);
+      const src = URL.createObjectURL(file);
+      const done = (value: number) => {
+        clearTimeout(timer);
+        URL.revokeObjectURL(src);
+        resolve(Number.isFinite(value) ? value : 0);
       };
-      video.src = URL.createObjectURL(file);
+      const timer = setTimeout(() => done(0), 15000);
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => done(video.duration);
+      video.onerror = () => done(0);
+      video.src = src;
     });
   };
 
@@ -795,50 +787,58 @@ export function SegurosEducationOnDemand() {
     trackCourseStart(lesson.id, lesson.titulo);
   };
 
-  const handleProgressUpdate = async (progress: number, currentTime: number) => {
-    if (!selectedLesson || !usuario) return;
+  // El reproductor reporta cada 5 s; a la BD se escribe cada 20 s como máximo
+  // (o al llegar a 95 %) y se guarda lo pendiente al cerrar el modal.
+  const PROGRESS_SAVE_MS = 20000;
+  const lastSaveRef = useRef(0);
+  const pendingProgressRef = useRef<{ lessonId: string; progress: number; currentTime: number } | null>(null);
+  const selectedLessonId = selectedLesson?.id;
+  const userId = usuario?.id;
 
-    try {
-      const { error } = await supabase
-        .from('seguros_progress')
-        .upsert({
-          user_id: usuario.id,
-          lesson_id: selectedLesson.id,
-          progreso: Math.min(progress, 100),
-          tiempo_reproduccion: Math.floor(currentTime),
-          completado: progress >= 95,
-          ultima_vista: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id,lesson_id'
-        });
-
-      if (error) throw error;
-    } catch (error) {
+  const saveProgress = useCallback(async (lessonId: string, progress: number, currentTime: number, completado: boolean) => {
+    if (!userId) return;
+    pendingProgressRef.current = null;
+    lastSaveRef.current = Date.now();
+    const progreso = Math.min(Math.round(progress), 100);
+    const { error } = await supabase
+      .from('seguros_progress')
+      .upsert({
+        user_id: userId,
+        lesson_id: lessonId,
+        progreso,
+        tiempo_reproduccion: Math.floor(currentTime),
+        completado,
+        ultima_vista: new Date().toISOString(),
+      }, { onConflict: 'user_id,lesson_id' });
+    if (error) {
       console.error('Error updating progress:', error);
+      return;
     }
-  };
+    // Actualiza la tarjeta localmente en lugar de recargar toda la página.
+    setLessons((prev) => prev.map((l) => l.id === lessonId
+      ? { ...l, progreso: Math.max(l.progreso || 0, progreso), tiempo_reproduccion: Math.floor(currentTime), completado: l.completado || completado }
+      : l));
+  }, [userId]);
 
-  const handleVideoComplete = async () => {
-    if (!selectedLesson || !usuario) return;
-
-    try {
-      await supabase
-        .from('seguros_progress')
-        .upsert({
-          user_id: usuario.id,
-          lesson_id: selectedLesson.id,
-          progreso: 100,
-          completado: true,
-          ultima_vista: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id,lesson_id'
-        });
-
-      showToast('¡Lección completada!', 'success');
-      fetchData();
-    } catch (error) {
-      console.error('Error completing lesson:', error);
+  const handleProgressUpdate = useCallback((progress: number, currentTime: number) => {
+    if (!selectedLessonId) return;
+    pendingProgressRef.current = { lessonId: selectedLessonId, progress, currentTime };
+    if (Date.now() - lastSaveRef.current >= PROGRESS_SAVE_MS || progress >= 95) {
+      void saveProgress(selectedLessonId, progress, currentTime, progress >= 95);
     }
+  }, [selectedLessonId, saveProgress]);
+
+  const handleVideoComplete = useCallback(async () => {
+    if (!selectedLessonId) return;
+    await saveProgress(selectedLessonId, 100, pendingProgressRef.current?.currentTime ?? 0, true);
+    showToast('¡Lección completada!', 'success');
+  }, [selectedLessonId, saveProgress]);
+
+  const closeVideoModal = () => {
+    const pending = pendingProgressRef.current;
+    if (pending) void saveProgress(pending.lessonId, pending.progress, pending.currentTime, pending.progress >= 95);
+    setShowVideoModal(false);
+    setSelectedLesson(null);
   };
 
   const formatDuration = (seconds: number | null | undefined) => {
@@ -854,23 +854,8 @@ export function SegurosEducationOnDemand() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-    const toast = document.createElement('div');
-    const bgColor = type === 'success'
-      ? 'bg-emerald-500'
-      : type === 'error'
-      ? 'bg-red-500'
-      : 'bg-amber-500';
-    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 max-w-md ${bgColor}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
 
-    setTimeout(() => {
-      toast.remove();
-    }, type === 'warning' ? 5000 : 3000);
-  };
-
-  if (loading) {
+  if (loading && lessons.length === 0) {
     return (
       <>
         <SegurosEducationLayout sectionTitle="On Demand" sectionDescription="Biblioteca de lecciones grabadas">
@@ -975,7 +960,8 @@ export function SegurosEducationOnDemand() {
                     <img
                       src={lesson.miniatura_url}
                       alt={lesson.titulo}
-                      crossOrigin="anonymous"
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
@@ -1104,11 +1090,7 @@ export function SegurosEducationOnDemand() {
                 </div>
               </div>
               <button
-                onClick={() => {
-                  setShowVideoModal(false);
-                  setSelectedLesson(null);
-                  fetchData();
-                }}
+                onClick={closeVideoModal}
                 className="text-ios-gray-500 hover:text-ios-gray-900 hover:bg-ios-gray-200 p-1.5 rounded-ios transition-all active:scale-95 flex-shrink-0"
                 title="Cerrar"
               >
@@ -1148,9 +1130,7 @@ export function SegurosEducationOnDemand() {
                   </div>
                   <button
                     onClick={() => {
-                      setShowVideoModal(false);
-                      setSelectedLesson(null);
-                      fetchData();
+                      closeVideoModal();
                     }}
                     className="px-3 sm:px-4 py-1 sm:py-1.5 bg-accent text-white rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-accent-dark transition-colors active:scale-95 flex-shrink-0"
                   >

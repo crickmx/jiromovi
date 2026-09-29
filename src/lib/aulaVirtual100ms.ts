@@ -15,3 +15,16 @@ export async function solicitarToken100ms(input: {
   if (!data?.token) throw new Error(data?.error || 'No se recibió el token de 100ms');
   return data as { token: string; room_id: string; role: Aula100msRole; expires_in: number };
 }
+
+/**
+ * Obtiene la URL de 100ms Prebuilt para una sesión del aula (id, room_id o hms_room_id).
+ * El rol lo decide el servidor según el instructor de la sesión.
+ */
+export async function solicitarSala100ms(input: { sesion: string; name: string }) {
+  const { data, error } = await supabase.functions.invoke('aula-virtual-100ms', {
+    body: { action: 'room_url', sesion: input.sesion, name: input.name },
+  });
+  if (error) throw error;
+  if (!data?.url) throw new Error(data?.error || 'No se recibió la sala de 100ms');
+  return data as { url: string; role: Aula100msRole };
+}

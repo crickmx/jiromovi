@@ -20,7 +20,8 @@ import {
   obtenerLeccion,
   actualizarProgresoLeccion,
   marcarLeccionCompletada,
-  obtenerModulosConProgreso
+  obtenerModulosConProgreso,
+  obtenerLeccionesCompletadas
 } from '../lib/cedulaAUtils';
 import type { ModuloConProgreso, CedulaALeccion, CedulaAProgresoLeccion } from '../lib/cedulaATypes';
 import LeccionContent from '../components/cedulaA/LeccionContent';
@@ -31,64 +32,63 @@ export default function ModuloViewer() {
   const navigate = useNavigate();
 
   const [modulo, setModulo] = useState<ModuloConProgreso | null>(null);
-  const [lecciones, setLecciones] = useState<CedulaALeccion[]>([]);
+  const [lecciones, setLecciones] = useState<Omit<CedulaALeccion, 'contenido'>[]>([]);
+  const [completadas, setCompletadas] = useState<Set<string>>(new Set());
   const [leccionActual, setLeccionActual] = useState<CedulaALeccion | null>(null);
   const [progresoLeccion, setProgresoLeccion] = useState<CedulaAProgresoLeccion | null>(null);
   const [sidebarAbierto, setSidebarAbierto] = useState(true);
-  const [tiempoEstudio, setTiempoEstudio] = useState(0);
+  // Segundos en un ref para no re-renderizar la página cada segundo; en pantalla solo se muestran minutos.
+  const tiempoRef = useRef(0);
+  const [minutosEstudio, setMinutosEstudio] = useState(0);
   const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const guardarRef = useRef<() => void>(() => {});
   const [guardadoReciente, setGuardadoReciente] = useState(false);
   const [todosModulos, setTodosModulos] = useState<ModuloConProgreso[]>([]);
   const [modalExamenListo, setModalExamenListo] = useState(false);
   const [examenModuloId, setExamenModuloId] = useState<string | null>(null);
 
+  const userId = usuario?.id;
+
   useEffect(() => {
-    if (usuario && moduloId) {
+    if (userId && moduloId) {
       cargarModulo();
     }
-  }, [usuario, moduloId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, moduloId]);
 
+  // Cronómetro: no cuenta con la pestaña oculta, guarda cada 30 s y al salir.
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setTiempoEstudio(prev => prev + 1);
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      tiempoRef.current += 1;
+      if (tiempoRef.current % 60 === 0) setMinutosEstudio(Math.floor(tiempoRef.current / 60));
+      if (tiempoRef.current % 30 === 0) guardarRef.current();
     }, 1000);
-
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      clearInterval(id);
+      guardarRef.current();
     };
   }, []);
-
-  useEffect(() => {
-    if (tiempoEstudio > 0 && tiempoEstudio % 30 === 0) {
-      guardarProgreso();
-    }
-  }, [tiempoEstudio]);
 
   const cargarModulo = async () => {
     if (!usuario || !moduloId) return;
 
     try {
       setLoading(true);
-      const [moduloData, leccionesData, modulosData] = await Promise.all([
-        obtenerModuloConProgreso(usuario.id, moduloId),
+      const [leccionesData, modulosData] = await Promise.all([
         obtenerLeccionesModulo(moduloId),
         obtenerModulosConProgreso(usuario.id)
       ]);
+      const hechas = await obtenerLeccionesCompletadas(usuario.id, leccionesData.map(l => l.id));
 
-      setModulo(moduloData);
+      setModulo(modulosData.find(m => m.id === moduloId) ?? null);
       setLecciones(leccionesData);
       setTodosModulos(modulosData);
+      setCompletadas(hechas);
 
       if (leccionesData.length > 0) {
-        const leccionPendiente = leccionesData.find(async (l) => {
-          const progreso = await obtenerProgresoLeccion(usuario.id, l.id);
-          return !progreso?.completado;
-        });
-
-        const primeraLeccion = leccionPendiente || leccionesData[0];
+        // Retoma en la primera lección sin completar.
+        const primeraLeccion = leccionesData.find(l => !hechas.has(l.id)) || leccionesData[0];
         await cargarLeccion(primeraLeccion.id);
       }
     } catch (error) {
@@ -102,6 +102,7 @@ export default function ModuloViewer() {
     if (!usuario) return;
 
     try {
+      guardarRef.current(); // guarda el tiempo de la lección anterior antes de cambiar
       const [leccion, progreso] = await Promise.all([
         obtenerLeccion(leccionId),
         obtenerProgresoLeccion(usuario.id, leccionId)
@@ -109,7 +110,8 @@ export default function ModuloViewer() {
 
       setLeccionActual(leccion);
       setProgresoLeccion(progreso);
-      setTiempoEstudio(progreso?.tiempo_estudio_segundos || 0);
+      tiempoRef.current = progreso?.tiempo_estudio_segundos || 0;
+      setMinutosEstudio(Math.floor(tiempoRef.current / 60));
 
       if (window.innerWidth < 1024) {
         setSidebarAbierto(false);
@@ -119,12 +121,16 @@ export default function ModuloViewer() {
     }
   };
 
+  useEffect(() => {
+    guardarRef.current = () => { void guardarProgreso(); };
+  });
+
   const guardarProgreso = async () => {
     if (!usuario || !leccionActual) return;
 
     try {
       await actualizarProgresoLeccion(usuario.id, leccionActual.id, {
-        tiempo_estudio_segundos: tiempoEstudio
+        tiempo_estudio_segundos: tiempoRef.current
       });
 
       setGuardadoReciente(true);
@@ -140,6 +146,7 @@ export default function ModuloViewer() {
     try {
       await marcarLeccionCompletada(usuario.id, leccionActual.id);
       setProgresoLeccion(prev => prev ? { ...prev, completado: true } : null);
+      setCompletadas(prev => new Set(prev).add(leccionActual.id));
 
       if (modulo) {
         const moduloActualizado = await obtenerModuloConProgreso(usuario.id, modulo.id);
@@ -225,7 +232,7 @@ export default function ModuloViewer() {
 
   const obtenerEstadoLeccion = (leccionId: string): 'completado' | 'actual' | 'pendiente' => {
     if (leccionActual?.id === leccionId) return 'actual';
-    return 'pendiente';
+    return completadas.has(leccionId) ? 'completado' : 'pendiente';
   };
 
   if (loading) {
@@ -371,7 +378,7 @@ export default function ModuloViewer() {
               )}
               <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-neutral-600">
                 <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>{Math.floor(tiempoEstudio / 60)} min</span>
+                <span>{minutosEstudio} min</span>
               </div>
             </div>
           </div>

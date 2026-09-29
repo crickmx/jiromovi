@@ -6,7 +6,6 @@ import type {
   CedulaAPregunta,
   CedulaAMapaMental,
   CedulaAGlosario,
-  CedulaAProgresoModulo,
   CedulaAProgresoLeccion,
   CedulaAIntentoExamen,
   CedulaACertificado,
@@ -25,87 +24,56 @@ export async function obtenerModulos(): Promise<CedulaAModulo[]> {
   return data || [];
 }
 
-export async function obtenerModuloConProgreso(userId: string, moduloId: string): Promise<ModuloConProgreso | null> {
-  const { data: modulo, error: moduloError } = await supabase
+function estadoModulo(porcentaje?: number): 'disponible' | 'en_progreso' | 'completado' {
+  if (porcentaje === 100) return 'completado';
+  if ((porcentaje ?? 0) > 0) return 'en_progreso';
+  return 'disponible';
+}
+
+/** Módulos con progreso del usuario: 2 consultas en paralelo (antes 1 + 2 por módulo). */
+async function cargarModulosConProgreso(userId: string, moduloId?: string): Promise<ModuloConProgreso[]> {
+  let modulosQuery = supabase
     .from('cedula_a_modulos')
-    .select('*')
-    .eq('id', moduloId)
-    .single();
-
-  if (moduloError) throw moduloError;
-  if (!modulo) return null;
-
-  const { data: progreso } = await supabase
+    .select('*, lecciones:cedula_a_lecciones(count)')
+    .order('orden', { ascending: true });
+  let progresoQuery = supabase
     .from('cedula_a_progreso_modulos')
     .select('*')
-    .eq('user_id', userId)
-    .eq('modulo_id', moduloId)
-    .maybeSingle();
-
-  const { count: totalLecciones } = await supabase
-    .from('cedula_a_lecciones')
-    .select('*', { count: 'exact', head: true })
-    .eq('modulo_id', moduloId);
-
-  let estado: 'disponible' | 'en_progreso' | 'completado' = 'disponible';
-  if (progreso) {
-    if (progreso.porcentaje_completado === 100) {
-      estado = 'completado';
-    } else if (progreso.porcentaje_completado > 0) {
-      estado = 'en_progreso';
-    }
+    .eq('user_id', userId);
+  if (moduloId) {
+    modulosQuery = modulosQuery.eq('id', moduloId);
+    progresoQuery = progresoQuery.eq('modulo_id', moduloId);
   }
 
-  return {
-    ...modulo,
-    progreso: progreso || undefined,
-    total_lecciones: totalLecciones || 0,
-    estado
-  };
+  const [modulosRes, progresoRes] = await Promise.all([modulosQuery, progresoQuery]);
+  if (modulosRes.error) throw modulosRes.error;
+
+  const progresoPorModulo = new Map((progresoRes.data || []).map((p) => [p.modulo_id, p]));
+  return (modulosRes.data || []).map(({ lecciones, ...modulo }) => {
+    const progreso = progresoPorModulo.get(modulo.id);
+    return {
+      ...modulo,
+      progreso: progreso || undefined,
+      total_lecciones: (lecciones as { count: number }[] | null)?.[0]?.count ?? 0,
+      estado: estadoModulo(progreso?.porcentaje_completado),
+    } as ModuloConProgreso;
+  });
+}
+
+export async function obtenerModuloConProgreso(userId: string, moduloId: string): Promise<ModuloConProgreso | null> {
+  const [modulo] = await cargarModulosConProgreso(userId, moduloId);
+  return modulo ?? null;
 }
 
 export async function obtenerModulosConProgreso(userId: string): Promise<ModuloConProgreso[]> {
-  const modulos = await obtenerModulos();
-
-  const modulosConProgreso = await Promise.all(
-    modulos.map(async (modulo) => {
-      const { data: progreso } = await supabase
-        .from('cedula_a_progreso_modulos')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('modulo_id', modulo.id)
-        .maybeSingle();
-
-      const { count: totalLecciones } = await supabase
-        .from('cedula_a_lecciones')
-        .select('*', { count: 'exact', head: true })
-        .eq('modulo_id', modulo.id);
-
-      let estado: 'disponible' | 'en_progreso' | 'completado' = 'disponible';
-      if (progreso) {
-        if (progreso.porcentaje_completado === 100) {
-          estado = 'completado';
-        } else if (progreso.porcentaje_completado > 0) {
-          estado = 'en_progreso';
-        }
-      }
-
-      return {
-        ...modulo,
-        progreso: progreso || undefined,
-        total_lecciones: totalLecciones || 0,
-        estado
-      };
-    })
-  );
-
-  return modulosConProgreso;
+  return cargarModulosConProgreso(userId);
 }
 
-export async function obtenerLeccionesModulo(moduloId: string): Promise<CedulaALeccion[]> {
+/** Índice de lecciones del módulo (sin `contenido`, que se carga solo para la lección abierta). */
+export async function obtenerLeccionesModulo(moduloId: string): Promise<Omit<CedulaALeccion, 'contenido'>[]> {
   const { data, error } = await supabase
     .from('cedula_a_lecciones')
-    .select('*')
+    .select('id, modulo_id, titulo, orden, duracion_estimada_minutos, created_at, updated_at')
     .eq('modulo_id', moduloId)
     .order('orden', { ascending: true });
 
@@ -122,6 +90,19 @@ export async function obtenerLeccion(leccionId: string): Promise<CedulaALeccion 
 
   if (error) throw error;
   return data;
+}
+
+/** IDs de lecciones completadas por el usuario dentro de un conjunto (1 consulta). */
+export async function obtenerLeccionesCompletadas(userId: string, leccionIds: string[]): Promise<Set<string>> {
+  if (leccionIds.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from('cedula_a_progreso_lecciones')
+    .select('leccion_id')
+    .eq('user_id', userId)
+    .eq('completado', true)
+    .in('leccion_id', leccionIds);
+  if (error) throw error;
+  return new Set((data || []).map((p) => p.leccion_id));
 }
 
 export async function obtenerProgresoLeccion(userId: string, leccionId: string): Promise<CedulaAProgresoLeccion | null> {
@@ -210,7 +191,8 @@ export async function obtenerExamen(examenId: string): Promise<CedulaAExamen | n
 export async function obtenerPreguntasExamen(examenId: string): Promise<CedulaAPregunta[]> {
   const { data, error } = await supabase
     .from('cedula_a_preguntas')
-    .select('*')
+    // respuesta_correcta y explicacion no son legibles desde el cliente; llegan en la evaluación.
+    .select('id, examen_id, pregunta, opciones, modulo_referencia_id, dificultad, orden')
     .eq('examen_id', examenId)
     .order('orden', { ascending: true });
 
