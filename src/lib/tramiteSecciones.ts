@@ -92,18 +92,44 @@ export function motivoSeccionBloqueada(
     : 'Completa la sección anterior para continuar';
 }
 
-/** Agrupa campos por sección, respetando el orden de secciones; los campos sin sección van primero (grupo `seccion: null`). */
+/**
+ * Agrupa campos por sección, respetando el orden de secciones; los campos sin
+ * sección van primero (grupo `seccion: null`). Una sección sin ningún campo
+ * (ej. una sección de solo-sistema cuando el llamador ya excluyó los campos
+ * de sistema antes de agrupar) se omite -- mostrar una tarjeta de sección
+ * vacía es puro ruido visual, nunca información real.
+ *
+ * La sección "Encabezado" (sistema_key 'header') se omite siempre: solo
+ * existe para configurar el fondo del encabezado real del trámite (que ya se
+ * ve arriba del todo, con su diseño, una vez creado) -- su único campo es
+ * Estatus, que no se captura aquí. Mostrarla como tarjeta en el formulario de
+ * alta o en el detalle no aporta nada, solo un candado sin contenido debajo.
+ */
 export function agruparCamposPorSeccion<C extends CampoConSeccion>(
   campos: C[],
   secciones: SeccionMinima[]
 ): { seccion: SeccionMinima | null; campos: C[] }[] {
   const sinSeccion = campos.filter(c => !c.seccion_id);
   const gruposConSeccion = [...secciones]
+    .filter(s => s.sistema_key !== 'header')
     .sort((a, b) => a.orden - b.orden)
-    .map(seccion => ({ seccion, campos: campos.filter(c => c.seccion_id === seccion.id) }));
+    .map(seccion => ({ seccion, campos: campos.filter(c => c.seccion_id === seccion.id) }))
+    .filter(g => g.campos.length > 0);
 
   const resultado: { seccion: SeccionMinima | null; campos: C[] }[] = [];
   if (sinSeccion.length > 0) resultado.push({ seccion: null, campos: sinSeccion });
   resultado.push(...gruposConSeccion);
   return resultado;
+}
+
+/**
+ * Estilo de borde + fondo muy sutil para una sección con color configurado.
+ * A diferencia del fondo del Encabezado (tramiteHeader.ts, un banner de
+ * página completa que exige recalcular el color del texto), esto es solo un
+ * matiz ligero sobre la tarjeta -- el texto/inputs de adentro se quedan con
+ * sus colores normales, nunca hace falta contraste especial.
+ */
+export function estiloSeccionColor(color?: string | null): { borderColor: string; backgroundColor: string } | undefined {
+  if (!color) return undefined;
+  return { borderColor: color, backgroundColor: `${color}0D` };
 }

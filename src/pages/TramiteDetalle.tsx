@@ -14,7 +14,7 @@ import { SearchableSelect } from '../components/tramites/catalogos/SearchableSel
 import { TriggerConfirmModal, type PendingTrigger, type ExistingChild } from '../components/tramites/TriggerConfirmModal';
 import { calcularDiasHabilesEntre } from '../lib/diasHabiles';
 import type { TramiteSeccion } from '../components/tramites/catalogos/types';
-import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada } from '../lib/tramiteSecciones';
+import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor } from '../lib/tramiteSecciones';
 import { estiloHeader, CLASE_VELO } from '../lib/tramiteHeader';
 import { SelectorVehiculo, type VehiculoSeleccionado } from '../components/tramites/SelectorVehiculo';
 import TOTPDecryptModal from '../components/tramites/TOTPDecryptModal';
@@ -1797,7 +1797,13 @@ export function TramiteDetalle() {
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {camposDinamicos
-                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus' && !(tipoEsInterno && (c.sistema_key === 'agente_vendedor' || c.sistema_key === 'oficina_jiro')))
+                    // asignado_a se excluye aquí a propósito: desde el rework de auto-asignación
+                    // (2026-09-23) es un valor "eco" de la selección inicial al crear, no la
+                    // fuente de verdad del Responsable -- eso ya lo muestra el componente
+                    // dedicado de arriba (Responsable/Equipo), y puede quedar desactualizado
+                    // si el Responsable cambió después. Mostrarlo aquí (como UUID crudo, sin
+                    // resolver) era una duplicación confusa, a veces con un valor ya obsoleto.
+                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus' && c.sistema_key !== 'asignado_a' && !(tipoEsInterno && (c.sistema_key === 'agente_vendedor' || c.sistema_key === 'oficina_jiro')))
                     .map(campo => {
                       const val = respuestasDinamicas[campo.id];
                       const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
@@ -2376,8 +2382,13 @@ export function TramiteDetalle() {
                     const desbloqueada = seccionDesbloqueada(seccion, secciones, camposDinamicos, respuestasDinamicas);
                     const expandida = seccionesExpandidas.has(seccion.id);
                     const mostrarCampos = desbloqueada && (!seccion.opcional || expandida);
+                    const colorSeccion = desbloqueada ? estiloSeccionColor(seccion.config?.color) : undefined;
                     return (
-                      <div key={seccion.id} className={`border rounded-2xl overflow-hidden ${desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}>
+                      <div
+                        key={seccion.id}
+                        className={`border rounded-2xl overflow-hidden ${colorSeccion ? '' : desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}
+                        style={colorSeccion}
+                      >
                         <button
                           type="button"
                           onClick={() => {

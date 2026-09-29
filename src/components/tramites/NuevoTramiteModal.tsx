@@ -6,7 +6,7 @@ import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import type { TramiteSeccion } from './catalogos/types';
-import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada } from '../../lib/tramiteSecciones';
+import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor } from '../../lib/tramiteSecciones';
 import { analizarRFC, analizarCURP, RFC_GENERICO_NACIONAL, ENTIDADES_CURP } from '../../lib/rfcCurp';
 import { SelectorVehiculo, type VehiculoSeleccionado } from './SelectorVehiculo';
 import {
@@ -1674,14 +1674,10 @@ export function NuevoTramiteModal({
       </div>
     );
 
-    if (campo.sistema_key === 'fecha_finalizacion') return (
-      <div key={campo.id}>
-        {lockLabel(campo.label)}
-        <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-400 italic">
-          Se registrará al cerrar el trámite
-        </div>
-      </div>
-    );
+    // No aporta nada al crear -- siempre va a decir "se registrará al cerrar",
+    // porque el trámite todavía no se cierra. Se omite del todo en este formulario
+    // (ya está en AUTO_FILL_KEYS, así que no afecta la barra de requeridos).
+    if (campo.sistema_key === 'fecha_finalizacion') return null;
 
     if (campo.sistema_key === 'agente_vendedor') {
       if (esInterno) return null;
@@ -3258,9 +3254,14 @@ export function NuevoTramiteModal({
             const desbloqueada = seccionDesbloqueada(seccion, secciones, camposDinamicos, respuestasDinamicas);
             const expandida = seccionesExpandidas.has(seccion.id);
             const mostrarCampos = desbloqueada && (!seccion.opcional || expandida);
+            const colorSeccion = desbloqueada ? estiloSeccionColor(seccion.config?.color) : undefined;
 
             return (
-              <div key={seccion.id} className={`border rounded-2xl overflow-hidden ${desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}>
+              <div
+                key={seccion.id}
+                className={`border rounded-2xl overflow-hidden ${colorSeccion ? '' : desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}
+                style={colorSeccion}
+              >
                 <button
                   type="button"
                   onClick={() => {

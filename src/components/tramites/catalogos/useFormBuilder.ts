@@ -67,6 +67,7 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     condicion_operador: 'igual_a' | 'distinto_a' | 'tiene_valor' | null;
     condicion_valor: string | null;
     fondo?: Record<string, any>;
+    color?: string | null;
   }) => {
     if (!form.nombre.trim()) return;
     // Mutuamente excluyentes: si hay condición por campo, no depende de otra sección.
@@ -82,8 +83,13 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
           condicion_campo_id: form.condicion_campo_id,
           condicion_operador: form.condicion_campo_id ? form.condicion_operador : null,
           condicion_valor: form.condicion_campo_id ? form.condicion_valor : null,
-          // El fondo solo aplica a la sección header; en las demás el editor ni se muestra.
-          ...(editingSeccion.sistema_key === 'header' ? { config: { ...(editingSeccion.config ?? {}), fondo: form.fondo ?? {} } } : {}),
+          // color: cualquier sección. fondo: solo el header (el editor de fondo
+          // -degradado/imagen- ni se muestra para las demás).
+          config: {
+            ...(editingSeccion.config ?? {}),
+            color: form.color || undefined,
+            ...(editingSeccion.sistema_key === 'header' ? { fondo: form.fondo ?? {} } : {}),
+          },
         })
         .eq('id', editingSeccion.id);
       if (error) { showToast('Error al guardar la sección: ' + error.message, 'error'); return; }

@@ -49,6 +49,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
     condicion_operador: 'igual_a' as 'igual_a' | 'distinto_a' | 'tiene_valor',
     condicion_valor: '' as string,
     fondo: {} as FondoHeader,
+    color: null as string | null,
   });
   // Modo de desbloqueo: mutuamente excluyentes en la UI (aunque coexistan en BD)
   const [seccionModo, setSeccionModo] = useState<'ninguno' | 'seccion' | 'campo'>('ninguno');
@@ -93,6 +94,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
         condicion_operador: editingSeccion.condicion_operador ?? 'igual_a',
         condicion_valor: editingSeccion.condicion_valor ?? '',
         fondo: (editingSeccion.config?.fondo ?? {}) as FondoHeader,
+        color: (editingSeccion.config?.color ?? null) as string | null,
       });
       setSeccionModo(editingSeccion.condicion_campo_id ? 'campo' : editingSeccion.depende_de_seccion_id ? 'seccion' : 'ninguno');
     } else if (showAddSeccion) {
@@ -100,7 +102,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
         nombre: '', descripcion: '', opcional: false,
         depende_de_seccion_id: null, condicion_campo_id: null,
         condicion_operador: 'igual_a', condicion_valor: '',
-        fondo: {},
+        fondo: {}, color: null,
       });
       setSeccionModo('ninguno');
     }
@@ -453,6 +455,30 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                     className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
+                {editingSeccion?.sistema_key !== 'header' && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Color de la sección</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={seccionForm.color ?? '#94A3B8'}
+                        onChange={(e) => setSeccionForm({ ...seccionForm, color: e.target.value })}
+                        className="h-7 w-10 rounded border border-neutral-300 cursor-pointer"
+                        title="Color del borde y fondo de la sección"
+                      />
+                      {seccionForm.color && (
+                        <button
+                          type="button"
+                          onClick={() => setSeccionForm({ ...seccionForm, color: null })}
+                          className="text-[11px] text-neutral-400 hover:text-neutral-600 underline"
+                        >
+                          Quitar color
+                        </button>
+                      )}
+                      <span className="text-[10px] text-neutral-400">Tiñe el borde y le da un fondo sutil</span>
+                    </div>
+                  </div>
+                )}
                 {editingSeccion?.sistema_key === 'header' && (() => {
                   const fondo = seccionForm.fondo ?? {};
                   const tipo = fondo.tipo ?? 'color';
