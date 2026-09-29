@@ -16,7 +16,7 @@ import { invalidateTiposTramiteCache } from '../hooks/useTiposTramite';
 interface Ramo         { id: string; nombre: string; activo: boolean }
 interface Subramo      { id: string; nombre: string; ramo_id: string; activo: boolean }
 interface Compania     { id: string; nombre: string; convenio: boolean; activo: boolean }
-interface Combinacion  { id: string; compania_id: string; ramo_id: string; subramo_id: string; activo: boolean }
+interface Combinacion  { id: string; compania_id: string; ramo_id: string; subramo_id: string; activo: boolean; convenio: boolean; pondera: number | null }
 
 interface Despacho  { id: string; nombre: string; activo: boolean }
 interface Gerencia  { id: string; nombre: string; despacho_id: string; activo: boolean }
@@ -516,13 +516,13 @@ export default function BaseDatosMaestrosAdmin() {
     const wb = XLSX.utils.book_new();
 
     // Pestaña catalogo (desnormalizada: una fila por combinación)
-    const catRows: any[][] = [['compania', 'ramo', 'subramo', 'convenio']];
+    const catRows: any[][] = [['compania', 'ramo', 'subramo', 'convenio', 'pondera']];
     for (const comb of combinaciones.filter(c => c.activo)) {
       const comp = companias.find(x => x.id === comb.compania_id);
       const ramo = ramos.find(x => x.id === comb.ramo_id);
       const sub  = subramos.find(x => x.id === comb.subramo_id);
       if (comp && ramo && sub) {
-        catRows.push([comp.nombre, ramo.nombre, sub.nombre, comp.convenio ? 'Sí' : 'No']);
+        catRows.push([comp.nombre, ramo.nombre, sub.nombre, comb.convenio ? 'Sí' : 'No', comb.pondera ?? '']);
       }
     }
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(catRows), 'catalogo');
@@ -643,11 +643,16 @@ export default function BaseDatosMaestrosAdmin() {
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      const compNombre = normalize(r.compania || r.Compania || r.COMPANIA);
-      const ramoNombre = normalize(r.ramo || r.Ramo || r.RAMO);
-      const subNombre  = normalize(r.subramo || r.Subramo || r.SUBRAMO);
-      const convenio   = String(r.convenio || r.Convenio || '').toLowerCase() === 'sí' ||
-                         String(r.convenio || r.Convenio || '').toLowerCase() === 'si';
+      // Acepta tanto la plantilla propia (compania/ramo/subramo/convenio) como
+      // las columnas reales del Excel de convenios de Ricardo (Nombre Compañía/
+      // RamosNombre/Sub Ramo/CONVENIO/PONDERA) -- mismo import, dos formatos.
+      const compNombre = normalize(r.compania || r.Compania || r.COMPANIA || r['Nombre Compañía']);
+      const ramoNombre = normalize(r.ramo || r.Ramo || r.RAMO || r.RamosNombre || r['Ramos Nombre']);
+      const subNombre  = normalize(r.subramo || r.Subramo || r.SUBRAMO || r['Sub Ramo'] || r.SubRamo);
+      const convenioRaw = String(r.convenio ?? r.Convenio ?? r.CONVENIO ?? '').trim().toLowerCase();
+      const convenio   = convenioRaw === 'sí' || convenioRaw === 'si';
+      const ponderaRaw = r.pondera ?? r.Pondera ?? r.PONDERA;
+      const pondera    = ponderaRaw === undefined || ponderaRaw === '' ? null : Number(ponderaRaw);
 
       if (!compNombre || !ramoNombre || !subNombre) {
         errores.push({ fila: i + 2, error: 'Faltan campos requeridos (compania, ramo, subramo)' });
@@ -655,9 +660,11 @@ export default function BaseDatosMaestrosAdmin() {
       }
 
       try {
-        // Upsert compañía
+        // Upsert compañía (sin tocar convenio: esa bandera plana quedó
+        // deprecada a favor de la de la combinación, ver migración
+        // 20260929000001_convenio_por_combinacion.sql).
         const { data: comp } = await supabase.from('maestro_companias')
-          .upsert({ nombre: compNombre, convenio }, { onConflict: 'nombre', ignoreDuplicates: mode === 'adicion' })
+          .upsert({ nombre: compNombre }, { onConflict: 'nombre', ignoreDuplicates: mode === 'adicion' })
           .select('id').single();
 
         // Upsert ramo
@@ -674,10 +681,16 @@ export default function BaseDatosMaestrosAdmin() {
         const compId = comp?.id ?? (await supabase.from('maestro_companias').select('id').eq('nombre', compNombre).single()).data?.id;
         const subId  = sub?.id  ?? (await supabase.from('maestro_subramos').select('id').eq('nombre', subNombre).eq('ramo_id', ramoId).single()).data?.id;
 
-        // Upsert combinación
+        // Upsert combinación — convenio/pondera viven aquí, por combinación
+        // específica, no en la compañía completa. A diferencia del resto del
+        // catálogo, esto SIEMPRE sobreescribe (ignora el modo "adición"):
+        // el propósito de re-importar este archivo es reflejar el convenio
+        // más reciente en combinaciones que ya existen, no solo agregar
+        // combinaciones nuevas. "reemplazo" sigue reservado para el catálogo
+        // completo (borra todo) -- no hace falta para actualizar convenio.
         const { error: errComb } = await supabase.from('maestro_combinaciones')
-          .upsert({ compania_id: compId, ramo_id: ramoId, subramo_id: subId },
-            { onConflict: 'compania_id,ramo_id,subramo_id', ignoreDuplicates: mode === 'adicion' });
+          .upsert({ compania_id: compId, ramo_id: ramoId, subramo_id: subId, convenio, pondera },
+            { onConflict: 'compania_id,ramo_id,subramo_id' });
 
         if (errComb) throw new Error(errComb.message);
         exitosas++;

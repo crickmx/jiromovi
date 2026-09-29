@@ -125,7 +125,7 @@ export function TramiteDetalle() {
   const [catalogoCompanias, setCatalogoCompanias] = useState<{id: string; nombre: string; convenio: boolean}[]>([]);
   const [asegUiState, setAsegUiState] = useState<Record<string, { open: boolean; search: string; verMas: boolean }>>({});
   const asegRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [combinaciones,     setCombinaciones]     = useState<{compania_id: string; ramo_id: string}[]>([]);
+  const [combinaciones,     setCombinaciones]     = useState<{compania_id: string; ramo_id: string; convenio: boolean}[]>([]);
   const [cpSearchState, setCpSearchState] = useState<Record<string, {
     colonias: {colonia: string; municipio: string; estado: string}[];
     loading: boolean;
@@ -565,8 +565,8 @@ export function TramiteDetalle() {
     if (tieneRamo) {
       supabase.from('maestro_ramos').select('id, nombre').order('nombre')
         .then(({ data }) => setCatalogoRamos((data || []) as {id: string; nombre: string}[]));
-      supabase.from('maestro_combinaciones').select('compania_id, ramo_id')
-        .then(({ data }) => setCombinaciones((data || []) as {compania_id: string; ramo_id: string}[]));
+      supabase.from('maestro_combinaciones').select('compania_id, ramo_id, convenio').eq('activo', true)
+        .then(({ data }) => setCombinaciones((data || []) as {compania_id: string; ramo_id: string; convenio: boolean}[]));
     }
   }, [camposDinamicos]);
 
@@ -2045,9 +2045,17 @@ export function TramiteDetalle() {
                             set(nuevas.join(', '));
                           };
 
+                          // Convenio/preferente vive por combinación (compañía+ramo+subramo), no
+                          // por compañía completa. Sin subramo en este selector: preferente si
+                          // CUALQUIER subramo de ese ramo lo es (con ramo elegido) o en cualquier
+                          // ramo (sin ramo elegido todavía).
+                          const esConvenio = (companiaId: string) => combinaciones.some(cb =>
+                            cb.compania_id === companiaId && cb.convenio && (!ramo || cb.ramo_id === ramo.id)
+                          );
+
                           const term = ui.search.toLowerCase();
-                          const preferentes = companiasDisponibles.filter(c => c.convenio && c.nombre.toLowerCase().includes(term));
-                          const resto = companiasDisponibles.filter(c => !c.convenio && c.nombre.toLowerCase().includes(term));
+                          const preferentes = companiasDisponibles.filter(c => esConvenio(c.id) && c.nombre.toLowerCase().includes(term));
+                          const resto = companiasDisponibles.filter(c => !esConvenio(c.id) && c.nombre.toLowerCase().includes(term));
 
                           return (
                             <div className="relative" ref={el => { asegRefs.current[campo.id] = el; }}>

@@ -2,6 +2,30 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-29)
 
+### 🟡 SIGUIENTE — Convenio/preferente con granularidad real (compañía+ramo+subramo), falta importar los datos
+
+Ricardo probó el toggle de convenio por compañía (sesión de horas antes, commit `f6cd886f`) y **no le sirvió**: su fuente real (`Convenio No Convenio.xlsx`, en su Downloads) varía por **ramo y subramo**, no por compañía completa — confirmado con los datos reales: **7 de 46 compañías tienen convenio mixto dentro del mismo ramo** (ej. GNP es convenio en algunos subramos de Vehículos y no en otros).
+
+**✅ Ya implementado (commit pendiente de esta sesión):**
+- Migración `20260929000001_convenio_por_combinacion.sql` — agrega `convenio boolean` y `pondera numeric` a `maestro_combinaciones` (compañía+ramo+subramo). `maestro_companias.convenio` (el flag plano de la sesión anterior) **no se borró pero quedó deprecado** — ya no es la fuente de verdad para el selector.
+- `BaseDatosMaestrosAdmin.tsx::importarCatalogo` — ahora escribe `convenio`/`pondera` en la combinación, no en la compañía. Acepta tanto la plantilla propia (`compania/ramo/subramo/convenio`) como las columnas reales del Excel de Ricardo (`Nombre Compañía/RamosNombre/Sub Ramo/CONVENIO/PONDERA`). El upsert de la combinación **siempre sobreescribe** convenio/pondera (no respeta el modo "adición" que sí aplica al resto del catálogo) — el propósito de reimportar este archivo es actualizar convenio en combinaciones existentes, no solo agregar nuevas.
+- Selector de aseguradoras (`NuevoTramiteModal.tsx`, `TramiteDetalle.tsx`): "preferente" ahora se resuelve contra `combinaciones` (compañía+ramo), no contra `catalogoCompanias.convenio`. Como el selector no tiene campo Sub Ramo, se agregó con la regla "preferente si CUALQUIER subramo de ese ramo lo es" (decisión de Ricardo, opción recomendada) — con ramo sin elegir, "preferente en cualquier ramo".
+
+**⚠️ Verificado contra la BD real (Ricardo corrió el SQL):** los nombres de compañía/ramo del Excel coinciden casi exactamente contra `maestro_companias`/`maestro_ramos`, **excepto**:
+- `QUALITAS COMPAÑIA DE SEGUROS S.A. DE C.V.` (Excel) vs `QUALITAS COMPAÑIA DE SEGUROS` (BD) — sin corregir, el import crea una compañía Qualitas duplicada.
+- `CONTINENTAL ASSIST` y `DESCUENTOS JIRO` (+ ramo `Descuentos`) no existen en la BD todavía — son altas nuevas legítimas, no typos, el import las crea solas.
+
+Se generó una copia ya corregida y lista para subir: `C:\Users\medau\Downloads\Convenio No Convenio (listo para importar).xlsx` (hoja renombrada a `catalogo`, columnas en el formato del importador, nombre de Qualitas ya ajustado).
+
+**❌ PENDIENTE — falta que Ricardo corra la migración y suba el archivo:**
+1. Correr `20260929000001_convenio_por_combinacion.sql` en el SQL Editor de Supabase.
+2. Ir a `/admin/base-datos` → Importar → subir `Convenio No Convenio (listo para importar).xlsx` → modo **"adición"** (nunca "reemplazo": ese modo borra TODA la tabla de compañías/ramos/subramos/combinaciones antes de reinsertar, y este Excel no es una copia completa del catálogo — solo trackea convenio, perdería combinaciones reales que sí usan otros trámites).
+3. Probar en navegador que el selector de aseguradoras (Crear trámite / Detalle) muestra bien las preferentes.
+
+**Pendiente de decidir a futuro, no bloqueante:** el selector genérico no tiene campo Sub Ramo, así que la precisión real queda a nivel Ramo (agregada). Si algún día se necesita la exactitud completa del Excel, hay que agregar `subramo` como tipo de campo nuevo del FormBuilder — se decidió NO hacerlo hoy (más trabajo, afecta más pantallas).
+
+---
+
 ### ✅ Sesión 2026-09-29 — Aseguradoras: orden, preferentes y selección múltiple (campo genérico del FormBuilder)
 
 Lo que pidió Ricardo al cerrar el 2026-09-28, ya implementado en `campo.tipo === 'ramo'`/`'aseguradora'` (`NuevoTramiteModal.tsx` y `TramiteDetalle.tsx` — **no** en Cotización/Emisión, que se dejó intacto a propósito, ver decisión abajo):
