@@ -241,21 +241,26 @@ export async function convertirGrabacionAOnDemand(
   return result.data;
 }
 
-export async function obtenerSesiones() {
+/**
+ * Sesiones vigentes: activas o programadas a futuro (no descarga el historial).
+ * `limit` acota el resultado para vistas que solo muestran unas cuantas.
+ */
+export async function obtenerSesiones(limit = 50) {
   const { data, error } = await supabase
     .from('aula_virtual_sesiones')
     .select(`
       *,
       instructor:usuarios(id, nombre_completo)
     `)
-    .order('fecha_inicio', { ascending: true });
+    .or(`esta_activa.eq.true,and(estado.eq.programada,fecha_inicio.gt.${new Date().toISOString()})`)
+    .order('fecha_inicio', { ascending: true })
+    .limit(limit);
 
   if (error) {
     console.error('Error obteniendo sesiones:', error);
     throw error;
   }
 
-  console.log('✅ Sesiones obtenidas desde Supabase:', data);
   return data as (AulaSession & { instructor: { id: string; nombre_completo: string } | null })[];
 }
 
