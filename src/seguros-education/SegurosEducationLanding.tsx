@@ -4,6 +4,15 @@ import { Play, BookOpen, Video, Users, MapPin, Award, Clock, Wifi, ChevronRight,
 import { supabase } from '../lib/supabase';
 import { SELoginModal } from './SELoginModal';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { crossDomainUrl, isEducationHost, PROD_ORIGIN } from '../lib/betaAccess';
+
+/**
+ * En seguros.education solo existe la landing: la plataforma vive en la app de MOVI.
+ * Se lleva la sesión por query params (la app la consume al cargar).
+ */
+async function irAPlataforma(path = '/seguros-education') {
+  window.location.href = isEducationHost() ? await crossDomainUrl(PROD_ORIGIN, undefined, path) : path;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -161,7 +170,7 @@ function EventCard({ session, onAccess }: { session: AulaSession; onAccess: () =
 // ─── Lead Form ────────────────────────────────────────────────────────────────
 
 function LeadForm() {
-  const [form, setForm] = useState({ nombre: '', telefono: '', email: '', mensaje: '' });
+  const [form, setForm] = useState({ nombre: '', telefono: '', email: '', mensaje: '', website: '' });
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -175,18 +184,17 @@ function LeadForm() {
     setLoading(true);
     setError('');
     try {
-      await fetch(`${SUPABASE_URL}/functions/v1/seguros-education-lead`, {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/seguros-education-lead`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
         body: JSON.stringify({
           ...form,
           origen: 'Seguros Education',
           pagina: window.location.href,
-          ip: '',
           user_agent: navigator.userAgent,
-          fecha: new Date().toISOString(),
         }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setSent(true);
     } catch {
       setError('Error al enviar. Intenta de nuevo.');
@@ -211,6 +219,17 @@ function LeadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Honeypot anti-bots: invisible para personas */}
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        value={form.website}
+        onChange={(e) => setForm(f => ({ ...f, website: e.target.value }))}
+        className="absolute -left-[9999px] h-0 w-0 opacity-0"
+      />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">Nombre *</label>
@@ -341,7 +360,7 @@ export default function SegurosEducationLanding() {
   function requireAuth(redirectPath?: string) {
     if (authLoading) return;
     if (usuario) {
-      window.location.href = redirectPath || '/seguros-education';
+      void irAPlataforma(redirectPath);
     } else {
       setLoginRedirect(redirectPath);
       setShowLogin(true);
@@ -426,6 +445,7 @@ export default function SegurosEducationLanding() {
                 {!authLoading && usuario ? (
                   <a
                     href="/seguros-education"
+                    onClick={(e) => { e.preventDefault(); requireAuth('/seguros-education'); }}
                     className="hidden sm:inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl transition-all hover:opacity-90"
                     style={{ background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' }}
                   >
@@ -468,6 +488,7 @@ export default function SegurosEducationLanding() {
                 {usuario ? (
                   <a
                     href="/seguros-education"
+                    onClick={(e) => { e.preventDefault(); requireAuth('/seguros-education'); }}
                     className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-semibold text-white rounded-xl"
                     style={{ background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' }}
                   >
@@ -725,7 +746,7 @@ export default function SegurosEducationLanding() {
                 </div>
                 <div className="flex flex-wrap gap-4">
                   <button
-                    onClick={() => requireAuth('/cedula-a')}
+                    onClick={() => requireAuth('/seguros-education/cedula-a')}
                     className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-white font-bold text-sm transition-all hover:shadow-2xl hover:shadow-blue-500/25 active:scale-[0.98]"
                     style={{ background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' }}
                   >
@@ -1197,9 +1218,8 @@ export default function SegurosEducationLanding() {
           onClose={() => setShowLogin(false)}
           onSuccess={() => {
             setShowLogin(false);
-            if (loginRedirect) window.location.href = loginRedirect;
+            void irAPlataforma(loginRedirect);
           }}
-          redirectTo={loginRedirect}
         />
       )}
     </>

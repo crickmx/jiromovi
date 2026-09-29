@@ -52,13 +52,14 @@ export interface CedulaAPregunta {
   examen_id: string;
   pregunta: string;
   opciones: OpcionRespuesta[];
-  respuesta_correcta: string;
-  explicacion: string;
+  /** No legibles desde el cliente: solo llegan en la retroalimentación de fn_evaluar_examen. */
+  respuesta_correcta?: string;
+  explicacion?: string;
   modulo_referencia_id: string | null;
   dificultad: 'basica' | 'intermedia' | 'avanzada' | 'trampa';
   orden: number;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface OpcionRespuesta {
@@ -148,6 +149,7 @@ export interface CedulaACertificado {
 
 export interface ResultadoEvaluacion {
   intento_id: string;
+  certificado_id?: string | null;
   puntaje: number;
   total_preguntas: number;
   respuestas_correctas: number;

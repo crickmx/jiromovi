@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';
 import { applyTheme } from '../lib/themeUtils';
 import { useImpersonation } from './ImpersonationContext';
-import { isBetaHost, skipBetaRedirectActive, crossDomainUrl, consumeIncomingSession, BETA_ORIGIN } from '../lib/betaAccess';
+import { isBetaHost, isEducationHost, skipBetaRedirectActive, crossDomainUrl, consumeIncomingSession, BETA_ORIGIN } from '../lib/betaAccess';
 import type { Database } from '../lib/database.types';
 import { closeRoundcubeSession } from '../lib/roundcubeSso';
 
@@ -102,7 +102,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
       // conservando su sesion, salvo que ya hayan usado el boton de "Regresar a MOVI"
       // en esta misma pestana (sessionStorage) - si no, es un ping-pong infinito.
       // En dev local (npm run dev) nunca redirige, para poder probar en localhost.
-      if (!isBetaHost() && !import.meta.env.DEV) {
+      if (!isBetaHost() && !isEducationHost() && !import.meta.env.DEV) {
         const { data: betaRow } = await supabase.from('usuarios_beta').select('id').eq('usuario_id', u.id).maybeSingle();
         if (betaRow) {
           if (!skipBetaRedirectActive()) {

@@ -74,9 +74,10 @@ export function SELoginModal({ onClose, onSuccess, redirectTo }: Props) {
       }
       setStep('success');
       setTimeout(() => {
-        onSuccess?.();
         onClose();
-        if (redirectTo) window.location.href = redirectTo;
+        // Si el padre maneja la navegación, no se redirige dos veces.
+        if (onSuccess) onSuccess();
+        else if (redirectTo) window.location.href = redirectTo;
         else window.location.reload();
       }, 1200);
     } catch {
