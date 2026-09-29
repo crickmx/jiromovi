@@ -53,7 +53,6 @@ export const TOP_LEVEL_ITEMS: TopLevelNavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES },
   { path: '/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] },
   { path: '/chava', label: 'Chava', icon: BrainCircuit, visibleTo: ADMIN_ONLY },
-  { path: '/centro-digital', label: 'Centro Digital', icon: Monitor, visibleTo: ALL_ROLES },
   { path: '/store', label: 'MOVI Store', icon: ShoppingBag, visibleTo: ALL_ROLES },
   { path: '/comunicados', label: 'Comunicados', icon: Newspaper, visibleTo: ALL_ROLES, matchPrefix: true },
 ];
@@ -66,11 +65,12 @@ const WORKSPACE_HERRAMIENTAS: WorkspaceDefinition = {
   items: [
     { path: '/mi-crm', label: 'Mi CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/contactos', label: 'Contactos', icon: BookUser, visibleTo: ALL_ROLES, matchPrefix: true },
+    { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
+    { path: '/centro-digital', label: 'Centro Digital', icon: Monitor, visibleTo: ALL_ROLES },
     { path: '/entrega-polizas', label: 'Entrega Pólizas', icon: PackageCheck, visibleTo: NOT_AGENT },
     { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileSearch, visibleTo: NOT_AGENT },
     { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
     { path: '/espacio-jiro', label: 'Espacio JIRO', icon: Landmark, visibleTo: ALL_ROLES },
-    { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
     { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, visibleTo: NOT_AGENT },
   ],
 };
@@ -201,7 +201,6 @@ export const WORKSPACES: WorkspaceDefinition[] = [
 export const NAV_ORDER: NavEntry[] = [
   { type: 'link', item: { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visibleTo: ALL_ROLES } },
   { type: 'link', item: { path: '/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ALL_ROLES, matchPrefix: true, excludePrefixes: ['/tramites/formularios'] } },
-  { type: 'link', item: { path: '/centro-digital', label: 'Centro Digital', icon: Monitor, visibleTo: ALL_ROLES } },
   { type: 'workspace', workspace: WORKSPACE_HERRAMIENTAS },
   { type: 'workspace', workspace: WORKSPACE_CENTRO_CONTACTO },
   { type: 'workspace', workspace: WORKSPACE_COTIZAR },
