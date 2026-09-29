@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -25,8 +26,8 @@ import {
 import { analyticsTracker } from '../lib/analyticsTracker';
 
 export function SegurosEducationAulaVirtual() {
+  const navigate = useNavigate();
   const { usuario } = useAuth();
-  const [sessions, setSessions] = useState<AulaSession[]>([]);
   const [grabaciones, setGrabaciones] = useState<AulaGrabacion[]>([]);
   const [activeSessions, setActiveSessions] = useState<AulaSession[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<AulaSession[]>([]);
@@ -42,7 +43,8 @@ export function SegurosEducationAulaVirtual() {
   useEffect(() => {
     checkAdminPermissions();
     fetchData();
-  }, [usuario]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.id]);
 
   const checkAdminPermissions = async () => {
     if (!usuario) {
@@ -77,74 +79,19 @@ export function SegurosEducationAulaVirtual() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Iniciando fetchData...');
 
       const [sesionesData, grabacionesData] = await Promise.all([
         obtenerSesiones(),
         obtenerGrabaciones()
       ]);
 
-      console.log('📊 Total sesiones obtenidas:', sesionesData?.length || 0);
-      console.log('📋 Sesiones completas:', sesionesData);
-
-      if (!sesionesData || sesionesData.length === 0) {
-        console.warn('⚠️ No se obtuvieron sesiones de la base de datos');
-        setSessions([]);
-        setActiveSessions([]);
-        setUpcomingSessions([]);
-        setGrabaciones(grabacionesData || []);
-        return;
-      }
-
-      const now = new Date();
-      console.log('🕐 Hora actual:', now.toISOString());
-
-      const active = sesionesData.filter(s => {
-        const isActive = s.esta_activa === true;
-        if (isActive) console.log('🔴 Sesión ACTIVA:', s.titulo);
-        return isActive;
-      });
-
-      const upcoming = sesionesData.filter(s => {
-        if (!s.fecha_inicio || !s.estado) {
-          console.log(`⚠️ Sesión "${s.titulo}" sin fecha_inicio o estado`);
-          return false;
-        }
-
-        const sessionDate = new Date(s.fecha_inicio);
-        const sessionTime = sessionDate.getTime();
-        const nowTime = now.getTime();
-
-        const isFuture = sessionTime > nowTime;
-        const isNotActive = s.esta_activa === false;
-        const isProgrammed = s.estado === 'programada';
-        const isUpcoming = isFuture && isNotActive && isProgrammed;
-
-        console.log(`
-📅 Sesión: "${s.titulo}"
-   - Fecha sesión: ${sessionDate.toISOString()} (${sessionTime})
-   - Fecha actual: ${now.toISOString()} (${nowTime})
-   - Diferencia ms: ${sessionTime - nowTime}
-   - Es futura: ${isFuture}
-   - Esta activa: ${s.esta_activa}
-   - No activa: ${isNotActive}
-   - Estado: ${s.estado}
-   - Es programada: ${isProgrammed}
-   - ✅ ES PRÓXIMA: ${isUpcoming}
-        `);
-
-        return isUpcoming;
-      });
-
-      console.log('🔴 Total sesiones ACTIVAS:', active.length, active);
-      console.log('📅 Total sesiones PRÓXIMAS:', upcoming.length, upcoming);
-
-      setSessions(sesionesData);
-      setActiveSessions(active);
-      setUpcomingSessions(upcoming);
+      const now = Date.now();
+      setActiveSessions(sesionesData.filter(s => s.esta_activa === true));
+      setUpcomingSessions(sesionesData.filter(s =>
+        !!s.fecha_inicio && s.estado === 'programada' && s.esta_activa === false &&
+        new Date(s.fecha_inicio).getTime() > now
+      ));
       setGrabaciones(grabacionesData || []);
-
-      console.log('✅ Estado actualizado correctamente');
     } catch (error) {
       console.error('❌ Error fetching data:', error);
     } finally {
@@ -202,7 +149,7 @@ export function SegurosEducationAulaVirtual() {
       // Track class join success
       analyticsTracker.trackClassJoinSuccess(sessionId);
 
-      window.location.href = `/aula-virtual/sala/${result.session.room_id}`;
+      navigate(`/aula-virtual/sala/${result.session.room_id}`);
     } catch (error: any) {
       alert(error.message || 'Error al unirse a la sesión');
     }
