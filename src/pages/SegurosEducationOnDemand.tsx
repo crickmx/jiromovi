@@ -28,6 +28,7 @@ interface Lesson {
   video_url: string;
   duracion: number;
   fecha_creacion: string;
+  oficinas_asignadas?: string[] | null;
   progreso?: number;
   completado?: boolean;
   tiempo_reproduccion?: number;
@@ -630,7 +631,7 @@ export function SegurosEducationOnDemand() {
       titulo: lesson.titulo,
       descripcion: lesson.descripcion || '',
       categoria_ids: lesson.categorias?.map(c => c.id) || [],
-      oficinas_asignadas: [],
+      oficinas_asignadas: lesson.oficinas_asignadas ?? [],
     });
     setShowUploadModal(true);
   };
@@ -660,15 +661,21 @@ export function SegurosEducationOnDemand() {
     }
   };
 
+  // Resuelve 0 si el navegador no puede leer el formato (p. ej. AVI/MOV) para no colgar la subida.
   const getVideoDuration = (file: File): Promise<number> => {
     return new Promise((resolve) => {
       const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.onloadedmetadata = () => {
-        window.URL.revokeObjectURL(video.src);
-        resolve(video.duration);
+      const src = URL.createObjectURL(file);
+      const done = (value: number) => {
+        clearTimeout(timer);
+        URL.revokeObjectURL(src);
+        resolve(Number.isFinite(value) ? value : 0);
       };
-      video.src = URL.createObjectURL(file);
+      const timer = setTimeout(() => done(0), 15000);
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => done(video.duration);
+      video.onerror = () => done(0);
+      video.src = src;
     });
   };
 

@@ -9,14 +9,24 @@ export function isBetaHost(): boolean {
   return window.location.hostname === 'beta.movi.digital';
 }
 
+/** Landing pública de seguros.education (no es la app; no debe redirigir a beta). */
+export function isEducationHost(): boolean {
+  const h = window.location.hostname;
+  return h === 'seguros.education' || h.endsWith('.seguros.education');
+}
+
 export function skipBetaRedirectActive(): boolean {
   return sessionStorage.getItem(SKIP_BETA_KEY) === '1';
 }
 
-/** Arma la URL de destino (mismo path actual) llevando la sesión por query params. */
-export async function crossDomainUrl(targetOrigin: string, extraParams?: Record<string, string>): Promise<string> {
+/** Arma la URL de destino (por defecto el mismo path actual) llevando la sesión por query params. */
+export async function crossDomainUrl(
+  targetOrigin: string,
+  extraParams?: Record<string, string>,
+  path: string = window.location.pathname + window.location.search,
+): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
-  const url = new URL(window.location.pathname + window.location.search, targetOrigin);
+  const url = new URL(path, targetOrigin);
   if (session) {
     url.searchParams.set('movi_at', session.access_token);
     url.searchParams.set('movi_rt', session.refresh_token);

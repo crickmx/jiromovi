@@ -217,7 +217,9 @@ export default function ExamenInterface() {
             <div className="flex flex-wrap gap-3 justify-center">
               {resultado.aprobado && examen.tipo === 'final' && (
                 <button
-                  onClick={() => navigate('/seguros-education/cedula-a/certificados')}
+                  onClick={() => navigate(resultado.certificado_id
+                    ? `/seguros-education/cedula-a/certificado/${resultado.certificado_id}`
+                    : '/seguros-education/cedula-a/certificado')}
                   className="px-6 py-3 bg-amber-600 text-white rounded-ios-lg hover:bg-amber-700 active:scale-[0.98] transition-all font-medium"
                 >
                   Ver Certificado

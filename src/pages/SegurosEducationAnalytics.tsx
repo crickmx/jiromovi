@@ -110,11 +110,13 @@ export function SegurosEducationAnalytics() {
   };
 
   const getDateFilter = () => {
-    const end = endOfDay(new Date());
+    const end = dateRange === 'custom' && customEndDate
+      ? endOfDay(new Date(`${customEndDate}T00:00:00`))
+      : endOfDay(new Date());
     let start: Date;
 
     if (dateRange === 'custom' && customStartDate) {
-      start = startOfDay(new Date(customStartDate));
+      start = startOfDay(new Date(`${customStartDate}T00:00:00`));
     } else {
       const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
       start = startOfDay(subDays(end, days));
@@ -173,7 +175,13 @@ export function SegurosEducationAnalytics() {
         console.log('[Analytics] Clases data:', clasesData?.length, 'rows');
       }
 
-      setLeccionesStats(leccionesData || []);
+      // La vista expone `categorias` (jsonb); se aplana a texto para tabla, búsqueda y CSV.
+      setLeccionesStats((leccionesData || []).map((l) => ({
+        ...l,
+        categoria_nombre: Array.isArray(l.categorias)
+          ? l.categorias.map((c: { nombre: string }) => c.nombre).join(', ')
+          : l.categoria_nombre ?? '',
+      })));
       setUsuariosStats(usuariosData || []);
       setClasesStats(clasesData || []);
 
