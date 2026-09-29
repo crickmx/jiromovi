@@ -133,17 +133,13 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
             </div>
           )}
           {campo.tipo === 'aseguradora' && (
-            <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
-              <option>Selecciona aseguradora...</option>
-            </select>
+            <div className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
+              Selecciona una o más aseguradoras (filtradas por ramo)...
+            </div>
           )}
           {campo.tipo === 'ramo' && (
             <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
-              <option>
-                {campo.config?.filtrar_por_aseguradora !== false
-                  ? 'Ramo (filtra por aseguradora)...'
-                  : 'Selecciona ramo...'}
-              </option>
+              <option>Selecciona ramo...</option>
             </select>
           )}
 

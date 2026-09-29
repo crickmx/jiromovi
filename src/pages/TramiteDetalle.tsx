@@ -122,7 +122,9 @@ export function TramiteDetalle() {
   const [secciones, setSecciones] = useState<TramiteSeccion[]>([]);
   const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
   const [catalogoRamos,     setCatalogoRamos]     = useState<{id: string; nombre: string}[]>([]);
-  const [catalogoCompanias, setCatalogoCompanias] = useState<{id: string; nombre: string}[]>([]);
+  const [catalogoCompanias, setCatalogoCompanias] = useState<{id: string; nombre: string; convenio: boolean}[]>([]);
+  const [asegUiState, setAsegUiState] = useState<Record<string, { open: boolean; search: string; verMas: boolean }>>({});
+  const asegRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [combinaciones,     setCombinaciones]     = useState<{compania_id: string; ramo_id: string}[]>([]);
   const [cpSearchState, setCpSearchState] = useState<Record<string, {
     colonias: {colonia: string; municipio: string; estado: string}[];
@@ -558,8 +560,8 @@ export function TramiteDetalle() {
     const tieneAseg = camposDinamicos.some(c => c.tipo === 'aseguradora');
     const tieneRamo = camposDinamicos.some(c => c.tipo === 'ramo');
     if (!tieneAseg && !tieneRamo) return;
-    supabase.from('maestro_companias').select('id, nombre').eq('activo', true).order('nombre')
-      .then(({ data }) => setCatalogoCompanias((data || []) as {id: string; nombre: string}[]));
+    supabase.from('maestro_companias').select('id, nombre, convenio').eq('activo', true).order('nombre')
+      .then(({ data }) => setCatalogoCompanias((data || []) as {id: string; nombre: string; convenio: boolean}[]));
     if (tieneRamo) {
       supabase.from('maestro_ramos').select('id, nombre').order('nombre')
         .then(({ data }) => setCatalogoRamos((data || []) as {id: string; nombre: string}[]));
@@ -567,6 +569,25 @@ export function TramiteDetalle() {
         .then(({ data }) => setCombinaciones((data || []) as {compania_id: string; ramo_id: string}[]));
     }
   }, [camposDinamicos]);
+
+  useEffect(() => {
+    const abiertos = Object.entries(asegUiState).filter(([, s]) => s.open).map(([id]) => id);
+    if (abiertos.length === 0) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      setAsegUiState(prev => {
+        const next = { ...prev };
+        for (const id of abiertos) {
+          const el = asegRefs.current[id];
+          if (el && !el.contains(e.target as Node)) {
+            next[id] = { ...next[id], open: false };
+          }
+        }
+        return next;
+      });
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [asegUiState]);
 
   useEffect(() => {
     if (
@@ -1971,46 +1992,120 @@ export function TramiteDetalle() {
                           })}
                         </div>
                       )}
-                      {campo.tipo === 'aseguradora' && (
+                      {campo.tipo === 'ramo' && (
                         editable ? (
                           <select value={val || ''} onChange={e => {
-                            set(e.target.value);
-                            const ramoCampo = camposDinamicos.find(c => c.tipo === 'ramo' && c.config?.filtrar_por_aseguradora);
-                            if (ramoCampo) setRespuestasDinamicas(prev => ({ ...prev, [ramoCampo.id]: '' }));
+                            const nuevoRamoNombre = e.target.value;
+                            set(nuevoRamoNombre);
+                            const asegCampo = camposDinamicos.find(c => c.tipo === 'aseguradora');
+                            if (asegCampo) {
+                              const asegVal = respuestasDinamicas[asegCampo.id];
+                              const seleccionadas = asegVal ? String(asegVal).split(',').map(s => s.trim()).filter(Boolean) : [];
+                              if (seleccionadas.length > 0) {
+                                const ramo = catalogoRamos.find(r => r.nombre === nuevoRamoNombre);
+                                const validIds = ramo ? new Set(combinaciones.filter(cb => cb.ramo_id === ramo.id).map(cb => cb.compania_id)) : new Set<string>();
+                                const validNombres = new Set(catalogoCompanias.filter(c => validIds.has(c.id)).map(c => c.nombre));
+                                const filtradas = nuevoRamoNombre ? seleccionadas.filter(n => validNombres.has(n)) : seleccionadas;
+                                if (filtradas.length !== seleccionadas.length) {
+                                  setRespuestasDinamicas(prev => ({ ...prev, [asegCampo.id]: filtradas.join(', ') }));
+                                }
+                              }
+                            }
                           }} className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                            <option value="">Selecciona aseguradora...</option>
-                            {catalogoCompanias.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+                            <option value="">Selecciona ramo...</option>
+                            {catalogoRamos.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
                           </select>
                         ) : (
                           <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-700">{val || '—'}</div>
                         )
                       )}
-                      {campo.tipo === 'ramo' && (() => {
-                        let ramosDisp = catalogoRamos;
-                        if (campo.config?.filtrar_por_aseguradora) {
-                          const asegCampo = camposDinamicos.find(c => c.tipo === 'aseguradora');
-                          const asegNombre = asegCampo ? respuestasDinamicas[asegCampo.id] : null;
-                          if (asegNombre) {
-                            const compania = catalogoCompanias.find(c => c.nombre === asegNombre);
-                            const validIds = compania
-                              ? new Set(combinaciones.filter(cb => cb.compania_id === compania.id).map(cb => cb.ramo_id))
-                              : new Set<string>();
-                            ramosDisp = catalogoRamos.filter(r => validIds.has(r.id));
-                          } else {
-                            ramosDisp = [];
-                          }
-                        }
-                        return editable ? (
-                          <select value={val || ''} onChange={e => set(e.target.value)}
-                            disabled={campo.config?.filtrar_por_aseguradora && ramosDisp.length === 0}
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed">
-                            <option value="">{campo.config?.filtrar_por_aseguradora && !ramosDisp.length ? 'Selecciona primero una aseguradora...' : 'Selecciona ramo...'}</option>
-                            {ramosDisp.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
-                          </select>
-                        ) : (
+                      {campo.tipo === 'aseguradora' && (
+                        editable ? (() => {
+                          const ramoCampo = camposDinamicos.find(c => c.tipo === 'ramo');
+                          const ramoVal = ramoCampo ? respuestasDinamicas[ramoCampo.id] : null;
+                          const ramo = ramoVal ? catalogoRamos.find(r => r.nombre === ramoVal) : null;
+                          const companiasDisponibles = ramo
+                            ? catalogoCompanias.filter(c => {
+                                const ids = new Set(combinaciones.filter(cb => cb.ramo_id === ramo.id).map(cb => cb.compania_id));
+                                return ids.has(c.id);
+                              })
+                            : catalogoCompanias;
+
+                          const seleccionadas = val ? String(val).split(',').map(s => s.trim()).filter(Boolean) : [];
+                          const ui = asegUiState[campo.id] || { open: false, search: '', verMas: false };
+                          const setUi = (patch: Partial<typeof ui>) => setAsegUiState(prev => ({ ...prev, [campo.id]: { ...ui, ...patch } }));
+
+                          const toggleCompania = (nombre: string, esPreferente: boolean) => {
+                            const yaSeleccionada = seleccionadas.includes(nombre);
+                            if (!yaSeleccionada && !esPreferente) {
+                              const continuar = window.confirm(`"${nombre}" no es una aseguradora preferente. ¿Deseas continuar de todas formas?`);
+                              if (!continuar) return;
+                            }
+                            const nuevas = yaSeleccionada ? seleccionadas.filter(n => n !== nombre) : [...seleccionadas, nombre];
+                            set(nuevas.join(', '));
+                          };
+
+                          const term = ui.search.toLowerCase();
+                          const preferentes = companiasDisponibles.filter(c => c.convenio && c.nombre.toLowerCase().includes(term));
+                          const resto = companiasDisponibles.filter(c => !c.convenio && c.nombre.toLowerCase().includes(term));
+
+                          return (
+                            <div className="relative" ref={el => { asegRefs.current[campo.id] = el; }}>
+                              <div
+                                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[38px] flex items-center justify-between gap-2 bg-white hover:border-neutral-400 focus-within:ring-2 focus-within:ring-blue-500"
+                                onClick={() => setUi({ open: !ui.open })}
+                              >
+                                {seleccionadas.length === 0
+                                  ? <span className="text-neutral-400">{ramoCampo && !ramoVal ? 'Selecciona primero un ramo (opcional)...' : 'Selecciona aseguradoras...'}</span>
+                                  : <span className="text-neutral-900">{seleccionadas.join(', ')}</span>
+                                }
+                                <ChevronDown className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${ui.open ? 'rotate-180' : ''}`} />
+                              </div>
+                              {ui.open && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-300 rounded-xl shadow-lg max-h-64 overflow-auto">
+                                  <div className="p-2 border-b border-neutral-200 sticky top-0 bg-white">
+                                    <input
+                                      type="text"
+                                      placeholder="Buscar..."
+                                      value={ui.search}
+                                      onChange={e => setUi({ search: e.target.value })}
+                                      onClick={e => e.stopPropagation()}
+                                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  </div>
+                                  <div className="p-1">
+                                    {preferentes.length > 0 && (
+                                      <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider px-1.5 pt-1">Preferentes</p>
+                                    )}
+                                    {preferentes.map(c => (
+                                      <label key={c.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
+                                        <input type="checkbox" checked={seleccionadas.includes(c.nombre)} onChange={() => toggleCompania(c.nombre, true)} className="w-3.5 h-3.5 rounded border-neutral-300" />
+                                        <span className="text-xs text-neutral-700">{c.nombre}</span>
+                                      </label>
+                                    ))}
+                                    {resto.length > 0 && !ui.verMas && (
+                                      <button type="button" onClick={() => setUi({ verMas: true })} className="w-full text-left px-1.5 py-1.5 text-xs text-blue-600 hover:underline">
+                                        + Mostrar {resto.length} más
+                                      </button>
+                                    )}
+                                    {resto.length > 0 && ui.verMas && resto.map(c => (
+                                      <label key={c.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
+                                        <input type="checkbox" checked={seleccionadas.includes(c.nombre)} onChange={() => toggleCompania(c.nombre, false)} className="w-3.5 h-3.5 rounded border-neutral-300" />
+                                        <span className="text-xs text-neutral-700">{c.nombre}</span>
+                                      </label>
+                                    ))}
+                                    {companiasDisponibles.length === 0 && (
+                                      <p className="text-xs text-neutral-400 p-2">Sin aseguradoras para el ramo seleccionado</p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })() : (
                           <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-700">{val || '—'}</div>
-                        );
-                      })()}
+                        )
+                      )}
                       {campo.tipo === 'vehiculo' && (
                         <SelectorVehiculo
                           value={val as VehiculoSeleccionado | undefined}

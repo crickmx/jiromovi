@@ -1264,18 +1264,6 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   </div>
                 )}
 
-                {editingCampo.tipo === 'ramo' && (
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={editCampoConfig.filtrar_por_aseguradora !== false}
-                      onChange={(e) => setEditCampoConfig({ ...editCampoConfig, filtrar_por_aseguradora: e.target.checked })}
-                      className="rounded"
-                    />
-                    <span className="text-sm text-neutral-700">Filtrar por aseguradora del formulario</span>
-                  </label>
-                )}
-
                 {editingCampo.tipo === 'reporte_protegido' && (
                   <div className="space-y-3">
                     <div>

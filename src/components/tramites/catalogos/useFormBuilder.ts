@@ -207,7 +207,6 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
     if (tipo === 'porcentaje') { defaultConfig.min = 0; defaultConfig.max = 100; }
     if (tipo === 'rfc') defaultConfig.tipo_persona = 'ambos';
     if (tipo === 'telefono') defaultConfig.formato = 'mx';
-    if (tipo === 'ramo') defaultConfig.filtrar_por_aseguradora = true;
     if (tipo === 'adjunto') {
       defaultConfig.tipos_mime = ['application/pdf'];
       defaultConfig.max_archivos = 1;

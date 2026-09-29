@@ -1,18 +1,21 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-28)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-29)
 
-### 🟢 SIGUIENTE (martes 2026-09-29) — Aseguradoras: orden, preferentes y selección múltiple
+### ✅ Sesión 2026-09-29 — Aseguradoras: orden, preferentes y selección múltiple (campo genérico del FormBuilder)
 
-Lo que pidió Ricardo al cerrar el 2026-09-28:
+Lo que pidió Ricardo al cerrar el 2026-09-28, ya implementado en `campo.tipo === 'ramo'`/`'aseguradora'` (`NuevoTramiteModal.tsx` y `TramiteDetalle.tsx` — **no** en Cotización/Emisión, que se dejó intacto a propósito, ver decisión abajo):
 
-1. **Invertir la dependencia ramo ↔ aseguradora.** Hoy va al revés de lo que se quiere: el campo `ramo` filtra POR aseguradora (`config.filtrar_por_aseguradora`, ver `NuevoTramiteModal.tsx` en el render de `campo.tipo === 'ramo'`), así que primero se elige aseguradora. Se quiere **elegir el ramo primero** y que las aseguradoras se acoten a las que lo manejan. La tabla `combinaciones` (compania_id + ramo_id) ya tiene el dato para hacerlo en ambos sentidos — es el mismo patrón bidireccional que se usó en `SelectorVehiculo.tsx`.
+1. **Ramo ↔ aseguradora invertido para todos los tipos.** Antes `ramo` filtraba por `aseguradora` (`config.filtrar_por_aseguradora`, default `true`); ahora es al revés: se elige ramo primero (sin filtro, siempre muestra todo `catalogoRamos`) y aseguradora se acota por `combinaciones` (compania_id + ramo_id) según el ramo elegido. Decisión de Ricardo: invertir **globalmente**, no como flag opt-in por tipo — el checkbox "Filtrar por aseguradora del formulario" se quitó del editor de campos (`FormBuilderTab.tsx`) y de su default (`useFormBuilder.ts`); la config vieja `filtrar_por_aseguradora` queda como dato inerte en filas existentes, no se lee en ningún lado.
+2. **Preferente = convenio, mismo concepto** (confirmado con Ricardo, no dos columnas). Se reutiliza `maestro_companias.convenio` tal cual, ya poblada y ya con pantalla de Admin (`BaseDatosMaestrosAdmin.tsx`) — cero migración nueva.
+3. **Selector con preferentes primero.** El multi-select nuevo muestra las `convenio=true` arriba bajo el encabezado "Preferentes"; el resto queda colapsado bajo "+ Mostrar N más". Al marcar una NO preferente, `window.confirm(...)` antes de agregarla (mismo patrón que ya usa el proyecto para advertencias de ambigüedad, ver `EquiposHabilitadosPanel.tsx`).
+4. **Selección múltiple, guardada como texto separado por comas** (`"GNP, Qualitas"`) — sigue siendo `valor_texto`, **sin** cambiar a `valor_json`. Decisión explícita de Ricardo: evita tocar los 5 archivos que ya leen este campo como string plano (`mktPremiumTriggers.ts`, `bugReportTemplate.ts`, `StorePedidoDetalle.tsx`, y las dos copias en `TramiteDetalle.tsx`) — mismo patrón que ya usaba `cotizacion_emision` (`ceSelectedInsurers.join(', ')`). Un trámite viejo con una sola aseguradora guardada sigue mostrándose bien (`"GNP".split(',')` → `["GNP"]`).
 
-2. **Aseguradoras preferentes / de convenio.** 🔑 **YA EXISTE el dato**: `maestro_companias` tiene una columna `convenio boolean NOT NULL DEFAULT false`, y su propio COMMENT dice "convenio=true indica compañía preferente/con convenio". **Antes de crear nada, revisar si está poblada** (`select convenio, count(*) from maestro_companias group by 1`). Lo que falta es (a) confirmar si hay pantalla en Admin para editarla y, si no, agregarla, y (b) decidir si "preferente" y "de convenio" son lo mismo o dos conceptos distintos — Ricardo los nombró por separado, así que **preguntarlo antes de asumir** que una sola columna alcanza.
+**Por qué NO se tocó Cotización/Emisión:** ya tenía este comportamiento resuelto de antes (ramo primero, multi-select con buscador, cascada bidireccional) — es el precedente del que se copió el patrón. Decisión de Ricardo: mantener las dos implementaciones separadas en vez de extraer un componente compartido, para no arriesgar ese flujo que ya funciona. Pendiente si algún día se quiere: CE no tiene todavía orden preferente-primero ni la advertencia de "no preferente" — no se pidió, no se tocó.
 
-3. **Orden y advertencia en el selector.** Mostrar primero las preferentes; las demás ocultas bajo un "mostrar más". Al elegir una NO preferente, lanzar una advertencia antes de continuar.
+**Antes de tocar código se investigó y se preguntó** (patrón habitual): se encontró una función SQL `get_companias_por_ramo()` (migración `20260624200000`) que resuelve exactamente esta cascada pero **nunca se conectó a nada** — no se usó, el filtrado sigue siendo client-side con los catálogos que ya se cargaban (`catalogoRamos`/`catalogoCompanias`/`combinaciones`), más liviano que agregar una llamada RPC nueva.
 
-4. **Permitir elegir una o más aseguradoras.** Hoy el campo `aseguradora` es de selección única. Ojo: `cotizacion_emision` ya tiene su propio multi-selector (`ceSelectedInsurers`), así que revisar si conviene unificarlos en vez de tener dos.
+**Build verificado, sin probar en navegador todavía.**
 
 ---
 
