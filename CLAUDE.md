@@ -2,6 +2,16 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-29)
 
+### ⚠️ CORREGIDO tras revisión de Ricardo — quién es "agente" y quién "creado_por" en un hijo por trigger
+
+El primer fix de esta sesión (abajo) usaba `usuario.id` (quien disparó el trigger) como respaldo cuando el padre no tiene agente. **Ricardo lo corrigió**: quien ejecuta el cambio de estatus puede ser cualquiera (ej. un Admin ajeno al caso) y no debe suplantar a nadie.
+
+- **`agente_id` del hijo**: se hereda tal cual del padre (`snap.agente?.id ?? null`), **nunca** se sustituye — el Solicitante no cambia porque el trámite avance a un paso interno. (Esto ya era así, no cambió.)
+- **`creado_por` del hijo**: ahora es el **responsable del padre** (`snap.assigned_to_user_id`), no quien disparó el trigger — es quien venía atendiendo el caso, análogo a que esa persona hubiera creado el siguiente paso a mano. Con respaldo a `usuario.id` solo si el padre no tenía responsable (ej. estaba en pool).
+- **Resolución de reglas (`get_grupo_para_ticket`) cuando el tipo destino es interno y no hay agente**: usa al **responsable del padre**, no a quien disparó el trigger — mismo criterio que `creado_por`.
+
+---
+
 ### ✅ Sesión 2026-09-29 (noche) — trámites hijo por trigger sin auto-asignar: causa real encontrada
 
 Ricardo confirmó con folio real (`TKA6958-A`) que el caso roto SÍ es el trigger de cambio de estatus (padre→hijo), no recurrencias. La auditoría de la tarde había verificado que el fix de septiembre (`5476dfdc`, unwrap del arreglo) seguía intacto — y lo sigue estando, **pero no era la única condición para que el motor de reglas corriera**.

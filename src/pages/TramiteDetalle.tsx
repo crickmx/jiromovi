@@ -1053,6 +1053,12 @@ export function TramiteDetalle() {
             }
 
             // 3. Crear trámite hijo
+            // creado_por = el responsable del padre (quien lo venía atendiendo), no
+            // quien disparó el trigger -- un Admin puede mover el estatus de un trámite
+            // que no es suyo, y el hijo no debe quedar atribuido a él. agente_id se
+            // hereda tal cual del padre, sin sustituirlo nunca (el Solicitante no cambia
+            // solo porque el trámite avanza a un paso interno).
+            const creadoPorHijo = snap.assigned_to_user_id ?? usuario.id;
             const { data: childTicket, error: childErr } = await supabase
               .from('tickets')
               .insert({
@@ -1061,7 +1067,7 @@ export function TramiteDetalle() {
                 estatus_id: estatusIniciado?.id ?? null,
                 prioridad: prioHijo,
                 instrucciones: `Generado por trigger "${trigger.nombre}"`,
-                creado_por: usuario.id,
+                creado_por: creadoPorHijo,
                 modificado_por: usuario.id,
                 parent_ticket_id: snap.id,
                 trigger_origen_id: trigger.id,
@@ -1234,13 +1240,13 @@ export function TramiteDetalle() {
             //
             // El padre puede no tener agente/solicitante (tipos internos no siempre lo
             // capturan) -- antes eso dejaba _autoAsignar sin correr nunca para esos
-            // casos, silenciosamente. NuevoTramiteModal.tsx ya resuelve esto para
-            // trámites nuevos: si el tipo es interno, usa a quien está creando el
-            // trámite como "agente" para las reglas (línea ~670, `esInterno ?
-            // usuario?.id : asignado`). Se replica aquí para que un hijo siga las
-            // MISMAS reglas que un trámite nuevo del mismo tipo -- quien dispara el
-            // trigger (usuario actual) hace de agente cuando el tipo destino es interno.
-            const agenteIdParaAsignar = snap.agente?.id ?? (targetTipo.es_interno ? usuario?.id : null) ?? null;
+            // casos, silenciosamente. NuevoTramiteModal.tsx resuelve esto para trámites
+            // nuevos usando a quien está creando el trámite como "agente" para las
+            // reglas (línea ~670) -- pero aquí quien dispara el trigger puede ser
+            // cualquiera (ej. un Admin) y no debe suplantar al agente. El equivalente
+            // correcto es el responsable del padre (mismo criterio que creado_por
+            // arriba): es quien venía atendiendo el caso, no quien tocó el botón.
+            const agenteIdParaAsignar = snap.agente?.id ?? (targetTipo.es_interno ? (snap.assigned_to_user_id ?? usuario?.id) : null) ?? null;
             if (_autoAsignar && agenteIdParaAsignar) {
               const { data: grupoData } = await supabase.rpc('get_grupo_para_ticket', {
                 p_agente_id: agenteIdParaAsignar,
