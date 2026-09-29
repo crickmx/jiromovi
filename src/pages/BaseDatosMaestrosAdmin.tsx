@@ -998,7 +998,17 @@ export default function BaseDatosMaestrosAdmin() {
                   <div key={comp.id} className="flex items-center justify-between py-1.5 px-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 rounded-lg group">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100">{comp.nombre}</span>
-                      {comp.convenio && <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">Convenio</span>}
+                      <button
+                        onClick={() => toggleActivo('maestro_companias', comp.id, comp.convenio, loadCatalogo, 'convenio')}
+                        title={comp.convenio ? 'Quitar convenio (preferente)' : 'Marcar como convenio (preferente)'}
+                        className={`text-xs px-1.5 py-0.5 rounded transition-colors ${
+                          comp.convenio
+                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            : 'bg-neutral-100 text-neutral-400 opacity-0 group-hover:opacity-100 hover:bg-neutral-200 hover:text-neutral-600'
+                        }`}
+                      >
+                        {comp.convenio ? 'Convenio' : '+ Convenio'}
+                      </button>
                     </div>
                     <button onClick={() => toggleActivo('maestro_companias', comp.id, comp.activo, loadCatalogo)}
                       className="opacity-0 group-hover:opacity-100 transition">
