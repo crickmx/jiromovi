@@ -144,6 +144,11 @@ export default function BaseDatosMaestrosAdmin() {
   const [importTarget, setImportTarget] = useState<TabId>('catalogo');
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // ── Import dedicado de Convenio/Preferentes (por ramo+subramo) ────────────────
+  const [convenioLoading, setConvenioLoading] = useState(false);
+  const [convenioResultado, setConvenioResultado] = useState<{ exitosas: number; errores: { fila: number; error: string }[] } | null>(null);
+  const convenioFileRef = useRef<HTMLInputElement>(null);
+
   // ── Historial ───────────────────────────────────────────────────────────────
   const [historial, setHistorial]     = useState<Importacion[]>([]);
   const [loadingHist, setLoadingHist] = useState(false);
@@ -701,6 +706,138 @@ export default function BaseDatosMaestrosAdmin() {
     return { exitosas, omitidas, errores };
   }
 
+  // Import dedicado de Convenio/Preferentes: a diferencia de importarCatalogo,
+  // NUNCA crea compañías/ramos/subramos nuevos -- solo busca por nombre EXACTO
+  // contra lo que ya existe y actualiza convenio/pondera de la combinación. Si
+  // una fila no coincide, se reporta como error en vez de crear algo nuevo en
+  // silencio, para que el resultado sea predecible y separado del importador
+  // general de catálogo.
+  async function importarConvenioEstricto(rows: any[]) {
+    let exitosas = 0;
+    const errores: { fila: number; error: string }[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const compNombre = normalize(r.compania || r.Compania || r.COMPANIA || r['Nombre Compañía']);
+      const ramoNombre = normalize(r.ramo || r.Ramo || r.RAMO || r.RamosNombre || r['Ramos Nombre']);
+      const subNombre  = normalize(r.subramo || r.Subramo || r.SUBRAMO || r['Sub Ramo'] || r.SubRamo);
+      const convenioRaw = String(r.convenio ?? r.Convenio ?? r.CONVENIO ?? '').trim().toLowerCase();
+      const convenio   = convenioRaw === 'sí' || convenioRaw === 'si';
+      const ponderaRaw = r.pondera ?? r.Pondera ?? r.PONDERA;
+      const pondera    = ponderaRaw === undefined || ponderaRaw === '' ? null : Number(ponderaRaw);
+
+      if (!compNombre || !ramoNombre || !subNombre) {
+        errores.push({ fila: i + 2, error: 'Faltan compañía/ramo/subramo' });
+        continue;
+      }
+
+      const comp = companias.find(c => c.nombre.trim().toUpperCase() === compNombre.toUpperCase());
+      if (!comp) { errores.push({ fila: i + 2, error: `Compañía "${compNombre}" no existe -- agrégala primero en "Compañías"` }); continue; }
+
+      const ramo = ramos.find(rr => rr.nombre.trim().toUpperCase() === ramoNombre.toUpperCase());
+      if (!ramo) { errores.push({ fila: i + 2, error: `Ramo "${ramoNombre}" no existe -- agrégalo primero en "Ramos"` }); continue; }
+
+      const sub = subramos.find(s => s.ramo_id === ramo.id && s.nombre.trim().toUpperCase() === subNombre.toUpperCase());
+      if (!sub) { errores.push({ fila: i + 2, error: `Subramo "${subNombre}" no existe bajo el ramo "${ramoNombre}" -- agrégalo primero` }); continue; }
+
+      const { error } = await supabase.from('maestro_combinaciones')
+        .upsert({ compania_id: comp.id, ramo_id: ramo.id, subramo_id: sub.id, convenio, pondera },
+          { onConflict: 'compania_id,ramo_id,subramo_id' });
+
+      if (error) { errores.push({ fila: i + 2, error: error.message }); continue; }
+      exitosas++;
+    }
+    return { exitosas, errores };
+  }
+
+  const handleConvenioFileSelect = useCallback(async (file: File) => {
+    setConvenioLoading(true);
+    setConvenioResultado(null);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+
+      // Toma la primera hoja que tenga una columna de Convenio reconocible --
+      // así funciona con el Excel crudo de Ricardo (2 hojas, solo una trae
+      // CONVENIO) sin que tenga que renombrar nada antes de subirlo.
+      const CONVENIO_KEYS = ['convenio', 'Convenio', 'CONVENIO'];
+      let rows: any[] = [];
+      for (const sheetName of wb.SheetNames) {
+        const candidatas = XLSX.utils.sheet_to_json<any>(wb.Sheets[sheetName], { defval: '' });
+        if (candidatas.length > 0 && CONVENIO_KEYS.some(k => k in candidatas[0])) {
+          rows = candidatas;
+          break;
+        }
+      }
+      if (rows.length === 0) {
+        toast('No se encontró una columna de Convenio en ninguna hoja del archivo', 'err');
+        return;
+      }
+
+      const res = await importarConvenioEstricto(rows);
+      setConvenioResultado(res);
+      toast(`Convenio: ${res.exitosas} combinaciones actualizadas${res.errores.length ? `, ${res.errores.length} sin coincidencia` : ''}`);
+      loadCatalogo();
+    } catch (err: any) {
+      toast('Error procesando el archivo: ' + err.message, 'err');
+    } finally {
+      setConvenioLoading(false);
+      if (convenioFileRef.current) convenioFileRef.current.value = '';
+    }
+  }, [companias, ramos, subramos]);
+
+  function ImportConvenioPanel() {
+    return (
+      <div className="bg-white dark:bg-neutral-800 rounded-xl border-2 border-blue-200 dark:border-blue-800 p-5 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          <Tag className="w-4 h-4 text-blue-600"/>
+          Importar Convenio / Preferentes (por Ramo y Subramo)
+        </div>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          Solo actualiza si cada combinación compañía+ramo+subramo es preferente o no — <strong>no crea</strong> compañías, ramos ni subramos nuevos. Si una fila no coincide con lo que ya existe abajo, se reporta como error en vez de inventar algo nuevo.
+        </p>
+
+        <div
+          className="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/30 transition"
+          onClick={() => convenioFileRef.current?.click()}
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleConvenioFileSelect(f); }}
+        >
+          {convenioLoading ? (
+            <div className="flex flex-col items-center gap-2">
+              <RefreshCw className="w-7 h-7 text-blue-500 animate-spin"/>
+              <p className="text-sm text-blue-600 font-medium">Procesando convenio...</p>
+            </div>
+          ) : (
+            <>
+              <Tag className="w-8 h-8 text-blue-200 mx-auto mb-2"/>
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">Arrastra aquí tu Excel de Convenio/Preferentes o <span className="text-blue-600 font-medium">haz click para seleccionar</span></p>
+              <p className="text-xs text-neutral-400 mt-1">Cualquier hoja con columnas de compañía, ramo, subramo y convenio (acepta los encabezados tal cual vienen del Excel de Ricardo)</p>
+            </>
+          )}
+        </div>
+        <input ref={convenioFileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleConvenioFileSelect(f); }} />
+
+        {convenioResultado && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+              ✅ {convenioResultado.exitosas} combinaciones actualizadas
+              {convenioResultado.errores.length > 0 && `, ⚠️ ${convenioResultado.errores.length} sin coincidencia`}
+            </p>
+            {convenioResultado.errores.length > 0 && (
+              <div className="max-h-48 overflow-y-auto border border-amber-200 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 space-y-1">
+                {convenioResultado.errores.map((e, i) => (
+                  <p key={i} className="text-xs text-amber-700 dark:text-amber-300">Fila {e.fila}: {e.error}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   async function importarVendedores(rows: any[], mode: ImportMode) {
     let exitosas = 0, omitidas = 0;
     const errores: { fila: number; error: string }[] = [];
@@ -925,6 +1062,7 @@ export default function BaseDatosMaestrosAdmin() {
     return (
       <div className="space-y-6">
         <ImportPanel />
+        <ImportConvenioPanel />
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
