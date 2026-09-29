@@ -21,7 +21,8 @@ export default function CursoCedulaA() {
     if (usuario) {
       cargarDatos();
     }
-  }, [usuario]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.id]);
 
   const cargarDatos = async () => {
     if (!usuario) return;
