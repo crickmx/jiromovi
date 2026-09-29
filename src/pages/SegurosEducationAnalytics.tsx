@@ -86,7 +86,8 @@ export function SegurosEducationAnalytics() {
 
   useEffect(() => {
     checkPermissions();
-  }, [usuario]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.id]);
 
   const checkPermissions = async () => {
     if (!usuario) {

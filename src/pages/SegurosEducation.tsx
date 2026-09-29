@@ -17,6 +17,7 @@ interface Lesson {
   duracion: number;
   categoria: { nombre: string } | null;
   progreso?: number;
+  completado?: boolean;
 }
 
 interface Session {
@@ -96,27 +97,41 @@ export function SegurosEducation() {
   const [loading, setLoading] = useState(true);
   const isAdmin = ['admin', 'administrador'].includes(usuario?.rol?.toLowerCase() || '');
 
-  useEffect(() => { fetchData(); }, [usuario]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); }, [usuario?.id]);
 
   const fetchData = async () => {
     if (!usuario) return;
     try {
       setLoading(true);
 
-      const sessionsData = await obtenerSesiones();
+      // Todo en paralelo y acotado a lo que se muestra (4 próximas, 4 recientes).
+      const [sessionsData, eventosRes, lessonsRes, progressRes] = await Promise.all([
+        obtenerSesiones(4),
+        supabase
+          .from('aula_eventos')
+          .select('id, titulo, descripcion, fecha, hora, ponente')
+          .gte('fecha', new Date().toISOString().split('T')[0])
+          .order('fecha', { ascending: true })
+          .order('hora', { ascending: true })
+          .limit(4),
+        supabase
+          .from('seguros_lessons')
+          .select('id, titulo, descripcion, miniatura_url, video_url, duracion, fecha_creacion, seguros_lesson_categories(seguros_categories(nombre))')
+          .order('fecha_creacion', { ascending: false })
+          .limit(4),
+        supabase
+          .from('seguros_progress')
+          .select('lesson_id, progreso, completado, tiempo_reproduccion, ultima_vista, lesson:seguros_lessons(titulo, duracion)')
+          .eq('user_id', usuario.id),
+      ]);
+
       const now = new Date();
       const upcomingSessions = sessionsData
         .filter(s => new Date(s.fecha_inicio) > now && s.estado === 'programada' && !s.esta_activa)
         .map(s => ({ ...s, tipo: 'sesion' as const }));
 
-      const { data: eventosData } = await supabase
-        .from('aula_eventos')
-        .select('id, titulo, descripcion, fecha, hora, ponente')
-        .gte('fecha', new Date().toISOString().split('T')[0])
-        .order('fecha', { ascending: true })
-        .order('hora', { ascending: true });
-
-      const upcomingEvents = (eventosData || []).map(e => ({
+      const upcomingEvents = (eventosRes.data || []).map(e => ({
         id: e.id,
         titulo: e.titulo,
         descripcion: e.descripcion,
@@ -128,43 +143,35 @@ export function SegurosEducation() {
         tipo: 'evento' as const,
       }));
 
-      const upcoming = [...upcomingSessions, ...upcomingEvents]
+      setProxSessions([...upcomingSessions, ...upcomingEvents]
         .sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime())
-        .slice(0, 4);
+        .slice(0, 4));
 
-      setProxSessions(upcoming);
+      type ProgressRow = {
+        lesson_id: string; progreso: number | null; completado: boolean | null;
+        tiempo_reproduccion: number | null; ultima_vista: string | null;
+        lesson: { titulo: string; duracion: number | null } | null;
+      };
+      const progressData = (progressRes.data || []) as unknown as ProgressRow[];
+      const progressByLesson = new Map(progressData.map(p => [p.lesson_id, p]));
 
-      const { data: lessons } = await supabase
-        .from('seguros_lessons')
-        .select('*')
-        .order('fecha_creacion', { ascending: false })
-        .limit(6);
+      type LessonRow = Record<string, unknown> & {
+        id: string;
+        seguros_lesson_categories: { seguros_categories: { nombre: string } | null }[] | null;
+      };
+      setRecentLessons(((lessonsRes.data || []) as unknown as LessonRow[]).map(({ seguros_lesson_categories, ...lesson }) => ({
+        ...lesson,
+        progreso: progressByLesson.get(lesson.id)?.progreso || 0,
+        completado: progressByLesson.get(lesson.id)?.completado || false,
+        categoria: seguros_lesson_categories?.[0]?.seguros_categories ?? null,
+      })) as unknown as Lesson[]);
 
-      if (lessons) {
-        const lessonsWithProgress = await Promise.all(
-          lessons.map(async (lesson) => {
-            const [progressRes, categoryRes] = await Promise.all([
-              supabase.from('seguros_progress').select('progreso').eq('lesson_id', lesson.id).eq('user_id', usuario.id).maybeSingle(),
-              supabase.from('seguros_lesson_categories').select('category_id, seguros_categories(nombre)').eq('lesson_id', lesson.id).limit(1).maybeSingle(),
-            ]);
-            return { ...lesson, progreso: progressRes.data?.progreso || 0, categoria: categoryRes.data?.seguros_categories || null };
-          })
-        );
-        setRecentLessons(lessonsWithProgress);
-      }
-
-      const { data: progressData } = await supabase
-        .from('seguros_progress')
-        .select('*, lesson:seguros_lessons(titulo, duracion)')
-        .eq('user_id', usuario.id);
-
-      if (progressData) {
-        const completados = progressData.filter(p => p.completado).length;
-        const en_proceso = progressData.filter(p => !p.completado && p.progreso > 0).length;
-        const ultima = progressData.sort((a, b) => new Date(b.ultima_vista).getTime() - new Date(a.ultima_vista).getTime())[0];
-        const tiempo_total = progressData.reduce((sum, p) => sum + (p.completado ? (p.lesson?.duracion || 0) : (p.tiempo_reproduccion || 0)), 0);
-        setStats({ completados, en_proceso, ultima_leccion: ultima?.lesson?.titulo || null, tiempo_total: Math.floor(tiempo_total / 60) });
-      }
+      const completados = progressData.filter(p => p.completado).length;
+      const en_proceso = progressData.filter(p => !p.completado && (p.progreso || 0) > 0).length;
+      const ultima = progressData.reduce<ProgressRow | null>((max, p) =>
+        !max || new Date(p.ultima_vista || 0) > new Date(max.ultima_vista || 0) ? p : max, null);
+      const tiempo_total = progressData.reduce((sum, p) => sum + (p.completado ? (p.lesson?.duracion || 0) : (p.tiempo_reproduccion || 0)), 0);
+      setStats({ completados, en_proceso, ultima_leccion: ultima?.lesson?.titulo || null, tiempo_total: Math.floor(tiempo_total / 60) });
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -382,7 +389,7 @@ export function SegurosEducation() {
                         {/* Thumbnail */}
                         <div className="aspect-video bg-neutral-100 dark:bg-white/5 relative overflow-hidden">
                           {lesson.miniatura_url ? (
-                            <img src={lesson.miniatura_url} alt={lesson.titulo} crossOrigin="anonymous" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                            <img src={lesson.miniatura_url} alt={lesson.titulo} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Video className="w-8 h-8 text-neutral-300" />
@@ -400,7 +407,7 @@ export function SegurosEducation() {
                               <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso}%` }} />
                             </div>
                           )}
-                          {(lesson.progreso || 0) === 100 && (
+                          {lesson.completado && (
                             <div className="absolute top-2 right-2">
                               <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500 text-white text-[9px] font-bold">
                                 <CheckCircle2 className="w-2.5 h-2.5" /> Visto

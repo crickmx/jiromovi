@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -20,6 +20,25 @@ import {
 import type { CedulaAExamen, CedulaAPregunta, ResultadoEvaluacion } from '../lib/cedulaATypes';
 import { LoadingState } from '@/components/ui/loading-state';
 
+const formatearTiempo = (segundos: number): string => {
+  const horas = Math.floor(segundos / 3600);
+  const minutos = Math.floor((segundos % 3600) / 60);
+  const segs = segundos % 60;
+  return horas > 0
+    ? `${horas}:${minutos.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`
+    : `${minutos}:${segs.toString().padStart(2, '0')}`;
+};
+
+/** Cronómetro aislado: solo este span se re-renderiza cada segundo, no todo el examen. */
+function Cronometro({ inicio }: { inicio: number }) {
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <span>{formatearTiempo(Math.max(0, Math.floor((ahora - inicio) / 1000)))}</span>;
+}
+
 export default function ExamenInterface() {
   const { examenId } = useParams<{ examenId: string }>();
   const { usuario } = useAuth();
@@ -29,37 +48,21 @@ export default function ExamenInterface() {
   const [preguntas, setPreguntas] = useState<CedulaAPregunta[]>([]);
   const [respuestas, setRespuestas] = useState<Record<string, string>>({});
   const [preguntaActual, setPreguntaActual] = useState(0);
-  const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0);
+  const [inicio, setInicio] = useState(() => Date.now());
+  const [tiempoFinal, setTiempoFinal] = useState(0);
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [modalConfirmacion, setModalConfirmacion] = useState(false);
   const [resultado, setResultado] = useState<ResultadoEvaluacion | null>(null);
   const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const userId = usuario?.id;
 
   useEffect(() => {
-    if (usuario && examenId) {
+    if (userId && examenId) {
       cargarExamen();
     }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [usuario, examenId]);
-
-  useEffect(() => {
-    if (examen && !resultado) {
-      intervalRef.current = setInterval(() => {
-        setTiempoTranscurrido(prev => prev + 1);
-      }, 1000);
-
-      return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
-      };
-    }
-  }, [examen, resultado]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, examenId]);
 
   const cargarExamen = async () => {
     if (!examenId) return;
@@ -73,6 +76,7 @@ export default function ExamenInterface() {
 
       setExamen(examenData);
       setPreguntas(preguntasData);
+      setInicio(Date.now());
     } catch (error) {
       console.error('Error cargando examen:', error);
     } finally {
@@ -94,19 +98,21 @@ export default function ExamenInterface() {
   };
 
   const enviarExamen = async () => {
-    if (!usuario || !examenId) return;
+    if (!usuario || !examenId || enviando) return;
 
+    setEnviando(true);
+    setErrorEnvio(null);
     try {
-      const tiempoMinutos = Math.ceil(tiempoTranscurrido / 60);
-      const resultado = await evaluarExamen(usuario.id, examenId, respuestas, tiempoMinutos);
+      const segundos = Math.floor((Date.now() - inicio) / 1000);
+      const resultado = await evaluarExamen(usuario.id, examenId, respuestas, Math.ceil(segundos / 60));
+      setTiempoFinal(segundos);
       setResultado(resultado);
       setModalConfirmacion(false);
-
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
     } catch (error) {
       console.error('Error enviando examen:', error);
+      setErrorEnvio('No se pudo enviar el examen. Revisa tu conexión e inténtalo de nuevo.');
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -133,16 +139,6 @@ export default function ExamenInterface() {
     }
   };
 
-  const formatearTiempo = (segundos: number): string => {
-    const horas = Math.floor(segundos / 3600);
-    const minutos = Math.floor((segundos % 3600) / 60);
-    const segs = segundos % 60;
-
-    if (horas > 0) {
-      return `${horas}:${minutos.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
-    }
-    return `${minutos}:${segs.toString().padStart(2, '0')}`;
-  };
 
   if (loading) {
     return (
@@ -207,7 +203,7 @@ export default function ExamenInterface() {
                 </div>
                 <div className="bg-neutral-50 dark:bg-white/5 rounded-ios-lg p-4">
                   <div className="text-3xl font-bold text-neutral-900 dark:text-white mb-1">
-                    {formatearTiempo(tiempoTranscurrido)}
+                    {formatearTiempo(tiempoFinal)}
                   </div>
                   <div className="text-sm text-neutral-600 dark:text-white/60">Tiempo</div>
                 </div>
@@ -333,7 +329,7 @@ export default function ExamenInterface() {
               <div className="text-center">
                 <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-neutral-900 dark:text-white">
                   <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
-                  <span>{formatearTiempo(tiempoTranscurrido)}</span>
+                  <Cronometro inicio={inicio} />
                 </div>
                 <p className="text-xs text-neutral-500 dark:text-white/50 hidden sm:block">Tiempo de referencia: {examen.duracion_referencia_minutos} min</p>
               </div>
@@ -492,6 +488,9 @@ export default function ExamenInterface() {
                 </span>
               )}
             </p>
+            {errorEnvio && (
+              <p role="alert" className="text-sm text-red-600 text-center mb-4">{errorEnvio}</p>
+            )}
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setModalConfirmacion(false)}
@@ -501,9 +500,10 @@ export default function ExamenInterface() {
               </button>
               <button
                 onClick={enviarExamen}
-                className="flex-1 px-6 py-3 bg-accent text-white rounded-ios-lg hover:bg-accent-hover active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25"
+                disabled={enviando}
+                className="flex-1 px-6 py-3 bg-accent text-white rounded-ios-lg hover:bg-accent-hover active:scale-[0.98] transition-all font-medium shadow-lg shadow-primary-600/25 disabled:opacity-60 disabled:cursor-wait"
               >
-                Confirmar
+                {enviando ? 'Enviando…' : 'Confirmar'}
               </button>
             </div>
           </div>

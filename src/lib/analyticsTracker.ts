@@ -38,7 +38,7 @@ class AnalyticsTracker {
   private sessionId: string;
   private userId: string | null = null;
   private lastProgressUpdate: number = 0;
-  private progressUpdateInterval: number = 10000; // 10 segundos
+  private progressUpdateInterval: number = 30000; // 30 segundos: cada evento es INSERT + UPSERT en BD
 
   constructor() {
     // Generar o recuperar session_id de sessionStorage
@@ -178,7 +178,7 @@ class AnalyticsTracker {
   }
 
   /**
-   * Track lesson progress (throttled - solo cada 10 segundos)
+   * Track lesson progress (throttled - solo cada 30 segundos)
    */
   async trackLessonProgress(
     lessonId: string,
