@@ -89,8 +89,9 @@ export function TramiteDetalle() {
   const [selectedEstatus, setSelectedEstatus] = useState('');
   const [selectedPrioridad, setSelectedPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Media');
   const [saving, setSaving] = useState(false);
-  const [pendingExtractions, setPendingExtractions] = useState<{ archivo_id: string }[]>([]);
+  const [pendingExtractions, setPendingExtractions] = useState<{ archivo_id: string; nombre: string }[]>([]);
   const [extractionStatus, setExtractionStatus] = useState<Record<string, string>>({});
+  const [extractionProgress, setExtractionProgress] = useState<{ actual: number; total: number; nombre: string } | null>(null);
   const [entrenamientoStatus, setEntrenamientoStatus] = useState<Record<string, string>>({});
   const [showCerrarMenu, setShowCerrarMenu] = useState(false);
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
@@ -1307,8 +1308,8 @@ export function TramiteDetalle() {
         setPendingExtractions([]);
         for (let i = 0; i < extractions.length; i++) {
           const label = extractions.length > 1 ? ` (${i + 1}/${extractions.length})` : '';
+          setExtractionProgress({ actual: i + 1, total: extractions.length, nombre: extractions[i].nombre });
           try {
-            showToast(`Extrayendo datos de póliza${label}...`);
             const { data: r } = await supabase.functions.invoke('process-poliza-pdf', {
               body: { ticket_id: tramite.id, archivo_id: extractions[i].archivo_id },
             });
@@ -1319,15 +1320,27 @@ export function TramiteDetalle() {
                 mensaje: r.comentario_pendiente,
               });
             }
+            // Refleja el resultado en el badge de este archivo al momento, sin esperar
+            // a que termine todo el lote y se recargue el trámite -- antes todos los
+            // badges se quedaban en "Pendiente" a la vez hasta el loadTramite() final.
+            // El badge "📚 En entrenamiento" (enviado_entrenamiento) se resuelve aparte
+            // vía entrenamientoStatus, cargado en el loadTramite() del final del lote --
+            // aquí solo se refleja ok/error para que el badge no se quede en "Pendiente".
+            setExtractionStatus(prev => ({
+              ...prev,
+              [extractions[i].archivo_id]: r?.ok && !r.extraccion_error ? 'ok' : 'error',
+            }));
             if (r?.enviado_entrenamiento) showToast(`PDF enviado a la cola de entrenamiento en lector.movi.digital`);
             if (r?.ok && !r.extraccion_error && !r.xlsx_error) showToast(`Datos de póliza extraídos${label}. Excel SICAS generado.`);
             else if (r?.ok && r.extraccion_error) showToast(`Excel generado con datos parciales${label}. Error en extracción: ${r.extraccion_error}`, 'error');
             else if (r?.xlsx_error) showToast(`Datos extraídos${label}. Error en Excel: ${r.xlsx_error}`, 'error');
             else showToast(`Error extrayendo póliza${label}: ${r?.error ?? 'Error desconocido'}`, 'error');
           } catch {
+            setExtractionStatus(prev => ({ ...prev, [extractions[i].archivo_id]: 'error' }));
             showToast(`Error conectando con el extractor${label}`, 'error');
           }
         }
+        setExtractionProgress(null);
         await loadTramite();
       }
     } catch (err: any) {
@@ -2253,7 +2266,7 @@ export function TramiteDetalle() {
                             if (archivoData?.id && file.type === 'application/pdf') {
                               const debeExtraer = tiposConfig.some(tc => tc.dispara_extraccion && tc.categoria_id === catId);
                               if (debeExtraer) {
-                                setPendingExtractions(prev => [...prev, { archivo_id: archivoData.id }]);
+                                setPendingExtractions(prev => [...prev, { archivo_id: archivoData.id, nombre: file.name }]);
                               }
                             }
                           }
@@ -2275,7 +2288,7 @@ export function TramiteDetalle() {
                                   const isPending = pendingExtractions.some(p => p.archivo_id === archivo.id);
                                   const st = extractionStatus[archivo.id];
                                   const enCola = entrenamientoStatus[archivo.id];
-                                  if (isPending) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0 font-medium whitespace-nowrap">⏳ Pendiente</span>;
+                                  if (isPending) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0 font-medium whitespace-nowrap" title="Se procesa al dar Guardar cambios">⏳ Pendiente de guardar</span>;
                                   if (st === 'ok') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0 font-medium whitespace-nowrap">✓ Datos extraídos</span>;
                                   if (enCola === 'pendiente') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 shrink-0 font-medium whitespace-nowrap">📚 En entrenamiento</span>;
                                   if (enCola === 'procesado') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-500 shrink-0 font-medium whitespace-nowrap">✓ Entrenado</span>;
@@ -2504,6 +2517,21 @@ export function TramiteDetalle() {
           toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
         }`}>
           {toast.msg}
+        </div>
+      )}
+
+      {extractionProgress && (
+        <div className="fixed bottom-6 right-6 w-72 bg-white border border-neutral-200 rounded-xl shadow-lg z-50 p-3.5 space-y-2">
+          <div className="flex items-center justify-between text-xs font-medium text-neutral-600">
+            <span className="truncate pr-2">Extrayendo: {extractionProgress.nombre}</span>
+            <span className="shrink-0 text-neutral-400">{extractionProgress.actual}/{extractionProgress.total}</span>
+          </div>
+          <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-accent rounded-full transition-all duration-300"
+              style={{ width: `${(extractionProgress.actual / extractionProgress.total) * 100}%` }}
+            />
+          </div>
         </div>
       )}
 

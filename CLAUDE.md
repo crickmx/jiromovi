@@ -2,6 +2,19 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-29)
 
+### ✅ Sesión 2026-09-29 (madrugada, cont.) — certificado SSL expirado + progreso de extracción poco claro
+
+**No relacionado con código**: la extracción de PDF falló con un error de conexión crudo (`error sending request for url...`) — resultó ser el **certificado SSL de `lector.movi.digital` expirado**. Ricardo lo renovó en Plesk (tuvo que desmarcar `www.lector.movi.digital` del certificado, ese subdominio no tiene DNS). Ya quedó resuelto, verificado con curl.
+
+**Confusión real encontrada de paso** (campo `tipo: 'adjunto'` embebido en "Campos del trámite", NO la pestaña Archivos — son dos flujos de subida distintos): al adjuntar un PDF ahí, el archivo queda en **"⏳ Pendiente"** hasta que se le da clic a **"Guardar cambios"** — la extracción real solo corre dentro de `proceedWithSave` (procesa `pendingExtractions` uno por uno). Esto es el diseño correcto, no un bug, pero el texto no lo dejaba claro y parecía atorado.
+
+**Mejoras hechas:**
+- El badge dice ahora "⏳ Pendiente de guardar" (con tooltip) en vez de solo "Pendiente".
+- Nueva barra de progreso flotante (`extractionProgress`, esquina inferior derecha, mismo lugar que el toast) mientras se procesa el lote al guardar: nombre del archivo actual + `X/Y` + barra.
+- Los badges por archivo (`extractionStatus`) ahora se actualizan **en vivo** dentro del loop (antes todos se quedaban en "Pendiente" a la vez hasta que `loadTramite()` recargaba todo al final del lote completo).
+
+---
+
 ### ✅ Sesión 2026-09-29 (madrugada) — un trámite hijo nunca podía disparar SUS propios triggers
 
 **Reportado por Ricardo con folio real**: un trámite de Emisión (`TKA6958-A`, ya hijo de otro trámite) llegó al estatus que debía disparar un hijo de "Registro de Póliza" — la configuración del trigger era correcta, pero **no se creó nada y no salió ninguna advertencia**.
