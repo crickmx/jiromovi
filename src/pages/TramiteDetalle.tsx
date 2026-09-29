@@ -813,8 +813,14 @@ export function TramiteDetalle() {
     }
 
     // Trigger check con el estatus elegido
+    // Antes se saltaba por completo si este trámite ya era hijo de otro
+    // (`!tramite.parent_ticket_id`), así que una cadena Cotización→Emisión→
+    // Registro de Póliza se cortaba en el segundo salto: el trigger ni se
+    // revisaba, sin avisar nada (bug reportado con folio TKA6958-A). No hace
+    // falta esa condición para evitar bucles infinitos -- cada salto exige que
+    // un humano cambie el estatus a mano, no hay disparo en cascada automático.
     let silent: PendingTrigger[] = [];
-    if (estatusCampoDinamico && tipoUUID && chosenSlug && !tramite.parent_ticket_id) {
+    if (estatusCampoDinamico && tipoUUID && chosenSlug) {
       const originalSlug = respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '';
       if (chosenSlug !== originalSlug) {
         const { data: trigData } = await supabase
@@ -851,8 +857,8 @@ export function TramiteDetalle() {
       }
     }
 
-    // Escalation trigger check
-    if (estatusCampoDinamico && tipoUUID && chosenSlug && !tramite.parent_ticket_id) {
+    // Escalation trigger check (mismo criterio que arriba: un hijo también puede escalar)
+    if (estatusCampoDinamico && tipoUUID && chosenSlug) {
       const originalSlug = respuestasOriginales.find(r => r.campo_id === estatusCampoDinamico.id)?.valor_json ?? '';
       if (chosenSlug !== originalSlug) {
         const { data: escData } = await supabase

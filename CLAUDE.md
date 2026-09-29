@@ -2,6 +2,18 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-29)
 
+### ✅ Sesión 2026-09-29 (madrugada) — un trámite hijo nunca podía disparar SUS propios triggers
+
+**Reportado por Ricardo con folio real**: un trámite de Emisión (`TKA6958-A`, ya hijo de otro trámite) llegó al estatus que debía disparar un hijo de "Registro de Póliza" — la configuración del trigger era correcta, pero **no se creó nada y no salió ninguna advertencia**.
+
+**Causa:** `handleSave` (guardado de cambios) tenía `if (estatusCampoDinamico && tipoUUID && chosenSlug && !tramite.parent_ticket_id)` — tanto para triggers de estatus como para los de escalación. Sin comentario ni justificación, **cualquier trámite que ya fuera hijo tenía sus triggers completamente desactivados**, sin aviso. Una cadena Cotización→Emisión→Registro de Póliza se cortaba siempre en el segundo salto.
+
+**Fix:** se quitó `&& !tramite.parent_ticket_id` de ambas condiciones. No hace falta esa guarda para evitar cadenas infinitas: cada salto de la cadena exige que un humano cambie el estatus a mano desde la UI — no hay ningún disparo automático en cascada que pudiera correr sin parar.
+
+**Sin probar en navegador todavía** — falta que Ricardo repita el cambio de estatus en un trámite hijo y confirme que ahora sí dispara.
+
+---
+
 ### ⚠️ CORREGIDO tras revisión de Ricardo — quién es "agente" y quién "creado_por" en un hijo por trigger
 
 El primer fix de esta sesión (abajo) usaba `usuario.id` (quien disparó el trigger) como respaldo cuando el padre no tiene agente. **Ricardo lo corrigió**: quien ejecuta el cambio de estatus puede ser cualquiera (ej. un Admin ajeno al caso) y no debe suplantar a nadie.
