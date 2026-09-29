@@ -13,7 +13,9 @@ const TIPOS_SEGURO = [
 
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://qhwvuuyjhcennqccgvse.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+const RECAPTCHA_SITE_KEY =
+  (import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI as string | undefined) ||
+  (import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined);
 
 // Carga perezosa del script de reCAPTCHA v3 (no está inyectado en index.html).
 function useRecaptchaLoader() {
@@ -33,12 +35,24 @@ async function ejecutarRecaptcha(): Promise<string> {
   const grecaptcha = (window as any).grecaptcha;
   if (!RECAPTCHA_SITE_KEY || !grecaptcha) return '';
   return new Promise<string>((resolve) => {
-    grecaptcha.ready(() => {
-      grecaptcha
-        .execute(RECAPTCHA_SITE_KEY, { action: 'submit_lead' })
-        .then((token: string) => resolve(token))
-        .catch(() => resolve(''));
-    });
+    const timer = setTimeout(() => resolve(''), 3500);
+    try {
+      grecaptcha.ready(() => {
+        grecaptcha
+          .execute(RECAPTCHA_SITE_KEY, { action: 'submit_lead' })
+          .then((token: string) => {
+            clearTimeout(timer);
+            resolve(token);
+          })
+          .catch(() => {
+            clearTimeout(timer);
+            resolve('');
+          });
+      });
+    } catch {
+      clearTimeout(timer);
+      resolve('');
+    }
   });
 }
 

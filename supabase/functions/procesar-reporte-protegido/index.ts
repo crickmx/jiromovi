@@ -26,6 +26,32 @@ function toBase64(buf: ArrayBuffer | Uint8Array): string {
   return btoa(String.fromCharCode(...arr));
 }
 
+async function verificarRecaptcha(token: string | undefined): Promise<boolean> {
+  const secrets = [
+    Deno.env.get("RECAPTCHA_SECRET_KEY_MOVI"),
+    Deno.env.get("RECAPTCHA_SECRET_KEY"),
+  ].filter(Boolean) as string[];
+
+  if (secrets.length === 0) return true;
+  if (!token) return false;
+
+  for (const secret of secrets) {
+    try {
+      const verif = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `secret=${secret}&response=${token}`,
+      }).then(r => r.json()).catch(() => ({ success: false, score: 0 }));
+      if (verif.success && (typeof verif.score !== 'number' || verif.score >= 0.3)) {
+        return true;
+      }
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -38,16 +64,10 @@ Deno.serve(async (req) => {
   const { tramite_id, campo_id, texto, tiempo_segundos, score_humano, chars_pegados, dispositivo, captcha_token } = body;
   if (!tramite_id || !campo_id || !texto?.trim()) return json({ error: "Missing fields" }, 400);
 
-  // reCAPTCHA v3 — opcional: si la clave está configurada, verifica; si no, omite
-  // Clave propia de MOVI, separada de RECAPTCHA_SECRET_KEY (usada por otras funciones ajenas a este flujo).
-  const recaptchaSecret = Deno.env.get("RECAPTCHA_SECRET_KEY_MOVI");
-  if (recaptchaSecret && captcha_token) {
-    const verif = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `secret=${recaptchaSecret}&response=${captcha_token}`,
-    }).then(r => r.json()).catch(() => ({ success: false, score: 0 }));
-    if (!verif.success || verif.score < 0.3) {
+  // reCAPTCHA v3 — validación con fallback a los secrets configurados
+  if (captcha_token) {
+    const ok = await verificarRecaptcha(captcha_token);
+    if (!ok) {
       return json({ error: "Verificación de seguridad fallida. Intenta de nuevo." }, 403);
     }
   }

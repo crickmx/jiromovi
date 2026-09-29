@@ -15,6 +15,33 @@ interface WebLeadData {
   recaptchaToken: string;
 }
 
+async function verificarRecaptcha(token: string | undefined): Promise<boolean> {
+  const secrets = [
+    Deno.env.get('RECAPTCHA_SECRET_KEY_MOVI'),
+    Deno.env.get('RECAPTCHA_SECRET_KEY'),
+  ].filter(Boolean) as string[];
+
+  if (secrets.length === 0) return true;
+  if (!token) return false;
+
+  for (const secret of secrets) {
+    try {
+      const resp = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `secret=${secret}&response=${token}`,
+      });
+      const res = await resp.json();
+      if (res.success && (typeof res.score !== 'number' || res.score >= 0.5)) {
+        return true;
+      }
+    } catch {
+      return true; // no bloquear por fallo de Google
+    }
+  }
+  return false;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -26,7 +53,6 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const recaptchaSecretKey = Deno.env.get('RECAPTCHA_SECRET_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { slug, nombre, celular, email, seguro_interes, recaptchaToken }: WebLeadData = await req.json();
@@ -42,39 +68,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Validar reCAPTCHA v3 token
-    const recaptchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `secret=${recaptchaSecretKey}&response=${recaptchaToken}`,
-    });
-
-    const recaptchaResult = await recaptchaResponse.json();
-
-    if (!recaptchaResult.success) {
-      console.error('reCAPTCHA verification failed:', recaptchaResult);
+    // Validar reCAPTCHA v3 token (soporta ambos pares de keys)
+    const recaptchaOk = await verificarRecaptcha(recaptchaToken);
+    if (!recaptchaOk) {
       return new Response(
         JSON.stringify({
           error: 'Verificación de reCAPTCHA fallida. Por favor intenta nuevamente.',
-          success: false,
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // reCAPTCHA v3 devuelve un score entre 0.0 y 1.0
-    // 1.0 = muy probablemente humano, 0.0 = muy probablemente bot
-    // Rechazar si el score es menor a 0.5 (umbral recomendado por Google)
-    if (recaptchaResult.score < 0.5) {
-      console.warn('reCAPTCHA score too low:', recaptchaResult.score);
-      return new Response(
-        JSON.stringify({
-          error: 'Lo sentimos, no pudimos verificar tu solicitud. Por favor intenta nuevamente más tarde.',
           success: false,
         }),
         {
@@ -246,7 +245,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         error: 'Error al procesar la solicitud',
-        details: error.message,
+        details: (error as Error).message,
       }),
       {
         status: 500,

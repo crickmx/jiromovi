@@ -31,6 +31,34 @@ function render(tpl: string | null | undefined, vars: Record<string, string>): s
   return out;
 }
 
+async function verificarRecaptcha(token: string | undefined): Promise<{ ok: boolean; score: number | null }> {
+  const secrets = [
+    Deno.env.get('RECAPTCHA_SECRET_KEY_MOVI'),
+    Deno.env.get('RECAPTCHA_SECRET_KEY'),
+  ].filter(Boolean) as string[];
+
+  if (secrets.length === 0) return { ok: true, score: null };
+  if (!token) return { ok: false, score: null };
+
+  for (const secret of secrets) {
+    try {
+      const resp = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `secret=${secret}&response=${token}`,
+      });
+      const res = await resp.json();
+      const score = typeof res.score === 'number' ? res.score : null;
+      if (res.success && (score === null || score >= 0.5)) {
+        return { ok: true, score };
+      }
+    } catch {
+      return { ok: true, score: null };
+    }
+  }
+  return { ok: false, score: null };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -39,7 +67,6 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const recaptchaSecretKey = Deno.env.get('RECAPTCHA_SECRET_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: ExpressLeadData = await req.json();
@@ -61,22 +88,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // reCAPTCHA v3 (mismo patrón que submit-web-lead).
-    let recaptchaScore: number | null = null;
-    if (recaptchaSecretKey) {
-      const recaptchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `secret=${recaptchaSecretKey}&response=${body.recaptchaToken || ''}`,
-      });
-      const recaptchaResult = await recaptchaResponse.json();
-      recaptchaScore = typeof recaptchaResult.score === 'number' ? recaptchaResult.score : null;
-      if (!recaptchaResult.success || (recaptchaScore !== null && recaptchaScore < 0.5)) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'No pudimos verificar tu solicitud. Intenta de nuevo.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    // reCAPTCHA v3 (soporta ambos pares de keys).
+    const { ok: recaptchaOk, score: recaptchaScore } = await verificarRecaptcha(body.recaptchaToken);
+    if (!recaptchaOk) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No pudimos verificar tu solicitud. Intenta de nuevo.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Config del motor (anillo inicial).
