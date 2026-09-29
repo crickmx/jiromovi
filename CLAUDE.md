@@ -2,6 +2,25 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-29)
 
+### ✅ Sesión 2026-09-29 (noche) — trámites hijo por trigger sin auto-asignar: causa real encontrada
+
+Ricardo confirmó con folio real (`TKA6958-A`) que el caso roto SÍ es el trigger de cambio de estatus (padre→hijo), no recurrencias. La auditoría de la tarde había verificado que el fix de septiembre (`5476dfdc`, unwrap del arreglo) seguía intacto — y lo sigue estando, **pero no era la única condición para que el motor de reglas corriera**.
+
+**Causa real:** `TramiteDetalle.tsx` (creación del hijo, paso 8) solo llama a `get_grupo_para_ticket` `if (_autoAsignar && snap.agente?.id)` — necesita que el trámite **padre** tenga `agente_id` (Solicitante) poblado. Pero `NuevoTramiteModal.tsx:670` (para trámites nuevos) ya resuelve esto distinto: `const agenteUserId = esInterno ? (usuario?.id ?? null) : (asignado || null)` — si el tipo es **interno** (sin concepto real de Solicitante externo), usa a **quien está creando el trámite** como "agente" para las reglas. El trigger nunca tuvo ese respaldo: si el padre es de un tipo interno (agente_id casi siempre null ahí), el hijo nunca disparaba el motor, en silencio, sin importar que "Auto-asignar" estuviera bien configurado en el trigger.
+
+**Fix:** se agregó `es_interno` al `select` de `targetTipo` (tipo del hijo) y:
+```ts
+const agenteIdParaAsignar = snap.agente?.id ?? (targetTipo.es_interno ? usuario?.id : null) ?? null;
+if (_autoAsignar && agenteIdParaAsignar) { ... }
+```
+Mismo criterio que el modal de creación — un hijo de tipo interno ahora usa a quien disparó el trigger como agente para las reglas, igual que si se hubiera creado a mano.
+
+**Además (pedido explícito de Ricardo):** al crear el hijo se inserta un comentario automático con el resumen del padre (folio, solicitante, prioridad, póliza, instrucciones, y cada campo personalizado no vacío) — para que quien trabaje el hijo tenga contexto sin ir a buscar el padre. Usa `usuario.id` (quien disparó el trigger) como autor, no existe un usuario "Sistema" en este proyecto.
+
+**Sin probar en navegador todavía** — falta que Ricardo dispare un trigger real sobre un tipo interno y confirme que el hijo ya trae equipo/responsable + el comentario.
+
+---
+
 ### ✅ Sesión 2026-09-29 (tarde) — Color por sección, limpieza de Crear/Detalle, falta confirmar el caso de trámites automáticos
 
 Ricardo pidió 3 cosas del FormBuilder/formularios/detalle. Se investigó con 3 agentes en paralelo antes de tocar nada.

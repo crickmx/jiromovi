@@ -1028,7 +1028,7 @@ export function TramiteDetalle() {
           try {
             // 1. Tipo destino
             const { data: targetTipo } = await supabase
-              .from('ticket_tipos').select('value').eq('id', trigger.target_tipo_id).single();
+              .from('ticket_tipos').select('value, es_interno').eq('id', trigger.target_tipo_id).single();
             if (!targetTipo) throw new Error('Tipo destino no encontrado');
 
             // 2. Prioridad
@@ -1070,6 +1070,37 @@ export function TramiteDetalle() {
               .select('id, folio').single();
             if (childErr || !childTicket) throw childErr || new Error('Sin respuesta al crear hijo');
             createdFolios.push(childTicket.folio);
+
+            // 3b. Comentario automático con el resumen del padre -- para que quien
+            // trabaje el hijo tenga el contexto completo sin tener que ir a buscarlo.
+            {
+              const camposPadre = (camposDinamicos as any[])
+                .filter(c => !c.is_sistema)
+                .map(c => {
+                  const resp = respuestasOriginales.find(r => r.campo_id === c.id);
+                  let val: any = resp?.valor_json ?? resp?.valor_texto ?? resp?.valor_numerico ?? resp?.valor_fecha ?? resp?.valor_booleano ?? null;
+                  if (val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0)) return null;
+                  if (typeof val === 'object') val = JSON.stringify(val);
+                  return `- ${c.label}: ${val}`;
+                })
+                .filter((l): l is string => !!l)
+                .join('\n');
+
+              const resumenPadre = [
+                `📋 Trámite padre: ${snap.folio}`,
+                snap.agente?.nombre_completo ? `Solicitante: ${snap.agente.nombre_completo}` : null,
+                `Prioridad: ${snap.prioridad}`,
+                snap.poliza ? `Póliza: ${snap.poliza}` : null,
+                snap.instrucciones ? `Instrucciones: ${snap.instrucciones}` : null,
+                camposPadre ? `\nCampos del padre:\n${camposPadre}` : null,
+              ].filter((l): l is string => !!l).join('\n');
+
+              await supabase.from('ticket_comentarios').insert({
+                ticket_id: childTicket.id,
+                usuario_id: usuario.id,
+                mensaje: resumenPadre,
+              });
+            }
 
             // 4. Campos del tipo destino (con config para estatus inicial)
             const { data: targetCampos } = await supabase
@@ -1200,9 +1231,19 @@ export function TramiteDetalle() {
 
             // 8. Auto-asignación de equipo al hijo (misma lógica que NuevoTramiteModal)
             // Skipped when equipo was explicitly set via field mapping
-            if (_autoAsignar && snap.agente?.id) {
+            //
+            // El padre puede no tener agente/solicitante (tipos internos no siempre lo
+            // capturan) -- antes eso dejaba _autoAsignar sin correr nunca para esos
+            // casos, silenciosamente. NuevoTramiteModal.tsx ya resuelve esto para
+            // trámites nuevos: si el tipo es interno, usa a quien está creando el
+            // trámite como "agente" para las reglas (línea ~670, `esInterno ?
+            // usuario?.id : asignado`). Se replica aquí para que un hijo siga las
+            // MISMAS reglas que un trámite nuevo del mismo tipo -- quien dispara el
+            // trigger (usuario actual) hace de agente cuando el tipo destino es interno.
+            const agenteIdParaAsignar = snap.agente?.id ?? (targetTipo.es_interno ? usuario?.id : null) ?? null;
+            if (_autoAsignar && agenteIdParaAsignar) {
               const { data: grupoData } = await supabase.rpc('get_grupo_para_ticket', {
-                p_agente_id: snap.agente.id,
+                p_agente_id: agenteIdParaAsignar,
                 p_tipo_tramite: targetTipo.value,
               });
               // El RPC devuelve una tabla, así que `data` es un arreglo. Antes se leía
