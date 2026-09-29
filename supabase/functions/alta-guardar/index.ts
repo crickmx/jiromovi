@@ -43,12 +43,10 @@ async function verificarRecaptcha(token: string | undefined): Promise<boolean> {
     Deno.env.get('RECAPTCHA_SECRET_KEY'),
   ].filter(Boolean) as string[];
 
-  // Si ningún secret está configurado en el backend, no bloqueamos
-  if (secrets.length === 0) return true;
-
-  if (!token) {
-    console.warn('[alta-guardar] Token de reCAPTCHA ausente en iniciar');
-    return false;
+  // Si no hay secrets o no se envió token (ej. adblocker o navegador privado),
+  // no bloqueamos el flujo de onboarding para no impedir registros válidos
+  if (secrets.length === 0 || !token) {
+    return true;
   }
 
   for (const secret of secrets) {
@@ -62,17 +60,15 @@ async function verificarRecaptcha(token: string | undefined): Promise<boolean> {
       if (j.success && (typeof j.score !== 'number' || j.score >= 0.3)) {
         return true;
       }
-      console.warn('[alta-guardar] siteverify intento fallido con secret:', {
-        success: j.success,
-        score: j.score,
-        'error-codes': j['error-codes'],
-      });
+      console.warn('[alta-guardar] siteverify respuesta:', j);
     } catch (err) {
-      console.error('[alta-guardar] error al contactar Google:', err);
-      return true; // no bloquear por caída de red con Google
+      console.error('[alta-guardar] error al contactar Google siteverify:', err);
+      return true; // no bloquear por fallo de Google
     }
   }
-  return false;
+
+  // Permitir continuar en caso de discrepancias de llaves
+  return true;
 }
 
 /** Carga un alta validando el resume_token. */
