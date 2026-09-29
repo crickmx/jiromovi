@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Award, Download, Share2, CheckCircle2, Calendar, Hash } from 'lucide-react';
-import { obtenerCertificado } from '../lib/cedulaAUtils';
+import { Award, Share2, CheckCircle2, Calendar, Hash } from 'lucide-react';
+import { obtenerCertificado, obtenerCertificados } from '../lib/cedulaAUtils';
 import type { CedulaACertificado } from '../lib/cedulaATypes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -15,30 +15,26 @@ export default function CertificadoCedulaA() {
   const [certificado, setCertificado] = useState<CedulaACertificado | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const userId = usuario?.id;
+
   useEffect(() => {
-    if (certificadoId) {
-      cargarCertificado();
-    }
-  }, [certificadoId]);
-
-  const cargarCertificado = async () => {
-    if (!certificadoId) return;
-
-    try {
-      setLoading(true);
-      const data = await obtenerCertificado(certificadoId);
-      setCertificado(data);
-    } catch (error) {
-      console.error('Error cargando certificado:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (!certificadoId && !userId) return;
+    let cancelled = false;
+    // Sin id en la URL se muestra el certificado más reciente del usuario.
+    const cargar = certificadoId
+      ? obtenerCertificado(certificadoId)
+      : obtenerCertificados(userId!).then((lista) => lista[0] ?? null);
+    cargar
+      .then((data) => { if (!cancelled) setCertificado(data); })
+      .catch((error) => console.error('Error cargando certificado:', error))
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [certificadoId, userId]);
 
   const compartir = async () => {
     if (!certificado) return;
 
-    const url = `${window.location.origin}/certificado/${certificado.codigo_verificacion}`;
+    const url = `${window.location.origin}/seguros-education/cedula-a/certificado/${certificado.id}`;
     const texto = `He completado el Curso de Cédula A con una calificación de ${certificado.puntaje_final}%`;
 
     if (navigator.share) {

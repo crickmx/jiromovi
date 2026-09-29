@@ -6,7 +6,6 @@ import type {
   CedulaAPregunta,
   CedulaAMapaMental,
   CedulaAGlosario,
-  CedulaAProgresoModulo,
   CedulaAProgresoLeccion,
   CedulaAIntentoExamen,
   CedulaACertificado,
@@ -210,7 +209,8 @@ export async function obtenerExamen(examenId: string): Promise<CedulaAExamen | n
 export async function obtenerPreguntasExamen(examenId: string): Promise<CedulaAPregunta[]> {
   const { data, error } = await supabase
     .from('cedula_a_preguntas')
-    .select('*')
+    // respuesta_correcta y explicacion no son legibles desde el cliente; llegan en la evaluación.
+    .select('id, examen_id, pregunta, opciones, modulo_referencia_id, dificultad, orden')
     .eq('examen_id', examenId)
     .order('orden', { ascending: true });
 
