@@ -1,5 +1,5 @@
 import type { TipoCampo, TramiteSeccion } from './types';
-import { agruparCamposPorSeccion } from '../../../lib/tramiteSecciones';
+import { agruparCamposPorSeccion, estiloSeccionColor } from '../../../lib/tramiteSecciones';
 
 export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; secciones?: TramiteSeccion[] }) {
   if (campos.length === 0) return null;
@@ -193,9 +193,15 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
     <div className="space-y-4 border border-neutral-200 rounded-xl p-4 bg-white">
       <p className="text-[11px] text-neutral-400 text-center uppercase tracking-wider mb-2">Vista previa — solo lectura</p>
       {grupos.map((grupo, i) => (
-        <div key={grupo.seccion?.id ?? `sin-seccion-${i}`} className="space-y-4">
+        <div
+          key={grupo.seccion?.id ?? `sin-seccion-${i}`}
+          // El color de la sección también aquí: la vista previa existe para
+          // parecerse al formulario real, no para aproximarlo.
+          className={grupo.seccion?.config?.color ? 'space-y-4 border rounded-xl p-3' : 'space-y-4'}
+          style={estiloSeccionColor(grupo.seccion?.config?.color)}
+        >
           {grupo.seccion && (
-            <div className="pt-2 border-t border-neutral-100 first:border-t-0 first:pt-0">
+            <div className={grupo.seccion.config?.color ? '' : 'pt-2 border-t border-neutral-100 first:border-t-0 first:pt-0'}>
               <h4 className="text-sm font-semibold text-neutral-800">
                 {grupo.seccion.nombre}
                 {grupo.seccion.opcional && (

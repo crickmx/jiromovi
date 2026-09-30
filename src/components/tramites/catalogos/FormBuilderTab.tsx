@@ -6,6 +6,7 @@ import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, ROL_VISIBILIDAD_OPCIONES,
 import { supabase } from '../../../lib/supabase';
 import { estiloHeader, CLASE_VELO, type FondoHeader } from '../../../lib/tramiteHeader';
 import { DATOS_EXTRAIBLES } from '../../../lib/rfcCurp';
+import { estiloSeccionColor } from '../../../lib/tramiteSecciones';
 
 interface Props {
   tipoId: string;
@@ -338,10 +339,17 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         const esSistema = !!seccion.sistema_key;
                         const suyos = draggableCampos.filter(c => c.seccion_id === seccion.id);
                         const colapsada = colapsadas.has(seccion.id);
+                        const colorSeccion = estiloSeccionColor(seccion.config?.color);
                         const esHeader = seccion.sistema_key === 'header';
                         const vistaFondo = esHeader ? estiloHeader(seccion.config?.fondo, null) : null;
                         return (
-                          <div key={seccion.id} className={`border rounded-xl p-2.5 ${esSistema ? 'border-violet-200 bg-violet-50/30' : 'border-teal-200 bg-teal-50/20'}`}>
+                          <div
+                            key={seccion.id}
+                            // El color elegido se refleja aquí mismo: si no, se elige a
+                            // ciegas y solo se ve al abrir un trámite.
+                            className={`border rounded-xl p-2.5 ${colorSeccion ? '' : esSistema ? 'border-violet-200 bg-violet-50/30' : 'border-teal-200 bg-teal-50/20'}`}
+                            style={colorSeccion}
+                          >
                             <div className="flex items-center gap-2 mb-2">
                               <div className="flex flex-col shrink-0">
                                 <button onClick={() => handleMoveSeccion(seccion, 'arriba')} disabled={i === 0 || esHeader} className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Subir">

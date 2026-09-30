@@ -106,6 +106,10 @@ export function useFormBuilder(tipoId: string, showToast: ShowToast) {
         condicion_operador: form.condicion_campo_id ? form.condicion_operador : null,
         condicion_valor: form.condicion_campo_id ? form.condicion_valor : null,
         orden: maxOrden + 1,
+        // El color se perdía al crear: el insert no llevaba `config`, así que había
+        // que crear la sección, reabrirla y volver a elegirlo para que quedara.
+        // `fondo` no va aquí: solo lo usa el header, que nunca se crea a mano.
+        config: form.color ? { color: form.color } : {},
       });
       if (error) { showToast('Error al crear la sección: ' + error.message, 'error'); return; }
       showToast('Sección creada');
