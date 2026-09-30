@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { Button } from '@/components/ui/button';
 import type { Database } from '../lib/database.types';
-import { syncUserTramiteTeamAssignments } from '../lib/tramiteTeamAssignments';
+import { syncUserTramiteTeamAssignments, puedeTenerEquiposTramite } from '../lib/tramiteTeamAssignments';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -114,6 +114,8 @@ export function PerfilUsuario() {
     setSaving(true);
     setMessage(null);
 
+    const puedeAsignarEquiposTramite = isAdmin && puedeTenerEquiposTramite(formData.rol);
+    // La exigencia de cubrir todas las categorías sigue siendo solo del Agente.
     const mustValidateTramiteTeams = isAdmin && formData.rol === 'Agente';
     if (mustValidateTramiteTeams && (!tramiteTeamState.ready || !tramiteTeamState.valid)) {
       setMessage({
@@ -196,7 +198,7 @@ export function PerfilUsuario() {
       const detailsMessage = result.details ? ` (${result.details})` : '';
       setMessage({ type: 'error', text: `${errorMessage}${detailsMessage}` });
     } else {
-      if (mustValidateTramiteTeams) {
+      if (puedeAsignarEquiposTramite) {
         try {
           await syncUserTramiteTeamAssignments(id, tramiteTeamIds);
         } catch (teamError: unknown) {
@@ -289,7 +291,7 @@ export function PerfilUsuario() {
   const tabs = [
     { id: 'general' as const, label: 'Información General', icon: FileText },
     { id: 'laboral' as const, label: 'Datos Laborales', icon: Briefcase },
-    ...(isAdmin && formData.rol === 'Agente' ? [{ id: 'equipos' as const, label: 'Equipos', icon: Users }] : []),
+    ...(isAdmin && puedeTenerEquiposTramite(formData.rol) ? [{ id: 'equipos' as const, label: 'Equipos', icon: Users }] : []),
     { id: 'accesos' as const, label: 'Accesos y Enlaces', icon: LinkIcon },
     { id: 'documentos' as const, label: 'Expediente', icon: FolderOpen },
   ];
@@ -748,12 +750,14 @@ export function PerfilUsuario() {
                 </div>
               )}
 
-              {activeTab === 'equipos' && isAdmin && formData.rol === 'Agente' && (
+              {activeTab === 'equipos' && isAdmin && puedeTenerEquiposTramite(formData.rol) && (
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Equipos de Trámites</h3>
                     <p className="text-sm text-neutral-500 dark:text-white/45 mt-1">
-                      El agente debe pertenecer a al menos un equipo en cada categoría activa.
+                      {formData.rol === 'Agente'
+                        ? 'El agente debe pertenecer a al menos un equipo en cada categoría activa.'
+                        : 'Elige qué equipo atiende sus trámites en cada categoría.'}
                     </p>
                   </div>
                   <AgentTramiteTeamsSection

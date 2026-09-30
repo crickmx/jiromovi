@@ -19,7 +19,7 @@ import {
   matchOficinaId,
   type SicasVendorOption,
 } from '../lib/sicasVendorLink';
-import { syncUserTramiteTeamAssignments } from '../lib/tramiteTeamAssignments';
+import { syncUserTramiteTeamAssignments, puedeTenerEquiposTramite } from '../lib/tramiteTeamAssignments';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -351,6 +351,9 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   };
 
   const canManageTramiteTeams = isAdmin;
+  const puedeAsignarEquiposTramite = canManageTramiteTeams && puedeTenerEquiposTramite(formData.rol);
+  // Cubrir TODAS las categorías solo se le exige al Agente: obligar lo mismo a un
+  // Administrador bloquearía editarlo por algo que no se le había pedido nunca.
   const mustValidateTramiteTeams = canManageTramiteTeams && formData.rol === 'Agente';
 
   const uploadImage = async (file: File, bucket: string, userId: string): Promise<string | null> => {
@@ -534,7 +537,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
           await savePermisosAdicionales(user.id);
         }
 
-        if (mustValidateTramiteTeams) {
+        if (puedeAsignarEquiposTramite) {
           await syncUserTramiteTeamAssignments(user.id, tramiteTeamIds);
         }
       } else {
@@ -1326,7 +1329,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
               </div>
             </div>
 
-            {canManageTramiteTeams && formData.rol === 'Agente' && (
+            {puedeAsignarEquiposTramite && (
               <div className="bg-white border border-slate-200 rounded-xl p-4">
                 <AgentTramiteTeamsSection
                   userId={user?.id}

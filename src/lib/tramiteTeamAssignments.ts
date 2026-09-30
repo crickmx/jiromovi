@@ -1,103 +1,47 @@
 import { supabase } from './supabase';
+import {
+  getTeamCategoryLabel,
+  normalizeCategory,
+  planearReglasDeEquipo,
+  type TramiteTeamOption,
+} from './tramiteTeamRules';
 
-export interface TramiteTeamOption {
-  id: string;
-  nombre: string;
-  color: string | null;
-  area_categoria: string | null;
-}
+export * from './tramiteTeamRules';
 
-export interface TramiteTeamCategory {
-  key: string;
-  label: string;
-  teams: TramiteTeamOption[];
-}
-
-const CATEGORY_PRIORITY = [
-  'administracion',
-  'comercial',
-  'mercadotecnia',
-  'operaciones',
-  'sistemas',
-];
-
-const CATEGORY_LABELS: Record<string, string> = {
-  administracion: 'Administración',
-  comercial: 'Comercial',
-  mercadotecnia: 'Mercadotecnia',
-  operaciones: 'Operaciones',
-  sistemas: 'Sistemas',
-};
-
-function normalizeCategory(value: string | null | undefined) {
-  return (value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
-}
-
-export function getTeamCategoryLabel(value: string | null | undefined) {
-  if (!value || !value.trim()) return 'Sin categoría';
-  const key = normalizeCategory(value);
-  return CATEGORY_LABELS[key] || value.trim();
-}
-
-export function groupTramiteTeamsByCategory(teams: TramiteTeamOption[]): TramiteTeamCategory[] {
-  const grouped = new Map<string, TramiteTeamOption[]>();
-
-  for (const team of teams) {
-    const key = normalizeCategory(team.area_categoria);
-    const bucketKey = key || '__sin_categoria__';
-    const bucket = grouped.get(bucketKey) ?? [];
-    bucket.push(team);
-    grouped.set(bucketKey, bucket);
-  }
-
-  const ordered = Array.from(grouped.entries()).sort(([a], [b]) => {
-    const aIdx = CATEGORY_PRIORITY.indexOf(a);
-    const bIdx = CATEGORY_PRIORITY.indexOf(b);
-    if (aIdx !== -1 || bIdx !== -1) {
-      if (aIdx === -1) return 1;
-      if (bIdx === -1) return -1;
-      return aIdx - bIdx;
-    }
-    if (a === '__sin_categoria__') return 1;
-    if (b === '__sin_categoria__') return -1;
-    return (CATEGORY_LABELS[a] || a).localeCompare(CATEGORY_LABELS[b] || b, 'es');
-  });
-
-  return ordered.map(([key, categoryTeams]) => ({
-    key,
-    label: key === '__sin_categoria__' ? 'Sin categoría' : getTeamCategoryLabel(categoryTeams[0]?.area_categoria ?? key),
-    teams: categoryTeams.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
-  }));
-}
-
-export function validateTramiteTeamSelection(teams: TramiteTeamOption[], selectedIds: string[]) {
-  const selected = new Set(selectedIds);
-  const groups = groupTramiteTeamsByCategory(teams);
-  const missingCategories = groups
-    .filter((group) => group.teams.some((team) => selected.has(team.id)) === false)
-    .map((group) => group.label);
-
-  return {
-    ready: true,
-    valid: missingCategories.length === 0,
-    missingCategories,
-    categories: groups,
-  };
-}
-
+/**
+ * Equipos activos, con el área que tienen HOY.
+ *
+ * `area_categoria` es texto libre: una copia del nombre del área que se escribió
+ * al guardar el equipo y que se queda congelada. Si después se renombra el área
+ * —o se crea una nueva y se mueve el equipo ahí— esa copia sigue diciendo lo de
+ * antes, y las categorías de esta pantalla se quedaban en el pasado. La fuente
+ * de verdad es la FK `area_id` → `tramites_areas`; el texto solo sirve de
+ * respaldo para los equipos viejos que nunca la llenaron.
+ */
 export async function loadActiveTramiteTeams(): Promise<TramiteTeamOption[]> {
   const { data, error } = await supabase
     .from('tramites_grupos_visualizacion')
-    .select('id, nombre, color, area_categoria')
+    .select('id, nombre, color, area_categoria, area_id, area:tramites_areas(nombre)')
     .eq('activo', true)
     .order('nombre');
 
   if (error) throw error;
-  return (data ?? []) as TramiteTeamOption[];
+
+  type Fila = {
+    id: string; nombre: string; color: string | null;
+    area_categoria: string | null; area_id: string | null;
+    area?: { nombre: string | null } | { nombre: string | null }[] | null;
+  };
+
+  return ((data ?? []) as Fila[]).map((row) => {
+    const rel = Array.isArray(row.area) ? row.area[0] : row.area;
+    return {
+      id: row.id,
+      nombre: row.nombre,
+      color: row.color,
+      area_categoria: rel?.nombre ?? row.area_categoria ?? null,
+    };
+  });
 }
 
 export async function loadUserTramiteTeamIds(userId: string): Promise<string[]> {
@@ -144,42 +88,38 @@ export async function syncUserTramiteTeamAssignments(userId: string, selectedIds
 
   const { data: existingRows, error: existingError } = await supabase
     .from('tramites_grupos_reglas')
-    .select('id, grupo_id, area, ejecutivo_id')
+    .select('id, grupo_id, area, ejecutivo_id, activo')
     .eq('usuario_id', userId);
 
   if (existingError) throw existingError;
 
-  for (const [categoryKey, selection] of byCategory) {
-    const existing = (existingRows ?? []).find((row) => normalizeCategory(row.area) === categoryKey);
-    if (existing) {
-      const groupChanged = existing.grupo_id !== selection.id;
-      const { error } = await supabase
-        .from('tramites_grupos_reglas')
-        .update({
-          grupo_id: selection.id,
-          area: selection.area,
-          activo: true,
-          ...(groupChanged ? { ejecutivo_id: null } : {}),
-        })
-        .eq('id', existing.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from('tramites_grupos_reglas')
-        .insert({ usuario_id: userId, grupo_id: selection.id, area: selection.area, activo: true });
-      if (error) throw error;
-    }
+  const plan = planearReglasDeEquipo(existingRows ?? [], byCategory);
+
+  for (const paso of plan.actualizar) {
+    const { error } = await supabase
+      .from('tramites_grupos_reglas')
+      .update({
+        grupo_id: paso.grupo_id,
+        area: paso.area,
+        activo: true,
+        ...(paso.limpiarEjecutivo ? { ejecutivo_id: null } : {}),
+      })
+      .eq('id', paso.id);
+    if (error) throw error;
   }
 
-  const selectedCategories = new Set(byCategory.keys());
-  const staleIds = (existingRows ?? [])
-    .filter((row) => !selectedCategories.has(normalizeCategory(row.area)))
-    .map((row) => row.id as string);
-  if (staleIds.length > 0) {
+  for (const paso of plan.insertar) {
+    const { error } = await supabase
+      .from('tramites_grupos_reglas')
+      .insert({ usuario_id: userId, grupo_id: paso.grupo_id, area: paso.area, activo: true });
+    if (error) throw error;
+  }
+
+  if (plan.desactivar.length > 0) {
     const { error } = await supabase
       .from('tramites_grupos_reglas')
       .update({ activo: false })
-      .in('id', staleIds);
+      .in('id', plan.desactivar);
     if (error) throw error;
   }
 

@@ -2,6 +2,31 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ✅ 2026-09-30 — equipos de trámite en la edición de usuario: áreas congeladas + Admin sin sección
+
+Ricardo renombró un área y creó otras; los cambios no se reflejaban en "Editar Usuario". Además pidió que los **Administradores** también tengan asignación de equipos.
+
+**Causa raíz (el mismo patrón de siempre en este proyecto): se agrupaba por un texto, no por la FK.** `tramites_grupos_visualizacion.area_categoria` es una **copia congelada** del nombre del área, escrita al guardar el equipo. La FK real `area_id → tramites_areas` existe desde `20260630000004` pero nadie la leía aquí. Renombrar el área no tocaba esa copia, así que la pantalla seguía mostrando el nombre viejo.
+
+- `loadActiveTramiteTeams()` ahora resuelve el área por la FK (`area:tramites_areas(nombre)`) y deja el texto solo como respaldo para equipos que nunca llenaron `area_id`.
+- `GestionGruposVisualizacion.openEdit()` resolvía `formAreaId` **buscando el área por nombre**: si el área se había renombrado no encontraba nada y al guardar **borraba la FK**. Ahora lee `area_id` directo.
+- **`syncUserTramiteTeamAssignments` emparejaba las reglas por área (texto).** Si el área se renombraba o el equipo se movía de área, no encontraba la regla existente → insertaba otra (duplicado) y **perdía el `ejecutivo_id` asignado a mano**. Ahora empareja primero por **equipo**, que es la identidad estable, y de paso refresca el nombre del área en la regla. La decisión se extrajo a `planearReglasDeEquipo()` en **`src/lib/tramiteTeamRules.ts`** (nuevo, puro, sin Supabase, para poder comprobarlo) con autocomprobación en `src/lib/tramiteTeamRules.test.mjs` (`npx tsx src/lib/tramiteTeamRules.test.mjs`). `tramiteTeamAssignments.ts` lo reexporta: ningún consumidor cambió de import.
+- **Administrador ahora tiene la sección** (`ROLES_CON_EQUIPOS_TRAMITE` / `puedeTenerEquiposTramite()`), en `UserModal.tsx` y en el tab "Equipos" de `PerfilUsuario.tsx`, y su selección **sí se guarda** (antes el guardado estaba gateado por la misma bandera que la validación). **La exigencia de cubrir todas las categorías se dejó solo para el Agente** — imponérsela al Admin habría bloqueado editar cualquier Admin por algo que nunca se le pidió. Si se quiere obligatoria también para Admin, es cambiar `mustValidateTramiteTeams`.
+
+**❌ Pendiente de dato, no de código:** los equipos con `area_id IS NULL` (los de antes de la FK) siguen cayendo al texto viejo. Diagnóstico y backfill:
+
+```sql
+select nombre, area_categoria, area_id from tramites_grupos_visualizacion where activo and area_id is null;
+
+update tramites_grupos_visualizacion g
+set area_id = ta.id
+from tramites_areas ta
+where ta.nombre = g.area_categoria and g.area_id is null;
+```
+Los que quedaron sin `area_id` tras el backfill son justo los de áreas renombradas: hay que reabrir el equipo y volver a elegir el área.
+
+---
+
 ### ✅ 2026-09-30 — baja de `cotizacion_emision`: el `update` no alcanzaba
 
 Ricardo pidió desactivar el último tipo Legacy (`cotizacion_emision`, 201 trámites) igual que los 11 del 2026-09-23:

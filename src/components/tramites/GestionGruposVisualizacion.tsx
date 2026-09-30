@@ -315,8 +315,18 @@ export function GestionGruposVisualizacion() {
     setSelectedGrupo(g);
     setFormNombre(g.nombre);
     setFormDescripcion(g.descripcion || '');
-    setFormArea(g.area_categoria ?? null);
-    setFormAreaId(areasDisponibles.find(a => a.nombre === g.area_categoria)?.id ?? null);
+    // El área se resuelve por su FK, no por el nombre guardado en el equipo:
+    // ese nombre es una copia congelada y, si el área se renombró, el match por
+    // texto fallaba y al guardar se borraba la FK — el equipo perdía su área.
+    const { data: areaRow } = await supabase
+      .from('tramites_grupos_visualizacion')
+      .select('area_id')
+      .eq('id', g.id)
+      .maybeSingle();
+    const areaActual = areasDisponibles.find(a => a.id === (areaRow?.area_id ?? null))
+      ?? areasDisponibles.find(a => a.nombre === g.area_categoria);
+    setFormArea(areaActual?.nombre ?? g.area_categoria ?? null);
+    setFormAreaId(areaActual?.id ?? null);
     setFormActivo(g.activo);
     setFormAllOffices(g.all_offices);
     setFormColor(g.color || '#94a3b8');
