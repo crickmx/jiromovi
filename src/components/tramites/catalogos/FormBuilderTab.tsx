@@ -7,6 +7,8 @@ import { supabase } from '../../../lib/supabase';
 import { estiloHeader, CLASE_VELO, type FondoHeader } from '../../../lib/tramiteHeader';
 import { DATOS_EXTRAIBLES } from '../../../lib/rfcCurp';
 import { estiloSeccionColor } from '../../../lib/tramiteSecciones';
+import { MEDIDA_SUGERIDA } from '../../../lib/imagenHeader';
+import { RecorteHeaderModal } from './RecorteHeaderModal';
 
 interface Props {
   tipoId: string;
@@ -58,6 +60,8 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
   const [dropZone, setDropZone] = useState<{ seccionId: string | null; index: number } | null>(null);
   // En qué sección se va a crear el campo que se elija en el panel de tipos.
   const [addTargetSeccion, setAddTargetSeccion] = useState<string | null>(null);
+  // Imagen elegida para el encabezado, esperando encuadre antes de subirse.
+  const [imagenPorRecortar, setImagenPorRecortar] = useState<File | null>(null);
   const [colapsadas, setColapsadas] = useState<Set<string>>(new Set());
   const toggleColapsada = (id: string) => setColapsadas(prev => {
     const next = new Set(prev);
@@ -186,53 +190,6 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
               </>
             ) : (
               <>
-                {/* ── Campos fijos del sistema (no movibles) ── */}
-                {lockedCampos.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <Lock className="w-3 h-3 text-neutral-400" />
-                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                        Campos del sistema — siempre presentes, no configurables
-                      </p>
-                    </div>
-                    <div className="space-y-1 border border-neutral-200 rounded-xl p-2 bg-neutral-50/60">
-                      {lockedCampos.map(campo => {
-                        const meta = SISTEMA_TIPO_META[campo.tipo as CampoTipo];
-                        const isEditing = editingCampo?.id === campo.id;
-                        return (
-                          <div key={campo.id} className={`flex items-center gap-2 border rounded-lg p-2 bg-white transition-colors ${isEditing ? 'border-violet-400 ring-1 ring-violet-200' : 'border-neutral-200'}`}>
-                            <div className="p-1 text-neutral-200"><Lock className="w-3.5 h-3.5" /></div>
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-violet-50 text-violet-600 font-mono">
-                              {meta?.icon ?? '?'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-neutral-700 truncate">{campo.label}</p>
-                              <p className="text-[10px] text-neutral-400">{meta?.desc ?? campo.tipo}</p>
-                            </div>
-                            {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
-                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
-                                <Lock className="w-2.5 h-2.5" />
-                                {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
-                              </span>
-                            )}
-                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
-                              {meta?.badge ?? 'AUTO'}
-                            </span>
-                            <button
-                              onClick={() => isEditing ? closeCampoEditor() : startEditCampo(campo)}
-                              className={`p-1.5 hover:bg-neutral-100 rounded-lg transition-colors ${isEditing ? 'text-violet-600' : 'text-neutral-400 hover:text-neutral-700'}`}
-                              title="Configurar visibilidad"
-                              aria-label="Configurar visibilidad"
-                            >
-                              <Settings className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
                 {/* ── Canvas: los campos viven dentro de su sección ── */}
                 {(() => {
                   const renderFila = (campo: typeof campos[number]) => {
@@ -330,23 +287,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
 
                   const sinSeccion = draggableCampos.filter(c => !c.seccion_id);
 
-                  return (
-                    <div className="space-y-3">
-                      {draggableCampos.length === 0 && (
-                        <div className="text-center py-8 text-neutral-400 border-2 border-dashed border-neutral-200 rounded-xl">
-                          <p className="text-sm text-neutral-400">Sin campos en el formulario</p>
-                          <p className="text-xs mt-1">Agrega campos desde el panel derecho</p>
-                        </div>
-                      )}
-
-                      {(sinSeccion.length > 0 || secciones.length === 0) && (
-                        <div className="border border-neutral-200 rounded-xl p-2.5">
-                          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Sin sección</p>
-                          {contenedor(null, sinSeccion)}
-                        </div>
-                      )}
-
-                      {seccionesVistaPrevia.map((seccion, i) => {
+                  const renderSeccion = (seccion: (typeof seccionesVistaPrevia)[number], i: number) => {
                         const dependeDe = secciones.find(s => s.id === seccion.depende_de_seccion_id);
                         const esSistema = !!seccion.sistema_key;
                         const suyos = draggableCampos.filter(c => c.seccion_id === seccion.id);
@@ -425,7 +366,80 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             )}
                           </div>
                         );
-                      })}
+                  };
+
+                  // Orden pedido por Ricardo: el Encabezado primero —es lo primero
+                  // que se ve en el trámite real—, luego los campos fijos del
+                  // sistema, y al final el resto de las secciones.
+                  const seccionHeader = seccionesVistaPrevia.filter(x => x.sistema_key === 'header');
+                  const seccionesResto = seccionesVistaPrevia.filter(x => x.sistema_key !== 'header');
+
+                  return (
+                    <div className="space-y-3">
+                      {draggableCampos.length === 0 && (
+                        <div className="text-center py-8 text-neutral-400 border-2 border-dashed border-neutral-200 rounded-xl">
+                          <p className="text-sm text-neutral-400">Sin campos en el formulario</p>
+                          <p className="text-xs mt-1">Agrega campos desde el panel derecho</p>
+                        </div>
+                      )}
+
+                      {seccionHeader.map((sec, i) => renderSeccion(sec, i))}
+
+                      {/* ── Campos fijos del sistema (no movibles) ── */}
+                      {lockedCampos.length > 0 && (
+                        <div className="mb-4">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Lock className="w-3 h-3 text-neutral-400" />
+                            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                              Campos del sistema — siempre presentes, no configurables
+                            </p>
+                          </div>
+                          <div className="space-y-1 border border-neutral-200 rounded-xl p-2 bg-neutral-50/60">
+                            {lockedCampos.map(campo => {
+                              const meta = SISTEMA_TIPO_META[campo.tipo as CampoTipo];
+                              const isEditing = editingCampo?.id === campo.id;
+                              return (
+                                <div key={campo.id} className={`flex items-center gap-2 border rounded-lg p-2 bg-white transition-colors ${isEditing ? 'border-violet-400 ring-1 ring-violet-200' : 'border-neutral-200'}`}>
+                                  <div className="p-1 text-neutral-200"><Lock className="w-3.5 h-3.5" /></div>
+                                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-violet-50 text-violet-600 font-mono">
+                                    {meta?.icon ?? '?'}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-neutral-700 truncate">{campo.label}</p>
+                                    <p className="text-[10px] text-neutral-400">{meta?.desc ?? campo.tipo}</p>
+                                  </div>
+                                  {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
+                                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
+                                      <Lock className="w-2.5 h-2.5" />
+                                      {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
+                                    </span>
+                                  )}
+                                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
+                                    {meta?.badge ?? 'AUTO'}
+                                  </span>
+                                  <button
+                                    onClick={() => isEditing ? closeCampoEditor() : startEditCampo(campo)}
+                                    className={`p-1.5 hover:bg-neutral-100 rounded-lg transition-colors ${isEditing ? 'text-violet-600' : 'text-neutral-400 hover:text-neutral-700'}`}
+                                    title="Configurar visibilidad"
+                                    aria-label="Configurar visibilidad"
+                                  >
+                                    <Settings className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {(sinSeccion.length > 0 || secciones.length === 0) && (
+                        <div className="border border-neutral-200 rounded-xl p-2.5">
+                          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Sin sección</p>
+                          {contenedor(null, sinSeccion)}
+                        </div>
+                      )}
+
+                      {seccionesResto.map((sec, i) => renderSeccion(sec, i + seccionHeader.length))}
 
                       <button
                         onClick={() => { setShowAddSeccion(true); setEditingSeccion(null); closeCampoEditor(); setShowAddField(false); }}
@@ -548,20 +562,37 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={async (e) => {
+                            onChange={(e) => {
                               const file = e.target.files?.[0];
-                              if (!file) return;
-                              const ruta = `${tipoId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-                              const { error } = await supabase.storage.from('tramite-headers').upload(ruta, file, { upsert: true });
-                              if (error) { showToast('No se pudo subir la imagen: ' + error.message, 'error'); return; }
-                              const { data } = supabase.storage.from('tramite-headers').getPublicUrl(ruta);
-                              setFondo({ imagen_url: data.publicUrl });
+                              // Se limpia el input para que volver a elegir el
+                              // mismo archivo vuelva a abrir el encuadre.
+                              e.target.value = '';
+                              if (file) setImagenPorRecortar(file);
                             }}
                             className="w-full text-[11px] file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-blue-50 file:text-blue-600 file:text-[11px]"
                           />
                           <p className="text-[10px] text-neutral-400">
+                            Medida recomendada: <strong>{MEDIDA_SUGERIDA}</strong> (franja ancha, 4:1). Si la imagen
+                            es más grande o tiene otra proporción, se encuadra y se comprime sola al subirla.
+                          </p>
+                          <p className="text-[10px] text-neutral-400">
                             Se aplica un velo oscuro encima para que el título y el folio siempre se lean.
                           </p>
+                          {imagenPorRecortar && (
+                            <RecorteHeaderModal
+                              file={imagenPorRecortar}
+                              onCancel={() => setImagenPorRecortar(null)}
+                              onListo={async (blob) => {
+                                setImagenPorRecortar(null);
+                                const ruta = `${tipoId}/${Date.now()}-header.jpg`;
+                                const { error } = await supabase.storage.from('tramite-headers')
+                                  .upload(ruta, blob, { upsert: true, contentType: 'image/jpeg' });
+                                if (error) { showToast('No se pudo subir la imagen: ' + error.message, 'error'); return; }
+                                const { data } = supabase.storage.from('tramite-headers').getPublicUrl(ruta);
+                                setFondo({ imagen_url: data.publicUrl });
+                              }}
+                            />
+                          )}
                         </div>
                       )}
                     </div>

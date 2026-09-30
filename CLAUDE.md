@@ -2,6 +2,20 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ✅ 2026-09-30 (tarde) — FormBuilder: orden del canvas + imagen del encabezado
+
+Pedido de Ricardo: el Encabezado debe verse primero, luego los campos del sistema; decir qué medida debe tener la imagen; comprimirla sola si pesa mucho; y poder recortarla desde el portal.
+
+- **Orden del canvas** (`FormBuilderTab.tsx`): el `seccionesVistaPrevia.map(...)` se extrajo a `renderSeccion(seccion, i)` y ahora el canvas arma el orden a mano: Encabezado → caja de campos fijos del sistema → "Sin sección" → resto de secciones. El índice que recibe `renderSeccion` sigue siendo el global (lo usan las flechas subir/bajar), por eso el resto va con `i + seccionHeader.length`.
+- **`src/lib/imagenHeader.ts`** (nuevo) — `RELACION_HEADER = 4`, `ANCHO_HEADER = 1600` (⇒ **1600 × 400 px**, la medida que se sugiere en pantalla), `escalaCover`, `limitarOffset`, `rectFuente`, `recortarAHeader`. Autocomprobación en `src/lib/imagenHeader.test.mjs` (`npx tsx src/lib/imagenHeader.test.mjs`): protege que el marco nunca quede con hueco y que el recorte no se salga de la imagen original.
+- **`RecorteHeaderModal.tsx`** (nuevo) — encuadre antes de subir: arrastrar para mover, slider de zoom, con el mismo velo oscuro y el mismo texto de muestra que el encabezado real. Arranca centrado.
+- **La compresión es el mismo paso que el recorte**: el canvas siempre sale a 1600×400 JPEG q0.85, así que una foto de celular de 6 MB se sube en ~200 KB. No hay una rama aparte de "si pesa mucho" — toda imagen pasa por ahí.
+- Hecho con canvas nativo, **sin librería de crop** (no hay ninguna instalada y no hizo falta).
+
+**❌ Falta confirmarlo en navegador** (no hubo herramienta para verlo): abrir el FormBuilder de un tipo, ver que el Encabezado salga arriba de "Campos del sistema", y subir una imagen grande con otra proporción para ver el encuadre.
+
+---
+
 ### ✅ Cerrados el 2026-09-30 — los 3 pendientes que arrastraba el 29
 
 1. **Convenio/Preferentes** — Ricardo corrió la migración, importó el Excel y confirmó que funciona.
