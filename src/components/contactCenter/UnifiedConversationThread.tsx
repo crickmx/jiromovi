@@ -323,7 +323,6 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const [showEmoji, setShowEmoji] = useState(false);
   const [showPlantillas, setShowPlantillas] = useState(false);
   const [showForms, setShowForms] = useState(false);
-  const [showCreateTicket, setShowCreateTicket] = useState(false);
   const [showAddTicket, setShowAddTicket] = useState(false);
   const [showAssistants, setShowAssistants] = useState(false);
 
@@ -341,11 +340,6 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const [openTickets, setOpenTickets] = useState<OpenTicket[]>([]);
   const [ticketSearch, setTicketSearch] = useState('');
   const [ticketLoading, setTicketLoading] = useState(false);
-  const [creatingTicket, setCreatingTicket] = useState(false);
-  const [ticketInstructions, setTicketInstructions] = useState('');
-  const [ticketTipo, setTicketTipo] = useState('cotizacion_emision');
-  const [ticketPrioridad, setTicketPrioridad] = useState('Media');
-  const [ticketError, setTicketError] = useState('');
   const [addTicketError, setAddTicketError] = useState('');
   const [addTicketSuccess, setAddTicketSuccess] = useState('');
   const [showNuevoTramiteModal, setShowNuevoTramiteModal] = useState(false);
@@ -358,7 +352,6 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   const [agentesList, setAgentesList] = useState<Array<{id: string; nombre_completo: string}>>([]);
   const [responsablesList, setResponsablesList] = useState<Array<{id: string; nombre_completo: string}>>([]);
   // Create tramite success notification
-  const [createTicketSuccessMsg, setCreateTicketSuccessMsg] = useState('');
 
   // Automatic/AI mode
   const [assistants, setAssistants] = useState<CcAssistant[]>([]);
@@ -774,41 +767,6 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
     setSelectionMode(false);
     setSelectedIds(new Set());
-  };
-
-  const createTicket = async () => {
-    if (!ticketInstructions.trim() || creatingTicket) return;
-    setCreatingTicket(true);
-    setTicketError('');
-    try {
-      const selectedMsgs = messages.filter(m => selectedIds.has(m.id));
-      const msgsToLink = selectedMsgs.length > 0 ? selectedMsgs : messages.slice(-5);
-      const agentUserId = conversation.agentUserId || currentUserId;
-      const result = await callEdgeFn('create-task-from-contact-messages', {
-        agentUserId,
-        messageIds: msgsToLink.map(m => m.id),
-        task: {
-          instrucciones: ticketInstructions.trim(),
-          tipo_tramite: ticketTipo,
-          prioridad: ticketPrioridad,
-        },
-      });
-      if (result?.success === false) {
-        setTicketError(result.error || 'Error al crear el tramite');
-      } else {
-        setCreateTicketSuccessMsg(`Trámite ${result?.folio || ''} creado correctamente`);
-        setTimeout(() => {
-          setShowCreateTicket(false);
-          setCreateTicketSuccessMsg('');
-          setSelectionMode(false);
-          setSelectedIds(new Set());
-        }, 1800);
-      }
-    } catch (e: unknown) {
-      setTicketError(e instanceof Error ? e.message : 'Error desconocido');
-    } finally {
-      setCreatingTicket(false);
-    }
   };
 
   // ── Add to existing ticket ──────────────────────────────────────────────────

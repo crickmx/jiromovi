@@ -7,7 +7,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
-import { TIPO_TRAMITE_OPTIONS, type TipoTramiteConfig } from '@/lib/registroActividadesTypes';
+import { useTiposTramite } from '@/hooks/useTiposTramite';
 
 interface EmailData {
   uid: number;
@@ -88,7 +88,10 @@ export function IniciarTramiteEmailModal({ isOpen, onClose, email, emailAccount,
   // Form fields
   const [selectedAgentId, setSelectedAgentId] = useState('');
   const [assignmentMethod, setAssignmentMethod] = useState<'automatic' | 'manual' | 'suggested'>('manual');
-  const [tipoTramite, setTipoTramite] = useState('cotizacion_emision');
+  // Sale del catálogo, no de una lista fija: un tipo dado de baja no debe poder
+  // elegirse aquí (antes seguía ofreciéndose aunque estuviera inactivo).
+  const { tipos: tiposActivos } = useTiposTramite();
+  const [tipoTramite, setTipoTramite] = useState('');
   const [prioridad, setPrioridad] = useState('Media');
   const [instrucciones, setInstrucciones] = useState('');
   const [editedSummary, setEditedSummary] = useState('');
@@ -111,6 +114,11 @@ export function IniciarTramiteEmailModal({ isOpen, onClose, email, emailAccount,
   const isAdmin = usuario?.rol === 'Administrador';
   const isGerente = usuario?.rol === 'Gerente';
 
+  // Primer tipo activo como valor inicial, en cuanto llega el catálogo.
+  useEffect(() => {
+    if (!tipoTramite && tiposActivos.length > 0) setTipoTramite(tiposActivos[0].value);
+  }, [tiposActivos, tipoTramite]);
+
   // Run AI analysis on open
   useEffect(() => {
     if (isOpen && email) {
@@ -123,7 +131,7 @@ export function IniciarTramiteEmailModal({ isOpen, onClose, email, emailAccount,
       setExistingTramite(null);
       setSelectedAgentId('');
       setAssignmentMethod('manual');
-      setTipoTramite('cotizacion_emision');
+      setTipoTramite('');
       setPrioridad('Media');
       setInstrucciones('');
       setEditedSummary('');
@@ -171,7 +179,7 @@ export function IniciarTramiteEmailModal({ isOpen, onClose, email, emailAccount,
         setEditedSummary(data.analysis.summary || '');
         setImportantData(data.analysis.important_data || {});
         if (data.analysis.suggested_procedure_type) {
-          const matchType = TIPO_TRAMITE_OPTIONS.find(t => t.value === data.analysis.suggested_procedure_type);
+          const matchType = tiposActivos.find(t => t.value === data.analysis.suggested_procedure_type);
           if (matchType) setTipoTramite(matchType.value);
         }
         if (data.analysis.priority) {
@@ -543,7 +551,7 @@ export function IniciarTramiteEmailModal({ isOpen, onClose, email, emailAccount,
                   onChange={e => setTipoTramite(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-accent/50"
                 >
-                  {TIPO_TRAMITE_OPTIONS.filter(t => t.value !== 'formulario_cotizacion').map(t => (
+                  {tiposActivos.filter(t => t.value !== 'formulario_cotizacion').map(t => (
                     <option key={t.value} value={t.value}>{t.label} ({t.area})</option>
                   ))}
                 </select>

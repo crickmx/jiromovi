@@ -2,6 +2,24 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ✅ 2026-09-30 — baja de `cotizacion_emision`: el `update` no alcanzaba
+
+Ricardo pidió desactivar el último tipo Legacy (`cotizacion_emision`, 201 trámites) igual que los 11 del 2026-09-23:
+
+```sql
+update ticket_tipos set activo = false where value = 'cotizacion_emision';
+```
+
+**Pero con ESTE tipo el SQL solo no cierra el alta** — está hardcodeado en 3 lugares que no leen `activo`. Los tres quedaron tapados:
+
+1. **Centro de Contacto** (`UnifiedConversationThread.tsx`) — tenía `ticketTipo` fijo en `'cotizacion_emision'` y una función `createTicket()` completa… **que nadie llamaba**. El flujo real es `setShowNuevoTramiteModal(true)`. Se borró el bloque muerto entero (7 estados + la función); el hueco desaparece con él.
+2. **Correo → "Iniciar trámite"** (`IniciarTramiteEmailModal.tsx`) — el dropdown salía de la lista **estática** `TIPO_TRAMITE_OPTIONS`, así que ofrecía tipos dados de baja. Ahora usa `useTiposTramite()` (que ya filtra `activo=true` y cachea 10 min) y arranca en el primer tipo activo, no en CE. La sugerencia de la IA también se compara contra los activos: si sugiere uno inactivo, se ignora.
+3. **Alta de trámite** (`NuevoTramiteModal.tsx`) — para un agente el tipo arrancaba en `'cotizacion_emision'`. `tiposDb` sí filtra activos, así que el select se veía **vacío** mientras el estado conservaba CE, y al guardar se creaba igual. Efecto nuevo: en cuanto llega el catálogo, si el tipo seleccionado no está en él se limpia (tipo y área). Cubre también borradores viejos con cualquier tipo dado de baja, no solo CE.
+
+**🔑 Patrón:** desactivar un tipo NO es solo el `update` — hay que buscar su `value` hardcodeado (`grep -rn "<value>" src`). Un tipo que solo vive en `ticket_tipos` sí se cierra con el SQL; uno con defaults en código, no.
+
+---
+
 ### ✅ 2026-09-30 (tarde) — FormBuilder: orden del canvas + imagen del encabezado
 
 Pedido de Ricardo: el Encabezado debe verse primero, luego los campos del sistema; decir qué medida debe tener la imagen; comprimirla sola si pesa mucho; y poder recortarla desde el portal.

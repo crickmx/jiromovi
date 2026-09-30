@@ -523,6 +523,18 @@ export function NuevoTramiteModal({
     }
   };
 
+  // Un tipo dado de baja no debe poder crearse desde aquí. `tiposDb` ya trae solo
+  // los activos, pero el tipo puede venir de un valor por defecto o de un borrador
+  // viejo: entonces el select se ve vacío mientras el estado conserva el tipo
+  // inactivo, y al guardar se crea igual. Se limpia en cuanto llega el catálogo.
+  useEffect(() => {
+    if (tiposDb.length === 0 || !tipoTramite) return;
+    if (!tiposDb.some(t => t.value === tipoTramite)) {
+      setTipoTramite('');
+      setAreaSeleccionada('');
+    }
+  }, [tiposDb, tipoTramite]);
+
   const resetForm = () => {
     if (preloadedData?.tipoTramite) {
       setTipoTramite(preloadedData.tipoTramite);
