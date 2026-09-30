@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { PageHeader } from '@/components/ui/page-header';
-import { RefreshCw, Rocket, Clock, CircleCheck as CheckCircle2, CircleX as XCircle, ShieldCheck } from 'lucide-react';
+import { RefreshCw, Rocket, Clock, CircleCheck as CheckCircle2, CircleX as XCircle, ShieldCheck, Hammer, TriangleAlert } from 'lucide-react';
+import {
+  INTERVALO_SONDEO_MS,
+  estadoDeBuild, leerVersionPublicada, puedeSeguirse,
+  type EstadoBuild, type VersionPublicada,
+} from '../lib/deployWatch';
 
 const RECAPTCHA_SITE_KEY =
   ((import.meta.env.VITE_RECAPTCHA_SITE_KEY_MOVI ?? import.meta.env.VITE_RECAPTCHA_SITE_KEY ?? '') as string);
@@ -21,6 +26,16 @@ export function AdminDeploy() {
   const [historial, setHistorial] = useState<DeployTrigger[]>([]);
   const [totpModal, setTotpModal] = useState<{ rcToken: string } | null>(null);
   const [totpCode, setTotpCode] = useState('');
+  // Seguimiento del build: el disparo solo avisa que arrancó, no que terminó.
+  const [seguimiento, setSeguimiento] = useState<{
+    target: 'beta' | 'produccion';
+    commitPrevio: string | null;
+    desde: number;
+    transcurridoMs: number;
+    estado: EstadoBuild;
+    remoto: VersionPublicada | null;
+  } | null>(null);
+  const [versionActual, setVersionActual] = useState<VersionPublicada | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -36,8 +51,32 @@ export function AdminDeploy() {
     if (data) setHistorial(data as unknown as DeployTrigger[]);
   };
 
+  // Sondea /version.json hasta que el commit cambie. Se corta solo al terminar,
+  // al agotarse la espera, o si se sale de la pantalla.
+  useEffect(() => {
+    if (!seguimiento || seguimiento.estado !== 'esperando') return;
+    const { commitPrevio, desde } = seguimiento;
+    let vivo = true;
+
+    const revisar = async () => {
+      const remoto = await leerVersionPublicada();
+      if (!vivo) return;
+      const transcurridoMs = Date.now() - desde;
+      setSeguimiento(prev => (prev ? {
+        ...prev,
+        transcurridoMs,
+        estado: estadoDeBuild({ commitPrevio, remoto, transcurridoMs }),
+        remoto: remoto ?? prev.remoto,
+      } : prev));
+    };
+
+    const id = setInterval(revisar, INTERVALO_SONDEO_MS);
+    return () => { vivo = false; clearInterval(id); };
+  }, [seguimiento?.estado, seguimiento?.desde, seguimiento?.commitPrevio]);
+
   useEffect(() => {
     loadHistorial();
+    leerVersionPublicada().then(setVersionActual);
     if (!RECAPTCHA_SITE_KEY || document.getElementById('recaptcha-script')) return;
     const s = document.createElement('script');
     s.id = 'recaptcha-script';
@@ -74,6 +113,23 @@ export function AdminDeploy() {
       const label = target === 'beta' ? 'beta.movi.digital' : 'producción (movi.digital)';
       showToast(`Deploy de ${label} disparado correctamente`);
       loadHistorial();
+
+      if (puedeSeguirse(target, window.location.hostname)) {
+        // El commit de referencia se lee del servidor, no del bundle cargado:
+        // esta pestaña puede llevar rato abierta y venir de un build anterior.
+        const antes = await leerVersionPublicada();
+        setVersionActual(antes);
+        setSeguimiento({
+          target,
+          commitPrevio: antes?.commitHash ?? null,
+          desde: Date.now(),
+          transcurridoMs: 0,
+          estado: 'esperando',
+          remoto: antes,
+        });
+      } else {
+        setSeguimiento(null);
+      }
     } catch (err: any) {
       showToast('Error al disparar el deploy: ' + err.message, 'error');
     } finally {
@@ -135,6 +191,80 @@ export function AdminDeploy() {
           </span>
         </button>
       </div>
+
+      {versionActual && (
+        <p className="text-xs text-neutral-400 max-w-2xl">
+          Ahora mismo este sitio sirve el commit{' '}
+          <span className="font-mono text-neutral-500 dark:text-neutral-300">{versionActual.commitHash?.slice(0, 8) ?? '—'}</span>
+          {versionActual.buildTimestamp && (
+            <> · construido el {new Date(versionActual.buildTimestamp).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</>
+          )}
+        </p>
+      )}
+
+      {/* Avance del build. Sin esto el único aviso era "disparado", que no dice
+          nada de si el sitio ya se reconstruyó. */}
+      {seguimiento && (() => {
+        const minutos = Math.floor(seguimiento.transcurridoMs / 60000);
+        const hora = seguimiento.remoto?.buildTimestamp
+          ? new Date(seguimiento.remoto.buildTimestamp).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+          : null;
+
+        if (seguimiento.estado === 'listo') {
+          return (
+            <div className="max-w-2xl rounded-2xl border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Build terminado</p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-300/80 mt-0.5">
+                  {seguimiento.target === 'beta' ? 'beta.movi.digital' : 'movi.digital'} ya sirve el commit{' '}
+                  <span className="font-mono">{seguimiento.remoto?.commitHash?.slice(0, 8) ?? '—'}</span>
+                  {hora && <> · {hora}</>}
+                </p>
+              </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
+              >
+                Recargar
+              </button>
+            </div>
+          );
+        }
+
+        if (seguimiento.estado === 'esperando') {
+          return (
+            <div className="max-w-2xl rounded-2xl border border-purple-200 dark:border-purple-500/20 bg-purple-50 dark:bg-purple-500/10 px-4 py-3 flex items-start gap-3">
+              <Hammer className="w-5 h-5 text-purple-500 shrink-0 mt-0.5 animate-pulse" />
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-purple-800 dark:text-purple-200">
+                  Construyendo… {minutos > 0 && <span className="font-normal">({minutos} min)</span>}
+                </p>
+                <p className="text-xs text-purple-700 dark:text-purple-300/80 mt-0.5">
+                  Se avisa aquí en cuanto el sitio cambie de commit. Suele tardar entre 2 y 5 minutos; puedes
+                  seguir trabajando, esto no se pierde mientras no salgas de la pantalla.
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="max-w-2xl rounded-2xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 flex items-start gap-3">
+            <TriangleAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                {seguimiento.estado === 'sin_respuesta' ? 'El sitio no respondió' : 'El build sigue sin aparecer'}
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
+                {seguimiento.estado === 'sin_respuesta'
+                  ? 'No se pudo leer /version.json. Revisa el sitio directamente.'
+                  : 'Pasaron más de 12 minutos y el commit publicado sigue siendo el mismo. Puede que el build haya fallado — revisa el log en Plesk.'}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {historial.length > 0 && (
         <div className="max-w-2xl">

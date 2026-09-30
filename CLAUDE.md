@@ -2,6 +2,19 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ✅ 2026-09-30 — el Deploy ya dice cuándo TERMINÓ el build
+
+El botón solo avisaba que el deploy se había **disparado**; el pull y el build tardan minutos más y no había forma de saber cuándo acababan salvo recargar a ciegas.
+
+`/version.json` ya traía `commitHash` y `buildTimestamp` (los escribe el plugin `write-version-json` de `vite.config.ts`) — no hubo que agregar nada del lado del servidor. `AdminDeploy.tsx` guarda el commit publicado ANTES de disparar y luego sondea `/version.json` cada 5 s hasta que cambie: "Construyendo… (N min)" → "Build terminado" con el commit nuevo y un botón para recargar. A los 12 min se rinde y sugiere revisar el log de Plesk.
+
+- **Un fallo de red NO se trata como error** mientras quede tiempo: durante el deploy el servidor se reinicia y es normal que no conteste. Confundir eso con un error diría "algo falló" justo cuando todo va bien.
+- **Solo se puede seguir el sitio en el que estás parado**: `version.json` no manda CORS, así que disparar producción desde beta no se puede monitorear (se dispara igual, sin panel).
+- El commit de referencia se lee **del servidor**, no del bundle cargado: la pestaña puede llevar horas abierta.
+- Lógica en `src/lib/deployWatch.ts` con autocomprobación en `src/lib/deployWatch.test.mjs` (`npx tsx src/lib/deployWatch.test.mjs`).
+
+---
+
 ### ✅ 2026-09-30 — equipos de trámite en la edición de usuario: áreas congeladas + Admin sin sección
 
 Ricardo renombró un área y creó otras; los cambios no se reflejaban en "Editar Usuario". Además pidió que los **Administradores** también tengan asignación de equipos.
@@ -599,11 +612,21 @@ Visto repetidamente: alguien agrega una tabla + política RLS para dar acceso a 
 2026-07-04: guardar "Forma de Pago = 2 Parcialidades" fallaba con `invalid input value for enum forma_pago_oc`. La columna `store_pedidos.forma_pago` es un `ENUM` creado el 2026-01-19 con valores `Contado/Mensual/Trimestral/Semestral`, pero `storeTypes.ts` (`FormaPagoOC`) usa `Contado/2 Parcialidades/12 Meses` desde hace tiempo — nadie sincronizó el enum cuando cambiaron las opciones en el frontend. Solo "Contado" coincidía por casualidad, por eso el resto fallaba.
 **Señal de este bug**: un guardado que funciona para un solo valor de un dropdown y falla para el resto, con error de Postgres tipo `invalid input value for enum X`. **Fix**: convertir la columna a `text` (quitar el enum) en vez de parchear el enum — evita que se repita si el frontend vuelve a cambiar las opciones. Ver `20260704000001_fix_forma_pago_enum_drift.sql`. `metodo_pago` (enum `metodo_pago_oc`) sí coincide con `MetodoPagoOC` — no tocar ese.
 
-## Git / Deploy
-- **Siempre pushear a `origin/produccion`** — Plesk despliega desde esa rama.
-- Rama local activa: `FUSION!!!` (trackea `origin/main` por defecto — ignorar).
-- **Comando correcto:** `git push origin HEAD:produccion`
-- Nunca solo `git push` ni `git push origin HEAD:main` — los cambios no llegarán al servidor.
+## Git / Deploy — SON DOS RAMAS, UNA POR SITIO
+
+| Sitio | Rama que despliega |
+|---|---|
+| `beta.movi.digital` (**donde Ricardo prueba todo**) | `origin/main` |
+| `movi.digital` (producción) | `origin/produccion` |
+
+```bash
+git push origin HEAD:main         # para que llegue a BETA
+git push origin HEAD:produccion   # para que llegue a PRODUCCIÓN
+```
+
+⚠️ **Pushear solo a `produccion` es el error fácil de cometer** (pasó el 2026-09-30: cuatro commits arriba, Ricardo hizo deploy de beta tres veces y seguía viendo el build viejo — `origin/main` estaba en el commit anterior y beta compila de ahí). Como Ricardo prueba en beta, **casi siempre hay que pushear a las dos**. Nunca solo `git push` a secas.
+
+**Cómo confirmar qué está sirviendo el sitio, sin adivinar:** la barra naranja de beta muestra `Commit:` y `Build:`, y salen de `/version.json`. Si el commit no cambió después de un deploy, o el build no corrió o la rama no era la que crees.
 
 ## Stack
 - React 18 + TypeScript + Vite + Tailwind CSS
