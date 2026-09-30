@@ -1,6 +1,20 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-29, cierre de sesión)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
+
+### ✅ Cerrados el 2026-09-30 — los 3 pendientes que arrastraba el 29
+
+1. **Convenio/Preferentes** — Ricardo corrió la migración, importó el Excel y confirmó que funciona.
+2. **Trámite hijo (agente/creado_por)** — re-probado por Ricardo, funciona.
+3. **Color por sección** — no se pudo ver en navegador (sin herramienta), así que se revisó el código. **Salieron 3 bugs**, corregidos en `501b4973`:
+   - Al **crear** una sección el color se perdía: el `insert` no llevaba `config`. Al editar sí funcionaba, así que el bug solo aparecía la primera vez — de los que se atribuyen a un error propio.
+   - El **canvas del FormBuilder** pintaba todas las secciones con el mismo verde azulado fijo: el color se elegía a ciegas.
+   - La **vista previa** tampoco lo reflejaba.
+   **Falta confirmarlo en navegador**: crear una sección nueva eligiendo color en el mismo paso cubre los tres.
+
+**🔑 Patrón que ya se repitió tres veces en el FormBuilder** (condiciones de sección, clonado, y ahora color): *un dato se guarda bien por un camino y se ignora en los otros*. Al agregar cualquier cosa nueva a `tramite_tipo_secciones.config` o a `tramite_tipo_campos.config`, revisar SIEMPRE los cuatro puntos: insert, update, canvas del editor, y vista previa — más los dos consumidores reales (`NuevoTramiteModal`, `TramiteDetalle`).
+
+---
 
 ### ✅ Sesión 2026-09-29 — resumen completo del día
 
