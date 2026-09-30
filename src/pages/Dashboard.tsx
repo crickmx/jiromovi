@@ -61,7 +61,7 @@ function getRelativeTime(iso: string): string {
   if (diffMin < 60) return `Hace ${diffMin} min`;
   const diffH = Math.floor(diffMin / 60);
   if (diffH < 24) return `Hace ${diffH} h`;
-  const diffD = Math.floor(diffH / 24);
+  const diffD = Math.floor(diffMin / 24);
   if (diffD < 7) return `Hace ${diffD} d`;
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
