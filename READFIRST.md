@@ -13,7 +13,9 @@ git checkout produccion
 npm install
 ```
 
-> Rama activa: **`produccion`**
+> **Dos ramas, una por sitio:** `main` despliega `beta.movi.digital` (donde se prueba todo)
+> y `produccion` despliega `movi.digital`. Un cambio que solo se sube a `produccion`
+> **no aparece en beta**. Ver la tabla "Git / Deploy" del `CLAUDE.md`.
 
 ---
 

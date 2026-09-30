@@ -2,6 +2,20 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### 🔜 AL ARRANCAR LA PRÓXIMA SESIÓN — lo que quedó abierto el 2026-09-30
+
+Todo el código del día está en **`origin/main` y `origin/produccion`**, ambas en `7ed11f57`. Lo que falta no es código:
+
+1. **Deploy de beta** — al cerrar, beta seguía en `66302d9a`. Ver el punto 3 de abajo antes de dudar del código.
+2. **Verificar en navegador** (no hubo herramienta para verlo): Encabezado arriba de "Campos del sistema" en el FormBuilder · subir una imagen grande y con otra proporción y ver el encuadre · las áreas renombradas en Editar Usuario · que un Administrador tenga sección de equipos y que guarde · el panel "Construyendo…/Build terminado" en Admin → Deploy.
+3. **`update ticket_tipos set activo = false where value = 'cotizacion_emision';`** — confirmar si ya se corrió. Los 3 huecos de código ya están tapados, pero conviene correrlo DESPUÉS del deploy (la lista de tipos del Correo cachea 10 min en el navegador).
+4. Ya confirmado y cerrado: `tramites_grupos_visualizacion` no tiene ningún equipo activo con `area_id` nulo — el backfill de áreas quedó completo.
+
+**🔑 La lección del día, para no volver a perder una hora:** Ricardo hizo deploy de beta tres veces buscando un cambio que nunca había llegado, porque los commits estaban solo en `origin/produccion` y **beta compila de `origin/main`**. Ver la tabla en "Git / Deploy" abajo. Cuando Ricardo diga "no aparece el cambio", lo PRIMERO es comparar el `Commit:` de la barra naranja contra la rama que sirve ese sitio.
+
+---
+
+
 ### ✅ 2026-09-30 — el Deploy ya dice cuándo TERMINÓ el build
 
 El botón solo avisaba que el deploy se había **disparado**; el pull y el build tardan minutos más y no había forma de saber cuándo acababan salvo recargar a ciegas.
