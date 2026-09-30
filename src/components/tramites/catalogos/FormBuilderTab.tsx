@@ -116,6 +116,18 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
    * un nombre que nunca iba a coincidir, dejando la sección bloqueada sin explicación.
    * El formulario guarda el NOMBRE en ambos casos, por eso label y valor son el mismo.
    */
+  /**
+   * Las secciones, pero con el color que se está eligiendo ahora mismo en el panel
+   * ya aplicado. Las secciones se guardan con un botón (no hay autoguardado como
+   * en los campos), así que sin esto el canvas no cambiaría hasta darle Guardar y
+   * el color se elegiría a ciegas.
+   */
+  const seccionesVistaPrevia = secciones.map(sec =>
+    editingSeccion && sec.id === editingSeccion.id
+      ? { ...sec, config: { ...(sec.config ?? {}), color: seccionForm.color ?? undefined } }
+      : sec
+  );
+
   const opcionesDeCondicion = (campo: { tipo?: string; config?: any } | undefined) => {
     if (campo?.tipo === 'ramo') return catalogoCondicion.ramos.map(n => ({ label: n, slug: n }));
     if (campo?.tipo === 'aseguradora') return catalogoCondicion.companias.map(n => ({ label: n, slug: n }));
@@ -170,7 +182,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   <Eye className="w-3.5 h-3.5" />
                   Vista previa — así lo ve quien llena el formulario, no es editable aquí.
                 </div>
-                <FormPreview campos={campos} secciones={secciones} />
+                <FormPreview campos={campos} secciones={seccionesVistaPrevia} />
               </>
             ) : (
               <>
@@ -334,7 +346,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         </div>
                       )}
 
-                      {secciones.map((seccion, i) => {
+                      {seccionesVistaPrevia.map((seccion, i) => {
                         const dependeDe = secciones.find(s => s.id === seccion.depende_de_seccion_id);
                         const esSistema = !!seccion.sistema_key;
                         const suyos = draggableCampos.filter(c => c.seccion_id === seccion.id);
@@ -380,7 +392,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                                   {seccion.condicion_campo_id && ` · Condicionada a "${campos.find(c => c.id === seccion.condicion_campo_id)?.label ?? '—'}"`}
                                 </p>
                               </div>
-                              <button onClick={() => { setEditingSeccion(seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-white rounded-lg text-neutral-400 hover:text-neutral-700" title="Configurar sección" aria-label="Configurar sección">
+                              <button onClick={() => { setEditingSeccion(secciones.find(s2 => s2.id === seccion.id) ?? seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-white rounded-lg text-neutral-400 hover:text-neutral-700" title="Configurar sección" aria-label="Configurar sección">
                                 <Settings className="w-3.5 h-3.5" />
                               </button>
                               {!esSistema && (
