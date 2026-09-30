@@ -1,115 +1,52 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-29)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-29, cierre de sesión)
 
-### ✅ Sesión 2026-09-29 (madrugada, cont.) — certificado SSL expirado + progreso de extracción poco claro
+### ✅ Sesión 2026-09-29 — resumen completo del día
 
-**No relacionado con código**: la extracción de PDF falló con un error de conexión crudo (`error sending request for url...`) — resultó ser el **certificado SSL de `lector.movi.digital` expirado**. Ricardo lo renovó en Plesk (tuvo que desmarcar `www.lector.movi.digital` del certificado, ese subdominio no tiene DNS). Ya quedó resuelto, verificado con curl.
+Día largo, 3 hilos de trabajo distintos. Orden: qué se pidió, qué se hizo, qué quedó confirmado y qué falta.
 
-**Confusión real encontrada de paso** (campo `tipo: 'adjunto'` embebido en "Campos del trámite", NO la pestaña Archivos — son dos flujos de subida distintos): al adjuntar un PDF ahí, el archivo queda en **"⏳ Pendiente"** hasta que se le da clic a **"Guardar cambios"** — la extracción real solo corre dentro de `proceedWithSave` (procesa `pendingExtractions` uno por uno). Esto es el diseño correcto, no un bug, pero el texto no lo dejaba claro y parecía atorado.
+#### 1. Aseguradoras: orden, preferentes y selección múltiple — ✅ confirmado
+Pedido al cerrar el 2026-09-28. Implementado en `campo.tipo === 'ramo'`/`'aseguradora'` (`NuevoTramiteModal.tsx`, `TramiteDetalle.tsx` — **no** en Cotización/Emisión, que ya tenía este comportamiento resuelto de antes y se dejó intacto a propósito, decisión de Ricardo de no unificar los dos selectores):
+- **Ramo manda sobre aseguradora** (antes al revés) — inversión global, no opt-in por tipo. Se quitó el checkbox "Filtrar por aseguradora del formulario" del editor (`FormBuilderTab.tsx`/`useFormBuilder.ts`); la config vieja `filtrar_por_aseguradora` queda inerte en filas existentes.
+- **Preferente = convenio**, mismo concepto (confirmado con Ricardo) — se reutilizó `maestro_companias.convenio` sin migración nueva (esto se REVIRTIÓ de fuente más tarde el mismo día, ver punto 2).
+- Selector con preferentes arriba, resto bajo "+ Mostrar N más", `window.confirm(...)` al elegir una no preferente.
+- Selección múltiple guardada como texto separado por comas (`valor_texto`, no `valor_json`) — a propósito, para no tocar los 5 archivos que ya leen este campo como string plano.
 
-**Mejoras hechas:**
-- El badge dice ahora "⏳ Pendiente de guardar" (con tooltip) en vez de solo "Pendiente".
-- Nueva barra de progreso flotante (`extractionProgress`, esquina inferior derecha, mismo lugar que el toast) mientras se procesa el lote al guardar: nombre del archivo actual + `X/Y` + barra.
-- Los badges por archivo (`extractionStatus`) ahora se actualizan **en vivo** dentro del loop (antes todos se quedaban en "Pendiente" a la vez hasta que `loadTramite()` recargaba todo al final del lote completo).
+#### 2. Convenio/preferente con granularidad real (compañía+ramo+subramo) — ❌ falta que Ricardo importe los datos
+El punto 1 asumía "convenio = una bandera por compañía", pero la fuente real de Ricardo (`Convenio No Convenio.xlsx`) varía por **ramo y subramo**: 7 de 46 compañías tienen convenio mixto dentro del mismo ramo (ej. GNP sí en unos subramos de Vehículos, no en otros). Se corrigió:
+- Migración `20260929000001_convenio_por_combinacion.sql` — agrega `convenio boolean`/`pondera numeric` a `maestro_combinaciones` (compañía+ramo+subramo). `maestro_companias.convenio` queda deprecado (no se borra, ya no es la fuente de verdad).
+- `BaseDatosMaestrosAdmin.tsx` — nueva sección dedicada **"Importar Convenio / Preferentes"** en el tab Catálogo (separada del importador general, para que quede claro a qué tabla le pega): acepta el Excel crudo de Ricardo tal cual, busca sola la hoja con columna CONVENIO, y **nunca crea compañías/ramos/subramos nuevos** — solo actualiza convenio/pondera de combinaciones que ya existen, reportando en pantalla cualquier fila sin coincidencia.
+- Selector de aseguradoras: "preferente" ahora se resuelve contra `combinaciones` (compañía+ramo, agregado como "preferente si CUALQUIER subramo de ese ramo lo es" — el selector no tiene campo Sub Ramo).
+- **Verificado contra la BD real**: nombres casi coinciden, excepto `QUALITAS COMPAÑIA DE SEGUROS S.A. DE C.V.` (Excel) vs `QUALITAS COMPAÑIA DE SEGUROS` (BD) — hay una copia ya corregida en `C:\Users\medau\Downloads\Convenio No Convenio (listo para importar).xlsx`. `CONTINENTAL ASSIST`/`DESCUENTOS JIRO`/ramo `Descuentos` son altas nuevas legítimas, no typos.
 
----
+**❌ Falta que Ricardo:** (a) corra la migración, (b) suba ese Excel en la sección dedicada nueva de `/admin/base-datos`, (c) confirme en navegador que el selector muestra bien las preferentes.
 
-### ✅ Sesión 2026-09-29 (madrugada) — un trámite hijo nunca podía disparar SUS propios triggers
+**Pendiente a futuro, no bloqueante:** el selector no tiene campo Sub Ramo — para exactitud total habría que agregarlo como tipo de campo nuevo del FormBuilder (más trabajo, no se pidió hoy). Cotización/Emisión tampoco tiene todavía orden preferente-primero ni advertencia — no se pidió, no se tocó.
 
-**Reportado por Ricardo con folio real**: un trámite de Emisión (`TKA6958-A`, ya hijo de otro trámite) llegó al estatus que debía disparar un hijo de "Registro de Póliza" — la configuración del trigger era correcta, pero **no se creó nada y no salió ninguna advertencia**.
+#### 3. FormBuilder/formularios/detalle: color, limpieza visual, auto-asignación de hijos — 3 pedidos, tratados por separado
+Ricardo pidió (a) color por sección, (b) que Crear y Detalle se vean consistentes, (c) que los trámites automáticos (por trigger) sigan las mismas reglas de asignación que los nuevos. Se investigó con 3 agentes en paralelo antes de tocar nada.
 
-**Causa:** `handleSave` (guardado de cambios) tenía `if (estatusCampoDinamico && tipoUUID && chosenSlug && !tramite.parent_ticket_id)` — tanto para triggers de estatus como para los de escalación. Sin comentario ni justificación, **cualquier trámite que ya fuera hijo tenía sus triggers completamente desactivados**, sin aviso. Una cadena Cotización→Emisión→Registro de Póliza se cortaba siempre en el segundo salto.
+**(a) Color por sección — ✅ hecho, sin confirmar en navegador.** La infraestructura de fondo configurable ya existía pero estaba cableada solo al header (4 puntos del código gateados a `sistema_key==='header'`). Se generalizó: `config.color` en cualquier sección (selector simple en `FormBuilderTab.tsx`), y `estiloSeccionColor()` nuevo en `tramiteSecciones.ts` — tiñe borde + fondo muy sutil (5% opacidad), deliberadamente más ligero que el banner de página completa del header (que sí recalcula contraste de texto; en una tarjeta normal el texto/inputs se quedan con su color de siempre).
 
-**Fix:** se quitó `&& !tramite.parent_ticket_id` de ambas condiciones. No hace falta esa guarda para evitar cadenas infinitas: cada salto de la cadena exige que un humano cambie el estatus a mano desde la UI — no hay ningún disparo automático en cascada que pudiera correr sin parar.
+**(b) Crear vs. Detalle — ✅ hechos los bugs concretos, NO la unificación completa** (decisión de Ricardo: unificar del todo implica rehacer el modelo de permisos del detalle, que es distinto al de creación — se pospuso).
+- `agruparCamposPorSeccion()` (compartida por ambas pantallas) ahora omite secciones sin campos (antes salían como tarjetas vacías) y la sección "Encabezado" siempre (pedido explícito con capturas — no aporta nada en el formulario, solo configura el fondo del encabezado real que ya se ve una vez creado el trámite).
+- `asignado_a` se quitó de la tabla plana "Información del Trámite" del detalle — era un valor eco de la selección inicial, duplicaba al componente real de Responsable y podía quedar desactualizado.
+- "Fecha de Finalización" se quitó del formulario de Crear (pedido explícito con captura) — siempre decía "se registrará al cerrar", ya estaba en `AUTO_FILL_KEYS`.
+- **Pendiente, no resuelto:** el orden vertical del detalle sigue fijo (Responsable/Equipo → Fecha Promesa → tabla plana de sistema → relacionados → secciones personalizadas) — no intercala con el orden real de las secciones. Requeriría la unificación completa que se pospuso.
 
-**Sin probar en navegador todavía** — falta que Ricardo repita el cambio de estatus en un trámite hijo y confirme que ahora sí dispara.
+**(c) Trámites automáticos sin auto-asignar — ✅ CONFIRMADO por Ricardo ("ya se creó el trámite").** Iteración larga, 3 causas distintas encontradas y corregidas en orden:
+1. **Un trámite hijo no podía disparar SUS PROPIOS triggers.** `handleSave` tenía `&& !tramite.parent_ticket_id` en los checks de trigger de estatus Y de escalación, sin comentario ni justificación — cualquier trámite que ya fuera hijo tenía sus triggers completamente desactivados, sin aviso. Una cadena Cotización→Emisión→Registro de Póliza se cortaba siempre en el segundo salto. **Se quitó la condición de ambos checks** — no hace falta para evitar bucles infinitos, cada salto exige que un humano cambie el estatus a mano.
+2. **La auto-asignación del hijo requería que el padre tuviera agente/Solicitante**, y los tipos internos casi nunca lo tienen. `NuevoTramiteModal.tsx` ya resolvía esto para trámites nuevos (tipo interno → usa a quien crea el trámite como agente para las reglas); el trigger nunca tuvo ese respaldo.
+3. **Corrección de Ricardo sobre el fix anterior:** usar a "quien disparó el trigger" como agente estaba mal — puede ser cualquiera (un Admin ajeno al caso). Diseño final: `agente_id` del hijo se hereda del padre tal cual, nunca se sustituye; `creado_por` del hijo y el "agente" usado para resolver reglas (cuando el padre no tiene uno y el tipo es interno) son **el responsable del padre** (`snap.assigned_to_user_id`), con respaldo a quien disparó el trigger solo si el padre no tenía responsable.
+   - **Extra pedido por Ricardo:** al crear el hijo se inserta un comentario automático con el resumen completo del padre (solicitante, prioridad, póliza, instrucciones, campos personalizados) para no perder contexto.
 
----
+**⚠️ Falta re-probar específicamente el punto 3 (la corrección de agente/creado_por)** — Ricardo confirmó que el hijo se creaba (con el fix del punto 1+2), pero la corrección del punto 3 se aplicó después de esa prueba. Falta disparar otro trigger y confirmar que `creado_por` del hijo es el responsable del padre, no quien disparó el cambio de estatus.
 
-### ⚠️ CORREGIDO tras revisión de Ricardo — quién es "agente" y quién "creado_por" en un hijo por trigger
+**Hallazgo de paso, no confirmado como causa de nada hoy:** el motor de recurrencias (`generar-instancias-tareas`, cron sobre `ticket_tipos_recurrencia`) nunca llamó a `get_grupo_para_ticket` — usa el equipo/usuario fijo capturado al configurar la recurrencia. Hueco de diseño nunca conectado, no una regresión. Si algún día se reporta que un trámite *recurrente* (no un hijo por trigger) no auto-asigna, es por esto.
 
-El primer fix de esta sesión (abajo) usaba `usuario.id` (quien disparó el trigger) como respaldo cuando el padre no tiene agente. **Ricardo lo corrigió**: quien ejecuta el cambio de estatus puede ser cualquiera (ej. un Admin ajeno al caso) y no debe suplantar a nadie.
-
-- **`agente_id` del hijo**: se hereda tal cual del padre (`snap.agente?.id ?? null`), **nunca** se sustituye — el Solicitante no cambia porque el trámite avance a un paso interno. (Esto ya era así, no cambió.)
-- **`creado_por` del hijo**: ahora es el **responsable del padre** (`snap.assigned_to_user_id`), no quien disparó el trigger — es quien venía atendiendo el caso, análogo a que esa persona hubiera creado el siguiente paso a mano. Con respaldo a `usuario.id` solo si el padre no tenía responsable (ej. estaba en pool).
-- **Resolución de reglas (`get_grupo_para_ticket`) cuando el tipo destino es interno y no hay agente**: usa al **responsable del padre**, no a quien disparó el trigger — mismo criterio que `creado_por`.
-
----
-
-### ✅ Sesión 2026-09-29 (noche) — trámites hijo por trigger sin auto-asignar: causa real encontrada
-
-Ricardo confirmó con folio real (`TKA6958-A`) que el caso roto SÍ es el trigger de cambio de estatus (padre→hijo), no recurrencias. La auditoría de la tarde había verificado que el fix de septiembre (`5476dfdc`, unwrap del arreglo) seguía intacto — y lo sigue estando, **pero no era la única condición para que el motor de reglas corriera**.
-
-**Causa real:** `TramiteDetalle.tsx` (creación del hijo, paso 8) solo llama a `get_grupo_para_ticket` `if (_autoAsignar && snap.agente?.id)` — necesita que el trámite **padre** tenga `agente_id` (Solicitante) poblado. Pero `NuevoTramiteModal.tsx:670` (para trámites nuevos) ya resuelve esto distinto: `const agenteUserId = esInterno ? (usuario?.id ?? null) : (asignado || null)` — si el tipo es **interno** (sin concepto real de Solicitante externo), usa a **quien está creando el trámite** como "agente" para las reglas. El trigger nunca tuvo ese respaldo: si el padre es de un tipo interno (agente_id casi siempre null ahí), el hijo nunca disparaba el motor, en silencio, sin importar que "Auto-asignar" estuviera bien configurado en el trigger.
-
-**Fix:** se agregó `es_interno` al `select` de `targetTipo` (tipo del hijo) y:
-```ts
-const agenteIdParaAsignar = snap.agente?.id ?? (targetTipo.es_interno ? usuario?.id : null) ?? null;
-if (_autoAsignar && agenteIdParaAsignar) { ... }
-```
-Mismo criterio que el modal de creación — un hijo de tipo interno ahora usa a quien disparó el trigger como agente para las reglas, igual que si se hubiera creado a mano.
-
-**Además (pedido explícito de Ricardo):** al crear el hijo se inserta un comentario automático con el resumen del padre (folio, solicitante, prioridad, póliza, instrucciones, y cada campo personalizado no vacío) — para que quien trabaje el hijo tenga contexto sin ir a buscar el padre. Usa `usuario.id` (quien disparó el trigger) como autor, no existe un usuario "Sistema" en este proyecto.
-
-**Sin probar en navegador todavía** — falta que Ricardo dispare un trigger real sobre un tipo interno y confirme que el hijo ya trae equipo/responsable + el comentario.
-
----
-
-### ✅ Sesión 2026-09-29 (tarde) — Color por sección, limpieza de Crear/Detalle, falta confirmar el caso de trámites automáticos
-
-Ricardo pidió 3 cosas del FormBuilder/formularios/detalle. Se investigó con 3 agentes en paralelo antes de tocar nada.
-
-**1. Color por sección — hecho.** La infraestructura de fondo configurable ya existía pero estaba cableada solo al header (`sistema_key==='header'`, 4 puntos del código). Se agregó `config.color` genérico para cualquier sección (selector de color simple en `FormBuilderTab.tsx`, guardado en `useFormBuilder.ts`), y un helper nuevo `estiloSeccionColor()` en `tramiteSecciones.ts` que tiñe borde + fondo muy sutil (5% de opacidad, `${color}0D`) — deliberadamente MÁS ligero que `tramiteHeader.ts::estiloHeader()` (que es para un banner de página completa y sí recalcula contraste de texto): en una tarjeta de sección normal el texto/inputs se quedan con su color de siempre, nunca hace falta contraste especial. Aplicado en `NuevoTramiteModal.tsx` y `TramiteDetalle.tsx` (mismas tarjetas, mismo helper).
-
-**2. Crear vs. Detalle — se arreglaron los bugs concretos, NO se unificó la arquitectura completa** (decisión explícita de Ricardo: unificar del todo implicaría rehacer el modelo de permisos del detalle, que es distinto al de creación — se pospuso).
-- `agruparCamposPorSeccion()` (en `tramiteSecciones.ts`, compartida por ambas pantallas) ahora omite: (a) secciones sin ningún campo — antes salían como tarjetas vacías cuando el llamador ya había filtrado sus campos de sistema; (b) la sección "Encabezado" siempre — pedido explícito de Ricardo con capturas: esa sección no aporta nada en el formulario ni en el detalle, solo sirve para configurar el fondo del encabezado real (que ya se ve arriba, con su diseño, una vez creado el trámite). Su único campo (Estatus) ya se maneja aparte en ambas pantallas — quitarla de esta función no pierde nada funcional.
-- `asignado_a` se excluyó de la tabla plana "Información del Trámite" del detalle (`TramiteDetalle.tsx`): desde el rework de auto-asignación (2026-09-23) es un valor "eco" de la selección inicial al crear, no la fuente de verdad del Responsable — mostrarlo ahí (como UUID crudo, sin resolver) duplicaba al componente dedicado de Responsable/Equipo y podía quedar desactualizado si el Responsable cambió después.
-- "Fecha de Finalización" se quitó del formulario de Crear trámite (pedido explícito con captura) — siempre iba a decir "se registrará al cerrar", nunca aporta nada ahí. Ya estaba en `AUTO_FILL_KEYS`, así que quitar su render no afecta la barra de requeridos ni la validación.
-- **Pendiente, NO resuelto hoy**: el orden vertical del detalle sigue fijo (bloque de Responsable/Equipo → Fecha Promesa → tabla plana de sistema → trámites relacionados → secciones de campos personalizados agrupadas) — si una sección personalizada tiene un `orden` menor al de "Personas y Asignación", en Crear aparece primero pero en Detalle NO, porque el detalle nunca mete los campos de sistema en el mismo `agruparCamposPorSeccion` que los personalizados. Interleaving real requeriría la unificación completa que se pospuso.
-
-**3. Trámites automáticos sin auto-asignación — SIN CONFIRMAR, necesita respuesta de Ricardo antes de tocar código.** Se auditaron los 8 flujos que crean trámites programáticamente (triggers de cambio de estatus, Store→Trámites, Marketing Premium, alta Beta, reporte de bugs, recurrencias) — **los 6 que ya se habían arreglado en septiembre siguen consistentes, sin regresión**, incluido el trigger padre→hijo (`5476dfdc`, sigue intacto). **Hallazgo nuevo**: el motor de recurrencias (`supabase/functions/generar-instancias-tareas`, cron diario sobre `ticket_tipos_recurrencia`) **nunca llamó a `get_grupo_para_ticket`** — crea tickets con `insert` directo usando el equipo/usuario fijo que se capturó al configurar la recurrencia, no las reglas dinámicas de 3 capas. Es un hueco de diseño nunca conectado, no una regresión. **Falta que Ricardo confirme** si es esto a lo que se refería (trámites recurrentes) o si tiene un folio concreto de un trámite hijo/automático mal asignado para verificar directo en la base (columna `trigger_origen_id` vs `recurrencia_id` en `tickets` distingue el origen al toque).
-
----
-
-### 🟡 SIGUIENTE — Convenio/preferente con granularidad real (compañía+ramo+subramo), falta importar los datos
-
-Ricardo probó el toggle de convenio por compañía (sesión de horas antes, commit `f6cd886f`) y **no le sirvió**: su fuente real (`Convenio No Convenio.xlsx`, en su Downloads) varía por **ramo y subramo**, no por compañía completa — confirmado con los datos reales: **7 de 46 compañías tienen convenio mixto dentro del mismo ramo** (ej. GNP es convenio en algunos subramos de Vehículos y no en otros).
-
-**✅ Ya implementado (commit pendiente de esta sesión):**
-- Migración `20260929000001_convenio_por_combinacion.sql` — agrega `convenio boolean` y `pondera numeric` a `maestro_combinaciones` (compañía+ramo+subramo). `maestro_companias.convenio` (el flag plano de la sesión anterior) **no se borró pero quedó deprecado** — ya no es la fuente de verdad para el selector.
-- `BaseDatosMaestrosAdmin.tsx::importarCatalogo` — ahora escribe `convenio`/`pondera` en la combinación, no en la compañía. Acepta tanto la plantilla propia (`compania/ramo/subramo/convenio`) como las columnas reales del Excel de Ricardo (`Nombre Compañía/RamosNombre/Sub Ramo/CONVENIO/PONDERA`). El upsert de la combinación **siempre sobreescribe** convenio/pondera (no respeta el modo "adición" que sí aplica al resto del catálogo) — el propósito de reimportar este archivo es actualizar convenio en combinaciones existentes, no solo agregar nuevas.
-- Selector de aseguradoras (`NuevoTramiteModal.tsx`, `TramiteDetalle.tsx`): "preferente" ahora se resuelve contra `combinaciones` (compañía+ramo), no contra `catalogoCompanias.convenio`. Como el selector no tiene campo Sub Ramo, se agregó con la regla "preferente si CUALQUIER subramo de ese ramo lo es" (decisión de Ricardo, opción recomendada) — con ramo sin elegir, "preferente en cualquier ramo".
-
-**⚠️ Verificado contra la BD real (Ricardo corrió el SQL):** los nombres de compañía/ramo del Excel coinciden casi exactamente contra `maestro_companias`/`maestro_ramos`, **excepto**:
-- `QUALITAS COMPAÑIA DE SEGUROS S.A. DE C.V.` (Excel) vs `QUALITAS COMPAÑIA DE SEGUROS` (BD) — sin corregir, el import crea una compañía Qualitas duplicada.
-- `CONTINENTAL ASSIST` y `DESCUENTOS JIRO` (+ ramo `Descuentos`) no existen en la BD todavía — son altas nuevas legítimas, no typos, el import las crea solas.
-
-Se generó una copia ya corregida y lista para subir: `C:\Users\medau\Downloads\Convenio No Convenio (listo para importar).xlsx` (hoja renombrada a `catalogo`, columnas en el formato del importador, nombre de Qualitas ya ajustado).
-
-**❌ PENDIENTE — falta que Ricardo corra la migración y suba el archivo:**
-1. Correr `20260929000001_convenio_por_combinacion.sql` en el SQL Editor de Supabase.
-2. Ir a `/admin/base-datos` → Importar → subir `Convenio No Convenio (listo para importar).xlsx` → modo **"adición"** (nunca "reemplazo": ese modo borra TODA la tabla de compañías/ramos/subramos/combinaciones antes de reinsertar, y este Excel no es una copia completa del catálogo — solo trackea convenio, perdería combinaciones reales que sí usan otros trámites).
-3. Probar en navegador que el selector de aseguradoras (Crear trámite / Detalle) muestra bien las preferentes.
-
-**Pendiente de decidir a futuro, no bloqueante:** el selector genérico no tiene campo Sub Ramo, así que la precisión real queda a nivel Ramo (agregada). Si algún día se necesita la exactitud completa del Excel, hay que agregar `subramo` como tipo de campo nuevo del FormBuilder — se decidió NO hacerlo hoy (más trabajo, afecta más pantallas).
-
----
-
-### ✅ Sesión 2026-09-29 — Aseguradoras: orden, preferentes y selección múltiple (campo genérico del FormBuilder)
-
-Lo que pidió Ricardo al cerrar el 2026-09-28, ya implementado en `campo.tipo === 'ramo'`/`'aseguradora'` (`NuevoTramiteModal.tsx` y `TramiteDetalle.tsx` — **no** en Cotización/Emisión, que se dejó intacto a propósito, ver decisión abajo):
-
-1. **Ramo ↔ aseguradora invertido para todos los tipos.** Antes `ramo` filtraba por `aseguradora` (`config.filtrar_por_aseguradora`, default `true`); ahora es al revés: se elige ramo primero (sin filtro, siempre muestra todo `catalogoRamos`) y aseguradora se acota por `combinaciones` (compania_id + ramo_id) según el ramo elegido. Decisión de Ricardo: invertir **globalmente**, no como flag opt-in por tipo — el checkbox "Filtrar por aseguradora del formulario" se quitó del editor de campos (`FormBuilderTab.tsx`) y de su default (`useFormBuilder.ts`); la config vieja `filtrar_por_aseguradora` queda como dato inerte en filas existentes, no se lee en ningún lado.
-2. **Preferente = convenio, mismo concepto** (confirmado con Ricardo, no dos columnas). Se reutiliza `maestro_companias.convenio` tal cual, ya poblada y ya con pantalla de Admin (`BaseDatosMaestrosAdmin.tsx`) — cero migración nueva.
-3. **Selector con preferentes primero.** El multi-select nuevo muestra las `convenio=true` arriba bajo el encabezado "Preferentes"; el resto queda colapsado bajo "+ Mostrar N más". Al marcar una NO preferente, `window.confirm(...)` antes de agregarla (mismo patrón que ya usa el proyecto para advertencias de ambigüedad, ver `EquiposHabilitadosPanel.tsx`).
-4. **Selección múltiple, guardada como texto separado por comas** (`"GNP, Qualitas"`) — sigue siendo `valor_texto`, **sin** cambiar a `valor_json`. Decisión explícita de Ricardo: evita tocar los 5 archivos que ya leen este campo como string plano (`mktPremiumTriggers.ts`, `bugReportTemplate.ts`, `StorePedidoDetalle.tsx`, y las dos copias en `TramiteDetalle.tsx`) — mismo patrón que ya usaba `cotizacion_emision` (`ceSelectedInsurers.join(', ')`). Un trámite viejo con una sola aseguradora guardada sigue mostrándose bien (`"GNP".split(',')` → `["GNP"]`).
-
-**Por qué NO se tocó Cotización/Emisión:** ya tenía este comportamiento resuelto de antes (ramo primero, multi-select con buscador, cascada bidireccional) — es el precedente del que se copió el patrón. Decisión de Ricardo: mantener las dos implementaciones separadas en vez de extraer un componente compartido, para no arriesgar ese flujo que ya funciona. Pendiente si algún día se quiere: CE no tiene todavía orden preferente-primero ni la advertencia de "no preferente" — no se pidió, no se tocó.
-
-**Antes de tocar código se investigó y se preguntó** (patrón habitual): se encontró una función SQL `get_companias_por_ramo()` (migración `20260624200000`) que resuelve exactamente esta cascada pero **nunca se conectó a nada** — no se usó, el filtrado sigue siendo client-side con los catálogos que ya se cargaban (`catalogoRamos`/`catalogoCompanias`/`combinaciones`), más liviano que agregar una llamada RPC nueva.
-
-**Build verificado, sin probar en navegador todavía.**
+#### 4. Certificado SSL de lector.movi.digital expirado + progreso de extracción — ✅ confirmado, funciona
+No relacionado con código: la extracción de PDF falló con un error de conexión crudo — certificado SSL de `lector.movi.digital` expirado. Ricardo lo renovó en Plesk (desmarcando `www.lector.movi.digital`, ese subdominio no tiene DNS). De paso se aclaró una confusión real: un PDF adjuntado en un campo tipo `adjunto` queda "Pendiente" hasta darle **Guardar cambios** (la extracción corre dentro de `proceedWithSave`) — diseño correcto, pero el texto no lo explicaba. Se agregó: badge "⏳ Pendiente de guardar" con tooltip, barra de progreso flotante durante el lote (archivo actual + X/Y), y los badges por archivo ahora se actualizan en vivo en vez de esperar al final del lote. **Ricardo confirmó que ya funciona** (extrajo bien tras guardar).
 
 ---
 
