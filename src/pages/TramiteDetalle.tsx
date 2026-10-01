@@ -1884,7 +1884,7 @@ export function TramiteDetalle() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-card border border-neutral-200 p-6">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-card border border-neutral-200 dark:border-neutral-700 p-6">
         {activeTab === 'detalles' && (
           <>
             {comentarioInicial && (
@@ -2561,7 +2561,7 @@ export function TramiteDetalle() {
                     return (
                       <div
                         key={seccion.id}
-                        className={`border rounded-2xl overflow-hidden ${colorSeccion ? '' : desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}
+                        className={`border rounded-xl overflow-hidden ${desbloqueada ? 'border-neutral-200 dark:border-neutral-700' : 'border-neutral-100 bg-neutral-50/60'}`}
                         style={colorSeccion}
                       >
                         <button

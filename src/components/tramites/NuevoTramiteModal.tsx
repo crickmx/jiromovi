@@ -3291,7 +3291,7 @@ export function NuevoTramiteModal({
             return (
               <div
                 key={seccion.id}
-                className={`border rounded-2xl overflow-hidden ${colorSeccion ? '' : desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}
+                className={`border rounded-xl overflow-hidden ${desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}
                 style={colorSeccion}
               >
                 <button

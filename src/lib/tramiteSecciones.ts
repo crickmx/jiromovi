@@ -137,9 +137,13 @@ export function agruparCamposPorSeccion<C extends CampoConSeccion>(
  * matiz ligero sobre la tarjeta -- el texto/inputs de adentro se quedan con
  * sus colores normales, nunca hace falta contraste especial.
  */
-export function estiloSeccionColor(color?: string | null): { borderColor: string; backgroundColor: string } | undefined {
+export function estiloSeccionColor(color?: string | null): { borderLeftColor: string; borderLeftWidth: string } | undefined {
   if (!color) return undefined;
-  return { borderColor: color, backgroundColor: `${color}0D` };
+  // Antes el contorno completo iba a color PLENO y el fondo al 5%: el fondo no
+  // se veía y el borde sí, así que el elemento más fuerte de la tarjeta era el
+  // que menos información lleva — con seis secciones, seis rectángulos
+  // saturados compitiendo. Una barra a la izquierda dice lo mismo sin gritar.
+  return { borderLeftColor: color, borderLeftWidth: '3px' };
 }
 
 /**

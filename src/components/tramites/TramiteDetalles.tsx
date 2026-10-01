@@ -278,20 +278,20 @@ export function TramiteDetalles({
           Personas involucradas
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
           <div>
-            <label className="block text-sm font-semibold text-neutral-700 mb-2">
+            <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
               <User className="w-4 h-4 inline mr-2" />
               Agente
             </label>
             <p className="text-[11px] text-neutral-400 -mt-1 mb-2">Solicitante — para quién es este trámite.</p>
-            <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+            <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
               {tramite.agente?.nombre_completo || 'Sin agente asignado'}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-neutral-700 mb-2">
+            <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
               <Wrench className="w-4 h-4 inline mr-2" />
               Equipo
             </label>
@@ -304,7 +304,7 @@ export function TramiteDetalles({
                   setSelectedResponsable('');
                   onEquipoChange(val || null);
                 }}
-                className="w-full px-4 py-3 border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all cursor-pointer bg-amber-50 text-amber-900"
+                className="w-full px-3 py-2 border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all cursor-pointer bg-amber-50 text-amber-900"
               >
                 <option value="">Sin equipo asignado</option>
                 {grupos.map(g => (
@@ -312,16 +312,16 @@ export function TramiteDetalles({
                 ))}
               </select>
             ) : (
-              <div className={`px-4 py-3 rounded-xl border ${selectedGrupoId ? 'bg-amber-50 border-amber-200 text-amber-900 font-medium' : 'bg-neutral-50 border-neutral-200 text-neutral-500'}`}>
+              <div className={`px-3 py-2 rounded-xl border ${selectedGrupoId ? 'bg-amber-50 border-amber-200 text-amber-900 font-medium' : 'bg-neutral-50 border-neutral-200 text-neutral-500'}`}>
                 {grupos.find(g => g.id === selectedGrupoId)?.nombre || 'Sin equipo asignado'}
               </div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
           <div>
-            <label className="block text-sm font-semibold text-neutral-700 mb-2">
+            <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
               <UserCheck className="w-4 h-4 inline mr-2" />
               Responsable
               {canManageAssignment && selectedGrupoId && (
@@ -338,7 +338,7 @@ export function TramiteDetalles({
                   setSelectedResponsable(e.target.value);
                   onResponsableChange(e.target.value);
                 }}
-                className="w-full px-4 py-3 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer bg-blue-50 text-blue-900"
+                className="w-full px-3 py-2 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer bg-blue-50 text-blue-900"
               >
                 <option value="">Sin responsable asignado</option>
                 {teamMembers.map(m => (
@@ -346,7 +346,7 @@ export function TramiteDetalles({
                 ))}
               </select>
             ) : (
-              <div className={`px-4 py-3 rounded-xl border ${tramite.assigned_to_user_id ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
+              <div className={`px-3 py-2 rounded-xl border ${tramite.assigned_to_user_id ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
                 {tramite.responsable?.nombre_completo || (
                   <span className="text-amber-700 font-medium">Sin responsable — pendiente de asignación</span>
                 )}
@@ -384,9 +384,9 @@ export function TramiteDetalles({
         );
       })()}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
         <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2">
+          <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
             <AlertCircle className="w-4 h-4 inline mr-2" />
             Prioridad
           </label>
@@ -394,14 +394,14 @@ export function TramiteDetalles({
             <select
               value={selectedPrioridad}
               onChange={(e) => setSelectedPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
             >
               <option value="Baja">Baja</option>
               <option value="Media">Media</option>
               <option value="Alta">Alta</option>
             </select>
           ) : (
-            <div className={`px-4 py-3 rounded-xl border font-semibold ${getPrioridadColor(tramite.prioridad)}`}>
+            <div className={`px-3 py-2 rounded-xl border font-semibold ${getPrioridadColor(tramite.prioridad)}`}>
               {tramite.prioridad}
             </div>
           )}
@@ -409,12 +409,12 @@ export function TramiteDetalles({
 
         {!estatusCampoDinamico && (
           <div>
-            <label className="block text-sm font-semibold text-neutral-700 mb-2">Estatus</label>
+            <label className="block text-[13px] font-semibold text-neutral-600 mb-1">Estatus</label>
             {canEdit ? (
               <select
                 value={selectedEstatus}
                 onChange={(e) => setSelectedEstatus(e.target.value)}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
               >
                 {estatusList.map(estatus => (
                   <option key={estatus.id} value={estatus.id}>{estatus.nombre}</option>
@@ -422,7 +422,7 @@ export function TramiteDetalles({
               </select>
             ) : (
               <div
-                className="px-4 py-3 rounded-xl border font-semibold"
+                className="px-3 py-2 rounded-xl border font-semibold"
                 style={{
                   backgroundColor: tramite.estatus?.color + '20',
                   color: tramite.estatus?.color,
@@ -436,23 +436,23 @@ export function TramiteDetalles({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
         <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-2">
+          <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
             <FileText className="w-4 h-4 inline mr-2" />
             Póliza
           </label>
-          <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+          <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
             {tramite.poliza || 'Sin póliza'}
           </div>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-neutral-700 mb-2">
+        <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
           Instrucciones / Descripción
         </label>
-        <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl whitespace-pre-wrap">
+        <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl whitespace-pre-wrap">
           {tramite.instrucciones}
         </div>
       </div>
@@ -464,53 +464,53 @@ export function TramiteDetalles({
             <Briefcase className="w-5 h-5" />
             Detalles de Cotización / Emisión
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
                 <Briefcase className="w-4 h-4 inline mr-2" />
                 Tipo de Trámite
               </label>
-              <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl font-medium text-blue-900">
+              <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl font-medium text-blue-900">
                 {tramite.activity_subtype?.nombre || 'N/A'}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
                 <User className="w-4 h-4 inline mr-2" />
                 Agente
               </label>
-              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+              <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
                 {tramite.agente_usuario?.nombre_completo || 'N/A'}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
                 <Shield className="w-4 h-4 inline mr-2" />
                 Tipo de Seguro
               </label>
-              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+              <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
                 {tramite.insurance_type?.nombre || 'N/A'}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
                 <User className="w-4 h-4 inline mr-2" />
                 Quién Atiende
               </label>
-              <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-xl font-medium text-green-900">
+              <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-xl font-medium text-green-900">
                 {tramite.attending_user?.nombre_completo || 'N/A'}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
                 <Calendar className="w-4 h-4 inline mr-2" />
                 Fecha de Inicio
               </label>
-              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+              <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
                 {tramite.request_datetime
                   ? new Date(tramite.request_datetime).toLocaleString('es-MX', {
                       day: 'numeric',
@@ -524,11 +524,11 @@ export function TramiteDetalles({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
                 <Clock className="w-4 h-4 inline mr-2" />
                 Fecha de Finalización
               </label>
-              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+              <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
                 {tramite.completion_datetime
                   ? new Date(tramite.completion_datetime).toLocaleString('es-MX', {
                       day: 'numeric',
@@ -542,13 +542,13 @@ export function TramiteDetalles({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
                 <TrendingUp className="w-4 h-4 inline mr-2" />
                 Estatus de Actividad
               </label>
               {tramite.estatus ? (
                 <div
-                  className="px-4 py-3 rounded-xl font-bold border"
+                  className="px-3 py-2 rounded-xl font-bold border"
                   style={{
                     backgroundColor: (tramite.estatus.color || getEstatusColor(tramite.estatus.nombre)) + '20',
                     color: tramite.estatus.color || getEstatusColor(tramite.estatus.nombre),
@@ -561,18 +561,18 @@ export function TramiteDetalles({
                   )}
                 </div>
               ) : (
-                <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-500">
+                <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-500">
                   N/A
                 </div>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
                 <Building2 className="w-4 h-4 inline mr-2" />
                 Aseguradoras
               </label>
-              <div className="px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+              <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
                 {tramite.insurers_nombres && tramite.insurers_nombres.length > 0
                   ? tramite.insurers_nombres.join(', ')
                   : 'N/A'}
@@ -583,7 +583,7 @@ export function TramiteDetalles({
       )}
 
       {inicioEspera && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 mb-4">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 mb-4">
           <Clock className="w-5 h-5 text-amber-500 shrink-0" />
           <div>
             <p className="text-sm font-semibold">Trámite en espera</p>

@@ -139,6 +139,10 @@ export function SelectorVehiculo({
 
   return (
     <div className="space-y-2">
+      {/* Marca, modelo y versión son UNA sola pregunta: apiladas medían ~190px
+          dentro de una celda cuyo vecino mide 70, y estiraban la fila entera.
+          El desempate sí va debajo, a lo ancho: sus descripciones son largas. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
       <select value={sel.marca ?? ''} onChange={e => cambiar('marca', e.target.value)} disabled={disabled} className={clase}>
         <option value="">{cargando ? 'Cargando marcas…' : 'Marca…'}</option>
         {marcas.map(m => <option key={m} value={m}>{m}</option>)}
@@ -154,6 +158,8 @@ export function SelectorVehiculo({
         <option value="">Versión…</option>
         {versiones.map(v => <option key={v} value={v}>{v}</option>)}
       </select>
+
+      </div>
 
       {/* Cuarto nivel: solo aparece cuando de verdad hay que desempatar. */}
       {claves.length > 1 && (
