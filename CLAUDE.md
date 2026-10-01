@@ -2,6 +2,42 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ✅ 2026-10-01 — rediseño de densidad del detalle y el alta de trámites
+
+Ricardo: *"en los trámites con varios campos, los campos ocupan mucho espacio"*. Se auditó con **2 agentes en paralelo** (diseño visual y UI/UX+responsive) antes de tocar nada, y se verificaron a mano los hallazgos más fuertes.
+
+**Medición de partida:** 20 campos en 6 secciones = **~2,400–2,800 px** en escritorio, **~3,200 px** en celular. 78 px por campo (label 24 + ayuda 20 + input 38 + gap 16) y **~95–113 px de cromo por sección antes de un solo campo** — seis secciones son 600 px de puro marco.
+
+#### Decisiones que tomó Ricardo (si se retoma, respetarlas)
+1. **Secciones: todas abiertas al entrar**, quien quiera cierra. (Se descartó "solo las incompletas".) Las **opcionales siguen cerradas**, que es su razón de ser.
+2. **Sí a texto plano** cuando no se puede editar.
+3. **Ocultar las secciones condicionadas en el DETALLE**, conservar el candado en el ALTA.
+
+#### Lo que se hizo (commits `b7be0414`, `149df722`, `ecf7513e`)
+
+**Estaba roto, no apretado:** la barra de pestañas se desbordaba en 375 px (4 pestañas que pueden ser 6, `px-6`, sin `overflow-x-auto`); la metadata del reporte protegido era el único `grid-cols-2` sin breakpoint; fila de adjunto y botonera del encabezado sin `flex-wrap`.
+
+**Dos clases que no existían:**
+- **`shadow-soft` no está definida** en `tailwind.config.js` ni en el CSS, y se usaba **21 veces en 7 archivos**: esas tarjetas nunca tuvieron sombra. Reemplazada por `shadow-card`, que sí existe.
+- El foco del detalle era **`focus:ring-blue-500` fijo, 14 veces**, contra `focus:ring-accent` en el resto de la app — y ese azul es exactamente el `#3B82F6` del estatus "inicio", así que un campo enfocado parecía un chip de estatus.
+
+**El cambio que resuelve el pedido:** el mecanismo de colapsar **ya estaba escrito** pero capado a las opcionales (`disabled={!desbloqueada || !seccion.opcional}`). Ahora se cierra cualquier sección, con contador **"3/5"** en la cabecera cerrada calculado con `conteoSeccion()` — que usa el mismo `campoExigible` que la validación, así que la cuenta no puede contradecir al mensaje de faltantes.
+
+**Densidad:** el alta adopta la rejilla de 2 columnas del detalle (gastaba los 896 px del modal en una sola); el detalle gana `xl:grid-cols-3`. `CAMPOS_ANCHOS` (texto largo, reporte protegido y **adjunto**, que mide 270 px en una celda de 70) ocupan la fila entera, desde una lista compartida. Cascada de vehículo en horizontal: 190 px → ~90 px.
+
+**Solo lectura:** sin permiso de editar, los campos se leen como texto (`src/lib/valorCampoTexto.ts`, con autocomprobación). Se resuelve en **un punto** de `renderCampo`, no en los ~20 tipos. `adjunto` y `reporte_protegido` conservan su render: ahí el texto perdería información, no solo altura.
+
+**Legibilidad:** título de sección y label de campo medían lo mismo (14 px) y solo cambiaba el peso. Ahora 15/bold → 13/semibold → 11/regular. Y `estiloSeccionColor` pasa de contorno pleno + fondo al 5% (el fondo no se veía, el borde sí) a **barra de acento de 3 px** con borde neutro.
+
+#### ❌ Lo que quedó fuera a propósito
+- **Modo oscuro del alta: `NuevoTramiteModal.tsx` tiene 0 clases `dark:` en 3,334 líneas, y `BaseModal.tsx` tampoco** — o sea que **ningún modal del proyecto soporta modo oscuro**. Son ~120 clases repartidas. Si se retoma, **empezar por `BaseModal.tsx`**: cubre todos los modales de una vez. En el detalle sí se adaptó el panel del formulario, que era el contraste más visible.
+- **Modo lectura global con botón "Editar"** — pelea con `isDirty`, la barra sticky de guardado y el chip de estatus del encabezado, que hoy se edita sin entrar en ningún modo. Alto riesgo y compra poco sobre el colapso.
+- **Pestañas por sección e índice lateral** — la primera desbordaría la barra que ya se desbordaba y rompería el mensaje de faltantes; el segundo no quita un píxel de scroll y desaparece en móvil.
+
+**❌ Falta verlo en navegador.** Ojo a dos cambios visibles: las secciones ahora se pueden cerrar (y el contador aparece al cerrarlas), y un trámite que no se puede editar se ve como texto, no como inputs grises.
+
+---
+
 ### ✅ 2026-10-01 — formularios condicionales de verdad: un requerido oculto ya no bloquea
 
 Ricardo quería poder armar **un solo formulario condicional**: si el ramo es Daños, que no pida los datos del auto. Marcaba "requerido" en los campos de la sección "Autos" (condicionada a ramo = Autos) y el formulario quedaba imposible de enviar — pedía por nombre un campo que **ni siquiera se muestra**, porque su sección está bloqueada.
