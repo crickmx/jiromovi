@@ -303,7 +303,7 @@ export default function DocumentosImportar() {
   if (selectedBatch) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
-        <div className="bg-white dark:bg-neutral-900 rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-xl sm:rounded-2xl shadow-card p-4 sm:p-6 mb-4 sm:mb-6">
           <PageHeader
             title="Detalle del lote"
             description={selectedBatch.file_name}
@@ -363,7 +363,7 @@ export default function DocumentosImportar() {
         </div>
 
         {diagnostics && diagnostics.counts && (
-          <div className="bg-white rounded-xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="bg-white rounded-xl shadow-card p-4 sm:p-6 mb-4 sm:mb-6">
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Estado de validación</h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
@@ -669,7 +669,7 @@ export default function DocumentosImportar() {
         />
       </div>
 
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-card p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-primary-100 rounded-lg flex-shrink-0">
             <Upload className="h-5 h-5 sm:h-6 sm:w-6 text-accent" />

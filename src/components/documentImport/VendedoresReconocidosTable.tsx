@@ -35,7 +35,7 @@ export default function VendedoresReconocidosTable({
 
   return (
     <>
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-soft overflow-hidden">
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-card overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">

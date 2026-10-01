@@ -1614,7 +1614,7 @@ export function TramiteDetalle() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl shadow-soft overflow-hidden border border-neutral-200 dark:border-neutral-700">
+      <div className="rounded-3xl shadow-card overflow-hidden border border-neutral-200 dark:border-neutral-700">
         {/* Encabezado del tipo — fondo configurable (color, degradado o imagen) */}
         <div style={header.style} className="relative px-6 pt-4 pb-5">
           {header.conVelo && <div className={CLASE_VELO} />}
@@ -1763,7 +1763,7 @@ export function TramiteDetalle() {
                 )}
               </div>
               {/* Actions */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {canEdit && !isCerrado && (
                   <>
                     <button
@@ -1835,12 +1835,14 @@ export function TramiteDetalle() {
               </p>
             </div>
           )}
-          <div className="flex space-x-2 border-b border-neutral-200">
+          {/* Pueden llegar a ser 6 pestañas; en 375px no caben ni 4. Se deslizan
+              en vez de desbordarse, y el padding baja solo en pantalla chica. */}
+          <div className="flex space-x-2 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto whitespace-nowrap">
             {(['detalles', 'comentarios', 'archivos', 'historial'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-6 py-3 font-semibold transition-all capitalize ${
+                className={`px-3 sm:px-6 py-3 font-semibold transition-all capitalize shrink-0 ${
                   activeTab === tab
                     ? 'text-accent border-b-2 border-accent'
                     : 'text-neutral-600 hover:text-neutral-900'
@@ -1877,7 +1879,7 @@ export function TramiteDetalle() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-soft border border-neutral-200 p-6">
+      <div className="bg-white rounded-2xl shadow-card border border-neutral-200 p-6">
         {activeTab === 'detalles' && (
           <>
             {comentarioInicial && (
@@ -1925,7 +1927,7 @@ export function TramiteDetalle() {
                   value={fechaPromesaEntrega}
                   onChange={(e) => setFechaPromesaEntrega(e.target.value)}
                   disabled={isCerrado}
-                  className="w-full sm:w-64 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500"
+                  className="w-full sm:w-64 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500"
                 />
               </div>
             )}
@@ -2066,49 +2068,49 @@ export function TramiteDetalle() {
                       {campo.tipo === 'texto_corto' && (
                         <input type="text" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
                           maxLength={campo.config.max_length}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'email' && (
                         <input type="email" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'telefono' && (
                         <input type="tel" value={val || ''} onChange={e => set(e.target.value.replace(/\D/g, '').slice(0, 10))} disabled={!editable}
                           placeholder="10 dígitos" maxLength={10}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'rfc' && (
                         <input type="text" value={val || ''} onChange={e => set(e.target.value.toUpperCase().slice(0, 13))} disabled={!editable}
                           placeholder="RFC" maxLength={13}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'curp' && (
                         <input type="text" value={val || ''} onChange={e => set(e.target.value.toUpperCase().slice(0, 18))} disabled={!editable}
                           placeholder="CURP" maxLength={18}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'porcentaje' && (
                         <div className="relative">
                           <input type="number" value={val ?? ''} onChange={e => set(e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value))))} disabled={!editable}
                             min={0} max={100} step="0.01"
-                            className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                            className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none">%</span>
                         </div>
                       )}
                       {campo.tipo === 'texto_largo' && (
                         <textarea value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
                           maxLength={campo.config.max_length} rows={3}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500 resize-none" />
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500 resize-none" />
                       )}
                       {campo.tipo === 'numerico' && (
                         <input type="number" value={val ?? ''} onChange={e => set(e.target.value === '' ? null : Number(e.target.value))} disabled={!editable}
                           step={campo.config.es_entero ? '1' : 'any'}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'fecha' && (
                         <input type="date" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
                           min={campo.config.min_fecha} max={campo.config.max_fecha}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'booleano' && (
                         <label className="flex items-center gap-2 cursor-pointer">
@@ -2159,7 +2161,7 @@ export function TramiteDetalle() {
                                 }
                               }
                             }
-                          }} className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                          }} className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white">
                             <option value="">Selecciona ramo...</option>
                             {catalogoRamos.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
                           </select>
@@ -2226,7 +2228,7 @@ export function TramiteDetalle() {
                                       value={ui.search}
                                       onChange={e => setUi({ search: e.target.value })}
                                       onClick={e => e.stopPropagation()}
-                                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                                     />
                                   </div>
                                   <div className="p-1">
@@ -2293,13 +2295,13 @@ export function TramiteDetalle() {
                                 }
                               }}
                               placeholder="Ej: 76000" maxLength={5}
-                              className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                              className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
                             {cpState.loading && <p className="text-xs text-neutral-400">Buscando colonias...</p>}
                             {cpState.colonias.length > 0 && (
                               <select value={stored?.colonia || ''} onChange={e => {
                                 const col = cpState.colonias.find(c => c.colonia === e.target.value);
                                 if (col) set({ codigo: stored?.codigo, ...col });
-                              }} className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                              }} className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white">
                                 <option value="">Selecciona colonia...</option>
                                 {cpState.colonias.map(c => <option key={c.colonia} value={c.colonia}>{c.colonia}</option>)}
                               </select>
@@ -2358,7 +2360,7 @@ export function TramiteDetalle() {
                         return (
                           <div className="space-y-2">
                             {archivos.map((archivo, i) => (
-                              <div key={archivo.id || i} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
+                              <div key={archivo.id || i} className="flex flex-wrap items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
                                 <span className="text-sm flex-1 truncate">{archivo.nombre}</span>
                                 {(() => {
                                   const isPending = pendingExtractions.some(p => p.archivo_id === archivo.id);
@@ -2455,7 +2457,7 @@ export function TramiteDetalle() {
                                 {(isAdmin || myTeamRole === 'lider' || myTeamRole === 'supervisor' || myTeamRole === 'director') && (
                                   <>
                                     {val?.meta && (
-                                      <div className="ml-6 mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                                      <div className="ml-6 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
                                         {val.meta.tiempo_segundos != null && (
                                           <span className="text-neutral-500">
                                             ⏱ {val.meta.tiempo_segundos < 60

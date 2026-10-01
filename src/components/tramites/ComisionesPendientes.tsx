@@ -95,7 +95,7 @@ export function ComisionesPendientes({ tramiteId }: ComisionesPendientesProps) {
         return (
           <div
             key={comision.id}
-            className="bg-white border border-neutral-200 rounded-xl p-5 hover:shadow-soft transition-shadow"
+            className="bg-white border border-neutral-200 rounded-xl p-5 hover:shadow-card transition-shadow"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-accent">

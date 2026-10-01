@@ -155,7 +155,7 @@ export default function ComisionesUploadNuevo() {
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-soft p-12 text-center max-w-md">
+        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-card p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Acceso Denegado

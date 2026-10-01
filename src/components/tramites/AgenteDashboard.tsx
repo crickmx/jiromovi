@@ -129,7 +129,7 @@ export function AgenteDashboard() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-soft border border-neutral-200 dark:border-white/8 p-8">
+      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-card border border-neutral-200 dark:border-white/8 p-8">
         <div className="flex justify-center">
           <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
@@ -181,7 +181,7 @@ export function AgenteDashboard() {
       {/* Interactive status groups */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-3">
-          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-soft border border-neutral-200 dark:border-white/8 p-5">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-card border border-neutral-200 dark:border-white/8 p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 uppercase tracking-wide flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-neutral-400 dark:text-white/30" />
@@ -260,7 +260,7 @@ export function AgenteDashboard() {
 
         {/* Priority & quick stats */}
         <div className="space-y-4">
-          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-soft border border-neutral-200 dark:border-white/8 p-5">
+          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-card border border-neutral-200 dark:border-white/8 p-5">
             <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 uppercase tracking-wide mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4 text-neutral-400 dark:text-white/30" />
               Por tipo
