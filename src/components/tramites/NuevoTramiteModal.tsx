@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Upload, User, Users, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, ChevronDown, Lock, RotateCcw, Star, Layers } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { puedeVerCampo, puedeEditarCampo } from '../../lib/rolCampos';
 import { crearNotificacion } from '../../lib/notificationHelpers';
 import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
@@ -187,17 +188,10 @@ export function NuevoTramiteModal({
     seccion_id: string | null;
   }
 
-  const ROL_NIVEL: Record<string, number> = { Agente: 0, Empleado: 1, Gerente: 2, Administrador: 3 };
-  const canSeeCampo = (campo: CampoDinamico) => {
-    const min = ROL_NIVEL[campo.visible_para_rol ?? 'todos'];
-    if (min === undefined) return true;
-    return (ROL_NIVEL[usuario?.rol ?? 'Agente'] ?? 0) >= min;
-  };
-  const canEditCampo = (campo: CampoDinamico) => {
-    const min = ROL_NIVEL[campo.editable_para_rol ?? 'todos'];
-    if (min === undefined) return true;
-    return (ROL_NIVEL[usuario?.rol ?? 'Agente'] ?? 0) >= min;
-  };
+  // El criterio vive en src/lib/rolCampos.ts, compartido con el detalle y con su
+  // autocomprobación; aquí estaba duplicado y el detalle ni siquiera lo aplicaba.
+  const canSeeCampo = (campo: CampoDinamico) => puedeVerCampo(campo, usuario?.rol);
+  const canEditCampo = (campo: CampoDinamico) => puedeEditarCampo(campo, usuario?.rol);
   const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
   const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
   // Secciones del FormBuilder — agrupan visualmente camposDinamicos, opcionalmente

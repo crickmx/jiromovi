@@ -2,6 +2,27 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### 🔴 2026-10-01 — el "Acceso por rol" del FormBuilder NO se aplicaba en el detalle del trámite
+
+Ricardo entró como Agente a un trámite cuyo campo Estatus está configurado **Visible: Todos / Editable: Empleados y superiores**, y pudo cambiar el estatus.
+
+**Causa: el `.select()` de `TramiteDetalle.tsx` (línea ~479) nunca pidió `visible_para_rol` ni `editable_para_rol`.** Llegaban `undefined` y no había ningún chequeo que los usara. O sea que el "Acceso por rol" **no aplicaba a NINGÚN campo del detalle**, no solo al estatus: solo funcionaba al crear (`NuevoTramiteModal.tsx`, que sí los pedía y tenía su propio `canSeeCampo`/`canEditCampo`).
+
+**Es la tercera vez que muerde el mismo patrón** (condiciones de sección, color de sección, y ahora acceso por rol): *el tipo TypeScript declara la columna, la cadena del `.select()` la omite, y TypeScript no valida esa cadena.* Al agregar cualquier columna que el detalle deba respetar, revisar los `.select()` de los **dos** consumidores.
+
+**Lo hecho:**
+- Las dos columnas entran al `.select()` del detalle y a su interfaz local.
+- El criterio se sacó a **`src/lib/rolCampos.ts`** (`puedeVerCampo`, `puedeEditarCampo`), compartido con `NuevoTramiteModal` —que tenía su copia— y con autocomprobación en `rolCampos.test.mjs`.
+- En el detalle se aplica en **un solo punto** por tipo de dato: `renderCampo` devuelve `null` si el rol no puede ver el campo, y su `const editable` suma `puedeEditarCampo`. Eso cubre los ~20 tipos de campo de golpe.
+- El chip de estatus del encabezado cae a la etiqueta fija (sigue viéndose, ya no se puede cambiar).
+- `puedeEditarCampo` exige también poder VER el campo: una config contradictoria (visible solo Admin + editable todos) no abre un hueco.
+
+**⚠️ Cambio de comportamiento a vigilar:** cualquier campo que alguien haya configurado restringido **empieza a ocultarse o bloquearse en el detalle**, donde hasta hoy se veía y editaba. Si alguien reporta "ya no veo un campo", es esto y se revisa su "Acceso por rol" en el FormBuilder.
+
+**Esto es solo UI.** La RLS no distingue campo por campo; un usuario decidido podría escribir por la API. Si algún campo necesita blindaje real, es otro proyecto.
+
+---
+
 ### ✅ 2026-10-01 — prioridad por defecto, orden de estatus y qué hace cada estatus
 
 Tres pedidos de Ricardo en el mismo paso, antes del deploy:

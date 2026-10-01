@@ -18,6 +18,7 @@ import type { TramiteSeccion } from '../components/tramites/catalogos/types';
 import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor } from '../lib/tramiteSecciones';
 import { estiloHeader, CLASE_VELO } from '../lib/tramiteHeader';
 import { colorDeClasificacion, clasePuntoClasificacion, efectoDeClasificacion } from '../lib/estatusClasificacion';
+import { puedeVerCampo, puedeEditarCampo } from '../lib/rolCampos';
 import { SelectorVehiculo, type VehiculoSeleccionado } from '../components/tramites/SelectorVehiculo';
 import TOTPDecryptModal from '../components/tramites/TOTPDecryptModal';
 
@@ -122,6 +123,7 @@ export function TramiteDetalle() {
     id: string; key: string; label: string; tipo: string;
     requerido: boolean; ayuda: string | null;
     is_sistema: boolean; sistema_key: string | null;
+    visible_para_rol?: string | null; editable_para_rol?: string | null;
     config: { opciones?: CampoDinamicoOpt[]; max_length?: number; es_entero?: boolean; min_fecha?: string; max_fecha?: string; tipos_config?: any[]; condicion_activa?: boolean; campo_fuente?: string; condicion_operador?: string; condicion_valor?: string; filtrar_por_aseguradora?: boolean; max_archivos?: number; max_mb?: number; tipos_mime?: string[]; categoria_id?: string; instrucciones?: string };
     seccion_id: string | null;
   }
@@ -477,7 +479,12 @@ export function TramiteDetalle() {
 
     const { data: campos } = await supabase
       .from('tramite_tipo_campos')
-      .select('id, key, label, tipo, requerido, ayuda, config, is_sistema, sistema_key, seccion_id')
+      // `visible_para_rol` y `editable_para_rol` llevaban faltando aquí: llegaban
+      // undefined y el "Acceso por rol" del FormBuilder se ignoraba por completo
+      // en el detalle —un Agente podía cambiar un estatus reservado a Empleados—.
+      // El tipo CampoDinamico sí las declara, por eso nadie lo notó: la cadena
+      // del .select() no la valida TypeScript.
+      .select('id, key, label, tipo, requerido, ayuda, config, is_sistema, sistema_key, seccion_id, visible_para_rol, editable_para_rol')
       .eq('tramite_tipo_id', tipoData.id)
       .eq('activo', true)
       .order('display_order');
@@ -1661,7 +1668,9 @@ export function TramiteDetalle() {
                     <span
                       className="px-3 py-1 rounded-full text-sm font-semibold"
                       style={{
-                        backgroundColor: (color ?? '#888') + '20',
+                        // Mismo relleno blanco que el chip editable: el tinte del
+                        // propio color se perdía sobre el fondo del encabezado.
+                        backgroundColor: 'rgba(255,255,255,0.7)',
                         color: color ?? '#888',
                         borderColor: color ?? '#888',
                         borderWidth: '1px'
@@ -1671,7 +1680,10 @@ export function TramiteDetalle() {
                     </span>
                   ) : null;
 
+                  // El estatus se cambia desde aquí, así que su `editable_para_rol`
+                  // se respeta aquí: si no alcanza, se ve la etiqueta fija.
                   if (!estatusCampoDinamico || !canEdit || isCerrado) return staticBadge;
+                  if (!puedeEditarCampo(estatusCampoDinamico, usuario?.rol)) return staticBadge;
 
                   // El orden es el del arreglo, que es el que se eligió en el
                   // FormBuilder: aquí no se reordena nada.
@@ -2061,9 +2073,10 @@ export function TramiteDetalle() {
               const camposCustom = camposDinamicos.filter(c => !c.is_sistema && c.tipo !== 'estatus' && esCampoVisible(c));
 
               const renderCampo = (campo: CampoDinamico) => {
+                if (!puedeVerCampo(campo, usuario?.rol)) return null;
                 const val = respuestasDinamicas[campo.id];
                 const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
-                const editable = canEdit && !isCerrado;
+                const editable = canEdit && !isCerrado && puedeEditarCampo(campo, usuario?.rol);
                 return (
                     <div key={campo.id} className={['texto_largo', 'reporte_protegido'].includes(campo.tipo) ? 'md:col-span-2' : ''}>
                       <label className="block text-sm font-medium text-neutral-700 mb-1">
