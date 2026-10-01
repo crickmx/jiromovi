@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers, Pencil } from 'lucide-react';
+import { ArrowLeft, Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers, Pencil, Check } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
@@ -16,6 +16,7 @@ import { calcularDiasHabilesEntre } from '../lib/diasHabiles';
 import type { TramiteSeccion } from '../components/tramites/catalogos/types';
 import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor } from '../lib/tramiteSecciones';
 import { estiloHeader, CLASE_VELO } from '../lib/tramiteHeader';
+import { colorDeClasificacion, clasePuntoClasificacion, efectoDeClasificacion } from '../lib/estatusClasificacion';
 import { SelectorVehiculo, type VehiculoSeleccionado } from '../components/tramites/SelectorVehiculo';
 import TOTPDecryptModal from '../components/tramites/TOTPDecryptModal';
 
@@ -95,6 +96,8 @@ export function TramiteDetalle() {
   const [entrenamientoStatus, setEntrenamientoStatus] = useState<Record<string, string>>({});
   const [showCerrarMenu, setShowCerrarMenu] = useState(false);
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
+  const [showEstatusMenu, setShowEstatusMenu] = useState(false);
+  const estatusMenuRef = useRef<HTMLDivElement | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -236,6 +239,17 @@ export function TramiteDetalle() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showCerrarMenu]);
+
+  useEffect(() => {
+    if (!showEstatusMenu) return;
+    const fuera = (event: MouseEvent) => {
+      if (estatusMenuRef.current && !estatusMenuRef.current.contains(event.target as Node)) {
+        setShowEstatusMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', fuera);
+    return () => document.removeEventListener('mousedown', fuera);
+  }, [showEstatusMenu]);
 
   useEffect(() => {
     if (usuario && !isAdmin && !isGerente) {
@@ -662,7 +676,7 @@ export function TramiteDetalle() {
       const opcion = (estatusCampoDinamico.config.opciones || []).find(o => o.slug === slug);
       if (opcion) {
         customLabel = opcion.label;
-        customColor = opcion.clasificacion === 'inicio' ? '#3B82F6' : opcion.clasificacion === 'terminacion' ? '#059669' : opcion.clasificacion === 'en_espera' ? '#F59E0B' : '#6B7280';
+        customColor = colorDeClasificacion(opcion.clasificacion);
       }
     }
 
@@ -1133,8 +1147,7 @@ export function TramiteDetalle() {
               const matchOpt = ((estatusCampoTarget as any).config?.opciones || [])
                 .find((o: any) => o.slug === trigger.initial_status);
               if (matchOpt) {
-                const col = matchOpt.clasificacion === 'inicio' ? '#3B82F6'
-                  : matchOpt.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
+                const col = colorDeClasificacion(matchOpt.clasificacion);
                 await supabase.from('tickets').update({
                   custom_estatus_label: matchOpt.label,
                   custom_estatus_color: col,
@@ -1645,27 +1658,64 @@ export function TramiteDetalle() {
 
                   if (!estatusCampoDinamico || !canEdit || isCerrado) return staticBadge;
 
+                  // El orden es el del arreglo, que es el que se eligió en el
+                  // FormBuilder: aquí no se reordena nada.
                   const opciones = estatusCampoDinamico.config.opciones || [];
                   const actual = opciones.find(o => o.slug === selectedEstatusSlug);
-                  const getColorEstatusDinamico = (clasificacion?: string | null) =>
-                    clasificacion === 'inicio' ? '#3B82F6'
-                    : clasificacion === 'terminacion' ? '#059669'
-                    : clasificacion === 'en_espera' ? '#F59E0B'
-                    : '#6B7280';
-                  const selColor = getColorEstatusDinamico(actual?.clasificacion);
+                  const selColor = colorDeClasificacion(actual?.clasificacion);
                   return (
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: tipoContrastColor, opacity: 0.7 }}>Estatus</span>
-                      <select
-                        value={selectedEstatusSlug}
-                        onChange={(e) => setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: e.target.value }))}
-                        className="pl-3 pr-7 py-1.5 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
-                        style={{ borderColor: selColor, color: selColor, backgroundColor: selColor + '10' }}
-                      >
-                        {opciones.map(opt => (
-                          <option key={opt.slug} value={opt.slug}>{opt.label}</option>
-                        ))}
-                      </select>
+                      {/* Antes era un <select> nativo: todas las opciones se veían
+                          igual, así que no había manera de saber cuál cerraba el
+                          trámite y cuál lo dejaba en espera hasta elegirla. Un
+                          <option> no se puede pintar de forma confiable entre
+                          navegadores, de ahí el menú propio. */}
+                      <div className="relative" ref={estatusMenuRef}>
+                        <button
+                          type="button"
+                          onClick={() => setShowEstatusMenu(v => !v)}
+                          className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
+                          style={{ borderColor: selColor, color: selColor, backgroundColor: selColor + '10' }}
+                        >
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: selColor }} />
+                          {actual?.label ?? 'Sin estatus'}
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+
+                        {showEstatusMenu && (
+                          <div className="absolute left-0 mt-2 w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-30 overflow-hidden">
+                            <p className="px-3 py-2 text-[11px] font-semibold text-neutral-500 dark:text-white/50 bg-neutral-50 dark:bg-neutral-700/60 border-b border-neutral-200 dark:border-neutral-600">
+                              Cambiar estatus a…
+                            </p>
+                            <div className="max-h-72 overflow-y-auto">
+                              {opciones.map(opt => {
+                                const col = colorDeClasificacion(opt.clasificacion);
+                                const efecto = efectoDeClasificacion(opt.clasificacion);
+                                const elegida = opt.slug === selectedEstatusSlug;
+                                return (
+                                  <button
+                                    key={opt.slug}
+                                    type="button"
+                                    onClick={() => {
+                                      setRespuestasDinamicas(prev => ({ ...prev, [estatusCampoDinamico.id]: opt.slug }));
+                                      setShowEstatusMenu(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 flex items-start gap-2.5 transition-colors ${elegida ? 'bg-neutral-100 dark:bg-neutral-700' : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/60'}`}
+                                  >
+                                    <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: col }} />
+                                    <span className="min-w-0 flex-1">
+                                      <span className="block text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">{opt.label}</span>
+                                      <span className="block text-[11px]" style={{ color: col }}>{efecto}</span>
+                                    </span>
+                                    {elegida && <Check className="w-3.5 h-3.5 text-neutral-400 shrink-0 mt-1" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })()}
@@ -2600,10 +2650,7 @@ export function TramiteDetalle() {
                     <div className="mt-2 space-y-1.5">
                       {estatusCampoDinamico
                         ? (estatusCampoDinamico.config.opciones ?? []).map(opt => {
-                            const dotColor =
-                              opt.clasificacion === 'inicio' ? 'bg-blue-500' :
-                              opt.clasificacion === 'terminacion' ? 'bg-green-500' :
-                              opt.clasificacion === 'en_espera' ? 'bg-amber-500' : 'bg-neutral-400';
+                            const dotColor = clasePuntoClasificacion(opt.clasificacion);
                             return (
                               <label key={opt.slug} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
                                 modalChosenSlug === opt.slug
@@ -2617,7 +2664,12 @@ export function TramiteDetalle() {
                                   onChange={() => setModalChosenSlug(opt.slug)}
                                 />
                                 <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`}/>
-                                {opt.label}
+                                <span className="min-w-0 flex-1">
+                                  {opt.label}
+                                  <span className="block text-[11px] font-normal" style={{ color: colorDeClasificacion(opt.clasificacion) }}>
+                                    {efectoDeClasificacion(opt.clasificacion)}
+                                  </span>
+                                </span>
                               </label>
                             );
                           })

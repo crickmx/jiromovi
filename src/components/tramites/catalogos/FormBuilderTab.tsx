@@ -62,6 +62,15 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
   const [addTargetSeccion, setAddTargetSeccion] = useState<string | null>(null);
   // Imagen elegida para el encabezado, esperando encuadre antes de subirse.
   const [imagenPorRecortar, setImagenPorRecortar] = useState<File | null>(null);
+
+  /** Mueve una opción de estatus una posición. El arreglo ES el orden. */
+  const moverOpcionEstatus = (i: number, delta: number) => {
+    const opts = [...(editCampoConfig.opciones || [])];
+    const j = i + delta;
+    if (j < 0 || j >= opts.length) return;
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+    setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+  };
   const [colapsadas, setColapsadas] = useState<Set<string>>(new Set());
   const toggleColapsada = (id: string) => setColapsadas(prev => {
     const next = new Set(prev);
@@ -886,6 +895,24 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                       />
                       <span className="text-sm text-neutral-700">Campo requerido</span>
                     </label>
+
+                    {/* Con qué prioridad nace el trámite. Antes era 'Baja' fija en
+                        el código, igual para todos los tipos. */}
+                    {editingCampo.sistema_key === 'prioridad' && (
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Valor por defecto</label>
+                        <select
+                          value={editCampoConfig.default ?? 'Baja'}
+                          onChange={(e) => setEditCampoConfig({ ...editCampoConfig, default: e.target.value })}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          <option value="Baja">Baja</option>
+                          <option value="Media">Media</option>
+                          <option value="Alta">Alta</option>
+                        </select>
+                        <p className="text-[10px] text-neutral-400 mt-1">Con esta prioridad se abre el formulario; quien lo llena puede cambiarla.</p>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -1094,6 +1121,27 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                     {(editCampoConfig.opciones || []).map((opt: { label: string; slug: string; clasificacion?: string | null }, i: number) => (
                       <div key={i} className="mb-2">
                         <div className="flex gap-1 items-center mb-0.5">
+                          {/* El orden de aquí es el que se ve al elegir estatus en
+                              el trámite: la lista se guarda como arreglo y nadie
+                              la reordena después. */}
+                          <div className="flex flex-col shrink-0">
+                            <button
+                              onClick={() => moverOpcionEstatus(i, -1)}
+                              disabled={i === 0}
+                              className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                              title="Subir" aria-label="Subir opción"
+                            >
+                              <ChevronUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => moverOpcionEstatus(i, 1)}
+                              disabled={i === (editCampoConfig.opciones || []).length - 1}
+                              className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                              title="Bajar" aria-label="Bajar opción"
+                            >
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
+                          </div>
                           <input
                             type="text"
                             value={opt.label}

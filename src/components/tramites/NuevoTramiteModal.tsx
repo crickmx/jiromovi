@@ -401,6 +401,16 @@ export function NuevoTramiteModal({
         } else {
           setRespuestasDinamicas({});
         }
+
+        // La prioridad inicial se configura por tipo desde el FormBuilder; antes
+        // era 'Baja' fija en el código para todos. Un borrador restaurado o un
+        // valor precargado mandan sobre esto, por eso se aplica solo si no hay.
+        if (!preloadedData?.prioridad && !draftRestored) {
+          const porDefecto = campos.find(c => c.sistema_key === 'prioridad')?.config?.default;
+          if (porDefecto === 'Alta' || porDefecto === 'Media' || porDefecto === 'Baja') {
+            setPrioridad(porDefecto);
+          }
+        }
       });
     supabase
       .from('tramite_tipo_secciones')

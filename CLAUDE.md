@@ -2,6 +2,18 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ✅ 2026-10-01 — prioridad por defecto, orden de estatus y qué hace cada estatus
+
+Tres pedidos de Ricardo en el mismo paso, antes del deploy:
+
+1. **Prioridad por defecto por tipo.** Era `'Baja'` fija en el código (3 lugares de `NuevoTramiteModal.tsx`). Ahora se elige en el FormBuilder: campo Prioridad → "Valor por defecto", guardado en `config.default`. Se aplica al cargar los campos del tipo; un borrador restaurado o un valor precargado siguen mandando sobre él.
+2. **Reordenar las opciones de estatus** con flechas ↑↓ en el editor del campo. No hizo falta tocar ningún consumidor: la lista se guarda como **arreglo** en `config.opciones` y los 10 lugares que la leen hacen `.map` sin ordenar — se verificó uno por uno. El arreglo ES el orden.
+3. **Se entiende qué hace cada estatus al elegirlo.** El selector del encabezado del trámite era un `<select>` nativo: todas las opciones se veían iguales y había que elegir una para enterarse de si cerraba el trámite. Un `<option>` no se puede pintar de forma confiable entre navegadores, así que es un menú propio con punto de color y la frase del efecto ("Cierra el trámite", "Lo deja en espera", "Arranca el trámite", "Sigue en proceso"). El modal de confirmación ya tenía los puntos de color pero sin explicar qué significaban; ahora muestra la misma frase.
+
+**De paso:** el mapa de colores por clasificación estaba **copiado en 4 lugares** de `TramiteDetalle.tsx` y ya empezaba a divergir (uno de ellos ni siquiera contemplaba `en_espera`). Ahora vive en **`src/lib/estatusClasificacion.ts`** — `colorDeClasificacion`, `clasePuntoClasificacion`, `efectoDeClasificacion`. Si se agrega una clasificación nueva, se cambia ahí.
+
+---
+
 ### 📌 PARA CHRISTOFER — se ajustó tu fix del reCAPTCHA en `alta-guardar` (2026-10-01)
 
 **Tu diagnóstico era correcto y se respetó.** El `verificarRecaptcha()` original rechazaba cuando no llegaba token, y con un adblocker o una ventana privada el token simplemente no llega: gente con un alta legítima quedaba bloqueada viendo un error genérico. Eso quedó arreglado y así sigue.
