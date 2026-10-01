@@ -18,6 +18,7 @@ import {
   type AltaRow,
 } from '../_shared/alta/service.ts';
 import { reconciliarAlta } from '../_shared/alta/reconciliar.ts';
+import { decidirRecaptcha, type RespuestaSiteverify } from '../_shared/recaptchaVeredicto.ts';
 
 const CAMPOS_ALTA = new Set([
   'tipo_agente', 'nombre', 'apellidos', 'fecha_nacimiento', 'curp', 'rfc',
@@ -43,32 +44,38 @@ async function verificarRecaptcha(token: string | undefined): Promise<boolean> {
     Deno.env.get('RECAPTCHA_SECRET_KEY'),
   ].filter(Boolean) as string[];
 
-  // Si no hay secrets o no se envió token (ej. adblocker o navegador privado),
-  // no bloqueamos el flujo de onboarding para no impedir registros válidos
-  if (secrets.length === 0 || !token) {
-    return true;
-  }
-
-  for (const secret of secrets) {
-    try {
-      const r = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `secret=${secret}&response=${token}`,
-      });
-      const j = await r.json();
-      if (j.success && (typeof j.score !== 'number' || j.score >= 0.3)) {
-        return true;
+  const respuestas: (RespuestaSiteverify | null)[] = [];
+  if (secrets.length > 0 && token) {
+    for (const secret of secrets) {
+      try {
+        const r = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `secret=${secret}&response=${token}`,
+        });
+        const j = await r.json() as RespuestaSiteverify;
+        respuestas.push(j);
+        // La primera llave que verifica es la correcta: su veredicto manda y no
+        // tiene caso gastar otra llamada a Google con la siguiente.
+        if (j?.success) break;
+      } catch (err) {
+        console.error('[alta-guardar] no se pudo contactar a Google siteverify:', err);
+        respuestas.push(null);
       }
-      console.warn('[alta-guardar] siteverify respuesta:', j);
-    } catch (err) {
-      console.error('[alta-guardar] error al contactar Google siteverify:', err);
-      return true; // no bloquear por fallo de Google
     }
   }
 
-  // Permitir continuar en caso de discrepancias de llaves
-  return true;
+  // El criterio vive en _shared/recaptchaVeredicto.ts, con su autocomprobación:
+  // solo se rechaza cuando Google dice que es bot. Ver la nota de ahí sobre por
+  // qué bloquear de más sale más caro que dejar pasar de más en este formulario.
+  const { permitir, motivo } = decidirRecaptcha({
+    hayLlaves: secrets.length > 0,
+    hayToken: !!token,
+    respuestas,
+  });
+  if (!permitir) console.warn('[alta-guardar] alta rechazada por reCAPTCHA:', motivo);
+  else if (respuestas.some(r => !r?.success)) console.warn('[alta-guardar] reCAPTCHA sin veredicto, se deja pasar:', motivo);
+  return permitir;
 }
 
 /** Carga un alta validando el resume_token. */

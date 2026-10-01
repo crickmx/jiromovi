@@ -2,6 +2,30 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### 📌 PARA CHRISTOFER — se ajustó tu fix del reCAPTCHA en `alta-guardar` (2026-10-01)
+
+**Tu diagnóstico era correcto y se respetó.** El `verificarRecaptcha()` original rechazaba cuando no llegaba token, y con un adblocker o una ventana privada el token simplemente no llega: gente con un alta legítima quedaba bloqueada viendo un error genérico. Eso quedó arreglado y así sigue.
+
+**Lo que se cambió:** tu versión (`5c924ac2`) quedó devolviendo `true` en **todas** las salidas — sin token, con Google caído, con la llave equivocada, y también cuando Google respondía `success: true` con score bajo. Al final había un `return true` que se comía ese último caso. O sea que el reCAPTCHA del alta quedó decorativo: ningún bot podía ser rechazado nunca.
+
+**Ahora el criterio es asimétrico a propósito: solo se rechaza cuando Google dice que es bot** (`success: true` **y** `score < 0.3`). Todo lo demás pasa, igual que con tu fix:
+
+| Situación | Antes del 29-sep | Tu fix | Ahora |
+|---|---|---|---|
+| Sin token (adblocker, ventana privada) | ❌ bloquea | ✅ pasa | ✅ pasa |
+| Sin llaves configuradas | ✅ pasa | ✅ pasa | ✅ pasa |
+| Google no responde (red) | ✅ pasa | ✅ pasa | ✅ pasa |
+| Llave que no empata (`invalid-input-secret`) | ❌ bloquea | ✅ pasa | ✅ pasa |
+| **Google verifica y dice bot (score < 0.3)** | ❌ bloquea | ✅ **pasa** | ❌ **bloquea** |
+
+**El razonamiento, por si hay que discutirlo:** en un formulario de alta los dos errores no cuestan igual. Bloquear de más se pierde en silencio —la persona abandona y nadie se entera—; dejar pasar de más deja un registro basura que sí se ve y se borra. Por eso cualquier cosa que no sea un veredicto limpio de Google se trata como gente.
+
+El criterio se sacó a **`supabase/functions/_shared/recaptchaVeredicto.ts`** (función pura) con autocomprobación en `recaptchaVeredicto.test.mjs` — `npx tsx supabase/functions/_shared/recaptchaVeredicto.test.mjs`. Si hay que mover el umbral o abrir otro caso, se cambia ahí y la prueba dice si se rompió algo. De paso deja de llamar a Google con la segunda llave cuando la primera ya verificó.
+
+**Se despliega a mano** desde el dashboard de Supabase; Plesk no toca las edge functions.
+
+---
+
 ### ⛔ NO MERGEAR `dependabot/npm_and_yarn/production-dependencies-1755395a5a` (revisado 2026-10-01)
 
 Mergea **sin un solo conflicto de texto** y por eso parece inofensiva, pero no es un bump de versiones: es una **migración de framework** disfrazada. Sube `tailwindcss` 3→4, `vite` 6→8, `typescript` 6→7, `jspdf` 2→4, `jspdf-autotable` 3→5, `pdfjs-dist` 4→6 y `@vitejs/plugin-react` 4→6.
