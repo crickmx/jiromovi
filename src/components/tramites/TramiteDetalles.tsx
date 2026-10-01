@@ -572,94 +572,10 @@ export function TramiteDetalles({
         </div>
       )}
 
-      <div className="border-t border-neutral-200 pt-6">
-        <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-neutral-400" />
-          Fechas y seguimiento
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <div className="flex items-center space-x-2 text-neutral-600 mb-1">
-              <Calendar className="w-4 h-4" />
-              <span className="font-medium">Fecha de Creación:</span>
-            </div>
-            <div className="text-neutral-900 ml-6">
-              {new Date(tramite.fecha_creacion).toLocaleString('es-MX', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </div>
-            {tramite.creado_por_usuario && (
-              <div className="text-neutral-600 ml-6 text-xs">
-                por {tramite.creado_por_usuario.nombre_completo}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center space-x-2 text-neutral-600 mb-1">
-              <Clock className="w-4 h-4" />
-              <span className="font-medium">Última Modificación:</span>
-            </div>
-            <div className="text-neutral-900 ml-6">
-              {new Date(tramite.ultima_modificacion).toLocaleString('es-MX', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </div>
-            {tramite.modificado_por_usuario && (
-              <div className="text-neutral-600 ml-6 text-xs">
-                por {tramite.modificado_por_usuario.nombre_completo}
-              </div>
-            )}
-          </div>
-
-          {tramite.fecha_promesa_entrega && (
-            <div>
-              <div className="flex items-center space-x-2 text-neutral-600 mb-1">
-                <Calendar className="w-4 h-4" />
-                <span className="font-medium">Fecha Promesa de Entrega:</span>
-              </div>
-              <div className="text-neutral-900 ml-6">
-                {new Date(tramite.fecha_promesa_entrega + 'T00:00:00').toLocaleDateString('es-MX', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })}
-              </div>
-            </div>
-          )}
-
-          {tramite.cerrado_en && (
-            <div>
-              <div className="flex items-center space-x-2 text-neutral-600 mb-1">
-                <Calendar className="w-4 h-4" />
-                <span className="font-medium">Fecha de Terminación:</span>
-              </div>
-              <div className="text-neutral-900 ml-6">
-                {new Date(tramite.cerrado_en).toLocaleString('es-MX', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </div>
-              {tramite.cerrado_por_usuario && (
-                <div className="text-neutral-600 ml-6 text-xs">
-                  por {tramite.cerrado_por_usuario.nombre_completo}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* "Fechas y seguimiento" se mudó al encabezado, sobre las pestañas
+          (TramiteFechasBar): son datos que se consultan de un vistazo y nunca se
+          editan, y aquí abajo obligaban a hacer scroll para ver cuándo se creó
+          el trámite. */}
     </div>
   );
 }

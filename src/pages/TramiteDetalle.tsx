@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers, Pencil, Check } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
+import { TramiteFechasBar } from '../components/tramites/TramiteFechasBar';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { DiagnosticoBugReport } from '../components/tramites/DiagnosticoBugReport';
@@ -1619,7 +1620,12 @@ export function TramiteDetalle() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl shadow-card overflow-hidden border border-neutral-200 dark:border-neutral-700">
+      {/* Encabezado, fechas y pestañas se quedan a la vista al hacer scroll.
+          El contenedor de scroll real es el <main> del Layout, así que `top-0`
+          es respecto a él y no hace falta descontar la barra de beta. El fondo
+          propio es obligatorio: sin él, el contenido pasaría por debajo y se
+          vería a través de la zona de pestañas. */}
+      <div className="sticky top-0 z-30 bg-white dark:bg-neutral-800 rounded-3xl shadow-card overflow-hidden border border-neutral-200 dark:border-neutral-700">
         {/* Encabezado del tipo — fondo configurable (color, degradado o imagen) */}
         <div style={header.style} className="relative px-6 pt-4 pb-5">
           {header.conVelo && <div className={CLASE_VELO} />}
@@ -1885,6 +1891,16 @@ export function TramiteDetalle() {
               </p>
             </div>
           )}
+          <TramiteFechasBar
+            fechaCreacion={tramite.fecha_creacion}
+            ultimaModificacion={tramite.ultima_modificacion}
+            fechaPromesaEntrega={tramite.fecha_promesa_entrega}
+            cerradoEn={tramite.cerrado_en}
+            creadoPor={tramite.creado_por_usuario}
+            modificadoPor={tramite.modificado_por_usuario}
+            cerradoPor={tramite.cerrado_por_usuario}
+          />
+
           {/* Pueden llegar a ser 6 pestañas; en 375px no caben ni 4. Se deslizan
               en vez de desbordarse, y el padding baja solo en pantalla chica. */}
           <div className="flex space-x-2 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto whitespace-nowrap">

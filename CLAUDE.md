@@ -2,6 +2,17 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ✅ 2026-10-01 — el encabezado se queda a la vista y las fechas suben
+
+- **"Fechas y seguimiento"** (creación, última modificación, promesa de entrega y terminación) estaba al final de "Detalles" como 4 tarjetas a dos columnas, ~200 px, tan abajo que había que hacer scroll para ver cuándo se creó el trámite. Ahora es una franja compacta sobre las pestañas: **`src/components/tramites/TramiteFechasBar.tsx`**. Son datos que se consultan de un vistazo y nunca se editan.
+- **Encabezado + fechas + pestañas quedan fijos al hacer scroll** (`sticky top-0 z-30`). Dos cosas que hay que saber si se toca:
+  - El contenedor de scroll real es el `<main>` de `Layout.tsx` (`overflow-y-auto`), así que `top-0` es respecto a él y **no hay que descontar la barra naranja de beta**.
+  - La tarjeta **necesita fondo propio** (`bg-white dark:bg-neutral-800`): no tenía, y sin él el contenido pasaría por debajo y se vería a través de la zona de pestañas.
+  - ⚠️ El bloque fijo mide **~245 px**. Si en pantallas chicas estorba, lo barato es bajar el `pt-4 pb-5` del encabezado de color o sacar la franja de fechas del bloque pegajoso.
+- **Ojo con `overflow-hidden` y `sticky`**: la tarjeta lo necesita para recortar el fondo configurable. Funciona porque el `overflow` está en el **propio** elemento pegajoso, no en un ancestro — un ancestro con `overflow-hidden` sí lo rompería. Es el mismo detalle que ya obligó a sacar el menú de estatus a un portal.
+
+---
+
 ### ✅ 2026-10-01 — Prioridad al encabezado y el misterio del campo "Póliza"
 
 **"¿De dónde sale el campo Póliza?"** — de `tickets.poliza`, columna del esquema original de CRM (`20251029220122`), pintada a mano en `TramiteDetalles.tsx`. **Solo la llenaban dos tipos Legacy** (`correccion_poliza_registrada` y `correccion_poliza_endoso`), los dos dados de baja el 2026-09-23. En cualquier tipo del FormBuilder siempre estuvo vacía: era una tarjeta que decía "Sin póliza" y nada más. Ahora **solo se muestra si el trámite trae el dato**, así los trámites viejos no lo pierden.
