@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -96,8 +97,13 @@ export function TramiteDetalle() {
   const [entrenamientoStatus, setEntrenamientoStatus] = useState<Record<string, string>>({});
   const [showCerrarMenu, setShowCerrarMenu] = useState(false);
   const cerrarMenuRef = useRef<HTMLDivElement | null>(null);
+  // El menú se monta en el <body>: el encabezado del trámite es
+  // `rounded-3xl overflow-hidden` (lo necesita para recortar el fondo), y eso
+  // recortaba el desplegable a la altura de la barra naranja.
   const [showEstatusMenu, setShowEstatusMenu] = useState(false);
-  const estatusMenuRef = useRef<HTMLDivElement | null>(null);
+  const [estatusMenuPos, setEstatusMenuPos] = useState<{ top: number; right: number; maxAlto: number } | null>(null);
+  const estatusBotonRef = useRef<HTMLButtonElement | null>(null);
+  const estatusPanelRef = useRef<HTMLDivElement | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -243,12 +249,21 @@ export function TramiteDetalle() {
   useEffect(() => {
     if (!showEstatusMenu) return;
     const fuera = (event: MouseEvent) => {
-      if (estatusMenuRef.current && !estatusMenuRef.current.contains(event.target as Node)) {
-        setShowEstatusMenu(false);
-      }
+      const t = event.target as Node;
+      // El panel vive en el <body>, así que no basta con preguntar por el botón.
+      if (estatusBotonRef.current?.contains(t) || estatusPanelRef.current?.contains(t)) return;
+      setShowEstatusMenu(false);
     };
+    // Al hacer scroll la posición calculada deja de valer; se cierra y ya.
+    const cerrar = () => setShowEstatusMenu(false);
     document.addEventListener('mousedown', fuera);
-    return () => document.removeEventListener('mousedown', fuera);
+    window.addEventListener('scroll', cerrar, true);
+    window.addEventListener('resize', cerrar);
+    return () => {
+      document.removeEventListener('mousedown', fuera);
+      window.removeEventListener('scroll', cerrar, true);
+      window.removeEventListener('resize', cerrar);
+    };
   }, [showEstatusMenu]);
 
   useEffect(() => {
@@ -1671,10 +1686,21 @@ export function TramiteDetalle() {
                           trámite y cuál lo dejaba en espera hasta elegirla. Un
                           <option> no se puede pintar de forma confiable entre
                           navegadores, de ahí el menú propio. */}
-                      <div className="relative" ref={estatusMenuRef}>
+                      <div>
                         <button
                           type="button"
-                          onClick={() => setShowEstatusMenu(v => !v)}
+                          ref={estatusBotonRef}
+                          onClick={() => {
+                            const r = estatusBotonRef.current?.getBoundingClientRect();
+                            // La lista se acota a lo que queda de pantalla: con
+                            // muchos estatus, una altura fija volvería a cortarse.
+                            if (r) setEstatusMenuPos({
+                              top: r.bottom + 8,
+                              right: window.innerWidth - r.right,
+                              maxAlto: Math.max(160, window.innerHeight - r.bottom - 24),
+                            });
+                            setShowEstatusMenu(v => !v);
+                          }}
                           className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
                           style={{ borderColor: selColor, color: selColor, backgroundColor: selColor + '10' }}
                         >
@@ -1683,12 +1709,16 @@ export function TramiteDetalle() {
                           <ChevronDown className="w-3.5 h-3.5" />
                         </button>
 
-                        {showEstatusMenu && (
-                          <div className="absolute left-0 mt-2 w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-30 overflow-hidden">
+                        {showEstatusMenu && estatusMenuPos && createPortal(
+                          <div
+                            ref={estatusPanelRef}
+                            className="fixed w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-[70] overflow-hidden"
+                            style={{ top: estatusMenuPos.top, right: estatusMenuPos.right }}
+                          >
                             <p className="px-3 py-2 text-[11px] font-semibold text-neutral-500 dark:text-white/50 bg-neutral-50 dark:bg-neutral-700/60 border-b border-neutral-200 dark:border-neutral-600">
                               Cambiar estatus a…
                             </p>
-                            <div className="max-h-72 overflow-y-auto">
+                            <div className="overflow-y-auto" style={{ maxHeight: estatusMenuPos.maxAlto - 36 }}>
                               {opciones.map(opt => {
                                 const col = colorDeClasificacion(opt.clasificacion);
                                 const efecto = efectoDeClasificacion(opt.clasificacion);
@@ -1713,7 +1743,8 @@ export function TramiteDetalle() {
                                 );
                               })}
                             </div>
-                          </div>
+                          </div>,
+                          document.body,
                         )}
                       </div>
                     </div>
