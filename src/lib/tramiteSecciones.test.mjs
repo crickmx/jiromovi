@@ -77,3 +77,44 @@ assert.equal(campoExigible({ ...placas, requerido: false }, secciones, campos, {
 assert.equal(campoExigible({ id: 'z', requerido: true, seccion_id: 'borrada' }, [], [], {}), true);
 
 console.log('✓ tramiteSecciones: un requerido dentro de una sección que no aplica deja de pedirse');
+
+// ── Contador de la cabecera, apertura por defecto y ocultamiento ─────────────
+{
+  const { conteoSeccion, seccionesAbiertasPorDefecto, seccionOcultaEnDetalle } =
+    await import('./tramiteSecciones.ts');
+
+  // El contador cuenta lo MISMO que la validación: solo lo exigible.
+  const secs = [{ ...seccionBase, id: 's1', nombre: 'Datos', orden: 1 }];
+  const cs = [
+    { id: 'a', key: 'a', requerido: true, seccion_id: 's1' },
+    { id: 'b', key: 'b', requerido: true, seccion_id: 's1' },
+    { id: 'c', key: 'c', requerido: false, seccion_id: 's1' },
+  ];
+  assert.deepEqual(conteoSeccion('s1', secs, cs, { a: 'x' }), { exigibles: 2, respondidos: 1 });
+  // Un campo opcional no infla el denominador aunque esté lleno.
+  assert.deepEqual(conteoSeccion('s1', secs, cs, { a: 'x', c: 'y' }), { exigibles: 2, respondidos: 1 });
+
+  // Abren todas menos las opcionales.
+  const mezcla = [
+    { ...seccionBase, id: 'n1', nombre: 'Normal', orden: 1 },
+    { ...seccionBase, id: 'o1', nombre: 'Opcional', orden: 2, opcional: true },
+  ];
+  const abiertas = seccionesAbiertasPorDefecto(mezcla);
+  assert.equal(abiertas.has('n1'), true);
+  assert.equal(abiertas.has('o1'), false, 'una sección opcional sigue cerrada al abrir');
+
+  // Se oculta la condicionada que no aplica; la que depende de otra, no.
+  const porCondicion = secciones[0]; // Datos del auto, condicionada a ramo = Autos
+  assert.equal(seccionOcultaEnDetalle(porCondicion, secciones, campos, { 'f-ramo': 'Daños' }), true);
+  assert.equal(seccionOcultaEnDetalle(porCondicion, secciones, campos, { 'f-ramo': 'Autos' }), false);
+
+  const s1 = { ...seccionBase, id: 'd1', nombre: 'Uno', orden: 1 };
+  const s2 = { ...seccionBase, id: 'd2', nombre: 'Dos', orden: 2, depende_de_seccion_id: 'd1' };
+  const c1 = { id: 'q1', key: 'q1', requerido: true, seccion_id: 'd1' };
+  assert.equal(
+    seccionOcultaEnDetalle(s2, [s1, s2], [c1], {}), false,
+    'la bloqueada por dependencia se sigue viendo: el candado ahí sí informa',
+  );
+}
+
+console.log('✓ tramiteSecciones: contador, apertura por defecto y ocultamiento coherentes');

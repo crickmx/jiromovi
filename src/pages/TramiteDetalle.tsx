@@ -19,7 +19,8 @@ import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, e
 import { estiloHeader, CLASE_VELO } from '../lib/tramiteHeader';
 import { colorDeClasificacion, clasePuntoClasificacion, efectoDeClasificacion } from '../lib/estatusClasificacion';
 import { puedeVerCampo, puedeEditarCampo } from '../lib/rolCampos';
-import { campoExigible, campoCumpleSuCondicion } from '../lib/tramiteSecciones';
+import { campoExigible, campoCumpleSuCondicion, conteoSeccion, seccionesAbiertasPorDefecto, seccionOcultaEnDetalle, CAMPOS_ANCHOS } from '../lib/tramiteSecciones';
+import { textoDeValor, TIPOS_CON_LECTURA_PROPIA } from '../lib/valorCampoTexto';
 import { SelectorVehiculo, type VehiculoSeleccionado } from '../components/tramites/SelectorVehiculo';
 import TOTPDecryptModal from '../components/tramites/TOTPDecryptModal';
 
@@ -498,7 +499,11 @@ export function TramiteDetalle() {
       .eq('tramite_tipo_id', tipoData.id)
       .eq('activo', true)
       .order('orden');
-    setSecciones((seccionesData as TramiteSeccion[]) || []);
+    const seccionesCargadas = (seccionesData as TramiteSeccion[]) || [];
+    setSecciones(seccionesCargadas);
+    // Todas abiertas al entrar; quien quiera, cierra. Las opcionales siguen
+    // cerradas: es lo que ya hacían y su razón de ser.
+    setSeccionesExpandidas(seccionesAbiertasPorDefecto(seccionesCargadas));
 
     if (!campos?.length) { setCamposDinamicos([]); return; }
     setCamposDinamicos(campos as CampoDinamico[]);
@@ -1927,7 +1932,7 @@ export function TramiteDetalle() {
                   value={fechaPromesaEntrega}
                   onChange={(e) => setFechaPromesaEntrega(e.target.value)}
                   disabled={isCerrado}
-                  className="w-full sm:w-64 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500"
+                  className="w-full sm:w-64 px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500"
                 />
               </div>
             )}
@@ -2058,36 +2063,56 @@ export function TramiteDetalle() {
                 const val = respuestasDinamicas[campo.id];
                 const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
                 const editable = canEdit && !isCerrado && puedeEditarCampo(campo, usuario?.rol);
+
+                // Sin permiso de editar, el campo se lee: un input deshabilitado
+                // ocupa 38px con borde y fondo para mostrar un dato de una línea,
+                // y un trámite se consulta mucho más veces de las que se cambia.
+                // Se resuelve una vez aquí en vez de en los ~20 tipos de campo.
+                if (!editable && !TIPOS_CON_LECTURA_PROPIA.includes(campo.tipo)) {
+                  return (
+                    <div key={campo.id} className={CAMPOS_ANCHOS.includes(campo.tipo) ? 'md:col-span-2 xl:col-span-3' : ''}>
+                      <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide">{campo.label}</p>
+                      <p className="text-sm text-neutral-800 dark:text-neutral-100 break-words whitespace-pre-wrap">
+                        {textoDeValor(campo, val)}
+                      </p>
+                    </div>
+                  );
+                }
+
                 return (
-                    <div key={campo.id} className={['texto_largo', 'reporte_protegido'].includes(campo.tipo) ? 'md:col-span-2' : ''}>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    <div key={campo.id} className={CAMPOS_ANCHOS.includes(campo.tipo) ? 'md:col-span-2 xl:col-span-3' : ''}>
+                      {/* Escala: título de sección 15/bold, label 13/semibold,
+                          ayuda 11/regular. Antes el título de sección y el label
+                          medían lo mismo y solo cambiaba el peso, así que a seis
+                          secciones el ojo no distinguía grupo de campo. */}
+                      <label className="block text-[13px] font-semibold text-neutral-600 dark:text-neutral-300 mb-0.5">
                         {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
                       </label>
-                      {campo.ayuda && <p className="text-xs text-neutral-500 mb-1">{campo.ayuda}</p>}
+                      {campo.ayuda && <p className="text-[11px] leading-4 text-neutral-400 mb-0.5">{campo.ayuda}</p>}
 
                       {campo.tipo === 'texto_corto' && (
                         <input type="text" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
                           maxLength={campo.config.max_length}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'email' && (
                         <input type="email" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'telefono' && (
                         <input type="tel" value={val || ''} onChange={e => set(e.target.value.replace(/\D/g, '').slice(0, 10))} disabled={!editable}
                           placeholder="10 dígitos" maxLength={10}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'rfc' && (
                         <input type="text" value={val || ''} onChange={e => set(e.target.value.toUpperCase().slice(0, 13))} disabled={!editable}
                           placeholder="RFC" maxLength={13}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'curp' && (
                         <input type="text" value={val || ''} onChange={e => set(e.target.value.toUpperCase().slice(0, 18))} disabled={!editable}
                           placeholder="CURP" maxLength={18}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'porcentaje' && (
                         <div className="relative">
@@ -2100,17 +2125,17 @@ export function TramiteDetalle() {
                       {campo.tipo === 'texto_largo' && (
                         <textarea value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
                           maxLength={campo.config.max_length} rows={3}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500 resize-none" />
+                          className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500 resize-none" />
                       )}
                       {campo.tipo === 'numerico' && (
                         <input type="number" value={val ?? ''} onChange={e => set(e.target.value === '' ? null : Number(e.target.value))} disabled={!editable}
                           step={campo.config.es_entero ? '1' : 'any'}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'fecha' && (
                         <input type="date" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
                           min={campo.config.min_fecha} max={campo.config.max_fecha}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
+                          className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
                       )}
                       {campo.tipo === 'booleano' && (
                         <label className="flex items-center gap-2 cursor-pointer">
@@ -2161,7 +2186,7 @@ export function TramiteDetalle() {
                                 }
                               }
                             }
-                          }} className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white">
+                          }} className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white">
                             <option value="">Selecciona ramo...</option>
                             {catalogoRamos.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
                           </select>
@@ -2295,13 +2320,13 @@ export function TramiteDetalle() {
                                 }
                               }}
                               placeholder="Ej: 76000" maxLength={5}
-                              className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                              className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
                             {cpState.loading && <p className="text-xs text-neutral-400">Buscando colonias...</p>}
                             {cpState.colonias.length > 0 && (
                               <select value={stored?.colonia || ''} onChange={e => {
                                 const col = cpState.colonias.find(c => c.colonia === e.target.value);
                                 if (col) set({ codigo: stored?.codigo, ...col });
-                              }} className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white">
+                              }} className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white">
                                 <option value="">Selecciona colonia...</option>
                                 {cpState.colonias.map(c => <option key={c.colonia} value={c.colonia}>{c.colonia}</option>)}
                               </select>
@@ -2516,17 +2541,23 @@ export function TramiteDetalle() {
               const grupos = agruparCamposPorSeccion(camposCustom, secciones);
 
               return (
-                <div className="mt-6 pt-6 border-t border-neutral-100 space-y-4">
+                <div className="mt-6 pt-6 border-t border-neutral-100 dark:border-neutral-700 space-y-3">
                   <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Campos del trámite</p>
                   {grupos.map(grupo => {
                     if (!grupo.seccion) {
-                      return <div key="sin-seccion" className="grid grid-cols-1 md:grid-cols-2 gap-4">{grupo.campos.map(renderCampo)}</div>;
+                      return <div key="sin-seccion" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-3">{grupo.campos.map(renderCampo)}</div>;
                     }
                     const seccion = grupo.seccion;
+                    // Una sección condicionada que no aplica no es un paso
+                    // pendiente: no es parte de este trámite. El candado se
+                    // reserva para las que dependen de otra sección, donde sí
+                    // informa de que hay más formulario adelante.
+                    if (seccionOcultaEnDetalle(seccion, secciones, camposDinamicos, respuestasDinamicas)) return null;
                     const desbloqueada = seccionDesbloqueada(seccion, secciones, camposDinamicos, respuestasDinamicas);
                     const expandida = seccionesExpandidas.has(seccion.id);
-                    const mostrarCampos = desbloqueada && (!seccion.opcional || expandida);
+                    const mostrarCampos = desbloqueada && expandida;
                     const colorSeccion = desbloqueada ? estiloSeccionColor(seccion.config?.color) : undefined;
+                    const conteo = conteoSeccion(seccion.id, secciones, camposDinamicos, respuestasDinamicas);
                     return (
                       <div
                         key={seccion.id}
@@ -2536,20 +2567,27 @@ export function TramiteDetalle() {
                         <button
                           type="button"
                           onClick={() => {
-                            if (!desbloqueada || !seccion.opcional) return;
+                            if (!desbloqueada) return;
                             setSeccionesExpandidas(prev => {
                               const next = new Set(prev);
                               if (next.has(seccion.id)) { next.delete(seccion.id); } else { next.add(seccion.id); }
                               return next;
                             });
                           }}
-                          disabled={!desbloqueada || !seccion.opcional}
-                          className={`w-full flex items-center gap-2 px-4 py-3 text-left ${seccion.opcional && desbloqueada ? 'cursor-pointer hover:bg-neutral-50' : 'cursor-default'}`}
+                          disabled={!desbloqueada}
+                          className={`w-full flex items-center gap-2 px-4 py-2 text-left ${desbloqueada ? 'cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/5' : 'cursor-default'}`}
                         >
                           {!desbloqueada ? <Lock className="w-4 h-4 text-neutral-300 shrink-0" /> : <Layers className="w-4 h-4 text-accent shrink-0" />}
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-semibold ${desbloqueada ? 'text-neutral-800' : 'text-neutral-400'}`}>
+                            <p className={`text-[15px] font-bold ${desbloqueada ? 'text-neutral-900 dark:text-white' : 'text-neutral-400'}`}>
                               {seccion.opcional && !expandida && desbloqueada ? '+ ' : ''}{seccion.nombre}{seccion.opcional ? ' (opcional)' : ''}
+                              {/* Cerrada, el contador es lo que evita que se
+                                  sienta información escondida. */}
+                              {desbloqueada && !expandida && conteo.exigibles > 0 && (
+                                <span className={`ml-2 text-[11px] font-semibold ${conteo.respondidos === conteo.exigibles ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                  {conteo.respondidos}/{conteo.exigibles}
+                                </span>
+                              )}
                             </p>
                             {desbloqueada ? (
                               seccion.descripcion && (!seccion.opcional || expandida) && (
@@ -2559,12 +2597,12 @@ export function TramiteDetalle() {
                               <p className="text-xs text-neutral-400 mt-0.5">{motivoSeccionBloqueada(seccion, secciones, camposDinamicos)}</p>
                             )}
                           </div>
-                          {seccion.opcional && desbloqueada && (
+                          {desbloqueada && (
                             <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform shrink-0 ${expandida ? 'rotate-180' : ''}`} />
                           )}
                         </button>
                         {mostrarCampos && (
-                          <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-neutral-100 pt-4">
+                          <div className="px-4 pb-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-3 border-t border-neutral-100 dark:border-neutral-700 pt-3">
                             {grupo.campos.map(renderCampo)}
                           </div>
                         )}

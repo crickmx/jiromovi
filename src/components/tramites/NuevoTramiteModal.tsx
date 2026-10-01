@@ -7,7 +7,7 @@ import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import type { TramiteSeccion } from './catalogos/types';
-import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor, campoExigible, campoCumpleSuCondicion } from '../../lib/tramiteSecciones';
+import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor, campoExigible, campoCumpleSuCondicion, conteoSeccion, seccionesAbiertasPorDefecto, CAMPOS_ANCHOS } from '../../lib/tramiteSecciones';
 import { analizarRFC, analizarCURP, RFC_GENERICO_NACIONAL, ENTIDADES_CURP } from '../../lib/rfcCurp';
 import { SelectorVehiculo, type VehiculoSeleccionado } from './SelectorVehiculo';
 import {
@@ -417,8 +417,10 @@ export function NuevoTramiteModal({
       .eq('activo', true)
       .order('orden')
       .then(({ data }) => {
-        setSecciones((data as TramiteSeccion[]) || []);
-        setSeccionesExpandidas(new Set());
+        const cargadas = (data as TramiteSeccion[]) || [];
+        setSecciones(cargadas);
+        // Mismo criterio que el detalle: todo abierto, menos las opcionales.
+        setSeccionesExpandidas(seccionesAbiertasPorDefecto(cargadas));
         setMostroBadgeExtra(false);
       });
   }, [tipoTramite, tiposDb]);
@@ -1084,10 +1086,10 @@ export function NuevoTramiteModal({
 
     return (
       <div key={campo.id}>
-        <label className="block text-sm font-medium text-neutral-700 mb-1">
+        <label className="block text-[13px] font-semibold text-neutral-600 mb-0.5">
           {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
         </label>
-        {campo.ayuda && <p className="text-xs text-neutral-500 mb-1">{campo.ayuda}</p>}
+        {campo.ayuda && <p className="text-[11px] leading-4 text-neutral-400 mb-0.5">{campo.ayuda}</p>}
 
         {campo.tipo === 'texto_corto' && (
           <input
@@ -3248,8 +3250,14 @@ export function NuevoTramiteModal({
             // no se evaluaba, así que un campo condicionado salía siempre al crear.
             if (!campoCumpleSuCondicion(campo, camposDinamicos, respuestasDinamicas)) return null;
             const rendered = campo.is_sistema ? renderCampoSistema(campo) : renderCampoDinamico(campo);
-            if (canEditCampo(campo)) return rendered;
-            return (
+            // Los campos que no caben en media columna ocupan la fila entera.
+            const ancho = CAMPOS_ANCHOS.includes(campo.tipo);
+            // Se envuelve en vez de tocar los ~20 render de campo: el envoltorio
+            // pasa a ser la celda de la rejilla y ocupa la fila entera.
+            const envolver = (nodo: React.ReactNode) =>
+              ancho ? <div key={campo.id + '-ancho'} className="md:col-span-2">{nodo}</div> : nodo;
+            if (canEditCampo(campo)) return envolver(rendered);
+            return envolver(
               <div key={campo.id + '-ro'} className="relative pointer-events-none select-none opacity-60">
                 {rendered}
                 <div className="absolute top-1 right-1 flex items-center gap-1 text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md border border-neutral-200">
@@ -3268,7 +3276,7 @@ export function NuevoTramiteModal({
           return agruparCamposPorSeccion(camposVisibles, secciones).map(grupo => {
             if (!grupo.seccion) {
               return (
-                <div key="sin-seccion" className="space-y-6">
+                <div key="sin-seccion" className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
                   {grupo.campos.map(renderCampoConLock)}
                 </div>
               );
@@ -3276,8 +3284,9 @@ export function NuevoTramiteModal({
             const seccion = grupo.seccion;
             const desbloqueada = seccionDesbloqueada(seccion, secciones, camposDinamicos, respuestasDinamicas);
             const expandida = seccionesExpandidas.has(seccion.id);
-            const mostrarCampos = desbloqueada && (!seccion.opcional || expandida);
+            const mostrarCampos = desbloqueada && expandida;
             const colorSeccion = desbloqueada ? estiloSeccionColor(seccion.config?.color) : undefined;
+            const conteo = conteoSeccion(seccion.id, secciones, camposDinamicos, respuestasDinamicas);
 
             return (
               <div
@@ -3288,20 +3297,28 @@ export function NuevoTramiteModal({
                 <button
                   type="button"
                   onClick={() => {
-                    if (!desbloqueada || !seccion.opcional) return;
+                    if (!desbloqueada) return;
                     setSeccionesExpandidas(prev => {
                       const next = new Set(prev);
-                      if (next.has(seccion.id)) { next.delete(seccion.id); } else { next.add(seccion.id); dispararBadgeExtra(); }
+                      if (next.has(seccion.id)) { next.delete(seccion.id); }
+                      // El badge de agradecimiento es solo por aportar una
+                      // sección opcional; cerrar y abrir una normal no lo merece.
+                      else { next.add(seccion.id); if (seccion.opcional) dispararBadgeExtra(); }
                       return next;
                     });
                   }}
-                  disabled={!desbloqueada || !seccion.opcional}
-                  className={`w-full flex items-center gap-2 px-4 py-3 text-left ${seccion.opcional && desbloqueada ? 'cursor-pointer hover:bg-neutral-50' : 'cursor-default'}`}
+                  disabled={!desbloqueada}
+                  className={`w-full flex items-center gap-2 px-4 py-2 text-left ${desbloqueada ? 'cursor-pointer hover:bg-neutral-50' : 'cursor-default'}`}
                 >
                   {!desbloqueada ? <Lock className="w-4 h-4 text-neutral-300 shrink-0" /> : <Layers className="w-4 h-4 text-accent shrink-0" />}
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${desbloqueada ? 'text-neutral-800' : 'text-neutral-400'}`}>
+                    <p className={`text-[15px] font-bold ${desbloqueada ? 'text-neutral-900' : 'text-neutral-400'}`}>
                       {seccion.opcional && !expandida && desbloqueada ? '+ ' : ''}{seccion.nombre}{seccion.opcional ? ' (opcional)' : ''}
+                      {desbloqueada && !expandida && conteo.exigibles > 0 && (
+                        <span className={`ml-2 text-[11px] font-semibold ${conteo.respondidos === conteo.exigibles ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {conteo.respondidos}/{conteo.exigibles}
+                        </span>
+                      )}
                     </p>
                     {desbloqueada ? (
                       seccion.descripcion && (!seccion.opcional || expandida) && (
@@ -3311,12 +3328,12 @@ export function NuevoTramiteModal({
                       <p className="text-xs text-neutral-400 mt-0.5">{motivoSeccionBloqueada(seccion, secciones, camposDinamicos)}</p>
                     )}
                   </div>
-                  {seccion.opcional && desbloqueada && (
+                  {desbloqueada && (
                     <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform shrink-0 ${expandida ? 'rotate-180' : ''}`} />
                   )}
                 </button>
                 {mostrarCampos && (
-                  <div className="px-4 pb-4 space-y-6 border-t border-neutral-100 pt-4">
+                  <div className="px-4 pb-3 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 border-t border-neutral-100 pt-3">
                     {grupo.campos.map(renderCampoConLock)}
                   </div>
                 )}

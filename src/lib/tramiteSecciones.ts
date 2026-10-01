@@ -196,3 +196,73 @@ export function campoExigible(
   }
   return true;
 }
+
+/**
+ * Cuántos campos exigibles de una sección ya están respondidos.
+ *
+ * Es lo que se muestra en la cabecera cuando la sección está cerrada ("3/5").
+ * Sin ese dato, cerrar una sección se siente como esconder información; con él,
+ * se sabe qué hay dentro sin abrirla. Usa el mismo `campoExigible` que la
+ * validación, así que la cuenta nunca puede contradecir al mensaje de faltantes.
+ */
+export function conteoSeccion(
+  seccionId: string,
+  secciones: SeccionMinima[],
+  campos: CampoConSeccion[],
+  respuestas: Record<string, any>
+): { exigibles: number; respondidos: number } {
+  const propios = campos.filter(c => c.seccion_id === seccionId);
+  const exigibles = propios.filter(c => campoExigible(c, secciones, campos, respuestas));
+  return {
+    exigibles: exigibles.length,
+    respondidos: exigibles.filter(c => tieneRespuesta(respuestas[c.id])).length,
+  };
+}
+
+/**
+ * Secciones que arrancan abiertas.
+ *
+ * Decisión de Ricardo: al abrir un trámite se ve todo, y quien quiera cierra lo
+ * que no le interesa. Las OPCIONALES son la excepción y siguen cerradas — es lo
+ * que ya hacían y es su razón de ser: se abren cuando alguien decide aportarlas.
+ */
+export function seccionesAbiertasPorDefecto(secciones: SeccionMinima[]): Set<string> {
+  return new Set(secciones.filter(s => !s.opcional).map(s => s.id));
+}
+
+/**
+ * ¿Esta sección se esconde en el DETALLE del trámite?
+ *
+ * Solo las bloqueadas por una condición de campo. Una sección condicionada que
+ * no aplica —"Datos del auto" cuando el ramo es Daños— no es un paso pendiente:
+ * no es parte de este trámite, y mostrarla con candado sugiere que falta algo
+ * que nunca va a faltar. Con 3-4 condicionales son cientos de píxeles de nada.
+ *
+ * Las bloqueadas por `depende_de_seccion_id` SÍ se siguen viendo: ahí el candado
+ * informa de que hay más formulario adelante y de qué hace falta para llegar.
+ *
+ * En el ALTA no se usa: ahí la persona está eligiendo justo los valores que
+ * activan las condiciones, y ver la sección le explica por qué importa el ramo.
+ *
+ * ⚠️ Esto es solo presentación. La validación ya ignora esos campos por
+ * `campoExigible`; esconder la sección NO debe filtrar nada en el `.map` del
+ * detalle, o se reabre el bug de los requeridos invisibles.
+ */
+export function seccionOcultaEnDetalle(
+  seccion: SeccionMinima,
+  secciones: SeccionMinima[],
+  campos: CampoConSeccion[],
+  respuestas: Record<string, any>
+): boolean {
+  if (!seccion.condicion_campo_id || !seccion.condicion_operador) return false;
+  return !seccionDesbloqueada(seccion, secciones, campos, respuestas);
+}
+
+/**
+ * Tipos de campo que no caben en una celda de la retícula.
+ *
+ * `adjunto` entra aquí aunque no lo parezca: su zona de soltar archivos mide
+ * ~130px y cada archivo añade otra fila, así que en una columna de 70px estira
+ * la fila entera y deja un hueco enorme al lado.
+ */
+export const CAMPOS_ANCHOS = ['texto_largo', 'reporte_protegido', 'adjunto'];
