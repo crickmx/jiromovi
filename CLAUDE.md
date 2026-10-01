@@ -8,7 +8,8 @@
 - **Encabezado + fechas + pestañas quedan fijos al hacer scroll** (`sticky top-0 z-30`). Dos cosas que hay que saber si se toca:
   - El contenedor de scroll real es el `<main>` de `Layout.tsx` (`overflow-y-auto`), así que `top-0` es respecto a él y **no hay que descontar la barra naranja de beta**.
   - La tarjeta **necesita fondo propio** (`bg-white dark:bg-neutral-800`): no tenía, y sin él el contenido pasaría por debajo y se vería a través de la zona de pestañas.
-  - ⚠️ El bloque fijo mide **~245 px**. Si en pantallas chicas estorba, lo barato es bajar el `pt-4 pb-5` del encabezado de color o sacar la franja de fechas del bloque pegajoso.
+  - **El encabezado se encoge al hacer scroll** (`encabezadoCompacto`): se van el botón "Volver a Trámites", el área y el folio de su propio renglón; el título baja a `text-base` y Estatus/Prioridad pasan de apilados a una línea. De ~245 px a ~140 px. **El fondo configurable se conserva** — no cuesta un solo píxel de alto.
+  - Se detecta con un **centinela de 1 px e `IntersectionObserver`**, no escuchando scroll: aquí el que scrollea es el `<main>` del Layout, no la ventana, así que un listener de `window.scroll` no se habría enterado. El efecto depende de `[loading]` porque el centinela no existe mientras carga.
 - **Ojo con `overflow-hidden` y `sticky`**: la tarjeta lo necesita para recortar el fondo configurable. Funciona porque el `overflow` está en el **propio** elemento pegajoso, no en un ancestro — un ancestro con `overflow-hidden` sí lo rompería. Es el mismo detalle que ya obligó a sacar el menú de estatus a un portal.
 
 ---

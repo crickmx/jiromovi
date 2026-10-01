@@ -104,6 +104,12 @@ export function TramiteDetalle() {
   // El menú se monta en el <body>: el encabezado del trámite es
   // `rounded-3xl overflow-hidden` (lo necesita para recortar el fondo), y eso
   // recortaba el desplegable a la altura de la barra naranja.
+  // El encabezado se encoge al hacer scroll: fijo pierde valor si ocupa un
+  // cuarto de pantalla. Se detecta con un centinela de 1px ANTES de la tarjeta
+  // en vez de escuchar scroll — así da igual qué elemento sea el que scrollea
+  // (aquí es el <main> del Layout, no la ventana) y no hay listener por píxel.
+  const [encabezadoCompacto, setEncabezadoCompacto] = useState(false);
+  const centinelaRef = useRef<HTMLDivElement | null>(null);
   const [showEstatusMenu, setShowEstatusMenu] = useState(false);
   const [estatusMenuPos, setEstatusMenuPos] = useState<{ top: number; right: number; maxAlto: number } | null>(null);
   const estatusBotonRef = useRef<HTMLButtonElement | null>(null);
@@ -250,6 +256,17 @@ export function TramiteDetalle() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showCerrarMenu]);
+
+  useEffect(() => {
+    const nodo = centinelaRef.current;
+    if (!nodo || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(
+      ([entrada]) => setEncabezadoCompacto(!entrada.isIntersecting),
+      { threshold: 0 },
+    );
+    obs.observe(nodo);
+    return () => obs.disconnect();
+  }, [loading]);
 
   useEffect(() => {
     if (!showEstatusMenu) return;
@@ -1625,33 +1642,49 @@ export function TramiteDetalle() {
           es respecto a él y no hace falta descontar la barra de beta. El fondo
           propio es obligatorio: sin él, el contenido pasaría por debajo y se
           vería a través de la zona de pestañas. */}
+      {/* Centinela: mientras se vea, el encabezado va completo. */}
+      <div ref={centinelaRef} className="h-px -mb-px" aria-hidden="true" />
+
       <div className="sticky top-0 z-30 bg-white dark:bg-neutral-800 rounded-3xl shadow-card overflow-hidden border border-neutral-200 dark:border-neutral-700">
         {/* Encabezado del tipo — fondo configurable (color, degradado o imagen) */}
-        <div style={header.style} className="relative px-6 pt-4 pb-5">
+        <div style={header.style} className={`relative px-6 transition-all duration-200 ${encabezadoCompacto ? 'pt-2 pb-2' : 'pt-4 pb-5'}`}>
           {header.conVelo && <div className={CLASE_VELO} />}
           <div className="relative">
-          <button
-            onClick={() => navigate('/tramites')}
-            className="inline-flex items-center gap-1.5 text-sm mb-4 transition-opacity hover:opacity-100"
-            style={{ color: tipoContrastColor, opacity: 0.7 }}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Volver a Trámites</span>
-          </button>
+          {/* Al compactarse se van las tres cosas que no hacen falta para seguir
+              trabajando: el botón de volver, el área, y el folio en su renglón.
+              El fondo configurable se queda — no cuesta un solo píxel de alto. */}
+          {!encabezadoCompacto && (
+            <button
+              onClick={() => navigate('/tramites')}
+              className="inline-flex items-center gap-1.5 text-sm mb-4 transition-opacity hover:opacity-100"
+              style={{ color: tipoContrastColor, opacity: 0.7 }}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Volver a Trámites</span>
+            </button>
+          )}
           <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="min-w-0">
-              {tipoInfo?.area && (
+            <div className={`min-w-0 ${encabezadoCompacto ? 'flex items-baseline gap-2' : ''}`}>
+              {tipoInfo?.area && !encabezadoCompacto && (
                 <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: tipoContrastColor, opacity: 0.65 }}>{tipoInfo.area}</p>
               )}
-              <h1 className="text-xl sm:text-2xl font-bold leading-tight" style={{ color: tipoContrastColor }}>
+              <h1
+                className={`font-bold leading-tight ${encabezadoCompacto ? 'text-base truncate' : 'text-xl sm:text-2xl'}`}
+                style={{ color: tipoContrastColor }}
+              >
                 {tipoInfo?.label ?? tramite.tipo_tramite}
               </h1>
-              <p className="text-sm mt-0.5" style={{ color: tipoContrastColor, opacity: 0.65 }}>Folio {tramite.folio}</p>
+              <p
+                className={encabezadoCompacto ? 'text-xs shrink-0' : 'text-sm mt-0.5'}
+                style={{ color: tipoContrastColor, opacity: 0.65 }}
+              >
+                {encabezadoCompacto ? tramite.folio : `Folio ${tramite.folio}`}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 mt-1">
               {/* Estatus arriba, Prioridad justo debajo: son los dos datos que
                   se consultan de un vistazo y los que más se cambian. */}
-              <div className="flex flex-col gap-1.5">
+              <div className={encabezadoCompacto ? 'flex flex-wrap items-center gap-x-3 gap-y-1' : 'flex flex-col gap-1.5'}>
                 <div className="flex items-center gap-2">
                 {(() => {
                   const label = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
