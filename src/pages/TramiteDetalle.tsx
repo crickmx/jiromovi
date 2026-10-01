@@ -1702,7 +1702,10 @@ export function TramiteDetalle() {
                             setShowEstatusMenu(v => !v);
                           }}
                           className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
-                          style={{ borderColor: selColor, color: selColor, backgroundColor: selColor + '10' }}
+                          // Relleno blanco translúcido: el tinte del propio color
+                          // al 6% desaparecía sobre el fondo del encabezado, que
+                          // es configurable y puede ser oscuro o una imagen.
+                          style={{ borderColor: selColor, color: selColor, backgroundColor: 'rgba(255,255,255,0.7)' }}
                         >
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: selColor }} />
                           {actual?.label ?? 'Sin estatus'}
