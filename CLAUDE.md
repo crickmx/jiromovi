@@ -2,6 +2,18 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ✅ 2026-10-01 — Prioridad al encabezado y el misterio del campo "Póliza"
+
+**"¿De dónde sale el campo Póliza?"** — de `tickets.poliza`, columna del esquema original de CRM (`20251029220122`), pintada a mano en `TramiteDetalles.tsx`. **Solo la llenaban dos tipos Legacy** (`correccion_poliza_registrada` y `correccion_poliza_endoso`), los dos dados de baja el 2026-09-23. En cualquier tipo del FormBuilder siempre estuvo vacía: era una tarjeta que decía "Sin póliza" y nada más. Ahora **solo se muestra si el trámite trae el dato**, así los trámites viejos no lo pierden.
+
+**Prioridad se movió al encabezado**, debajo del chip de Estatus, y **respeta el "Acceso por rol" de su campo de sistema** igual que cualquier otro campo (`puedeVerCampo` / `puedeEditarCampo`). Usa la etiqueta que tenga configurada, no "Prioridad" fijo.
+
+**⚠️ Consecuencia a tener presente:** `prioridad` es un campo de sistema **configurable**, así que un tipo puede no incluirlo en su formulario. En ese caso la prioridad **ya no se ve ni se puede cambiar desde el detalle** — antes salía siempre porque estaba pintada a mano. El valor sigue existiendo en `tickets.prioridad` y el KPI "Alta Prioridad" del Kanban lo sigue leyendo. Si un tipo necesita prioridad, hay que agregarle el campo en el FormBuilder.
+
+De paso se limpió el código muerto que dejó la mudanza: `getPrioridadColor`, el ícono `AlertCircle` y las props `selectedPrioridad`/`setSelectedPrioridad` de `TramiteDetalles.tsx`.
+
+---
+
 ### ✅ 2026-10-01 — rediseño de densidad del detalle y el alta de trámites
 
 Ricardo: *"en los trámites con varios campos, los campos ocupan mucho espacio"*. Se auditó con **2 agentes en paralelo** (diseño visual y UI/UX+responsive) antes de tocar nada, y se verificaron a mano los hallazgos más fuertes.

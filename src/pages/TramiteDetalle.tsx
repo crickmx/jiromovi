@@ -1643,8 +1643,10 @@ export function TramiteDetalle() {
               <p className="text-sm mt-0.5" style={{ color: tipoContrastColor, opacity: 0.65 }}>Folio {tramite.folio}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3 mt-1">
-              {/* Status badge */}
-              <div className="flex items-center gap-2">
+              {/* Estatus arriba, Prioridad justo debajo: son los dos datos que
+                  se consultan de un vistazo y los que más se cambian. */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
                 {(() => {
                   const label = tramite.custom_estatus_label ?? tramite.estatus?.nombre;
                   const color = tramite.custom_estatus_color ?? tramite.estatus?.color;
@@ -1766,6 +1768,49 @@ export function TramiteDetalle() {
                     Solo lectura
                   </span>
                 )}
+                </div>
+
+                {/* Prioridad — sigue el "Acceso por rol" que el FormBuilder tenga
+                    configurado para su campo de sistema, igual que cualquier otro.
+                    Si el tipo no lo incluye en su formulario, no se muestra. */}
+                {(() => {
+                  const campoPrioridad = camposDinamicos.find(c => c.sistema_key === 'prioridad');
+                  if (!campoPrioridad || !puedeVerCampo(campoPrioridad, usuario?.rol)) return null;
+
+                  // Hex y no clases de Tailwind porque va sobre el fondo del
+                  // encabezado, que es configurable y se pinta con estilo en línea.
+                  const color = selectedPrioridad === 'Alta' ? '#DC2626'
+                    : selectedPrioridad === 'Media' ? '#D97706'
+                    : '#059669';
+                  const editablePrioridad = canEdit && !isCerrado && puedeEditarCampo(campoPrioridad, usuario?.rol);
+
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: tipoContrastColor, opacity: 0.7 }}>
+                        {campoPrioridad.label || 'Prioridad'}
+                      </span>
+                      {editablePrioridad ? (
+                        <select
+                          value={selectedPrioridad}
+                          onChange={(e) => setSelectedPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+                          className="pl-3 pr-7 py-1 rounded-full text-sm font-semibold border-2 cursor-pointer focus:outline-none"
+                          style={{ borderColor: color, color, backgroundColor: 'rgba(255,255,255,0.7)' }}
+                        >
+                          <option value="Baja">Baja</option>
+                          <option value="Media">Media</option>
+                          <option value="Alta">Alta</option>
+                        </select>
+                      ) : (
+                        <span
+                          className="px-3 py-1 rounded-full text-sm font-semibold border-2"
+                          style={{ borderColor: color, color, backgroundColor: 'rgba(255,255,255,0.7)' }}
+                        >
+                          {selectedPrioridad}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               {/* Actions */}
               <div className="flex flex-wrap items-center gap-2">
@@ -1908,8 +1953,6 @@ export function TramiteDetalle() {
               estatusList={estatusList}
               selectedEstatus={selectedEstatus}
               setSelectedEstatus={setSelectedEstatus}
-              selectedPrioridad={selectedPrioridad}
-              setSelectedPrioridad={setSelectedPrioridad}
               canEdit={canEdit && !isCerrado}
               canManageAssignment={canManageAssignment && !isCerrado}
               canSelfAssignOnly={canSelfAssignOnly}

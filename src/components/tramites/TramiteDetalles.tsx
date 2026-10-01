@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { User, Users, AlertCircle, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, Wrench, Link as LinkIcon } from 'lucide-react';
+import { User, Users, FileText, Calendar, Clock, Briefcase, Shield, Building2, TrendingUp, UserCheck, Wrench, Link as LinkIcon } from 'lucide-react';
 import { addUserToSicas, getSicasMappingStatusForUsers } from '../../lib/sicasUtils';
 import { crearNotificacionGlobal } from '../../lib/notificationHelpers';
 import { getEstatusColor } from '../../lib/registroActividadesTypes';
@@ -75,8 +75,6 @@ interface TramiteDetallesProps {
   estatusList: TramiteEstatus[];
   selectedEstatus: string;
   setSelectedEstatus: (value: string) => void;
-  selectedPrioridad: 'Alta' | 'Media' | 'Baja';
-  setSelectedPrioridad: (value: 'Alta' | 'Media' | 'Baja') => void;
   canEdit?: boolean;
   canManageAssignment?: boolean;
   canSelfAssignOnly?: boolean;
@@ -92,8 +90,6 @@ export function TramiteDetalles({
   estatusList,
   selectedEstatus,
   setSelectedEstatus,
-  selectedPrioridad,
-  setSelectedPrioridad,
   canEdit = false,
   canManageAssignment = false,
   canSelfAssignOnly = false,
@@ -255,15 +251,6 @@ export function TramiteDetalles({
     }
   };
 
-  const getPrioridadColor = (prioridad: string) => {
-    switch (prioridad) {
-      case 'Alta': return 'bg-red-100 text-red-700 border-red-300';
-      case 'Media': return 'bg-yellow-100 text-yellow-700 border-yellow-300';
-      case 'Baja': return 'bg-green-100 text-green-700 border-green-300';
-      default: return 'bg-neutral-100 text-neutral-700 border-neutral-300';
-    }
-  };
-
   const getEstatusColor = (clasificacion?: string | null) =>
     clasificacion === 'inicio' ? '#3B82F6'
     : clasificacion === 'terminacion' ? '#059669'
@@ -384,29 +371,9 @@ export function TramiteDetalles({
         );
       })()}
 
+      {/* La Prioridad vive ahora en el encabezado, bajo el Estatus: son las dos
+          cosas que se consultan de un vistazo y que más se cambian. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-        <div>
-          <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
-            <AlertCircle className="w-4 h-4 inline mr-2" />
-            Prioridad
-          </label>
-          {canEdit ? (
-            <select
-              value={selectedPrioridad}
-              onChange={(e) => setSelectedPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all cursor-pointer"
-            >
-              <option value="Baja">Baja</option>
-              <option value="Media">Media</option>
-              <option value="Alta">Alta</option>
-            </select>
-          ) : (
-            <div className={`px-3 py-2 rounded-xl border font-semibold ${getPrioridadColor(tramite.prioridad)}`}>
-              {tramite.prioridad}
-            </div>
-          )}
-        </div>
-
         {!estatusCampoDinamico && (
           <div>
             <label className="block text-[13px] font-semibold text-neutral-600 mb-1">Estatus</label>
@@ -436,17 +403,24 @@ export function TramiteDetalles({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-        <div>
-          <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
-            <FileText className="w-4 h-4 inline mr-2" />
-            Póliza
-          </label>
-          <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
-            {tramite.poliza || 'Sin póliza'}
+      {/* `tickets.poliza` es del esquema original de CRM y solo lo llenaban
+          `correccion_poliza_registrada` y `correccion_poliza_endoso`, los dos
+          Legacy dados de baja el 2026-09-23. En un tipo del FormBuilder siempre
+          estaba vacío: era una tarjeta que decía "Sin póliza" y nada más. Se
+          conserva para los trámites viejos que sí traen el dato. */}
+      {tramite.poliza && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+          <div>
+            <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
+              <FileText className="w-4 h-4 inline mr-2" />
+              Póliza
+            </label>
+            <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
+              {tramite.poliza}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div>
         <label className="block text-[13px] font-semibold text-neutral-600 mb-1">
