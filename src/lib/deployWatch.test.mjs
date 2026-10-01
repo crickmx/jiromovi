@@ -38,6 +38,9 @@ assert.equal(estadoDeBuild({ commitPrevio: previo, remoto: {}, transcurridoMs: 1
 assert.equal(puedeSeguirse('beta', 'beta.movi.digital'), true);
 assert.equal(puedeSeguirse('produccion', 'beta.movi.digital'), false);
 assert.equal(puedeSeguirse('produccion', 'movi.digital'), true);
+// Producción vive en app.movi.digital; movi.digital a secas es el WordPress.
+assert.equal(puedeSeguirse('produccion', 'app.movi.digital'), true);
+assert.equal(puedeSeguirse('beta', 'app.movi.digital'), false);
 assert.equal(puedeSeguirse('beta', 'localhost'), false);
 
 console.log('✓ deployWatch: un servidor que no contesta a media construcción no se confunde con un error');

@@ -38,10 +38,16 @@ export function estadoDeBuild(args: {
   return 'esperando';
 }
 
-/** Dominio que sirve cada ambiente. */
-export const HOST_POR_AMBIENTE: Record<'beta' | 'produccion', string> = {
-  beta: 'beta.movi.digital',
-  produccion: 'movi.digital',
+/**
+ * Dominios que sirven la app en cada ambiente.
+ *
+ * Producción vive en `app.movi.digital`: `movi.digital` a secas es el WordPress
+ * de la empresa y no publica `version.json`. El botón de Deploy dice
+ * "movi.digital" por costumbre, así que se aceptan los dos nombres.
+ */
+export const HOST_POR_AMBIENTE: Record<'beta' | 'produccion', string[]> = {
+  beta: ['beta.movi.digital'],
+  produccion: ['app.movi.digital', 'produccion.movi.digital', 'movi.digital'],
 };
 
 /**
@@ -49,7 +55,7 @@ export const HOST_POR_AMBIENTE: Record<'beta' | 'produccion', string> = {
  * no manda cabeceras de CORS, así que pedirlo al otro dominio truena.
  */
 export function puedeSeguirse(ambiente: 'beta' | 'produccion', hostname: string): boolean {
-  return hostname === HOST_POR_AMBIENTE[ambiente];
+  return HOST_POR_AMBIENTE[ambiente].includes(hostname);
 }
 
 /** Lee `/version.json` del propio sitio, esquivando cualquier caché. */
