@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { RefreshCw, Rocket, Clock, CircleCheck as CheckCircle2, CircleX as XCircle, ShieldCheck, Hammer, TriangleAlert } from 'lucide-react';
 import {
   INTERVALO_SONDEO_MS,
-  estadoDeBuild, leerVersionPublicada, puedeSeguirse,
+  estadoDeBuild, huellaDeBuild, leerVersionPublicada, puedeSeguirse,
   type EstadoBuild, type VersionPublicada,
 } from '../lib/deployWatch';
 
@@ -29,7 +29,7 @@ export function AdminDeploy() {
   // Seguimiento del build: el disparo solo avisa que arrancó, no que terminó.
   const [seguimiento, setSeguimiento] = useState<{
     target: 'beta' | 'produccion';
-    commitPrevio: string | null;
+    huellaPrevia: string | null;
     desde: number;
     transcurridoMs: number;
     estado: EstadoBuild;
@@ -55,7 +55,7 @@ export function AdminDeploy() {
   // al agotarse la espera, o si se sale de la pantalla.
   useEffect(() => {
     if (!seguimiento || seguimiento.estado !== 'esperando') return;
-    const { commitPrevio, desde } = seguimiento;
+    const { huellaPrevia, desde } = seguimiento;
     let vivo = true;
 
     const revisar = async () => {
@@ -65,14 +65,14 @@ export function AdminDeploy() {
       setSeguimiento(prev => (prev ? {
         ...prev,
         transcurridoMs,
-        estado: estadoDeBuild({ commitPrevio, remoto, transcurridoMs }),
+        estado: estadoDeBuild({ huellaPrevia, remoto, transcurridoMs }),
         remoto: remoto ?? prev.remoto,
       } : prev));
     };
 
     const id = setInterval(revisar, INTERVALO_SONDEO_MS);
     return () => { vivo = false; clearInterval(id); };
-  }, [seguimiento?.estado, seguimiento?.desde, seguimiento?.commitPrevio]);
+  }, [seguimiento?.estado, seguimiento?.desde, seguimiento?.huellaPrevia]);
 
   useEffect(() => {
     loadHistorial();
@@ -115,13 +115,13 @@ export function AdminDeploy() {
       loadHistorial();
 
       if (puedeSeguirse(target, window.location.hostname)) {
-        // El commit de referencia se lee del servidor, no del bundle cargado:
-        // esta pestaña puede llevar rato abierta y venir de un build anterior.
+        // La referencia se lee del servidor, no del bundle cargado: esta
+        // pestaña puede llevar rato abierta y venir de un build anterior.
         const antes = await leerVersionPublicada();
         setVersionActual(antes);
         setSeguimiento({
           target,
-          commitPrevio: antes?.commitHash ?? null,
+          huellaPrevia: huellaDeBuild(antes),
           desde: Date.now(),
           transcurridoMs: 0,
           estado: 'esperando',
@@ -238,7 +238,7 @@ export function AdminDeploy() {
               <Hammer className="w-5 h-5 text-purple-500 shrink-0 mt-0.5 animate-pulse" />
               <div className="min-w-0">
                 <p className="text-sm font-bold text-purple-800 dark:text-purple-200">
-                  Construyendo… {minutos > 0 && <span className="font-normal">({minutos} min)</span>}
+                  Construyendo… <span className="font-normal">({minutos} min)</span>
                 </p>
                 <p className="text-xs text-purple-700 dark:text-purple-300/80 mt-0.5">
                   Se avisa aquí en cuanto el sitio cambie de commit. Suele tardar entre 2 y 5 minutos; puedes

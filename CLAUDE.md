@@ -181,6 +181,8 @@ El botón solo avisaba que el deploy se había **disparado**; el pull y el build
 - El commit de referencia se lee **del servidor**, no del bundle cargado: la pestaña puede llevar horas abierta.
 - Lógica en `src/lib/deployWatch.ts` con autocomprobación en `src/lib/deployWatch.test.mjs` (`npx tsx src/lib/deployWatch.test.mjs`).
 
+**🔑 Corregido el 2026-10-01 — comparaba el commit y se quedaba pegado.** El panel miraba `commitHash`, y eso falla justo en el caso más común: **volver a desplegar sin commits nuevos** (para reintentar, o porque ya estaba subido lo mismo). El commit no cambia nunca, así que se quedaba en "Construyendo…" hasta rendirse a los 12 min, con el build ya terminado. Ahora compara **`version`**, que es `String(Date.now())` del momento del build (`vite.config.ts`) y por eso cambia siempre; `commitHash` queda de respaldo. De paso, `leerVersionPublicada` lleva un corte de 4 s: sin él, una petición colgada a media construcción congelaba el panel entero —ni avanzaba el reloj ni detectaba el build.
+
 ---
 
 ### ✅ 2026-09-30 — equipos de trámite en la edición de usuario: áreas congeladas + Admin sin sección

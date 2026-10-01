@@ -19,6 +19,23 @@ export interface VersionPublicada {
 export type EstadoBuild = 'esperando' | 'listo' | 'sin_respuesta' | 'tardo_demasiado';
 
 /**
+ * Qué identifica a un build publicado.
+ *
+ * **`version`, no `commitHash`.** Al principio se comparaba el commit, y eso
+ * fallaba justo en el caso más común: volver a desplegar SIN commits nuevos —
+ * para reintentar, o porque alguien ya había subido lo mismo—. El commit no
+ * cambiaba nunca, así que el panel se quedaba en "Construyendo…" hasta
+ * rendirse a los 12 minutos, aunque el build hubiera terminado bien.
+ *
+ * `version` es `String(Date.now())` del momento del build (`vite.config.ts`),
+ * así que cambia SIEMPRE. `commitHash` queda de respaldo por si algún build
+ * viejo publicó un `version.json` sin ese campo.
+ */
+export function huellaDeBuild(v: VersionPublicada | null): string | null {
+  return v?.version ?? v?.commitHash ?? null;
+}
+
+/**
  * Qué mostrar según lo último que respondió el servidor.
  *
  * `remoto` es null cuando la petición falló — durante un deploy es normal, el
@@ -26,14 +43,14 @@ export type EstadoBuild = 'esperando' | 'listo' | 'sin_respuesta' | 'tardo_demas
  * tiempo: solo se reporta si además se acabó la espera.
  */
 export function estadoDeBuild(args: {
-  commitPrevio: string | null;
+  huellaPrevia: string | null;
   remoto: VersionPublicada | null;
   transcurridoMs: number;
 }): EstadoBuild {
-  const { commitPrevio, remoto, transcurridoMs } = args;
-  const commitRemoto = remoto?.commitHash ?? null;
+  const { huellaPrevia, remoto, transcurridoMs } = args;
+  const huellaRemota = huellaDeBuild(remoto);
 
-  if (commitRemoto && commitRemoto !== commitPrevio) return 'listo';
+  if (huellaRemota && huellaRemota !== huellaPrevia) return 'listo';
   if (transcurridoMs >= ESPERA_MAXIMA_MS) return remoto ? 'tardo_demasiado' : 'sin_respuesta';
   return 'esperando';
 }
@@ -60,10 +77,15 @@ export function puedeSeguirse(ambiente: 'beta' | 'produccion', hostname: string)
 
 /** Lee `/version.json` del propio sitio, esquivando cualquier caché. */
 export async function leerVersionPublicada(): Promise<VersionPublicada | null> {
+  // Con el servidor reiniciándose a media construcción, una petición se puede
+  // quedar colgada. Sin este tope el `await` no vuelve nunca y el panel se
+  // congela —ni avanza el reloj ni detecta el build nuevo.
+  const corte = AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined;
   try {
     const res = await fetch(`/version.json?_=${Date.now()}`, {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-cache' },
+      signal: corte,
     });
     if (!res.ok) return null;
     return (await res.json()) as VersionPublicada;
