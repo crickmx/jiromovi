@@ -2,6 +2,34 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ⛔ NO MERGEAR `dependabot/npm_and_yarn/production-dependencies-1755395a5a` (revisado 2026-10-01)
+
+Mergea **sin un solo conflicto de texto** y por eso parece inofensiva, pero no es un bump de versiones: es una **migración de framework** disfrazada. Sube `tailwindcss` 3→4, `vite` 6→8, `typescript` 6→7, `jspdf` 2→4, `jspdf-autotable` 3→5, `pdfjs-dist` 4→6 y `@vitejs/plugin-react` 4→6.
+
+Solo con Tailwind 4 ya no arranca, y se ve sin instalar nada:
+- `postcss.config.js` sigue declarando el plugin como `tailwindcss: {}` — v4 exige `@tailwindcss/postcss`, que **la rama no agrega**.
+- `src/index.css` sigue con `@tailwind base/components/utilities`; v4 quiere `@import "tailwindcss"`.
+- `tailwind.config.js` (131 líneas, con el keyframe `animate-alerta-pulso`) ya no se carga solo en v4.
+
+Si algún día se quiere subir Tailwind, es **su propio proyecto**, no un merge de dependabot. El merge se revirtió el 2026-10-01 antes de subirlo.
+
+**🔑 Lección aplicable a cualquier rama vieja:** `git merge-tree` dice si hay choque de TEXTO, no si el merge es seguro. Otro ejemplo del mismo día: `claude/remove-classic-view-button-lqbuy4` mergea limpio y quita el botón "Vista clásica" del correo… que desde julio es la vista **por defecto** (`GestorEmails.tsx:161`). Entraría sin conflicto y rompería el módulo.
+
+---
+
+### ✅ 2026-10-01 — mergeadas a `main` y `produccion` (commit `767045f7`)
+
+De las 83 ramas del remoto: 46 ya estaban dentro, 21 mergeaban limpio, 16 daban conflicto. Solo 3 estaban vivas; entraron 2 y se descartó la tercera (ver arriba):
+
+- `fix/rls-roles-usuario-tiene-rol` → **migración nueva, FALTA CORRERLA**:
+  `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\migrations\20260929180000_usuario_tiene_rol_rls.sql`
+  (388 líneas: `usuario_tiene_rol()` + reescritura de políticas que referenciaban roles inexistentes).
+- `hermes/fix-recaptcha-registro-at` → `supabase/functions/alta-guardar/index.ts`; el reCAPTCHA bloqueaba registros legítimos. **Se despliega a mano desde el dashboard de Supabase.**
+
+Las de julio/agosto (400–540 commits atrás) y las 3 `railway/fix-deploy-*` de mayo (1,440 atrás, de un bot) se pueden borrar del remoto.
+
+---
+
 ### 🔜 AL ARRANCAR LA PRÓXIMA SESIÓN — lo que quedó abierto el 2026-09-30
 
 Todo el código del día está en **`origin/main` y `origin/produccion`**, ambas en `7ed11f57`. Lo que falta no es código:
