@@ -1,6 +1,30 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-01)
+
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-01
+
+Todo el código está en **`origin/main` y `origin/produccion`**, ambas en `086cc216`, árbol limpio.
+
+1. **Deploy de beta** — al cerrar, beta servía `78333813`. Falta `086cc216` (el encabezado que se encoge al hacer scroll).
+2. **Verificar en navegador** todo el rediseño del día. Lo que más conviene mirar, porque son **cambios de comportamiento**, no solo visuales:
+   - Las secciones ahora **se cierran** (cualquiera, no solo las opcionales) y al cerrarlas sale el contador `3/5`.
+   - Un trámite que **no puedes editar** se ve como **texto**, no como inputs grises.
+   - Una **sección condicionada que no aplica desaparece** del detalle (en el alta sigue con candado).
+   - **Prioridad** se mudó al encabezado y **solo sale si el tipo tiene ese campo** en su FormBuilder. Si un tipo lo necesita, hay que agregárselo.
+   - Cualquier campo con **"Acceso por rol"** restringido empieza a ocultarse o bloquearse en el detalle, donde antes se ignoraba.
+   - El encabezado queda **fijo y se compacta** al hacer scroll.
+3. **El panel de "Construyendo…" del Deploy** solo se verá arreglado **a partir del deploy siguiente** al que lo incluya — el que corre lo dispara con el código viejo.
+
+#### Hilos que siguen abiertos (no se tocaron hoy)
+- **Ningún modal del proyecto soporta modo oscuro** (`BaseModal.tsx` tiene 0 clases `dark:`). Empezar por ahí cubre todos de una vez.
+- **SICAS sigue pausado** a propósito (4 crons apagados) y el filtro de fecha de "efectuada" sigue roto — ver sus secciones.
+- **Borrar las ~65 ramas muertas del remoto** (46 ya mergeadas + las de julio/agosto + 3 de railway de mayo). Pendiente del visto bueno de Ricardo.
+- **No mergear la rama de dependabot** — ver la sección con ⛔ arriba.
+
+**🔑 La lección que más tiempo costó este mes:** cuando Ricardo diga "no aparece el cambio", lo PRIMERO es comparar el `Commit:` de la barra naranja contra la rama que sirve ese sitio. **Beta compila de `origin/main`, producción de `origin/produccion`** — pushear solo a una deja la otra en el commit anterior.
+
+---
 
 ### ✅ 2026-10-01 — el encabezado se queda a la vista y las fechas suben
 
@@ -167,20 +191,6 @@ De las 83 ramas del remoto: 46 ya estaban dentro, 21 mergeaban limpio, 16 daban 
 Las de julio/agosto (400–540 commits atrás) y las 3 `railway/fix-deploy-*` de mayo (1,440 atrás, de un bot) se pueden borrar del remoto.
 
 ---
-
-### 🔜 AL ARRANCAR LA PRÓXIMA SESIÓN — lo que quedó abierto el 2026-09-30
-
-Todo el código del día está en **`origin/main` y `origin/produccion`**, ambas en `7ed11f57`. Lo que falta no es código:
-
-1. **Deploy de beta** — al cerrar, beta seguía en `66302d9a`. Ver el punto 3 de abajo antes de dudar del código.
-2. **Verificar en navegador** (no hubo herramienta para verlo): Encabezado arriba de "Campos del sistema" en el FormBuilder · subir una imagen grande y con otra proporción y ver el encuadre · las áreas renombradas en Editar Usuario · que un Administrador tenga sección de equipos y que guarde · el panel "Construyendo…/Build terminado" en Admin → Deploy.
-3. **`update ticket_tipos set activo = false where value = 'cotizacion_emision';`** — confirmar si ya se corrió. Los 3 huecos de código ya están tapados, pero conviene correrlo DESPUÉS del deploy (la lista de tipos del Correo cachea 10 min en el navegador).
-4. Ya confirmado y cerrado: `tramites_grupos_visualizacion` no tiene ningún equipo activo con `area_id` nulo — el backfill de áreas quedó completo.
-
-**🔑 La lección del día, para no volver a perder una hora:** Ricardo hizo deploy de beta tres veces buscando un cambio que nunca había llegado, porque los commits estaban solo en `origin/produccion` y **beta compila de `origin/main`**. Ver la tabla en "Git / Deploy" abajo. Cuando Ricardo diga "no aparece el cambio", lo PRIMERO es comparar el `Commit:` de la barra naranja contra la rama que sirve ese sitio.
-
----
-
 
 ### ✅ 2026-09-30 — el Deploy ya dice cuándo TERMINÓ el build
 
