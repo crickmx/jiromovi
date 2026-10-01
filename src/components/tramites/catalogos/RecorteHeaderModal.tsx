@@ -5,6 +5,7 @@
 // resultado al abrir un trámite. Aquí se ve el mismo marco que se va a ver allá.
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Move } from 'lucide-react';
 import {
   ANCHO_HEADER, ALTO_HEADER, MEDIDA_SUGERIDA,
@@ -30,9 +31,13 @@ export function RecorteHeaderModal({ file, onCancel, onListo }: Props) {
 
   useEffect(() => {
     let vivo = true;
+    let urlCreada: string | null = null;
     cargarImagen(file)
       .then(i => {
-        if (!vivo) return;
+        // Se anota antes de cualquier salida: si el modal ya se cerró mientras
+        // cargaba, el blob igual hay que soltarlo.
+        urlCreada = i.src;
+        if (!vivo) { URL.revokeObjectURL(i.src); return; }
         // Arranca centrado: es el encuadre que casi siempre se quiere, y es lo
         // mismo que hacía `background-position: center` antes de este paso.
         const nat = { ancho: i.naturalWidth, alto: i.naturalHeight };
@@ -46,7 +51,11 @@ export function RecorteHeaderModal({ file, onCancel, onListo }: Props) {
         ));
       })
       .catch(e => { if (vivo) setError(e.message); });
-    return () => { vivo = false; };
+    // El blob vive mientras el modal esté abierto: es lo que pinta la vista.
+    return () => {
+      vivo = false;
+      if (urlCreada) URL.revokeObjectURL(urlCreada);
+    };
   }, [file]);
 
   if (error) {
@@ -146,7 +155,11 @@ export function RecorteHeaderModal({ file, onCancel, onListo }: Props) {
 }
 
 function Marco({ children, onCancel }: { children: React.ReactNode; onCancel: () => void }) {
-  return (
+  // Va montado en el <body>: el panel derecho del FormBuilder tiene
+  // `animate-fade-in`, cuyo keyframe deja un `transform` puesto, y un ancestro
+  // con transform vuelve a `position: fixed` relativo a ÉL. Sin esto el modal
+  // salía encajonado dentro del panel en vez de cubrir la pantalla.
+  return createPortal(
     <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={onCancel}>
       <div className="bg-white rounded-2xl p-4 w-full max-w-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
@@ -157,6 +170,7 @@ function Marco({ children, onCancel }: { children: React.ReactNode; onCancel: ()
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

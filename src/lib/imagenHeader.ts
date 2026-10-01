@@ -48,12 +48,20 @@ export function rectFuente(offset: { x: number; y: number }, escala: number, mar
   };
 }
 
-/** Lee un archivo como <img> ya cargada. */
+/**
+ * Lee un archivo como <img> ya cargada.
+ *
+ * ⚠️ El blob NO se revoca al cargar: `img.src` sigue siendo esa URL y quien la
+ * recibe la usa para pintar la imagen en pantalla. Revocarla aquí dejaba el
+ * objeto en memoria sirviendo para el canvas, pero cualquier `<img src={...}>`
+ * con esa misma URL ya no cargaba —se veía un recuadro gris—. **Quien la llama
+ * revoca `img.src` cuando termina.**
+ */
 export function cargarImagen(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onload = () => resolve(img);
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen')); };
     img.src = url;
   });
