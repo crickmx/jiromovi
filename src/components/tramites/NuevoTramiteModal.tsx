@@ -7,7 +7,7 @@ import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import type { TramiteSeccion } from './catalogos/types';
-import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor } from '../../lib/tramiteSecciones';
+import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor, campoExigible, campoCumpleSuCondicion } from '../../lib/tramiteSecciones';
 import { analizarRFC, analizarCURP, RFC_GENERICO_NACIONAL, ENTIDADES_CURP } from '../../lib/rfcCurp';
 import { SelectorVehiculo, type VehiculoSeleccionado } from './SelectorVehiculo';
 import {
@@ -1054,9 +1054,12 @@ export function NuevoTramiteModal({
       }
     }
 
-    // Validar campos dinámicos requeridos (omitir campos sistema auto-fill)
+    // Validar campos dinámicos requeridos (omitir campos sistema auto-fill).
+    // `campoExigible` descarta los que viven en una sección que no aplica y los
+    // ocultos por su propia condición: pedirlos dejaba el formulario atorado en
+    // un campo que ni siquiera se muestra.
     for (const campo of camposDinamicos) {
-      if (!campo.requerido) continue;
+      if (!campoExigible(campo, secciones, camposDinamicos, respuestasDinamicas)) continue;
       if (!canSeeCampo(campo)) continue;
       if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
       if (!isCampoRespondido(campo)) {
@@ -2577,7 +2580,8 @@ export function NuevoTramiteModal({
   // Barra de progreso — solo campos requeridos del FormBuilder (no incluye validaciones
   // aparte como agente/lote de comisiones, que no vienen de camposDinamicos).
   const camposRequeridosVisibles = camposDinamicos.filter(c =>
-    c.requerido && canSeeCampo(c) && !(c.is_sistema && AUTO_FILL_KEYS.includes(c.sistema_key || ''))
+    campoExigible(c, secciones, camposDinamicos, respuestasDinamicas) &&
+    canSeeCampo(c) && !(c.is_sistema && AUTO_FILL_KEYS.includes(c.sistema_key || ''))
   );
   const camposRequeridosCompletos = camposRequeridosVisibles.filter(isCampoRespondido).length;
   const progresoPct = camposRequeridosVisibles.length > 0
@@ -3240,6 +3244,9 @@ export function NuevoTramiteModal({
             });
 
           const renderCampoConLock = (campo: CampoDinamico) => {
+            // El detalle ya ocultaba los campos cuya condición no se cumple; aquí
+            // no se evaluaba, así que un campo condicionado salía siempre al crear.
+            if (!campoCumpleSuCondicion(campo, camposDinamicos, respuestasDinamicas)) return null;
             const rendered = campo.is_sistema ? renderCampoSistema(campo) : renderCampoDinamico(campo);
             if (canEditCampo(campo)) return rendered;
             return (

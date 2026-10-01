@@ -2,6 +2,27 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-09-30)
 
+### ✅ 2026-10-01 — formularios condicionales de verdad: un requerido oculto ya no bloquea
+
+Ricardo quería poder armar **un solo formulario condicional**: si el ramo es Daños, que no pida los datos del auto. Marcaba "requerido" en los campos de la sección "Autos" (condicionada a ramo = Autos) y el formulario quedaba imposible de enviar — pedía por nombre un campo que **ni siquiera se muestra**, porque su sección está bloqueada.
+
+**Había tres validaciones de requeridos y ninguna miraba la sección:**
+- `NuevoTramiteModal.validateForm` — solo filtraba por rol.
+- `TramiteDetalle.handleSave` → `faltantes` — miraba la condición del campo, no la sección.
+- `TramiteDetalle.continuarGuardadoConEstatus` → `faltantesConEstatus` — copia en línea de lo anterior, con el estatus elegido sustituido.
+
+Más la **barra de progreso** del alta, que contaba esos requeridos y por eso nunca llegaba a 100%.
+
+**Ahora todo pasa por `campoExigible()`** en `src/lib/tramiteSecciones.ts`, con autocomprobación en `tramiteSecciones.test.mjs`. Un campo se exige solo si: es requerido **y** su propia condición se cumple **y** su sección está desbloqueada **y** —si la sección es opcional— alguien ya puso algo en ella.
+
+**La regla de las secciones opcionales** es la única decisión no obvia: en blanco no estorban (eso promete "opcional"), pero empezadas se completan. Dejarlas a medias es peor que no tocarlas.
+
+**Hallazgo de paso:** el alta **nunca evaluaba la condición propia de un campo** (`config.condicion_activa`). El detalle sí la aplicaba desde siempre, el alta no — un campo condicionado a "tipo de persona = Moral" salía siempre al crear el trámite. Ya se oculta, con la misma función que usa el detalle (su copia local desapareció).
+
+**⚠️ Cambio de comportamiento:** en el formulario de alta, los campos con condición propia **empiezan a ocultarse** cuando no se cumple. Antes se veían todos. Si alguien reporta "desapareció un campo al crear", es esto y se revisa su condición en el FormBuilder.
+
+---
+
 ### 🔴 2026-10-01 — el "Acceso por rol" del FormBuilder NO se aplicaba en el detalle del trámite
 
 Ricardo entró como Agente a un trámite cuyo campo Estatus está configurado **Visible: Todos / Editable: Empleados y superiores**, y pudo cambiar el estatus.

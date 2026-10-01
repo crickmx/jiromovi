@@ -19,6 +19,7 @@ import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, e
 import { estiloHeader, CLASE_VELO } from '../lib/tramiteHeader';
 import { colorDeClasificacion, clasePuntoClasificacion, efectoDeClasificacion } from '../lib/estatusClasificacion';
 import { puedeVerCampo, puedeEditarCampo } from '../lib/rolCampos';
+import { campoExigible, campoCumpleSuCondicion } from '../lib/tramiteSecciones';
 import { SelectorVehiculo, type VehiculoSeleccionado } from '../components/tramites/SelectorVehiculo';
 import TOTPDecryptModal from '../components/tramites/TOTPDecryptModal';
 
@@ -714,28 +715,18 @@ export function TramiteDetalle() {
     };
   };
 
-  const esCampoVisible = (campo: any): boolean => {
-    if (!campo.config?.condicion_activa) return true;
-    const { campo_fuente, condicion_operador, condicion_valor } = campo.config;
-    if (!campo_fuente) return true;
-    const fuente = camposDinamicos.find(c => c.key === campo_fuente);
-    if (!fuente) return true;
-    const valorFuente = respuestasDinamicas[fuente.id];
-    const op = condicion_operador || 'igual_a';
-    switch (op) {
-      case 'igual_a':    return String(valorFuente ?? '') === String(condicion_valor ?? '');
-      case 'distinto_a': return String(valorFuente ?? '') !== String(condicion_valor ?? '');
-      case 'tiene_valor': return valorFuente !== undefined && valorFuente !== null && valorFuente !== '';
-      default:           return String(valorFuente ?? '') === String(condicion_valor ?? '');
-    }
-  };
+  // La copia local de esta lógica vivía aquí; ahora es compartida con el alta y
+  // tiene autocomprobación (src/lib/tramiteSecciones.ts).
+  const esCampoVisible = (campo: any): boolean =>
+    campoCumpleSuCondicion(campo, camposDinamicos, respuestasDinamicas);
 
   const handleSave = async () => {
     if (!tramite || !usuario || !isDirty) return;
 
     // Validar campos requeridos visibles antes de mostrar modal
     const faltantes = camposDinamicos.filter(c =>
-      !c.is_sistema && c.tipo !== 'estatus' && c.requerido && esCampoVisible(c) &&
+      !c.is_sistema && c.tipo !== 'estatus' &&
+      campoExigible(c, secciones, camposDinamicos, respuestasDinamicas) &&
       (() => { const v = respuestasDinamicas[c.id]; return v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0); })()
     );
     if (faltantes.length > 0) {
@@ -797,26 +788,14 @@ export function TramiteDetalle() {
 
     // Re-validar campos requeridos que dependen del estatus elegido (la validación
     // en handleSave corría antes del modal, cuando el estatus aún era el anterior)
+    // Mismo criterio que handleSave, pero con el estatus que se acaba de elegir
+    // en lugar del guardado: una sección o un campo pueden depender de él.
+    const respuestasConEstatus = estatusCampoDinamico
+      ? { ...respuestasDinamicas, [estatusCampoDinamico.id]: chosenSlug }
+      : respuestasDinamicas;
     const faltantesConEstatus = camposDinamicos.filter(c => {
-      if (c.is_sistema || c.tipo === 'estatus' || !c.requerido) return false;
-      const visible = (() => {
-        if (!c.config?.condicion_activa) return true;
-        const { campo_fuente, condicion_operador, condicion_valor } = c.config;
-        if (!campo_fuente) return true;
-        const fuente = camposDinamicos.find(f => f.key === campo_fuente);
-        if (!fuente) return true;
-        const valorFuente = (estatusCampoDinamico && fuente.id === estatusCampoDinamico.id)
-          ? chosenSlug
-          : respuestasDinamicas[fuente.id];
-        const op = condicion_operador || 'igual_a';
-        switch (op) {
-          case 'igual_a':     return String(valorFuente ?? '') === String(condicion_valor ?? '');
-          case 'distinto_a':  return String(valorFuente ?? '') !== String(condicion_valor ?? '');
-          case 'tiene_valor': return valorFuente !== undefined && valorFuente !== null && valorFuente !== '';
-          default:            return String(valorFuente ?? '') === String(condicion_valor ?? '');
-        }
-      })();
-      if (!visible) return false;
+      if (c.is_sistema || c.tipo === 'estatus') return false;
+      if (!campoExigible(c, secciones, camposDinamicos, respuestasConEstatus)) return false;
       const v = respuestasDinamicas[c.id];
       return v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
     });

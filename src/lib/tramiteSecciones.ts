@@ -22,6 +22,14 @@ export interface CampoConSeccion {
   id: string;
   requerido: boolean;
   seccion_id?: string | null;
+  /** Para resolver la condición propia del campo, que apunta a otro campo por `key`. */
+  key?: string;
+  config?: { condicion_activa?: boolean; campo_fuente?: string; condicion_operador?: string; condicion_valor?: string; [k: string]: any } | null;
+}
+
+/** Hay respuesta: cubre texto vacío y arreglo vacío, que son los dos "nada" del formulario. */
+export function tieneRespuesta(v: any): boolean {
+  return v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
 }
 
 /** ¿La respuesta actual cumple la condición configurada? Mismo vocabulario que la condición por campo. */
@@ -132,4 +140,59 @@ export function agruparCamposPorSeccion<C extends CampoConSeccion>(
 export function estiloSeccionColor(color?: string | null): { borderColor: string; backgroundColor: string } | undefined {
   if (!color) return undefined;
   return { borderColor: color, backgroundColor: `${color}0D` };
+}
+
+/**
+ * ¿La condición PROPIA del campo se cumple? (independiente de su sección)
+ *
+ * Es el sistema de `config.condicion_activa` + `campo_fuente`. El detalle ya lo
+ * evaluaba con una copia local; el alta no lo evaluaba en absoluto, así que un
+ * campo condicionado se mostraba siempre al crear el trámite.
+ */
+export function campoCumpleSuCondicion(
+  campo: CampoConSeccion,
+  campos: CampoConSeccion[],
+  respuestas: Record<string, any>
+): boolean {
+  if (!campo.config?.condicion_activa) return true;
+  const { campo_fuente, condicion_operador, condicion_valor } = campo.config;
+  if (!campo_fuente) return true;
+  const fuente = campos.find(c => c.key === campo_fuente);
+  if (!fuente) return true; // referencia rota — no esconder
+  const op = (condicion_operador || 'igual_a') as 'igual_a' | 'distinto_a' | 'tiene_valor';
+  return condicionCumplida(op, condicion_valor, respuestas[fuente.id]);
+}
+
+/**
+ * ¿Se puede EXIGIR este campo ahora mismo?
+ *
+ * Marcar "requerido" un campo que vive en una sección que no aplica dejaba el
+ * formulario imposible de enviar: el campo ni siquiera se muestra —la sección
+ * está bloqueada— pero la validación lo seguía pidiendo por nombre. Eso impedía
+ * justo lo que se busca, un formulario condicional: si el ramo es Daños, los
+ * datos del auto no se piden.
+ *
+ * Una sección OPCIONAL solo exige sus requeridos si alguien ya puso algo en
+ * ella: así se puede dejar entera en blanco, que es lo que "opcional" promete,
+ * pero no se puede dejar a medias.
+ */
+export function campoExigible(
+  campo: CampoConSeccion,
+  secciones: SeccionMinima[],
+  campos: CampoConSeccion[],
+  respuestas: Record<string, any>
+): boolean {
+  if (!campo.requerido) return false;
+  if (!campoCumpleSuCondicion(campo, campos, respuestas)) return false;
+  if (!campo.seccion_id) return true;
+
+  const seccion = secciones.find(s => s.id === campo.seccion_id);
+  if (!seccion) return true; // sin sección conocida, se comporta como antes
+  if (!seccionDesbloqueada(seccion, secciones, campos, respuestas)) return false;
+
+  if (seccion.opcional) {
+    const tocada = campos.some(c => c.seccion_id === seccion.id && tieneRespuesta(respuestas[c.id]));
+    if (!tocada) return false;
+  }
+  return true;
 }
