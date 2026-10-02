@@ -7,7 +7,13 @@
 // etiqueta y encabezados de la tabla— y no dos diseños distintos.
 
 import type jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import autoTableImport from 'jspdf-autotable';
+
+// jspdf-autotable se publica como CommonJS: con el bundler llega como funcion y
+// bajo Node llega envuelto en `.default`. Sin esto el modulo no se puede probar
+// fuera del navegador.
+const autoTable = ((autoTableImport as unknown as { default?: typeof autoTableImport }).default
+  ?? autoTableImport) as typeof autoTableImport;
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { pesos, type PlanCobro } from './cobroDesglose';
