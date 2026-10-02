@@ -34,7 +34,7 @@ export interface MktPremiumTriggerCampo {
   id: string;
   trigger_id: string;
   campo_id: string;
-  fuente: 'vacio' | 'template';
+  fuente: 'vacio' | 'template' | 'adjunto_comprobante';
   valor_template: string | null;
 }
 
@@ -108,7 +108,7 @@ export async function obtenerMapeoCamposTriggerPremium(triggerId: string): Promi
 export async function guardarMapeoCampoTriggerPremium(mapeo: {
   trigger_id: string;
   campo_id: string;
-  fuente: 'vacio' | 'template';
+  fuente: 'vacio' | 'template' | 'adjunto_comprobante';
   valor_template?: string | null;
 }) {
   const { error } = await supabase
@@ -168,7 +168,11 @@ export async function dispararTriggersPremium(params: {
       const abierto = (data as FilaTicket[] | null ?? []).find(t => t.ticket_estatus?.clasificacion !== 'terminacion');
       return abierto ? { folio: abierto.folio as string } : null;
     },
-    adjuntar: async ({ ticketId, folio, tipoLabel }) => {
+    adjuntar: async ({ mapeo, ticketId, folio, tipoLabel }) => {
+      // Antes el comprobante se adjuntaba SIEMPRE, también a trámites internos
+      // que no lo necesitan. Ahora se decide regla por regla, igual que la
+      // Orden de Compra en Store.
+      if (!mapeo.some(m => m.fuente === 'adjunto_comprobante')) return;
       // Fuera del await a propósito: si la generación del PDF falla, el trámite
       // ya quedó creado y no tiene por qué perderse.
       adjuntarComprobantePremium({

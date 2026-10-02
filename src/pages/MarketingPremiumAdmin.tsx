@@ -4,6 +4,8 @@ import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSig
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl } from '../lib/supabase';
+import { eventosDisparados, type EventoPremium, type EstadoPremium } from '../lib/mktPremiumEventos';
+import { EventosPremiumPanel } from '../components/marketing/EventosPremiumPanel';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -126,7 +128,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   const [mostrarNuevoAgente, setMostrarNuevoAgente] = useState(false);
-  const [vista, setVista] = useState<'agentes' | 'triggers'>('agentes');
+  const [vista, setVista] = useState<'agentes' | 'triggers' | 'eventos'>('agentes');
 
   const [disenosAgente, setDisenosAgente] = useState<DisenoAgente[]>([]);
   const [cargandoDisenos, setCargandoDisenos] = useState(false);
@@ -682,27 +684,20 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setAgentes(prev => prev.map(a => a.id === seleccionado.id ? actualizado : a));
   }
 
-  function detectarEventosPremium(antes: Agente, despues: Agente): string[] {
-    const eventos: string[] = [];
-    const eraActivo = antes.plan_mkt_premium;
-    const esActivo = despues.plan_mkt_premium;
-
-    if (!eraActivo && esActivo) {
-      eventos.push('activacion');
-    } else if (eraActivo && !esActivo) {
-      eventos.push('desactivacion');
-    } else if (eraActivo && esActivo) {
-      if (antes.mkt_premium_metodo_pago !== despues.mkt_premium_metodo_pago) {
-        eventos.push('cambio_metodo_pago');
-      }
-      const otrosCambiaron =
-        antes.mkt_premium_plan !== despues.mkt_premium_plan ||
-        antes.mkt_premium_fecha_inicio !== despues.mkt_premium_fecha_inicio ||
-        antes.mkt_premium_fecha_pago !== despues.mkt_premium_fecha_pago ||
-        antes.mkt_premium_parcialidades !== despues.mkt_premium_parcialidades;
-      if (otrosCambiaron) eventos.push('actualizacion');
-    }
-    return eventos;
+  // La lista de eventos ya no vive aquí: sale de `mkt_premium_eventos`, donde
+  // cada fila declara qué observa. Antes esta función tenía los cuatro escritos
+  // adentro, así que un evento creado desde la pantalla nunca se disparaba.
+  async function detectarEventosPremium(antes: Agente, despues: Agente): Promise<string[]> {
+    const { data } = await supabase
+      .from('mkt_premium_eventos')
+      .select('key, disparador_tipo, campos_observados')
+      .eq('activo', true)
+      .order('orden');
+    return eventosDisparados(
+      (data ?? []) as EventoPremium[],
+      antes as unknown as EstadoPremium,
+      despues as unknown as EstadoPremium,
+    );
   }
 
   async function dispararReglasPremium(eventos: string[], agente: Agente) {
@@ -798,7 +793,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setAgentes(prev => prev.map(a => a.id === actualizado.id ? actualizado : a));
 
     // Disparar las reglas configuradas para el/los eventos que ocurrieron en este guardado
-    const eventos = detectarEventosPremium(agenteAntes, actualizado);
+    const eventos = await detectarEventosPremium(agenteAntes, actualizado);
     await dispararReglasPremium(eventos, actualizado);
     if (eventos.length > 0) cargarTramitesAgente(actualizado.id);
 
@@ -921,6 +916,7 @@ ALTER TABLE usuarios
         {([
           { key: 'agentes' as const, label: 'Agentes' },
           { key: 'triggers' as const, label: 'Reglas de tickets' },
+          { key: 'eventos' as const, label: 'Eventos' },
         ]).map(t => (
           <button
             key={t.key}
@@ -936,7 +932,9 @@ ALTER TABLE usuarios
         ))}
       </div>
 
-      {vista === 'triggers' ? (
+      {vista === 'eventos' ? (
+        <EventosPremiumPanel />
+      ) : vista === 'triggers' ? (
         <MktPremiumTriggersPanel />
       ) : (
         <>
@@ -1608,6 +1606,7 @@ interface MktTriggerRow {
   ticket_tipo_id: string;
   descripcion_template: string;
   metodo_pago_filtro: string[] | null;
+  forma_pago_filtro: string[] | null;
   activo: boolean;
 }
 interface MktEventoRow { id: string; key: string; nombre: string; }
@@ -1617,6 +1616,13 @@ const METODO_PAGO_PREMIUM_OPCIONES: { value: string; label: string }[] = [
   { value: 'deposito_jiro', label: 'Depósito a cuenta Jiro' },
   { value: 'bono_anual', label: 'Descuento de bono anual' },
   { value: 'comisiones', label: 'Descuento a comisiones' },
+];
+
+// La "forma de pago" de un Premium es el plan. Mismo papel que Contado /
+// 2 Parcialidades / 12 Meses en un pedido de Store.
+const FORMA_PAGO_PREMIUM_OPCIONES: { value: string; label: string }[] = [
+  { value: 'mensual', label: 'Plan mensual' },
+  { value: 'anual', label: 'Plan anual' },
 ];
 
 // Campos que se autollenan solos (mismo criterio que el TriggersPanel de Store)
@@ -1636,8 +1642,9 @@ function MktPremiumTriggersPanel() {
   const [descripcionTemplate, setDescripcionTemplate] = useState('');
   const [activoTrigger, setActivoTrigger] = useState(true);
   const [metodoPagoFiltro, setMetodoPagoFiltro] = useState<string[]>([]);
+  const [formaPagoFiltro, setFormaPagoFiltro] = useState<string[]>([]);
   const [camposTipo, setCamposTipo] = useState<{ id: string; label: string; tipo: string }[]>([]);
-  const [mapeoCampos, setMapeoCampos] = useState<Record<string, { fuente: 'vacio' | 'template'; valor_template: string }>>({});
+  const [mapeoCampos, setMapeoCampos] = useState<Record<string, { fuente: 'vacio' | 'template' | 'adjunto_comprobante'; valor_template: string }>>({});
 
   useEffect(() => {
     if (!ticketTipoId) { setCamposTipo([]); return; }
@@ -1671,6 +1678,7 @@ function MktPremiumTriggersPanel() {
     setDescripcionTemplate('Marketing Premium — {{evento}} para {{nombre_completo}}.');
     setActivoTrigger(true);
     setMetodoPagoFiltro([]);
+    setFormaPagoFiltro([]);
     setMapeoCampos({});
     setShowForm(true);
   };
@@ -1683,8 +1691,9 @@ function MktPremiumTriggersPanel() {
     setDescripcionTemplate(t.descripcion_template);
     setActivoTrigger(t.activo);
     setMetodoPagoFiltro(t.metodo_pago_filtro ?? []);
+    setFormaPagoFiltro(t.forma_pago_filtro ?? []);
     const mapeoExistente = await obtenerMapeoCamposTriggerPremium(t.id);
-    const mapeoRecord: Record<string, { fuente: 'vacio' | 'template'; valor_template: string }> = {};
+    const mapeoRecord: Record<string, { fuente: 'vacio' | 'template' | 'adjunto_comprobante'; valor_template: string }> = {};
     mapeoExistente.forEach(m => {
       mapeoRecord[m.campo_id] = { fuente: m.fuente, valor_template: m.valor_template ?? '' };
     });
@@ -1702,6 +1711,7 @@ function MktPremiumTriggersPanel() {
       descripcion_template: descripcionTemplate,
       activo: activoTrigger,
       metodo_pago_filtro: metodoPagoFiltro.length > 0 ? metodoPagoFiltro : null,
+      forma_pago_filtro: formaPagoFiltro.length > 0 ? formaPagoFiltro : null,
     };
     let triggerId = editando?.id ?? null;
     if (editando) {
@@ -1827,6 +1837,34 @@ function MktPremiumTriggersPanel() {
               </p>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
+                Y el plan es <span className="text-neutral-400 font-normal">(opcional, elige varios)</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {FORMA_PAGO_PREMIUM_OPCIONES.map(f => {
+                  const checked = formaPagoFiltro.includes(f.value);
+                  return (
+                    <button
+                      key={f.value}
+                      type="button"
+                      onClick={() => setFormaPagoFiltro(prev => checked ? prev.filter(x => x !== f.value) : [...prev, f.value])}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        checked
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-300 dark:border-white/10 hover:border-purple-400'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-white/50 mt-1.5">
+                Sin ninguno seleccionado = cualquier plan. Los dos filtros se exigen juntos.
+              </p>
+            </div>
+
             {camposTipo.length > 0 && (
               <div className="border border-neutral-200 dark:border-white/10 rounded-lg p-4 space-y-3">
                 <p className="text-sm font-medium text-neutral-700 dark:text-white/70">
@@ -1845,14 +1883,21 @@ function MktPremiumTriggersPanel() {
                           value={m.fuente}
                           onChange={e => setMapeoCampos(prev => ({
                             ...prev,
-                            [campo.id]: { fuente: e.target.value as 'vacio' | 'template', valor_template: prev[campo.id]?.valor_template ?? '' },
+                            [campo.id]: { fuente: e.target.value as 'vacio' | 'template' | 'adjunto_comprobante', valor_template: prev[campo.id]?.valor_template ?? '' },
                           }))}
                           className="px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white shrink-0"
                         >
                           <option value="vacio">No autollenar</option>
                           <option value="template">Plantilla de texto</option>
+                          <option value="adjunto_comprobante">Adjuntar comprobante (PDF)</option>
                         </select>
                       </div>
+                      {m.fuente === 'adjunto_comprobante' && (
+                        <p className="mt-2 text-xs text-neutral-500 dark:text-white/50">
+                          Se genera el comprobante en PDF y se adjunta al trámite. Basta con marcarlo
+                          en un campo: el archivo se adjunta una sola vez.
+                        </p>
+                      )}
                       {m.fuente === 'template' && (
                         <div className="mt-2 space-y-1.5">
                           <input
