@@ -817,7 +817,8 @@ export async function crearPedido(
 
   if (!estatusId) throw new Error('No se encontró el estatus "Pendiente"');
 
-  const { data: folioData, error: folioError } = await supabase.rpc('generar_folio_oc');
+  // El folio lleva la oficina y las iniciales de quien pide, así que necesita su id.
+  const { data: folioData, error: folioError } = await supabase.rpc('generar_folio_oc', { p_usuario_id: usuarioId });
   if (folioError) throw new Error(`No se pudo generar el folio: ${folioError.message}`);
 
   const { data: pedido, error: pedidoError } = await supabase
