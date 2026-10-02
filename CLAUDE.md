@@ -1,28 +1,166 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-01)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-02)
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-01
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-02
 
-Todo el código está en **`origin/main` y `origin/produccion`**, ambas en `086cc216`, árbol limpio.
+Todo el código está en **`origin/main` y `origin/produccion`**, ambas en `0bf630b8`, árbol limpio.
 
-1. **Deploy de beta** — al cerrar, beta servía `78333813`. Falta `086cc216` (el encabezado que se encoge al hacer scroll).
-2. **Verificar en navegador** todo el rediseño del día. Lo que más conviene mirar, porque son **cambios de comportamiento**, no solo visuales:
-   - Las secciones ahora **se cierran** (cualquiera, no solo las opcionales) y al cerrarlas sale el contador `3/5`.
-   - Un trámite que **no puedes editar** se ve como **texto**, no como inputs grises.
-   - Una **sección condicionada que no aplica desaparece** del detalle (en el alta sigue con candado).
-   - **Prioridad** se mudó al encabezado y **solo sale si el tipo tiene ese campo** en su FormBuilder. Si un tipo lo necesita, hay que agregárselo.
-   - Cualquier campo con **"Acceso por rol"** restringido empieza a ocultarse o bloquearse en el detalle, donde antes se ignoraba.
-   - El encabezado queda **fijo y se compacta** al hacer scroll.
-3. **El panel de "Construyendo…" del Deploy** solo se verá arreglado **a partir del deploy siguiente** al que lo incluya — el que corre lo dispara con el código viejo.
+#### 1. Migraciones — correr lo que falte
+
+| Archivo | Qué hace | Estado |
+|---|---|---|
+| `20261002000001_mkt_premium_triggers_paridad_store.sql` | `forma_pago_filtro` + adjunto | ✅ corrida |
+| `20261002000002_mkt_premium_eventos_configurables.sql` | eventos que declaran qué observan | ✅ corrida |
+| `20261002000003_mkt_premium_pagos.sql` | pagos + bitácora inmutable | ✅ corrida |
+| `20261002000004_mkt_premium_pagos_comprobante.sql` | comprobante adjunto + bucket | ✅ corrida |
+| `20261002000005_mkt_premium_folio.sql` | folio `MKT-XXXXXX` (formato viejo) | ❓ **confirmar** |
+| `20261002000006_folios_legibles_y_frecuencia_mkt.sql` | folios nuevos + `mkt_premium_frecuencia_pago` | ❓ **confirmar** |
+| `20261002000007_folio_oc_mas_largo.sql` | `folio_oc` de `varchar(8)` a `text` | ❓ **confirmar** |
+
+La `...0006` es idempotente y rehace los folios `MKT-%` de la `...0005`, así que corre bien se haya corrido la otra o no. La `...0007` es obligatoria: sin ella **no se puede crear ningún pedido de Store** (`value too long for type character varying(8)`).
+
+#### 2. Falta verificar en navegador
+
+- **Orden de Compra de artículos** con parcialidades reales (franja mostaza, desglose, bloque de cobro).
+- **Orden de Compra de servicio** del plan **anual** — el mensual ya lo confirmó Ricardo.
+- **Folio con oficina e iniciales correctas** en un pedido nuevo (`ARTMKT-00001-...`).
+- **Pagos de Premium**: registrar uno con comprobante PDF/JPG/PNG y ver la bitácora.
+- **Ventana de confirmación** antes de que un trigger levante un trámite, en Store y en Marketing. Probar que al **cancelar** el estatus del pedido NO cambie.
+- **Saldo del Premium mensual**: ahora un pago de $200 se ve como "Falta $2,200 de $2,400". Es lo acordado; si molesta, se cambia en `montoDelPlan`.
 
 #### Hilos que siguen abiertos (no se tocaron hoy)
 - **Ningún modal del proyecto soporta modo oscuro** (`BaseModal.tsx` tiene 0 clases `dark:`). Empezar por ahí cubre todos de una vez.
-- **SICAS sigue pausado** a propósito (4 crons apagados) y el filtro de fecha de "efectuada" sigue roto — ver sus secciones.
-- **Borrar las ~65 ramas muertas del remoto** (46 ya mergeadas + las de julio/agosto + 3 de railway de mayo). Pendiente del visto bueno de Ricardo.
-- **No mergear la rama de dependabot** — ver la sección con ⛔ arriba.
+- **SICAS sigue pausado** a propósito (4 crons apagados) y el filtro de fecha de "efectuada" sigue roto.
+- **Borrar las ~65 ramas muertas del remoto**. Pendiente del visto bueno de Ricardo.
+- **No mergear la rama de dependabot** — ver la sección con ⛔ más abajo.
+- Diferencias Store↔Marketing que se dejaron fuera a propósito: historial de cambios, notas internas, reporte descargable, gastos/utilidad.
 
 **🔑 La lección que más tiempo costó este mes:** cuando Ricardo diga "no aparece el cambio", lo PRIMERO es comparar el `Commit:` de la barra naranja contra la rama que sirve ese sitio. **Beta compila de `origin/main`, producción de `origin/produccion`** — pushear solo a una deja la otra en el commit anterior.
+
+---
+
+### ✅ 2026-10-02 — Marketing Admin y MOVI Store comparten código de verdad
+
+Ricardo: *"hay varias funciones para los pedidos que no se replicaron bien en Marketing Admin… me gustaría que se usara el mismo código para funciones similares. **La base debe ser lo que se construyó en MOVI Store**"*.
+
+**El diagnóstico:** Marketing Admin no era un diseño distinto, era una **copia a mano de Store con piezas perdidas al copiar**. Se probó con un caso concreto: la lista `TEXTO_TIPOS` de Marketing no tenía `area`, `equipo`, `creado_por` ni `oficina_jiro`, e inventaba `select`/`radio`/`checkbox` — esos campos se guardaban en la columna equivocada y **se mostraban vacíos sin error**.
+
+**Se revisó la rama de Iván** (`origin/whatsapp` y las otras tres): están **0 commits adelante**. Todo el trabajo de Store ya estaba en `main`. No había nada que rescatar.
+
+#### Librerías compartidas nuevas (ninguna rompió imports existentes: los archivos viejos reexportan)
+
+| Archivo | Qué resuelve |
+|---|---|
+| `src/lib/equiposAcceso.ts` | Acceso por equipo genérico por módulo (`store_equipos_acceso` / `mkt_equipos_acceso`). `storeUtils` y `mktUtils` delegan. |
+| `src/lib/tramiteRespuestas.ts` + test | **El mapa canónico tipo→columna.** Arregló el bug de arriba. |
+| `src/lib/tramiteTriggerFiltro.ts` + test | Filtro por método/forma de pago, puro y comprobable. |
+| `src/lib/tramiteTriggers.ts` | Motor único que crea los trámites de los dos módulos. |
+| `src/lib/triggersConfig.ts` | Lo único que de verdad cambia entre Store y Marketing, en dos objetos que se leen de un vistazo. |
+| `src/lib/mktPremiumEventos.ts` + test | Qué eventos dispara un guardado. |
+| `src/lib/mktPremiumPagos.ts` + test | Precio, cobros y saldo del Premium. |
+| `src/lib/comprobantePago.ts` + test | Validación y ruta del comprobante adjunto. |
+| `src/lib/cobroDesglose.ts` + test | Parcialidades y centavos (ver abajo). |
+| `src/lib/ordenCompraPdf.ts` | Franja, desglose y bloque de cobro de las dos Órdenes de Compra. |
+
+**Componentes compartidos:** `EquiposAccesoPanel.tsx`, `TriggersPanel.tsx` (una sola pantalla de triggers para los dos módulos, manejada por `ConfigTriggers`), `EventosPremiumPanel.tsx`, `PagosPremiumPanel.tsx`, `ConfirmarTramitesAutoModal.tsx`.
+
+#### 🔑 Hallazgos que explican varios bugs a la vez
+
+**Las filas de `mkt_premium_eventos` eran inertes.** La pantalla dejaba crear eventos, pero el código decidía qué evento era comparando el antes/después con una cadena de `if`: un evento creado desde la pantalla **nunca se habría disparado** y una regla configurada para él se habría quedado esperando para siempre, sin error. Ahora cada evento **declara qué observa** (`disparador_tipo` + `campos_observados`) y `eventosDisparados()` solo evalúa esa declaración.
+
+**El toggle de acceso por equipo se movía aunque la escritura fallara** — las copias no revisaban el resultado del `update`, así que un fallo de RLS se veía como éxito.
+
+**Ningún trámite automático avisaba cuando no caía en ninguna regla de asignación.** El alta manual sí lo hacía desde siempre. Ahora `avisarSinAsignacion()` notifica a los Administradores activos, igual que al crear a mano.
+
+---
+
+### ✅ 2026-10-02 — Store y Marketing avisan antes de levantar un trámite
+
+Ricardo: *"al dispararse un ticket, salga una ventana de advertencia, y el usuario que lo disparó debe confirmarlo"*.
+
+Antes cambiabas el estatus de un pedido o activabas un Premium y el trámite **ya estaba creado, asignado y notificado** cuando el toast lo decía. No había forma de echarse para atrás.
+
+**Decisiones de Ricardo:** la ventana sale **ANTES de guardar** (cancelar no deja el estatus cambiado ni el Premium activado); solo en **Store y Marketing** (el detalle de trámite ya tenía su propio `TriggerConfirmModal`); y sale **siempre**, sin casilla por regla.
+
+Para poder enseñar qué se va a crear sin crearlo, se separó "qué reglas aplican" de "crearlas": `cargarTriggersAplicables()` en Store y `triggersAplicablesPremium()` en Marketing.
+
+**El botón de generar trámite a mano no pide confirmación** — ya es una acción deliberada.
+
+---
+
+### ✅ 2026-10-02 — folio único del Premium, igual que el pedido de Store
+
+*"En MOVI Store se genera un pedido con un folio único y ese se adjunta en los tickets que se disparan; lo mismo debería ocurrir desde Marketing"*.
+
+El equivalente del "pedido" en Marketing es el **Premium contratado**: el folio se genera al activarlo y lo comparten todos sus trámites y comprobantes. Al desactivar se suelta, así que reactivar es otra contratación y otro folio. Placeholder `{{folio}}` nuevo en las plantillas de trigger.
+
+---
+
+### ✅ 2026-10-02 — Órdenes de Compra que se entienden
+
+Ricardo: *"debe ser muy claro si el PDF es de Marketing Premium (Servicio) o de artículos de MOVI Store"*, con desglose, folio parlante, y la cantidad a descontar bien explicada.
+
+**Los dos PDFs son ahora el mismo documento** (`src/lib/ordenCompraPdf.ts`), y lo que los distingue es lo primero que se ve:
+
+- **Franja superior de color** — **lila** `SERVICIO · MARKETING PREMIUM`, **mostaza** `ARTÍCULOS · MOVI STORE`. Lleva el folio en grande, a quién se le cobra, su oficina y la fecha de creación. Los colores están en `ORDEN_META`; son oscuros a propósito porque el texto encima es blanco.
+- **QUÉ INCLUYE** — el plan contratado o los artículos con cantidad, precio unitario e importe.
+- **CÓMO SE VA A COBRAR** — total, número de cobros, cada cuándo, y **el monto por cobro resaltado**, que es el número que la gente busca.
+
+**Folios nuevos, con consecutivo propio por tipo:**
+
+```
+MKTPRMM-00042-CAP-RJR      ARTMKT-00118-POL-MGL
+```
+
+prefijo · consecutivo (secuencia de Postgres) · 3 letras de la oficina · iniciales del agente. Se arman en SQL con `folio_legible()`, que necesita el `usuario_id` — por eso `generar_folio_oc()` y `generar_folio_premium()` **ahora reciben un parámetro**. La versión sin argumentos de `generar_folio_oc` se dejó viva por si algo la llama.
+
+**Los `folio_oc` que ya existen NO se tocan** (decisión de Ricardo): un folio ya impreso o dicho por teléfono no debe cambiar. Los de Marketing sí se rehicieron porque la columna nació el mismo día.
+
+**⚠️ `folio_oc` era `varchar(8)`** y el folio nuevo mide 20: cualquier pedido nuevo tronaba con `value too long for type character varying(8)`. Se pasó a `text` y no a un `varchar` más grande — el límite ya se quedó corto una vez.
+
+**Los centavos cuadran.** Repartir un total y redondear cada parte no da el total ($2,000 en 3 son $666.67 ×3 = $2,000.01). `planDeCobro()` trunca hacia abajo y la última parcialidad absorbe la diferencia; el PDF lo dice en una nota. Con autocomprobación en `cobroDesglose.test.mjs`.
+
+**De paso:** el botón de descargar el PDF del trámite traía **su propia copia del documento escrita a mano** dentro de `MarketingPremiumAdmin.tsx`, y las dos versiones ya habían empezado a diferir. Ahora las dos llaman al mismo builder. Y quedó **un solo formateador de pesos** en el proyecto.
+
+**`jspdf-autotable` se publica como CommonJS**: con el bundler llega como función y bajo Node llega envuelto en `.default`. `ordenCompraPdf.ts` lo desenvuelve, y por eso el PDF **se puede renderizar fuera del navegador** para revisar el diseño sin desplegar — un script de un solo uso que importe `ordenCompraPdf.ts`, escriba el PDF, y mirarlo con `pdftoppm -png -r 110 archivo.pdf salida`.
+
+---
+
+### 🔴 2026-10-02 — el plan mensual son $200 AL MES, no $200 al año
+
+`PRECIO_PREMIUM` se estaba usando como el **total del periodo**, así que la Orden de Compra de un plan mensual decía `TOTAL $200` y ofrecía **12 descuentos de $16.66**. Lo cachó Ricardo viendo el PDF.
+
+**El modelo correcto, confirmado por él:**
+
+| Plan | Precio | Cobros | Total |
+|---|---|---|---|
+| Mensual | $200 cada mes | **12, fijo** | $2,400 |
+| Anual | $2,000 | **1, sin plazos** | $2,000 |
+
+- `PRECIO_PREMIUM` es el precio de **cada cobro**; `COBROS_DEL_PERIODO` dice cuántos hay; `montoDelPlan()` los multiplica.
+- **El número de cobros no se captura**: `cobrosDelPlan(plan)` lo decide. El campo "Número de parcialidades" **desapareció del formulario** y en su lugar hay una línea bloqueada que dice qué va a pasar. La columna `mkt_premium_parcialidades` se sigue guardando, **calculada**, para que nada que la lea mienta.
+- **⚠️ Cambio de comportamiento:** el saldo del panel de pagos compara contra el periodo completo, así que un agente con plan mensual y **un** pago de $200 pasó de decir "Al corriente" a "Falta $2,200 de $2,400". Es lo que Ricardo eligió; si se quiere comparar contra lo vencido al día de hoy, se cambia en `montoDelPlan`/`saldoPremium`.
+
+**Frecuencia del descuento:** Marketing ganó `usuarios.mkt_premium_frecuencia_pago`, que sale del **mismo catálogo que usa Store** (`store_frecuencias_pago`) y no de una lista aparte que se desincronice. Vacía = la del plan. Placeholder `{{frecuencia}}` nuevo.
+
+**🔑 Store guarda las parcialidades y la frecuencia pegadas en un solo texto** (`forma_pago` = `"3 Quincenal"`, armado desde `store_metodo_pago_combinacion`). `desglosarFormaPago()` lo parte. Ojo con los valores viejos sin frecuencia real (`"2 Parcialidades"`, `"Contado"`): devuelven frecuencia nula a propósito, para que el PDF no diga "cada Parcialidades".
+
+---
+
+### ✅ 2026-10-02 — bitácora de pagos que no se puede borrar
+
+Ricardo: *"**Siempre debe existir un Log, del que no se deben poder borrar las acciones, para revisiones futuras**"*.
+
+`mkt_premium_pagos_log` tiene **cuatro capas**: sin FK (sobrevive a que se borre el pago), RLS sin ninguna política de escritura, un trigger `SECURITY DEFINER` que es lo único que escribe, y otro trigger que **lanza excepción en UPDATE y DELETE** — eso bloquea incluso al `service_role`.
+
+El comprobante se sube **antes** del insert del pago, usando `crypto.randomUUID()` como id, para que la bitácora muestre un alta limpia en vez de un alta seguida de una edición.
+
+---
+
+### ✅ 2026-10-02 — filtro de activos/inactivos en el directorio de usuarios
+
+`Directorio.tsx`: selector nuevo junto a Rol y Oficina. Filtra por `activo`, **el mismo campo que pinta la columna Estado**, para que lo que se ve y lo que se filtra no puedan contradecirse.
 
 ---
 
