@@ -46,16 +46,15 @@ export function montoDelPlan(plan: PlanPremium | null | undefined): number {
 }
 
 /**
- * En cuántos cargos se reparte el periodo.
+ * En cuántos cargos se reparte el periodo. No se configura: lo decide el plan.
  *
- * El mensual ya trae su propio calendario: son 12 meses y punto, `parcialidades`
- * no lo cambia. El anual es un solo cobro que SÍ se puede diferir —es lo que
- * hace el campo de parcialidades cuando se descuenta a comisiones.
+ * El mensual son 12 mensualidades y el anual un solo pago, sin plazos. Antes
+ * esto salía de un campo que alguien llenaba a mano, y cualquier número que no
+ * fuera 12 o 1 producía una Orden de Compra que no correspondía al plan.
  */
-export function cobrosDelPlan(plan: PlanPremium | null | undefined, parcialidades?: number | null): number {
+export function cobrosDelPlan(plan: PlanPremium | null | undefined): number {
   if (!plan) return 1;
-  if (plan === 'mensual') return COBROS_DEL_PERIODO.mensual;
-  return Math.max(1, Math.floor(parcialidades ?? 0) || 1);
+  return COBROS_DEL_PERIODO[plan] ?? 1;
 }
 
 export interface SaldoPremium {

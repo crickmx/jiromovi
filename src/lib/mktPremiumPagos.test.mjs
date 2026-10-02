@@ -21,13 +21,9 @@ assert.equal(montoDelPlan('mensual'), PRECIO_PREMIUM.mensual * COBROS_DEL_PERIOD
 assert.equal(montoDelPlan('anual'), 2000, 'el anual se cobra una vez al año');
 assert.equal(montoDelPlan(null), 0);
 
-// El calendario del mensual no lo cambia el campo de parcialidades.
-assert.equal(cobrosDelPlan('mensual'), 12);
-assert.equal(cobrosDelPlan('mensual', 3), 12, 'el mensual son 12 meses aunque alguien escriba otra cosa');
-// El anual sí se difiere.
-assert.equal(cobrosDelPlan('anual'), 1);
-assert.equal(cobrosDelPlan('anual', 4), 4);
-assert.equal(cobrosDelPlan('anual', 0), 1, 'cero parcialidades no divide entre cero');
+// El número de cobros lo decide el plan, nadie lo escribe.
+assert.equal(cobrosDelPlan('mensual'), 12, 'el mensual son 12 mensualidades');
+assert.equal(cobrosDelPlan('anual'), 1, 'el anual es un solo pago, sin plazos');
 assert.equal(cobrosDelPlan(null), 1);
 
 // ── Sin plan no hay cuenta que hacer ───────────────────────────────────────

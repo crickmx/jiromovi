@@ -64,7 +64,7 @@ export function construirPDFComprobantePremium(params: {
   // El precio del plan es por cobro: el mensual son 12 cargos de $200, no uno
   // de $200. En la tabla se ve como cantidad × precio unitario, que es
   // exactamente lo que se está contratando.
-  const cobros = cobrosDelPlan(plan, parseInt(form.mkt_premium_parcialidades || '', 10));
+  const cobros = cobrosDelPlan(plan);
   const precioUnitario = PRECIO_PREMIUM[plan] ?? total;
 
   y = tablaConceptos(doc, y, 'servicio', [{

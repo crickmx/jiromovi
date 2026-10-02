@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Plus, FileText, ExternalLink, Download, Paperclip, Camera, ZoomIn } from 'lucide-react';
+import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Plus, FileText, ExternalLink, Download, Paperclip, Camera, ZoomIn, Lock } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl } from '../lib/supabase';
@@ -18,6 +18,7 @@ import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
 import { uploadUserLogo, deleteUserLogo } from '../lib/logoUtils';
 import { generarThumbnailVideo } from '../lib/videoThumbnail';
 import { dispararTriggersPremium, triggersAplicablesPremium } from '../lib/mktPremiumTriggers';
+import { cobrosDelPlan } from '../lib/mktPremiumPagos';
 import { ConfirmarTramitesAutoModal, type TramiteAutoPreview } from '../components/admin/ConfirmarTramitesAutoModal';
 import { adjuntarComprobantePremium, construirPDFComprobantePremium } from '../lib/mktPremiumPdf';
 
@@ -54,7 +55,6 @@ interface FormData {
   mkt_premium_metodo_pago: MetodoPago | '';
   mkt_premium_fecha_inicio: string;
   mkt_premium_fecha_pago: string;
-  mkt_premium_parcialidades: string;
   mkt_premium_frecuencia_pago: string;
 }
 
@@ -109,7 +109,6 @@ function emptyForm(a?: Agente | null): FormData {
     mkt_premium_metodo_pago: a?.mkt_premium_metodo_pago ?? '',
     mkt_premium_fecha_inicio: a?.mkt_premium_fecha_inicio ?? '',
     mkt_premium_fecha_pago: a?.mkt_premium_fecha_pago ?? '',
-    mkt_premium_parcialidades: a?.mkt_premium_parcialidades ? String(a.mkt_premium_parcialidades) : '',
     mkt_premium_frecuencia_pago: a?.mkt_premium_frecuencia_pago ?? '',
   };
 }
@@ -638,7 +637,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       const res = await dispararTriggersPremium({
         eventoKey,
         agente: { id: agente.id, nombre: agente.nombre, apellidos: agente.apellidos, oficina: agente.oficina, folio: agente.mkt_premium_folio },
-        form: { ...form },
+        form: contextoFormDe(agente),
         usuarioId: usuario.id,
         usuarioNombre: `${usuario.nombre} ${usuario.apellidos}`.trim(),
       });
@@ -664,10 +663,6 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
         setErrorValidacion('Para activar el premium debes seleccionar la fecha de inicio y la fecha de pago.');
         return;
       }
-      if (form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_plan === 'anual' && !form.mkt_premium_parcialidades) {
-        setErrorValidacion('Para diferir a comisiones debes indicar en cuántas parcialidades.');
-        return;
-      }
     }
     setErrorValidacion('');
 
@@ -681,8 +676,9 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       payload.mkt_premium_metodo_pago = form.mkt_premium_metodo_pago || null;
       payload.mkt_premium_fecha_inicio = form.mkt_premium_fecha_inicio || null;
       payload.mkt_premium_fecha_pago = form.mkt_premium_fecha_pago || null;
-      payload.mkt_premium_parcialidades = form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_parcialidades
-        ? parseInt(form.mkt_premium_parcialidades, 10)
+      // No se captura: el plan lo decide (12 mensualidades o un solo pago anual).
+      payload.mkt_premium_parcialidades = form.plan_mkt_premium && form.mkt_premium_plan
+        ? cobrosDelPlan(form.mkt_premium_plan)
         : null;
       payload.mkt_premium_frecuencia_pago = form.mkt_premium_frecuencia_pago || null;
 
@@ -1136,35 +1132,24 @@ ALTER TABLE usuarios
                       </div>
                     </div>
 
-                    {/* Parcialidades — solo el plan ANUAL se difiere: el mensual ya son
-                        12 cobros de $200, uno por mes. */}
-                    {form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_plan === 'anual' && (
+                    {/* Cómo se cobra: lo decide el plan, no se captura. El mensual son
+                        12 mensualidades y el anual un solo pago, sin plazos. */}
+                    {form.plan_mkt_premium && form.mkt_premium_plan && (
                       <div className="space-y-2 sm:col-span-2">
-                        <label className={`text-xs font-medium uppercase tracking-wide ${
-                          form.plan_mkt_premium && !form.mkt_premium_parcialidades
-                            ? 'text-red-500'
-                            : 'text-neutral-500 dark:text-white/50'
-                        }`}>
-                          Número de parcialidades {form.plan_mkt_premium && !form.mkt_premium_parcialidades && '— requerido'}
+                        <label className="text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wide">
+                          Número de cobros
                         </label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={12}
-                          step={1}
-                          value={form.mkt_premium_parcialidades}
-                          onChange={e => { setForm(f => ({ ...f, mkt_premium_parcialidades: e.target.value })); setErrorValidacion(''); }}
-                          placeholder="Ej. 3"
-                          className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 ${
-                            form.plan_mkt_premium && !form.mkt_premium_parcialidades
-                              ? 'border-red-400 focus:ring-red-400'
-                              : 'border-neutral-200 dark:border-white/10 focus:ring-purple-400'
-                          }`}
-                        />
-                        <p className="text-xs text-neutral-400">En cuántas comisiones se difieren los $2,000 del plan anual (1 a 12).</p>
-                        {seleccionado.mkt_premium_parcialidades && (
-                          <p className="text-xs text-neutral-400">Actual: {seleccionado.mkt_premium_parcialidades} parcialidades</p>
-                        )}
+                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-white/5">
+                          <Lock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                          <span className="text-sm text-neutral-700 dark:text-white/80">
+                            {form.mkt_premium_plan === 'anual'
+                              ? 'Un solo pago de $2,000 — el plan anual no se difiere'
+                              : '12 mensualidades de $200 — total $2,400'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-neutral-400">
+                          Lo determina el plan contratado. Así aparece en la Orden de Compra.
+                        </p>
                       </div>
                     )}
 
