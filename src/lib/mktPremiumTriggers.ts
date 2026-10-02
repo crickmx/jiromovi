@@ -49,6 +49,7 @@ export const PLACEHOLDERS_TRIGGER_PREMIUM: { key: string; label: string }[] = [
   { key: '{{fecha_inicio}}', label: 'Fecha de inicio' },
   { key: '{{fecha_pago}}', label: 'Fecha de próximo pago' },
   { key: '{{evento}}', label: 'Nombre del evento que disparó la regla' },
+  { key: '{{folio}}', label: 'Folio del Premium contratado' },
 ];
 
 const PLAN_LABELS: Record<string, string> = {
@@ -67,6 +68,13 @@ export interface AgentePremiumContext {
   nombre: string;
   apellidos: string;
   oficina?: { nombre: string } | null;
+  /**
+   * Folio del Premium contratado: el equivalente al `folio_oc` de un pedido de
+   * Store. Lo comparten todos los trámites y comprobantes de ese periodo —
+   * antes el comprobante se nombraba con el folio del TRÁMITE, así que dos
+   * trámites del mismo Premium no tenían nada que los relacionara.
+   */
+  folio?: string | null;
 }
 
 export interface FormPremiumContext {
@@ -93,7 +101,8 @@ export function resolverTemplatePremium(
     .replace(/\{\{parcialidades\}\}/g, form.mkt_premium_parcialidades ? form.mkt_premium_parcialidades : 'N/A')
     .replace(/\{\{fecha_inicio\}\}/g, form.mkt_premium_fecha_inicio || 'Sin especificar')
     .replace(/\{\{fecha_pago\}\}/g, form.mkt_premium_fecha_pago || 'Sin especificar')
-    .replace(/\{\{evento\}\}/g, nombreEvento);
+    .replace(/\{\{evento\}\}/g, nombreEvento)
+    .replace(/\{\{folio\}\}/g, agente.folio || 'N/A');
 }
 
 export async function obtenerMapeoCamposTriggerPremium(triggerId: string): Promise<MktPremiumTriggerCampo[]> {
@@ -177,7 +186,9 @@ export async function dispararTriggersPremium(params: {
       // ya quedó creado y no tiene por qué perderse.
       adjuntarComprobantePremium({
         ticketId,
-        folio,
+        // El del Premium contratado, igual que la OC de Store lleva su folio_oc.
+        // Si todavía no tiene (Premium viejo), cae al del trámite.
+        folio: params.agente.folio || folio,
         fechaCreacion: new Date().toISOString(),
         tipoLabel,
         agente: params.agente,

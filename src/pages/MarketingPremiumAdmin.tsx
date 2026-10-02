@@ -39,6 +39,8 @@ interface Agente {
   mkt_premium_plan: PlanTipo | null;
   mkt_premium_metodo_pago: MetodoPago | null;
   mkt_premium_parcialidades: number | null;
+  /** Folio del Premium contratado, como el folio_oc de un pedido de Store. */
+  mkt_premium_folio: string | null;
   oficina: { nombre: string } | null;
   mi_logotipo_url: string | null;
 }
@@ -257,7 +259,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     // Intentar query completa (requiere que las migraciones estén aplicadas)
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, apellidos, puesto, imagen_perfil_url, mi_logotipo_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, oficinas:oficina_id(nombre)')
+      .select('id, nombre, apellidos, puesto, imagen_perfil_url, mi_logotipo_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, mkt_premium_folio, oficinas:oficina_id(nombre)')
       .eq('activo', true)
       .order('nombre');
 
@@ -277,6 +279,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
           mkt_premium_plan: null,
           mkt_premium_metodo_pago: null,
           mkt_premium_parcialidades: null,
+          mkt_premium_folio: null,
           oficina: Array.isArray(u.oficinas) ? u.oficinas[0] ?? null : u.oficinas ?? null,
         }))
       );
@@ -495,6 +498,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     doc.setFontSize(10);
 
     const camposAgente: [string, string][] = [
+      ['Folio Premium:', agente.mkt_premium_folio || '—'],
       ['Nombre:', `${agente.nombre} ${agente.apellidos}`],
       ['Oficina:', agente.oficina?.nombre || '—'],
       ['Plan:', PLAN_LABELS[agente.mkt_premium_plan ?? ''] || agente.mkt_premium_plan || '—'],
@@ -547,7 +551,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     try {
       const res = await dispararTriggersPremium({
         eventoKey: 'activacion',
-        agente: { id: seleccionado.id, nombre: seleccionado.nombre, apellidos: seleccionado.apellidos, oficina: seleccionado.oficina },
+        agente: { id: seleccionado.id, nombre: seleccionado.nombre, apellidos: seleccionado.apellidos, oficina: seleccionado.oficina, folio: seleccionado.mkt_premium_folio },
         form: {
           mkt_premium_plan: seleccionado.mkt_premium_plan ?? '',
           mkt_premium_metodo_pago: seleccionado.mkt_premium_metodo_pago ?? '',
@@ -706,7 +710,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     for (const eventoKey of eventos) {
       const res = await dispararTriggersPremium({
         eventoKey,
-        agente: { id: agente.id, nombre: agente.nombre, apellidos: agente.apellidos, oficina: agente.oficina },
+        agente: { id: agente.id, nombre: agente.nombre, apellidos: agente.apellidos, oficina: agente.oficina, folio: agente.mkt_premium_folio },
         form: {
           mkt_premium_plan: form.mkt_premium_plan,
           mkt_premium_metodo_pago: form.mkt_premium_metodo_pago,
@@ -764,11 +768,23 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       payload.mkt_premium_parcialidades = form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_parcialidades
         ? parseInt(form.mkt_premium_parcialidades, 10)
         : null;
+
+      // El folio nace con la contratación, igual que el folio_oc de un pedido de
+      // Store: se genera al activar y lo comparten todos los trámites de ese
+      // periodo. Al desactivar se suelta — si lo vuelven a activar, es otra
+      // contratación y le toca folio nuevo.
+      if (form.plan_mkt_premium && !seleccionado.mkt_premium_folio) {
+        const { data: folioNuevo, error: folioError } = await supabase.rpc('generar_folio_premium');
+        if (folioError) console.error('[MKT] generar_folio_premium:', folioError);
+        else payload.mkt_premium_folio = folioNuevo;
+      } else if (!form.plan_mkt_premium) {
+        payload.mkt_premium_folio = null;
+      }
     }
 
     const selectCols = needsMigration
       ? 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, oficinas:oficina_id(nombre)'
-      : 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, oficinas:oficina_id(nombre)';
+      : 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, mkt_premium_folio, oficinas:oficina_id(nombre)';
 
     const { data, error } = await supabase
       .from('usuarios')
@@ -1069,6 +1085,11 @@ ALTER TABLE usuarios
                       {seleccionado.nombre} {seleccionado.apellidos}
                     </p>
                     <p className="text-xs text-neutral-400">{seleccionado.oficina?.nombre ?? '—'} · {seleccionado.puesto}</p>
+                    {seleccionado.mkt_premium_folio && (
+                      <p className="text-xs font-mono text-purple-600 dark:text-purple-300 mt-0.5">
+                        {seleccionado.mkt_premium_folio}
+                      </p>
+                    )}
                   </div>
                 </div>
 
