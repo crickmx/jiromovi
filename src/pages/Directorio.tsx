@@ -21,6 +21,9 @@ export function Directorio() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRol, setFilterRol] = useState<string>('');
   const [filterOficina, setFilterOficina] = useState<string>('');
+  // La columna Estado pinta `activo`, no `estado`: el filtro usa el mismo campo
+  // para que lo que se ve y lo que se filtra no puedan contradecirse.
+  const [filterEstado, setFilterEstado] = useState<'' | 'activo' | 'inactivo'>('');
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
@@ -271,8 +274,9 @@ export function Directorio() {
 
     const matchesRol = filterRol === '' || usuario.rol === filterRol;
     const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;
+    const matchesEstado = filterEstado === '' || (filterEstado === 'activo' ? !!usuario.activo : !usuario.activo);
 
-    return matchesSearch && matchesRol && matchesOficina;
+    return matchesSearch && matchesRol && matchesOficina && matchesEstado;
   });
 
   if (loading) {
@@ -315,7 +319,7 @@ export function Directorio() {
 
       <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
         <div className="p-4 border-b border-neutral-100 dark:border-white/5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div className="sm:col-span-2 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-white/30" />
               <input
@@ -353,6 +357,16 @@ export function Directorio() {
                 ))}
               </select>
             )}
+
+            <select
+              value={filterEstado}
+              onChange={(e) => setFilterEstado(e.target.value as '' | 'activo' | 'inactivo')}
+              className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
+            >
+              <option value="">Activos e inactivos</option>
+              <option value="activo">Solo activos</option>
+              <option value="inactivo">Solo inactivos</option>
+            </select>
           </div>
 
           <div className="mt-3 flex items-center justify-between">
