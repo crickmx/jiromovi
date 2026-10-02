@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { gruposConAcceso, tieneAccesoEquipo, esLiderDeEquipoConAcceso, miembrosConAcceso } from './equiposAcceso';
 import type {
   StoreCategoria,
   StoreProducto,
@@ -17,45 +18,13 @@ import type {
 // registrado en store_equipos_acceso. Independiente de tienePermisoAdminEnModulo
 // (esa función solo cubre Administrador / Gerente con elevación).
 
-export async function obtenerGruposConAccesoStore(): Promise<string[]> {
-  const { data } = await supabase.from('store_equipos_acceso').select('grupo_id');
-  return (data ?? []).map(r => r.grupo_id);
-}
-
-export async function tieneAccesoEquipoStore(userId: string | null | undefined): Promise<boolean> {
-  if (!userId) return false;
-  const gruposConAcceso = await obtenerGruposConAccesoStore();
-  if (gruposConAcceso.length === 0) return false;
-  const { count } = await supabase
-    .from('tramites_grupos_miembros')
-    .select('grupo_id', { count: 'exact', head: true })
-    .eq('usuario_id', userId)
-    .in('grupo_id', gruposConAcceso);
-  return (count ?? 0) > 0;
-}
-
-export async function esLiderDeEquipoConAccesoStore(userId: string | null | undefined): Promise<boolean> {
-  if (!userId) return false;
-  const gruposConAcceso = await obtenerGruposConAccesoStore();
-  if (gruposConAcceso.length === 0) return false;
-  const { count } = await supabase
-    .from('tramites_grupos_miembros')
-    .select('grupo_id', { count: 'exact', head: true })
-    .eq('usuario_id', userId)
-    .eq('rol_en_equipo', 'lider')
-    .in('grupo_id', gruposConAcceso);
-  return (count ?? 0) > 0;
-}
-
-export async function obtenerMiembrosConAccesoStore(): Promise<string[]> {
-  const gruposConAcceso = await obtenerGruposConAccesoStore();
-  if (gruposConAcceso.length === 0) return [];
-  const { data } = await supabase
-    .from('tramites_grupos_miembros')
-    .select('usuario_id')
-    .in('grupo_id', gruposConAcceso);
-  return [...new Set((data ?? []).map(r => r.usuario_id))];
-}
+// Acceso por equipo: la implementación vive en `equiposAcceso.ts`, compartida
+// con Marketing Admin. Aquí quedan los nombres de siempre para no tocar a los
+// ocho archivos que ya los importan.
+export const obtenerGruposConAccesoStore = () => gruposConAcceso('store');
+export const tieneAccesoEquipoStore = (userId: string | null | undefined) => tieneAccesoEquipo('store', userId);
+export const esLiderDeEquipoConAccesoStore = (userId: string | null | undefined) => esLiderDeEquipoConAcceso('store', userId);
+export const obtenerMiembrosConAccesoStore = () => miembrosConAcceso('store');
 
 // ============================================
 // CATEGORÍAS

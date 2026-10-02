@@ -1,18 +1,15 @@
-import { supabase } from './supabase';
+// Acceso por equipo a Marketing Admin.
+//
+// Era una copia literal de dos funciones de `storeUtils.ts` con el nombre de la
+// tabla cambiado — y le faltaban las otras dos, no por decisión sino porque la
+// copia se hizo a medias. Ahora delega en `equiposAcceso.ts`, compartido con
+// Store, y queda con la misma superficie que él.
 
-export async function obtenerGruposConAccesoMkt(): Promise<string[]> {
-  const { data } = await supabase.from('mkt_equipos_acceso').select('grupo_id');
-  return (data ?? []).map(r => r.grupo_id);
-}
+import {
+  gruposConAcceso, tieneAccesoEquipo, esLiderDeEquipoConAcceso, miembrosConAcceso,
+} from './equiposAcceso';
 
-export async function tieneAccesoEquipoMkt(userId: string | null | undefined): Promise<boolean> {
-  if (!userId) return false;
-  const grupos = await obtenerGruposConAccesoMkt();
-  if (grupos.length === 0) return false;
-  const { count } = await supabase
-    .from('tramites_grupos_miembros')
-    .select('grupo_id', { count: 'exact', head: true })
-    .eq('usuario_id', userId)
-    .in('grupo_id', grupos);
-  return (count ?? 0) > 0;
-}
+export const obtenerGruposConAccesoMkt = () => gruposConAcceso('mkt');
+export const tieneAccesoEquipoMkt = (userId: string | null | undefined) => tieneAccesoEquipo('mkt', userId);
+export const esLiderDeEquipoConAccesoMkt = (userId: string | null | undefined) => esLiderDeEquipoConAcceso('mkt', userId);
+export const obtenerMiembrosConAccesoMkt = () => miembrosConAcceso('mkt');
