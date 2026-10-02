@@ -6,7 +6,10 @@
 // StorePedidoDetalle.tsx), adaptado a Marketing Premium.
 
 import { supabase } from './supabase';
-import { obtenerCamposTramiteTipo } from './storeUtils';
+import {
+  crearTramitesDesdeTriggers, filtrarTriggersPorPago,
+  type TriggerBase, type ResultadoTriggers,
+} from './tramiteTriggers';
 import { adjuntarComprobantePremium } from './mktPremiumPdf';
 
 export interface MktPremiumTrigger {
@@ -114,30 +117,7 @@ export async function guardarMapeoCampoTriggerPremium(mapeo: {
   if (error) throw error;
 }
 
-const TEXTO_TIPOS_TRIGGER = [
-  'texto_corto', 'texto_largo', 'select', 'radio', 'checkbox',
-  'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp',
-];
-
-function construirRespuesta(tramiteId: string, campoId: string, tipoCampo: string, valor: unknown) {
-  return {
-    tramite_id: tramiteId,
-    campo_id: campoId,
-    valor_texto: TEXTO_TIPOS_TRIGGER.includes(tipoCampo) ? String(valor) : null,
-    valor_numerico: ['numerico', 'porcentaje'].includes(tipoCampo) ? Number(valor) : null,
-    valor_fecha: tipoCampo === 'fecha' ? String(valor) : null,
-    valor_booleano: tipoCampo === 'booleano' ? Boolean(valor) : null,
-    valor_json: !TEXTO_TIPOS_TRIGGER.includes(tipoCampo) && !['numerico', 'porcentaje', 'fecha', 'booleano'].includes(tipoCampo) ? valor : null,
-  };
-}
-
-export interface DispararTriggersPremiumResultado {
-  creados: { folio: string; tipoLabel: string }[];
-  omitidos: { folio: string; tipoLabel: string }[];
-  errores: { nombre: string; error: string }[];
-  totalTriggers: number;
-  triggersAplicados: number;
-}
+export type DispararTriggersPremiumResultado = ResultadoTriggers;
 
 export async function dispararTriggersPremium(params: {
   eventoKey: string;
@@ -145,139 +125,67 @@ export async function dispararTriggersPremium(params: {
   form: FormPremiumContext;
   usuarioId: string;
   usuarioNombre?: string;
-}): Promise<DispararTriggersPremiumResultado> {
-  const resultado: DispararTriggersPremiumResultado = { creados: [], omitidos: [], errores: [], totalTriggers: 0, triggersAplicados: 0 };
+}): Promise<ResultadoTriggers> {
+  const vacio: ResultadoTriggers = { creados: [], omitidos: [], errores: [], totalTriggers: 0, triggersAplicados: 0 };
 
   const { data: evento } = await supabase
     .from('mkt_premium_eventos')
     .select('id, nombre')
     .eq('key', params.eventoKey)
     .maybeSingle();
-  if (!evento) return resultado;
+  if (!evento) return vacio;
 
   const { data: triggersRaw } = await supabase
     .from('mkt_premium_triggers')
     .select('*, ticket_tipos!inner(id, value, label, area)')
     .eq('evento_id', evento.id)
     .eq('activo', true);
-  resultado.totalTriggers = triggersRaw?.length ?? 0;
 
-  const metodoActual = params.form.mkt_premium_metodo_pago;
-  const triggers = (triggersRaw ?? []).filter((t: any) =>
-    !t.metodo_pago_filtro?.length || (metodoActual && t.metodo_pago_filtro.includes(metodoActual))
-  );
-  resultado.triggersAplicados = triggers.length;
-  if (triggers.length === 0) return resultado;
+  const todos = (triggersRaw ?? []) as unknown as TriggerBase[];
+  const triggers = filtrarTriggersPorPago(todos, {
+    metodo: params.form.mkt_premium_metodo_pago,
+    forma: params.form.mkt_premium_plan,
+  });
 
-  const { data: estatusIniciado } = await supabase
-    .from('ticket_estatus').select('id').eq('nombre', 'Iniciado').maybeSingle();
-  if (!estatusIniciado) {
-    resultado.errores.push({ nombre: '(config)', error: 'No se encontró el estatus "Iniciado" en el sistema' });
-    return resultado;
-  }
-
-  for (const trigger of triggers as any[]) {
-    try {
-      const tipoInfo = trigger.ticket_tipos as { id: string; value: string; label: string; area: string };
-      const camposDelTipo = await obtenerCamposTramiteTipo(tipoInfo.id);
-      const mapeo = await obtenerMapeoCamposTriggerPremium(trigger.id as string);
-
-      const { data: grupoRow } = await supabase.rpc('get_grupo_para_ticket', {
-        p_agente_id: params.agente.id,
-        p_tipo_tramite: tipoInfo.value,
-      });
-      const grupoResult = Array.isArray(grupoRow) && grupoRow.length > 0
-        ? grupoRow[0] as { grupo_id: string; ejecutivo_id: string | null }
-        : null;
-
-      let nombreGrupo: string | null = null;
-      if (grupoResult?.grupo_id) {
-        const { data: grupoData } = await supabase
-          .from('tramites_grupos_visualizacion').select('nombre').eq('id', grupoResult.grupo_id).single();
-        nombreGrupo = grupoData?.nombre ?? null;
-      }
-      let nombreEjecutivo: string | null = null;
-      if (grupoResult?.ejecutivo_id) {
-        const { data: ejecData } = await supabase
-          .from('usuarios').select('nombre_completo, nombre').eq('id', grupoResult.ejecutivo_id).maybeSingle();
-        nombreEjecutivo = ejecData?.nombre_completo || ejecData?.nombre || null;
-      }
-
-      const descripcionCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'descripcion');
-      const mapeoDescripcion = descripcionCampo ? mapeo.find(m => m.campo_id === descripcionCampo.id) : undefined;
-      const instrucciones = (mapeoDescripcion?.fuente === 'template' && mapeoDescripcion.valor_template)
-        ? resolverTemplatePremium(mapeoDescripcion.valor_template, params.agente, params.form, evento.nombre)
-        : (resolverTemplatePremium(trigger.descripcion_template, params.agente, params.form, evento.nombre)
-          || `${trigger.nombre} — ${params.agente.nombre} ${params.agente.apellidos}`);
-
-      // Deduplicación: si ya existe un ticket abierto del mismo tipo para este agente, omitir
-      const { data: existentes } = await supabase
+  const resultado = await crearTramitesDesdeTriggers({
+    triggers,
+    mapeoDe: obtenerMapeoCamposTriggerPremium,
+    resolverPlantilla: (texto) => resolverTemplatePremium(texto, params.agente, params.form, evento.nombre),
+    agenteId: params.agente.id,
+    usuarioId: params.usuarioId,
+    usuarioNombre: params.usuarioNombre,
+    columnasExtra: { agente_usuario_id: params.agente.id },
+    descripcionPorDefecto: (t) => `${t.nombre} — ${params.agente.nombre} ${params.agente.apellidos}`,
+    // Un Premium se cobra una vez por periodo: si ya hay un trámite abierto de
+    // ese tipo para el agente, no se levanta otro.
+    yaExiste: async (tipoValue) => {
+      const { data } = await supabase
         .from('tickets')
         .select('folio, ticket_estatus(clasificacion)')
         .eq('agente_id', params.agente.id)
-        .eq('tipo_tramite', tipoInfo.value);
-      const existenteActivo = (existentes ?? []).find((t: any) =>
-        t.ticket_estatus?.clasificacion !== 'terminacion'
-      );
-      if (existenteActivo) {
-        resultado.omitidos.push({ folio: existenteActivo.folio, tipoLabel: tipoInfo.label });
-        continue;
-      }
-
-      const { data: ticket, error: ticketError } = await supabase.from('tickets').insert({
-        tipo_tramite: tipoInfo.value,
-        estatus_id: estatusIniciado.id,
-        prioridad: 'Media',
-        instrucciones,
-        creado_por: params.usuarioId,
-        modificado_por: params.usuarioId,
-        agente_id: params.agente.id,
-        agente_usuario_id: params.agente.id,
-        assigned_to_user_id: grupoResult?.ejecutivo_id ?? null,
-        grupo_asignado_id: grupoResult?.grupo_id ?? null,
-      }).select().single();
-      if (ticketError || !ticket) throw ticketError;
-
-      const respuestasAuto: ReturnType<typeof construirRespuesta>[] = [];
-      const areaCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'area');
-      if (areaCampo && tipoInfo.area) respuestasAuto.push(construirRespuesta(ticket.id, areaCampo.id, 'area', tipoInfo.area));
-      const equipoCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'equipo');
-      if (equipoCampo && nombreGrupo) respuestasAuto.push(construirRespuesta(ticket.id, equipoCampo.id, 'equipo', nombreGrupo));
-      const creadoPorCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'creado_por');
-      if (creadoPorCampo && params.usuarioNombre) respuestasAuto.push(construirRespuesta(ticket.id, creadoPorCampo.id, 'creado_por', params.usuarioNombre));
-      const asignadoACampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'asignado_a');
-      if (asignadoACampo && nombreEjecutivo) respuestasAuto.push(construirRespuesta(ticket.id, asignadoACampo.id, 'asignado_a', nombreEjecutivo));
-
-      const respuestasMapeo = mapeo
-        .filter(m => m.fuente === 'template' && m.valor_template)
-        .map(m => {
-          const campoInfo = (camposDelTipo ?? []).find((c: any) => c.id === m.campo_id);
-          const valor = resolverTemplatePremium(m.valor_template as string, params.agente, params.form, evento.nombre);
-          return construirRespuesta(ticket.id, m.campo_id, campoInfo?.tipo ?? 'texto_corto', valor);
-        });
-
-      const todasRespuestas = [...respuestasAuto, ...respuestasMapeo];
-      if (todasRespuestas.length > 0) {
-        await supabase.from('tramite_respuestas').insert(todasRespuestas);
-      }
-
-      // Adjuntar comprobante PDF al ticket (fire-and-forget)
+        .eq('tipo_tramite', tipoValue);
+      type FilaTicket = { folio: string; ticket_estatus?: { clasificacion?: string | null } | null };
+      const abierto = (data as FilaTicket[] | null ?? []).find(t => t.ticket_estatus?.clasificacion !== 'terminacion');
+      return abierto ? { folio: abierto.folio as string } : null;
+    },
+    adjuntar: async ({ ticketId, folio, tipoLabel }) => {
+      // Fuera del await a propósito: si la generación del PDF falla, el trámite
+      // ya quedó creado y no tiene por qué perderse.
       adjuntarComprobantePremium({
-        ticketId: ticket.id,
-        folio: ticket.folio,
-        fechaCreacion: ticket.fecha_creacion,
-        tipoLabel: tipoInfo.label,
+        ticketId,
+        folio,
+        fechaCreacion: new Date().toISOString(),
+        tipoLabel,
         agente: params.agente,
         form: params.form,
         usuarioId: params.usuarioId,
         creadorNombre: params.usuarioNombre || '—',
       }).catch(err => console.error('[MKT] adjuntarComprobantePremium:', err));
+    },
+  });
 
-      resultado.creados.push({ folio: ticket.folio, tipoLabel: tipoInfo.label });
-    } catch (err: any) {
-      console.error(`[MktPremium] Error creando trámite del trigger "${trigger.nombre}":`, err);
-      resultado.errores.push({ nombre: trigger.nombre as string, error: err?.message || 'error desconocido' });
-    }
-  }
+  // `totalTriggers` cuenta las del evento, aplicadas o no: es lo que la pantalla
+  // usa para decir "ninguna regla aplicó por el método de pago".
+  resultado.totalTriggers = todos.length;
   return resultado;
 }

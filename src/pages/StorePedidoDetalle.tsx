@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2, Settings } from 'lucide-react';
 import { BaseModal } from '../components/BaseModal';
 import { PageHeader } from '@/components/ui/page-header';
-import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, obtenerCamposTramiteTipo, parsearCapasPersonalizacion, IMAGEN_FINAL_PERSONALIZACION_KEY } from '../lib/storeUtils';
+import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, parsearCapasPersonalizacion, IMAGEN_FINAL_PERSONALIZACION_KEY } from '../lib/storeUtils';
 import { PersonalizacionPreview } from '../components/store/PersonalizarLogoScreen';
 import type { StorePedidoCompleto, StoreEstatusPedido, StoreMetodoPago, StoreParcialidad, StoreFrecuenciaPago, StoreMetodoPagoCombinacion, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES } from '../lib/storeTypes';
@@ -12,6 +12,10 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { generarFolioOC, generarPDFOrdenCompra, subirPDFOrdenCompra, validarDatosPagoCompletos } from '../lib/storePdfOrdenCompra';
 import { supabase } from '../lib/supabase';
+import {
+  crearTramitesDesdeTriggers, filtrarTriggersPorPago,
+  type TriggerBase, type ResultadoTriggers,
+} from '../lib/tramiteTriggers';
 
 export default function StorePedidoDetalle() {
   const { usuario } = useAuth();
@@ -330,170 +334,77 @@ export default function StorePedidoDetalle() {
   // Mismos "tipos de texto" que usa TramiteDetalle.tsx/NuevoTramiteModal.tsx para decidir en qué
   // columna de tramite_respuestas vive el valor de cada campo del FormBuilder. Si no coincide con
   // la columna que se lee al mostrar el campo, el campo aparece vacío aunque sí se haya guardado.
-  const TEXTO_TIPOS_TRIGGER = ['texto_corto', 'texto_largo', 'area', 'equipo',
-    'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
-    'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
-
-  const construirRespuesta = (tramiteId: string, campoId: string, tipoCampo: string, valor: unknown) => ({
-    tramite_id: tramiteId,
-    campo_id: campoId,
-    valor_texto: TEXTO_TIPOS_TRIGGER.includes(tipoCampo) ? String(valor) : null,
-    valor_numerico: ['numerico', 'porcentaje'].includes(tipoCampo) ? Number(valor) : null,
-    valor_fecha: tipoCampo === 'fecha' ? String(valor) : null,
-    valor_booleano: tipoCampo === 'booleano' ? Boolean(valor) : null,
-    valor_json: !TEXTO_TIPOS_TRIGGER.includes(tipoCampo) && !['numerico', 'porcentaje', 'fecha', 'booleano'].includes(tipoCampo) ? valor : null,
-  });
-
   const dispararTriggersEstatus = async (nuevoEstatusId: string, nombreEstatus: string) => {
-    const resultado = { creados: [] as { folio: string; tipoLabel: string }[], omitidos: [] as { folio: string; tipoLabel: string }[], errores: [] as { nombre: string; error: string }[], totalTriggers: 0, triggersAplicados: 0 };
-    if (!pedidoId || !usuario?.id || !pedido) return resultado;
+    const vacio: ResultadoTriggers = { creados: [], omitidos: [], errores: [], totalTriggers: 0, triggersAplicados: 0 };
+    if (!pedidoId || !usuario?.id || !pedido) return vacio;
+
     const { data: triggersRaw } = await supabase
       .from('store_tramite_triggers')
       .select('*, ticket_tipos!inner(id, value, label, area)')
       .eq('estatus_destino_id', nuevoEstatusId)
       .eq('activo', true);
-    resultado.totalTriggers = triggersRaw?.length ?? 0;
-    // Filtrar por método/forma de pago del pedido si el trigger los restringe
-    // (null o arreglo vacío = cualquiera; ahora son arreglos, un trigger puede
-    // aplicar a varios métodos/formas a la vez)
-    const triggers = (triggersRaw ?? []).filter(t =>
-      (!t.metodo_pago_filtro?.length || t.metodo_pago_filtro.includes(pedido.metodo_pago)) &&
-      (!t.forma_pago_filtro?.length || t.forma_pago_filtro.includes(pedido.forma_pago))
-    );
-    resultado.triggersAplicados = triggers.length;
-    if (triggers.length === 0) return resultado;
 
-    const { data: estatusIniciado } = await supabase
-      .from('ticket_estatus').select('id').eq('nombre', 'Iniciado').maybeSingle();
-    if (!estatusIniciado) {
-      resultado.errores.push({ nombre: '(config)', error: 'No se encontró el estatus "Iniciado" en el sistema' });
-      return resultado;
-    }
+    const todos = (triggersRaw ?? []) as unknown as TriggerBase[];
+    const triggers = filtrarTriggersPorPago(todos, {
+      metodo: pedido.metodo_pago,
+      forma: pedido.forma_pago,
+    });
 
     const folio = pedido.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
-    for (const trigger of triggers) {
-      try {
-        const tipoInfo = trigger.ticket_tipos as { id: string; value: string; label: string; area: string };
-        const camposDelTipo = await obtenerCamposTramiteTipo(tipoInfo.id);
-        const mapeo = await obtenerMapeoCamposTrigger(trigger.id as string);
 
-        // Equipo/ejecutivo según las reglas de asignación del tipo de trámite, usando al
-        // dueño del pedido como el "agente" que determina la regla (igual que Nuevo Trámite)
-        const { data: grupoRow } = await supabase.rpc('get_grupo_para_ticket', {
-          p_agente_id: pedido.usuario_id,
-          p_tipo_tramite: tipoInfo.value,
-        });
-        const grupoResult = Array.isArray(grupoRow) && grupoRow.length > 0
-          ? grupoRow[0] as { grupo_id: string; ejecutivo_id: string | null }
-          : null;
-
-        let nombreGrupo: string | null = null;
-        if (grupoResult?.grupo_id) {
-          const { data: grupoData } = await supabase
-            .from('tramites_grupos_visualizacion').select('nombre').eq('id', grupoResult.grupo_id).single();
-          nombreGrupo = grupoData?.nombre ?? null;
-        }
-        let nombreEjecutivo: string | null = null;
-        if (grupoResult?.ejecutivo_id) {
-          const { data: ejecData } = await supabase
-            .from('usuarios').select('nombre_completo, nombre').eq('id', grupoResult.ejecutivo_id).maybeSingle();
-          nombreEjecutivo = ejecData?.nombre_completo || ejecData?.nombre || null;
-        }
-
-        // "Descripción / Notas" del FormBuilder tiene prioridad sobre la plantilla legacy del
-        // trigger si el admin la mapeó explícitamente en la sección de campos
-        const descripcionCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'descripcion');
-        const mapeoDescripcion = descripcionCampo ? mapeo.find(m => m.campo_id === descripcionCampo.id) : undefined;
-        const descripcionLegacy = (trigger.descripcion_template as string || '')
+    const resultado = await crearTramitesDesdeTriggers({
+      triggers,
+      mapeoDe: obtenerMapeoCamposTrigger,
+      resolverPlantilla: (texto) => resolverTemplatePedido(texto, pedido),
+      // El "agente" que decide el equipo responsable es el DUEÑO del pedido, no
+      // quien cambió el estatus — igual que en "Nuevo Trámite".
+      agenteId: pedido.usuario_id,
+      usuarioId: usuario.id,
+      usuarioNombre: usuario.nombre_completo || usuario.nombre || '',
+      columnasExtra: { store_pedido_id: pedidoId },
+      descripcionPorDefecto: (t) =>
+        // La plantilla legacy del trigger usa dos placeholders propios que no
+        // vienen del pedido, por eso se resuelven aquí y no en resolverTemplatePedido.
+        (t.descripcion_template || '')
           .replace(/\{\{folio\}\}/g, folio)
-          .replace(/\{\{estatus\}\}/g, nombreEstatus);
-        const instrucciones = (mapeoDescripcion?.fuente === 'template' && mapeoDescripcion.valor_template)
-          ? resolverTemplatePedido(mapeoDescripcion.valor_template, pedido)
-          : (descripcionLegacy || `${trigger.nombre} — Pedido ${folio}`);
-
-        // Deduplicación: si ya existe un ticket del mismo tipo para este pedido, omitir
-        const { data: existente } = await supabase
+          .replace(/\{\{estatus\}\}/g, nombreEstatus)
+        || `${t.nombre} — Pedido ${folio}`,
+      yaExiste: async (tipoValue) => {
+        const { data } = await supabase
           .from('tickets')
           .select('folio')
           .eq('store_pedido_id', pedidoId)
-          .eq('tipo_tramite', tipoInfo.value)
+          .eq('tipo_tramite', tipoValue)
           .maybeSingle();
-        if (existente) {
-          resultado.omitidos.push({ folio: existente.folio, tipoLabel: tipoInfo.label });
-          continue;
+        return data ? { folio: data.folio as string } : null;
+      },
+      adjuntar: async ({ mapeo, ticketId }) => {
+        // La Orden de Compra solo se adjunta si el admin mapeó un campo a ella.
+        if (!mapeo.some(m => m.fuente === 'adjunto_oc')) return;
+        let folioOC = pedido.folio_oc;
+        if (!folioOC) {
+          folioOC = await generarFolioOC();
+          await supabase.from('store_pedidos').update({
+            folio_oc: folioOC,
+            oc_generada_por: usuario.id,
+            oc_generada_en: new Date().toISOString(),
+          }).eq('id', pedidoId);
         }
+        const archivo = await subirPDFOrdenCompra({ ...pedido, folio_oc: folioOC }, ticketId);
+        await supabase.from('ticket_archivos').insert({
+          ticket_id: ticketId,
+          usuario_id: usuario.id,
+          nombre: archivo.nombre,
+          url: archivo.url,
+          tipo: archivo.tipo,
+          tamano: archivo.tamano,
+        });
+      },
+    });
 
-        const { data: ticket, error: ticketError } = await supabase.from('tickets').insert({
-          tipo_tramite: tipoInfo.value,
-          estatus_id: estatusIniciado.id,
-          prioridad: 'Media',
-          instrucciones,
-          creado_por: usuario.id,
-          modificado_por: usuario.id,
-          agente_id: pedido.usuario_id,
-          assigned_to_user_id: grupoResult?.ejecutivo_id ?? null,
-          grupo_asignado_id: grupoResult?.grupo_id ?? null,
-          store_pedido_id: pedidoId,
-        }).select().single();
-        if (ticketError || !ticket) throw ticketError;
-
-        // Autofill de los campos fijos del FormBuilder (mismo criterio que "Nuevo Trámite"):
-        // Área viene del tipo de trámite, Equipo/Asignar a de las reglas de asignación,
-        // Creado Por es quien disparó el cambio de estatus (no el dueño del pedido)
-        const respuestasAuto: ReturnType<typeof construirRespuesta>[] = [];
-        const areaCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'area');
-        if (areaCampo && tipoInfo.area) respuestasAuto.push(construirRespuesta(ticket.id, areaCampo.id, 'area', tipoInfo.area));
-        const equipoCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'equipo');
-        if (equipoCampo && nombreGrupo) respuestasAuto.push(construirRespuesta(ticket.id, equipoCampo.id, 'equipo', nombreGrupo));
-        const creadoPorCampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'creado_por');
-        if (creadoPorCampo) respuestasAuto.push(construirRespuesta(ticket.id, creadoPorCampo.id, 'creado_por', usuario.nombre_completo || usuario.nombre || ''));
-        const asignadoACampo = (camposDelTipo ?? []).find((c: any) => c.sistema_key === 'asignado_a');
-        if (asignadoACampo && nombreEjecutivo) respuestasAuto.push(construirRespuesta(ticket.id, asignadoACampo.id, 'asignado_a', nombreEjecutivo));
-
-        // Mapeo manual del admin -- 'descripcion' también se guarda aquí (además de usarse arriba
-        // para instrucciones) para que "Información del Trámite" la muestre igual que los demás campos
-        const respuestasMapeo = mapeo
-          .filter(m => m.fuente === 'template' && m.valor_template)
-          .map(m => {
-            const campoInfo = (camposDelTipo ?? []).find((c: any) => c.id === m.campo_id);
-            const valor = resolverTemplatePedido(m.valor_template as string, pedido);
-            return construirRespuesta(ticket.id, m.campo_id, campoInfo?.tipo ?? 'texto_corto', valor);
-          });
-
-        const todasRespuestas = [...respuestasAuto, ...respuestasMapeo];
-        if (todasRespuestas.length > 0) {
-          await supabase.from('tramite_respuestas').insert(todasRespuestas);
-        }
-
-        // Adjuntar PDF de Orden de Compra si algún campo está mapeado a 'adjunto_oc'
-        const campoAdjuntoOC = mapeo.find(m => m.fuente === 'adjunto_oc');
-        if (campoAdjuntoOC) {
-          let folioOC = pedido.folio_oc;
-          if (!folioOC) {
-            folioOC = await generarFolioOC();
-            await supabase.from('store_pedidos').update({
-              folio_oc: folioOC,
-              oc_generada_por: usuario.id,
-              oc_generada_en: new Date().toISOString(),
-            }).eq('id', pedidoId);
-          }
-          const archivo = await subirPDFOrdenCompra({ ...pedido, folio_oc: folioOC }, ticket.id);
-          await supabase.from('ticket_archivos').insert({
-            ticket_id: ticket.id,
-            usuario_id: usuario.id,
-            nombre: archivo.nombre,
-            url: archivo.url,
-            tipo: archivo.tipo,
-            tamano: archivo.tamano,
-          });
-        }
-
-        resultado.creados.push({ folio: ticket.folio, tipoLabel: tipoInfo.label });
-      } catch (err: any) {
-        console.error(`[Store] Error creando trámite del trigger "${trigger.nombre}":`, err);
-        resultado.errores.push({ nombre: trigger.nombre as string, error: err?.message || 'error desconocido' });
-      }
-    }
+    // Cuenta las del estatus, aplicadas o no: es lo que el toast usa para decir
+    // "ningún trigger aplicó por el método/forma de pago".
+    resultado.totalTriggers = todos.length;
     return resultado;
   };
 
