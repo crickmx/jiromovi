@@ -140,7 +140,7 @@ export default function CRMContactoPerfil() {
         <p>Contacto no encontrado</p>
         <button
           onClick={() => navigate('/contactos')}
-          className="text-accent hover:underline mt-4"
+          className="text-accent-ink hover:underline mt-4"
         >
           Volver a contactos
         </button>
@@ -164,7 +164,7 @@ export default function CRMContactoPerfil() {
         actions={
           <button
             onClick={() => setShowEditModal(true)}
-            className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
+            className="bg-accent text-accent-foreground px-4 py-2 rounded-lg hover:bg-accent-hover flex items-center gap-2"
           >
             <Edit className="h-4 w-4" />
             Editar
@@ -266,7 +266,7 @@ export default function CRMContactoPerfil() {
                 onClick={() => setTab(t as any)}
                 className={`px-6 py-3 font-medium text-sm whitespace-nowrap flex items-center gap-1.5 ${
                   tab === t
-                    ? 'text-accent border-b-2 border-accent'
+                    ? 'text-accent-ink border-b-2 border-accent'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:text-white'
                 }`}
               >
@@ -322,7 +322,7 @@ export default function CRMContactoPerfil() {
                 <div className="text-center py-12 border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl">
                   <FolderOpen className="h-10 w-10 text-neutral-200 dark:text-neutral-700 mx-auto mb-3" />
                   <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Sin cuenta Seguwallet</p>
-                  <p className="text-xs text-neutral-400 dark:text-white/40 mt-1 max-w-xs mx-auto">
+                  <p className="text-xs text-neutral-500 dark:text-white/55 mt-1 max-w-xs mx-auto">
                     Este contacto no tiene una cuenta Seguwallet asociada. Activa Seguwallet desde la lista de contactos para gestionar su expediente.
                   </p>
                 </div>

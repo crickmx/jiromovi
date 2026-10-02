@@ -172,7 +172,7 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage, initialV
             <ChavaAvatar size="sm" />
             <div>
               <p className="text-sm font-semibold text-white">{stepLabel}</p>
-              <p className="text-[10px]" style={{ color: '#00E5FF' }}>agentedeseguros.ai</p>
+              <p className="text-[11px]" style={{ color: '#00E5FF' }}>agentedeseguros.ai</p>
             </div>
           </div>
           <button
@@ -234,7 +234,7 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage, initialV
                   ].map(({ icon: Icon, label }) => (
                     <div key={label} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <Icon className="w-3 h-3 flex-shrink-0" style={{ color: '#00E5FF' }} />
-                      <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</span>
+                      <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</span>
                     </div>
                   ))}
                 </div>
@@ -308,7 +308,7 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage, initialV
                     autoComplete="one-time-code"
                     className="dark-input text-center tracking-[0.5em] font-mono"
                   />
-                  <p className="text-[10px] mt-1.5 text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>Vence en 10 minutos</p>
+                  <p className="text-[11px] mt-1.5 text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>Vence en 10 minutos</p>
                 </DarkField>
 
                 {error && <DarkError>{error}</DarkError>}
@@ -463,7 +463,7 @@ export default function ChavaAgenteAuthModal({ onClose, pendingMessage, initialV
         {/* Footer */}
         {step !== 'success' && (
           <div className="px-5 py-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <p className="text-[10px] text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            <p className="text-[11px] text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>
               Desarrollado por Grupo JIRO · Seguridad y privacidad garantizadas
             </p>
           </div>

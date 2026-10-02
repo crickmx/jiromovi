@@ -527,7 +527,7 @@ export function TarifasAdminPanel() {
       failed: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300',
     };
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${styles[status] || styles.draft}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${styles[status] || styles.draft}`}>
         {status === 'active' && <CheckCircle className="w-3 h-3" />}
         {status === 'failed' && <XCircle className="w-3 h-3" />}
         {status}
@@ -538,7 +538,7 @@ export function TarifasAdminPanel() {
   return (
     <div className="space-y-6">
       {/* Upload Section */}
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] p-5">
         <div className="flex items-center gap-2 mb-4">
           <Upload className="w-4 h-4 text-teal-600 dark:text-teal-400" />
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Subir Nueva Tarifa</h3>
@@ -567,7 +567,7 @@ export function TarifasAdminPanel() {
               value={versionName}
               onChange={e => setVersionName(e.target.value)}
               placeholder="ej. Enero 2026"
-              className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400"
+              className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white placeholder:text-neutral-500"
             />
           </div>
         </div>
@@ -576,7 +576,7 @@ export function TarifasAdminPanel() {
           <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Archivo Excel</label>
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 px-4 py-2 rounded-lg border border-dashed border-neutral-300 dark:border-white/10 cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors">
-              <Upload className="w-4 h-4 text-neutral-400" />
+              <Upload className="w-4 h-4 text-neutral-500" />
               <span className="text-sm text-neutral-600 dark:text-neutral-400">
                 {selectedFile ? selectedFile.name : 'Seleccionar archivo'}
               </span>
@@ -614,7 +614,7 @@ export function TarifasAdminPanel() {
       </div>
 
       {/* Packages List */}
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] overflow-hidden">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-white/[0.06]">
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4 text-teal-600 dark:text-teal-400" />
@@ -622,7 +622,7 @@ export function TarifasAdminPanel() {
           </div>
           <button
             onClick={loadPackages}
-            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/[0.05] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/[0.05] text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -630,10 +630,10 @@ export function TarifasAdminPanel() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader className="w-5 h-5 animate-spin text-neutral-400" />
+            <Loader className="w-5 h-5 animate-spin text-neutral-500" />
           </div>
         ) : packages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-neutral-500">
+          <div className="flex flex-col items-center justify-center py-12 text-neutral-500 dark:text-neutral-500">
             <Package className="w-10 h-10 mb-3 opacity-40" />
             <p className="text-sm">No hay paquetes de tarifas</p>
           </div>
@@ -668,7 +668,7 @@ export function TarifasAdminPanel() {
                   {(pkg.status === 'draft' || pkg.status === 'active') && (
                     <button
                       onClick={() => handleArchive(pkg)}
-                      className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="p-1.5 rounded-lg text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       title="Archivar"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

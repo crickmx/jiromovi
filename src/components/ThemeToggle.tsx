@@ -75,7 +75,7 @@ export function ThemeToggle({ compact, dropdownSide = 'right', fixedPanel }: The
 
   const buttonClass = compact
     ? "sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90"
-    : "inline-flex items-center justify-center h-10 w-10 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all duration-200 ease-ios";
+    : "inline-flex items-center justify-center h-10 w-10 rounded-xl border border-soft bg-surface-card hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all duration-200 ease-ios";
 
   const dropdownPanel = (
     <div
@@ -90,39 +90,39 @@ export function ThemeToggle({ compact, dropdownSide = 'right', fixedPanel }: The
     >
       <button
         className={`w-full px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center gap-3
-                    ${mode === "light" ? "font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-white/5" : "text-gray-700 dark:text-white/80"}`}
+                    ${mode === "light" ? "font-semibold text-neutral-900 dark:text-white bg-neutral-50 dark:bg-white/5" : "text-neutral-700 dark:text-white/80"}`}
         onClick={() => { updateMode("light"); setOpen(false); }}
         role="menuitem"
       >
         <Sun className="h-4 w-4 flex-shrink-0" />
         <span>Claro</span>
-        {mode === "light" && <span className="ml-auto text-accent dark:text-primary-400">✓</span>}
+        {mode === "light" && <span className="ml-auto text-accent-ink dark:text-primary-400">✓</span>}
       </button>
 
-      <div className="h-px bg-gray-100 dark:bg-white/5" />
+      <div className="h-px bg-neutral-100 dark:bg-white/5" />
 
       <button
         className={`w-full px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center gap-3
-                    ${mode === "dark" ? "font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-white/5" : "text-gray-700 dark:text-white/80"}`}
+                    ${mode === "dark" ? "font-semibold text-neutral-900 dark:text-white bg-neutral-50 dark:bg-white/5" : "text-neutral-700 dark:text-white/80"}`}
         onClick={() => { updateMode("dark"); setOpen(false); }}
         role="menuitem"
       >
         <Moon className="h-4 w-4 flex-shrink-0" />
         <span>Oscuro</span>
-        {mode === "dark" && <span className="ml-auto text-accent dark:text-primary-400">✓</span>}
+        {mode === "dark" && <span className="ml-auto text-accent-ink dark:text-primary-400">✓</span>}
       </button>
 
-      <div className="h-px bg-gray-100 dark:bg-white/5" />
+      <div className="h-px bg-neutral-100 dark:bg-white/5" />
 
       <button
         className={`w-full px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center gap-3
-                    ${mode === "system" ? "font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-white/5" : "text-gray-700 dark:text-white/80"}`}
+                    ${mode === "system" ? "font-semibold text-neutral-900 dark:text-white bg-neutral-50 dark:bg-white/5" : "text-neutral-700 dark:text-white/80"}`}
         onClick={() => { updateMode("system"); setOpen(false); }}
         role="menuitem"
       >
         <Laptop className="h-4 w-4 flex-shrink-0" />
         <span>Automatico</span>
-        {mode === "system" && <span className="ml-auto text-accent dark:text-primary-400">✓</span>}
+        {mode === "system" && <span className="ml-auto text-accent-ink dark:text-primary-400">✓</span>}
       </button>
     </div>
   );
@@ -137,7 +137,7 @@ export function ThemeToggle({ compact, dropdownSide = 'right', fixedPanel }: The
         aria-label="Cambiar tema"
         title="Tema"
       >
-        <Icon className={compact ? "w-[18px] h-[18px]" : "h-5 w-5 text-gray-700 dark:text-white/85"} />
+        <Icon className={compact ? "w-[18px] h-[18px]" : "h-5 w-5 text-neutral-700 dark:text-white/85"} />
       </button>
 
       {open && (

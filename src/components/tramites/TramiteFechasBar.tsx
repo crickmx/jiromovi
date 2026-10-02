@@ -40,12 +40,12 @@ function soloDia(valor: string): string {
 function Dato({ icono, etiqueta, valor, por }: { icono: ReactNode; etiqueta: string; valor: string; por?: string | null }) {
   return (
     <div className="flex items-start gap-1.5 min-w-0">
-      <span className="text-neutral-400 mt-0.5 shrink-0">{icono}</span>
+      <span className="text-neutral-500 mt-0.5 shrink-0">{icono}</span>
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide leading-tight">{etiqueta}</p>
+        <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide leading-tight">{etiqueta}</p>
         <p className="text-xs text-neutral-700 dark:text-neutral-200 leading-tight">
           {valor}
-          {por && <span className="text-neutral-400"> · {por}</span>}
+          {por && <span className="text-neutral-500"> · {por}</span>}
         </p>
       </div>
     </div>

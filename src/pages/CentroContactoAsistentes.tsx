@@ -113,7 +113,7 @@ function ProgressBar({ label, value, total, color }: { label: string; value: num
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-neutral-500">
         <span>{label}</span>
-        <span className="font-medium text-neutral-700">{value} <span className="text-neutral-400">({p}%)</span></span>
+        <span className="font-medium text-neutral-700">{value} <span className="text-neutral-500">({p}%)</span></span>
       </div>
       <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
         <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${p}%` }} />
@@ -137,13 +137,13 @@ function PriorityGroup({ priority, fields }: { priority: CcField['priority']; fi
       </div>
       <div className="space-y-2">
         {fields.map(f => (
-          <div key={f.id} className="bg-white border border-neutral-100 rounded-lg p-3 shadow-sm">
+          <div key={f.id} className="bg-surface-card border border-soft rounded-2xl p-3 shadow-card">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-sm text-neutral-800">{f.label}</span>
-                  <span className="text-[10px] font-mono bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded">{f.field_key}</span>
-                  <span className="text-[10px] text-neutral-400 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded">{f.field_type}</span>
+                  <span className="text-[11px] font-mono bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded">{f.field_key}</span>
+                  <span className="text-[11px] text-neutral-500 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded">{f.field_type}</span>
                 </div>
                 {f.prompt_text && (
                   <p className="mt-1 text-xs text-neutral-500 line-clamp-2">{f.prompt_text}</p>
@@ -151,12 +151,12 @@ function PriorityGroup({ priority, fields }: { priority: CcField['priority']; fi
                 {f.synonyms && f.synonyms.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {f.synonyms.map((s, i) => (
-                      <span key={i} className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full">{s}</span>
+                      <span key={i} className="text-[11px] bg-blue-50 text-accent-ink px-1.5 py-0.5 rounded-full">{s}</span>
                     ))}
                   </div>
                 )}
               </div>
-              <span className="text-[10px] text-neutral-400 shrink-0 mt-0.5">#{f.capture_order}</span>
+              <span className="text-[11px] text-neutral-500 shrink-0 mt-0.5">#{f.capture_order}</span>
             </div>
           </div>
         ))}
@@ -242,12 +242,12 @@ function GenerateModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-md animate-scale-in">
         <div className="p-6 border-b border-neutral-100">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-blue-600" />
+              <Sparkles className="w-5 h-5 text-accent-ink" />
             </div>
             <h2 className="text-lg font-semibold text-neutral-900">Generar desde formularios</h2>
           </div>
@@ -282,7 +282,7 @@ function GenerateModal({
                   <span className="font-medium text-neutral-800">Plantillas activas: </span>
                   {templateCount === null ? <Loader2 className="inline w-3 h-3 animate-spin" /> : templateCount}
                 </p>
-                <p className="text-xs text-neutral-400">Los asistentes existentes no serán modificados.</p>
+                <p className="text-xs text-neutral-500">Los asistentes existentes no serán modificados.</p>
               </div>
               <div className="flex gap-3">
                 <button
@@ -295,7 +295,7 @@ function GenerateModal({
                 <button
                   onClick={handleConfirm}
                   disabled={loading}
-                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:bg-accent-hover transition-colors flex items-center justify-center gap-2"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   Generar
@@ -335,8 +335,8 @@ function DeprecateModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-md animate-scale-in">
         <div className="p-6 border-b border-neutral-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
@@ -344,7 +344,7 @@ function DeprecateModal({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-neutral-900">Deprecar asistente</h2>
-              <p className="text-xs text-neutral-400">{assistant.nombre}</p>
+              <p className="text-xs text-neutral-500">{assistant.nombre}</p>
             </div>
           </div>
         </div>
@@ -410,8 +410,8 @@ function DeleteModal({
   const canDelete = confirm.trim().toLowerCase() === 'eliminar';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-md animate-scale-in">
         <div className="p-6 border-b border-neutral-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
@@ -419,7 +419,7 @@ function DeleteModal({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-neutral-900">Eliminar asistente</h2>
-              <p className="text-xs text-neutral-400">{assistant.nombre}</p>
+              <p className="text-xs text-neutral-500">{assistant.nombre}</p>
             </div>
           </div>
         </div>
@@ -490,7 +490,7 @@ function AssistantCard({
   return (
     <div
       className={cn(
-        'relative bg-white rounded-2xl border transition-all cursor-pointer group',
+        'relative bg-surface-card rounded-2xl border transition-all cursor-pointer group',
         selected
           ? 'border-blue-400 ring-2 ring-blue-100 shadow-md'
           : 'border-neutral-100 hover:border-neutral-200 hover:shadow-md shadow-sm',
@@ -505,12 +505,12 @@ function AssistantCard({
             'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
             isDeprecated ? 'bg-neutral-100' : assistant.generated_from_form ? 'bg-blue-50' : 'bg-neutral-100'
           )}>
-            <Bot className={cn('w-5 h-5', isDeprecated ? 'text-neutral-400' : assistant.generated_from_form ? 'text-blue-600' : 'text-neutral-500')} />
+            <Bot className={cn('w-5 h-5', isDeprecated ? 'text-neutral-500' : assistant.generated_from_form ? 'text-accent-ink' : 'text-neutral-500')} />
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-sm text-neutral-900 truncate leading-snug">{assistant.nombre}</h3>
             {assistant.form_type_cache && (
-              <p className="text-[11px] text-neutral-400 mt-0.5 truncate">{assistant.form_type_cache}</p>
+              <p className="text-[11px] text-neutral-500 mt-0.5 truncate">{assistant.form_type_cache}</p>
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -533,7 +533,7 @@ function AssistantCard({
         </div>
 
         {/* Stats row */}
-        <div className="flex items-center gap-4 text-xs text-neutral-400 mb-3">
+        <div className="flex items-center gap-4 text-xs text-neutral-500 mb-3">
           <span className="flex items-center gap-1">
             <List className="w-3 h-3" />
             {assistant.field_count ?? 0} campos
@@ -553,7 +553,7 @@ function AssistantCard({
             <button
               onClick={onSelect}
               title="Ver detalle"
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs text-neutral-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs text-neutral-500 hover:text-accent-ink hover:bg-blue-50 rounded-lg transition-colors"
             >
               <Eye className="w-3.5 h-3.5" />
               Ver
@@ -589,7 +589,7 @@ function AssistantCard({
               <button
                 onClick={onDelete}
                 title="Eliminar permanentemente"
-                className="flex items-center justify-center gap-1 py-1.5 px-2 text-xs text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="flex items-center justify-center gap-1 py-1.5 px-2 text-xs text-neutral-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -672,19 +672,19 @@ function DetailPanel({
       <div className="p-5 border-b border-neutral-100 shrink-0">
         <div className="flex items-start gap-3">
           <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center shrink-0', assistant.generated_from_form ? 'bg-blue-50' : 'bg-neutral-100')}>
-            <Bot className={cn('w-5 h-5', assistant.generated_from_form ? 'text-blue-600' : 'text-neutral-500')} />
+            <Bot className={cn('w-5 h-5', assistant.generated_from_form ? 'text-accent-ink' : 'text-neutral-500')} />
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="font-semibold text-neutral-900 text-sm leading-snug truncate">{assistant.nombre}</h2>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {assistant.generated_from_form ? <Badge label="Formulario" variant="blue" /> : <Badge label="Manual" variant="neutral" />}
               {assistant.deprecated_at && <Badge label="Deprecado" variant="amber" />}
-              <span className={cn('text-[11px] font-medium', assistant.is_active ? 'text-green-600' : 'text-neutral-400')}>
+              <span className={cn('text-[11px] font-medium', assistant.is_active ? 'text-green-600' : 'text-neutral-500')}>
                 {assistant.is_active ? 'Activo' : 'Inactivo'}
               </span>
             </div>
           </div>
-          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-700 p-1 rounded-lg hover:bg-neutral-100 transition-colors">
+          <button onClick={onClose} className="text-neutral-500 hover:text-neutral-700 p-1 rounded-lg hover:bg-neutral-100 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -699,7 +699,7 @@ function DetailPanel({
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg -mb-px border-b-2 transition-colors',
               tab === t.key
-                ? 'text-blue-600 border-blue-500 bg-blue-50/50'
+                ? 'text-accent-ink border-accent bg-blue-50/50'
                 : 'text-neutral-500 border-transparent hover:text-neutral-700 hover:bg-neutral-50'
             )}
           >
@@ -733,7 +733,7 @@ function DetailPanel({
                 value={form.nombre ?? ''}
                 onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
                 disabled={!isAdmin}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-neutral-50 disabled:text-neutral-500"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-neutral-50 disabled:text-neutral-500"
               />
             </Field>
 
@@ -743,7 +743,7 @@ function DetailPanel({
                 onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
                 disabled={!isAdmin}
                 rows={2}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-neutral-50 disabled:text-neutral-500 resize-none"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-neutral-50 disabled:text-neutral-500 resize-none"
               />
             </Field>
 
@@ -753,7 +753,7 @@ function DetailPanel({
                 onChange={e => setForm(f => ({ ...f, system_prompt: e.target.value }))}
                 disabled={!isAdmin}
                 rows={4}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-neutral-50 disabled:text-neutral-500 resize-none"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-neutral-50 disabled:text-neutral-500 resize-none"
               />
             </Field>
 
@@ -763,7 +763,7 @@ function DetailPanel({
                   value={form.model ?? ''}
                   onChange={e => setForm(f => ({ ...f, model: e.target.value }))}
                   disabled={!isAdmin}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-neutral-50 disabled:text-neutral-500"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-neutral-50 disabled:text-neutral-500"
                 />
               </Field>
               <Field label="Idioma">
@@ -771,7 +771,7 @@ function DetailPanel({
                   value={form.language ?? 'es'}
                   onChange={e => setForm(f => ({ ...f, language: e.target.value }))}
                   disabled={!isAdmin}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-neutral-50 disabled:text-neutral-500 bg-white"
+                  className="w-full border border-soft rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-neutral-50 disabled:text-neutral-500 bg-surface-card"
                 >
                   <option value="es">Español</option>
                   <option value="en">Inglés</option>
@@ -786,7 +786,7 @@ function DetailPanel({
                   onClick={() => isAdmin && setForm(f => ({ ...f, auto_create_tramite: !f.auto_create_tramite }))}
                   className={cn(
                     'w-10 h-5 rounded-full transition-colors relative',
-                    form.auto_create_tramite ? 'bg-blue-500' : 'bg-neutral-300',
+                    form.auto_create_tramite ? 'bg-accent' : 'bg-neutral-300',
                     !isAdmin && 'opacity-50 cursor-not-allowed'
                   )}
                 >
@@ -800,7 +800,7 @@ function DetailPanel({
                       value={form.tramite_tipo ?? ''}
                       onChange={e => setForm(f => ({ ...f, tramite_tipo: e.target.value }))}
                       disabled={!isAdmin}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-neutral-50 bg-white"
+                      className="w-full border border-soft rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-neutral-50 bg-surface-card"
                     />
                   </Field>
                   <Field label="Prioridad">
@@ -808,7 +808,7 @@ function DetailPanel({
                       value={form.tramite_prioridad ?? 'media'}
                       onChange={e => setForm(f => ({ ...f, tramite_prioridad: e.target.value }))}
                       disabled={!isAdmin}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-neutral-50 bg-white"
+                      className="w-full border border-soft rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-neutral-50 bg-surface-card"
                     >
                       <option value="baja">Baja</option>
                       <option value="media">Media</option>
@@ -840,7 +840,7 @@ function DetailPanel({
                 <Loader2 className="w-6 h-6 animate-spin text-neutral-300" />
               </div>
             ) : fields.length === 0 ? (
-              <div className="text-center py-12 text-neutral-400">
+              <div className="text-center py-12 text-neutral-500">
                 <List className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">Sin campos configurados</p>
               </div>
@@ -852,7 +852,7 @@ function DetailPanel({
               </div>
             )}
             {isAdmin && (
-              <button className="mt-3 w-full py-2 border-2 border-dashed border-neutral-200 text-neutral-400 hover:border-blue-300 hover:text-blue-500 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
+              <button className="mt-3 w-full py-2 border-2 border-dashed border-neutral-200 text-neutral-500 hover:border-blue-300 hover:text-blue-500 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
                 <Plus className="w-4 h-4" />
                 Agregar campo
               </button>
@@ -877,7 +877,7 @@ function DetailPanel({
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                     disabled={!isAdmin}
                     rows={3}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-neutral-50 disabled:text-neutral-500 resize-none"
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-neutral-50 disabled:text-neutral-500 resize-none"
                   />
                 </Field>
               );
@@ -906,7 +906,7 @@ function DetailPanel({
               ].map(s => (
                 <div key={s.label} className="bg-neutral-50 rounded-xl p-3 text-center">
                   <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
-                  <p className="text-[11px] text-neutral-400 mt-0.5 leading-tight">{s.label}</p>
+                  <p className="text-[11px] text-neutral-500 mt-0.5 leading-tight">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -1047,7 +1047,7 @@ export default function CentroContactoAsistentes() {
   ];
 
   return (
-    <div className="flex h-full min-h-screen bg-neutral-50 dark:bg-neutral-950">
+    <div className="flex h-full min-h-screen dark:bg-neutral-950">
       {/* Main area */}
       <div className={cn('flex-1 flex flex-col min-w-0 transition-all', selected ? 'mr-[420px]' : '')}>
 
@@ -1069,7 +1069,7 @@ export default function CentroContactoAsistentes() {
                   </Link>
                   <button
                     onClick={() => setShowGenerate(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+                    className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:bg-accent-hover transition-colors shadow-sm shadow-blue-200"
                   >
                     <Sparkles className="w-4 h-4" />
                     Generar desde formularios
@@ -1097,13 +1097,13 @@ export default function CentroContactoAsistentes() {
         <div className="bg-white border-b border-neutral-100 px-6 py-3">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
               <input
                 type="text"
                 placeholder="Buscar asistente..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-neutral-50"
+                className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 bg-neutral-50"
               />
             </div>
             <div className="flex items-center gap-1 bg-neutral-100 rounded-xl p-1 flex-wrap">
@@ -1121,11 +1121,11 @@ export default function CentroContactoAsistentes() {
               ))}
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-xs text-neutral-400">Ordenar:</span>
+              <span className="text-xs text-neutral-500">Ordenar:</span>
               <select
                 value={sortKey}
                 onChange={e => setSortKey(e.target.value as SortKey)}
-                className="border border-neutral-200 rounded-lg px-2 py-1.5 text-xs text-neutral-600 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="border border-soft rounded-lg px-2 py-1.5 text-xs text-neutral-600 bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent/40"
               >
                 <option value="nombre">Nombre</option>
                 <option value="created_at">Fecha</option>
@@ -1142,7 +1142,7 @@ export default function CentroContactoAsistentes() {
               <Loader2 className="w-8 h-8 animate-spin text-neutral-300" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-neutral-400">
+            <div className="flex flex-col items-center justify-center py-24 text-neutral-500">
               <Bot className="w-12 h-12 mb-3 opacity-20" />
               <p className="text-sm">No se encontraron asistentes</p>
               {search && (

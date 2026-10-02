@@ -279,13 +279,13 @@ export function Vacaciones() {
       />
 
       {(isEmpleado || isGerente) && (
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
           <div className="flex items-center justify-between mb-5">
             <div>
               <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Mis Dias Disponibles</h2>
-              <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">Dias de vacaciones que puedes solicitar</p>
+              <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">Dias de vacaciones que puedes solicitar</p>
             </div>
-            <div className="bg-accent/10 text-accent px-5 py-3 rounded-xl text-center">
+            <div className="bg-accent/10 text-accent-ink px-5 py-3 rounded-xl text-center">
               <div className="text-3xl font-bold">{diasDisponibles}</div>
               <div className="text-xs font-medium opacity-70">dias</div>
             </div>
@@ -297,7 +297,7 @@ export function Vacaciones() {
       )}
 
       {isGerente && solicitudesPendientes.length > 0 && (
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
           <h2 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">
             Solicitudes Pendientes ({solicitudesPendientes.length})
           </h2>
@@ -326,7 +326,7 @@ export function Vacaciones() {
                   </span>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
                     Comentarios (opcional)
                   </label>
                   <textarea
@@ -362,12 +362,12 @@ export function Vacaciones() {
       )}
 
       {isAdmin && (
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
           <h2 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">
             Solicitudes Preaprobadas ({solicitudesPreaprobadas.length})
           </h2>
           {solicitudesPreaprobadas.length === 0 ? (
-            <div className="text-center py-8 text-neutral-500 dark:text-white/40">
+            <div className="text-center py-8 text-neutral-500 dark:text-white/55">
               <AlertCircle className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/20" />
               <p>No hay solicitudes preaprobadas pendientes de autorización</p>
             </div>
@@ -402,7 +402,7 @@ export function Vacaciones() {
                   </span>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
                     Comentarios (opcional)
                   </label>
                   <textarea
@@ -439,10 +439,10 @@ export function Vacaciones() {
       )}
 
       {isGerente && (
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
           <h2 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">Mis Solicitudes de Vacaciones</h2>
           {misSolicitudes.filter(s => s.usuario_id === currentUser?.id).length === 0 ? (
-            <div className="text-center py-8 text-neutral-500 dark:text-white/40">
+            <div className="text-center py-8 text-neutral-500 dark:text-white/55">
               <AlertCircle className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/20" />
               <p>No has solicitado vacaciones aún</p>
             </div>
@@ -486,12 +486,12 @@ export function Vacaciones() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
         <h2 className="text-sm font-bold text-neutral-900 dark:text-white mb-4">
           {isGerente ? 'Solicitudes de la Oficina' : 'Historial de Solicitudes'}
         </h2>
         {(isGerente ? solicitudes.filter(s => s.usuario_id !== currentUser?.id) : solicitudes).length === 0 ? (
-          <div className="text-center py-8 text-neutral-500 dark:text-white/40">
+          <div className="text-center py-8 text-neutral-500 dark:text-white/55">
             <AlertCircle className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/20" />
             <p>No hay solicitudes de vacaciones</p>
           </div>
@@ -501,20 +501,20 @@ export function Vacaciones() {
               <thead className="bg-neutral-50 dark:bg-white/5">
                 <tr>
                   {!isEmpleado && (
-                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/55 uppercase">
                       Empleado
                     </th>
                   )}
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/55 uppercase">
                     Periodo
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/55 uppercase">
                     Días
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/55 uppercase">
                     Estado
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/40 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/55 uppercase">
                     Comentarios
                   </th>
                 </tr>
@@ -524,17 +524,17 @@ export function Vacaciones() {
                   <tr key={solicitud.id} className="hover:bg-neutral-50 dark:bg-white/5">
                     {!isEmpleado && (
                       <td className="px-4 py-3 text-sm">
-                        <div className="font-medium text-slate-900">
+                        <div className="font-medium text-neutral-900">
                           {solicitud.empleado?.nombre_completo}
                         </div>
-                        <div className="text-slate-600">{solicitud.empleado?.email_laboral}</div>
+                        <div className="text-neutral-600">{solicitud.empleado?.email_laboral}</div>
                       </td>
                     )}
-                    <td className="px-4 py-3 text-sm text-slate-900">
+                    <td className="px-4 py-3 text-sm text-neutral-900">
                       <div>{formatearFecha(solicitud.fecha_inicio)}</div>
-                      <div className="text-slate-600">{formatearFecha(solicitud.fecha_fin)}</div>
+                      <div className="text-neutral-600">{formatearFecha(solicitud.fecha_fin)}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                    <td className="px-4 py-3 text-sm font-medium text-neutral-900">
                       {solicitud.dias_solicitados}
                     </td>
                     <td className="px-4 py-3">
@@ -564,15 +564,15 @@ export function Vacaciones() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
-            <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900">Solicitar Vacaciones</h2>
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-surface-card rounded-2xl shadow-e4 max-w-md w-full my-8 flex flex-col max-h-[85vh] animate-scale-in">
+            <div className="flex-shrink-0 px-6 py-4 border-b border-neutral-200">
+              <h2 className="text-xl font-bold text-neutral-900">Solicitar Vacaciones</h2>
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <form id="vacaciones-form" onSubmit={handleSubmit}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Fecha de Inicio
                 </label>
                 <input
@@ -580,11 +580,11 @@ export function Vacaciones() {
                   value={formData.fecha_inicio}
                   onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Fecha Final
                 </label>
                 <input
@@ -593,7 +593,7 @@ export function Vacaciones() {
                   onChange={(e) => setFormData({ ...formData, fecha_fin: e.target.value })}
                   required
                   min={formData.fecha_inicio}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                 />
               </div>
               {diasSolicitados > 0 && (
@@ -618,7 +618,7 @@ export function Vacaciones() {
               )}
               </form>
             </div>
-            <div className="flex-shrink-0 border-t border-slate-200 px-6 py-4">
+            <div className="flex-shrink-0 border-t border-neutral-200 px-6 py-4">
               <div className="flex space-x-3">
                 <button
                   type="button"
@@ -626,7 +626,7 @@ export function Vacaciones() {
                     setShowModal(false);
                     setFormData({ fecha_inicio: '', fecha_fin: '' });
                   }}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-neutral-50 dark:bg-white/5 transition"
+                  className="flex-1 px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 dark:bg-white/5 transition"
                 >
                   Cancelar
                 </button>
@@ -634,7 +634,7 @@ export function Vacaciones() {
                   type="submit"
                   form="vacaciones-form"
                   disabled={diasSolicitados > diasDisponibles || diasSolicitados <= 0}
-                  className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Solicitar
                 </button>

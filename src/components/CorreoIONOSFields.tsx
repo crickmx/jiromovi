@@ -161,7 +161,7 @@ export function CorreoIONOSFields({
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-600"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -178,7 +178,7 @@ export function CorreoIONOSFields({
           <button
             onClick={handleVerificarConexion}
             disabled={verificando}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-accent hover:bg-accent-hover text-accent-foreground rounded-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Shield className="w-5 h-5" />
             <span>{verificando ? 'Verificando conexión...' : 'Verificar conexión'}</span>

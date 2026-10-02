@@ -48,12 +48,12 @@ export function DashboardHero({ usuario }: Props) {
       <div className="flex items-center gap-4">
         {/* Text */}
         <div>
-          <p className="text-xs text-neutral-400 dark:text-white/40 font-medium">{greeting}</p>
+          <p className="text-xs text-neutral-500 dark:text-white/55 font-medium">{greeting}</p>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white leading-tight">
             {nombre}
           </h1>
           {oficinaNombre && (
-            <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-white/40 mt-0.5">
+            <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-white/55 mt-0.5">
               <MapPin className="w-3 h-3 flex-shrink-0" />
               {oficinaNombre}
             </span>
@@ -64,7 +64,7 @@ export function DashboardHero({ usuario }: Props) {
       {/* Right: office logo + date */}
       <div className="flex items-center gap-4">
         {/* Date */}
-        <div className="hidden md:flex items-center gap-2 text-xs text-neutral-400 dark:text-white/35">
+        <div className="hidden md:flex items-center gap-2 text-xs text-neutral-500 dark:text-white/50">
           <Calendar className="w-3.5 h-3.5" />
           <span>{dateStr}</span>
         </div>
@@ -73,7 +73,7 @@ export function DashboardHero({ usuario }: Props) {
         {logoUrl && (
           <div className={cn(
             'h-14 max-w-[160px] flex items-center justify-center',
-            'bg-white dark:bg-white/[0.07] rounded-2xl px-4 border border-neutral-200 dark:border-white/10 shadow-sm'
+            'bg-surface-card dark:bg-white/[0.07] rounded-2xl px-4 border border-soft dark:border-white/10 shadow-card'
           )}>
             <img
               src={logoUrl}

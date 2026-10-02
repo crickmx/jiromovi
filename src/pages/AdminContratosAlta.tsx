@@ -45,8 +45,8 @@ export default function AdminContratosAlta() {
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Contratos de Registro AT</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Contratos de Registro AT</h1>
+        <p className="text-sm text-neutral-500 dark:text-gray-400 mt-1">
           Sube el PDF base de cada tipo de agente. Se usa para la firma del contrato en el alta (/registro-at). Reemplaza el anterior al subir uno nuevo.
         </p>
       </div>
@@ -54,21 +54,21 @@ export default function AdminContratosAlta() {
       {TIPOS.map((t) => {
         const st = estado[t.tipo] || 'idle';
         return (
-          <div key={t.tipo} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+          <div key={t.tipo} className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500"><FileText className="w-5 h-5" /></div>
+              <div className="w-10 h-10 rounded-lg bg-neutral-100 dark:bg-gray-700 flex items-center justify-center text-neutral-500"><FileText className="w-5 h-5" /></div>
               <div>
-                <h2 className="font-semibold text-gray-900 dark:text-white">{t.titulo}</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{t.desc}</p>
+                <h2 className="font-semibold text-neutral-900 dark:text-white">{t.titulo}</h2>
+                <p className="text-xs text-neutral-500 dark:text-gray-400">{t.desc}</p>
               </div>
             </div>
             <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-              st === 'ok' ? 'border-emerald-300 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+              st === 'ok' ? 'border-emerald-300 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-neutral-200 dark:border-gray-700 hover:border-gray-300'
             }`}>
               <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${st === 'ok' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
                 {st === 'subiendo' ? <Loader2 className="w-4 h-4 animate-spin" /> : st === 'ok' ? <Check className="w-4 h-4" /> : st === 'error' ? <AlertCircle className="w-4 h-4 text-red-500" /> : <Upload className="w-4 h-4" />}
               </div>
-              <span className="flex-1 text-sm text-gray-700 dark:text-gray-200">
+              <span className="flex-1 text-sm text-neutral-700 dark:text-gray-200">
                 {st === 'ok' ? 'Contrato cargado' : st === 'subiendo' ? 'Subiendo…' : 'Elegir PDF'}
               </span>
               <input type="file" accept="application/pdf" className="hidden" disabled={st === 'subiendo'}

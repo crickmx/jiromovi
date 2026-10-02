@@ -17,9 +17,9 @@ function diasBadgeClass(dias: number): string {
 }
 
 function avanceColorClass(pct: number | null): string {
-  if (pct == null) return 'text-neutral-400';
+  if (pct == null) return 'text-neutral-500';
   if (pct >= 100) return 'text-emerald-600 dark:text-emerald-400';
-  if (pct >= 75) return 'text-blue-600 dark:text-blue-400';
+  if (pct >= 75) return 'text-accent-ink dark:text-blue-400';
   if (pct >= 50) return 'text-amber-600 dark:text-amber-400';
   return 'text-red-600 dark:text-red-400';
 }
@@ -34,33 +34,33 @@ function medalla(rank: number): string {
 function NeighborRow({ row }: { row: Omit<CampaniaGroupRow, 'is_me' | 'prev' | 'next'> }) {
   return (
     <div className="flex items-center gap-2 px-1 py-1 opacity-50">
-      <div className="w-10 shrink-0 text-center text-[11px] font-semibold text-neutral-400">#{row.rank}</div>
+      <div className="w-10 shrink-0 text-center text-[11px] font-semibold text-neutral-500">#{row.rank}</div>
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-medium text-neutral-500 truncate">{row.entity_name}</p>
-        {row.despacho && <p className="text-[10px] text-neutral-400">{row.despacho}</p>}
+        {row.despacho && <p className="text-[11px] text-neutral-500">{row.despacho}</p>}
       </div>
-      <div className="text-[11px] text-neutral-400 shrink-0">{money(row.prima_ponderada)}</div>
+      <div className="text-[11px] text-neutral-500 shrink-0">{money(row.prima_ponderada)}</div>
     </div>
   );
 }
 
 function CampaniaCard({ cd, role }: { cd: CampaniaActiva; role?: string }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 p-4">
+    <div className="rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-neutral-900 p-4">
       {role !== 'vendedor' && cd.equipo_count > 0 && (
         <div className="flex gap-3 mb-3">
           <div className="flex-1 text-center bg-neutral-50 dark:bg-white/5 rounded-lg py-1.5 px-1">
             <div className="text-lg font-extrabold text-[#1B3A6B] dark:text-white">{cd.equipo_count}</div>
-            <div className="text-[9px] text-neutral-400 mt-0.5">participantes<br />del equipo</div>
+            <div className="text-[10.5px] text-neutral-500 mt-0.5">participantes<br />del equipo</div>
           </div>
           <div className="flex-1 text-center bg-neutral-50 dark:bg-white/5 rounded-lg py-1.5 px-1">
             <div className="text-sm font-extrabold text-[#1B3A6B] dark:text-white">{money(cd.equipo_prima_total)}</div>
-            <div className="text-[9px] text-neutral-400 mt-0.5">prima pond.<br />del equipo</div>
+            <div className="text-[10.5px] text-neutral-500 mt-0.5">prima pond.<br />del equipo</div>
           </div>
           {cd.equipo_en_zona > 0 && (
             <div className="flex-1 text-center bg-emerald-50 dark:bg-emerald-950/20 rounded-lg py-1.5 px-1">
               <div className="text-lg font-extrabold text-emerald-600">{cd.equipo_en_zona}</div>
-              <div className="text-[9px] text-neutral-400 mt-0.5">en zona<br />de premio</div>
+              <div className="text-[10.5px] text-neutral-500 mt-0.5">en zona<br />de premio</div>
             </div>
           )}
         </div>
@@ -68,7 +68,7 @@ function CampaniaCard({ cd, role }: { cd: CampaniaActiva; role?: string }) {
 
       <div className="flex items-start justify-between mb-3 gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">Campaña Activa</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Campaña Activa</p>
           <p className="text-[15px] font-extrabold text-[#1B3A6B] dark:text-white truncate mt-0.5" title={cd.nombre}>
             🏆 {cd.nombre}
           </p>
@@ -77,7 +77,7 @@ function CampaniaCard({ cd, role }: { cd: CampaniaActiva; role?: string }) {
           <span className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold', diasBadgeClass(cd.dias_restantes))}>
             <Clock className="w-3 h-3" />{cd.dias_restantes}d
           </span>
-          <p className="text-[10px] text-neutral-400 mt-1">{cd.total_participantes} participantes</p>
+          <p className="text-[11px] text-neutral-500 mt-1">{cd.total_participantes} participantes</p>
         </div>
       </div>
 
@@ -104,10 +104,10 @@ function CampaniaCard({ cd, role }: { cd: CampaniaActiva; role?: string }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-bold text-[#1B3A6B] dark:text-white truncate" title={gr.entity_name}>
                     {gr.entity_name}
-                    {gr.is_me && <span className="text-[10px] font-normal text-indigo-500"> ← tú</span>}
+                    {gr.is_me && <span className="text-[11px] font-normal text-indigo-500"> ← tú</span>}
                   </p>
                   {gr.despacho && !gr.is_me && (
-                    <p className="text-[10px] text-neutral-400">{gr.despacho}</p>
+                    <p className="text-[11px] text-neutral-500">{gr.despacho}</p>
                   )}
                 </div>
                 <div className="text-right shrink-0">
@@ -126,7 +126,7 @@ function CampaniaCard({ cd, role }: { cd: CampaniaActiva; role?: string }) {
       ) : (
         <div className="text-center py-6">
           <UserX className="w-7 h-7 text-neutral-300 mx-auto" />
-          <p className="text-sm text-neutral-400 mt-2">Sin participación en esta campaña</p>
+          <p className="text-sm text-neutral-500 mt-2">Sin participación en esta campaña</p>
         </div>
       )}
     </div>
@@ -138,7 +138,7 @@ export function CampaniasActivasCard() {
 
   if (data === 'loading') {
     return (
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 p-4">
+      <div className="rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-neutral-900 p-4">
         <Sk className="h-5 w-40 mb-4" />
         <Sk className="h-24" />
       </div>
@@ -153,7 +153,7 @@ export function CampaniasActivasCard() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 px-1">
-        <Trophy className="w-4 h-4 text-neutral-400 dark:text-white/40" />
+        <Trophy className="w-4 h-4 text-neutral-500 dark:text-white/55" />
         <h3 className="text-sm font-bold text-neutral-800 dark:text-white/90">Campañas Activas</h3>
       </div>
       {campanias.map(cd => (

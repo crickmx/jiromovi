@@ -73,7 +73,7 @@ function nivelChip(nivel: string) {
     return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">🥇 {nivel}</span>;
   if (n.includes('PLATA'))
     return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-white/60">🥈 {nivel}</span>;
-  return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-400 dark:bg-white/8 dark:text-white/35">En camino</span>;
+  return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500 dark:bg-white/8 dark:text-white/50">En camino</span>;
 }
 
 function estatusChip(label?: string | null) {
@@ -143,7 +143,7 @@ function GerentesPanel() {
       {loading ? (
         <><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /></>
       ) : gerentes.length === 0 ? (
-        <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-6">Sin gerentes activos</p>
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin gerentes activos</p>
       ) : (
         <>
           <div className="flex flex-col">
@@ -159,7 +159,7 @@ function GerentesPanel() {
                   <p className="text-[13px] font-bold text-neutral-900 dark:text-white truncate">
                     {g.nombre} {g.apellidos}
                   </p>
-                  <p className="text-[11px] text-neutral-500 dark:text-white/40 mt-0.5 truncate">{g.oficina_nombre}</p>
+                  <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5 truncate">{g.oficina_nombre}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                   {g.urgentes > 0 ? (
@@ -186,25 +186,25 @@ function GerentesPanel() {
           </div>
 
           <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3 mt-1">
-            <p className="text-[10.5px] font-bold uppercase tracking-wide text-neutral-400 dark:text-white/35 mb-2">Corporativo · resumen</p>
+            <p className="text-[10.5px] font-bold uppercase tracking-wide text-neutral-500 dark:text-white/50 mb-2">Corporativo · resumen</p>
             <div className="flex justify-between">
               <div className="text-center">
                 <p className="text-base font-extrabold text-neutral-900 dark:text-white font-variant-numeric tabular-nums">
                   {gerentes.reduce((s, g) => s + g.total_tickets, 0)}
                 </p>
-                <p className="text-[10.5px] text-neutral-400 dark:text-white/35 mt-0.5">Trámites totales</p>
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Trámites totales</p>
               </div>
               <div className="text-center">
                 <p className={cn('text-base font-extrabold font-variant-numeric tabular-nums', gerentes.some(g => g.urgentes > 0) ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400')}>
                   {gerentes.reduce((s, g) => s + g.urgentes, 0)}
                 </p>
-                <p className="text-[10.5px] text-neutral-400 dark:text-white/35 mt-0.5">Urgentes</p>
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Urgentes</p>
               </div>
               <div className="text-center">
                 <p className="text-base font-extrabold text-neutral-900 dark:text-white">
                   {gerentes.length}
                 </p>
-                <p className="text-[10.5px] text-neutral-400 dark:text-white/35 mt-0.5">Gerentes</p>
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Gerentes</p>
               </div>
             </div>
           </div>
@@ -252,7 +252,7 @@ function ProduccionPanel() {
               <div className="bg-surface-muted dark:bg-white/5 rounded-2xl p-3">
                 <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">Meta anual</p>
                 <p className="text-base font-extrabold text-violet-600 dark:text-violet-400">{money(prod.meta_monto)}</p>
-                <p className="text-[11px] text-neutral-400 dark:text-white/35 mt-1">{prod.meta_pct}% alcanzado</p>
+                <p className="text-[11px] text-neutral-500 dark:text-white/50 mt-1">{prod.meta_pct}% alcanzado</p>
               </div>
             )}
           </div>
@@ -260,7 +260,7 @@ function ProduccionPanel() {
           {prod.meta_monto != null && (
             <div>
               <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-neutral-500 dark:text-white/40">Avance meta corporativa</span>
+                <span className="text-neutral-500 dark:text-white/55">Avance meta corporativa</span>
                 <span className="font-bold text-sky-600 dark:text-sky-400">{prod.meta_pct}%</span>
               </div>
               <div className="h-1.5 bg-neutral-200 dark:bg-white/10 rounded-full overflow-hidden">
@@ -275,7 +275,7 @@ function ProduccionPanel() {
           {renovaciones.length > 0 && (
             <div className="bg-sky-50 dark:bg-sky-950/20 border-l-[3px] border-sky-500 rounded-r-xl p-2.5">
               <p className="text-[11px] font-bold text-neutral-800 dark:text-white">Renovaciones próximas</p>
-              <p className="text-[11px] text-neutral-500 dark:text-white/40">
+              <p className="text-[11px] text-neutral-500 dark:text-white/55">
                 {renovaciones.length} póliza{renovaciones.length !== 1 ? 's' : ''} por renovar
               </p>
             </div>
@@ -285,7 +285,7 @@ function ProduccionPanel() {
         <div className="flex flex-col items-center justify-center py-6 gap-2 text-center">
           <span className="text-2xl">📊</span>
           <p className="text-[11px] font-semibold text-neutral-700 dark:text-white/70">Datos disponibles en</p>
-          <p className="text-[11px] text-neutral-400 dark:text-white/40 leading-relaxed">Central de Producción</p>
+          <p className="text-[11px] text-neutral-500 dark:text-white/55 leading-relaxed">Central de Producción</p>
           <a
             href="/produccion"
             className="text-[11px] font-bold text-sky-600 dark:text-sky-400 underline underline-offset-2 mt-1"
@@ -324,20 +324,20 @@ function MetasPanel() {
               <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">En convención</p>
               <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
                 {ce.en_convencion.length}
-                <span className="text-[11px] font-normal text-neutral-400 dark:text-white/35"> / {ce.total_vendedores}</span>
+                <span className="text-[11px] font-normal text-neutral-500 dark:text-white/50"> / {ce.total_vendedores}</span>
               </p>
-              <p className="text-[11px] text-neutral-400 dark:text-white/35 mt-1">asesores activos</p>
+              <p className="text-[11px] text-neutral-500 dark:text-white/50 mt-1">asesores activos</p>
             </div>
             <div className="bg-surface-muted dark:bg-white/5 rounded-2xl p-3">
               <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">Cerca del nivel</p>
               <p className="text-base font-extrabold text-amber-600 dark:text-amber-400">{ce.cerca.length}</p>
-              <p className="text-[11px] text-neutral-400 dark:text-white/35 mt-1">por alcanzar</p>
+              <p className="text-[11px] text-neutral-500 dark:text-white/50 mt-1">por alcanzar</p>
             </div>
           </div>
 
           {ce.en_convencion.length > 0 && (
             <div>
-              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2">Nivel por asesor</p>
+              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/50 mb-2">Nivel por asesor</p>
               <div className="flex flex-col gap-1.5">
                 {ce.en_convencion.map(v => (
                   <div
@@ -359,11 +359,11 @@ function MetasPanel() {
 
           {ce.cerca.length > 0 && (
             <div>
-              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2">Cerca del siguiente nivel</p>
+              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/50 mb-2">Cerca del siguiente nivel</p>
               {ce.cerca.map(v => (
                 <div key={v.entity} className="bg-emerald-50 dark:bg-emerald-950/20 border-l-[3px] border-emerald-500 rounded-r-xl p-2.5 mb-2">
                   <p className="text-[11px] font-bold text-neutral-800 dark:text-white">{v.entity}</p>
-                  <p className="text-[11px] text-neutral-500 dark:text-white/40">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/55">
                     Falta {money(v.falta_conv)} para {v.sig_conv}
                   </p>
                 </div>
@@ -375,7 +375,7 @@ function MetasPanel() {
         <div className="flex flex-col items-center justify-center py-6 gap-2 text-center">
           <span className="text-2xl">🏆</span>
           <p className="text-[11px] font-semibold text-neutral-700 dark:text-white/70">Datos de convención</p>
-          <p className="text-[11px] text-neutral-400 dark:text-white/40 leading-relaxed">disponibles en Central de Producción</p>
+          <p className="text-[11px] text-neutral-500 dark:text-white/55 leading-relaxed">disponibles en Central de Producción</p>
           <a
             href="/produccion"
             className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 underline underline-offset-2 mt-1"
@@ -468,17 +468,17 @@ function SolicitudesPanel() {
                 >
                   <div className="min-w-0">
                     <p className="text-[12px] font-bold text-neutral-900 dark:text-white font-variant-numeric tabular-nums">{t.folio}</p>
-                    <p className="text-[11px] text-neutral-400 dark:text-white/35 truncate">
+                    <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate">
                       {(t.ticket_tipos as { label: string } | null)?.label ?? t.tipo_tramite}
                     </p>
-                    <p className="text-[11px] text-neutral-500 dark:text-white/40 mt-0.5">👤 {t._agente_nombre}</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">👤 {t._agente_nombre}</p>
                   </div>
                   {estatusChip(t.custom_estatus_label)}
                 </button>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-4">Sin solicitudes abiertas</p>
+            <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-4">Sin solicitudes abiertas</p>
           )}
 
           <button
@@ -488,9 +488,9 @@ function SolicitudesPanel() {
             <div className="w-8 h-8 rounded-lg bg-rose-500/10 grid place-items-center shrink-0 text-sm">📋</div>
             <div className="min-w-0 flex-1">
               <p className="text-[12px] font-semibold text-neutral-900 dark:text-white">Ver todas las solicitudes</p>
-              <p className="text-[11px] text-neutral-400 dark:text-white/35">Bandeja corporativa completa</p>
+              <p className="text-[11px] text-neutral-500 dark:text-white/50">Bandeja corporativa completa</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-white/30 shrink-0" />
+            <ArrowRight className="w-4 h-4 text-neutral-500 dark:text-white/45 shrink-0" />
           </button>
         </>
       )}
@@ -504,7 +504,7 @@ export function DireccionSections({ usuario: _usuario }: { usuario: Usuario }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full border-2 border-neutral-200 dark:border-white/15 bg-white dark:bg-white/5 grid place-items-center text-base">
+        <div className="w-9 h-9 rounded-full border-2 border-soft dark:border-white/15 bg-surface-card dark:bg-white/5 grid place-items-center text-base">
           🏛️
         </div>
         <div>

@@ -73,12 +73,12 @@ export function InsuranceTypesList({ showToast, collapsed = false, onToggleColla
           className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
         >
           {collapsed
-            ? <ChevronRight className="w-5 h-5 text-neutral-400 shrink-0" />
-            : <ChevronDown className="w-5 h-5 text-neutral-400 shrink-0" />}
+            ? <ChevronRight className="w-5 h-5 text-neutral-500 shrink-0" />
+            : <ChevronDown className="w-5 h-5 text-neutral-500 shrink-0" />}
           <Shield className="w-6 h-6 text-green-600 shrink-0" />
           <h2 className="text-xl font-bold text-neutral-900">
             Tipos de Seguro
-            <span className="ml-2 text-sm font-normal text-neutral-400">({insuranceTypes.length})</span>
+            <span className="ml-2 text-sm font-normal text-neutral-500">({insuranceTypes.length})</span>
           </h2>
         </button>
         <button
@@ -92,7 +92,7 @@ export function InsuranceTypesList({ showToast, collapsed = false, onToggleColla
 
       {!collapsed && (
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
           <input
             type="text"
             value={search}
@@ -184,7 +184,7 @@ export function InsuranceTypesList({ showToast, collapsed = false, onToggleColla
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => { setEditingInsType(type.id); setEditInsData({ nombre: type.nombre, descripcion: type.descripcion || '' }); }}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="p-2 text-accent-ink hover:bg-blue-50 rounded-lg transition-colors"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>

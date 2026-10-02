@@ -112,7 +112,7 @@ export default function ConversationSidebar({ activeId, onSelect, onNew, onClose
 
         {/* Multi-platform notice */}
         {isMultiPlatform && (
-          <div className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg mb-2.5" style={{ background: 'rgba(0,229,255,0.05)', border: '1px solid rgba(0,229,255,0.12)', color: 'rgba(0,229,255,0.7)' }}>
+          <div className="flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg mb-2.5" style={{ background: 'rgba(0,229,255,0.05)', border: '1px solid rgba(0,229,255,0.12)', color: 'rgba(0,229,255,0.7)' }}>
             <Globe className="w-3 h-3 flex-shrink-0" />
             Historial unificado de todas tus plataformas
           </div>
@@ -157,7 +157,7 @@ export default function ConversationSidebar({ activeId, onSelect, onNew, onClose
         ) : (
           Object.entries(groups).map(([label, items]) => (
             <div key={label}>
-              <p className="text-[10px] font-medium uppercase tracking-wider px-4 py-2 mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              <p className="text-[11px] font-medium uppercase tracking-wider px-4 py-2 mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
                 {label}
               </p>
               {items.map(conv => {
@@ -184,7 +184,7 @@ export default function ConversationSidebar({ activeId, onSelect, onNew, onClose
                         {conv.titulo || 'Nueva conversación'}
                       </span>
                       {showBadge && (
-                        <span className="inline-flex items-center gap-1 mt-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded-full" style={{ color: badge.color, background: `${badge.color}15`, border: `1px solid ${badge.color}25` }}>
+                        <span className="inline-flex items-center gap-1 mt-0.5 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full" style={{ color: badge.color, background: `${badge.color}15`, border: `1px solid ${badge.color}25` }}>
                           <Smartphone className="w-2 h-2" />
                           {badge.label}
                         </span>

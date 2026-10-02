@@ -277,7 +277,7 @@ export default function StorePedidos() {
             puedeVerReporte ? (
               <button
                 onClick={() => navigate('/store/reporte')}
-                className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-sm"
               >
                 <BarChart3 className="w-4 h-4" />
                 Reporte Ganancias
@@ -288,17 +288,17 @@ export default function StorePedidos() {
         />
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Total Pedidos</p>
                 <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white mt-1">{stats.total}</p>
               </div>
-              <Package className="w-8 h-8 text-accent" />
+              <Package className="w-8 h-8 text-accent-ink" />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Pendientes</p>
@@ -308,17 +308,17 @@ export default function StorePedidos() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Procesando</p>
-                <p className="text-xl sm:text-2xl font-bold text-accent mt-1">{stats.procesando}</p>
+                <p className="text-xl sm:text-2xl font-bold text-accent-ink mt-1">{stats.procesando}</p>
               </div>
-              <Package className="w-8 h-8 text-accent" />
+              <Package className="w-8 h-8 text-accent-ink" />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Entregados</p>
@@ -329,25 +329,25 @@ export default function StorePedidos() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-6">
+        <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 dark:text-white/40 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 dark:text-white/55 w-5 h-5" />
               <input
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar por folio, ID o cliente..."
-                className="w-full pl-10 pr-4 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-neutral-400 dark:text-white/40" />
+              <Filter className="w-5 h-5 text-neutral-500 dark:text-white/55" />
               <select
                 value={filtroEstatus}
                 onChange={(e) => setFiltroEstatus(e.target.value)}
-                className="px-4 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40"
               >
                 <option value="">Todos los estatus</option>
                 {estatusUnicos.map(estatus => (
@@ -372,8 +372,8 @@ export default function StorePedidos() {
         </div>
 
         {pedidosFiltrados.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10">
-            <Package className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+          <div className="text-center py-12 bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10">
+            <Package className="w-16 h-16 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
               {busqueda || filtroEstatus ? 'No se encontraron pedidos' : 'No hay pedidos aún'}
             </h3>
@@ -382,7 +382,7 @@ export default function StorePedidos() {
             </p>
           </div>
         ) : (
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
+          <div className="bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
                 <thead className="bg-neutral-50 dark:bg-white/5">
@@ -409,11 +409,11 @@ export default function StorePedidos() {
                     <tr key={pedido.id} className="hover:bg-neutral-50 dark:bg-white/5">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {pedido.folio_oc ? (
-                          <span className="text-sm font-semibold text-accent bg-primary-50 px-2 py-1 rounded">
+                          <span className="text-sm font-semibold text-accent-ink bg-primary-50 px-2 py-1 rounded">
                             {pedido.folio_oc}
                           </span>
                         ) : (
-                          <span className="text-sm text-neutral-400 dark:text-white/40 italic">
+                          <span className="text-sm text-neutral-500 dark:text-white/55 italic">
                             Pendiente
                           </span>
                         )}
@@ -442,7 +442,7 @@ export default function StorePedidos() {
                         <div className="flex items-center justify-center gap-3">
                           <button
                             onClick={() => navigate(`/store/pedido/${pedido.id}`)}
-                            className="inline-flex items-center gap-1.5 text-accent hover:text-primary-800 font-medium transition-colors"
+                            className="inline-flex items-center gap-1.5 text-accent-ink hover:text-primary-800 font-medium transition-colors"
                             title="Ver detalle del pedido"
                           >
                             <Eye className="w-4 h-4" />
@@ -474,8 +474,8 @@ export default function StorePedidos() {
       </div>
 
       {pedidoAEliminar && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full p-6 animate-scale-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
                 <Trash2 className="w-6 h-6 text-red-600" />

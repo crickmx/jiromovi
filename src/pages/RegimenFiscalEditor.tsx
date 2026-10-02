@@ -198,7 +198,7 @@ export default function RegimenFiscalEditor() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent" />
       </div>
     );
   }
@@ -221,7 +221,7 @@ export default function RegimenFiscalEditor() {
   const preview = previewOpen ? getPreviewResult() : null;
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
+    <div className="min-h-screen dark:bg-neutral-900">
       {/* Header */}
       <div className="max-w-6xl mx-auto px-6 py-5">
         <PageHeader
@@ -241,7 +241,7 @@ export default function RegimenFiscalEditor() {
                 <Button
                   onClick={handleActivate}
                   disabled={activating}
-                  className="bg-accent text-white hover:bg-accent-hover font-semibold shadow"
+                  className="bg-accent text-accent-foreground hover:bg-accent-hover font-semibold shadow"
                 >
                   <Power className="h-4 w-4 mr-2" />
                   {activating ? 'Activando...' : 'Activar esta versión'}
@@ -326,13 +326,13 @@ export default function RegimenFiscalEditor() {
         )}
 
         {/* Rule notas */}
-        <div className="bg-white rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm p-5">
+        <div className="bg-surface-card rounded-2xl border border-soft dark:border-neutral-700 shadow-card p-5">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Notas de la versión</h2>
             {!editingRuleNotas && (
               <button
                 onClick={() => setEditingRuleNotas(true)}
-                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                className="text-xs text-accent-ink hover:underline flex items-center gap-1"
               >
                 <Pencil className="h-3 w-3" />
                 Editar
@@ -346,7 +346,7 @@ export default function RegimenFiscalEditor() {
                 onChange={e => setNotasRuleEdit(e.target.value)}
                 rows={3}
                 placeholder="Describe los cambios de esta versión..."
-                className="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                className="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-accent/40 outline-none resize-none"
               />
               <div className="flex gap-2">
                 <Button size="sm" onClick={saveRuleNotas} disabled={saving === 'rule-notas'}>
@@ -365,7 +365,7 @@ export default function RegimenFiscalEditor() {
         </div>
 
         {/* Lines table */}
-        <div className="bg-white rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden">
+        <div className="bg-surface-card rounded-xl border border-soft dark:border-neutral-700 shadow-card overflow-hidden">
           <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-700">
             <h2 className="font-semibold text-neutral-800 dark:text-white flex items-center gap-2">
               <Calculator className="h-4 w-4 text-neutral-500 dark:text-white/50" />
@@ -413,7 +413,7 @@ export default function RegimenFiscalEditor() {
                       }`}
                     >
                       {/* Orden */}
-                      <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500 text-xs font-mono">
+                      <td className="px-4 py-3 text-neutral-500 dark:text-neutral-500 text-xs font-mono">
                         {line.orden_visual}
                       </td>
 
@@ -444,7 +444,7 @@ export default function RegimenFiscalEditor() {
                           </div>
                         )}
                         {!isEditing && line.notas && (
-                          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 italic truncate max-w-[200px]" title={line.notas}>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-0.5 italic truncate max-w-[200px]" title={line.notas}>
                             {line.notas}
                           </p>
                         )}
@@ -457,7 +457,7 @@ export default function RegimenFiscalEditor() {
                             value={line.base_codigo}
                             onChange={e => updateLineLocal(line.id, { base_codigo: e.target.value as BaseCodigo })}
                             disabled={line.tipo_regla === 'derivado'}
-                            className="border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-amber-400 outline-none bg-white w-full disabled:bg-neutral-100 dark:bg-neutral-700 disabled:text-neutral-400 dark:text-neutral-500"
+                            className="border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-amber-400 outline-none bg-surface-card w-full disabled:bg-neutral-100 dark:bg-neutral-700 disabled:text-neutral-400 dark:text-neutral-500"
                           >
                             {(Object.entries(BASE_LABELS) as [BaseCodigo, string][]).map(([k, v]) => (
                               <option key={k} value={k}>{v}</option>
@@ -480,7 +480,7 @@ export default function RegimenFiscalEditor() {
                               valor_porcentaje: null,
                               formula_texto: null,
                             })}
-                            className="border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-amber-400 outline-none bg-white w-full"
+                            className="border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1.5 text-xs focus:ring-1 focus:ring-amber-400 outline-none bg-surface-card w-full"
                           >
                             {(Object.entries(TIPO_REGLA_LABELS) as [TipoRegla, string][]).map(([k, v]) => (
                               <option key={k} value={k}>{v}</option>
@@ -551,7 +551,7 @@ export default function RegimenFiscalEditor() {
                           <select
                             value={line.signo_resultado}
                             onChange={e => updateLineLocal(line.id, { signo_resultado: e.target.value as SignoResultado })}
-                            className="border border-neutral-300 dark:border-neutral-600 rounded px-1 py-1.5 text-xs focus:ring-1 focus:ring-amber-400 outline-none bg-white"
+                            className="border border-neutral-300 dark:border-neutral-600 rounded px-1 py-1.5 text-xs focus:ring-1 focus:ring-amber-400 outline-none bg-surface-card"
                           >
                             <option value="positivo">+ Positivo</option>
                             <option value="negativo">- Negativo</option>
@@ -632,7 +632,7 @@ export default function RegimenFiscalEditor() {
                         ) : (
                           <button
                             onClick={() => startEditing(line)}
-                            className="text-blue-600 hover:text-blue-800 rounded-lg px-3 py-1.5 text-xs font-medium border border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center gap-1.5 mx-auto"
+                            className="text-accent-ink hover:text-accent-ink rounded-lg px-3 py-1.5 text-xs font-medium border border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center gap-1.5 mx-auto"
                           >
                             <Pencil className="h-3 w-3" />
                             Editar
@@ -648,9 +648,9 @@ export default function RegimenFiscalEditor() {
         </div>
 
         {/* Formula variables reference */}
-        <div className="bg-white rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm p-5">
+        <div className="bg-surface-card rounded-2xl border border-soft dark:border-neutral-700 shadow-card p-5">
           <h2 className="font-semibold text-neutral-700 dark:text-neutral-300 text-sm mb-3 flex items-center gap-2">
-            <Info className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
+            <Info className="h-4 w-4 text-neutral-500 dark:text-neutral-500" />
             Variables disponibles en fórmulas
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -660,13 +660,13 @@ export default function RegimenFiscalEditor() {
               </code>
             ))}
           </div>
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-3">
+          <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-3">
             Las variables se calculan en orden visual. Una variable calculada en la línea N puede usarse en fórmulas de líneas posteriores.
           </p>
         </div>
 
         {/* Preview calculator */}
-        <div className="bg-white rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden">
+        <div className="bg-surface-card rounded-xl border border-soft dark:border-neutral-700 shadow-card overflow-hidden">
           <button
             onClick={() => setPreviewOpen(o => !o)}
             className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-neutral-50 dark:bg-neutral-800 transition-colors"
@@ -674,9 +674,9 @@ export default function RegimenFiscalEditor() {
             <div className="flex items-center gap-2">
               <Calculator className="h-4 w-4 text-neutral-500 dark:text-white/50" />
               <span className="font-semibold text-neutral-700 dark:text-neutral-300 text-sm">Simulador de cálculo</span>
-              <span className="text-xs text-neutral-400 dark:text-neutral-500">— prueba las reglas con montos de ejemplo</span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-500">— prueba las reglas con montos de ejemplo</span>
             </div>
-            {previewOpen ? <ChevronUp className="h-4 w-4 text-neutral-400 dark:text-neutral-500" /> : <ChevronDown className="h-4 w-4 text-neutral-400 dark:text-neutral-500" />}
+            {previewOpen ? <ChevronUp className="h-4 w-4 text-neutral-500 dark:text-neutral-500" /> : <ChevronDown className="h-4 w-4 text-neutral-500 dark:text-neutral-500" />}
           </button>
 
           {previewOpen && (
@@ -688,7 +688,7 @@ export default function RegimenFiscalEditor() {
                     type="number"
                     value={previewGravada}
                     onChange={e => setPreviewGravada(parseFloat(e.target.value) || 0)}
-                    className="border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm w-40 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm w-40 focus:ring-2 focus:ring-accent/40 outline-none"
                   />
                 </div>
                 <div>
@@ -697,7 +697,7 @@ export default function RegimenFiscalEditor() {
                     type="number"
                     value={previewExenta}
                     onChange={e => setPreviewExenta(parseFloat(e.target.value) || 0)}
-                    className="border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm w-40 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm w-40 focus:ring-2 focus:ring-accent/40 outline-none"
                   />
                 </div>
               </div>
@@ -720,7 +720,7 @@ export default function RegimenFiscalEditor() {
                     })}
                 </div>
               ) : (
-                <div className="text-center text-neutral-400 dark:text-neutral-500 text-sm py-4">
+                <div className="text-center text-neutral-500 dark:text-neutral-500 text-sm py-4">
                   <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-amber-400" />
                   Error al calcular. Revisa las fórmulas de las líneas activas.
                 </div>

@@ -242,10 +242,10 @@ export default function ManualViewer() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
+      <div className="min-h-screen flex items-center justify-center dark:bg-neutral-900">
         <div className="text-center space-y-3">
           <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mx-auto">
-            <BookOpen className="w-7 h-7 text-blue-600 dark:text-blue-400 animate-pulse" />
+            <BookOpen className="w-7 h-7 text-accent-ink dark:text-blue-400 animate-pulse" />
           </div>
           <p className="text-sm text-neutral-500 dark:text-white/50">Cargando manual...</p>
         </div>
@@ -255,7 +255,7 @@ export default function ManualViewer() {
 
   if (!manual) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-900 px-4">
+      <div className="min-h-screen flex flex-col items-center justify-center dark:bg-neutral-900 px-4">
         <div className="text-center max-w-sm space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto">
             <BookOpen className="w-8 h-8 text-red-400" />
@@ -299,7 +299,7 @@ export default function ManualViewer() {
                   onClick={() => setSidebarOpen(!sidebarOpen)}
                   className={`flex-shrink-0 p-2 rounded-lg transition-colors ${
                     sidebarOpen
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-accent-ink dark:text-blue-400'
                       : 'text-neutral-500 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10'
                   }`}
                   title={sidebarOpen ? 'Ocultar indice' : 'Mostrar indice'}
@@ -347,7 +347,7 @@ export default function ManualViewer() {
               <button onClick={handleZoomOut} disabled={zoom <= 50} className="p-1.5 rounded-lg text-neutral-500 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors disabled:opacity-30">
                 <ZoomOut className="w-4 h-4" />
               </button>
-              <span className="text-[10px] font-medium text-neutral-400 min-w-[28px] text-center">{zoom}%</span>
+              <span className="text-[11px] font-medium text-neutral-500 min-w-[28px] text-center">{zoom}%</span>
               <button onClick={handleZoomIn} disabled={zoom >= 200} className="p-1.5 rounded-lg text-neutral-500 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors disabled:opacity-30">
                 <ZoomIn className="w-4 h-4" />
               </button>
@@ -359,7 +359,7 @@ export default function ManualViewer() {
               onClick={handleDownloadPdf}
               disabled={generatingPdf || !iframeLoaded}
               title="Descargar como PDF"
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
             >
               {generatingPdf ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -388,7 +388,7 @@ export default function ManualViewer() {
             {/* Mobile overlay */}
             {sidebarOpen && (
               <div
-                className="lg:hidden fixed inset-0 bg-black/30 z-30"
+                className="lg:hidden fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-30"
                 onClick={() => setSidebarOpen(false)}
               />
             )}
@@ -410,18 +410,18 @@ export default function ManualViewer() {
               {/* Sidebar header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-white/5">
                 <div className="min-w-0">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-white/40 truncate">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-white/55 truncate">
                     {manual.title}
                   </h2>
                   {manual.total_pages > 0 && (
-                    <p className="text-[11px] text-neutral-400 dark:text-white/30 mt-0.5">
+                    <p className="text-[11px] text-neutral-500 dark:text-white/45 mt-0.5">
                       {manual.total_pages} paginas
                     </p>
                   )}
                 </div>
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="lg:hidden p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+                  className="lg:hidden p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -448,8 +448,8 @@ export default function ManualViewer() {
                           <span className={`
                             flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold
                             ${isActive
-                              ? 'bg-blue-100 dark:bg-blue-800/40 text-blue-600 dark:text-blue-300'
-                              : 'bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30'
+                              ? 'bg-blue-100 dark:bg-blue-800/40 text-accent-ink dark:text-blue-300'
+                              : 'bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-white/45'
                             }
                           `}>
                             {String(index + 1).padStart(2, '0')}
@@ -488,20 +488,20 @@ export default function ManualViewer() {
 
         {/* PDF Generation overlay */}
         {generatingPdf && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 shadow-2xl text-center max-w-xs mx-4 w-full">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+            <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl p-6 shadow-e4 text-center max-w-xs mx-4 w-full animate-scale-in">
               <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mx-auto mb-4">
-                <Download className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <Download className="w-6 h-6 text-accent-ink dark:text-blue-400" />
               </div>
               <p className="text-sm font-semibold text-neutral-800 dark:text-white mb-1">Generando PDF</p>
-              <p className="text-xs text-neutral-400 dark:text-white/40 mb-4">Capturando paginas del manual...</p>
+              <p className="text-xs text-neutral-500 dark:text-white/55 mb-4">Capturando paginas del manual...</p>
               <div className="w-full h-2 bg-neutral-100 dark:bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-blue-600 rounded-full transition-all duration-300 ease-out"
+                  className="h-full bg-accent rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${pdfProgress}%` }}
                 />
               </div>
-              <p className="text-[11px] text-neutral-400 dark:text-white/30 mt-2">{pdfProgress}% completado</p>
+              <p className="text-[11px] text-neutral-500 dark:text-white/45 mt-2">{pdfProgress}% completado</p>
             </div>
           </div>
         )}
@@ -511,8 +511,8 @@ export default function ManualViewer() {
           {!iframeLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-900 z-10">
               <div className="text-center space-y-3">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto" />
-                <p className="text-xs text-neutral-400 dark:text-white/40">Cargando contenido del manual...</p>
+                <Loader2 className="w-6 h-6 animate-spin text-accent-ink dark:text-blue-400 mx-auto" />
+                <p className="text-xs text-neutral-500 dark:text-white/55">Cargando contenido del manual...</p>
               </div>
             </div>
           )}

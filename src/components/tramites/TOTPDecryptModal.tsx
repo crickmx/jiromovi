@@ -43,15 +43,15 @@ export default function TOTPDecryptModal({ tramiteId, campoId, campoLabel, onClo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 w-full max-w-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 border border-soft dark:border-neutral-700 w-full max-w-lg animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-800">
           <div className="flex items-center gap-2">
             <Lock className="w-4 h-4 text-violet-500" />
             <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">{campoLabel}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -73,7 +73,7 @@ export default function TOTPDecryptModal({ tramiteId, campoId, campoLabel, onClo
                 onChange={e => { setCode(e.target.value.replace(/\D/g, '')); setErrMsg(''); }}
                 onKeyDown={e => e.key === 'Enter' && descifrar()}
                 placeholder="000000"
-                className="w-full text-center text-2xl font-mono tracking-[0.5em] px-4 py-3 border border-neutral-300 dark:border-neutral-600 rounded-xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                className="w-full text-center text-2xl font-mono tracking-[0.5em] px-4 py-3 border border-neutral-300 dark:border-neutral-600 rounded-xl bg-surface-card dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
               {errMsg && (
                 <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
@@ -124,14 +124,14 @@ export default function TOTPDecryptModal({ tramiteId, campoId, campoLabel, onClo
 
               {/* Metadatos de verificación */}
               {meta && (
-                <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/40 p-3 space-y-2">
+                <div className="rounded-2xl border border-soft dark:border-neutral-700 bg-surface-card dark:bg-neutral-800/40 p-3 space-y-2">
                   <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Verificación anti-trampa</p>
                   <div className="grid grid-cols-2 gap-2 text-xs">
 
                     {/* Palabras */}
                     {palabras != null && (
                       <div className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300">
-                        <Shield className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                        <Shield className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
                         <span>{palabras} palabras</span>
                       </div>
                     )}
@@ -139,7 +139,7 @@ export default function TOTPDecryptModal({ tramiteId, campoId, campoLabel, onClo
                     {/* Tiempo */}
                     {meta.tiempo_segundos != null && (
                       <div className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300">
-                        <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                        <Clock className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
                         <span>{meta.tiempo_segundos < 60
                           ? `${meta.tiempo_segundos}s`
                           : `${Math.floor(meta.tiempo_segundos / 60)}m ${meta.tiempo_segundos % 60}s`}
@@ -151,8 +151,8 @@ export default function TOTPDecryptModal({ tramiteId, campoId, campoLabel, onClo
                     {meta.dispositivo && (
                       <div className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300">
                         {meta.dispositivo === 'móvil'
-                          ? <Smartphone className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                          : <Monitor className="w-3.5 h-3.5 text-neutral-400 shrink-0" />}
+                          ? <Smartphone className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                          : <Monitor className="w-3.5 h-3.5 text-neutral-500 shrink-0" />}
                         <span className="capitalize">{meta.dispositivo}</span>
                       </div>
                     )}
@@ -179,7 +179,7 @@ export default function TOTPDecryptModal({ tramiteId, campoId, campoLabel, onClo
 
                     {/* Fecha de envío */}
                     {enviadoEn && (
-                      <div className="col-span-2 text-neutral-400 text-[11px]">
+                      <div className="col-span-2 text-neutral-500 text-[11px]">
                         Enviado: {new Date(enviadoEn).toLocaleString('es-MX')}
                       </div>
                     )}
@@ -187,7 +187,7 @@ export default function TOTPDecryptModal({ tramiteId, campoId, campoLabel, onClo
                 </div>
               )}
 
-              <p className="text-xs text-neutral-400 text-center">Esta vista no se guarda. Cierra para ocultarla.</p>
+              <p className="text-xs text-neutral-500 text-center">Esta vista no se guarda. Cierra para ocultarla.</p>
             </>
           )}
         </div>

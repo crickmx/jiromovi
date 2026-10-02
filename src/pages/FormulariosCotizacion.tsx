@@ -72,25 +72,25 @@ export default function FormulariosCotizacion() {
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
           <input
             type="text"
             placeholder="Buscar tipo de seguro..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2.5 bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent"
           />
         </div>
         <div className="relative">
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+            className="appearance-none pl-4 pr-10 py-2.5 bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent/40"
           >
             <option value="">Todas las categorias</option>
             {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
         </div>
       </div>
 
@@ -106,7 +106,7 @@ export default function FormulariosCotizacion() {
               <div key={category}>
                 <div className="flex items-center gap-2 mb-4">
                   <span className={`text-sm font-semibold ${catConfig.color}`}>{category}</span>
-                  <span className="text-xs text-neutral-400">({items.length})</span>
+                  <span className="text-xs text-neutral-500">({items.length})</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {items.map(template => {
@@ -114,7 +114,7 @@ export default function FormulariosCotizacion() {
                     return (
                       <div
                         key={template.form_type}
-                        className="group bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
+                        className="group bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-card-hover transition-all"
                       >
                         <div className="flex items-start gap-3">
                           <div className={`p-2.5 rounded-xl ${catConfig.bg} ${catConfig.border} border`}>
@@ -128,13 +128,13 @@ export default function FormulariosCotizacion() {
                           </div>
                         </div>
                         <div className="flex items-center justify-between mt-4 pt-3 border-t border-neutral-100 dark:border-white/10">
-                          <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+                          <div className="flex items-center gap-1.5 text-xs text-neutral-500">
                             <Clock className="w-3.5 h-3.5" />
                             <span>~{template.estimated_minutes} min</span>
                           </div>
                           <button
                             onClick={() => startForm(template)}
-                            className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                            className="flex items-center gap-1 text-xs font-medium text-accent-ink dark:text-blue-400 hover:text-accent-ink dark:hover:text-blue-300 transition-colors"
                           >
                             Iniciar <ArrowRight className="w-3.5 h-3.5" />
                           </button>

@@ -190,15 +190,15 @@ export function ContactosMovi({
           <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Contactos MOVI</h2>
           <p className="text-[11px] text-neutral-500">Directorio permitido y contactos compartidos</p>
         </div>
-        <button onClick={() => { setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-accent text-white px-3 py-2 rounded-lg text-xs font-semibold">
+        <button onClick={() => { setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-accent text-accent-foreground px-3 py-2 rounded-lg text-xs font-semibold">
           <Plus className="w-4 h-4" /> Nuevo contacto
         </button>
       </div>
 
       <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
         <div className="max-w-xl relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre, correo, oficina o puesto..." className="w-full pl-9 pr-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre, correo, oficina o puesto..." className="w-full pl-9 pr-3 py-2 rounded-xl border border-soft dark:border-neutral-700 bg-surface-card dark:bg-neutral-800 text-sm" />
         </div>
       </div>
 
@@ -206,12 +206,12 @@ export function ContactosMovi({
 
       <div className="flex-1 overflow-auto p-4 space-y-6">
         {loading ? (
-          <div className="h-40 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-accent" /></div>
+          <div className="h-40 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-accent-ink" /></div>
         ) : (
           <>
             <section>
               <div className="flex items-center gap-2 mb-2">
-                <Building2 className="w-4 h-4 text-accent" />
+                <Building2 className="w-4 h-4 text-accent-ink" />
                 <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-600 dark:text-neutral-300">Directorio corporativo ({filteredCorporate.length})</h3>
               </div>
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
@@ -229,7 +229,7 @@ export function ContactosMovi({
 
             <section>
               <div className="flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4 text-accent" />
+                <Users className="w-4 h-4 text-accent-ink" />
                 <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-600 dark:text-neutral-300">Guardados y compartidos ({filteredSaved.length})</h3>
               </div>
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
@@ -245,14 +245,14 @@ export function ContactosMovi({
                         onCompose(contact.email);
                       }
                     }}
-                    className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3 flex gap-3 cursor-pointer hover:border-accent/40 hover:shadow-sm transition"
+                    className="bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-2xl p-3 flex gap-3 cursor-pointer hover:border-accent/40 hover:shadow-sm transition"
                     title={`Redactar correo para ${contact.email}`}
                   >
-                    <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-accent"><UserRound className="w-4 h-4" /></div>
+                    <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-accent-ink"><UserRound className="w-4 h-4" /></div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold truncate">{contact.nombre} {contact.apellido}</p>
-                      <p className="block text-xs text-accent truncate">{contact.email}</p>
-                      <p className="text-[10px] text-neutral-500 flex items-center gap-1 mt-1"><Share2 className="w-3 h-3" /> {scopeLabel(contact.visibilidad)}</p>
+                      <p className="block text-xs text-accent-ink truncate">{contact.email}</p>
+                      <p className="text-[11px] text-neutral-500 flex items-center gap-1 mt-1"><Share2 className="w-3 h-3" /> {scopeLabel(contact.visibilidad)}</p>
                     </div>
                     {contact.usuario_id === usuario?.id && (
                       <div className="flex flex-col gap-1">
@@ -270,7 +270,7 @@ export function ContactosMovi({
 
       {showForm && (
         <div className="absolute inset-0 z-30 bg-black/30 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white dark:bg-neutral-800 rounded-2xl shadow-xl p-5">
+          <div className="w-full max-w-lg bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-e4 p-5 animate-scale-in">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold">{form.id ? 'Editar contacto' : 'Nuevo contacto'}</h3>
               <button onClick={() => setShowForm(false)}><X className="w-4 h-4" /></button>
@@ -283,7 +283,7 @@ export function ContactosMovi({
               <div className="sm:col-span-2"><Field label="Empresa" value={form.empresa} onChange={empresa => setForm({ ...form, empresa })} /></div>
               <label className="sm:col-span-2 text-xs font-medium">
                 Compartir con
-                <select value={form.visibilidad} onChange={e => setForm({ ...form, visibilidad: e.target.value as Scope })} className="mt-1 w-full border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-900">
+                <select value={form.visibilidad} onChange={e => setForm({ ...form, visibilidad: e.target.value as Scope })} className="mt-1 w-full border border-soft dark:border-neutral-700 rounded-lg px-3 py-2 bg-surface-card dark:bg-neutral-900">
                   <option value="personal">Sólo yo</option>
                   <option value="oficina" disabled={!usuario?.oficina_id}>Mi oficina</option>
                   <option value="grupo" disabled={!groups.length}>Un grupo</option>
@@ -293,7 +293,7 @@ export function ContactosMovi({
               {form.visibilidad === 'grupo' && (
                 <label className="sm:col-span-2 text-xs font-medium">
                   Grupo
-                  <select value={form.compartir_grupo_id} onChange={e => setForm({ ...form, compartir_grupo_id: e.target.value })} className="mt-1 w-full border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-900">
+                  <select value={form.compartir_grupo_id} onChange={e => setForm({ ...form, compartir_grupo_id: e.target.value })} className="mt-1 w-full border border-soft dark:border-neutral-700 rounded-lg px-3 py-2 bg-surface-card dark:bg-neutral-900">
                     <option value="">Selecciona un grupo</option>
                     {groups.map(group => <option key={group.id} value={group.id}>{group.nombre}</option>)}
                   </select>
@@ -302,7 +302,7 @@ export function ContactosMovi({
             </div>
             <div className="flex justify-end gap-2 mt-5">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 text-xs rounded-lg border">Cancelar</button>
-              <button onClick={save} disabled={saving || !form.nombre.trim() || !form.email.trim() || (form.visibilidad === 'grupo' && !form.compartir_grupo_id)} className="px-4 py-2 text-xs rounded-lg bg-accent text-white font-semibold disabled:opacity-40">
+              <button onClick={save} disabled={saving || !form.nombre.trim() || !form.email.trim() || (form.visibilidad === 'grupo' && !form.compartir_grupo_id)} className="px-4 py-2 text-xs rounded-lg bg-accent text-accent-foreground font-semibold disabled:opacity-40">
                 {saving ? 'Guardando...' : 'Guardar contacto'}
               </button>
             </div>
@@ -328,14 +328,14 @@ function ContactCard({
     <button
       type="button"
       onClick={() => onCompose(email)}
-      className="w-full text-left bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-3 flex gap-3 hover:border-accent/40 hover:shadow-sm transition"
+      className="w-full text-left bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-2xl p-3 flex gap-3 hover:border-accent/40 hover:shadow-sm transition"
       title={`Redactar correo para ${email}`}
     >
-      <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-accent"><UserRound className="w-4 h-4" /></div>
+      <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-accent-ink"><UserRound className="w-4 h-4" /></div>
       <div className="min-w-0">
         <p className="text-sm font-semibold truncate">{name}</p>
-        <p className="block text-xs text-accent truncate">{email}</p>
-        <p className="text-[10px] text-neutral-500 truncate mt-1">{detail}</p>
+        <p className="block text-xs text-accent-ink truncate">{email}</p>
+        <p className="text-[11px] text-neutral-500 truncate mt-1">{detail}</p>
       </div>
     </button>
   );
@@ -345,7 +345,7 @@ function Field({ label, value, onChange, type = 'text' }: { label: string; value
   return (
     <label className="text-xs font-medium">
       {label}
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} className="mt-1 w-full border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-900" />
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} className="mt-1 w-full border border-soft dark:border-neutral-700 rounded-lg px-3 py-2 bg-surface-card dark:bg-neutral-900" />
     </label>
   );
 }

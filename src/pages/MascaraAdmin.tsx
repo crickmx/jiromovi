@@ -164,7 +164,7 @@ export function MascaraAdmin() {
       <div className="flex gap-3">
         <button
           onClick={() => setShowNewSession(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-accent hover:bg-accent/90 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-accent-foreground bg-accent hover:bg-accent/90 rounded-xl shadow-sm transition-all active:scale-[0.98]"
         >
           <Play className="w-4 h-4" />
           Nueva Sesion de Mascara
@@ -175,14 +175,14 @@ export function MascaraAdmin() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total sesiones', value: sessions.length, icon: Eye, color: 'text-neutral-600 dark:text-white/60' },
-          { label: 'Activas ahora', value: activeSessions.length, icon: CheckCircle2, color: activeSessions.length > 0 ? 'text-amber-600' : 'text-neutral-400 dark:text-white/30' },
-          { label: 'MOVI Digital', value: sessions.filter(s => s.platform === 'movi').length, icon: Shield, color: 'text-blue-600' },
+          { label: 'Activas ahora', value: activeSessions.length, icon: CheckCircle2, color: activeSessions.length > 0 ? 'text-amber-600' : 'text-neutral-500 dark:text-white/45' },
+          { label: 'MOVI Digital', value: sessions.filter(s => s.platform === 'movi').length, icon: Shield, color: 'text-accent-ink' },
           { label: 'Seguwallet', value: sessions.filter(s => s.platform === 'seguwallet').length, icon: Smartphone, color: 'text-emerald-600' },
         ].map(stat => (
-          <div key={stat.label} className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
+          <div key={stat.label} className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
             <div className="flex items-center gap-2 mb-1">
               <stat.icon className={`w-4 h-4 ${stat.color}`} />
-              <span className="text-xs text-neutral-500 dark:text-white/40 font-medium">{stat.label}</span>
+              <span className="text-xs text-neutral-500 dark:text-white/55 font-medium">{stat.label}</span>
             </div>
             <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stat.value}</p>
           </div>
@@ -190,16 +190,16 @@ export function MascaraAdmin() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 dark:text-white/45" />
             <input
               type="text"
               placeholder="Buscar por admin, usuario mascarado o motivo..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-400 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
+              className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-500 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
             />
           </div>
           <select
@@ -232,19 +232,19 @@ export function MascaraAdmin() {
           description="Las sesiones de mascara de usuario apareceran aqui cuando un admin use la funcion 'Ver como'."
         />
       ) : (
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-white/8 bg-neutral-50 dark:bg-white/[0.02]">
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/40">Admin</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/40">Usuario mascarado</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/40">Plataforma</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/40">Estado</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/40">Inicio</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/40">Duracion</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/40">Motivo</th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/40">Acciones</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/55">Admin</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/55">Usuario mascarado</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/55">Plataforma</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/55">Estado</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/55">Inicio</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/55">Duracion</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/55">Motivo</th>
+                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider text-neutral-500 dark:text-white/55">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-white/[0.05]">
@@ -267,7 +267,7 @@ export function MascaraAdmin() {
                             {session.impersonated_user?.nombre_completo || (session.impersonated_customer_id ? 'Cliente Seguwallet' : '\u2014')}
                           </span>
                           {session.impersonated_user?.rol && (
-                            <span className="ml-1.5 text-[11px] font-medium text-neutral-500 dark:text-white/40 bg-neutral-100 dark:bg-white/8 px-1.5 py-0.5 rounded">
+                            <span className="ml-1.5 text-[11px] font-medium text-neutral-500 dark:text-white/55 bg-neutral-100 dark:bg-white/8 px-1.5 py-0.5 rounded">
                               {session.impersonated_user.rol}
                             </span>
                           )}
@@ -290,13 +290,13 @@ export function MascaraAdmin() {
                             Activa
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500 dark:bg-white/8 dark:text-white/40">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500 dark:bg-white/8 dark:text-white/55">
                             <CheckCircle2 className="w-3 h-3" />
                             Terminada
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-neutral-500 dark:text-white/40 text-xs whitespace-nowrap">
+                      <td className="px-4 py-3 text-neutral-500 dark:text-white/55 text-xs whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" />
                           <span title={new Date(session.started_at).toLocaleString('es-MX')}>
@@ -313,7 +313,7 @@ export function MascaraAdmin() {
                           formatSecondsAsTime(durationSecs)
                         )}
                       </td>
-                      <td className="px-4 py-3 text-neutral-500 dark:text-white/40 text-xs max-w-[200px] truncate">
+                      <td className="px-4 py-3 text-neutral-500 dark:text-white/55 text-xs max-w-[200px] truncate">
                         {session.reason || <span className="italic opacity-50">Sin motivo</span>}
                       </td>
                       <td className="px-4 py-3">
@@ -335,7 +335,7 @@ export function MascaraAdmin() {
             </table>
           </div>
           <div className="px-4 py-3 border-t border-neutral-100 dark:border-white/5">
-            <p className="text-xs text-neutral-400 dark:text-white/30">
+            <p className="text-xs text-neutral-500 dark:text-white/45">
               {filteredSessions.length} sesion{filteredSessions.length !== 1 ? 'es' : ''} — ultimas 200 registros
             </p>
           </div>
@@ -344,16 +344,16 @@ export function MascaraAdmin() {
 
       {/* New Session Modal */}
       {showNewSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowNewSession(false)}>
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-neutral-200 dark:border-white/10 w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={() => setShowNewSession(false)}>
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-e4 border border-soft dark:border-white/10 w-full max-w-md animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-white/8">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <Eye className="w-5 h-5 text-accent" />
+                  <Eye className="w-5 h-5 text-accent-ink" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-neutral-900 dark:text-white">Nueva Sesion</h3>
-                  <p className="text-xs text-neutral-500 dark:text-white/40">Iniciar mascara de usuario</p>
+                  <p className="text-xs text-neutral-500 dark:text-white/55">Iniciar mascara de usuario</p>
                 </div>
               </div>
               <button onClick={() => setShowNewSession(false)} className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors">
@@ -395,45 +395,45 @@ export function MascaraAdmin() {
               <div>
                 <label className="block text-xs font-semibold text-neutral-600 dark:text-white/50 mb-2">Buscar usuario</label>
                 <div className="relative">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                   <input
                     type="text"
                     placeholder="Escribe nombre del usuario..."
                     value={userSearch}
                     onChange={e => handleUserSearchChange(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-400 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
+                    className="w-full pl-9 pr-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-500 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
                   />
                 </div>
                 {selectedUser && (
                   <div className="mt-2 flex items-center gap-2 p-2.5 bg-accent/5 border border-accent/20 rounded-lg">
-                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent-ink text-xs font-bold">
                       {selectedUser.nombre[0]}{selectedUser.apellidos[0]}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                         {selectedUser.nombre} {selectedUser.apellidos}
                       </p>
-                      <p className="text-[11px] text-neutral-500 dark:text-white/40">{selectedUser.rol}</p>
+                      <p className="text-[11px] text-neutral-500 dark:text-white/55">{selectedUser.rol}</p>
                     </div>
                     <button onClick={() => { setSelectedUser(null); setUserSearch(''); }} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-white/10">
-                      <X className="w-3.5 h-3.5 text-neutral-400" />
+                      <X className="w-3.5 h-3.5 text-neutral-500" />
                     </button>
                   </div>
                 )}
                 {!selectedUser && userResults.length > 0 && (
-                  <div className="mt-2 max-h-48 overflow-y-auto bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-white/10 rounded-xl shadow-lg divide-y divide-neutral-100 dark:divide-white/5">
+                  <div className="mt-2 max-h-48 overflow-y-auto bg-surface-card dark:bg-neutral-700 border border-soft dark:border-white/10 rounded-xl shadow-lg divide-y divide-neutral-100 dark:divide-white/5">
                     {userResults.map(user => (
                       <button
                         key={user.id}
                         onClick={() => { setSelectedUser(user); setUserResults([]); setUserSearch(`${user.nombre} ${user.apellidos}`); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
                       >
-                        <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-white/10 flex items-center justify-center text-[10px] font-bold text-neutral-600 dark:text-white/60">
+                        <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-white/10 flex items-center justify-center text-[11px] font-bold text-neutral-600 dark:text-white/60">
                           {user.nombre[0]}{user.apellidos[0]}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{user.nombre} {user.apellidos}</p>
-                          <p className="text-[11px] text-neutral-500 dark:text-white/40">{user.rol}</p>
+                          <p className="text-[11px] text-neutral-500 dark:text-white/55">{user.rol}</p>
                         </div>
                       </button>
                     ))}
@@ -449,7 +449,7 @@ export function MascaraAdmin() {
                   placeholder="Ej: Verificar vista de agente, soporte al usuario..."
                   value={newReason}
                   onChange={e => setNewReason(e.target.value)}
-                  className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-400 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
+                  className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-500 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
                 />
               </div>
             </div>
@@ -458,7 +458,7 @@ export function MascaraAdmin() {
               <button
                 onClick={handleStartSession}
                 disabled={!selectedUser || starting}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-sm transition-all active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-accent-foreground bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-sm transition-all active:scale-[0.98]"
               >
                 <Play className="w-4 h-4" />
                 {starting ? 'Iniciando sesion...' : 'Iniciar Mascara'}

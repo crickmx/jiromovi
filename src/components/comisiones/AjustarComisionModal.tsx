@@ -70,8 +70,8 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card rounded-3xl shadow-e4 max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
         <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-neutral-900">
             Ajustar Comisión
@@ -161,7 +161,7 @@ export default function AjustarComisionModal({ detail, onClose, onSuccess }: Aju
               Nueva Comisión
             </label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-500" />
               <input
                 type="number"
                 step="0.01"

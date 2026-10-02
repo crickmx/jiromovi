@@ -45,14 +45,14 @@ export default function ChavaInteligencia() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Inteligencia Chava AI</h1>
-            <p className="text-sm text-neutral-500 dark:text-white/40">Analítica de comportamiento e insights comerciales</p>
+            <p className="text-sm text-neutral-500 dark:text-white/55">Analítica de comportamiento e insights comerciales</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <select
             value={days}
             onChange={e => setDays(Number(e.target.value))}
-            className="text-sm px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-neutral-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+            className="text-sm px-3 py-2 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/[0.03] text-neutral-700 dark:text-white/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
           >
             <option value={7}>Últimos 7 días</option>
             <option value={30}>Últimos 30 días</option>
@@ -77,7 +77,7 @@ export default function ChavaInteligencia() {
                 "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all",
                 activeTab === tab.id
                   ? "bg-white dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
-                  : "text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/60"
+                  : "text-neutral-500 dark:text-white/55 hover:text-neutral-700 dark:hover:text-white/60"
               )}
             >
               <Icon className="h-4 w-4" />
@@ -142,10 +142,10 @@ function DashboardTab({ days, refreshKey }: { days: number; refreshKey: number }
         {kpis.map((k) => {
           const Icon = k.icon;
           return (
-            <div key={k.label} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+            <div key={k.label} className="p-4 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/8">
               <div className="flex items-center gap-2 mb-2">
                 <Icon className={cn("h-4 w-4", k.color)} />
-                <span className="text-xs text-neutral-500 dark:text-white/40 leading-tight">{k.label}</span>
+                <span className="text-xs text-neutral-500 dark:text-white/55 leading-tight">{k.label}</span>
               </div>
               <p className="text-2xl font-bold text-neutral-900 dark:text-white">{k.value}</p>
             </div>
@@ -155,7 +155,7 @@ function DashboardTab({ days, refreshKey }: { days: number; refreshKey: number }
 
       {/* Top intents mini-chart */}
       {(conocimiento.top_intents || []).length > 0 && (
-        <div className="p-5 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+        <div className="p-5 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/8">
           <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-4">Top Intents</h3>
           <IntentBar intents={conocimiento.top_intents} />
         </div>
@@ -163,7 +163,7 @@ function DashboardTab({ days, refreshKey }: { days: number; refreshKey: number }
 
       {/* Insights feed */}
       {insights.length > 0 && (
-        <div className="p-5 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+        <div className="p-5 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/8">
           <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-4 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-cyan-500" />
             Insights Recientes
@@ -178,15 +178,15 @@ function DashboardTab({ days, refreshKey }: { days: number; refreshKey: number }
 
       {/* Platform breakdown */}
       {(uso.por_plataforma || []).length > 0 && (
-        <div className="p-5 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+        <div className="p-5 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/8">
           <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-4">Uso por Plataforma</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {(uso.por_plataforma || []).map((p: any) => (
               <div key={p.plataforma} className="text-center p-4 rounded-xl"
                 style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.1)' }}>
-                <p className="text-xs text-neutral-400 uppercase tracking-wide mb-1">{p.plataforma}</p>
+                <p className="text-xs text-neutral-500 uppercase tracking-wide mb-1">{p.plataforma}</p>
                 <p className="text-3xl font-bold text-neutral-900 dark:text-white">{p.consultas}</p>
-                <p className="text-xs text-neutral-400 mt-1">{p.usuarios_unicos} usuarios</p>
+                <p className="text-xs text-neutral-500 mt-1">{p.usuarios_unicos} usuarios</p>
               </div>
             ))}
           </div>
@@ -262,19 +262,19 @@ function IntentsTab({ days, refreshKey }: { days: number; refreshKey: number }) 
             className={cn(
               "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
               platform === p
-                ? "text-white" : "text-neutral-500 dark:text-white/40 hover:text-neutral-700"
+                ? "text-white" : "text-neutral-500 dark:text-white/55 hover:text-neutral-700"
             )}
             style={platform === p ? { background: 'linear-gradient(135deg,#0D6EFD,#00c8e0)' } : { background: 'rgba(0,0,0,0.04)' }}
           >
             {p === 'todos' ? 'Todas las plataformas' : p}
           </button>
         ))}
-        <span className="ml-auto text-xs text-neutral-400">{total} interacciones</span>
+        <span className="ml-auto text-xs text-neutral-500">{total} interacciones</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Intent ranking */}
-        <div className="p-5 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+        <div className="p-5 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/8">
           <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-4">Intents más frecuentes</h3>
           {sorted.length === 0
             ? <EmptyState icon={Target} message="Sin datos para este período" compact />
@@ -286,11 +286,11 @@ function IntentsTab({ days, refreshKey }: { days: number; refreshKey: number }) 
                     <div key={intent}>
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-neutral-400 w-4">{i + 1}</span>
+                          <span className="text-xs font-bold text-neutral-500 w-4">{i + 1}</span>
                           <span className="text-sm text-neutral-700 dark:text-white/70">{INTENT_LABELS[intent] || intent}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-neutral-400">{count}</span>
+                          <span className="text-xs text-neutral-500">{count}</span>
                           <span className="text-xs font-medium text-cyan-600 w-8 text-right">{pct}%</span>
                         </div>
                       </div>
@@ -307,7 +307,7 @@ function IntentsTab({ days, refreshKey }: { days: number; refreshKey: number }) 
         </div>
 
         {/* Product interest */}
-        <div className="p-5 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+        <div className="p-5 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/8">
           <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 mb-4">Productos de interés detectados</h3>
           {sortedProducts.length === 0
             ? <EmptyState icon={BarChart3} message="Sin productos detectados" compact />
@@ -324,7 +324,7 @@ function IntentsTab({ days, refreshKey }: { days: number; refreshKey: number }) 
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm text-neutral-700 dark:text-white/70 capitalize">{product}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-neutral-400">{count}</span>
+                          <span className="text-xs text-neutral-500">{count}</span>
                           <span className="text-xs font-medium w-8 text-right" style={{ color: colors[product] || '#6B7280' }}>{pct}%</span>
                         </div>
                       </div>
@@ -387,7 +387,7 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
           { label: 'Alta calidad', key: 'alta', color: 'text-emerald-600', bg: 'rgba(16,185,129,0.06)', border: 'rgba(16,185,129,0.2)' },
           { label: 'Media calidad', key: 'media', color: 'text-amber-600', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.2)' },
           { label: 'Baja calidad', key: 'baja', color: 'text-neutral-500', bg: 'rgba(0,0,0,0.03)', border: 'rgba(0,0,0,0.1)' },
-          { label: 'Convertidos a CRM', key: 'convertido', color: 'text-blue-600', bg: 'rgba(13,110,253,0.06)', border: 'rgba(13,110,253,0.2)' },
+          { label: 'Convertidos a CRM', key: 'convertido', color: 'text-accent-ink', bg: 'rgba(13,110,253,0.06)', border: 'rgba(13,110,253,0.2)' },
         ].map(item => (
           <div key={item.key} className="p-4 rounded-xl text-center"
             style={{ background: item.bg, border: `1px solid ${item.border}` }}>
@@ -405,14 +405,14 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
         : (
           <div className="space-y-3">
             {leads.map(lead => (
-              <div key={lead.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+              <div key={lead.id} className="p-4 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/8">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <QualityBadge quality={lead.calidad} />
                       <StatusBadge status={lead.estado} />
                       {lead.producto && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 capitalize font-medium">{lead.producto}</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-accent-ink capitalize font-medium">{lead.producto}</span>
                       )}
                       {lead.crm_contacto_id && (
                         <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 font-medium">En CRM</span>
@@ -429,14 +429,14 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
                     )}
                     <div className="flex items-center gap-3 mt-2">
                       {lead.chava_agente_users?.nombre_completo && (
-                        <span className="text-[11px] text-neutral-400">{lead.chava_agente_users.nombre_completo}</span>
+                        <span className="text-[11px] text-neutral-500">{lead.chava_agente_users.nombre_completo}</span>
                       )}
-                      <span className="text-[11px] text-neutral-400">{new Date(lead.created_at).toLocaleString()}</span>
+                      <span className="text-[11px] text-neutral-500">{new Date(lead.created_at).toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {(lead.estado === 'nuevo' || lead.estado === 'contactado') && !lead.crm_contacto_id && (
-                      <Button size="sm" variant="ghost" className="gap-1 text-blue-600 hover:text-blue-700 text-xs"
+                      <Button size="sm" variant="ghost" className="gap-1 text-accent-ink hover:text-accent-ink text-xs"
                         disabled={updating === lead.id}
                         onClick={() => setConvertingLead(lead)}>
                         <UserPlus className="h-3 w-3" /> CRM
@@ -449,7 +449,7 @@ function LeadsTab({ days, refreshKey }: { days: number; refreshKey: number }) {
                           onClick={() => updateStatus(lead.id, 'contactado')}>
                           <ThumbsUp className="h-3 w-3" /> Contactar
                         </Button>
-                        <Button size="sm" variant="ghost" className="gap-1 text-neutral-400 hover:text-neutral-500 text-xs"
+                        <Button size="sm" variant="ghost" className="gap-1 text-neutral-500 hover:text-neutral-500 text-xs"
                           disabled={updating === lead.id}
                           onClick={() => updateStatus(lead.id, 'descartado')}>
                           <ThumbsDown className="h-3 w-3" /> Descartar
@@ -509,20 +509,20 @@ function ConvertToCRMModal({ lead, onClose, onConverted }: { lead: any; onClose:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200/60 dark:border-white/10 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+      <div className="w-full max-w-md bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 border border-neutral-200/60 dark:border-white/10 overflow-hidden animate-scale-in">
         <div className="p-5 border-b border-neutral-100 dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg,#0D6EFD22,#00E5FF33)', border: '1px solid rgba(13,110,253,0.2)' }}>
-              <UserPlus className="h-4 w-4 text-blue-600" />
+              <UserPlus className="h-4 w-4 text-accent-ink" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Convertir Lead a CRM</h3>
-              <p className="text-xs text-neutral-400">Se creara un contacto y tarea de seguimiento</p>
+              <p className="text-xs text-neutral-500">Se creara un contacto y tarea de seguimiento</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -532,9 +532,9 @@ function ConvertToCRMModal({ lead, onClose, onConverted }: { lead: any; onClose:
           <div className="flex items-center gap-2 flex-wrap">
             <QualityBadge quality={lead.calidad} />
             {lead.producto && (
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 capitalize font-medium">{lead.producto}</span>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-accent-ink capitalize font-medium">{lead.producto}</span>
             )}
-            <span className="text-[11px] text-neutral-400">{lead.intent_codigo}</span>
+            <span className="text-[11px] text-neutral-500">{lead.intent_codigo}</span>
           </div>
 
           <div className="space-y-3">
@@ -545,7 +545,7 @@ function ConvertToCRMModal({ lead, onClose, onConverted }: { lead: any; onClose:
                 value={nombre}
                 onChange={e => setNombre(e.target.value)}
                 placeholder="Nombre del prospecto"
-                className="w-full text-sm px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full text-sm px-3 py-2.5 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -556,7 +556,7 @@ function ConvertToCRMModal({ lead, onClose, onConverted }: { lead: any; onClose:
                   value={celular}
                   onChange={e => setCelular(e.target.value)}
                   placeholder="55 1234 5678"
-                  className="w-full text-sm px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full text-sm px-3 py-2.5 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div>
@@ -566,7 +566,7 @@ function ConvertToCRMModal({ lead, onClose, onConverted }: { lead: any; onClose:
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="correo@ejemplo.com"
-                  className="w-full text-sm px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full text-sm px-3 py-2.5 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
             </div>
@@ -577,7 +577,7 @@ function ConvertToCRMModal({ lead, onClose, onConverted }: { lead: any; onClose:
                 onChange={e => setNotas(e.target.value)}
                 rows={2}
                 placeholder="Contexto adicional para el seguimiento..."
-                className="w-full text-sm px-3 py-2.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+                className="w-full text-sm px-3 py-2.5 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/[0.03] text-neutral-800 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
               />
             </div>
           </div>
@@ -647,7 +647,7 @@ function ConocimientoTab({ refreshKey }: { refreshKey: number }) {
             {f}
           </button>
         ))}
-        <span className="ml-auto text-xs text-neutral-400">{items.length} elementos</span>
+        <span className="ml-auto text-xs text-neutral-500">{items.length} elementos</span>
       </div>
 
       {items.length === 0
@@ -655,15 +655,15 @@ function ConocimientoTab({ refreshKey }: { refreshKey: number }) {
         : (
           <div className="space-y-3">
             {items.map(item => (
-              <div key={item.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+              <div key={item.id} className="p-4 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/8">
                 <div className="flex items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className="text-xs font-semibold text-neutral-500 dark:text-white/40 bg-neutral-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-semibold text-neutral-500 dark:text-white/55 bg-neutral-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
                         {item.titulo || item.tipo}
                       </span>
                       {item.plataforma_destino && (
-                        <span className="text-xs text-neutral-400">{item.plataforma_destino}</span>
+                        <span className="text-xs text-neutral-500">{item.plataforma_destino}</span>
                       )}
                       <span className="text-xs font-bold text-amber-600 flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" />{item.frecuencia_consultas}x
@@ -673,7 +673,7 @@ function ConocimientoTab({ refreshKey }: { refreshKey: number }) {
 
                     {item.descripcion && (
                       <div className="mb-2 px-3 py-2 rounded-lg bg-neutral-50 dark:bg-white/[0.02] border-l-2 border-neutral-200 dark:border-white/10">
-                        <p className="text-xs text-neutral-500 dark:text-white/30 mb-0.5">Descripción</p>
+                        <p className="text-xs text-neutral-500 dark:text-white/45 mb-0.5">Descripción</p>
                         <p className="text-sm text-neutral-700 dark:text-white/70 italic">"{item.descripcion}"</p>
                       </div>
                     )}
@@ -685,7 +685,7 @@ function ConocimientoTab({ refreshKey }: { refreshKey: number }) {
                       </div>
                     )}
 
-                    <p className="text-[11px] text-neutral-400 mt-2">{new Date(item.created_at).toLocaleString()}</p>
+                    <p className="text-[11px] text-neutral-500 mt-2">{new Date(item.created_at).toLocaleString()}</p>
                   </div>
 
                   {item.estado === 'pendiente' && (
@@ -758,7 +758,7 @@ function MejorasTab({ refreshKey }: { refreshKey: number }) {
             {f}
           </button>
         ))}
-        <span className="ml-auto text-xs text-neutral-400">{items.length} sugerencias</span>
+        <span className="ml-auto text-xs text-neutral-500">{items.length} sugerencias</span>
       </div>
 
       {items.length === 0
@@ -766,7 +766,7 @@ function MejorasTab({ refreshKey }: { refreshKey: number }) {
         : (
           <div className="space-y-3">
             {items.map(item => (
-              <div key={item.id} className="p-4 bg-white dark:bg-white/[0.03] rounded-xl border border-neutral-200/60 dark:border-white/8">
+              <div key={item.id} className="p-4 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/8">
                 <div className="flex items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -786,7 +786,7 @@ function MejorasTab({ refreshKey }: { refreshKey: number }) {
                     </div>
                     <p className="text-sm font-semibold text-neutral-800 dark:text-white/80 mb-1">{item.titulo}</p>
                     <p className="text-sm text-neutral-600 dark:text-white/50">{item.descripcion}</p>
-                    <p className="text-[11px] text-neutral-400 mt-2">{new Date(item.created_at).toLocaleString()}</p>
+                    <p className="text-[11px] text-neutral-500 mt-2">{new Date(item.created_at).toLocaleString()}</p>
                   </div>
 
                     {item.estado === 'pendiente' && (
@@ -824,7 +824,7 @@ function LoadingState() {
 
 function EmptyState({ icon: Icon, message, compact = false }: { icon: typeof Brain; message: string; compact?: boolean }) {
   return (
-    <div className={cn("text-center text-neutral-400 dark:text-white/30", compact ? "py-8" : "py-16")}>
+    <div className={cn("text-center text-neutral-500 dark:text-white/45", compact ? "py-8" : "py-16")}>
       <Icon className="h-10 w-10 mx-auto mb-3 opacity-30" />
       <p className="text-sm">{message}</p>
     </div>
@@ -841,7 +841,7 @@ function IntentBar({ intents }: { intents: { intent_codigo: string; total: numbe
           <div key={intent_codigo}>
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="text-neutral-600 dark:text-white/60">{INTENT_LABELS[intent_codigo] || intent_codigo}</span>
-              <span className="text-neutral-400 font-medium">{total}</span>
+              <span className="text-neutral-500 font-medium">{total}</span>
             </div>
             <div className="h-1.5 bg-neutral-100 dark:bg-white/5 rounded-full overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#0D6EFD,#00E5FF)' }} />
@@ -868,14 +868,14 @@ function InsightCard({ insight }: { insight: any }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           {insight.tipo && (
-            <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide", typeClass)}>
+            <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide", typeClass)}>
               {insight.tipo}
             </span>
           )}
-          <span className="text-[11px] text-neutral-400">{new Date(insight.created_at).toLocaleDateString()}</span>
+          <span className="text-[11px] text-neutral-500">{new Date(insight.created_at).toLocaleDateString()}</span>
         </div>
         <p className="text-sm font-medium text-neutral-800 dark:text-white/80">{insight.titulo}</p>
-        {insight.descripcion && <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5 line-clamp-2">{insight.descripcion}</p>}
+        {insight.descripcion && <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5 line-clamp-2">{insight.descripcion}</p>}
       </div>
     </div>
   );
@@ -897,12 +897,12 @@ function QualityBadge({ quality }: { quality: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; class: string }> = {
-    nuevo: { label: 'Nuevo', class: 'text-blue-600 bg-blue-50 dark:bg-blue-500/10' },
+    nuevo: { label: 'Nuevo', class: 'text-accent-ink bg-blue-50 dark:bg-blue-500/10' },
     pendiente: { label: 'Pendiente', class: 'text-amber-600 bg-amber-50 dark:bg-amber-500/10' },
     contactado: { label: 'Contactado', class: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-500/10' },
     aprobado: { label: 'Aprobado', class: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' },
     aceptado: { label: 'Aceptado', class: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' },
-    descartado: { label: 'Descartado', class: 'text-neutral-400 bg-neutral-50 dark:bg-neutral-500/10' },
+    descartado: { label: 'Descartado', class: 'text-neutral-500 bg-neutral-50 dark:bg-neutral-500/10' },
     rechazado: { label: 'Rechazado', class: 'text-red-500 bg-red-50 dark:bg-red-500/10' },
     convertido: { label: 'Convertido', class: 'text-emerald-700 bg-emerald-100 dark:bg-emerald-500/20 font-bold' },
   };

@@ -340,15 +340,15 @@ export default function CentroContactoUnificado() {
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-semibold text-neutral-800 dark:text-white">WhatsApp</h1>
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full text-[10px] font-medium">
+            <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full text-[11px] font-medium">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
               MOVI
             </span>
             <span className={cn(
-              'flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium',
+              'flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
               waPersonalConnected
                 ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400'
-                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-500'
             )}>
               <span className={cn('w-1.5 h-1.5 rounded-full', waPersonalConnected ? 'bg-teal-500' : 'bg-neutral-300 dark:bg-neutral-600')} />
               Personal {waPersonalConnected ? '' : '(sin conectar)'}
@@ -489,9 +489,9 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
           <p className="text-sm font-semibold text-neutral-800 dark:text-white leading-snug">{name}</p>
         )}
         {phone && (
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 font-mono">{phone}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-0.5 font-mono">{phone}</p>
         )}
-        <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium mt-2', CHANNEL_COLORS[channel] || CHANNEL_COLORS.wa_movi)}>
+        <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium mt-2', CHANNEL_COLORS[channel] || CHANNEL_COLORS.wa_movi)}>
           {CHANNEL_LABELS[channel] || channel}
         </span>
       </div>
@@ -505,7 +505,7 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
             title="Llamar"
           >
             <Phone className="w-4 h-4" />
-            <span className="text-[10px]">Llamar</span>
+            <span className="text-[11px]">Llamar</span>
           </a>
         )}
         {whatsappUrl && (
@@ -517,7 +517,7 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
             title="Abrir en WhatsApp"
           >
             <ExternalLink className="w-4 h-4" />
-            <span className="text-[10px]">WhatsApp</span>
+            <span className="text-[11px]">WhatsApp</span>
           </a>
         )}
       </div>
@@ -527,25 +527,25 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
 
         {/* Contact info */}
         <div>
-          <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+          <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
             <User className="w-3 h-3" /> Contacto
           </p>
           <div className="space-y-1.5">
             {name && (
               <div className="flex items-start gap-2">
-                <span className="text-[10px] text-neutral-400 w-12 flex-shrink-0 pt-0.5">Nombre</span>
+                <span className="text-[11px] text-neutral-500 w-12 flex-shrink-0 pt-0.5">Nombre</span>
                 <span className="text-xs text-neutral-700 dark:text-neutral-200 leading-snug">{name}</span>
               </div>
             )}
             {phone && (
               <div className="flex items-start gap-2">
-                <span className="text-[10px] text-neutral-400 w-12 flex-shrink-0 pt-0.5">Telefono</span>
+                <span className="text-[11px] text-neutral-500 w-12 flex-shrink-0 pt-0.5">Telefono</span>
                 <span className="text-xs text-neutral-700 dark:text-neutral-200 font-mono">{phone}</span>
               </div>
             )}
             {conversation.agentUserId && (
               <div className="flex items-start gap-2">
-                <span className="text-[10px] text-neutral-400 w-12 flex-shrink-0 pt-0.5">Canal</span>
+                <span className="text-[11px] text-neutral-500 w-12 flex-shrink-0 pt-0.5">Canal</span>
                 <span className="text-xs text-neutral-700 dark:text-neutral-200">{CHANNEL_LABELS[channel]}</span>
               </div>
             )}
@@ -554,7 +554,7 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
 
         {/* Related tickets */}
         <div>
-          <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+          <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
             <ClipboardList className="w-3 h-3" /> Tramites relacionados
           </p>
           {ticketsLoading ? (
@@ -564,7 +564,7 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
               ))}
             </div>
           ) : tickets.length === 0 ? (
-            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 py-1">Sin tramites encontrados</p>
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-500 py-1">Sin tramites encontrados</p>
           ) : (
             <div className="space-y-1.5">
               {tickets.map(t => (
@@ -572,11 +572,11 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
                   <div className="flex items-center justify-between gap-1 mb-0.5">
                     <span className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-200">{t.folio}</span>
                     {t.estatus_nombre && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 flex-shrink-0">{t.estatus_nombre}</span>
+                      <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 flex-shrink-0">{t.estatus_nombre}</span>
                     )}
                   </div>
                   {t.instrucciones && (
-                    <p className="text-[10px] text-neutral-500 line-clamp-2 leading-snug">{t.instrucciones}</p>
+                    <p className="text-[11px] text-neutral-500 line-clamp-2 leading-snug">{t.instrucciones}</p>
                   )}
                 </div>
               ))}
@@ -586,14 +586,14 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
 
         {/* Conversation metadata */}
         <div>
-          <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+          <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
             <FileText className="w-3 h-3" /> Conversacion
           </p>
           <div className="space-y-1.5">
             <div className="flex items-start gap-2">
-              <span className="text-[10px] text-neutral-400 w-16 flex-shrink-0 pt-0.5">Estado</span>
+              <span className="text-[11px] text-neutral-500 w-16 flex-shrink-0 pt-0.5">Estado</span>
               <span className={cn(
-                'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                'text-[11px] px-1.5 py-0.5 rounded-full font-medium',
                 conversation.status === 'open'
                   ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500'
@@ -603,7 +603,7 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
             </div>
             {conversation.unreadCount > 0 && (
               <div className="flex items-start gap-2">
-                <span className="text-[10px] text-neutral-400 w-16 flex-shrink-0 pt-0.5">No leidos</span>
+                <span className="text-[11px] text-neutral-500 w-16 flex-shrink-0 pt-0.5">No leidos</span>
                 <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{conversation.unreadCount}</span>
               </div>
             )}
@@ -695,8 +695,8 @@ function ConversationsView({
                 className={cn(
                   'p-2 rounded-lg transition-colors',
                   showContactPanel
-                    ? 'bg-accent/10 text-accent'
-                    : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600'
+                    ? 'bg-accent/10 text-accent-ink'
+                    : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600'
                 )}
                 title={showContactPanel ? 'Ocultar info' : 'Ver info del contacto'}
               >
@@ -712,11 +712,11 @@ function ConversationsView({
             <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
               Selecciona una conversacion
             </h3>
-            <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-xs">
+            <p className="text-xs text-neutral-500 dark:text-neutral-500 max-w-xs">
               Elige una conversacion del panel izquierdo para ver el historial y responder.
             </p>
             {!waPersonalConnected && (
-              <p className="text-[10px] text-teal-500 dark:text-teal-400 mt-4 max-w-xs">
+              <p className="text-[11px] text-teal-500 dark:text-teal-400 mt-4 max-w-xs">
                 Conecta tu WA Personal en la pestaña "Conexión" para ver tambien esas conversaciones aqui.
               </p>
             )}
@@ -767,7 +767,7 @@ function ConnectionView({
                 Siempre activo. Los mensajes de clientes llegan automaticamente a tu bandeja.
               </p>
             </div>
-            <span className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-800/40 rounded-full text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+            <span className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-800/40 rounded-full text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               Activo
             </span>
@@ -790,7 +790,7 @@ function ConnectionView({
         <div className={cn('rounded-2xl border p-6', isConnected ? 'bg-teal-50 dark:bg-teal-900/10 border-teal-200 dark:border-teal-800/40' : isError ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/40' : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700')}>
           <div className="flex items-center gap-4 mb-4">
             <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center', isConnected ? 'bg-teal-100 dark:bg-teal-800/30' : isError ? 'bg-red-100 dark:bg-red-800/30' : 'bg-neutral-100 dark:bg-white/5')}>
-              {isConnected ? <Wifi className="w-7 h-7 text-teal-600" /> : isError ? <AlertCircle className="w-7 h-7 text-red-600" /> : <WifiOff className="w-7 h-7 text-neutral-400" />}
+              {isConnected ? <Wifi className="w-7 h-7 text-teal-600" /> : isError ? <AlertCircle className="w-7 h-7 text-red-600" /> : <WifiOff className="w-7 h-7 text-neutral-500" />}
             </div>
             <div>
               <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
@@ -823,7 +823,7 @@ function ConnectionView({
             )}
             {isConnected && (
               <button onClick={onSyncHistory} disabled={syncingHistory}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-sm font-medium transition-colors">
+                className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-accent-foreground rounded-xl text-sm font-medium transition-colors">
                 <RefreshCw className={cn('w-4 h-4', syncingHistory && 'animate-spin')} />
                 {syncingHistory ? 'Sincronizando...' : 'Sincronizar historial'}
               </button>
@@ -842,8 +842,8 @@ function ConnectionView({
 
         {/* QR Code display */}
         {(isQrPending || isConnecting) && (
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-8 text-center">
-            <div className="w-64 h-64 mx-auto bg-white rounded-2xl flex items-center justify-center mb-4 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+          <div className="bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl p-8 text-center">
+            <div className="w-64 h-64 mx-auto bg-surface-card rounded-2xl flex items-center justify-center mb-4 border border-soft dark:border-neutral-700 overflow-hidden">
               {qrCode ? (
                 <img src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} alt="WhatsApp QR Code" className="w-full h-full object-contain p-2" />
               ) : (
@@ -856,7 +856,7 @@ function ConnectionView({
                   ) : (
                     <>
                       <QrCode className="w-16 h-16 text-neutral-200 dark:text-neutral-700 mx-auto mb-2" />
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500">Presiona "Conectar WhatsApp" para generar el codigo QR</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-500">Presiona "Conectar WhatsApp" para generar el codigo QR</p>
                     </>
                   )}
                 </div>
@@ -884,7 +884,7 @@ function ConnectionView({
         {/* Info section */}
         <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-5 border border-neutral-200/50 dark:border-neutral-700/50">
           <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2">
-            <Settings className="w-4 h-4 text-neutral-400" /> Informacion importante
+            <Settings className="w-4 h-4 text-neutral-500" /> Informacion importante
           </h3>
           <ul className="text-xs text-neutral-500 dark:text-neutral-400 space-y-2">
             <li className="flex items-start gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" /> WA MOVI siempre esta activo y recibe mensajes de clientes de forma independiente.</li>
@@ -956,7 +956,7 @@ function TemplatesView({ templates, userId, onRefresh }: {
     <div className="h-full overflow-y-auto">
       <div className="max-w-2xl mx-auto p-6 space-y-6">
         {/* Create/Edit form */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5">
+        <div className="bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl p-5">
           <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
             {editingId ? <Edit3 className="w-4 h-4 text-amber-500" /> : <Plus className="w-4 h-4 text-emerald-600" />}
             {editingId ? 'Editar plantilla' : 'Nueva plantilla'}
@@ -964,13 +964,13 @@ function TemplatesView({ templates, userId, onRefresh }: {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre"
-                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/60" />
+                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-emerald-400/60" />
               <input type="text" value={category} onChange={e => setCategory(e.target.value)} placeholder="Categoria (opcional)"
-                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/60" />
+                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-emerald-400/60" />
             </div>
             <textarea value={body} onChange={e => setBody(e.target.value)}
               placeholder="Hola {{nombre_cliente}}, te saluda {{nombre_usuario}} de {{nombre_oficina}}..."
-              rows={4} className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/60 resize-none" />
+              rows={4} className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-emerald-400/60 resize-none" />
             <div className="flex items-center gap-2">
               <button onClick={handleSave} disabled={!name.trim() || !body.trim()}
                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-200 disabled:dark:bg-neutral-700 text-white disabled:text-neutral-400 rounded-xl text-sm font-medium transition-colors">
@@ -998,24 +998,24 @@ function TemplatesView({ templates, userId, onRefresh }: {
             <div className="text-center py-10 bg-neutral-50 dark:bg-neutral-800/30 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50">
               <Zap className="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
               <p className="text-sm text-neutral-500 dark:text-neutral-400">No tienes plantillas aun</p>
-              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Crea una plantilla para enviar mensajes rapidos en WhatsApp</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-1">Crea una plantilla para enviar mensajes rapidos en WhatsApp</p>
             </div>
           ) : (
             <div className="space-y-3">
               {filtered.map(tpl => (
-                <div key={tpl.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 group">
+                <div key={tpl.id} className="bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl p-4 group">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         {tpl.is_favorite && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
                         <h4 className="text-sm font-semibold text-neutral-800 dark:text-white">{tpl.name}</h4>
-                        {tpl.category && <span className="text-[9px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 rounded">{tpl.category}</span>}
+                        {tpl.category && <span className="text-[10.5px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 rounded">{tpl.category}</span>}
                       </div>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">{tpl.body}</p>
                     </div>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => handleToggleFavorite(tpl)} className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg" title="Favorito"><Star className={cn('w-3.5 h-3.5', tpl.is_favorite ? 'text-amber-500 fill-amber-500' : 'text-neutral-300')} /></button>
-                      <button onClick={() => handleDuplicate(tpl)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg" title="Duplicar"><Copy className="w-3.5 h-3.5 text-neutral-400" /></button>
+                      <button onClick={() => handleDuplicate(tpl)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg" title="Duplicar"><Copy className="w-3.5 h-3.5 text-neutral-500" /></button>
                       <button onClick={() => handleEdit(tpl)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg" title="Editar"><Edit3 className="w-3.5 h-3.5 text-blue-500" /></button>
                       <button onClick={() => handleDelete(tpl.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Eliminar"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
                     </div>
@@ -1028,7 +1028,7 @@ function TemplatesView({ templates, userId, onRefresh }: {
 
         {/* Variables reference */}
         <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-5 border border-neutral-200/50 dark:border-neutral-700/50">
-          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2"><Tag className="w-4 h-4 text-neutral-400" /> Variables disponibles</h3>
+          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2"><Tag className="w-4 h-4 text-neutral-500" /> Variables disponibles</h3>
           <div className="grid grid-cols-2 gap-2">
             {[
               { var: '{{nombre_cliente}}', desc: 'Nombre del contacto' },
@@ -1045,8 +1045,8 @@ function TemplatesView({ templates, userId, onRefresh }: {
               { var: '{{email_oficina}}', desc: 'Email oficina' },
             ].map(v => (
               <div key={v.var} className="text-xs">
-                <code className="text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">{v.var}</code>
-                <span className="text-neutral-400 dark:text-neutral-500 ml-1.5">{v.desc}</span>
+                <code className="text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">{v.var}</code>
+                <span className="text-neutral-500 dark:text-neutral-500 ml-1.5">{v.desc}</span>
               </div>
             ))}
           </div>

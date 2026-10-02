@@ -11,15 +11,15 @@ interface Props {
 
 function ReviewSection({ title, icon: Icon, stepIdx, onEdit, children }: { title: string; icon: React.ElementType; stepIdx: number; onEdit: (idx: number) => void; children: React.ReactNode }) {
   return (
-    <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700">
+    <div className="p-4 bg-neutral-50 dark:bg-gray-900/50 rounded-xl border border-neutral-100 dark:border-gray-700">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4 text-gray-500" />
-          <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200">{title}</h3>
+          <Icon className="w-4 h-4 text-neutral-500" />
+          <h3 className="text-sm font-medium text-neutral-800 dark:text-gray-200">{title}</h3>
         </div>
         <button
           onClick={() => onEdit(stepIdx)}
-          className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors"
+          className="flex items-center gap-1 text-xs text-accent-ink dark:text-blue-400 hover:text-accent-ink transition-colors"
         >
           <Edit3 className="w-3 h-3" /> Editar
         </button>
@@ -33,8 +33,8 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <div>
-      <span className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wider">{label}</span>
-      <p className="text-sm text-gray-800 dark:text-gray-200">{value}</p>
+      <span className="text-[11px] text-neutral-500 dark:text-gray-500 uppercase tracking-wider">{label}</span>
+      <p className="text-sm text-neutral-800 dark:text-gray-200">{value}</p>
     </div>
   );
 }
@@ -49,8 +49,8 @@ export default function QuoteFormStepReview({ formData, template, onEditStep }: 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Revision final</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">Verifica que la informacion sea correcta antes de enviar la solicitud.</p>
+        <h2 className="text-base font-semibold text-neutral-900 dark:text-white mb-1">Revision final</h2>
+        <p className="text-xs text-neutral-500 dark:text-gray-400">Verifica que la informacion sea correcta antes de enviar la solicitud.</p>
       </div>
 
       {/* Header info */}
@@ -72,7 +72,7 @@ export default function QuoteFormStepReview({ formData, template, onEditStep }: 
           <Field label="Notas" value={formData.client_notes} />
         </div>
         {formData.client_address_compact && (
-          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-gray-700">
             <Field label="Domicilio fiscal" value={formData.client_address_compact} />
           </div>
         )}
@@ -94,7 +94,7 @@ export default function QuoteFormStepReview({ formData, template, onEditStep }: 
       {coverages.length > 0 && (
         <ReviewSection title="Coberturas" icon={Shield} stepIdx={2} onEdit={onEditStep}>
           {formData.modality && (
-            <p className="text-xs text-gray-500 mb-2">Modalidad: <span className="font-medium text-gray-700 dark:text-gray-300">{formData.modality}</span></p>
+            <p className="text-xs text-neutral-500 mb-2">Modalidad: <span className="font-medium text-neutral-700 dark:text-gray-300">{formData.modality}</span></p>
           )}
           <div className="flex flex-wrap gap-1.5">
             {coverages.map(cov => (
@@ -104,7 +104,7 @@ export default function QuoteFormStepReview({ formData, template, onEditStep }: 
             ))}
           </div>
           {formData.sums_detail && (
-            <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+            <div className="mt-3 pt-2 border-t border-neutral-200 dark:border-gray-700">
               <Field label="Detalle de sumas" value={formData.sums_detail} />
             </div>
           )}
@@ -126,11 +126,11 @@ export default function QuoteFormStepReview({ formData, template, onEditStep }: 
             <Field label="Medio transporte" value={formData.transport_mode} />
           </div>
           {formData.security_measures?.length > 0 && (
-            <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-              <span className="text-[11px] text-gray-400 uppercase tracking-wider">Medidas de seguridad</span>
+            <div className="mt-3 pt-2 border-t border-neutral-200 dark:border-gray-700">
+              <span className="text-[11px] text-neutral-500 uppercase tracking-wider">Medidas de seguridad</span>
               <div className="flex flex-wrap gap-1.5 mt-1">
                 {formData.security_measures.map((m: string) => (
-                  <span key={m} className="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">{m}</span>
+                  <span key={m} className="px-2 py-0.5 text-xs bg-neutral-100 dark:bg-gray-700 text-neutral-600 dark:text-gray-300 rounded">{m}</span>
                 ))}
               </div>
             </div>

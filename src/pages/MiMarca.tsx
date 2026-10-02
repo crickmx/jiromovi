@@ -229,7 +229,7 @@ export default function MiMarca() {
         </div>
       )}
 
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+      <div className="bg-surface-card border border-soft rounded-2xl p-6 shadow-card">
         <div className="flex items-start gap-3 mb-4">
           <div className="p-2 bg-neutral-100 rounded-lg">
             <User className="w-5 h-5 text-neutral-600" />
@@ -253,7 +253,7 @@ export default function MiMarca() {
               value={nombrePublico}
               onChange={(e) => setNombrePublico(e.target.value)}
               placeholder={defaultDisplayName}
-              className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-transparent"
               maxLength={120}
             />
             <p className="text-xs text-neutral-500 mt-1.5">
@@ -270,7 +270,7 @@ export default function MiMarca() {
               type="button"
               onClick={handleSaveName}
               disabled={savingName || !hasChanges}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-sm font-medium rounded-lg transition-colors"
             >
               <Save className="w-4 h-4" />
               Guardar nombre
@@ -280,7 +280,7 @@ export default function MiMarca() {
                 type="button"
                 onClick={handleResetName}
                 disabled={savingName}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-50 disabled:opacity-60 text-neutral-700 text-sm font-medium rounded-lg border border-neutral-300 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-surface-card hover:bg-neutral-50 disabled:opacity-60 text-neutral-700 text-sm font-medium rounded-lg border border-neutral-300 transition-colors"
               >
                 <RotateCcw className="w-4 h-4" />
                 Usar predeterminado
@@ -290,7 +290,7 @@ export default function MiMarca() {
         </div>
       </div>
 
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+      <div className="bg-surface-card border border-soft rounded-2xl p-6 shadow-card">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-neutral-900">Foto de perfil</h3>
@@ -312,7 +312,7 @@ export default function MiMarca() {
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
-                <ImageIcon className="w-12 h-12 text-neutral-400" />
+                <ImageIcon className="w-12 h-12 text-neutral-500" />
               )}
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function MiMarca() {
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={uploading}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-accent-foreground text-sm font-medium rounded-lg transition-colors"
               >
                 <Upload className="w-4 h-4" />
                 {usuario.imagen_perfil_url ? 'Cambiar foto' : 'Subir foto'}
@@ -333,7 +333,7 @@ export default function MiMarca() {
                   type="button"
                   onClick={handleAvatarRemove}
                   disabled={uploading}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-50 disabled:opacity-60 text-neutral-700 text-sm font-medium rounded-lg border border-neutral-300 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-surface-card hover:bg-neutral-50 disabled:opacity-60 text-neutral-700 text-sm font-medium rounded-lg border border-neutral-300 transition-colors"
                 >
                   <X className="w-4 h-4" />
                   Quitar foto
@@ -362,7 +362,7 @@ export default function MiMarca() {
         }}
       />
 
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+      <div className="bg-surface-card border border-soft rounded-2xl p-6 shadow-card">
         <div className="flex items-start gap-3 mb-4">
           <div className="p-2 bg-neutral-100 rounded-lg">
             <Palette className="w-5 h-5 text-neutral-600" />
@@ -391,7 +391,7 @@ export default function MiMarca() {
                 type="text"
                 value={branding.primary_color}
                 onChange={(e) => setBranding(prev => ({ ...prev, primary_color: e.target.value }))}
-                className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-transparent"
                 placeholder="#2563eb"
               />
             </div>
@@ -411,7 +411,7 @@ export default function MiMarca() {
                 type="text"
                 value={branding.secondary_color}
                 onChange={(e) => setBranding(prev => ({ ...prev, secondary_color: e.target.value }))}
-                className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-transparent"
                 placeholder="#7c3aed"
               />
             </div>
@@ -423,7 +423,7 @@ export default function MiMarca() {
             type="button"
             onClick={handleSaveBranding}
             disabled={savingBranding}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-sm font-medium rounded-lg transition-colors"
           >
             <Save className="w-4 h-4" />
             {savingBranding ? 'Guardando...' : 'Guardar colores'}
@@ -431,7 +431,7 @@ export default function MiMarca() {
         </div>
       </div>
 
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm">
+      <div className="bg-surface-card border border-soft rounded-2xl p-6 shadow-card">
         <div className="flex items-start gap-3 mb-4">
           <div className="p-2 bg-neutral-100 rounded-lg">
             <FileText className="w-5 h-5 text-neutral-600" />
@@ -449,10 +449,10 @@ export default function MiMarca() {
           <textarea
             value={branding.custom_text}
             onChange={(e) => setBranding(prev => ({ ...prev, custom_text: e.target.value }))}
-            className="w-full px-4 py-3 border border-neutral-300 rounded-xl min-h-[220px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full px-4 py-3 border border-neutral-300 rounded-xl min-h-[220px] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-transparent resize-none"
             placeholder="Como tu asesor personal de seguros, mi compromiso es brindarte atención especializada...&#10;&#10;Trabajo con las mejores aseguradoras del mercado...&#10;&#10;Mi objetivo es que tomes decisiones informadas..."
           />
-          <div className="absolute bottom-3 right-3 text-xs text-neutral-400">
+          <div className="absolute bottom-3 right-3 text-xs text-neutral-500">
             {branding.custom_text.split('\n\n').filter(p => p.trim()).length} párrafo(s)
           </div>
         </div>
@@ -462,7 +462,7 @@ export default function MiMarca() {
             type="button"
             onClick={handleSaveBranding}
             disabled={savingBranding}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-sm font-medium rounded-lg transition-colors"
           >
             <Save className="w-4 h-4" />
             {savingBranding ? 'Guardando...' : 'Guardar sobre mí'}

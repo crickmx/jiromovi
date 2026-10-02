@@ -84,7 +84,7 @@ export default function MiProgreso() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent" />
       </div>
     );
   }
@@ -93,12 +93,12 @@ export default function MiProgreso() {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card className="p-8 text-center">
-          <Trophy className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+          <Trophy className="w-16 h-16 mx-auto mb-4 text-neutral-500" />
           <h2 className="text-2xl font-bold mb-2">Bienvenido al Sistema de Gamificación</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
+          <p className="text-neutral-600 dark:text-gray-400 mb-4">
             Tu perfil de gamificación se creará automáticamente cuando realices tu primera acción.
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-neutral-500">
             Completa misiones, gana XP y sube de nivel para obtener Jiro Coins.
           </p>
         </Card>
@@ -123,13 +123,13 @@ export default function MiProgreso() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-              <Zap className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <Zap className="w-6 h-6 text-accent-ink dark:text-blue-400" />
             </div>
             <Badge variant="outline">{perfil.rango_actual}</Badge>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">XP Total</p>
+          <p className="text-sm text-neutral-600 dark:text-gray-400 mb-1">XP Total</p>
           <p className="text-3xl font-bold mb-2">{formatearXP(perfil.xp_total)}</p>
-          <p className="text-xs text-gray-500">Nivel {perfil.nivel_actual}</p>
+          <p className="text-xs text-neutral-500">Nivel {perfil.nivel_actual}</p>
         </Card>
 
         {/* Jiro Coins */}
@@ -139,11 +139,11 @@ export default function MiProgreso() {
               <Star className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Jiro Coins</p>
+          <p className="text-sm text-neutral-600 dark:text-gray-400 mb-1">Jiro Coins</p>
           <p className={cn('text-3xl font-bold mb-2', perfil.jiro_coins_balance < 0 && 'text-red-600')}>
             {formatearJiroCoins(perfil.jiro_coins_balance)}
           </p>
-          <p className="text-xs text-gray-500">Disponibles</p>
+          <p className="text-xs text-neutral-500">Disponibles</p>
         </Card>
 
         {/* Posición Global */}
@@ -154,9 +154,9 @@ export default function MiProgreso() {
                 <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Ranking Global</p>
+            <p className="text-sm text-neutral-600 dark:text-gray-400 mb-1">Ranking Global</p>
             <p className="text-3xl font-bold mb-2">#{posicion.posicion_global}</p>
-            <p className="text-xs text-gray-500">de {posicion.total_agentes} agentes</p>
+            <p className="text-xs text-neutral-500">de {posicion.total_agentes} agentes</p>
           </Card>
         )}
 
@@ -168,9 +168,9 @@ export default function MiProgreso() {
                 <Award className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Ranking Oficina</p>
+            <p className="text-sm text-neutral-600 dark:text-gray-400 mb-1">Ranking Oficina</p>
             <p className="text-3xl font-bold mb-2">#{posicion.posicion_oficina}</p>
-            <p className="text-xs text-gray-500">de {posicion.total_agentes_oficina} agentes</p>
+            <p className="text-xs text-neutral-500">de {posicion.total_agentes_oficina} agentes</p>
           </Card>
         )}
       </div>
@@ -182,7 +182,7 @@ export default function MiProgreso() {
             <h3 className="text-lg font-semibold mb-1">
               Nivel {perfil.nivel_actual} - {perfil.rango_actual}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-neutral-600 dark:text-gray-400">
               {rangoConfig.descripcion}
             </p>
           </div>
@@ -199,19 +199,19 @@ export default function MiProgreso() {
             <div className="mb-2">
               <div className="flex justify-between text-sm mb-1">
                 <span>{formatearXP(perfil.xp_total)} XP</span>
-                <span className="text-gray-600 dark:text-gray-400">
+                <span className="text-neutral-600 dark:text-gray-400">
                   {formatearXP(progreso.xp_necesario)} XP para subir
                 </span>
                 <span>{formatearXP(progreso.xp_siguiente_nivel)} XP</span>
               </div>
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div className="h-3 bg-neutral-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className={cn('h-full bg-gradient-to-r transition-all', rangoConfig.gradiente)}
                   style={{ width: `${progreso.porcentaje}%` }}
                 />
               </div>
             </div>
-            <p className="text-xs text-gray-500 text-right">
+            <p className="text-xs text-neutral-500 text-right">
               {progreso.porcentaje.toFixed(1)}% completado
             </p>
           </>
@@ -229,8 +229,8 @@ export default function MiProgreso() {
         <TabsContent value="misiones" className="space-y-4">
           {misiones.length === 0 && (
             <Card className="p-8 text-center">
-              <Target className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-600 dark:text-gray-400">
+              <Target className="w-12 h-12 mx-auto mb-4 text-neutral-500" />
+              <p className="text-neutral-600 dark:text-gray-400">
                 No hay misiones activas en este momento
               </p>
             </Card>
@@ -253,7 +253,7 @@ export default function MiProgreso() {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h4 className="font-semibold text-lg mb-1">{mision.nombre}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-sm text-neutral-600 dark:text-gray-400">
                         {mision.descripcion}
                       </p>
                     </div>
@@ -282,12 +282,12 @@ export default function MiProgreso() {
                   {/* Barra de progreso */}
                   <div>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600 dark:text-gray-400">Progreso</span>
+                      <span className="text-neutral-600 dark:text-gray-400">Progreso</span>
                       <span className="font-medium">
                         {mision.progreso_actual} / {mision.meta_requerida}
                       </span>
                     </div>
-                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-neutral-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className={cn(
                           'h-full transition-all',
@@ -295,7 +295,7 @@ export default function MiProgreso() {
                             ? 'bg-green-500'
                             : misionCercaDeCompletar(mision.progreso_actual, mision.meta_requerida)
                             ? 'bg-yellow-500'
-                            : 'bg-blue-500'
+                            : 'bg-accent'
                         )}
                         style={{ width: `${Math.min(100, mision.porcentaje_completado)}%` }}
                       />
@@ -311,8 +311,8 @@ export default function MiProgreso() {
         <TabsContent value="historial" className="space-y-3">
           {historial.length === 0 && (
             <Card className="p-8 text-center">
-              <Clock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-600 dark:text-gray-400">
+              <Clock className="w-12 h-12 mx-auto mb-4 text-neutral-500" />
+              <p className="text-neutral-600 dark:text-gray-400">
                 No hay eventos registrados todavía
               </p>
             </Card>
@@ -337,7 +337,7 @@ export default function MiProgreso() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-medium mb-1">{config.label}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-neutral-500">
                           {new Date(evento.fecha_evento).toLocaleString('es-MX')}
                         </p>
                       </div>
@@ -372,38 +372,38 @@ export default function MiProgreso() {
         <TabsContent value="estadisticas">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Card className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Pólizas Emitidas</p>
+              <p className="text-sm text-neutral-600 dark:text-gray-400 mb-2">Pólizas Emitidas</p>
               <p className="text-3xl font-bold">{perfil.total_polizas_emitidas}</p>
             </Card>
 
             <Card className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Prospectos</p>
+              <p className="text-sm text-neutral-600 dark:text-gray-400 mb-2">Prospectos</p>
               <p className="text-3xl font-bold">{perfil.total_prospectos}</p>
             </Card>
 
             <Card className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Cursos Completados</p>
+              <p className="text-sm text-neutral-600 dark:text-gray-400 mb-2">Cursos Completados</p>
               <p className="text-3xl font-bold">{perfil.total_cursos_completados}</p>
             </Card>
 
             <Card className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Certificaciones</p>
+              <p className="text-sm text-neutral-600 dark:text-gray-400 mb-2">Certificaciones</p>
               <p className="text-3xl font-bold">{perfil.total_certificaciones}</p>
             </Card>
 
             <Card className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Renovaciones</p>
+              <p className="text-sm text-neutral-600 dark:text-gray-400 mb-2">Renovaciones</p>
               <p className="text-3xl font-bold">{perfil.total_renovaciones}</p>
             </Card>
 
             <Card className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Antigüedad</p>
+              <p className="text-sm text-neutral-600 dark:text-gray-400 mb-2">Antigüedad</p>
               <p className="text-3xl font-bold">{perfil.anios_antiguedad.toFixed(1)}</p>
-              <p className="text-xs text-gray-500 mt-1">años</p>
+              <p className="text-xs text-neutral-500 mt-1">años</p>
             </Card>
 
             <Card className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Multiplicador Veterano</p>
+              <p className="text-sm text-neutral-600 dark:text-gray-400 mb-2">Multiplicador Veterano</p>
               <p className="text-3xl font-bold">{perfil.multiplicador_veterano.toFixed(2)}x</p>
             </Card>
           </div>

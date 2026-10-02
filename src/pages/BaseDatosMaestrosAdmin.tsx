@@ -788,9 +788,9 @@ export default function BaseDatosMaestrosAdmin() {
 
   function ImportConvenioPanel() {
     return (
-      <div className="bg-white dark:bg-neutral-800 rounded-xl border-2 border-blue-200 dark:border-blue-800 p-5 space-y-4">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border-2 border-blue-200 dark:border-blue-800 p-5 space-y-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-          <Tag className="w-4 h-4 text-blue-600"/>
+          <Tag className="w-4 h-4 text-accent-ink"/>
           Importar Convenio / Preferentes (por Ramo y Subramo)
         </div>
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -806,13 +806,13 @@ export default function BaseDatosMaestrosAdmin() {
           {convenioLoading ? (
             <div className="flex flex-col items-center gap-2">
               <RefreshCw className="w-7 h-7 text-blue-500 animate-spin"/>
-              <p className="text-sm text-blue-600 font-medium">Procesando convenio...</p>
+              <p className="text-sm text-accent-ink font-medium">Procesando convenio...</p>
             </div>
           ) : (
             <>
               <Tag className="w-8 h-8 text-blue-200 mx-auto mb-2"/>
-              <p className="text-sm text-neutral-600 dark:text-neutral-300">Arrastra aquí tu Excel de Convenio/Preferentes o <span className="text-blue-600 font-medium">haz click para seleccionar</span></p>
-              <p className="text-xs text-neutral-400 mt-1">Cualquier hoja con columnas de compañía, ramo, subramo y convenio (acepta los encabezados tal cual vienen del Excel de Ricardo)</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">Arrastra aquí tu Excel de Convenio/Preferentes o <span className="text-accent-ink font-medium">haz click para seleccionar</span></p>
+              <p className="text-xs text-neutral-500 mt-1">Cualquier hoja con columnas de compañía, ramo, subramo y convenio (acepta los encabezados tal cual vienen del Excel de Ricardo)</p>
             </>
           )}
         </div>
@@ -976,7 +976,7 @@ export default function BaseDatosMaestrosAdmin() {
     return (
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-neutral-800 dark:text-neutral-100">
-          {title} <span className="text-neutral-400 font-normal text-sm">({count})</span>
+          {title} <span className="text-neutral-500 font-normal text-sm">({count})</span>
         </h3>
         {onAdd && (
           <button onClick={onAdd} className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition">
@@ -991,9 +991,9 @@ export default function BaseDatosMaestrosAdmin() {
 
   function ImportPanel() {
     return (
-      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5 space-y-4">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5 space-y-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-          <Upload className="w-4 h-4 text-blue-600"/>
+          <Upload className="w-4 h-4 text-accent-ink"/>
           Importar desde Excel
         </div>
 
@@ -1002,7 +1002,7 @@ export default function BaseDatosMaestrosAdmin() {
             {(['adicion', 'reemplazo'] as ImportMode[]).map(m => (
               <button key={m} onClick={() => setImportMode(m)}
                 className={`px-3 py-2 font-medium transition ${importMode === m
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-accent text-accent-foreground'
                   : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'}`}>
                 {m === 'adicion' ? 'Adición (ignorar duplicados)' : 'Reemplazo total'}
               </button>
@@ -1026,13 +1026,13 @@ export default function BaseDatosMaestrosAdmin() {
           {importLoading ? (
             <div className="flex flex-col items-center gap-2">
               <RefreshCw className="w-8 h-8 text-blue-500 animate-spin"/>
-              <p className="text-sm text-blue-600 font-medium">Importando...</p>
+              <p className="text-sm text-accent-ink font-medium">Importando...</p>
             </div>
           ) : (
             <>
               <FileSpreadsheet className="w-10 h-10 text-neutral-300 mx-auto mb-2"/>
-              <p className="text-sm text-neutral-600 dark:text-neutral-300">Arrastra tu archivo Excel aquí o <span className="text-blue-600 font-medium">haz click para seleccionar</span></p>
-              <p className="text-xs text-neutral-400 mt-1">Pestañas válidas: <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">catalogo</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">vendedores</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">mapeo</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">codigos_postales</code></p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">Arrastra tu archivo Excel aquí o <span className="text-accent-ink font-medium">haz click para seleccionar</span></p>
+              <p className="text-xs text-neutral-500 mt-1">Pestañas válidas: <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">catalogo</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">vendedores</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">mapeo</code>, <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">codigos_postales</code></p>
             </>
           )}
         </div>
@@ -1065,23 +1065,23 @@ export default function BaseDatosMaestrosAdmin() {
         <ImportConvenioPanel />
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"/>
           <input type="text" placeholder="Buscar ramo, compañía o subramo..." value={searchCat}
             onChange={e => setSearchCat(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-neutral-800 dark:text-white"/>
+            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent dark:bg-neutral-800 dark:text-white"/>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* Ramos */}
-          <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5">
             <SectionHeader title="Ramos" count={ramos.length} onAdd={() => setShowAddRamo(v => !v)}/>
             {showAddRamo && (
               <div className="flex gap-2 mb-3">
                 <input value={addRamoNombre} onChange={e => setAddRamoNombre(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addRamo()}
                   placeholder="Nombre del ramo" className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white"/>
-                <button onClick={addRamo} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"><Save className="w-4 h-4"/></button>
+                <button onClick={addRamo} className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent-hover"><Save className="w-4 h-4"/></button>
                 <button onClick={() => setShowAddRamo(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
               </div>
             )}
@@ -1095,9 +1095,9 @@ export default function BaseDatosMaestrosAdmin() {
                       <div className="flex items-center justify-between py-1.5 px-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 rounded-lg group">
                         <button className="flex items-center gap-2 flex-1 text-left" onClick={() =>
                           setExpandedRamos(prev => { const s = new Set(prev); s.has(ramo.id) ? s.delete(ramo.id) : s.add(ramo.id); return s; })}>
-                          {expanded ? <ChevronDown className="w-3.5 h-3.5 text-neutral-400"/> : <ChevronRight className="w-3.5 h-3.5 text-neutral-400"/>}
+                          {expanded ? <ChevronDown className="w-3.5 h-3.5 text-neutral-500"/> : <ChevronRight className="w-3.5 h-3.5 text-neutral-500"/>}
                           <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100">{ramo.nombre}</span>
-                          <span className="text-xs text-neutral-400">{subsDeRamo.length} subramos</span>
+                          <span className="text-xs text-neutral-500">{subsDeRamo.length} subramos</span>
                         </button>
                         <button onClick={() => toggleActivo('maestro_ramos', ramo.id, ramo.activo, loadCatalogo)}
                           className="opacity-0 group-hover:opacity-100 transition">
@@ -1126,7 +1126,7 @@ export default function BaseDatosMaestrosAdmin() {
           </div>
 
           {/* Compañías */}
-          <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5">
             <SectionHeader title="Compañías" count={companias.length} onAdd={() => setShowAddCompania(v => !v)}/>
             {showAddCompania && (
               <div className="flex flex-col gap-2 mb-3">
@@ -1138,7 +1138,7 @@ export default function BaseDatosMaestrosAdmin() {
                   Tiene convenio (compañía preferente)
                 </label>
                 <div className="flex gap-2">
-                  <button onClick={addCompania} className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Guardar</button>
+                  <button onClick={addCompania} className="flex-1 px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent-hover">Guardar</button>
                   <button onClick={() => setShowAddCompania(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
                 </div>
               </div>
@@ -1155,7 +1155,7 @@ export default function BaseDatosMaestrosAdmin() {
                         className={`text-xs px-1.5 py-0.5 rounded transition-colors ${
                           comp.convenio
                             ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                            : 'bg-neutral-100 text-neutral-400 opacity-0 group-hover:opacity-100 hover:bg-neutral-200 hover:text-neutral-600'
+                            : 'bg-neutral-100 text-neutral-500 opacity-0 group-hover:opacity-100 hover:bg-neutral-200 hover:text-neutral-600'
                         }`}
                       >
                         {comp.convenio ? 'Convenio' : '+ Convenio'}
@@ -1211,7 +1211,7 @@ export default function BaseDatosMaestrosAdmin() {
                 onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
                 className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus/>
               <button onClick={saveEditRow} className="p-1 text-green-600 hover:text-green-700"><Save className="w-3.5 h-3.5"/></button>
-              <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400 hover:text-neutral-600"><X className="w-3.5 h-3.5"/></button>
+              <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-500 hover:text-neutral-600"><X className="w-3.5 h-3.5"/></button>
             </div>
           ) : (
             <>
@@ -1221,11 +1221,11 @@ export default function BaseDatosMaestrosAdmin() {
                   <BadgeActivo activo={ag.activo}/>
                 </button>
                 <button onClick={() => setEditingRow({ table: 'maestro_agentes', id: ag.id, nombre: ag.nombre })}
-                  className="p-1 text-neutral-400 hover:text-blue-600 rounded" title="Editar nombre">
+                  className="p-1 text-neutral-500 hover:text-accent-ink rounded" title="Editar nombre">
                   <Edit2 className="w-3.5 h-3.5"/>
                 </button>
                 <button onClick={() => { if (window.confirm(`¿Eliminar vendedor "${ag.nombre}"?`)) deleteRow('maestro_agentes', ag.id, loadVendedores); }}
-                  className="p-1 text-neutral-400 hover:text-red-600 rounded" title="Eliminar">
+                  className="p-1 text-neutral-500 hover:text-red-600 rounded" title="Eliminar">
                   <Trash2 className="w-3.5 h-3.5"/>
                 </button>
               </div>
@@ -1240,17 +1240,17 @@ export default function BaseDatosMaestrosAdmin() {
         <ImportPanel />
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"/>
           <input type="text" placeholder="Buscar despacho, gerencia o vendedor..." value={searchVend}
             onChange={e => setSearchVend(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-neutral-800 dark:text-white"/>
+            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-accent/40 dark:bg-neutral-800 dark:text-white"/>
         </div>
 
-        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+        <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5">
           {/* Header con toggle de vista y botón de agregar */}
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <h3 className="font-semibold text-neutral-800 dark:text-neutral-100">
-              Despachos y vendedores <span className="text-neutral-400 font-normal text-sm">({agentes.length})</span>
+              Despachos y vendedores <span className="text-neutral-500 font-normal text-sm">({agentes.length})</span>
             </h3>
             <div className="flex items-center gap-2">
               <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-600 overflow-hidden text-xs font-medium">
@@ -1280,7 +1280,7 @@ export default function BaseDatosMaestrosAdmin() {
                 </button>
               )}
               <button onClick={() => setShowAddDespacho(v => !v)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-accent-ink bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
                 <Plus className="w-3.5 h-3.5"/>
                 Nuevo despacho
               </button>
@@ -1292,7 +1292,7 @@ export default function BaseDatosMaestrosAdmin() {
               <input value={addDespachoNombre} onChange={e => setAddDespachoNombre(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addDespacho()}
                 placeholder="Nombre del despacho" className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white"/>
-              <button onClick={addDespacho} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"><Save className="w-4 h-4"/></button>
+              <button onClick={addDespacho} className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm"><Save className="w-4 h-4"/></button>
               <button onClick={() => setShowAddDespacho(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
             </div>
           )}
@@ -1324,23 +1324,23 @@ export default function BaseDatosMaestrosAdmin() {
                                 onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
                                 className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus/>
                               <button onClick={saveEditRow} className="p-1 text-green-600"><Save className="w-3.5 h-3.5"/></button>
-                              <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3.5 h-3.5"/></button>
+                              <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-500"><X className="w-3.5 h-3.5"/></button>
                             </div>
                           ) : (
                             <>
                               <button onClick={() => setExpandedDespachos(prev => { const s = new Set(prev); s.has(desp.id) ? s.delete(desp.id) : s.add(desp.id); return s; })}
                                 className="flex-1 flex items-center gap-2 text-left">
                                 <span className="font-medium text-neutral-800 dark:text-neutral-100 text-sm">{desp.nombre}</span>
-                                <span className="text-xs text-neutral-400 ml-auto">{agtsDeDesp.length} vendedores</span>
+                                <span className="text-xs text-neutral-500 ml-auto">{agtsDeDesp.length} vendedores</span>
                                 <BadgeActivo activo={desp.activo}/>
                               </button>
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
                                 <button onClick={() => setEditingRow({ table: 'maestro_despachos', id: desp.id, nombre: desp.nombre })}
-                                  className="p-1 text-neutral-400 hover:text-blue-600 rounded" title="Editar nombre">
+                                  className="p-1 text-neutral-500 hover:text-accent-ink rounded" title="Editar nombre">
                                   <Edit2 className="w-3.5 h-3.5"/>
                                 </button>
                                 <button onClick={() => { if (window.confirm(`¿Eliminar despacho "${desp.nombre}"?`)) deleteRow('maestro_despachos', desp.id, loadVendedores); }}
-                                  className="p-1 text-neutral-400 hover:text-red-600 rounded" title="Eliminar">
+                                  className="p-1 text-neutral-500 hover:text-red-600 rounded" title="Eliminar">
                                   <Trash2 className="w-3.5 h-3.5"/>
                                 </button>
                               </div>
@@ -1361,18 +1361,18 @@ export default function BaseDatosMaestrosAdmin() {
                                           onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
                                           className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-xs dark:bg-neutral-700 dark:text-white" autoFocus/>
                                         <button onClick={saveEditRow} className="p-1 text-green-600"><Save className="w-3 h-3"/></button>
-                                        <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3 h-3"/></button>
+                                        <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-500"><X className="w-3 h-3"/></button>
                                       </div>
                                     ) : (
                                       <>
                                         <span className="flex-1 text-xs font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wide">{ger.nombre}</span>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                                           <button onClick={() => setEditingRow({ table: 'maestro_gerencias', id: ger.id, nombre: ger.nombre })}
-                                            className="p-1 text-neutral-400 hover:text-blue-600 rounded" title="Editar nombre">
+                                            className="p-1 text-neutral-500 hover:text-accent-ink rounded" title="Editar nombre">
                                             <Edit2 className="w-3 h-3"/>
                                           </button>
                                           <button onClick={() => { if (window.confirm(`¿Eliminar gerencia "${ger.nombre}"?`)) deleteRow('maestro_gerencias', ger.id, loadVendedores); }}
-                                            className="p-1 text-neutral-400 hover:text-red-600 rounded" title="Eliminar">
+                                            className="p-1 text-neutral-500 hover:text-red-600 rounded" title="Eliminar">
                                             <Trash2 className="w-3 h-3"/>
                                           </button>
                                         </div>
@@ -1433,13 +1433,13 @@ export default function BaseDatosMaestrosAdmin() {
                                       className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus
                                       placeholder="Nombre del vendedor"/>
                                     <button onClick={saveEditRow} className="p-1 text-green-600"><Save className="w-3.5 h-3.5"/></button>
-                                    <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3.5 h-3.5"/></button>
+                                    <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-500"><X className="w-3.5 h-3.5"/></button>
                                   </div>
                                 ) : (
                                   <>
                                     <div className="flex-1 min-w-0">
                                       <span className="text-sm text-neutral-700 dark:text-neutral-200">{desp?.nombre ?? '—'}</span>
-                                      {ger && <span className="ml-1.5 text-xs text-neutral-400">· {ger.nombre}</span>}
+                                      {ger && <span className="ml-1.5 text-xs text-neutral-500">· {ger.nombre}</span>}
                                     </div>
                                     <div className="flex items-center gap-1.5 flex-shrink-0">
                                       {isDup && (
@@ -1453,11 +1453,11 @@ export default function BaseDatosMaestrosAdmin() {
                                       <BadgeActivo activo={ag.activo}/>
                                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                                         <button onClick={() => setEditingRow({ table: 'maestro_agentes', id: ag.id, nombre: ag.nombre })}
-                                          className="p-1 text-neutral-400 hover:text-blue-600 rounded" title="Editar nombre">
+                                          className="p-1 text-neutral-500 hover:text-accent-ink rounded" title="Editar nombre">
                                           <Edit2 className="w-3.5 h-3.5"/>
                                         </button>
                                         <button onClick={() => { if (window.confirm(`¿Eliminar "${ag.nombre}" del despacho "${desp?.nombre}"?`)) deleteRow('maestro_agentes', ag.id, loadVendedores); }}
-                                          className="p-1 text-neutral-400 hover:text-red-600 rounded" title="Eliminar">
+                                          className="p-1 text-neutral-500 hover:text-red-600 rounded" title="Eliminar">
                                           <Trash2 className="w-3.5 h-3.5"/>
                                         </button>
                                       </div>
@@ -1499,7 +1499,7 @@ export default function BaseDatosMaestrosAdmin() {
         <ImportPanel />
 
         {/* Agregar mapeo */}
-        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5 space-y-4">
+        <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
               <Link2 className="w-4 h-4 text-purple-500"/>
@@ -1555,7 +1555,7 @@ export default function BaseDatosMaestrosAdmin() {
               </div>
               <div className="flex items-end">
                 <button onClick={addMapeo} disabled={savingMapeo || !newMapeoUserId || !newMapeoAgenteId}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition">
+                  className="w-full py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground text-sm font-medium rounded-lg transition">
                   {savingMapeo ? 'Guardando...' : 'Guardar mapeo'}
                 </button>
               </div>
@@ -1614,12 +1614,12 @@ export default function BaseDatosMaestrosAdmin() {
                         <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
                           {usuario.nombre} {usuario.apellidos}
                         </p>
-                        <p className="text-xs text-neutral-400 truncate">{usuario.email}</p>
+                        <p className="text-xs text-neutral-500 truncate">{usuario.email}</p>
                       </div>
                       <div>
                         <p className="text-xs text-violet-600 font-medium uppercase tracking-wide mb-0.5">Agente SICAS</p>
                         <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">{agente.nombre}</p>
-                        <p className="text-xs text-neutral-400 truncate">{s.razon}</p>
+                        <p className="text-xs text-neutral-500 truncate">{s.razon}</p>
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
@@ -1691,12 +1691,12 @@ export default function BaseDatosMaestrosAdmin() {
                             <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
                               {(p.usuarios as any)?.nombre ?? '—'}
                             </p>
-                            <p className="text-xs text-neutral-400 truncate">{(p.usuarios as any)?.email_laboral ?? ''}</p>
+                            <p className="text-xs text-neutral-500 truncate">{(p.usuarios as any)?.email_laboral ?? ''}</p>
                           </>
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-neutral-400 shrink-0 text-right">
+                    <div className="text-xs text-neutral-500 shrink-0 text-right">
                       <p>Por: {(p.propuesto_por_usuario as any)?.nombre ?? '—'}</p>
                       <p>{new Date(p.created_at).toLocaleDateString('es-MX')}</p>
                     </div>
@@ -1722,17 +1722,17 @@ export default function BaseDatosMaestrosAdmin() {
         )}
 
         {/* Tabla de mapeos */}
-        <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+        <div className="bg-surface-card dark:bg-neutral-800 rounded-xl border border-soft dark:border-neutral-700 overflow-hidden">
           <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"/>
               <input type="text" placeholder="Buscar usuario o agente..." value={searchMapeo}
                 onChange={e => setSearchMapeo(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm dark:bg-neutral-700 dark:text-white"/>
             </div>
           </div>
           {loadingMapeo ? (
-            <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"/></div>
+            <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"/></div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -1755,13 +1755,13 @@ export default function BaseDatosMaestrosAdmin() {
                             ? `${(m.usuarios as any).nombre} ${(m.usuarios as any).apellidos}`
                             : (m.usuarios as any)?.nombre ?? '—'}
                         </p>
-                        <p className="text-xs text-neutral-400">{(m.usuarios as any)?.email_laboral ?? ''}</p>
+                        <p className="text-xs text-neutral-500">{(m.usuarios as any)?.email_laboral ?? ''}</p>
                       </td>
                       <td className="px-5 py-3 text-neutral-700 dark:text-neutral-200">{(m.maestro_agentes as any)?.nombre ?? '—'}</td>
                       <td className="px-5 py-3">
                         {(m.maestro_agentes as any)?.origen === 'movi'
-                          ? <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">MOVI</span>
-                          : <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">SICAS</span>}
+                          ? <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">MOVI</span>
+                          : <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">SICAS</span>}
                       </td>
                       <td className="px-5 py-3 text-neutral-500 text-xs">{(m.maestro_agentes as any)?.maestro_despachos?.nombre ?? '—'}</td>
                       <td className="px-5 py-3"><BadgeActivo activo={m.activo}/></td>
@@ -1773,7 +1773,7 @@ export default function BaseDatosMaestrosAdmin() {
                     </tr>
                   ))}
                   {mapeosFiltrados.length === 0 && (
-                    <tr><td colSpan={5} className="px-5 py-10 text-center text-neutral-400 text-sm">Sin mapeos. Importa el Excel o agrega uno arriba.</td></tr>
+                    <tr><td colSpan={5} className="px-5 py-10 text-center text-neutral-500 text-sm">Sin mapeos. Importa el Excel o agrega uno arriba.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1788,9 +1788,9 @@ export default function BaseDatosMaestrosAdmin() {
 
   function TabHistorial() {
     return (
-      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-xl border border-soft dark:border-neutral-700 overflow-hidden">
         {loadingHist ? (
-          <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"/></div>
+          <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"/></div>
         ) : historial.length === 0 ? (
           <div className="p-10 text-center">
             <History className="w-10 h-10 text-neutral-300 mx-auto mb-3"/>
@@ -1829,7 +1829,7 @@ export default function BaseDatosMaestrosAdmin() {
                     <td className="px-5 py-3">
                       <div className="text-xs space-x-2">
                         <span className="text-green-700">{h.exitosas} ok</span>
-                        {h.omitidas > 0 && <span className="text-neutral-400">{h.omitidas} omitidas</span>}
+                        {h.omitidas > 0 && <span className="text-neutral-500">{h.omitidas} omitidas</span>}
                         {h.errores_json && h.errores_json.length > 0 && (
                           <span className="text-red-600">{h.errores_json.length} errores</span>
                         )}
@@ -1884,14 +1884,14 @@ export default function BaseDatosMaestrosAdmin() {
         )}
 
         {cpCount > 0 && (
-          <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5">
             <SectionHeader title="Vista previa" count={cpCount} />
-            <p className="text-xs text-neutral-400 mb-3">Primeros 100 registros · Filtra por CP, colonia o estado</p>
+            <p className="text-xs text-neutral-500 mb-3">Primeros 100 registros · Filtra por CP, colonia o estado</p>
             <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"/>
               <input type="text" placeholder="Buscar por CP, colonia, estado..."
                 value={searchCP} onChange={e => setSearchCP(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm dark:bg-neutral-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                className="w-full pl-9 pr-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm dark:bg-neutral-700 dark:text-white focus:ring-2 focus:ring-accent/40 focus:border-transparent" />
             </div>
             {loadingCP ? <Skeleton /> : (
               <div className="overflow-x-auto">
@@ -1914,7 +1914,7 @@ export default function BaseDatosMaestrosAdmin() {
                       </tr>
                     ))}
                     {cpFiltrados.length === 0 && (
-                      <tr><td colSpan={4} className="px-4 py-10 text-center text-neutral-400 text-sm">Sin resultados para esa búsqueda.</td></tr>
+                      <tr><td colSpan={4} className="px-4 py-10 text-center text-neutral-500 text-sm">Sin resultados para esa búsqueda.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1944,14 +1944,14 @@ export default function BaseDatosMaestrosAdmin() {
             onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
             className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus/>
           <button onClick={saveEditRow} className="p-1 text-green-600 hover:text-green-700"><Save className="w-3.5 h-3.5"/></button>
-          <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3.5 h-3.5"/></button>
+          <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-500"><X className="w-3.5 h-3.5"/></button>
         </div>
       ) : (
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
           <button onClick={() => setEditingRow({ table, id, nombre, field })}
-            className="p-1 text-neutral-400 hover:text-blue-600 rounded"><Edit2 className="w-3.5 h-3.5"/></button>
+            className="p-1 text-neutral-500 hover:text-accent-ink rounded"><Edit2 className="w-3.5 h-3.5"/></button>
           <button onClick={() => { if (window.confirm(`¿Eliminar "${nombre}"?`)) deleteRow(table, id, loadTramitesData); }}
-            className="p-1 text-neutral-400 hover:text-red-600 rounded"><Trash2 className="w-3.5 h-3.5"/></button>
+            className="p-1 text-neutral-500 hover:text-red-600 rounded"><Trash2 className="w-3.5 h-3.5"/></button>
         </div>
       );
     }
@@ -1959,16 +1959,16 @@ export default function BaseDatosMaestrosAdmin() {
     return (
       <div className="space-y-6">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"/>
           <input type="text" placeholder="Buscar áreas, equipos o tipos de trámite..." value={searchTramites}
             onChange={e => setSearchTramites(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-neutral-800 dark:text-white"/>
+            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-accent/40 dark:bg-neutral-800 dark:text-white"/>
         </div>
 
         {loadingTramites ? <Skeleton/> : (
           <>
             {/* ─── Áreas ─────────────────────────────────────────────────── */}
-            <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+            <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5">
               <SectionHeader title="Áreas" count={areasFilt.length} onAdd={() => setShowAddArea(v => !v)}/>
               {showAddArea && (
                 <div className="flex gap-2 mb-3 flex-wrap">
@@ -1980,7 +1980,7 @@ export default function BaseDatosMaestrosAdmin() {
                     <input type="color" value={addAreaColor} onChange={e => setAddAreaColor(e.target.value)}
                       className="w-9 h-9 rounded border border-neutral-300 cursor-pointer p-0.5"/>
                   </div>
-                  <button onClick={addArea} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"><Save className="w-4 h-4"/></button>
+                  <button onClick={addArea} className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm"><Save className="w-4 h-4"/></button>
                   <button onClick={() => setShowAddArea(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
                 </div>
               )}
@@ -1993,7 +1993,7 @@ export default function BaseDatosMaestrosAdmin() {
                     ) : (
                       <>
                         <span className="flex-1 text-sm text-neutral-800 dark:text-neutral-100">{area.nombre}</span>
-                        <span className="text-xs text-neutral-400 font-mono">{area.slug}</span>
+                        <span className="text-xs text-neutral-500 font-mono">{area.slug}</span>
                         <button onClick={() => toggleActivo('tramites_areas', area.id, area.activa, loadTramitesData, 'activa')}
                           className="opacity-0 group-hover:opacity-100 transition flex-shrink-0">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${area.activa ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
@@ -2010,14 +2010,14 @@ export default function BaseDatosMaestrosAdmin() {
             </div>
 
             {/* ─── Equipos ────────────────────────────────────────────────── */}
-            <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+            <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5">
               <SectionHeader title="Equipos de trabajo" count={gruposFilt.length} onAdd={() => setShowAddGrupo(v => !v)}/>
               {showAddGrupo && (
                 <div className="flex gap-2 mb-3">
                   <input value={addGrupoNombre} onChange={e => setAddGrupoNombre(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && addGrupoViz()}
                     placeholder="Nombre del equipo" className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white"/>
-                  <button onClick={addGrupoViz} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"><Save className="w-4 h-4"/></button>
+                  <button onClick={addGrupoViz} className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm"><Save className="w-4 h-4"/></button>
                   <button onClick={() => setShowAddGrupo(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
                 </div>
               )}
@@ -2044,7 +2044,7 @@ export default function BaseDatosMaestrosAdmin() {
             </div>
 
             {/* ─── Tipos de Trámite ───────────────────────────────────────── */}
-            <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+            <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5">
               <SectionHeader title="Tipos de Trámite" count={tiposFilt.length} onAdd={() => setShowAddTipo(v => !v)}/>
               {showAddTipo && (
                 <div className="flex gap-2 mb-3 flex-wrap">
@@ -2062,7 +2062,7 @@ export default function BaseDatosMaestrosAdmin() {
                     <input type="color" value={addTipoColor} onChange={e => setAddTipoColor(e.target.value)}
                       className="w-9 h-9 rounded border border-neutral-300 cursor-pointer p-0.5"/>
                   </div>
-                  <button onClick={addTipoTramite} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"><Save className="w-4 h-4"/></button>
+                  <button onClick={addTipoTramite} className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm"><Save className="w-4 h-4"/></button>
                   <button onClick={() => setShowAddTipo(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
                 </div>
               )}
@@ -2091,11 +2091,11 @@ export default function BaseDatosMaestrosAdmin() {
                                 onBlur={() => saveSla(tipo.id)}
                                 className="w-14 border border-blue-400 rounded px-2 py-0.5 text-xs dark:bg-neutral-700 dark:text-white"
                                 autoFocus/>
-                              <span className="text-xs text-neutral-400">h</span>
+                              <span className="text-xs text-neutral-500">h</span>
                             </div>
                           ) : (
                             <button onClick={() => setEditingSla({ id: tipo.id, value: String(tipo.sla_horas ?? '') })}
-                              className="opacity-0 group-hover:opacity-100 transition flex-shrink-0 text-xs px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-600 hover:border-blue-400 text-neutral-400 hover:text-blue-600"
+                              className="opacity-0 group-hover:opacity-100 transition flex-shrink-0 text-xs px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-600 hover:border-blue-400 text-neutral-500 hover:text-accent-ink"
                               title="Editar tiempo de respuesta promesa (SLA)">
                               {tipo.sla_horas ? `${tipo.sla_horas}h` : '—'}
                             </button>
@@ -2130,14 +2130,14 @@ export default function BaseDatosMaestrosAdmin() {
     return (
       <div className="space-y-6">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"/>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"/>
           <input type="text" placeholder="Buscar categorías de adjuntos..." value={searchAdj}
             onChange={e => setSearchAdj(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-neutral-800 dark:text-white"/>
+            className="w-full pl-9 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm focus:ring-2 focus:ring-accent/40 dark:bg-neutral-800 dark:text-white"/>
         </div>
 
         {loadingAdj ? <Skeleton/> : (
-          <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5">
             <SectionHeader title="Categorías de adjuntos" count={filtered.length} onAdd={() => setShowAddAdj(v => !v)}/>
 
             {showAddAdj && (
@@ -2149,7 +2149,7 @@ export default function BaseDatosMaestrosAdmin() {
                 <input value={addAdjDesc} onChange={e => setAddAdjDesc(e.target.value)}
                   placeholder="Descripción (opcional)"
                   className="flex-1 min-w-48 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm dark:bg-neutral-700 dark:text-white"/>
-                <button onClick={addAdjCat} className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm"><Save className="w-4 h-4"/></button>
+                <button onClick={addAdjCat} className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm"><Save className="w-4 h-4"/></button>
                 <button onClick={() => setShowAddAdj(false)} className="px-3 py-2 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-sm"><X className="w-4 h-4"/></button>
               </div>
             )}
@@ -2157,7 +2157,7 @@ export default function BaseDatosMaestrosAdmin() {
             <div className="space-y-1 max-h-[560px] overflow-y-auto">
               {filtered.map((cat, idx) => (
                 <div key={cat.id} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 rounded-lg group">
-                  <span className="w-5 text-center text-xs text-neutral-400 flex-shrink-0">{idx + 1}</span>
+                  <span className="w-5 text-center text-xs text-neutral-500 flex-shrink-0">{idx + 1}</span>
                   <Tag className="w-3.5 h-3.5 text-blue-400 flex-shrink-0"/>
                   {editingRow?.id === cat.id ? (
                     <div className="flex-1 flex items-center gap-2">
@@ -2166,14 +2166,14 @@ export default function BaseDatosMaestrosAdmin() {
                         onKeyDown={e => { if (e.key === 'Enter') saveEditRow(); if (e.key === 'Escape') setEditingRow(null); }}
                         className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded px-2 py-1 text-sm dark:bg-neutral-700 dark:text-white" autoFocus/>
                       <button onClick={saveEditRow} className="p-1 text-green-600 hover:text-green-700"><Save className="w-3.5 h-3.5"/></button>
-                      <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-400"><X className="w-3.5 h-3.5"/></button>
+                      <button onClick={() => setEditingRow(null)} className="p-1 text-neutral-500"><X className="w-3.5 h-3.5"/></button>
                     </div>
                   ) : (
                     <>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-neutral-800 dark:text-neutral-100">{cat.nombre}</p>
                         {cat.descripcion && (
-                          <p className="text-xs text-neutral-400 truncate">{cat.descripcion}</p>
+                          <p className="text-xs text-neutral-500 truncate">{cat.descripcion}</p>
                         )}
                       </div>
                       <button onClick={() => toggleActivo('maestro_adjunto_categorias', cat.id, cat.activo, loadAdjuntosCats)}
@@ -2182,9 +2182,9 @@ export default function BaseDatosMaestrosAdmin() {
                       </button>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
                         <button onClick={() => setEditingRow({ table: 'maestro_adjunto_categorias', id: cat.id, nombre: cat.nombre })}
-                          className="p-1 text-neutral-400 hover:text-blue-600 rounded"><Edit2 className="w-3.5 h-3.5"/></button>
+                          className="p-1 text-neutral-500 hover:text-accent-ink rounded"><Edit2 className="w-3.5 h-3.5"/></button>
                         <button onClick={() => { if (window.confirm(`¿Eliminar "${cat.nombre}"?`)) deleteRow('maestro_adjunto_categorias', cat.id, loadAdjuntosCats); }}
-                          className="p-1 text-neutral-400 hover:text-red-600 rounded"><Trash2 className="w-3.5 h-3.5"/></button>
+                          className="p-1 text-neutral-500 hover:text-red-600 rounded"><Trash2 className="w-3.5 h-3.5"/></button>
                       </div>
                     </>
                   )}
@@ -2250,7 +2250,7 @@ export default function BaseDatosMaestrosAdmin() {
               <Icon className="w-4 h-4"/>
               {t.label}
               {t.id === 'mapeo' && pendientesMapeo.length > 0 && (
-                <span className="flex items-center justify-center w-4 h-4 text-[10px] font-bold bg-amber-500 text-white rounded-full">
+                <span className="flex items-center justify-center w-4 h-4 text-[11px] font-bold bg-amber-500 text-white rounded-full">
                   {pendientesMapeo.length}
                 </span>
               )}
@@ -2285,7 +2285,7 @@ function EmptyState({ msg }: { msg: string }) {
   return (
     <div className="py-8 text-center">
       <Database className="w-8 h-8 text-neutral-200 dark:text-neutral-600 mx-auto mb-2"/>
-      <p className="text-xs text-neutral-400">{msg}</p>
+      <p className="text-xs text-neutral-500">{msg}</p>
     </div>
   );
 }

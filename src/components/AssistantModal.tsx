@@ -140,12 +140,12 @@ export function AssistantModal() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 w-full max-w-4xl h-[90vh] flex flex-col animate-scale-in">
         <div className="p-4 border-b flex items-center justify-between">
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-accent" />
+            <h2 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-accent-ink" />
               Mi Asistente
             </h2>
           </div>
@@ -188,7 +188,7 @@ export function AssistantModal() {
                           <p className="text-sm font-medium truncate">
                             {conv.titulo}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-neutral-500">
                             {formatRelativeTime(conv.updated_at)}
                           </p>
                         </div>
@@ -208,7 +208,7 @@ export function AssistantModal() {
                   ))}
 
                   {conversations.length === 0 && (
-                    <p className="text-sm text-gray-500 text-center py-4">
+                    <p className="text-sm text-neutral-500 text-center py-4">
                       No hay conversaciones
                     </p>
                   )}
@@ -221,11 +221,11 @@ export function AssistantModal() {
             <ScrollArea className="flex-1 p-4">
               {isEmpty && !isLoadingMessages && (
                 <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                  <Sparkles className="h-16 w-16 text-gray-300 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <Sparkles className="h-16 w-16 text-neutral-300 mb-4" />
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">
                     Te puedo ayudar con...
                   </h3>
-                  <p className="text-sm text-gray-600 mb-6">
+                  <p className="text-sm text-neutral-600 mb-6">
                     Selecciona una sugerencia o escribe tu pregunta
                   </p>
                 </div>
@@ -244,7 +244,7 @@ export function AssistantModal() {
                   if (isUser) {
                     return (
                       <div key={message.id} className="flex justify-end">
-                        <div className="max-w-[80%] rounded-lg p-3 bg-accent text-white [&_*]:text-white">
+                        <div className="max-w-[80%] rounded-lg p-3 bg-accent text-accent-foreground [&_*]:text-white">
                           <p className="text-sm whitespace-pre-wrap text-white">{message.contenido}</p>
                         </div>
                       </div>
@@ -273,7 +273,7 @@ export function AssistantModal() {
 
                   return (
                     <div key={message.id} className="flex justify-start">
-                      <div className="max-w-[80%] rounded-lg p-3 bg-gray-100 text-gray-900">
+                      <div className="max-w-[80%] rounded-lg p-3 bg-neutral-100 text-neutral-900">
                         {structuredResponse ? (
                           <ResponseMessage response={structuredResponse} />
                         ) : (
@@ -286,11 +286,11 @@ export function AssistantModal() {
 
                 {isSendingMessage && (
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] rounded-lg p-3 bg-gray-100">
+                    <div className="max-w-[80%] rounded-lg p-3 bg-neutral-100">
                       <div className="flex gap-1">
-                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></span>
-                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></span>
+                        <span className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce"></span>
+                        <span className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce delay-100"></span>
+                        <span className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce delay-200"></span>
                       </div>
                     </div>
                   </div>
@@ -301,7 +301,7 @@ export function AssistantModal() {
             </ScrollArea>
 
             {suggestions.length > 0 && isEmpty && (
-              <div className="p-4 border-t bg-gray-50">
+              <div className="p-4 border-t bg-neutral-50">
                 <div className="flex flex-wrap gap-2">
                   {suggestions.map((suggestion) => (
                     <Button
@@ -325,12 +325,12 @@ export function AssistantModal() {
                   {attachedFiles.map((file, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                      className="flex items-center gap-2 p-2 bg-neutral-50 rounded border border-neutral-200"
                     >
-                      <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                      <FileText className="h-4 w-4 text-neutral-500 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{file.name}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-neutral-500">
                           {(file.size / 1024).toFixed(1)} KB
                         </p>
                       </div>
@@ -339,7 +339,7 @@ export function AssistantModal() {
                         className="p-1 hover:bg-gray-200 rounded"
                         type="button"
                       >
-                        <XIcon className="h-4 w-4 text-gray-500" />
+                        <XIcon className="h-4 w-4 text-neutral-500" />
                       </button>
                     </div>
                   ))}
@@ -380,7 +380,7 @@ export function AssistantModal() {
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-neutral-500 mt-2">
                 Presiona Enter para enviar, Shift+Enter para nueva línea. Máx 500MB por archivo.
               </p>
             </div>

@@ -46,8 +46,8 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   'Educación': { icon: GraduationCap, colorCls: 'text-teal-500', bgCls: 'bg-teal-500/10' },
   'Espacio JIRO': { icon: MapPin, colorCls: 'text-rose-500', bgCls: 'bg-rose-500/10' },
   'Publicidad': { icon: Palette, colorCls: 'text-pink-500', bgCls: 'bg-pink-500/10' },
-  'Contactos': { icon: Users, colorCls: 'text-blue-600', bgCls: 'bg-blue-600/10' },
-  'Sistema': { icon: Megaphone, colorCls: 'text-accent', bgCls: 'bg-accent/10' },
+  'Contactos': { icon: Users, colorCls: 'text-accent-ink', bgCls: 'bg-blue-600/10' },
+  'Sistema': { icon: Megaphone, colorCls: 'text-accent-ink', bgCls: 'bg-accent/10' },
 };
 
 interface NotificationBellProps {
@@ -168,7 +168,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
   };
 
   const getModuleConfig = (modulo: string): ModuleConfig => {
-    return MODULE_CONFIGS[modulo] || { icon: Bell, colorCls: 'text-accent', bgCls: 'bg-accent/10' };
+    return MODULE_CONFIGS[modulo] || { icon: Bell, colorCls: 'text-accent-ink', bgCls: 'bg-accent/10' };
   };
 
   const getMissedCallNumber = (notification: any): string | null => {
@@ -195,7 +195,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
 
   const buttonClass = compact
     ? 'w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/10 active:scale-90 transition-all text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white relative'
-    : 'relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-accent hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-colors';
+    : 'relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-accent-ink hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-colors';
 
   return (
     <div className="relative inline-block" ref={containerRef}>
@@ -212,7 +212,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex items-center justify-center">
             <span className="absolute inset-0 rounded-full bg-red-400 opacity-70 animate-ping" />
-            <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center leading-none shadow-xs">
+            <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10.5px] font-extrabold rounded-full flex items-center justify-center leading-none shadow-xs">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           </span>
@@ -234,14 +234,14 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
             <div className="p-3.5 border-b border-neutral-100 dark:border-white/10 bg-neutral-50/50 dark:bg-white/[0.02]">
               <div className="flex items-center justify-between gap-2 mb-2.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-accent/10 dark:bg-accent/20 flex items-center justify-center text-accent">
+                  <div className="w-7 h-7 rounded-lg bg-accent/10 dark:bg-accent/20 flex items-center justify-center text-accent-ink">
                     <Bell className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-1.5 leading-tight">
                       Notificaciones
                       {unreadCount > 0 && (
-                        <span className="px-1.5 py-0.2 bg-red-500 text-white text-[10px] font-bold rounded-full">
+                        <span className="px-1.5 py-0.2 bg-red-500 text-white text-[11px] font-bold rounded-full">
                           {unreadCount}
                         </span>
                       )}
@@ -253,7 +253,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-accent hover:bg-accent/10 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-accent-ink hover:bg-accent/10 rounded-lg transition-colors"
                       title="Marcar todas como leídas"
                     >
                       <CheckCheck className="w-3.5 h-3.5" />
@@ -262,7 +262,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                   )}
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-200/60 dark:hover:bg-white/10 transition-colors"
+                    className="p-1 rounded-lg text-neutral-500 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-200/60 dark:hover:bg-white/10 transition-colors"
                     title="Cerrar"
                   >
                     <X className="w-4 h-4" />
@@ -306,7 +306,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                     <select
                       value={filterModule}
                       onChange={(e) => setFilterModule(e.target.value)}
-                      className="text-xs py-1 pl-2 pr-6 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-accent appearance-none cursor-pointer"
+                      className="text-xs py-1 pl-2 pr-6 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-accent appearance-none cursor-pointer"
                     >
                       <option value="all">Módulos (todos)</option>
                       {modules.map((m) => (
@@ -315,7 +315,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                         </option>
                       ))}
                     </select>
-                    <Filter className="w-3 h-3 text-neutral-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Filter className="w-3 h-3 text-neutral-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 )}
               </div>
@@ -325,7 +325,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
             <div className="flex-1 overflow-y-auto divide-y divide-neutral-100 dark:divide-white/[0.04]">
               {filteredNotifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center text-neutral-400 mb-3">
+                  <div className="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center text-neutral-500 mb-3">
                     <Inbox className="w-6 h-6" />
                   </div>
                   <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
@@ -333,7 +333,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                       ? 'No tienes notificaciones pendientes'
                       : 'Bandeja de notificaciones vacía'}
                   </p>
-                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 max-w-xs">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-1 max-w-xs">
                     {activeTab === 'unread'
                       ? '¡Todo está al día! Las nuevas alertas aparecerán aquí en tiempo real.'
                       : 'Aquí recibirás avisos de trámites, mensajes, asignaciones y novedades.'}
@@ -376,7 +376,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                           )}>
                             {n.titulo}
                           </h4>
-                          <span className="text-[10px] text-neutral-400 shrink-0 font-medium">
+                          <span className="text-[11px] text-neutral-500 shrink-0 font-medium">
                             {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })}
                           </span>
                         </div>
@@ -387,7 +387,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
 
                         {/* Metadatos y Botones de Acción */}
                         <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-neutral-100/60 dark:border-white/[0.03]">
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-400">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[10.5px] font-bold uppercase tracking-wider bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-400">
                             {n.modulo}
                           </span>
 
@@ -397,7 +397,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                                 <a
                                   href={`tel:${numeroLlamada}`}
                                   onClick={(e) => handleLlamarClick(e, n)}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-accent hover:bg-accent/10 rounded-md transition-colors"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-accent-ink hover:bg-accent/10 rounded-md transition-colors"
                                 >
                                   <Phone className="w-3 h-3" />
                                   Llamar
@@ -411,7 +411,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                                 </button>
                               </>
                             ) : n.accion_url && (
-                              <span className="text-[11px] font-semibold text-accent group-hover:underline">
+                              <span className="text-[11px] font-semibold text-accent-ink group-hover:underline">
                                 {n.accion_texto || 'Ver detalle →'}
                               </span>
                             )}
@@ -422,7 +422,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                                   e.stopPropagation();
                                   markAsRead(n.id);
                                 }}
-                                className="p-1 text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-md transition-colors"
+                                className="p-1 text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-md transition-colors"
                                 title="Marcar como leída"
                               >
                                 <Check className="w-3.5 h-3.5" />
@@ -434,7 +434,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                                 e.stopPropagation();
                                 deleteNotification(n.id);
                               }}
-                              className="p-1 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                              className="p-1 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                               title="Eliminar notificación"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -457,7 +457,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
               {!pushEnabled && (
                 <button
                   onClick={requestPushPermission}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-accent hover:bg-accent/10 transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-accent-ink hover:bg-accent/10 transition-colors"
                 >
                   <Sparkles className="w-3 h-3" />
                   Activar Push en PC

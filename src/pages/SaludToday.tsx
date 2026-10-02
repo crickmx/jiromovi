@@ -363,7 +363,7 @@ export default function SaludToday() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50/80 to-white pb-16">
+    <div className="min-h-screen bg-gradient-to-b from-neutral-50 via-slate-50/80 to-white pb-16">
       {/* Cobranding Header Banner */}
       <div className="bg-white border-b border-slate-200/80 sticky top-0 z-20 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
@@ -381,12 +381,12 @@ export default function SaludToday() {
           <div className="flex items-center gap-3">
             {/* Tab selector para Administradores */}
             {isAdmin && (
-              <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 mr-2 border border-slate-200">
+              <div className="bg-neutral-100 p-1 rounded-xl flex items-center gap-1 mr-2 border border-neutral-200">
                 <button
                   onClick={() => setActiveTab('emision')}
                   className={cn(
                     "px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer",
-                    activeTab === 'emision' ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    activeTab === 'emision' ? "bg-white text-neutral-900 shadow-xs" : "text-neutral-600 hover:text-slate-900"
                   )}
                 >
                   Emisión
@@ -395,7 +395,7 @@ export default function SaludToday() {
                   onClick={() => setActiveTab('reportes')}
                   className={cn(
                     "px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer",
-                    activeTab === 'reportes' ? "bg-emerald-600 text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    activeTab === 'reportes' ? "bg-emerald-600 text-white shadow-xs" : "text-neutral-600 hover:text-slate-900"
                   )}
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -414,7 +414,7 @@ export default function SaludToday() {
                 if (activeTab === 'reportes') fetchMembresiasReporte();
               }}
               disabled={loading || loadingReporte}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-neutral-700 bg-neutral-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
             >
               <RefreshCw className={cn("w-3.5 h-3.5", (loading || loadingReporte) && "animate-spin text-emerald-600")} />
               <span className="hidden sm:inline">Sincronizar</span>
@@ -425,7 +425,7 @@ export default function SaludToday() {
 
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white p-6 sm:p-10 shadow-xl border border-slate-800">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-emerald-950 text-white p-6 sm:p-10 shadow-xl border border-neutral-800">
           <div className="relative z-10 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-medium backdrop-blur-xs mb-4 border border-emerald-500/30">
               <Sparkles className="w-3.5 h-3.5" />
@@ -434,13 +434,13 @@ export default function SaludToday() {
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
               {activeTab === 'reportes' ? 'Reporte de Ventas SICAS' : 'Emisión de Membresías'} <span className="text-emerald-400">salud.today</span>
             </h1>
-            <p className="mt-3 text-sm sm:text-base text-slate-300 leading-relaxed">
+            <p className="mt-3 text-sm sm:text-base text-neutral-300 leading-relaxed">
               {activeTab === 'reportes' 
                 ? 'Monitorea las membresías emitidas y exporta el layout compatible con SICAS para el registro y conciliación de producción por vendedor y despacho/oficina.'
                 : 'Expide y activa en tiempo real coberturas de telemedicina 24/7, asistencias médicas, plan dental, visión y beneficios para individuos y empresas a través de MOVI Digital.'}
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-4 text-xs sm:text-sm text-slate-200">
+            <div className="mt-6 flex flex-wrap gap-4 text-xs sm:text-sm text-neutral-200">
               <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-xs">
                 <Stethoscope className="w-4 h-4 text-emerald-400" />
                 <span>Telemedicina 24/7 Ilimitada</span>
@@ -490,14 +490,14 @@ export default function SaludToday() {
         {activeTab === 'reportes' && isAdmin ? (
           /* TAB DE REPORTE SICAS */
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+            <div className="bg-surface-card p-6 rounded-3xl border border-soft shadow-card">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-neutral-100">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
                     <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
                     Consolidado de Ventas para SICAS
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-neutral-500 mt-0.5">
                     Membresías registradas con atribución a vendedores y despachos de MOVI Digital.
                   </p>
                 </div>
@@ -517,13 +517,13 @@ export default function SaludToday() {
               {/* Filtros de Reporte */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
                 <div className="relative">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
                   <input
                     type="text"
                     placeholder="Buscar por folio, cliente o correo..."
                     value={reportSearch}
                     onChange={(e) => setReportSearch(e.target.value)}
-                    className="w-full text-xs border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full text-xs border border-neutral-200 rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
@@ -531,7 +531,7 @@ export default function SaludToday() {
                   <select
                     value={filtroOficina}
                     onChange={(e) => setFiltroOficina(e.target.value)}
-                    className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    className="w-full text-xs border border-soft rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-surface-card"
                   >
                     <option value="todas">Todas las Oficinas</option>
                     {oficinasList.map(o => (
@@ -544,7 +544,7 @@ export default function SaludToday() {
                   <select
                     value={filtroVendedor}
                     onChange={(e) => setFiltroVendedor(e.target.value)}
-                    className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    className="w-full text-xs border border-soft rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-surface-card"
                   >
                     <option value="todos">Todos los Vendedores</option>
                     {vendedoresList.map(v => (
@@ -555,19 +555,19 @@ export default function SaludToday() {
               </div>
 
               {/* Tabla de Resultados */}
-              <div className="mt-6 overflow-x-auto border border-slate-200 rounded-2xl">
+              <div className="mt-6 overflow-x-auto border border-neutral-200 rounded-2xl">
                 {loadingReporte ? (
-                  <div className="py-16 text-center text-sm text-slate-500 flex flex-col items-center justify-center gap-3">
+                  <div className="py-16 text-center text-sm text-neutral-500 flex flex-col items-center justify-center gap-3">
                     <RefreshCw className="w-6 h-6 animate-spin text-emerald-600" />
                     <span>Consultando ventas de membresías...</span>
                   </div>
                 ) : filteredMembresias.length === 0 ? (
-                  <div className="py-16 text-center text-sm text-slate-500">
+                  <div className="py-16 text-center text-sm text-neutral-500">
                     No se encontraron registros de ventas con los filtros aplicados.
                   </div>
                 ) : (
-                  <table className="w-full text-left text-xs text-slate-700">
-                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
+                  <table className="w-full text-left text-xs text-neutral-700">
+                    <thead className="bg-neutral-50 text-neutral-600 border-b border-neutral-200 font-semibold">
                       <tr>
                         <th className="px-4 py-3">Folio / ID</th>
                         <th className="px-4 py-3">Cliente / Titular</th>
@@ -581,18 +581,18 @@ export default function SaludToday() {
                     <tbody className="divide-y divide-slate-100">
                       {filteredMembresias.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50/60 transition">
-                          <td className="px-4 py-3 font-mono font-bold text-slate-900">
+                          <td className="px-4 py-3 font-mono font-bold text-neutral-900">
                             {item.folio || item.id}
                           </td>
                           <td className="px-4 py-3">
-                            <div className="font-semibold text-slate-900">
+                            <div className="font-semibold text-neutral-900">
                               {item.titular?.nombre} {item.titular?.apellidos}
                             </div>
-                            <div className="text-[11px] text-slate-400">{item.titular?.correo}</div>
+                            <div className="text-[11px] text-neutral-500">{item.titular?.correo}</div>
                           </td>
                           <td className="px-4 py-3">
-                            <span className="font-medium text-slate-800">{item.plan?.nombre || 'Plan Estándar'}</span>
-                            <span className="text-[10px] text-slate-400 block">
+                            <span className="font-medium text-neutral-800">{item.plan?.nombre || 'Plan Estándar'}</span>
+                            <span className="text-[11px] text-neutral-500 block">
                               {item.plan?.periodicidad === 'year' ? 'Anual' : 'Mensual'}
                             </span>
                           </td>
@@ -600,14 +600,14 @@ export default function SaludToday() {
                             {formatMoney(item.plan?.precio_centavos || 0)}
                           </td>
                           <td className="px-4 py-3">
-                            <div className="font-medium text-slate-900">{item.agente_nombre}</div>
-                            <div className="text-[10px] font-mono text-slate-400">ID: {item.agente_id_sicas}</div>
+                            <div className="font-medium text-neutral-900">{item.agente_nombre}</div>
+                            <div className="text-[11px] font-mono text-neutral-500">ID: {item.agente_id_sicas}</div>
                           </td>
-                          <td className="px-4 py-3 font-medium text-slate-700">
+                          <td className="px-4 py-3 font-medium text-neutral-700">
                             {item.oficina_nombre}
                           </td>
                           <td className="px-4 py-3">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                               {item.status || 'Activa'}
                             </span>
                           </td>
@@ -623,14 +623,14 @@ export default function SaludToday() {
           /* TAB DE EMISIÓN DE MEMBRESÍAS */
           <>
             {/* Selector de Tipo de Emisión (Tabs modernas) */}
-            <div className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs inline-flex w-full sm:w-auto mb-8">
+            <div className="bg-surface-card p-1.5 rounded-2xl border border-soft shadow-xs inline-flex w-full sm:w-auto mb-8">
               <button
                 onClick={() => setTipoEmision('individual')}
                 className={cn(
                   "flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer",
                   tipoEmision === 'individual'
                     ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    : "text-neutral-600 hover:text-slate-900 hover:bg-slate-50"
                 )}
               >
                 <User className="w-4 h-4" />
@@ -642,7 +642,7 @@ export default function SaludToday() {
                   "flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer",
                   tipoEmision === 'corporativa'
                     ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    : "text-neutral-600 hover:text-slate-900 hover:bg-slate-50"
                 )}
               >
                 <Building2 className="w-4 h-4" />
@@ -654,17 +654,17 @@ export default function SaludToday() {
               {/* Columna Izquierda: Selección de Plan */}
               <div className="lg:col-span-7 space-y-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center">1</span>
                     Elige el Plan de Salud
                   </h2>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-neutral-500">
                     {planes.length} opciones disponibles
                   </span>
                 </div>
 
                 {loading ? (
-                  <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-sm text-slate-500 flex flex-col items-center justify-center gap-3">
+                  <div className="bg-surface-card rounded-2xl border border-soft p-12 text-center text-sm text-neutral-500 flex flex-col items-center justify-center gap-3">
                     <RefreshCw className="w-6 h-6 animate-spin text-emerald-600" />
                     <span>Cargando catálogo oficial de salud.today...</span>
                   </div>
@@ -682,7 +682,7 @@ export default function SaludToday() {
                             "relative rounded-2xl p-5 border-2 transition-all cursor-pointer flex flex-col justify-between text-left",
                             isSelected
                               ? "border-emerald-600 bg-emerald-50/40 shadow-md ring-2 ring-emerald-500/20"
-                              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs"
+                              : "border-neutral-200 bg-white hover:border-slate-300 hover:shadow-xs"
                           )}
                         >
                           <div>
@@ -697,24 +697,24 @@ export default function SaludToday() {
                               )}
                             </div>
 
-                            <h3 className="text-base font-bold text-slate-900 mt-3">
+                            <h3 className="text-base font-bold text-neutral-900 mt-3">
                               {plan.nombre}
                             </h3>
-                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                            <p className="text-xs text-neutral-500 mt-1 line-clamp-2">
                               {plan.descripcion || 'Acceso total a la red de beneficios médicos, telemedicina y descuentos exclusivos.'}
                             </p>
                           </div>
 
-                          <div className="mt-5 pt-4 border-t border-slate-100 flex items-baseline justify-between">
+                          <div className="mt-5 pt-4 border-t border-neutral-100 flex items-baseline justify-between">
                             <div>
-                              <span className="text-2xl font-black text-slate-900">
+                              <span className="text-2xl font-black text-neutral-900">
                                 {formatMoney(plan.precio_centavos)}
                               </span>
-                              <span className="text-[11px] text-slate-500 font-medium ml-1">
+                              <span className="text-[11px] text-neutral-500 font-medium ml-1">
                                 /{isAnual ? 'año' : 'mes'}
                               </span>
                             </div>
-                            <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                            <span className="text-[11px] text-neutral-500 uppercase font-semibold">
                               {plan.moneda}
                             </span>
                           </div>
@@ -725,32 +725,32 @@ export default function SaludToday() {
                 )}
 
                 {/* Coberturas y Beneficios Incluidos */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
+                <div className="bg-surface-card rounded-2xl border border-soft p-6 shadow-xs">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-4">
                     Servicios y asistencias 24/7 incluidas en todas las membresías
                   </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-700">
-                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-neutral-700">
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-neutral-50">
                       <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                       <span>Orientación médica 24/7</span>
                     </div>
-                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50">
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-neutral-50">
                       <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                       <span>Ambulancia de urgencia</span>
                     </div>
-                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50">
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-neutral-50">
                       <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                       <span>Médico a domicilio</span>
                     </div>
-                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50">
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-neutral-50">
                       <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                       <span>Psicología y Nutrición</span>
                     </div>
-                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50">
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-neutral-50">
                       <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                       <span>Plan Dental y Visión</span>
                     </div>
-                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50">
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-neutral-50">
                       <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                       <span>Cine 2x1 y Beneficios</span>
                     </div>
@@ -760,9 +760,9 @@ export default function SaludToday() {
 
               {/* Columna Derecha: Formulario de Registro y Venta */}
               <div className="lg:col-span-5">
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-lg sticky top-20">
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <div className="bg-surface-card rounded-3xl border border-soft p-6 sm:p-7 shadow-lg sticky top-20">
+                  <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+                    <h2 className="text-base font-bold text-neutral-900 flex items-center gap-2">
                       <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center">2</span>
                       Datos de Emisión y Cliente
                     </h2>
@@ -770,20 +770,20 @@ export default function SaludToday() {
 
                   <form onSubmit={handleEmitirVenta} className="mt-5 space-y-4">
                     {/* Atribución a Vendedor y Oficina (Para trazabilidad y reporte SICAS) */}
-                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+                    <div className="p-3.5 bg-neutral-50 rounded-2xl border border-slate-200/80 space-y-3">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 block">
                         Asignación de Venta (SICAS)
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                          <label className="block text-[11px] font-semibold text-neutral-600 mb-1">
                             Vendedor / Agente
                           </label>
                           <select
                             value={selectedVendedorId}
                             onChange={(e) => setSelectedVendedorId(e.target.value)}
                             disabled={!isAdmin && !!usuario?.id}
-                            className="w-full text-xs border border-slate-300 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white disabled:bg-slate-100"
+                            className="w-full text-xs border border-neutral-300 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-surface-card disabled:bg-slate-100"
                           >
                             {vendedoresList.map(v => (
                               <option key={v.id} value={v.id}>
@@ -793,14 +793,14 @@ export default function SaludToday() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                          <label className="block text-[11px] font-semibold text-neutral-600 mb-1">
                             Despacho / Oficina
                           </label>
                           <select
                             value={selectedOficinaId}
                             onChange={(e) => setSelectedOficinaId(e.target.value)}
                             disabled={!isAdmin && !!usuario?.oficina_id}
-                            className="w-full text-xs border border-slate-300 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white disabled:bg-slate-100"
+                            className="w-full text-xs border border-neutral-300 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-surface-card disabled:bg-slate-100"
                           >
                             {oficinasList.map(o => (
                               <option key={o.id} value={o.id}>
@@ -819,7 +819,7 @@ export default function SaludToday() {
                           Datos de la Empresa
                         </span>
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          <label className="block text-xs font-semibold text-neutral-700 mb-1">
                             Razón Social / Empresa *
                           </label>
                           <input
@@ -828,13 +828,13 @@ export default function SaludToday() {
                             value={empresaRazonSocial}
                             onChange={(e) => setEmpresaRazonSocial(e.target.value)}
                             placeholder="Ej. Grupo Industrial S.A. de C.V."
-                            className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                            className="w-full text-sm border border-neutral-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-surface-card"
                           />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold text-neutral-700 mb-1">
                               RFC Empresa
                             </label>
                             <input
@@ -842,11 +842,11 @@ export default function SaludToday() {
                               value={rfc}
                               onChange={(e) => setRfc(e.target.value.toUpperCase())}
                               placeholder="XAXX010101000"
-                              className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white uppercase"
+                              className="w-full text-sm border border-neutral-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-surface-card uppercase"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            <label className="block text-xs font-semibold text-neutral-700 mb-1">
                               Cantidad Membresías *
                             </label>
                             <input
@@ -855,7 +855,7 @@ export default function SaludToday() {
                               required
                               value={cantidad}
                               onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
-                              className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                              className="w-full text-sm border border-neutral-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-surface-card"
                             />
                           </div>
                         </div>
@@ -864,7 +864,7 @@ export default function SaludToday() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        <label className="block text-xs font-semibold text-neutral-700 mb-1">
                           {tipoEmision === 'corporativa' ? 'Nombre Contacto' : 'Nombre(s)'} *
                         </label>
                         <input
@@ -873,11 +873,11 @@ export default function SaludToday() {
                           value={nombre}
                           onChange={(e) => setNombre(e.target.value)}
                           placeholder="Ej. Carlos"
-                          className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full text-sm border border-neutral-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        <label className="block text-xs font-semibold text-neutral-700 mb-1">
                           Apellidos *
                         </label>
                         <input
@@ -886,13 +886,13 @@ export default function SaludToday() {
                           value={apellidos}
                           onChange={(e) => setApellidos(e.target.value)}
                           placeholder="Ej. Martínez Luna"
-                          className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className="w-full text-sm border border-neutral-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1">
                         Correo Electrónico *
                       </label>
                       <input
@@ -901,12 +901,12 @@ export default function SaludToday() {
                         value={correo}
                         onChange={(e) => setCorreo(e.target.value)}
                         placeholder="titular@correo.com"
-                        className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full text-sm border border-neutral-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1">
                         Teléfono Móvil
                       </label>
                       <input
@@ -914,18 +914,18 @@ export default function SaludToday() {
                         value={telefono}
                         onChange={(e) => setTelefono(e.target.value)}
                         placeholder="10 dígitos (ej. 5512345678)"
-                        className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full text-sm border border-neutral-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1">
                         Método de Pago
                       </label>
                       <select
                         value={metodoPago}
                         onChange={(e) => setMetodoPago(e.target.value)}
-                        className="w-full text-sm border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                        className="w-full text-sm border border-neutral-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-surface-card"
                       >
                         <option value="transferencia">Transferencia SPEI / Banco</option>
                         <option value="tarjeta">Tarjeta de Débito / Crédito</option>
@@ -935,7 +935,7 @@ export default function SaludToday() {
 
                     {/* Resumen de Pago */}
                     {selectedPlan && (
-                      <div className="pt-3 border-t border-slate-200">
+                      <div className="pt-3 border-t border-neutral-200">
                         <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200/60 flex items-center justify-between">
                           <div>
                             <span className="text-xs text-emerald-800 font-medium block">
@@ -949,7 +949,7 @@ export default function SaludToday() {
                             <span className="text-xl font-black text-emerald-900">
                               {formatMoney(selectedPlan.precio_centavos * (tipoEmision === 'corporativa' ? cantidad : 1))}
                             </span>
-                            <span className="text-[10px] text-emerald-700 block">MXN</span>
+                            <span className="text-[11px] text-emerald-700 block">MXN</span>
                           </div>
                         </div>
                       </div>

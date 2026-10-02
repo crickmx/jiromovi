@@ -76,7 +76,7 @@ export default function TOTPSetupPanel() {
   }
 
   if (loading) return (
-    <div className="flex items-center gap-2 text-sm text-neutral-400 py-2">
+    <div className="flex items-center gap-2 text-sm text-neutral-500 py-2">
       <Loader2 className="w-4 h-4 animate-spin" /> Cargando...
     </div>
   );
@@ -88,7 +88,7 @@ export default function TOTPSetupPanel() {
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${activo ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-neutral-100 dark:bg-neutral-800'}`}>
           {activo
             ? <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            : <ShieldOff className="w-5 h-5 text-neutral-400" />}
+            : <ShieldOff className="w-5 h-5 text-neutral-500" />}
         </div>
         <div>
           <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
@@ -131,7 +131,7 @@ export default function TOTPSetupPanel() {
       <p className="text-sm text-neutral-700 dark:text-neutral-300">
         Escanea este código con <strong>Microsoft Authenticator</strong> u otra app TOTP.
       </p>
-      <div className="flex justify-center p-3 bg-white rounded-xl border border-neutral-200 dark:border-neutral-700 w-fit">
+      <div className="flex justify-center p-3 bg-surface-card rounded-2xl border border-soft dark:border-neutral-700 w-fit">
         {qrUrl && <img src={qrUrl} alt="QR TOTP" width={200} height={200} />}
       </div>
       <details className="text-xs text-neutral-500">
@@ -141,7 +141,7 @@ export default function TOTPSetupPanel() {
       <button onClick={pasarAVerificar} className="w-full py-2.5 bg-violet-600 text-white text-sm rounded-xl hover:bg-violet-700 transition-colors">
         Ya escaneé — ingresar código
       </button>
-      <button onClick={() => setStep('idle')} className="w-full text-sm text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+      <button onClick={() => setStep('idle')} className="w-full text-sm text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300">
         Cancelar
       </button>
     </div>
@@ -162,7 +162,7 @@ export default function TOTPSetupPanel() {
         onChange={e => { setCode(e.target.value.replace(/\D/g, '')); setErrMsg(''); }}
         onKeyDown={e => e.key === 'Enter' && confirmar()}
         placeholder="000000"
-        className="w-full text-center text-2xl font-mono tracking-[0.5em] px-4 py-3 border border-neutral-300 dark:border-neutral-600 rounded-xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+        className="w-full text-center text-2xl font-mono tracking-[0.5em] px-4 py-3 border border-neutral-300 dark:border-neutral-600 rounded-xl bg-surface-card dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
       />
       {errMsg && (
         <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
@@ -176,7 +176,7 @@ export default function TOTPSetupPanel() {
       >
         {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Verificando…</> : 'Confirmar'}
       </button>
-      <button onClick={() => setStep('setup')} className="w-full text-sm text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+      <button onClick={() => setStep('setup')} className="w-full text-sm text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300">
         Volver al QR
       </button>
     </div>

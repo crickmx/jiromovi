@@ -76,7 +76,7 @@ const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
 function getSlaInfo(fechaCreacion: string, slaHoras: number | null | undefined) {
   const daysOpen = Math.max(0, Math.floor((Date.now() - new Date(fechaCreacion).getTime()) / 86_400_000));
   const HPD = 8; // horas por día (hardcoded; configuracion_jornada no está cargada aquí)
-  if (!slaHoras) return { daysOpen, slaDias: null as number | null, color: 'text-neutral-400 dark:text-white/30', bg: 'bg-neutral-100 dark:bg-white/5', pulsing: false };
+  if (!slaHoras) return { daysOpen, slaDias: null as number | null, color: 'text-neutral-500 dark:text-white/45', bg: 'bg-neutral-100 dark:bg-white/5', pulsing: false };
   const horasUsadas = daysOpen * HPD;
   const pct = horasUsadas / slaHoras;
   const slaDias = Math.ceil(slaHoras / HPD);
@@ -129,7 +129,7 @@ function MultiSelectDropdown({
         onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all whitespace-nowrap ${
           selected.length > 0
-            ? 'bg-accent/10 text-accent border-accent/30'
+            ? 'bg-accent/10 text-accent-ink border-accent/30'
             : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/8'
         }`}
       >
@@ -138,11 +138,11 @@ function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-white/10 shadow-xl overflow-hidden">
+        <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] bg-surface-card dark:bg-neutral-800 rounded-xl border border-soft dark:border-white/10 shadow-xl overflow-hidden">
           {selected.length > 0 && (
             <button
               onClick={() => { onChange([]); setOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-500 dark:text-white/40 hover:bg-neutral-50 dark:hover:bg-white/5 border-b border-neutral-100 dark:border-white/8 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-500 dark:text-white/55 hover:bg-neutral-50 dark:hover:bg-white/5 border-b border-neutral-100 dark:border-white/8 transition-colors"
             >
               <X className="w-3 h-3" />
               Limpiar selección
@@ -163,7 +163,7 @@ function MultiSelectDropdown({
                   </button>
                   <button
                     onClick={() => only(opt.value)}
-                    className="opacity-0 group-hover:opacity-100 text-[10px] font-semibold text-accent px-1.5 py-0.5 rounded transition-all ml-2 shrink-0 hover:bg-accent/10"
+                    className="opacity-0 group-hover:opacity-100 text-[11px] font-semibold text-accent-ink px-1.5 py-0.5 rounded transition-all ml-2 shrink-0 hover:bg-accent/10"
                   >
                     Sólo
                   </button>
@@ -1219,7 +1219,7 @@ export function Tramites() {
             onClick={() => setActiveTab('activos')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === 'activos'
-                ? 'text-accent border-accent'
+                ? 'text-accent-ink border-accent'
                 : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
             }`}
           >
@@ -1230,7 +1230,7 @@ export function Tramites() {
             onClick={() => setActiveTab('cerrados')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === 'cerrados'
-                ? 'text-accent border-accent'
+                ? 'text-accent-ink border-accent'
                 : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
             }`}
           >
@@ -1249,7 +1249,7 @@ export function Tramites() {
               <Trash2 className="w-4 h-4" />
               Papelera
               {tramitesPapelera.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                <span className="ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
                   {tramitesPapelera.length}
                 </span>
               )}
@@ -1388,7 +1388,7 @@ export function Tramites() {
                     </p>
 
                     {/* Sub */}
-                    <p className="mt-2.5 pt-2.5 border-t border-neutral-100 dark:border-white/8 text-[10px] text-neutral-400 dark:text-white/30 leading-snug">
+                    <p className="mt-2.5 pt-2.5 border-t border-neutral-100 dark:border-white/8 text-[11px] text-neutral-500 dark:text-white/45 leading-snug">
                       {kpi.sub}
                     </p>
                   </div>
@@ -1401,17 +1401,17 @@ export function Tramites() {
 
       {/* Filters — hidden in papelera mode */}
       {activeTab !== 'papelera' && (
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-3.5">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-3.5">
           <div className="flex flex-col gap-3">
             {/* Search row */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-white/30 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-white/45 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Buscar por folio, descripción, póliza o agente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-400 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
+                className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-500 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
               />
             </div>
 
@@ -1480,7 +1480,7 @@ export function Tramites() {
                   onClick={() => setSortOpen(o => !o)}
                   className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all whitespace-nowrap ${
                     sortBy !== 'fecha_creacion' || sortDir !== 'desc'
-                      ? 'bg-accent/10 text-accent border-accent/30'
+                      ? 'bg-accent/10 text-accent-ink border-accent/30'
                       : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/8'
                   }`}
                 >
@@ -1488,7 +1488,7 @@ export function Tramites() {
                   Ordenar
                 </button>
                 {sortOpen && (
-                  <div className="absolute top-full right-0 mt-1 z-50 min-w-[220px] bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-white/10 shadow-xl overflow-hidden">
+                  <div className="absolute top-full right-0 mt-1 z-50 min-w-[220px] bg-surface-card dark:bg-neutral-800 rounded-xl border border-soft dark:border-white/10 shadow-xl overflow-hidden">
                     {([
                       { value: 'fecha_creacion', label: 'Fecha de creación' },
                       { value: 'requiere_atencion', label: 'Requieren atención primero' },
@@ -1503,12 +1503,12 @@ export function Tramites() {
                           setSortOpen(false);
                         }}
                         className={`w-full flex items-center justify-between px-4 py-2.5 text-xs transition-colors hover:bg-neutral-50 dark:hover:bg-white/5 ${
-                          sortBy === opt.value ? 'text-accent font-semibold' : 'text-neutral-700 dark:text-white/70'
+                          sortBy === opt.value ? 'text-accent-ink font-semibold' : 'text-neutral-700 dark:text-white/70'
                         }`}
                       >
                         {opt.label}
                         {sortBy === opt.value && (
-                          <span className="text-[10px] font-bold ml-2">{sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}</span>
+                          <span className="text-[11px] font-bold ml-2">{sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}</span>
                         )}
                       </button>
                     ))}
@@ -1519,7 +1519,7 @@ export function Tramites() {
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 dark:text-white/55 hover:text-neutral-700 dark:hover:text-white/70 transition-colors"
                 >
                   <X className="w-3 h-3" />
                   Limpiar
@@ -1531,12 +1531,12 @@ export function Tramites() {
             {hasActiveFilters && (
               <div className="flex flex-wrap gap-1.5 pt-2 border-t border-neutral-100 dark:border-white/5">
                 {selectedAreas.map(v => (
-                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">
                     {v} <button onClick={() => setSelectedAreas(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                   </span>
                 ))}
                 {selectedTipos.map(v => (
-                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent/10 text-accent">
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-accent/10 text-accent-ink">
                     {tipoOptionsFromDb.find(o => o.value === v)?.label ?? v}
                     <button onClick={() => setSelectedTipos(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                   </span>
@@ -1544,36 +1544,36 @@ export function Tramites() {
                 {selectedEstatuses.map(v => {
                   const e = estatusList.find(s => s.id === v);
                   return (
-                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-white" style={{ backgroundColor: e?.color ?? '#888' }}>
+                    <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-white" style={{ backgroundColor: e?.color ?? '#888' }}>
                       {e?.nombre ?? v} <button onClick={() => setSelectedEstatuses(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                     </span>
                   );
                 })}
                 {selectedPrioridades.map(v => (
-                  <span key={v} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${v === 'Alta' ? 'bg-red-100 text-red-700' : v === 'Media' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                  <span key={v} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${v === 'Alta' ? 'bg-red-100 text-red-700' : v === 'Media' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
                     {v} <button onClick={() => setSelectedPrioridades(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                   </span>
                 ))}
                 {selectedOficinas.map(v => (
-                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                     {oficinaOptions.find(o => o.value === v)?.label ?? v}
                     <button onClick={() => setSelectedOficinas(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                   </span>
                 ))}
                 {selectedAgentes.map(v => (
-                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
                     {agenteOptions.find(o => o.value === v)?.label ?? v}
                     <button onClick={() => setSelectedAgentes(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                   </span>
                 ))}
                 {selectedEquipos.map(v => (
-                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                     {grupoOptions.find(o => o.value === v)?.label ?? v}
                     <button onClick={() => setSelectedEquipos(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                   </span>
                 ))}
                 {selectedResponsables.map(v => (
-                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                  <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
                     {responsableOptions.find(o => o.value === v)?.label ?? v}
                     <button onClick={() => setSelectedResponsables(prev => prev.filter(x => x !== v))}><X className="w-2.5 h-2.5" /></button>
                   </span>
@@ -1588,7 +1588,7 @@ export function Tramites() {
       {activeTab === 'papelera' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
-            <p className="text-xs text-neutral-500 dark:text-white/40 font-medium">
+            <p className="text-xs text-neutral-500 dark:text-white/55 font-medium">
               {tramitesPapelera.length} {tramitesPapelera.length === 1 ? 'trámite' : 'trámites'} en papelera
             </p>
             {tramitesPapelera.length > 0 && (
@@ -1618,7 +1618,7 @@ export function Tramites() {
                 return (
                   <div
                     key={tramite.id}
-                    className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden flex opacity-70"
+                    className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden flex opacity-70"
                   >
                     <div
                       className={`w-1.5 shrink-0 ${!dbColor ? fallbackBarClass : ''}`}
@@ -1642,13 +1642,13 @@ export function Tramites() {
                         </div>
                         <div className="space-y-0.5 text-xs">
                           <p className="text-neutral-600 dark:text-white/60">
-                            <span className="text-neutral-400 dark:text-white/35">Eliminado: </span>
+                            <span className="text-neutral-500 dark:text-white/50">Eliminado: </span>
                             <span className="font-medium">
                               {new Date(tramite.eliminado_at!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </span>
                           </p>
                           <p className="text-neutral-600 dark:text-white/60">
-                            <span className="text-neutral-400 dark:text-white/35">Creado: </span>
+                            <span className="text-neutral-500 dark:text-white/50">Creado: </span>
                             <span className="font-medium">
                               {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </span>
@@ -1710,10 +1710,10 @@ export function Tramites() {
                 <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Requiere atención</h3>
                 <span className="ml-auto text-xs font-bold bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full">{kanbanAtención.length}</span>
               </div>
-              <p className="text-xs text-neutral-400 dark:text-white/25 mt-0.5 pl-5">Esperan tu respuesta o acción</p>
+              <p className="text-xs text-neutral-500 dark:text-white/25 mt-0.5 pl-5">Esperan tu respuesta o acción</p>
             </div>
             {kanbanAtención.length === 0 ? (
-              <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin trámites pendientes</p>
+              <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-8">Sin trámites pendientes</p>
             ) : kanbanAtención.map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
               const ac = AREA_CONFIG[area];
@@ -1736,7 +1736,7 @@ export function Tramites() {
                   onPointerMove={(e) => moveKanbanDrag(e, tramite)}
                   onPointerUp={endKanbanDrag}
                   onPointerCancel={endKanbanDrag}
-                  className={`relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
+                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
                 >
                   {!tramite.cerrado_en && (
                     <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
@@ -1752,10 +1752,10 @@ export function Tramites() {
                     <p className={`text-xs font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
                     {estatusLabel && <span className="text-xs font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
                     {preview && (
-                      <p className="text-xs text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/55 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className="text-xs text-neutral-500 dark:text-white/45">{fmtFecha(tramite.fecha_creacion)}</span>
                       <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
                         {sla.daysOpen}d{sla.slaDias ? ` / ${sla.slaDias}d` : ''}
                       </span>
@@ -1763,7 +1763,7 @@ export function Tramites() {
                     {tramite.responsable?.nombre_completo ? (
                       <div className="flex items-center gap-1 mt-0.5">
                         <UserCheck className="w-2.5 h-2.5 text-neutral-300 dark:text-white/25 shrink-0" />
-                        <span className="text-xs text-neutral-400 dark:text-white/30 truncate">{tramite.responsable.nombre_completo}</span>
+                        <span className="text-xs text-neutral-500 dark:text-white/45 truncate">{tramite.responsable.nombre_completo}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 mt-0.5">
@@ -1775,8 +1775,8 @@ export function Tramites() {
                       <div className="flex items-start gap-1 mt-0.5 border-t border-neutral-100 dark:border-white/5 pt-1">
                         <MessageSquare className="w-2.5 h-2.5 text-neutral-300 dark:text-white/20 shrink-0 mt-0.5" />
                         <div className="min-w-0">
-                          <span className="text-[10px] font-semibold text-neutral-400 dark:text-white/30">{ultimosComentarios.get(tramite.id)!.autor}: </span>
-                          <span className="text-[10px] text-neutral-400 dark:text-white/25 line-clamp-1">{ultimosComentarios.get(tramite.id)!.mensaje}</span>
+                          <span className="text-[11px] font-semibold text-neutral-500 dark:text-white/45">{ultimosComentarios.get(tramite.id)!.autor}: </span>
+                          <span className="text-[11px] text-neutral-500 dark:text-white/25 line-clamp-1">{ultimosComentarios.get(tramite.id)!.mensaje}</span>
                         </div>
                       </div>
                     )}
@@ -1809,12 +1809,12 @@ export function Tramites() {
               <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">En proceso</h3>
-                <span className="ml-auto text-xs font-bold bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full">{kanbanProceso.length}</span>
+                <span className="ml-auto text-xs font-bold bg-blue-100 text-accent-ink dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full">{kanbanProceso.length}</span>
               </div>
-              <p className="text-xs text-neutral-400 dark:text-white/25 mt-0.5 pl-5">Siendo atendidos por el equipo</p>
+              <p className="text-xs text-neutral-500 dark:text-white/25 mt-0.5 pl-5">Siendo atendidos por el equipo</p>
             </div>
             {kanbanProceso.length === 0 ? (
-              <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin trámites en proceso</p>
+              <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-8">Sin trámites en proceso</p>
             ) : kanbanProceso.map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
               const ac = AREA_CONFIG[area];
@@ -1837,7 +1837,7 @@ export function Tramites() {
                   onPointerMove={(e) => moveKanbanDrag(e, tramite)}
                   onPointerUp={endKanbanDrag}
                   onPointerCancel={endKanbanDrag}
-                  className={`relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
+                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
                 >
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
@@ -1845,10 +1845,10 @@ export function Tramites() {
                     <p className={`text-xs font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
                     {estatusLabel && <span className="text-xs font-bold uppercase" style={{ color: estatusColor ?? undefined }}>{estatusLabel}</span>}
                     {preview && (
-                      <p className="text-xs text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/55 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className="text-xs text-neutral-500 dark:text-white/45">{fmtFecha(tramite.fecha_creacion)}</span>
                       <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${sla.bg} ${sla.color} ${sla.pulsing ? 'animate-pulse' : ''}`}>
                         {sla.daysOpen}d{sla.slaDias ? ` / ${sla.slaDias}d` : ''}
                       </span>
@@ -1856,7 +1856,7 @@ export function Tramites() {
                     {tramite.responsable?.nombre_completo ? (
                       <div className="flex items-center gap-1 mt-0.5">
                         <UserCheck className="w-2.5 h-2.5 text-neutral-300 dark:text-white/25 shrink-0" />
-                        <span className="text-xs text-neutral-400 dark:text-white/30 truncate">{tramite.responsable.nombre_completo}</span>
+                        <span className="text-xs text-neutral-500 dark:text-white/45 truncate">{tramite.responsable.nombre_completo}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 mt-0.5">
@@ -1868,8 +1868,8 @@ export function Tramites() {
                       <div className="flex items-start gap-1 mt-0.5 border-t border-neutral-100 dark:border-white/5 pt-1">
                         <MessageSquare className="w-2.5 h-2.5 text-neutral-300 dark:text-white/20 shrink-0 mt-0.5" />
                         <div className="min-w-0">
-                          <span className="text-[10px] font-semibold text-neutral-400 dark:text-white/30">{ultimosComentarios.get(tramite.id)!.autor}: </span>
-                          <span className="text-[10px] text-neutral-400 dark:text-white/25 line-clamp-1">{ultimosComentarios.get(tramite.id)!.mensaje}</span>
+                          <span className="text-[11px] font-semibold text-neutral-500 dark:text-white/45">{ultimosComentarios.get(tramite.id)!.autor}: </span>
+                          <span className="text-[11px] text-neutral-500 dark:text-white/25 line-clamp-1">{ultimosComentarios.get(tramite.id)!.mensaje}</span>
                         </div>
                       </div>
                     )}
@@ -1904,10 +1904,10 @@ export function Tramites() {
                 <h3 className="text-sm font-bold text-neutral-700 dark:text-white/80">Terminados</h3>
                 <span className="ml-auto text-xs font-bold bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">{kanbanCerrados.length}</span>
               </div>
-              <p className="text-xs text-neutral-400 dark:text-white/25 mt-0.5 pl-5">Cerrados en los últimos 20 días</p>
+              <p className="text-xs text-neutral-500 dark:text-white/25 mt-0.5 pl-5">Cerrados en los últimos 20 días</p>
             </div>
             {kanbanCerrados.length === 0 ? (
-              <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-8">Sin cierres recientes</p>
+              <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-8">Sin cierres recientes</p>
             ) : kanbanCerrados.slice(0, 10).map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
               const ac = AREA_CONFIG[area];
@@ -1921,22 +1921,22 @@ export function Tramites() {
                   : null;
               const totalDays = Math.max(0, Math.floor((new Date(tramite.cerrado_en!).getTime() - new Date(tramite.fecha_creacion).getTime()) / 86_400_000));
               return (
-                <div key={tramite.id} onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }} className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
+                <div key={tramite.id} onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }} className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
                     <p className={`text-xs font-semibold uppercase opacity-75 truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tipoDb?.label ?? getTipoTramiteLabel(tramite.tipo_tramite)}</p>
                     {(tramite.custom_estatus_label ?? tramite.estatus?.nombre) && <span className="text-xs font-bold uppercase" style={{ color: tramite.custom_estatus_color ?? tramite.estatus?.color ?? undefined }}>{tramite.custom_estatus_label ?? tramite.estatus?.nombre}</span>}
                     {preview && (
-                      <p className="text-xs text-neutral-500 dark:text-white/40 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/55 leading-snug line-clamp-2 mt-0.5 break-words">{preview}</p>
                     )}
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-neutral-400 dark:text-white/30">{fmtFecha(tramite.fecha_creacion)}</span>
-                      <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30">{totalDays}d</span>
+                      <span className="text-xs text-neutral-500 dark:text-white/45">{fmtFecha(tramite.fecha_creacion)}</span>
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-white/45">{totalDays}d</span>
                     </div>
                     <div className="flex items-center justify-between mt-0.5">
                       <span className={`text-xs font-extrabold uppercase tracking-widest truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.folio}</span>
-                      <span className="text-xs text-neutral-400 dark:text-white/30 shrink-0">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
+                      <span className="text-xs text-neutral-500 dark:text-white/45 shrink-0">{new Date(tramite.cerrado_en!).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit' })}</span>
                     </div>
                   </div>
                 </div>
@@ -1944,7 +1944,7 @@ export function Tramites() {
             })}
             <button
               onClick={() => { setActiveTab('cerrados'); setViewMode('lista'); }}
-              className="mt-1 text-xs font-semibold text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 py-2 border border-neutral-200 dark:border-white/10 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
+              className="mt-1 text-xs font-semibold text-neutral-500 dark:text-white/55 hover:text-neutral-700 dark:hover:text-white/70 py-2 border border-neutral-200 dark:border-white/10 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
             >
               {kanbanCerrados.length > 10 ? `Ver todos (${kanbanCerrados.length}) →` : 'Ver en tablero →'}
             </button>
@@ -1958,7 +1958,7 @@ export function Tramites() {
       {activeTab === 'activos' && viewMode === 'kanban' && (
         <div
           ref={dragGhostRef}
-          className="fixed top-0 left-0 z-[9999] w-14 h-14 rounded-full flex items-center justify-center text-white text-[10px] font-extrabold uppercase tracking-tight shadow-2xl ring-4 ring-white/70 dark:ring-neutral-900/70 pointer-events-none select-none"
+          className="fixed top-0 left-0 z-[9999] w-14 h-14 rounded-full flex items-center justify-center text-white text-[11px] font-extrabold uppercase tracking-tight shadow-2xl ring-4 ring-white/70 dark:ring-neutral-900/70 pointer-events-none select-none"
           style={{ opacity: 0, scale: '0.4', transition: 'opacity 0.18s ease, scale 0.18s ease, background-color 0.15s ease' }}
         />
       )}
@@ -1978,7 +1978,7 @@ export function Tramites() {
       ) : (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <p className="text-xs text-neutral-500 dark:text-white/40 font-medium">
+            <p className="text-xs text-neutral-500 dark:text-white/55 font-medium">
               {filteredTramites.length} {filteredTramites.length === 1 ? 'tramite' : 'tramites'}
               {hasActiveFilters && ' encontrados'}
             </p>
@@ -1997,7 +1997,7 @@ export function Tramites() {
               <div
                 key={tramite.id}
                 onClick={() => navigate(`/tramites/${tramite.id}`)}
-                className="relative bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 hover:border-neutral-300 dark:hover:border-white/20 transition-all duration-200 cursor-pointer group flex"
+                className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 hover:border-neutral-300 dark:hover:border-white/20 transition-all duration-200 cursor-pointer group flex"
               >
                 {/* Globito animado — requiere atención */}
                 {needsAttention && (
@@ -2044,7 +2044,7 @@ export function Tramites() {
                     <div className="space-y-0.5 text-xs">
                       {(tramite.custom_estatus_label ?? tramite.estatus?.nombre) && (
                         <p className="text-neutral-600 dark:text-white/60">
-                          <span className="text-neutral-400 dark:text-white/35">Estatus: </span>
+                          <span className="text-neutral-500 dark:text-white/50">Estatus: </span>
                           <span className="font-bold uppercase" style={{ color: tramite.custom_estatus_color ?? tramite.estatus?.color ?? undefined }}>
                             {tramite.custom_estatus_label ?? tramite.estatus?.nombre}
                           </span>
@@ -2052,21 +2052,21 @@ export function Tramites() {
                       )}
                       {!esRolSistemaAgente && (
                         <p className="text-neutral-600 dark:text-white/60">
-                          <span className="text-neutral-400 dark:text-white/35">Prioridad: </span>
+                          <span className="text-neutral-500 dark:text-white/50">Prioridad: </span>
                           <span className={`font-bold uppercase ${tramite.prioridad === 'Alta' ? 'text-red-600' : tramite.prioridad === 'Media' ? 'text-amber-600' : 'text-green-600'}`}>
                             {tramite.prioridad}
                           </span>
                         </p>
                       )}
                       <p className="text-neutral-600 dark:text-white/60">
-                        <span className="text-neutral-400 dark:text-white/35">Fecha creación: </span>
+                        <span className="text-neutral-500 dark:text-white/50">Fecha creación: </span>
                         <span className="font-medium">
                           {new Date(tramite.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </span>
                       </p>
                       {tramite.cerrado_en && (
                         <p className="text-neutral-600 dark:text-white/60">
-                          <span className="text-neutral-400 dark:text-white/35">Fecha finalización: </span>
+                          <span className="text-neutral-500 dark:text-white/50">Fecha finalización: </span>
                           <span className="font-bold">
                             {new Date(tramite.cerrado_en).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                           </span>
@@ -2113,13 +2113,13 @@ export function Tramites() {
                     <div className="flex items-end justify-between gap-2 mt-auto flex-wrap">
                       <div className="flex items-center gap-2">
                         {tramite.poliza && (
-                          <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-white/35">
+                          <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/50">
                             <FileText className="w-3 h-3" />
                             {tramite.poliza}
                           </span>
                         )}
                         {hasArchivos && (
-                          <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-white/35">
+                          <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/50">
                             <Paperclip className="w-3 h-3" />
                             {tramite.ticket_archivos.length}
                           </span>
@@ -2142,7 +2142,7 @@ export function Tramites() {
                                     value={assignTargetId}
                                     onChange={e => setAssignTargetId(e.target.value)}
                                     onClick={e => e.stopPropagation()}
-                                    className="text-xs border border-neutral-200 dark:border-white/15 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] bg-white dark:bg-neutral-800 dark:text-white"
+                                    className="text-xs border border-soft dark:border-white/15 rounded-lg px-2 py-1 focus:ring-2 focus:ring-accent/40 outline-none max-w-[150px] bg-surface-card dark:bg-neutral-800 dark:text-white"
                                   >
                                     <option value="">Ejecutivo...</option>
                                     {teamEjecutivos.map(u => (
@@ -2152,13 +2152,13 @@ export function Tramites() {
                                   <button
                                     onClick={(e) => { e.stopPropagation(); void handleAssignTramite(tramite.id, assignTargetId); }}
                                     disabled={!assignTargetId}
-                                    className="p-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                                    className="p-1 rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-40 transition-colors"
                                   >
                                     <Check className="w-3 h-3" />
                                   </button>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setAssigningTramiteId(null); setAssignTargetId(''); }}
-                                    className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors text-neutral-400"
+                                    className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors text-neutral-500"
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
@@ -2185,7 +2185,7 @@ export function Tramites() {
                           );
                         }
                         return (
-                          <p className="text-[11px] font-extrabold uppercase tracking-wide text-neutral-400 dark:text-white/35 text-right shrink-0">
+                          <p className="text-[11px] font-extrabold uppercase tracking-wide text-neutral-500 dark:text-white/50 text-right shrink-0">
                             Responsable: {tramite.responsable?.nombre_completo || 'Sin asignar'}
                           </p>
                         );
@@ -2239,8 +2239,8 @@ export function Tramites() {
       )}
 
       {showCatalogosModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-4xl my-8 max-h-[90vh] overflow-hidden flex flex-col border border-neutral-200/60 dark:border-white/10">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-4xl my-8 max-h-[90vh] overflow-hidden flex flex-col border border-neutral-200/60 dark:border-white/10 animate-scale-in">
             <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-white/5">
               <div>
                 <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Catalogos de Tramites</h2>
@@ -2248,7 +2248,7 @@ export function Tramites() {
               </div>
               <button
                 onClick={() => setShowCatalogosModal(false)}
-                className="p-2 hover:bg-neutral-100 dark:hover:bg-white/8 rounded-lg transition-colors text-neutral-400 hover:text-neutral-600 dark:text-white/40 dark:hover:text-white/70"
+                className="p-2 hover:bg-neutral-100 dark:hover:bg-white/8 rounded-lg transition-colors text-neutral-500 hover:text-neutral-600 dark:text-white/55 dark:hover:text-white/70"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2263,8 +2263,8 @@ export function Tramites() {
       {showPanelLider && <PanelLider onClose={() => setShowPanelLider(false)} />}
 
       {showGruposModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-6xl my-8 max-h-[90vh] overflow-hidden flex flex-col border border-neutral-200/60 dark:border-white/10">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-6xl my-8 max-h-[90vh] overflow-hidden flex flex-col border border-neutral-200/60 dark:border-white/10 animate-scale-in">
             <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-white/5">
               <div>
                 <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Equipos de Trabajo</h2>
@@ -2272,7 +2272,7 @@ export function Tramites() {
               </div>
               <button
                 onClick={() => setShowGruposModal(false)}
-                className="p-2 hover:bg-neutral-100 dark:hover:bg-white/8 rounded-lg transition-colors text-neutral-400 hover:text-neutral-600 dark:text-white/40 dark:hover:text-white/70"
+                className="p-2 hover:bg-neutral-100 dark:hover:bg-white/8 rounded-lg transition-colors text-neutral-500 hover:text-neutral-600 dark:text-white/55 dark:hover:text-white/70"
               >
                 <X className="w-5 h-5" />
               </button>

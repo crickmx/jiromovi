@@ -50,7 +50,7 @@ export default function CedulaAExamenes() {
 
   const obtenerColorTipo = (tipo: string) => {
     switch (tipo) {
-      case 'practica': return 'bg-blue-100 text-accent';
+      case 'practica': return 'bg-blue-100 text-accent-ink';
       case 'modulo': return 'bg-purple-100 text-purple-600';
       case 'final': return 'bg-amber-100 text-amber-600';
       default: return 'bg-neutral-100 text-neutral-600';
@@ -91,12 +91,12 @@ export default function CedulaAExamenes() {
 
         {examenes.length === 0 ? (
           <div className="bg-white rounded-ios-xl shadow-ios p-8 text-center">
-            <FileText className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
+            <FileText className="w-16 h-16 text-neutral-500 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-neutral-900 mb-2">No hay exámenes disponibles</h3>
             <p className="text-neutral-600 mb-4">Los exámenes estarán disponibles próximamente</p>
             <button
               onClick={() => navigate('/seguros-education/cedula-a')}
-              className="px-6 py-3 bg-accent text-white rounded-ios-lg hover:bg-accent-hover transition-colors"
+              className="px-6 py-3 bg-accent text-accent-foreground rounded-ios-lg hover:bg-accent-hover transition-colors"
             >
               Volver al curso
             </button>

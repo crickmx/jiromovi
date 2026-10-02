@@ -27,13 +27,13 @@ export default function BulkAssignModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-md overflow-hidden animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-accent/10 rounded-xl">
-              <Users className="w-5 h-5 text-accent" />
+              <Users className="w-5 h-5 text-accent-ink" />
             </div>
             <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
               Asignar Vendedor a Todas
@@ -94,7 +94,7 @@ export default function BulkAssignModal({
           <button
             onClick={handleConfirm}
             disabled={!selectedVendor}
-            className="px-4 py-2 text-sm font-medium text-white bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors shadow-sm"
+            className="px-4 py-2 text-sm font-medium text-accent-foreground bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors shadow-sm"
           >
             Asignar a {totalPolizas} poliza{totalPolizas !== 1 ? 's' : ''}
           </button>

@@ -84,9 +84,9 @@ export default function GestionMiembrosTablero({
       case 'admin':
         return <Shield className="h-4 w-4 text-purple-600" />;
       case 'editor':
-        return <Edit className="h-4 w-4 text-blue-600" />;
+        return <Edit className="h-4 w-4 text-accent-ink" />;
       case 'viewer':
-        return <Eye className="h-4 w-4 text-gray-600" />;
+        return <Eye className="h-4 w-4 text-neutral-600" />;
     }
   };
 
@@ -99,7 +99,7 @@ export default function GestionMiembrosTablero({
       case 'editor':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'viewer':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-neutral-100 text-neutral-800 border-neutral-200';
     }
   };
 
@@ -127,8 +127,8 @@ export default function GestionMiembrosTablero({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          <Users className="h-5 w-5 mr-2 text-accent" />
+        <h3 className="text-lg font-semibold text-neutral-900 flex items-center">
+          <Users className="h-5 w-5 mr-2 text-accent-ink" />
           Miembros ({miembros.length})
         </h3>
       </div>
@@ -150,19 +150,19 @@ export default function GestionMiembrosTablero({
             <div
               key={miembro.member_id}
               className={`p-4 rounded-lg border ${
-                isMe ? 'bg-accent/5 border-accent/20' : 'bg-gray-50 border-gray-200'
+                isMe ? 'bg-accent/5 border-accent/20' : 'bg-neutral-50 border-neutral-200'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3 flex-1">
-                  <div className="h-10 w-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold">
+                  <div className="h-10 w-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-semibold">
                     {miembro.user_name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-neutral-900">
                         {miembro.user_name}
-                        {isMe && <span className="text-accent ml-1">(Tú)</span>}
+                        {isMe && <span className="text-accent-ink ml-1">(Tú)</span>}
                       </p>
                       <span
                         className={`px-2 py-0.5 text-xs font-medium rounded border flex items-center ${getRoleBadgeColor(
@@ -174,9 +174,9 @@ export default function GestionMiembrosTablero({
                       </span>
                     </div>
                     <div className="flex items-center space-x-2 mt-1">
-                      <p className="text-xs text-gray-600">{miembro.user_office}</p>
-                      <span className="text-xs text-gray-400">•</span>
-                      <p className="text-xs text-gray-600">{miembro.user_role_global}</p>
+                      <p className="text-xs text-neutral-600">{miembro.user_office}</p>
+                      <span className="text-xs text-neutral-500">•</span>
+                      <p className="text-xs text-neutral-600">{miembro.user_role_global}</p>
                     </div>
                   </div>
                 </div>
@@ -189,7 +189,7 @@ export default function GestionMiembrosTablero({
                         handleCambiarRol(miembro.user_id, e.target.value as MemberRole)
                       }
                       disabled={processingUserId === miembro.user_id}
-                      className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-accent focus:border-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-sm border border-neutral-300 rounded px-2 py-1 focus:ring-2 focus:ring-accent focus:border-accent disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <option value="admin">Admin</option>
                       <option value="editor">Editor</option>
@@ -208,13 +208,13 @@ export default function GestionMiembrosTablero({
 
                 {!canEdit && !isMe && (
                   <div className="ml-4">
-                    <span className="text-xs text-gray-500">No editable</span>
+                    <span className="text-xs text-neutral-500">No editable</span>
                   </div>
                 )}
               </div>
 
               {miembro.added_by_name && (
-                <p className="text-xs text-gray-500 mt-2 ml-13">
+                <p className="text-xs text-neutral-500 mt-2 ml-13">
                   Agregado por {miembro.added_by_name} •{' '}
                   {new Date(miembro.created_at).toLocaleDateString('es-MX')}
                 </p>

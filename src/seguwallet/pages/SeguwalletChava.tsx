@@ -45,7 +45,7 @@ function ConfidenceBadge({ level }: { level: 'alta' | 'media' | 'baja' }) {
     baja:  { color: 'text-red-400',     dot: 'bg-red-400',     label: 'Confianza baja' },
   }[level];
   return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${c.color}`}>
+    <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${c.color}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
       {c.label}
     </span>
@@ -121,12 +121,12 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         {/* Footer */}
         {!isUser && (
           <div className="flex items-center gap-3 px-1 mt-1.5">
-            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
               {message.timestamp.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
             </span>
             {message.confidence && <ConfidenceBadge level={message.confidence} />}
             {(message.sources || []).length > 0 && (
-              <button onClick={() => setShowSources(!showSources)} className="text-[10px] font-medium flex items-center gap-1 transition-colors" style={{ color: 'rgba(0,229,255,0.7)' }}>
+              <button onClick={() => setShowSources(!showSources)} className="text-[11px] font-medium flex items-center gap-1 transition-colors" style={{ color: 'rgba(0,229,255,0.7)' }}>
                 <FileText className="w-3 h-3" />
                 {(message.sources || []).length} fuente{(message.sources || []).length > 1 ? 's' : ''}
                 {showSources ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -309,7 +309,7 @@ export function SeguwalletChava() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <img src="/logo_color.svg" alt="Chava AI" className="h-4 w-auto object-contain" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,229,255,0.1)', color: '#00E5FF', border: '1px solid rgba(0,229,255,0.2)' }}>
+            <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,229,255,0.1)', color: '#00E5FF', border: '1px solid rgba(0,229,255,0.2)' }}>
               agentedeseguros.ai
             </span>
           </div>
@@ -320,7 +320,7 @@ export function SeguwalletChava() {
         </div>
         {brand.agentName && brand.agentName !== 'Tu Agente' && (
           <div className="text-right hidden sm:block flex-shrink-0">
-            <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>Agente</p>
+            <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.3)' }}>Agente</p>
             <p className="text-xs font-semibold truncate max-w-[120px]" style={{ color: 'rgba(255,255,255,0.7)' }}>{brand.agentName}</p>
           </div>
         )}
@@ -359,7 +359,7 @@ export function SeguwalletChava() {
       {/* Quick action chips */}
       {messages.length <= 1 && !isTyping && (
         <div className="px-4 pb-3 flex-shrink-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
             <Zap className="w-3 h-3" />Acciones rapidas
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -418,7 +418,7 @@ export function SeguwalletChava() {
             <Send className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-[10px] text-center mt-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
+        <p className="text-[11px] text-center mt-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
           Powered by Chava IA — agentedeseguros.ai
         </p>
       </div>

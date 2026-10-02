@@ -336,8 +336,8 @@ export default function ComisionesUpload() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
+      <div className="min-h-screen dark:bg-neutral-900 flex items-center justify-center p-6">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Acceso Denegado
@@ -366,7 +366,7 @@ export default function ComisionesUpload() {
         backLabel="Volver"
       />
 
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-6">
 
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
           <h3 className="font-semibold text-primary-900 mb-2">
@@ -426,7 +426,7 @@ export default function ComisionesUpload() {
                 }}
                 className="hidden"
               />
-              <Upload className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+              <Upload className="w-16 h-16 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
                 Haz clic para seleccionar un archivo
               </h3>
@@ -523,7 +523,7 @@ export default function ComisionesUpload() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-accent">
+                          <div className="text-2xl font-bold text-accent-ink">
                             {week.count}
                           </div>
                           <div className="text-xs text-neutral-600 dark:text-white/60">
@@ -538,7 +538,7 @@ export default function ComisionesUpload() {
                 <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-white/10">
                   <button
                     onClick={() => setWeeks(prev => prev.map(w => ({ ...w, selected: !prev.every(w => w.selected) })))}
-                    className="text-accent hover:text-primary-700 font-semibold text-sm"
+                    className="text-accent-ink hover:text-primary-700 font-semibold text-sm"
                   >
                     {weeks.every(w => w.selected) ? 'Deseleccionar todas' : 'Seleccionar todas'}
                   </button>

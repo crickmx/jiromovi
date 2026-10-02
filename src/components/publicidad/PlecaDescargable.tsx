@@ -54,9 +54,9 @@ export function PlecaDescargable() {
   if (!usuario) return null;
 
   return (
-    <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5">
+    <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-3">
-        <Rows3 className="w-4 h-4 text-accent" />
+        <Rows3 className="w-4 h-4 text-accent-ink" />
         <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Tu pleca de contacto</h3>
       </div>
       <p className="text-xs text-neutral-500 dark:text-white/50 mb-3">

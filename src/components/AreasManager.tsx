@@ -144,14 +144,14 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full my-8 flex flex-col max-h-[85vh]">
-        <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-surface-card rounded-2xl shadow-e4 max-w-5xl w-full my-8 flex flex-col max-h-[85vh] animate-scale-in">
+        <div className="flex-shrink-0 border-b border-neutral-200 px-6 py-4 flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-slate-800">Áreas de {oficinaNombre}</h2>
-            <p className="text-sm text-slate-600">Gestiona las áreas reservables del Espacio JIRO</p>
+            <h2 className="text-2xl font-bold text-neutral-800">Áreas de {oficinaNombre}</h2>
+            <p className="text-sm text-neutral-600">Gestiona las áreas reservables del Espacio JIRO</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="text-neutral-500 hover:text-slate-600">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -160,7 +160,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
           <div className="mb-6">
             <button
               onClick={() => openModal(null)}
-              className="flex items-center space-x-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition"
+              className="flex items-center space-x-2 bg-accent text-accent-foreground px-4 py-2 rounded-lg hover:bg-accent-hover transition"
             >
               <Plus className="w-5 h-5" />
               <span>Nueva Área</span>
@@ -172,25 +172,25 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
               <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : areas.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
+            <div className="text-center py-12 text-neutral-500">
               <p>No hay áreas registradas</p>
               <p className="text-sm mt-2">Crea la primera área para este Espacio JIRO</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {areas.map((area) => (
-                <div key={area.id} className="border border-slate-200 rounded-lg p-4">
+                <div key={area.id} className="border border-neutral-200 rounded-lg p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="font-bold text-slate-900">{area.nombre}</h3>
+                      <h3 className="font-bold text-neutral-900">{area.nombre}</h3>
                       {area.detalles && (
-                        <p className="text-sm text-slate-600 mt-1">{area.detalles}</p>
+                        <p className="text-sm text-neutral-600 mt-1">{area.detalles}</p>
                       )}
                     </div>
                     <div className="flex space-x-2">
                       <button
                         onClick={() => openModal(area)}
-                        className="text-accent hover:bg-primary-50 p-2 rounded transition"
+                        className="text-accent-ink hover:bg-primary-50 p-2 rounded transition"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
@@ -202,7 +202,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                       </button>
                     </div>
                   </div>
-                  <div className="text-xs text-slate-600 space-y-1">
+                  <div className="text-xs text-neutral-600 space-y-1">
                     {DIAS_SEMANA.map((dia) => {
                       const disponibilidad = area.disponibilidad_semanal as unknown as DisponibilidadSemanal;
                       const franjas = disponibilidad[dia] || [];
@@ -228,13 +228,13 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[60] p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full my-8 flex flex-col max-h-[85vh]">
-            <div className="flex-shrink-0 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-slate-800">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-start justify-center z-[60] p-4 overflow-y-auto">
+          <div className="bg-surface-card rounded-2xl shadow-e4 max-w-3xl w-full my-8 flex flex-col max-h-[85vh] animate-scale-in">
+            <div className="flex-shrink-0 border-b border-neutral-200 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-neutral-800">
                 {selectedArea ? 'Editar Área' : 'Nueva Área'}
               </h3>
-              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setModalOpen(false)} className="text-neutral-500 hover:text-slate-600">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -242,7 +242,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <form id="area-form" onSubmit={handleSubmit}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Nombre del Área <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -250,39 +250,39 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                   placeholder="Ej: Sala de Juntas A"
                 />
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Detalles / Descripción
                 </label>
                 <textarea
                   value={formData.detalles}
                   onChange={(e) => setFormData({ ...formData, detalles: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                   placeholder="Capacidad, amenidades, equipamiento, etc."
                 />
               </div>
 
               <div className="mb-6">
-                <h4 className="text-sm font-medium text-slate-700 mb-3">
+                <h4 className="text-sm font-medium text-neutral-700 mb-3">
                   Disponibilidad Semanal (Formato 24h)
                 </h4>
                 <div className="space-y-4">
                   {DIAS_SEMANA.map((dia) => (
-                    <div key={dia} className="border border-slate-200 rounded-lg p-4">
+                    <div key={dia} className="border border-neutral-200 rounded-lg p-4">
                       <div className="flex justify-between items-center mb-3">
-                        <label className="text-sm font-medium text-slate-700">
+                        <label className="text-sm font-medium text-neutral-700">
                           {DIAS_SEMANA_LABELS[dia]}
                         </label>
                         <button
                           type="button"
                           onClick={() => agregarFranja(dia)}
-                          className="flex items-center space-x-1 text-xs text-accent hover:text-primary-700"
+                          className="flex items-center space-x-1 text-xs text-accent-ink hover:text-primary-700"
                         >
                           <Plus className="w-4 h-4" />
                           <span>Agregar horario</span>
@@ -295,14 +295,14 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                               type="time"
                               value={franja.inicio}
                               onChange={(e) => actualizarFranja(dia, index, 'inicio', e.target.value)}
-                              className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                             />
-                            <span className="text-slate-600">a</span>
+                            <span className="text-neutral-600">a</span>
                             <input
                               type="time"
                               value={franja.fin}
                               onChange={(e) => actualizarFranja(dia, index, 'fin', e.target.value)}
-                              className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                             />
                             <button
                               type="button"
@@ -314,7 +314,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                           </div>
                         ))}
                         {formData.disponibilidad_semanal[dia].length === 0 && (
-                          <p className="text-sm text-slate-500 italic">No disponible este día</p>
+                          <p className="text-sm text-neutral-500 italic">No disponible este día</p>
                         )}
                       </div>
                     </div>
@@ -324,12 +324,12 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
 
               </form>
             </div>
-            <div className="flex-shrink-0 border-t border-slate-200 px-6 py-4">
+            <div className="flex-shrink-0 border-t border-neutral-200 px-6 py-4">
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                  className="px-6 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-slate-50 transition"
                 >
                   Cancelar
                 </button>
@@ -337,7 +337,7 @@ export function AreasManager({ oficinaId, oficinaNombre, onClose }: AreasManager
                   type="submit"
                   form="area-form"
                   disabled={saving}
-                  className="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition disabled:opacity-50"
+                  className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition disabled:opacity-50"
                 >
                   {saving ? 'Guardando...' : selectedArea ? 'Actualizar' : 'Crear'}
                 </button>

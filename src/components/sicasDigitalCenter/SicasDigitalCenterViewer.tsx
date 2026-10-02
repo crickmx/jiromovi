@@ -33,7 +33,7 @@ function getFileIcon(ext: string) {
     return <FileImage className="w-4 h-4 text-sky-500 flex-shrink-0" />;
   if (ext === 'pdf')
     return <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />;
-  return <File className="w-4 h-4 text-neutral-400 flex-shrink-0" />;
+  return <File className="w-4 h-4 text-neutral-500 flex-shrink-0" />;
 }
 
 function formatDate(raw: string) {
@@ -53,7 +53,7 @@ function FileRow({ file }: { file: CentroDigitalFile }) {
       {getFileIcon(file.extension)}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">{file.nombre_archivo}</p>
-        <p className="text-xs text-neutral-400 mt-0.5">
+        <p className="text-xs text-neutral-500 mt-0.5">
           {file.tamanio_legible}
           {file.fecha_subida ? ` · ${formatDate(file.fecha_subida)}` : ''}
         </p>
@@ -106,7 +106,7 @@ function FolderTree({
 
   if (filteredFolders.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
+      <div className="flex flex-col items-center justify-center py-10 text-neutral-500">
         <Search className="w-8 h-8 mb-2 opacity-40" />
         <p className="text-sm">Sin resultados para "{search}"</p>
       </div>
@@ -124,15 +124,15 @@ function FolderTree({
               className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors text-left"
             >
               {isOpen
-                ? <ChevronDown className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-                : <ChevronRight className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />}
+                ? <ChevronDown className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                : <ChevronRight className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />}
               {isOpen
                 ? <FolderOpen className="w-4 h-4 text-amber-500 flex-shrink-0" />
                 : <Folder className="w-4 h-4 text-amber-500 flex-shrink-0" />}
               <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 flex-1 truncate">
                 {folder.name}
               </span>
-              <span className="text-xs text-neutral-400 ml-auto flex-shrink-0">
+              <span className="text-xs text-neutral-500 ml-auto flex-shrink-0">
                 {folder.files.length} archivo{folder.files.length !== 1 ? 's' : ''}
               </span>
             </button>
@@ -156,7 +156,7 @@ function FolderTree({
 
 function LoadingState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-neutral-400">
+    <div className="flex flex-col items-center justify-center py-16 gap-3 text-neutral-500">
       <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       <p className="text-sm font-medium">Consultando Centro Digital SICAS...</p>
     </div>
@@ -165,7 +165,7 @@ function LoadingState() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-neutral-400">
+    <div className="flex flex-col items-center justify-center py-16 gap-3 text-neutral-500">
       <FolderOpenIcon className="w-12 h-12 opacity-30" />
       <p className="text-sm font-semibold">Sin archivos</p>
       <p className="text-xs text-center max-w-xs">
@@ -180,10 +180,10 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
     <div className="flex flex-col items-center justify-center py-16 gap-3 text-neutral-500">
       <AlertCircle className="w-10 h-10 text-red-400" />
       <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">No se pudo cargar</p>
-      <p className="text-xs text-center max-w-xs text-neutral-400">{message}</p>
+      <p className="text-xs text-center max-w-xs text-neutral-500">{message}</p>
       <button
         onClick={onRetry}
-        className="mt-2 flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+        className="mt-2 flex items-center gap-1.5 text-xs font-medium text-accent-ink hover:text-accent-ink transition-colors"
       >
         <RefreshCw className="w-3.5 h-3.5" /> Reintentar
       </button>
@@ -234,17 +234,17 @@ function ViewerBody({
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-neutral-800 flex-shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-            <FolderOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <FolderOpen className="w-4 h-4 text-accent-ink dark:text-blue-400" />
           </div>
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-neutral-900 dark:text-white truncate">{title}</h3>
-            <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">Centro Digital SICAS</p>
+            <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">Centro Digital SICAS</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {result && (
             <span className={cn(
-              'flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full',
+              'flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full',
               result.source === 'cache'
                 ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
                 : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
@@ -256,7 +256,7 @@ function ViewerBody({
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 hover:text-neutral-700 dark:hover:text-white transition-colors disabled:opacity-50"
             title="Actualizar desde SICAS"
           >
             <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -264,7 +264,7 @@ function ViewerBody({
           {showClose && onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors"
+              className="p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 hover:text-neutral-700 dark:hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -276,18 +276,18 @@ function ViewerBody({
       {result?.has_files && (
         <div className="px-4 py-2.5 border-b border-neutral-100 dark:border-neutral-800 flex-shrink-0">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
             <input
               type="text"
               placeholder="Buscar archivos..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+              className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-accent"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-600"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -336,7 +336,7 @@ export function SicasDigitalCenterViewer({
 }: Props) {
   if (mode === 'embedded') {
     return (
-      <div className={cn('border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden bg-white dark:bg-neutral-900', className)}>
+      <div className={cn('border border-soft dark:border-neutral-700 rounded-xl overflow-hidden bg-surface-card dark:bg-neutral-900', className)}>
         <ViewerBody params={params} title={title} showClose={false} />
       </div>
     );
@@ -346,9 +346,9 @@ export function SicasDigitalCenterViewer({
     if (!open) return null;
     return (
       <>
-        <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-40" onClick={onClose} />
         <div className={cn(
-          'fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-neutral-900 z-50 shadow-2xl flex flex-col',
+          'fixed right-0 top-0 h-full w-full max-w-md bg-surface-card dark:bg-neutral-900 z-50 shadow-e4 flex flex-col animate-scale-in',
           'translate-x-0 transition-transform duration-300',
         )}>
           <ViewerBody params={params} title={title} onClose={onClose} showClose />
@@ -363,7 +363,7 @@ export function SicasDigitalCenterViewer({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className={cn(
-        'relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col',
+        'relative bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-lg flex flex-col animate-scale-in',
         'max-h-[80vh]',
         className,
       )}>

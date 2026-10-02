@@ -103,7 +103,7 @@ export function PermisosTipoBulkTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
       </div>
     );
   }
@@ -197,13 +197,13 @@ function RolMatrixTab({ tiposByArea, expandedAreas, toggleArea, rolPermisos, set
       {tiposByArea.map(({ area, items }) => {
         const expanded = expandedAreas.has(area);
         return (
-          <div key={area} className="border border-neutral-200 rounded-xl overflow-hidden bg-white">
+          <div key={area} className="border border-soft rounded-xl overflow-hidden bg-surface-card">
             <button
               onClick={() => toggleArea(area)}
               className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors"
             >
               <span className="text-sm font-semibold text-neutral-800">{area}</span>
-              <div className="flex items-center gap-2 text-neutral-400">
+              <div className="flex items-center gap-2 text-neutral-500">
                 <span className="text-xs">{items.length} tipos</span>
                 {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </div>
@@ -213,9 +213,9 @@ function RolMatrixTab({ tiposByArea, expandedAreas, toggleArea, rolPermisos, set
                 <table className="w-full text-sm">
                   <thead className="bg-neutral-50">
                     <tr>
-                      <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider" rowSpan={2}>Tipo</th>
+                      <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider" rowSpan={2}>Tipo</th>
                       {ROLES_CONFIGURABLES.map(rol => (
-                        <th key={rol} colSpan={3} className="px-4 py-1.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider text-center border-l border-neutral-100">
+                        <th key={rol} colSpan={3} className="px-4 py-1.5 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider text-center border-l border-neutral-100">
                           {rol}
                         </th>
                       ))}
@@ -224,7 +224,7 @@ function RolMatrixTab({ tiposByArea, expandedAreas, toggleArea, rolPermisos, set
                       {ROLES_CONFIGURABLES.map(rol => (
                         <Fragment key={rol}>
                           {FIELDS.map((f, i) => (
-                            <th key={f} className={`px-2 py-1 text-[10px] font-medium text-neutral-400 ${i === 0 ? 'border-l border-neutral-100' : ''}`}>
+                            <th key={f} className={`px-2 py-1 text-[11px] font-medium text-neutral-500 ${i === 0 ? 'border-l border-neutral-100' : ''}`}>
                               {FIELD_LABEL[f]}
                             </th>
                           ))}
@@ -248,7 +248,7 @@ function RolMatrixTab({ tiposByArea, expandedAreas, toggleArea, rolPermisos, set
                                   className={`px-2 py-2 text-center ${field === 'puede_ver' ? 'border-l border-neutral-100' : ''}`}
                                 >
                                   {isSaving ? (
-                                    <Loader2 className="w-4 h-4 animate-spin text-neutral-400 mx-auto" />
+                                    <Loader2 className="w-4 h-4 animate-spin text-neutral-500 mx-auto" />
                                   ) : (
                                     <button
                                       onClick={() => toggle(tipo.id, rol, field)}
@@ -392,13 +392,13 @@ function UsuarioBulkPermisosTab({ tiposByArea, expandedAreas, toggleArea, overri
             {tiposByArea.map(({ area, items }) => {
               const expanded = expandedAreas.has(area);
               return (
-                <div key={area} className="border border-neutral-200 rounded-xl overflow-hidden bg-white">
+                <div key={area} className="border border-soft rounded-xl overflow-hidden bg-surface-card">
                   <button
                     onClick={() => toggleArea(area)}
                     className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors"
                   >
                     <span className="text-sm font-semibold text-neutral-800">{area}</span>
-                    <div className="flex items-center gap-2 text-neutral-400">
+                    <div className="flex items-center gap-2 text-neutral-500">
                       <span className="text-xs">{items.length} tipos</span>
                       {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </div>
@@ -408,9 +408,9 @@ function UsuarioBulkPermisosTab({ tiposByArea, expandedAreas, toggleArea, overri
                       <table className="w-full text-sm">
                         <thead className="bg-neutral-50">
                           <tr>
-                            <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Tipo</th>
+                            <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Tipo</th>
                             {FIELDS.map(f => (
-                              <th key={f} className="px-3 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider text-center">{FIELD_LABEL[f]}</th>
+                              <th key={f} className="px-3 py-2 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider text-center">{FIELD_LABEL[f]}</th>
                             ))}
                           </tr>
                         </thead>
@@ -487,12 +487,12 @@ function DraftPermButton({ value, current, onClick }: { value: DraftValue | null
       title={title}
       className={[
         'w-7 h-7 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs font-bold',
-        value === null && current === null && 'border-neutral-300 bg-neutral-50 text-neutral-400',
+        value === null && current === null && 'border-neutral-300 bg-neutral-50 text-neutral-500',
         value === null && current === true && 'border-green-200 bg-green-50 text-green-600',
         value === null && current === false && 'border-red-200 bg-red-50 text-red-500',
         value === 'permitir' && 'bg-green-600 border-green-600 text-white',
         value === 'bloquear' && 'bg-red-500 border-red-500 text-white',
-        value === 'hereda' && 'bg-blue-100 border-blue-400 text-blue-600',
+        value === 'hereda' && 'bg-blue-100 border-blue-400 text-accent-ink',
       ].filter(Boolean).join(' ')}
     >
       {label}
@@ -538,15 +538,15 @@ function MultiSelectUsers({ options, selected, onChange }: {
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1.5 w-80 max-h-96 overflow-hidden flex flex-col rounded-2xl border border-neutral-200 bg-white shadow-xl">
+        <div className="absolute z-20 mt-1.5 w-80 max-h-96 overflow-hidden flex flex-col rounded-2xl border border-soft bg-surface-card shadow-xl">
           <div className="p-2 border-b border-neutral-100 flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar..."
-                className="w-full pl-7 pr-2 py-1.5 rounded-lg text-sm bg-neutral-100 text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
+                className="w-full pl-7 pr-2 py-1.5 rounded-lg text-sm bg-neutral-100 text-neutral-800 placeholder:text-neutral-500 focus:outline-none"
               />
             </div>
             {selected.length > 0 && (
@@ -565,12 +565,12 @@ function MultiSelectUsers({ options, selected, onChange }: {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-neutral-800 truncate">{o.label}</p>
-                    {o.sublabel && <p className="text-xs text-neutral-400 truncate">{o.sublabel}</p>}
+                    {o.sublabel && <p className="text-xs text-neutral-500 truncate">{o.sublabel}</p>}
                   </div>
                 </button>
               );
             })}
-            {filtered.length === 0 && <p className="px-3 py-6 text-sm text-center text-neutral-400">Sin resultados.</p>}
+            {filtered.length === 0 && <p className="px-3 py-6 text-sm text-center text-neutral-500">Sin resultados.</p>}
           </div>
         </div>
       )}
@@ -589,8 +589,8 @@ function ConfirmPermModal({ targetLabels, changes, saving, errorMsg, onCancel, o
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
-      <div className="w-full max-w-md rounded-2xl bg-white border border-neutral-200 shadow-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4" onClick={onCancel}>
+      <div className="w-full max-w-md rounded-2xl bg-surface-card border border-soft shadow-e4 p-5 space-y-4 animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
             <AlertTriangle className="w-4.5 h-4.5" />
@@ -610,7 +610,7 @@ function ConfirmPermModal({ targetLabels, changes, saving, errorMsg, onCancel, o
               <span className="text-neutral-700 truncate">{c.label}</span>
               <span className={[
                 'text-xs font-semibold px-2 py-0.5 rounded-lg flex-shrink-0',
-                c.action === 'permitir' ? 'bg-green-50 text-green-700' : c.action === 'bloquear' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600',
+                c.action === 'permitir' ? 'bg-green-50 text-green-700' : c.action === 'bloquear' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-accent-ink',
               ].join(' ')}>
                 {c.action === 'permitir' ? 'Permitir' : c.action === 'bloquear' ? 'Bloquear' : 'Hereda'}
               </span>

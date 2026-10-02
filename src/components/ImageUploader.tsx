@@ -77,18 +77,18 @@ export function ImageUploader({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-2">
+      <label className="block text-sm font-medium text-neutral-700 mb-2">
         {label}
       </label>
       {description && (
-        <p className="text-xs text-slate-600 mb-3">{description}</p>
+        <p className="text-xs text-neutral-600 mb-3">{description}</p>
       )}
 
       <div
         className={`relative border-2 border-dashed rounded-lg transition-colors ${
           isDragging
             ? 'border-accent bg-primary-50'
-            : 'border-slate-300 hover:border-slate-400'
+            : 'border-neutral-300 hover:border-slate-400'
         }`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -96,7 +96,7 @@ export function ImageUploader({
       >
         {preview ? (
           <div className="relative p-4">
-            <div className={`${aspectRatio} w-full max-w-xs mx-auto relative rounded-lg overflow-hidden bg-slate-100`}>
+            <div className={`${aspectRatio} w-full max-w-xs mx-auto relative rounded-lg overflow-hidden bg-neutral-100`}>
               <img
                 src={preview}
                 alt="Preview"
@@ -117,14 +117,14 @@ export function ImageUploader({
             className="p-8 text-center cursor-pointer"
           >
             <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-                <ImageIcon className="w-6 h-6 text-slate-400" />
+              <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center">
+                <ImageIcon className="w-6 h-6 text-neutral-500" />
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-600">
+              <div className="flex items-center gap-2 text-sm text-neutral-600">
                 <Upload className="w-4 h-4" />
                 <span>Arrastra una imagen o haz clic para seleccionar</span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-neutral-500">
                 PNG, JPG, GIF hasta {maxSizeMB}MB
               </p>
             </div>

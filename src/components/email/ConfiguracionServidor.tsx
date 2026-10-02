@@ -253,7 +253,7 @@ export function ConfiguracionServidor() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Correos de notificación (separar por coma)
             </label>
             <textarea
@@ -261,9 +261,9 @@ export function ConfiguracionServidor() {
               onChange={(e) => setEmailsNotificacion(e.target.value)}
               placeholder="admin@empresa.com, rh@empresa.com, gerencia@empresa.com"
               rows={3}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-neutral-500 mt-1">
               Estos correos recibirán una notificación automática cada vez que se registre un nuevo usuario en el sistema
             </p>
           </div>
@@ -283,7 +283,7 @@ export function ConfiguracionServidor() {
 
       <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
         <div className="flex items-start space-x-3">
-          <Send className="w-5 h-5 text-accent mt-0.5" />
+          <Send className="w-5 h-5 text-accent-ink mt-0.5" />
           <div className="flex-1">
             <h3 className="font-semibold text-primary-900 mb-2">Configuración de SendGrid</h3>
             <p className="text-sm text-primary-800">
@@ -296,7 +296,7 @@ export function ConfiguracionServidor() {
       <div className="mb-6 flex justify-end">
         <button
           onClick={handleCreate}
-          className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg font-medium transition"
+          className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-accent-foreground px-4 py-2 rounded-lg font-medium transition"
         >
           <Plus className="w-5 h-5" />
           <span>Nueva Configuración</span>
@@ -304,10 +304,10 @@ export function ConfiguracionServidor() {
       </div>
 
       {configuraciones.length === 0 ? (
-        <div className="text-center py-12 bg-slate-50 rounded-lg">
-          <Send className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600">No hay configuraciones de SendGrid</p>
-          <p className="text-sm text-slate-500 mt-2">Agrega tu API key de SendGrid para comenzar a enviar correos</p>
+        <div className="text-center py-12 bg-neutral-50 rounded-lg">
+          <Send className="w-16 h-16 text-neutral-500 mx-auto mb-4" />
+          <p className="text-neutral-600">No hay configuraciones de SendGrid</p>
+          <p className="text-sm text-neutral-500 mt-2">Agrega tu API key de SendGrid para comenzar a enviar correos</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -317,13 +317,13 @@ export function ConfiguracionServidor() {
               className={`border rounded-lg p-6 ${
                 config.activo
                   ? 'border-green-300 bg-green-50'
-                  : 'border-slate-200 bg-white'
+                  : 'border-neutral-200 bg-white'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-3">
-                    <h3 className="text-lg font-semibold text-slate-900">
+                    <h3 className="text-lg font-semibold text-neutral-900">
                       SendGrid Configuration
                     </h3>
                     {config.activo && (
@@ -333,7 +333,7 @@ export function ConfiguracionServidor() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-600">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-neutral-600">
                     <div>
                       <strong>API Key:</strong> {'•'.repeat(20)}
                     </div>
@@ -356,7 +356,7 @@ export function ConfiguracionServidor() {
                   </button>
                   <button
                     onClick={() => handleEdit(config)}
-                    className="p-2 text-accent hover:bg-primary-50 rounded-lg transition"
+                    className="p-2 text-accent-ink hover:bg-primary-50 rounded-lg transition"
                     title="Editar"
                   >
                     <Edit2 className="w-5 h-5" />
@@ -376,13 +376,13 @@ export function ConfiguracionServidor() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-slate-900">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-card rounded-2xl shadow-e4 max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 sticky top-0 bg-white">
+              <h2 className="text-xl font-bold text-neutral-900">
                 {editingConfig ? 'Editar Configuración de SendGrid' : 'Nueva Configuración de SendGrid'}
               </h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowModal(false)} className="text-neutral-500 hover:text-slate-600">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -396,7 +396,7 @@ export function ConfiguracionServidor() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
                   API Key de SendGrid {editingConfig && '(dejar vacío para mantener)'}
                 </label>
                 <div className="relative">
@@ -405,12 +405,12 @@ export function ConfiguracionServidor() {
                     value={formData.api_key}
                     onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
                     placeholder={editingConfig ? 'Nueva API key (opcional)' : 'SG.xxxxxxxxxxxx'}
-                    className="w-full px-4 py-2 pr-12 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 pr-12 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                   />
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-slate-600"
                   >
                     {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -418,27 +418,27 @@ export function ConfiguracionServidor() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Email Remitente *</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Email Remitente *</label>
                 <input
                   type="email"
                   value={formData.email_remitente}
                   onChange={(e) => setFormData({ ...formData, email_remitente: e.target.value })}
                   placeholder="noreply@tudominio.com"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-neutral-500 mt-1">
                   Este email debe estar verificado en SendGrid
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Nombre Remitente *</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Nombre Remitente *</label>
                 <input
                   type="text"
                   value={formData.nombre_remitente}
                   onChange={(e) => setFormData({ ...formData, nombre_remitente: e.target.value })}
                   placeholder="Nuestra Empresa"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                 />
               </div>
 
@@ -447,22 +447,22 @@ export function ConfiguracionServidor() {
                   type="checkbox"
                   checked={formData.activo}
                   onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                  className="w-4 h-4 text-accent rounded"
+                  className="w-4 h-4 text-accent-ink rounded"
                 />
-                <span className="text-sm text-slate-700">Activar esta configuración</span>
+                <span className="text-sm text-neutral-700">Activar esta configuración</span>
               </label>
             </div>
 
-            <div className="px-6 py-4 bg-slate-50 rounded-b-2xl flex justify-end space-x-3">
+            <div className="px-6 py-4 bg-neutral-50 rounded-b-2xl flex justify-end space-x-3">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition"
+                className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-slate-100 transition"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSave}
-                className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition"
+                className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground rounded-lg transition"
               >
                 <Save className="w-5 h-5" />
                 <span>Guardar</span>

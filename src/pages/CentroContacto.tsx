@@ -1067,7 +1067,7 @@ export default function CentroContacto() {
             icon={MessageCircle}
             badge={
               conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0) > 0 ? (
-                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                <span className="bg-red-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full">
                   {conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0)}
                 </span>
               ) : undefined
@@ -1087,7 +1087,7 @@ export default function CentroContacto() {
         <div className={`w-full lg:w-80 xl:w-96 border-r border-neutral-200 dark:border-neutral-700 flex flex-col bg-white dark:bg-neutral-900 ${selectedAgent ? 'hidden lg:flex' : 'flex'}`}>
           <div className="p-3 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
               <input
                 type="text"
                 value={searchQuery}
@@ -1152,7 +1152,7 @@ export default function CentroContacto() {
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 relative ${conv.is_external ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-teal-400 to-teal-600'}`}>
                       <span className="text-white text-xs font-bold">{conv.agent_name?.charAt(0) || '?'}</span>
                       {(conv.unread_count || 0) > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10.5px] font-bold rounded-full flex items-center justify-center">
                           {conv.unread_count > 9 ? '9+' : conv.unread_count}
                         </span>
                       )}
@@ -1160,7 +1160,7 @@ export default function CentroContacto() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <p className={`text-sm font-medium truncate ${(conv.unread_count || 0) > 0 ? 'text-neutral-900 dark:text-white font-semibold' : 'text-neutral-700 dark:text-neutral-300'}`}>{conv.agent_name}</p>
-                        <span className="text-[10px] text-neutral-400 shrink-0">{formatTime(conv.last_message_at)}</span>
+                        <span className="text-[11px] text-neutral-500 shrink-0">{formatTime(conv.last_message_at)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <ChannelIcon channel={conv.last_message_channel} size={12} />
@@ -1170,9 +1170,9 @@ export default function CentroContacto() {
                         <p className={`text-xs truncate ${(conv.unread_count || 0) > 0 ? 'text-neutral-700 dark:text-neutral-200 font-medium' : 'text-neutral-500 dark:text-neutral-400'}`}>{conv.last_message_body}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        {conv.is_external && <span className="text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-1.5 py-0.5 rounded">Externo</span>}
-                        {conv.office_name && <span className="text-[10px] text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">{conv.office_name}</span>}
-                        <span className="text-[10px] text-neutral-400">{conv.total_messages} msgs</span>
+                        {conv.is_external && <span className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-1.5 py-0.5 rounded">Externo</span>}
+                        {conv.office_name && <span className="text-[11px] text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">{conv.office_name}</span>}
+                        <span className="text-[11px] text-neutral-500">{conv.total_messages} msgs</span>
                       </div>
                     </div>
                   </div>
@@ -1186,7 +1186,7 @@ export default function CentroContacto() {
         {/* Center Panel */}
         <div className={`flex-1 flex flex-col bg-neutral-50 dark:bg-neutral-950 ${!selectedAgent ? 'hidden lg:flex' : 'flex'}`}>
           {!selectedAgent ? (
-            <div className="flex-1 flex items-center justify-center text-neutral-400 dark:text-neutral-500">
+            <div className="flex-1 flex items-center justify-center text-neutral-500 dark:text-neutral-500">
               <div className="text-center">
                 <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">Selecciona un agente para ver la conversacion</p>
@@ -1203,7 +1203,7 @@ export default function CentroContacto() {
                   <div>
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-semibold text-neutral-900 dark:text-white">{selectedAgent.agent_name}</p>
-                      {selectedAgent.is_external && <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Externo</span>}
+                      {selectedAgent.is_external && <span className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Externo</span>}
                     </div>
                     <p className="text-[11px] text-neutral-500">{selectedAgent.agent_email || selectedAgent.agent_phone || selectedAgent.contact_phone_ext || 'Sin datos'}</p>
                   </div>
@@ -1285,7 +1285,7 @@ export default function CentroContacto() {
                     <option value="manual">Manual</option>
                     <option value="automatic">Auto</option>
                   </select>
-                  <button onClick={() => setShowAgentPanel(!showAgentPanel)} className="hidden xl:block p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
+                  <button onClick={() => setShowAgentPanel(!showAgentPanel)} className="hidden xl:block p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
                     <User className="w-4 h-4" />
                   </button>
                 </div>
@@ -1301,7 +1301,7 @@ export default function CentroContacto() {
                     <button onClick={openNuevoTramiteModal} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors">
                       <Plus className="w-3 h-3" /> Crear tramite
                     </button>
-                    <button onClick={() => setShowAddToTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-white dark:bg-neutral-800 text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors">
+                    <button onClick={() => setShowAddToTaskModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-card dark:bg-neutral-800 text-teal-700 dark:text-teal-400 border border-teal-300 dark:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors">
                       <Link2 className="w-3 h-3" /> Agregar a tramite
                     </button>
                     <button onClick={cancelSelection} className="p-1.5 rounded hover:bg-teal-100 dark:hover:bg-teal-900/40 text-teal-600">
@@ -1360,7 +1360,7 @@ export default function CentroContacto() {
                       <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-xs font-semibold text-red-700 dark:text-red-400">Error al crear tramite</p>
-                        <p className="text-[10px] text-red-600 dark:text-red-500 mt-0.5 truncate max-w-[260px]">{activeSession.creation_error}</p>
+                        <p className="text-[11px] text-red-600 dark:text-red-500 mt-0.5 truncate max-w-[260px]">{activeSession.creation_error}</p>
                       </div>
                     </div>
                   )}
@@ -1392,7 +1392,7 @@ export default function CentroContacto() {
                         </div>
                         <div className="flex items-center gap-2">
                           {activeSession.total_fields > 0 && (
-                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
                               {activeSession.captured_count}/{activeSession.total_fields}
                             </span>
                           )}
@@ -1445,7 +1445,7 @@ export default function CentroContacto() {
                         >
                           <div className="flex-shrink-0 mt-0.5">
                             {field.status === 'prefilled' ? (
-                              <div className="w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center">
+                              <div className="w-3.5 h-3.5 rounded-full bg-accent flex items-center justify-center">
                                 <CheckCircle2 className="w-2.5 h-2.5 text-white" />
                               </div>
                             ) : field.requires_human_review ? (
@@ -1466,13 +1466,13 @@ export default function CentroContacto() {
                             <div className="flex items-center gap-1.5">
                               <span className="font-medium text-neutral-600 dark:text-neutral-300 truncate">{field.field_label}</span>
                               {field.priority === 'required' && (
-                                <span className="text-[9px] text-red-500 font-semibold uppercase">req</span>
+                                <span className="text-[10.5px] text-red-500 font-semibold uppercase">req</span>
                               )}
                               {field.status === 'prefilled' && (
-                                <span className="text-[9px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-1 rounded">WA</span>
+                                <span className="text-[10.5px] bg-blue-100 dark:bg-blue-900/40 text-accent-ink dark:text-blue-400 px-1 rounded">WA</span>
                               )}
                               {field.confidence_score != null && field.confidence_score < 0.7 && field.value && (
-                                <span className="text-[9px] bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 px-1 rounded">
+                                <span className="text-[10.5px] bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 px-1 rounded">
                                   {Math.round(field.confidence_score * 100)}%
                                 </span>
                               )}
@@ -1480,9 +1480,9 @@ export default function CentroContacto() {
                             {field.value ? (
                               <span className="text-neutral-800 dark:text-neutral-200 truncate block">{field.value}</span>
                             ) : field.status === 'skipped' ? (
-                              <span className="text-neutral-400 italic">omitido</span>
+                              <span className="text-neutral-500 italic">omitido</span>
                             ) : (
-                              <span className="text-neutral-400 italic">pendiente</span>
+                              <span className="text-neutral-500 italic">pendiente</span>
                             )}
                           </div>
                         </div>
@@ -1526,7 +1526,7 @@ export default function CentroContacto() {
                 {loadingMessages ? (
                   <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
                 ) : messages.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-neutral-400">Sin mensajes</div>
+                  <div className="text-center py-8 text-sm text-neutral-500">Sin mensajes</div>
                 ) : (
                   messages.map(msg => (
                     <MessageBubble
@@ -1613,8 +1613,8 @@ export default function CentroContacto() {
                 </div>
                 {composerChannel === 'whatsapp' && (
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-[10px] text-neutral-400">Enter para enviar, Shift+Enter para nueva linea.</p>
-                    <p className={`text-[10px] ${composerMessage.length > 500 ? 'text-red-500' : 'text-neutral-400'}`}>{composerMessage.length}/550</p>
+                    <p className="text-[11px] text-neutral-500">Enter para enviar, Shift+Enter para nueva linea.</p>
+                    <p className={`text-[11px] ${composerMessage.length > 500 ? 'text-red-500' : 'text-neutral-400'}`}>{composerMessage.length}/550</p>
                   </div>
                 )}
               </div>
@@ -1628,7 +1628,7 @@ export default function CentroContacto() {
             <div className="p-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xs font-semibold text-neutral-500 uppercase">Ficha del Agente</h3>
-                <button onClick={() => setShowAgentPanel(false)} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
+                <button onClick={() => setShowAgentPanel(false)} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1646,7 +1646,7 @@ export default function CentroContacto() {
               <InfoRow icon={Eye} label="No leidos" value={String(selectedAgent.unread_count || 0)} />
               <InfoRow icon={Clock} label="Ultimo contacto" value={selectedAgent.last_message_at ? formatTime(selectedAgent.last_message_at) : 'Nunca'} />
               <div className="pt-2">
-                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${selectedAgent.agent_activo ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ${selectedAgent.agent_activo ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${selectedAgent.agent_activo ? 'bg-emerald-500' : 'bg-red-500'}`} />
                   {selectedAgent.agent_activo ? 'Activo' : 'Inactivo'}
                 </span>
@@ -1763,24 +1763,24 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
           <div className="max-w-[85%] bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
             <div className="flex items-center gap-1.5 mb-1">
               <Zap className="w-3 h-3 text-amber-500" />
-              <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">{message.source_module || 'Sistema'} - {message.source_event || 'automatico'}</span>
+              <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">{message.source_module || 'Sistema'} - {message.source_event || 'automatico'}</span>
               <ChannelIcon channel={message.channel} size={11} />
             </div>
             {message.subject && <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-0.5">{message.subject}</p>}
             <p className="text-xs text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap">{message.body}</p>
             <div className="flex items-center justify-between mt-1.5">
-              <span className="text-[10px] text-neutral-400">{formatDate(message.created_at)}</span>
+              <span className="text-[11px] text-neutral-500">{formatDate(message.created_at)}</span>
               <StatusBadge status={message.status} />
             </div>
           </div>
         ) : isInbound ? (
-          <div className={`max-w-[75%] rounded-xl rounded-tl-sm px-3.5 py-2.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-sm ${isSelected ? 'ring-2 ring-teal-500' : ''}`}>
+          <div className={`max-w-[75%] rounded-xl rounded-tl-sm px-3.5 py-2.5 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 shadow-card ${isSelected ? 'ring-2 ring-teal-500' : ''}`}>
             <div className="flex items-center gap-2 mb-1">
               <ChannelIcon channel={message.channel} size={12} />
-              <span className="text-[10px] font-medium text-green-600 dark:text-green-400">{message.sender_name}</span>
-              <span className="text-[9px] bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-1 py-0.5 rounded">Recibido</span>
+              <span className="text-[11px] font-medium text-green-600 dark:text-green-400">{message.sender_name}</span>
+              <span className="text-[10.5px] bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-1 py-0.5 rounded">Recibido</span>
               {linkedTaskId && (
-                <span className="text-[9px] bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-1 py-0.5 rounded flex items-center gap-0.5">
+                <span className="text-[10.5px] bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-1 py-0.5 rounded flex items-center gap-0.5">
                   <ListTodo className="w-2.5 h-2.5" /> Vinculado
                 </span>
               )}
@@ -1795,17 +1795,17 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
               </div>
             )}
             <div className="flex items-center justify-between mt-2">
-              <span className="text-[10px] text-neutral-400">{formatDate(message.created_at)}</span>
+              <span className="text-[11px] text-neutral-500">{formatDate(message.created_at)}</span>
             </div>
           </div>
         ) : (
           <div className={`max-w-[75%] rounded-xl rounded-tr-sm px-3.5 py-2.5 ${isFailed ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800'} ${isSelected ? 'ring-2 ring-teal-500' : ''}`}>
             <div className="flex items-center gap-2 mb-1">
               <ChannelIcon channel={message.channel} size={12} />
-              <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{message.sender_name}</span>
-              {message.message_type === 'automatic' && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1 py-0.5 rounded">Auto</span>}
+              <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">{message.sender_name}</span>
+              {message.message_type === 'automatic' && <span className="text-[10.5px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1 py-0.5 rounded">Auto</span>}
               {linkedTaskId && (
-                <span className="text-[9px] bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-1 py-0.5 rounded flex items-center gap-0.5">
+                <span className="text-[10.5px] bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-1 py-0.5 rounded flex items-center gap-0.5">
                   <ListTodo className="w-2.5 h-2.5" /> Vinculado
                 </span>
               )}
@@ -1820,18 +1820,18 @@ function MessageBubble({ message, isAdmin, onRetry, formatDate, selectionMode, i
               </div>
             )}
             <div className="flex items-center justify-between mt-2 gap-3">
-              <span className="text-[10px] text-neutral-400">{formatDate(message.created_at)}</span>
+              <span className="text-[11px] text-neutral-500">{formatDate(message.created_at)}</span>
               <div className="flex items-center gap-2">
                 <StatusBadge status={message.status} />
                 {isFailed && (
-                  <button onClick={() => onRetry(message.id)} className="text-[10px] text-red-600 hover:text-red-700 font-medium flex items-center gap-0.5">
+                  <button onClick={() => onRetry(message.id)} className="text-[11px] text-red-600 hover:text-red-700 font-medium flex items-center gap-0.5">
                     <RefreshCw className="w-3 h-3" /> Reintentar
                   </button>
                 )}
               </div>
             </div>
             {isFailed && isAdmin && message.error_message && (
-              <p className="mt-1.5 text-[10px] text-red-500 bg-red-50 dark:bg-red-900/10 rounded px-2 py-1">{message.error_message}</p>
+              <p className="mt-1.5 text-[11px] text-red-500 bg-red-50 dark:bg-red-900/10 rounded px-2 py-1">{message.error_message}</p>
             )}
           </div>
         )}
@@ -1868,7 +1868,7 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
             <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
-        <p className="text-[10px] text-neutral-400 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
+        <p className="text-[11px] text-neutral-500 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
       </div>
     );
   }
@@ -1879,7 +1879,7 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
         <audio controls className="w-full h-8" preload="none">
           <source src={attachment.file_url} type={attachment.mime_type || 'audio/ogg'} />
         </audio>
-        <p className="text-[10px] text-neutral-400 mt-0.5 truncate">{attachment.file_name}</p>
+        <p className="text-[11px] text-neutral-500 mt-0.5 truncate">{attachment.file_name}</p>
       </div>
     );
   }
@@ -1900,7 +1900,7 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
             </div>
           </div>
         </div>
-        <p className="text-[10px] text-neutral-400 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
+        <p className="text-[11px] text-neutral-500 mt-0.5 truncate max-w-[220px]">{attachment.file_name}</p>
       </div>
     );
   }
@@ -1912,7 +1912,7 @@ function AttachmentChip({ attachment, onPreview }: { attachment: Attachment; onP
     >
       <Icon className="w-4 h-4 text-neutral-500 shrink-0" />
       <span className="text-[11px] text-neutral-600 dark:text-neutral-300 truncate max-w-[150px]">{attachment.file_name}</span>
-      <Eye className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+      <Eye className="w-3 h-3 text-neutral-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
     </button>
   );
 }
@@ -1928,7 +1928,7 @@ function AttachmentPreviewModal({ attachment, onClose }: { attachment: Attachmen
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
       <div className={`relative ${isDocument ? 'w-[90vw] h-[90vh] max-w-4xl' : 'max-w-[90vw] max-h-[90vh]'} flex flex-col`} onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white dark:bg-neutral-800 shadow-lg flex items-center justify-center z-10 hover:bg-neutral-100 dark:hover:bg-neutral-700">
           <X className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
@@ -1957,14 +1957,14 @@ function AttachmentPreviewModal({ attachment, onClose }: { attachment: Attachmen
         {isDocument && !isPdf && (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-white dark:bg-neutral-900 rounded-lg shadow-2xl p-8">
             <div className="w-20 h-20 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-              <FileText className="w-10 h-10 text-neutral-400" />
+              <FileText className="w-10 h-10 text-neutral-500" />
             </div>
             <div className="text-center">
               <p className="text-lg font-medium text-neutral-800 dark:text-neutral-200">{attachment.file_name}</p>
               {attachment.mime_type && (
                 <p className="text-sm text-neutral-500 mt-1">{attachment.mime_type}</p>
               )}
-              <p className="text-sm text-neutral-400 mt-3">Vista previa no disponible para este tipo de archivo</p>
+              <p className="text-sm text-neutral-500 mt-3">Vista previa no disponible para este tipo de archivo</p>
             </div>
             <div className="flex items-center gap-3">
               <a
@@ -2091,27 +2091,27 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, canal, onClo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-lg mx-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg mx-4 bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 border border-soft dark:border-neutral-700 overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-2">
             <Link2 className="w-4 h-4 text-teal-600" />
             <h3 className="text-sm font-bold text-neutral-800 dark:text-white">Agregar a trámite existente</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-5 max-h-[70vh] overflow-y-auto">
           {addTicketSuccess ? (
             <div className="flex flex-col items-center py-8 gap-3">
               <Check className="w-8 h-8 text-green-500" />
               <p className="text-sm font-semibold text-green-700 dark:text-green-400 text-center">{addTicketSuccess}</p>
-              <p className="text-xs text-neutral-400">Cerrando...</p>
+              <p className="text-xs text-neutral-500">Cerrando...</p>
             </div>
           ) : (
             <>
               <p className="text-xs text-neutral-500 mb-3">{selectedMessages.length} mensaje(s) de {canalLabel} para vincular</p>
               <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
                 <input
                   value={ticketSearch}
                   onChange={e => setTicketSearch(e.target.value)}
@@ -2130,7 +2130,7 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, canal, onClo
               ) : filteredTickets.length === 0 ? (
                 <div className="text-center py-8">
                   <ClipboardList className="w-8 h-8 text-neutral-200 dark:text-neutral-700 mx-auto mb-2" />
-                  <p className="text-xs text-neutral-400">Sin trámites abiertos</p>
+                  <p className="text-xs text-neutral-500">Sin trámites abiertos</p>
                 </div>
               ) : (
                 <div className="space-y-2" style={{ maxHeight: '22rem', overflowY: 'auto' }}>
@@ -2139,13 +2139,13 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, canal, onClo
                       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 bg-neutral-50 dark:bg-neutral-800/60">
                         <span className="text-xs font-bold text-neutral-800 dark:text-white tracking-wide">{t.folio}</span>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-neutral-500 font-medium">{t.estatus_nombre}</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold">{t.tipo_tramite.replace(/_/g, ' ')}</span>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-surface-card dark:bg-neutral-700 border border-soft dark:border-neutral-600 text-neutral-500 font-medium">{t.estatus_nombre}</span>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-accent/10 text-accent-ink font-semibold">{t.tipo_tramite.replace(/_/g, ' ')}</span>
                         </div>
                       </div>
                       <div className="px-3 pb-2 pt-1">
                         {t.agente_nombre && (
-                          <span className="flex items-center gap-1 text-[10px] text-neutral-500 dark:text-white/40 mb-1">
+                          <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/55 mb-1">
                             <User className="w-3 h-3" /> {t.agente_nombre}
                           </span>
                         )}
@@ -2153,7 +2153,7 @@ function AddToTaskModal({ agentUserId, agentName, selectedMessages, canal, onClo
                         <button
                           onClick={() => handleAdd(t.id)}
                           disabled={!!addingToTicket}
-                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-white text-xs font-semibold transition-all disabled:opacity-60"
+                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-semibold transition-all disabled:opacity-60"
                         >
                           {addingToTicket === t.id
                             ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Agregando...</>
@@ -2212,14 +2212,14 @@ function AssignConversationModal({ currentAgentId, onClose, onSuccess }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-[var(--radius-xl)] shadow-e4 w-full max-w-md max-h-[80vh] overflow-y-auto animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-teal-600" />
             <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Asignar conversacion</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"><X className="w-5 h-5 text-neutral-400" /></button>
+          <button onClick={onClose} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"><X className="w-5 h-5 text-neutral-500" /></button>
         </div>
         <div className="p-5 space-y-3">
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar agente..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800" />
@@ -2227,7 +2227,7 @@ function AssignConversationModal({ currentAgentId, onClose, onSuccess }: {
             {filtered.slice(0, 30).map(u => (
               <button key={u.id} onClick={() => setSelectedUserId(u.id)} className={`w-full text-left p-2 rounded-lg text-sm ${selectedUserId === u.id ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-300' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 border border-transparent'}`}>
                 <span className="text-neutral-800 dark:text-neutral-200">{u.nombre_completo}</span>
-                <span className="text-[10px] text-neutral-400 ml-2">{u.rol}</span>
+                <span className="text-[11px] text-neutral-500 ml-2">{u.rol}</span>
               </button>
             ))}
           </div>
@@ -2278,8 +2278,8 @@ function StartAutoModeModal({ agentName, officeId, onStart, onClose, loading }: 
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-md overflow-hidden animate-scale-in">
         <div className="px-5 py-4 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
@@ -2290,14 +2290,14 @@ function StartAutoModeModal({ agentName, officeId, onStart, onClose, loading }: 
               <p className="text-[11px] text-neutral-500 dark:text-neutral-400">Selecciona un asistente para {agentName}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-5 space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <input
               type="text"
               value={search}
@@ -2337,10 +2337,10 @@ function StartAutoModeModal({ agentName, officeId, onStart, onClose, loading }: 
                     </div>
                     <div className="flex items-center gap-1">
                       {a.source === 'form' && (
-                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full">Formulario</span>
+                        <span className="text-[11px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full">Formulario</span>
                       )}
                       {a.is_global && (
-                        <Globe className="w-3 h-3 text-neutral-400" />
+                        <Globe className="w-3 h-3 text-neutral-500" />
                       )}
                     </div>
                   </div>
@@ -2348,11 +2348,11 @@ function StartAutoModeModal({ agentName, officeId, onStart, onClose, loading }: 
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 pl-4">{a.descripcion}</p>
                   )}
                   <div className="flex items-center gap-3 mt-2 pl-4">
-                    <span className="text-[10px] text-neutral-400 flex items-center gap-1">
+                    <span className="text-[11px] text-neutral-500 flex items-center gap-1">
                       <MessageCircle className="w-3 h-3" /> {a.total_sessions || 0} sesiones
                     </span>
                     {a.auto_create_tramite && (
-                      <span className="text-[10px] text-teal-600 dark:text-teal-400 flex items-center gap-1">
+                      <span className="text-[11px] text-teal-600 dark:text-teal-400 flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Crea trámite
                       </span>
                     )}
@@ -2408,8 +2408,8 @@ function TransferSessionModal({ sessionId: _sessionId, onTransfer, onClose, load
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-md overflow-hidden animate-scale-in">
         <div className="px-5 py-4 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
@@ -2420,7 +2420,7 @@ function TransferSessionModal({ sessionId: _sessionId, onTransfer, onClose, load
               <p className="text-[11px] text-neutral-500 dark:text-neutral-400">El asistente dejará de gestionar la conversación</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -2453,7 +2453,7 @@ function TransferSessionModal({ sessionId: _sessionId, onTransfer, onClose, load
                   className={`w-full text-left px-3 py-2 text-sm transition-colors ${selectedUserId === u.id ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'}`}
                 >
                   {u.nombre_completo}
-                  <span className="text-[10px] text-neutral-400 ml-1.5">{u.rol}</span>
+                  <span className="text-[11px] text-neutral-500 ml-1.5">{u.rol}</span>
                 </button>
               ))}
             </div>
@@ -2494,21 +2494,21 @@ function StatusBadge({ status }: { status: string }) {
     delivered: { icon: CheckCircle2, color: 'text-blue-500', label: 'Entregado' },
     read: { icon: CheckCircle2, color: 'text-teal-500', label: 'Leido' },
     received: { icon: CheckCircle2, color: 'text-green-500', label: 'Recibido' },
-    pending: { icon: Clock, color: 'text-neutral-400', label: 'Pendiente' },
+    pending: { icon: Clock, color: 'text-neutral-500', label: 'Pendiente' },
     failed: { icon: XCircle, color: 'text-red-500', label: 'Error' },
-    cancelled: { icon: AlertCircle, color: 'text-neutral-400', label: 'Cancelado' },
+    cancelled: { icon: AlertCircle, color: 'text-neutral-500', label: 'Cancelado' },
   };
   const c = config[status] || config.pending;
   const Icon = c.icon;
-  return <span className={`flex items-center gap-0.5 text-[10px] ${c.color}`}><Icon className="w-3 h-3" /> {c.label}</span>;
+  return <span className={`flex items-center gap-0.5 text-[11px] ${c.color}`}><Icon className="w-3 h-3" /> {c.label}</span>;
 }
 
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="w-3.5 h-3.5 text-neutral-400 mt-0.5 shrink-0" />
+      <Icon className="w-3.5 h-3.5 text-neutral-500 mt-0.5 shrink-0" />
       <div>
-        <p className="text-[10px] text-neutral-400 uppercase">{label}</p>
+        <p className="text-[11px] text-neutral-500 uppercase">{label}</p>
         <p className="text-xs text-neutral-700 dark:text-neutral-300 break-all">{value}</p>
       </div>
     </div>
@@ -2540,7 +2540,7 @@ function EmojiPickerPanel({ onSelect }: { onSelect: (emoji: string) => void }) {
   const [activeCategory, setActiveCategory] = useState(0);
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl z-50 overflow-hidden">
+    <div className="absolute bottom-full left-0 mb-2 w-72 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-xl shadow-xl z-50 overflow-hidden">
       <div className="flex border-b border-neutral-100 dark:border-neutral-800">
         {EMOJI_CATEGORIES.map((cat, i) => (
           <button
@@ -2710,8 +2710,8 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
   ) || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-[var(--radius-xl)] shadow-e4 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
@@ -2726,7 +2726,7 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
             >
               <Plus className="w-3.5 h-3.5" /> Nueva
             </button>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -2737,7 +2737,7 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
           <div className="w-1/2 border-r border-neutral-200 dark:border-neutral-700 flex flex-col">
             <div className="p-3 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
                 <input
                   type="text"
                   value={search}
@@ -2753,10 +2753,10 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
                   className="w-full flex items-center justify-between px-3 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-teal-400 transition-colors"
                 >
                   <span>{activeCategory === 'all' ? 'Todas las categorias' : activeCategory}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
                 </button>
                 {showCategoryDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg z-10 overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-lg shadow-lg z-10 overflow-hidden">
                     {categories.map(cat => (
                       <button
                         key={cat}
@@ -2774,7 +2774,7 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
               {loading ? (
                 <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-teal-500" /></div>
               ) : filtered.length === 0 ? (
-                <div className="p-6 text-center text-sm text-neutral-400">
+                <div className="p-6 text-center text-sm text-neutral-500">
                   <BookTemplate className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p>Sin plantillas</p>
                   <button onClick={() => setShowCreateForm(true)} className="mt-2 text-xs text-teal-600 hover:underline">Crear primera plantilla</button>
@@ -2791,11 +2791,11 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
                           <div className="flex items-center gap-1.5 mb-0.5">
                             {tpl.is_global
                               ? <Globe className="w-3 h-3 text-teal-500 shrink-0" />
-                              : <Lock className="w-3 h-3 text-neutral-400 shrink-0" />}
+                              : <Lock className="w-3 h-3 text-neutral-500 shrink-0" />}
                             <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">{tpl.name}</p>
                           </div>
                           <p className="text-[11px] text-neutral-500 dark:text-neutral-400 line-clamp-2">{tpl.content.substring(0, 80)}</p>
-                          <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500">{tpl.category}</span>
+                          <span className="inline-block mt-1 text-[11px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500">{tpl.category}</span>
                         </div>
                         {selectedTemplate?.id === tpl.id && <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />}
                       </div>
@@ -2804,10 +2804,10 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
                     <div className="flex items-center gap-1 px-3 pb-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {(usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente' || tpl.created_by === usuario?.id) && (
                         <>
-                          <button onClick={e => handleEdit(tpl, e)} className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-600" title="Editar">
+                          <button onClick={e => handleEdit(tpl, e)} className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 hover:text-neutral-600" title="Editar">
                             <Pencil className="w-3 h-3" />
                           </button>
-                          <button onClick={e => handleDelete(tpl, e)} className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-neutral-400 hover:text-red-500" title="Eliminar">
+                          <button onClick={e => handleDelete(tpl, e)} className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-neutral-500 hover:text-red-500" title="Eliminar">
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </>
@@ -2822,7 +2822,7 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
           {/* Right: preview / variable input */}
           <div className="w-1/2 flex flex-col" onClick={() => setShowCategoryDropdown(false)}>
             {!selectedTemplate ? (
-              <div className="flex-1 flex items-center justify-center text-neutral-400">
+              <div className="flex-1 flex items-center justify-center text-neutral-500">
                 <div className="text-center p-6">
                   <Star className="w-10 h-10 mx-auto mb-3 opacity-20" />
                   <p className="text-sm">Selecciona una plantilla para previsualizar</p>
@@ -2832,13 +2832,13 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
               <>
                 <div className="p-4 border-b border-neutral-100 dark:border-neutral-800">
                   <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-0.5">{selectedTemplate.name}</h3>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500">{selectedTemplate.category}</span>
+                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500">{selectedTemplate.category}</span>
                 </div>
 
                 {/* Auto-filled variables info */}
                 {autoVarsInTemplate.length > 0 && (
                   <div className="px-4 pt-3 pb-2">
-                    <p className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <p className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                       <Zap className="w-3 h-3" /> Relleno automatico
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -2847,9 +2847,9 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
                         const val = autos[v.name] || '';
                         return (
                           <div key={v.name} className="flex items-center gap-1 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-md px-2 py-0.5">
-                            <span className="text-[10px] font-mono text-teal-600 dark:text-teal-400">{`{{${v.name}}}`}</span>
-                            <span className="text-[10px] text-neutral-400">→</span>
-                            <span className="text-[10px] font-medium text-neutral-700 dark:text-neutral-300 max-w-[80px] truncate" title={val}>{val || '(vacío)'}</span>
+                            <span className="text-[11px] font-mono text-teal-600 dark:text-teal-400">{`{{${v.name}}}`}</span>
+                            <span className="text-[11px] text-neutral-500">→</span>
+                            <span className="text-[11px] font-medium text-neutral-700 dark:text-neutral-300 max-w-[80px] truncate" title={val}>{val || '(vacío)'}</span>
                           </div>
                         );
                       })}
@@ -2860,7 +2860,7 @@ function PlantillasModal({ channel, agentName, contactName, onInsert, onClose }:
                 {/* Manual variables */}
                 {manualVarsForTemplate.length > 0 && (
                   <div className="px-4 pb-3 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
-                    <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mt-2">Completar</p>
+                    <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mt-2">Completar</p>
                     {manualVarsForTemplate.map((v: { name: string; label: string }) => (
                       <div key={v.name}>
                         <label className="text-[11px] text-neutral-500 block mb-0.5 capitalize">{v.label || v.name.replace(/_/g, ' ')}</label>
@@ -2960,11 +2960,11 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-[var(--radius-xl)] shadow-e4 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{template ? 'Editar plantilla' : 'Nueva plantilla'}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -2982,10 +2982,10 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
                 className="mt-1 w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-teal-400 transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
                 <span>{customCategory.trim() || category}</span>
-                <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
               </button>
               {showCategoryDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg z-20 overflow-hidden">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-lg shadow-lg z-20 overflow-hidden">
                   <div className="p-2 border-b border-neutral-100 dark:border-neutral-800">
                     <input
                       type="text"
@@ -3035,7 +3035,7 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
             <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 block mb-1">Contenido</label>
             {/* Variable tokens grouped */}
             <div className="mb-2 space-y-1.5">
-              <p className="text-[11px] text-neutral-400">Automaticas (se rellenan al usar):</p>
+              <p className="text-[11px] text-neutral-500">Automaticas (se rellenan al usar):</p>
               <div className="flex flex-wrap gap-1">
                 {VARIABLE_TOKENS.filter(v => v.auto).map(v => (
                   <button
@@ -3049,7 +3049,7 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-neutral-400">Manuales (el agente las completa):</p>
+              <p className="text-[11px] text-neutral-500">Manuales (el agente las completa):</p>
               <div className="flex flex-wrap gap-1">
                 {VARIABLE_TOKENS.filter(v => !v.auto).map(v => (
                   <button
@@ -3075,7 +3075,7 @@ function TemplateFormModal({ template, existingCategories, onSave, onClose }: {
             {detectedVars.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-1.5">
                 {detectedVars.map(v => (
-                  <span key={v} className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${AUTO_VARS.has(v) ? 'bg-teal-50 text-teal-600 border border-teal-200' : 'bg-amber-50 text-amber-600 border border-amber-200'}`}>
+                  <span key={v} className={`text-[11px] px-1.5 py-0.5 rounded font-mono ${AUTO_VARS.has(v) ? 'bg-teal-50 text-teal-600 border border-teal-200' : 'bg-amber-50 text-amber-600 border border-amber-200'}`}>
                     {`{{${v}}}`} {AUTO_VARS.has(v) ? '· auto' : '· manual'}
                   </span>
                 ))}
@@ -3184,15 +3184,15 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-[var(--radius-xl)] shadow-e4 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-teal-600" />
             <h2 className="text-base font-semibold text-neutral-900 dark:text-white">Compartir Formulario de Cotizacion</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -3202,7 +3202,7 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
           <div className="w-1/2 border-r border-neutral-200 dark:border-neutral-700 flex flex-col">
             <div className="p-3 border-b border-neutral-100 dark:border-neutral-800 space-y-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
                 <input
                   type="text"
                   value={search}
@@ -3253,8 +3253,8 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
                       >
                         <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wide">{cat}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-neutral-400">{catForms.length}</span>
-                          <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          <span className="text-[11px] text-neutral-500">{catForms.length}</span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                         </div>
                       </button>
                       {isExpanded && catForms.map(form => (
@@ -3280,7 +3280,7 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
           {/* Right: message preview & edit */}
           <div className="w-1/2 flex flex-col">
             {!selectedForm ? (
-              <div className="flex-1 flex items-center justify-center text-neutral-400">
+              <div className="flex-1 flex items-center justify-center text-neutral-500">
                 <div className="text-center p-6">
                   <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-20" />
                   <p className="text-sm">Selecciona un formulario</p>
@@ -3291,7 +3291,7 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
               <>
                 <div className="p-4 border-b border-neutral-100 dark:border-neutral-800">
                   <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{selectedForm.title}</p>
-                  <p className="text-[11px] text-neutral-400 mt-0.5">{selectedForm.category}</p>
+                  <p className="text-[11px] text-neutral-500 mt-0.5">{selectedForm.category}</p>
                   <div className="flex items-center gap-1.5 mt-2 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
                     <Link2 className="w-3.5 h-3.5 text-teal-500 shrink-0" />
                     <span className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate font-mono">
@@ -3308,7 +3308,7 @@ function FormulariosModal({ agentName, onInsert, onClose }: {
                     rows={8}
                     className="flex-1 w-full px-3 py-2.5 text-sm rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 resize-none focus:ring-2 focus:ring-teal-500"
                   />
-                  <p className="text-[10px] text-neutral-400 mt-1.5">Puedes editar el mensaje antes de enviarlo.</p>
+                  <p className="text-[11px] text-neutral-500 mt-1.5">Puedes editar el mensaje antes de enviarlo.</p>
                 </div>
 
                 <div className="p-4 border-t border-neutral-100 dark:border-neutral-800">

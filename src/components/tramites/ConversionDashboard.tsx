@@ -103,7 +103,7 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
   };
 
   const getTasaColor = (tasa: number | null): string => {
-    if (!tasa) return 'text-gray-500';
+    if (!tasa) return 'text-neutral-500';
     if (tasa >= 70) return 'text-green-600';
     if (tasa >= 40) return 'text-amber-600';
     return 'text-red-600';
@@ -112,7 +112,7 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent"></div>
       </div>
     );
   }
@@ -138,11 +138,11 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className="bg-neutral-50 rounded-lg p-4">
           <div className="flex items-center justify-between mb-1">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
+            <TrendingUp className="w-5 h-5 text-accent-ink" />
           </div>
           <p className="text-2xl font-bold text-neutral-900">{total}</p>
           <p className="text-xs text-neutral-600 mt-0.5">Total cotizaciones</p>
-          <p className="text-[11px] text-neutral-400 mt-0.5">100%</p>
+          <p className="text-[11px] text-neutral-500 mt-0.5">100%</p>
         </div>
 
         <div className="bg-neutral-50 rounded-lg p-4">
@@ -180,7 +180,7 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
 
         <div className="bg-neutral-50 rounded-lg p-4">
           <div className="flex items-center justify-between mb-1">
-            <Target className="w-5 h-5 text-blue-600" />
+            <Target className="w-5 h-5 text-accent-ink" />
           </div>
           <p className={`text-2xl font-bold ${getTasaColor(kpis.tasa_conversion)}`}>
             {kpis.tasa_conversion != null ? `${Number(kpis.tasa_conversion).toFixed(1)}%` : '0.0%'}
@@ -212,7 +212,7 @@ export function ConversionDashboard({ fechaInicio, fechaFin, oficinaId, usuarioI
                   <span className="text-sm text-neutral-700">{row.label}</span>
                   <span className="text-sm text-neutral-600">
                     <span className={`font-semibold ${row.text}`}>{row.value}</span>
-                    <span className="text-neutral-400 mx-1">/</span>
+                    <span className="text-neutral-500 mx-1">/</span>
                     <span>{total}</span>
                     <span className={`ml-2 font-semibold ${row.text}`}>{pct.toFixed(1)}%</span>
                   </span>

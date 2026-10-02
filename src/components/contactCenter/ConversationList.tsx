@@ -40,7 +40,7 @@ function Avatar({ name, avatarUrl, channel, unread }: { name: string; avatarUrl?
         </div>
       )}
       {unread > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 min-w-[18px] bg-emerald-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+        <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 min-w-[18px] bg-emerald-500 text-white text-[10.5px] font-bold rounded-full flex items-center justify-center px-0.5">
           {unread > 99 ? '99+' : unread}
         </span>
       )}
@@ -81,7 +81,7 @@ export function ConversationList({
           <h2 className="font-semibold text-neutral-800 dark:text-white text-sm">
             Conversaciones
             {totalUnread > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full">
+              <span className="ml-2 px-1.5 py-0.5 bg-emerald-500 text-white text-[11px] font-bold rounded-full">
                 {totalUnread}
               </span>
             )}
@@ -89,12 +89,12 @@ export function ConversationList({
         </div>
         {/* Search */}
         <div className="relative mb-2">
-          <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
             value={search}
             onChange={e => onSearchChange(e.target.value)}
             placeholder="Buscar nombre, telefono, mensaje..."
-            className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/50"
+            className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/50"
           />
         </div>
         {/* Channel tabs */}
@@ -107,9 +107,9 @@ export function ConversationList({
                 key={ch}
                 onClick={() => onFilterChange(ch)}
                 className={cn(
-                  'px-2 py-1 text-[10px] font-medium rounded-md whitespace-nowrap transition-all flex-shrink-0',
+                  'px-2 py-1 text-[11px] font-medium rounded-md whitespace-nowrap transition-all flex-shrink-0',
                   isActive
-                    ? 'bg-accent text-white shadow-sm'
+                    ? 'bg-accent text-accent-foreground shadow-sm'
                     : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                 )}
               >
@@ -127,10 +127,10 @@ export function ConversationList({
             key={opt.value}
             onClick={() => onStatusChange(opt.value)}
             className={cn(
-              'px-2 py-0.5 text-[10px] font-medium rounded transition-all',
+              'px-2 py-0.5 text-[11px] font-medium rounded transition-all',
               filterStatus === opt.value
                 ? 'bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200'
-                : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
+                : 'text-neutral-500 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
             )}
           >
             {opt.label}
@@ -180,13 +180,13 @@ export function ConversationList({
                     <span className={cn('text-xs font-medium truncate', conv.unread_count > 0 ? 'text-neutral-900 dark:text-white' : 'text-neutral-700 dark:text-neutral-200')}>
                       {name}
                     </span>
-                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 flex-shrink-0">
+                    <span className="text-[11px] text-neutral-500 dark:text-neutral-500 flex-shrink-0">
                       {formatTime(conv.last_message_at)}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <ChannelBadge channel={conv.channel} size="sm" showLabel={false} />
-                    <span className={cn('text-[11px] truncate leading-tight', conv.unread_count > 0 ? 'text-neutral-700 dark:text-neutral-300 font-medium' : 'text-neutral-400 dark:text-neutral-500')}>
+                    <span className={cn('text-[11px] truncate leading-tight', conv.unread_count > 0 ? 'text-neutral-700 dark:text-neutral-300 font-medium' : 'text-neutral-500 dark:text-neutral-500')}>
                       {conv.last_message || 'Sin mensajes'}
                     </span>
                   </div>

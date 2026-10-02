@@ -322,7 +322,7 @@ export default function MapeoVendedoresAdmin() {
             <p className="text-xs text-green-700 dark:text-green-400 font-medium">Vinculados</p>
           </div>
           <p className="text-2xl font-bold text-green-900 dark:text-green-300 mt-1">{stats.vinculados}</p>
-          <p className="text-[10px] text-green-600/70 dark:text-green-400/50 mt-0.5">{stats.conSicas} SICAS + {stats.soloMapeo} solo mapeo</p>
+          <p className="text-[11px] text-green-600/70 dark:text-green-400/50 mt-0.5">{stats.conSicas} SICAS + {stats.soloMapeo} solo mapeo</p>
         </div>
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/10 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
           <div className="flex items-center gap-1.5">
@@ -333,7 +333,7 @@ export default function MapeoVendedoresAdmin() {
         </div>
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-1.5">
-            <Link2 className="h-3.5 w-3.5 text-blue-600" />
+            <Link2 className="h-3.5 w-3.5 text-accent-ink" />
             <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">Con Mapeos</p>
           </div>
           <p className="text-2xl font-bold text-blue-900 dark:text-blue-300 mt-1">{stats.conMapeos}</p>
@@ -437,24 +437,24 @@ function UsuariosTab({
   return (
     <>
       {/* Filters */}
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm mb-6 p-4 border border-neutral-200 dark:border-neutral-700">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card mb-6 p-4 border border-soft dark:border-neutral-700">
         <div className="flex flex-col lg:flex-row gap-3">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4.5 w-4.5 text-neutral-500" />
               <input
                 type="text"
                 placeholder="Buscar por nombre, email o usuario SICAS..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
+                className="w-full pl-10 pr-4 py-2.5 border border-soft dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-accent bg-surface-card dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
               />
             </div>
           </div>
           <select
             value={filterSicas}
             onChange={(e) => setFilterSicas(e.target.value)}
-            className="px-4 py-2.5 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
+            className="px-4 py-2.5 border border-soft dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-accent bg-surface-card dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
           >
             <option value="all">Todos los usuarios</option>
             <option value="vinculados">Vinculados (SICAS o mapeo)</option>
@@ -466,7 +466,7 @@ function UsuariosTab({
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm overflow-hidden border border-neutral-200 dark:border-neutral-700">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-xl shadow-card overflow-hidden border border-soft dark:border-neutral-700">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="text-center">
@@ -479,7 +479,7 @@ function UsuariosTab({
             <XCircle className="h-12 w-12 text-red-300 mx-auto mb-3" />
             <p className="text-red-600 font-medium mb-1">Error al cargar usuarios</p>
             <p className="text-neutral-500 text-sm mb-4">{error}</p>
-            <button onClick={loadUsuarios} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+            <button onClick={loadUsuarios} className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition text-sm font-medium">
               Reintentar
             </button>
           </div>
@@ -527,7 +527,7 @@ function UsuariosTab({
                               if (e.key === 'Enter') handleSaveSicas(u.id);
                               if (e.key === 'Escape') cancelEdit();
                             }}
-                            className="flex-1 px-3 py-1.5 text-sm border border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                            className="flex-1 px-3 py-1.5 text-sm border border-blue-300 rounded-md focus:ring-2 focus:ring-accent/40 focus:border-transparent bg-surface-card dark:bg-neutral-700 text-neutral-900 dark:text-white"
                             placeholder="Nombre en SICAS..."
                             autoFocus
                           />
@@ -554,15 +554,15 @@ function UsuariosTab({
                             <span className="flex items-center gap-2">
                               <div className="h-2 w-2 bg-green-500 rounded-full flex-shrink-0"></div>
                               <span className="text-sm font-medium text-neutral-900 dark:text-white">{u.nombre_sicas}</span>
-                              <span className="text-xs text-neutral-400 opacity-0 group-hover:opacity-100 transition">(editar)</span>
+                              <span className="text-xs text-neutral-500 opacity-0 group-hover:opacity-100 transition">(editar)</span>
                             </span>
                           ) : u.mappings_count > 0 ? (
-                            <span className="flex items-center gap-2 text-blue-500 hover:text-blue-700 transition">
+                            <span className="flex items-center gap-2 text-blue-500 hover:text-accent-ink transition">
                               <div className="h-2 w-2 bg-blue-400 rounded-full flex-shrink-0"></div>
                               <span className="text-sm italic">Tiene mapeo, asignar SICAS...</span>
                             </span>
                           ) : (
-                            <span className="flex items-center gap-2 text-neutral-400 hover:text-blue-600 transition">
+                            <span className="flex items-center gap-2 text-neutral-500 hover:text-accent-ink transition">
                               <div className="h-2 w-2 bg-neutral-300 rounded-full flex-shrink-0"></div>
                               <span className="text-sm italic">Asignar SICAS...</span>
                             </span>
@@ -588,7 +588,7 @@ function UsuariosTab({
               <span className="text-xs text-neutral-500">
                 Mostrando {usuarios.length} de {allUsuarios.length} usuarios
               </span>
-              <span className="text-xs text-neutral-400">
+              <span className="text-xs text-neutral-500">
                 {stats.vinculados} vinculados ({stats.conSicas} SICAS, {stats.conMapeos} mapeos)
               </span>
             </div>
@@ -610,17 +610,17 @@ function PendientesTab({
 }: any) {
   return (
     <>
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm mb-6 p-4 border border-neutral-200 dark:border-neutral-700">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card mb-6 p-4 border border-soft dark:border-neutral-700">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4.5 w-4.5 text-neutral-500" />
               <input
                 type="text"
                 placeholder="Buscar vendedor pendiente..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
+                className="w-full pl-10 pr-4 py-2.5 border border-soft dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-accent bg-surface-card dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
               />
             </div>
           </div>
@@ -634,7 +634,7 @@ function PendientesTab({
         </div>
       </div>
 
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-xl shadow-card border border-soft dark:border-neutral-700 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-neutral-200 border-t-blue-600 mx-auto"></div>
@@ -643,7 +643,7 @@ function PendientesTab({
           <div className="text-center py-16">
             <CheckCircle2 className="h-12 w-12 text-green-300 mx-auto mb-3" />
             <p className="text-neutral-600 dark:text-neutral-300 font-medium">No hay vendedores pendientes</p>
-            <p className="text-neutral-400 text-sm mt-1">Todos los vendedores SICAS han sido vinculados</p>
+            <p className="text-neutral-500 text-sm mt-1">Todos los vendedores SICAS han sido vinculados</p>
           </div>
         ) : (
           <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
@@ -685,7 +685,7 @@ function PendientesTab({
                     )}
                     <button
                       onClick={() => setExpandedVendor(expandedVendor === v.id ? null : v.id)}
-                      className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-600 transition"
+                      className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-600 transition"
                     >
                       {expandedVendor === v.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </button>
@@ -700,7 +700,7 @@ function PendientesTab({
                       placeholder="Buscar usuario MOVI para vincular..."
                       value={linkSearch}
                       onChange={(e) => setLinkSearch(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-blue-200 dark:border-blue-700 rounded-md bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white mb-2"
+                      className="w-full px-3 py-2 text-sm border border-blue-200 dark:border-blue-700 rounded-md bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white mb-2"
                       autoFocus
                     />
                     {linkSearch && (
@@ -761,7 +761,7 @@ function SincronizarTab({
   return (
     <>
       {/* Controls */}
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm mb-6 p-5 border border-neutral-200 dark:border-neutral-700">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card mb-6 p-5 border border-soft dark:border-neutral-700">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">
@@ -776,7 +776,7 @@ function SincronizarTab({
               <select
                 value={threshold}
                 onChange={(e) => setThreshold(parseFloat(e.target.value))}
-                className="px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                className="px-3 py-1.5 text-sm border border-soft dark:border-neutral-600 rounded-md bg-surface-card dark:bg-neutral-700 text-neutral-900 dark:text-white"
               >
                 <option value={0.6}>60%</option>
                 <option value={0.65}>65%</option>
@@ -820,7 +820,7 @@ function SincronizarTab({
       </div>
 
       {/* Results */}
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-xl shadow-card border border-soft dark:border-neutral-700 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="text-center">
@@ -834,7 +834,7 @@ function SincronizarTab({
             <p className="text-neutral-600 dark:text-neutral-300 font-medium">
               No hay matches pendientes con umbral de {Math.round(threshold * 100)}%
             </p>
-            <p className="text-neutral-400 text-sm mt-1">Intenta bajar el umbral para encontrar mas coincidencias</p>
+            <p className="text-neutral-500 text-sm mt-1">Intenta bajar el umbral para encontrar mas coincidencias</p>
           </div>
         ) : (
           <div>

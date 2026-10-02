@@ -91,7 +91,7 @@ export default function UbicacionPicker({
           type="button"
           onClick={solicitarGps}
           disabled={disabled || status === 'locating'}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {status === 'locating'
             ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -102,7 +102,7 @@ export default function UbicacionPicker({
           <button
             type="button"
             onClick={() => setManualMode(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
           >
             <Pencil className="h-3.5 w-3.5" />
             Escribir dirección
@@ -142,7 +142,7 @@ export default function UbicacionPicker({
 
       {(manualMode || value.metodo === 'manual') && (
         <div>
-          <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-neutral-700 dark:text-gray-300">
             <MapPin className="h-3.5 w-3.5" />
             Dirección o código postal
           </label>
@@ -152,9 +152,9 @@ export default function UbicacionPicker({
             onChange={(e) => setManual(e.target.value)}
             disabled={disabled}
             placeholder={manualPlaceholder}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:disabled:bg-gray-900"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-accent focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:disabled:bg-gray-900"
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-xs text-neutral-500 dark:text-gray-400">
             No geolocalizamos la dirección; se guarda tal cual para referencia del asesor.
           </p>
         </div>

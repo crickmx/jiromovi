@@ -19,7 +19,7 @@ function EmptyState({ message, actionLabel, actionPath }: { message: string; act
       <div className="w-10 h-10 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center">
         <Shield className="w-5 h-5 text-neutral-300 dark:text-white/20" />
       </div>
-      <p className="text-sm text-neutral-400 dark:text-white/35 max-w-[180px] leading-snug">{message}</p>
+      <p className="text-sm text-neutral-500 dark:text-white/50 max-w-[180px] leading-snug">{message}</p>
       {actionLabel && actionPath && (
         <button
           onClick={() => nav(actionPath)}
@@ -51,7 +51,7 @@ function KPICard({ data, loading, onNavigate }: { data: KPIData | null; loading:
     <button
       onClick={() => onNavigate && nav(onNavigate)}
       className={cn(
-        'w-full text-left rounded-2xl border border-neutral-100 dark:border-white/8 bg-white dark:bg-white/[0.03] p-4 transition-all',
+        'w-full text-left rounded-2xl border border-soft dark:border-white/8 bg-surface-card dark:bg-white/[0.03] p-4 transition-all',
         onNavigate && 'hover:border-neutral-200 dark:hover:border-white/12 hover:shadow-sm cursor-pointer',
         !onNavigate && 'cursor-default'
       )}
@@ -70,7 +70,7 @@ function KPICard({ data, loading, onNavigate }: { data: KPIData | null; loading:
           <p className="text-2xl font-bold text-neutral-900 dark:text-white tabular-nums leading-none mb-1">
             {data.value}
           </p>
-          <p className="text-xs text-neutral-400 dark:text-white/40">{data.label}</p>
+          <p className="text-xs text-neutral-500 dark:text-white/55">{data.label}</p>
           {data.delta !== undefined && (
             <p className={cn('text-xs font-medium mt-1.5', data.delta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
               {data.delta >= 0 ? '+' : ''}{data.delta}% {data.deltaLabel || 'vs mes anterior'}
@@ -78,7 +78,7 @@ function KPICard({ data, loading, onNavigate }: { data: KPIData | null; loading:
           )}
         </>
       ) : (
-        <p className="text-sm text-neutral-400 dark:text-white/30">Sin datos</p>
+        <p className="text-sm text-neutral-500 dark:text-white/45">Sin datos</p>
       )}
     </button>
   );
@@ -88,17 +88,17 @@ function KPICard({ data, loading, onNavigate }: { data: KPIData | null; loading:
 
 function WidgetShell({ title, icon, children, onMore, badge }: { title: string; icon: React.ReactNode; children: React.ReactNode; onMore?: () => void; badge?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-neutral-100 dark:border-white/8 bg-white dark:bg-white/[0.02] overflow-hidden">
+    <div className="rounded-2xl border border-soft dark:border-white/8 bg-surface-card dark:bg-white/[0.02] overflow-hidden">
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-neutral-50 dark:border-white/4">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-neutral-100 dark:bg-white/6 flex items-center justify-center text-neutral-500 dark:text-white/40">
+          <div className="w-6 h-6 rounded-lg bg-neutral-100 dark:bg-white/6 flex items-center justify-center text-neutral-500 dark:text-white/55">
             {icon}
           </div>
           <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70">{title}</h3>
           {badge}
         </div>
         {onMore && (
-          <button onClick={onMore} className="text-xs text-neutral-400 dark:text-white/30 hover:text-cyan-600 dark:hover:text-cyan-400 flex items-center gap-1 transition-colors">
+          <button onClick={onMore} className="text-xs text-neutral-500 dark:text-white/45 hover:text-cyan-600 dark:hover:text-cyan-400 flex items-center gap-1 transition-colors">
             Ver todo <ChevronRight className="w-3 h-3" />
           </button>
         )}
@@ -263,7 +263,7 @@ export function AgentesActivosWidget({ usuario }: { usuario: Usuario }) {
   const kpi: KPIData | null = count !== null ? {
     value: count,
     label: 'Agentes activos',
-    icon: <Briefcase className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
+    icon: <Briefcase className="w-4 h-4 text-accent-ink dark:text-blue-400" />,
     color: 'bg-blue-50 dark:bg-blue-500/10',
   } : null;
 
@@ -324,7 +324,7 @@ export function TramitesRecientesWidget({ usuario }: { usuario: Usuario }) {
 
   const statusColor: Record<string, string> = {
     'Iniciado': 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10',
-    'En Proceso': 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10',
+    'En Proceso': 'text-accent-ink dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10',
     'Espera Agente': 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10',
     'Espera Aseguradora': 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10',
     'Cotizado': 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10',
@@ -344,7 +344,7 @@ export function TramitesRecientesWidget({ usuario }: { usuario: Usuario }) {
       icon={<ClipboardList className="w-4 h-4" />}
       onMore={() => nav('/tramites')}
       badge={totalActive > 0 ? (
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400">
+        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400">
           {totalActive}
         </span>
       ) : undefined}
@@ -362,10 +362,10 @@ export function TramitesRecientesWidget({ usuario }: { usuario: Usuario }) {
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-xs font-mono text-neutral-400 dark:text-white/30 flex-shrink-0">{t.folio || '#'}</span>
+                  <span className="text-xs font-mono text-neutral-500 dark:text-white/45 flex-shrink-0">{t.folio || '#'}</span>
                   <span className="text-sm text-neutral-700 dark:text-white/70 truncate">{t.tipo || 'Tramite'}</span>
                 </div>
-                <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0', statusColor[t.estatus] || statusColor['Pendiente'])}>
+                <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0', statusColor[t.estatus] || statusColor['Pendiente'])}>
                   {t.estatus}
                 </span>
               </button>
@@ -415,7 +415,7 @@ export function ComunicadosRecientesWidget() {
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors"
               >
                 <p className="text-sm text-neutral-700 dark:text-white/70 text-left truncate">{c.titulo}</p>
-                <p className="text-xs text-neutral-400 dark:text-white/30 flex-shrink-0">
+                <p className="text-xs text-neutral-500 dark:text-white/45 flex-shrink-0">
                   {new Date(c.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                 </p>
               </button>
@@ -457,7 +457,7 @@ export function NotificacionesSinLeerWidget({ usuario }: { usuario: Usuario }) {
       icon={<Bell className="w-4 h-4" />}
       onMore={() => nav('/centro-notificaciones')}
       badge={items.length > 0 ? (
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400">
+        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400">
           {items.length}
         </span>
       ) : undefined}
@@ -469,14 +469,14 @@ export function NotificacionesSinLeerWidget({ usuario }: { usuario: Usuario }) {
           <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mb-3">
             <Bell className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
           </div>
-          <p className="text-sm text-neutral-500 dark:text-white/40">Estas al dia</p>
+          <p className="text-sm text-neutral-500 dark:text-white/55">Estas al dia</p>
         </div>
       ) : (
         <ul className="divide-y divide-neutral-50 dark:divide-white/4">
           {items.map(n => (
             <li key={n.id} className="px-4 py-3">
               <p className="text-sm text-neutral-700 dark:text-white/70 truncate">{n.titulo || n.mensaje}</p>
-              <p className="text-xs text-neutral-400 dark:text-white/30 mt-0.5">{getRelativeTime(n.created_at)}</p>
+              <p className="text-xs text-neutral-500 dark:text-white/45 mt-0.5">{getRelativeTime(n.created_at)}</p>
             </li>
           ))}
         </ul>
@@ -517,22 +517,22 @@ export function DiagnosticoSistemaWidget() {
       ) : (
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-500 dark:text-white/40">Ultima sync SICAS</span>
+            <span className="text-sm text-neutral-500 dark:text-white/55">Ultima sync SICAS</span>
             <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full',
               data.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-              : data.status === 'running' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+              : data.status === 'running' ? 'bg-blue-50 dark:bg-blue-500/10 text-accent-ink dark:text-blue-400'
               : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
             )}>
               {data.status}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-500 dark:text-white/40">Registros</span>
+            <span className="text-sm text-neutral-500 dark:text-white/55">Registros</span>
             <span className="text-sm font-semibold text-neutral-700 dark:text-white/70">{(data.records_synced || 0).toLocaleString()}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-500 dark:text-white/40">Hace</span>
-            <span className="text-sm text-neutral-500 dark:text-white/40">{getRelativeTime(data.created_at)}</span>
+            <span className="text-sm text-neutral-500 dark:text-white/55">Hace</span>
+            <span className="text-sm text-neutral-500 dark:text-white/55">{getRelativeTime(data.created_at)}</span>
           </div>
         </div>
       )}
@@ -549,7 +549,7 @@ type QuickAction = { label: string; path: string; href?: string; icon: React.Rea
 const QUICK_ACTIONS: Record<string, QuickAction[]> = {
   Administrador: [
     { label: 'Produccion', path: '/produccion/total', icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-    { label: 'Usuarios', path: '/directorio', icon: <Users className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+    { label: 'Usuarios', path: '/directorio', icon: <Users className="w-5 h-5" />, color: 'text-accent-ink dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
     { label: 'Contactos', path: '/contactos', icon: <MessageCircle className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
     { label: 'Centro Contacto', path: '/centro-contacto', icon: <Phone className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
     { label: 'SICAS', path: '/produccion/sicas-live', icon: <BarChart3 className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
@@ -559,14 +559,14 @@ const QUICK_ACTIONS: Record<string, QuickAction[]> = {
   ],
   Gerente: [
     { label: 'Produccion', path: '/produccion/total', icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-    { label: 'Equipo', path: '/directorio', icon: <Users className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+    { label: 'Equipo', path: '/directorio', icon: <Users className="w-5 h-5" />, color: 'text-accent-ink dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
     { label: 'Tramites', path: '/tramites', icon: <ClipboardList className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
     { label: 'Comisiones', path: '/produccion/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
     { label: 'CRM', path: '/mi-crm', icon: <Target className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
   ],
   Empleado: [
     { label: 'Tramites', path: '/tramites', icon: <ClipboardList className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-    { label: 'Centro Contacto', path: '/centro-contacto', icon: <Phone className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+    { label: 'Centro Contacto', path: '/centro-contacto', icon: <Phone className="w-5 h-5" />, color: 'text-accent-ink dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
     { label: 'Contactos', path: '/contactos', icon: <MessageCircle className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
     { label: 'Comunicados', path: '/comunicados', icon: <Bell className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
     { label: 'CRM', path: '/mi-crm', icon: <Target className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
@@ -575,7 +575,7 @@ const QUICK_ACTIONS: Record<string, QuickAction[]> = {
 
 const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   { label: 'Mi Pagina Web', path: '/mercadotecnia/mi-pagina-web', icon: <Globe className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-  { label: 'Mi Produccion', path: '/produccion/mi-produccion', icon: <TrendingUp className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+  { label: 'Mi Produccion', path: '/produccion/mi-produccion', icon: <TrendingUp className="w-5 h-5" />, color: 'text-accent-ink dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
   { label: 'Comisiones', path: '/produccion/mis-comisiones', icon: <DollarSign className="w-5 h-5" />, color: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-500/10' },
   { label: 'CRM', path: '/mi-crm', icon: <Target className="w-5 h-5" />, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-500/10' },
   { label: 'Centro Digital', path: '/centro-digital', icon: <Activity className="w-5 h-5" />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
@@ -599,14 +599,14 @@ export function AccesosRapidosWidget({ usuario }: { usuario: Usuario }) {
   });
 
   return (
-    <div className="rounded-2xl border border-neutral-100 dark:border-white/8 bg-white dark:bg-white/[0.02] p-5">
+    <div className="rounded-2xl border border-soft dark:border-white/8 bg-surface-card dark:bg-white/[0.02] p-5">
       <div className="flex items-center gap-2.5 mb-5">
         <div className="w-8 h-8 rounded-xl bg-neutral-100 dark:bg-white/6 flex items-center justify-center">
-          <Zap className="w-4 h-4 text-neutral-500 dark:text-white/40" />
+          <Zap className="w-4 h-4 text-neutral-500 dark:text-white/55" />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-neutral-800 dark:text-white/80">Accesos Rapidos</h3>
-          <p className="text-[11px] text-neutral-400 dark:text-white/30">Modulos frecuentes</p>
+          <p className="text-[11px] text-neutral-500 dark:text-white/45">Modulos frecuentes</p>
         </div>
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">

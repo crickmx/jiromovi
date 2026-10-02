@@ -84,7 +84,7 @@ export default function PolizaDetalle() {
   );
 
   if (!policy) return (
-    <div className="text-center py-16 text-neutral-400 dark:text-white/30">Póliza no encontrada.</div>
+    <div className="text-center py-16 text-neutral-500 dark:text-white/45">Póliza no encontrada.</div>
   );
 
   const days = Math.ceil((new Date(policy.end_date).getTime() - Date.now()) / 86400000);
@@ -98,7 +98,7 @@ export default function PolizaDetalle() {
         </button>
         <div>
           <h1 className="text-lg font-bold text-neutral-800 dark:text-white">{policy.insurer_name} · {policy.ramo}</h1>
-          <p className="text-xs text-neutral-400 dark:text-white/30 font-mono">{policy.policy_number}</p>
+          <p className="text-xs text-neutral-500 dark:text-white/45 font-mono">{policy.policy_number}</p>
         </div>
       </div>
 
@@ -116,7 +116,7 @@ export default function PolizaDetalle() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Policy info */}
-        <div className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
+        <div className="bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
           <h2 className="text-sm font-semibold text-neutral-700 dark:text-white/80 mb-4 flex items-center gap-2">
             <Shield className="w-4 h-4 text-blue-500" />Detalles de la póliza
           </h2>
@@ -139,7 +139,7 @@ export default function PolizaDetalle() {
         </div>
 
         {/* Vigencia */}
-        <div className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
+        <div className="bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
           <h2 className="text-sm font-semibold text-neutral-700 dark:text-white/80 mb-4 flex items-center gap-2">
             <Calendar className="w-4 h-4 text-blue-500" />Vigencia
           </h2>
@@ -165,16 +165,16 @@ export default function PolizaDetalle() {
 
           {/* Quick actions */}
           <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-white/8 space-y-2">
-            <h3 className="text-xs font-semibold text-neutral-400 dark:text-white/30 uppercase tracking-wide">Contactar aseguradora</h3>
+            <h3 className="text-xs font-semibold text-neutral-500 dark:text-white/45 uppercase tracking-wide">Contactar aseguradora</h3>
             {policy.insurer_phone && (
               <a href={`tel:${policy.insurer_phone}`}
-                className="flex items-center gap-2 text-sm text-neutral-600 dark:text-white/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                className="flex items-center gap-2 text-sm text-neutral-600 dark:text-white/60 hover:text-accent-ink dark:hover:text-blue-400 transition-colors">
                 <Phone className="w-3.5 h-3.5" />{policy.insurer_phone}
               </a>
             )}
             {policy.insurer_website && (
               <a href={policy.insurer_website} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-neutral-600 dark:text-white/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                className="flex items-center gap-2 text-sm text-neutral-600 dark:text-white/60 hover:text-accent-ink dark:hover:text-blue-400 transition-colors">
                 <Globe className="w-3.5 h-3.5" />{policy.insurer_website}
               </a>
             )}
@@ -183,7 +183,7 @@ export default function PolizaDetalle() {
 
         {/* Beneficiaries */}
         {policy.beneficiaries && (
-          <div className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
+          <div className="bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
             <h2 className="text-sm font-semibold text-neutral-700 dark:text-white/80 mb-3">Beneficiarios</h2>
             <p className="text-sm text-neutral-600 dark:text-white/60 whitespace-pre-wrap">{policy.beneficiaries}</p>
           </div>
@@ -191,7 +191,7 @@ export default function PolizaDetalle() {
 
         {/* Documents */}
         {docs.length > 0 && (
-          <div className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
+          <div className="bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
             <h2 className="text-sm font-semibold text-neutral-700 dark:text-white/80 mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4 text-blue-500" />Documentos ({docs.length})
             </h2>
@@ -202,7 +202,7 @@ export default function PolizaDetalle() {
                   <span className="flex-1 text-sm text-neutral-700 dark:text-white/70 truncate">{d.nombre_archivo}</span>
                   {d.archivo_url && (
                     <a href={d.archivo_url} target="_blank" rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 text-neutral-400 dark:text-white/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                      className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/8 text-neutral-500 dark:text-white/45 hover:text-accent-ink dark:hover:text-blue-400 transition-colors">
                       <Download className="w-3.5 h-3.5" />
                     </a>
                   )}

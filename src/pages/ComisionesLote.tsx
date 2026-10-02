@@ -398,7 +398,7 @@ export default function ComisionesLote() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <div className="bg-white rounded-3xl shadow-card p-8 sm:p-12 text-center max-w-md w-full">
           <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-2">
@@ -409,7 +409,7 @@ export default function ComisionesLote() {
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="w-full px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px]"
+            className="w-full px-6 py-3 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px]"
           >
             Volver al Dashboard
           </button>
@@ -428,14 +428,14 @@ export default function ComisionesLote() {
 
   if (!batch) {
     return (
-      <div className="bg-white rounded-2xl shadow-card border border-neutral-200 p-8 sm:p-12 text-center mx-4">
+      <div className="bg-surface-card rounded-2xl shadow-card border border-soft p-8 sm:p-12 text-center mx-4">
         <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500 mx-auto mb-4" />
         <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
           Lote no encontrado
         </h3>
         <button
           onClick={() => navigate('/comisiones')}
-          className="mt-4 px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px]"
+          className="mt-4 px-6 py-3 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px]"
         >
           Volver a Comisiones
         </button>
@@ -448,7 +448,7 @@ export default function ComisionesLote() {
 
   return (
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-soft dark:border-neutral-800 p-4 sm:p-6">
         <div className="mb-4 sm:mb-6">
           <PageHeader
             title={batch.name}
@@ -460,7 +460,7 @@ export default function ComisionesLote() {
                 <button
                   onClick={handleRecalculateBatch}
                   disabled={recalculating}
-                  className="flex items-center justify-center space-x-2 px-4 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px] w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center space-x-2 px-4 py-3 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-colors font-semibold min-h-[44px] w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {recalculating ? (
                     <>
@@ -511,7 +511,7 @@ export default function ComisionesLote() {
             onClick={() => setActiveTab('resumen')}
             className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
               activeTab === 'resumen'
-                ? 'text-accent border-b-2 border-accent'
+                ? 'text-accent-ink border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -521,7 +521,7 @@ export default function ComisionesLote() {
             onClick={() => setActiveTab('agentes')}
             className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
               activeTab === 'agentes'
-                ? 'text-accent border-b-2 border-accent'
+                ? 'text-accent-ink border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -531,7 +531,7 @@ export default function ComisionesLote() {
             onClick={() => setActiveTab('polizas')}
             className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
               activeTab === 'polizas'
-                ? 'text-accent border-b-2 border-accent'
+                ? 'text-accent-ink border-b-2 border-accent'
                 : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
@@ -542,7 +542,7 @@ export default function ComisionesLote() {
               onClick={() => setActiveTab('errores')}
               className={`px-4 sm:px-6 py-3 font-semibold transition-all whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
                 activeTab === 'errores'
-                  ? 'text-accent border-b-2 border-accent'
+                  ? 'text-accent-ink border-b-2 border-accent'
                   : 'text-neutral-600 hover:text-neutral-900'
               }`}
             >
@@ -555,20 +555,20 @@ export default function ComisionesLote() {
       {activeTab === 'resumen' && (
         <div className="space-y-4 sm:space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-card border border-neutral-200 p-4 sm:p-6">
+            <div className="bg-surface-card rounded-2xl sm:rounded-2xl shadow-card border border-soft p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm sm:text-base text-neutral-600 font-medium">Comisión Total</span>
-                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
+                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-accent-ink" />
               </div>
               <div className="text-2xl sm:text-3xl font-bold text-green-700">
                 {formatCurrency(summary.total_neta)}
               </div>
             </div>
 
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-card border border-neutral-200 p-4 sm:p-6">
+            <div className="bg-surface-card rounded-2xl sm:rounded-2xl shadow-card border border-soft p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm sm:text-base text-neutral-600 font-medium">Total Pólizas</span>
-                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
+                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-accent-ink" />
               </div>
               <div className="text-2xl sm:text-3xl font-bold text-neutral-900">
                 {summary.total_polizas}
@@ -597,7 +597,7 @@ export default function ComisionesLote() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-card border border-neutral-200 p-4 sm:p-6">
+            <div className="bg-surface-card rounded-2xl sm:rounded-2xl shadow-card border border-soft p-4 sm:p-6">
               <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
                 Comisiones por Ramo
               </h3>
@@ -623,7 +623,7 @@ export default function ComisionesLote() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-card border border-neutral-200 p-4 sm:p-6">
+            <div className="bg-surface-card rounded-2xl sm:rounded-2xl shadow-card border border-soft p-4 sm:p-6">
               <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
                 Comisiones por Aseguradora
               </h3>
@@ -653,7 +653,7 @@ export default function ComisionesLote() {
       )}
 
       {activeTab === 'agentes' && (
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-card border border-neutral-200 p-4 sm:p-6">
+        <div className="bg-surface-card rounded-2xl sm:rounded-2xl shadow-card border border-soft p-4 sm:p-6">
           <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
             Comisiones por Agente
           </h3>
@@ -699,7 +699,7 @@ export default function ComisionesLote() {
       )}
 
       {activeTab === 'polizas' && (
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-card border border-neutral-200 p-4 sm:p-6">
+        <div className="bg-surface-card rounded-2xl sm:rounded-2xl shadow-card border border-soft p-4 sm:p-6">
           <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
             Detalle por Póliza ({details.length})
           </h3>
@@ -830,7 +830,7 @@ export default function ComisionesLote() {
       )}
 
       {activeTab === 'errores' && (
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-card border border-neutral-200 p-4 sm:p-6">
+        <div className="bg-surface-card rounded-2xl sm:rounded-2xl shadow-card border border-soft p-4 sm:p-6">
           <h3 className="text-lg sm:text-xl font-bold text-neutral-900 mb-3 sm:mb-4">
             Errores de Procesamiento
           </h3>

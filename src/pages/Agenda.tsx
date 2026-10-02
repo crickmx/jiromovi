@@ -183,7 +183,7 @@ export default function Agenda({ embedded = false }: AgendaProps) {
                 {item.name}
               </button>
             ))}
-            {!calendars.length && <p className="py-4 text-sm text-slate-500">Crea tu primer calendario.</p>}
+            {!calendars.length && <p className="py-4 text-sm text-neutral-500">Crea tu primer calendario.</p>}
           </div>
         </Card>
 
@@ -224,7 +224,7 @@ export default function Agenda({ embedded = false }: AgendaProps) {
                 const publicUrl = usuario?.web_slug
                   ? `https://agentedeseguros.website/${usuario.web_slug}/agenda`
                   : `${window.location.origin}/agenda/${item.id}`;
-                return <div key={item.id} className="rounded-xl border border-slate-200 p-4">
+                return <div key={item.id} className="rounded-xl border border-neutral-200 p-4">
                   <div className="grid gap-3 md:grid-cols-2">
                     <div><Label>Nombre</Label><Input value={item.name} onChange={e => patchEvent(item.id, { name: e.target.value })} /></div>
                     <div><Label>Duración (minutos)</Label><Input type="number" min={10} step={5} value={item.duration_minutes} onChange={e => patchEvent(item.id, { duration_minutes: Number(e.target.value) })} /></div>
@@ -245,7 +245,7 @@ export default function Agenda({ embedded = false }: AgendaProps) {
                   </div>
                 </div>;
               })}
-              {!selectedEvents.length && <p className="py-6 text-center text-sm text-slate-500">Agrega un tipo de cita para obtener un enlace público.</p>}
+              {!selectedEvents.length && <p className="py-6 text-center text-sm text-neutral-500">Agrega un tipo de cita para obtener un enlace público.</p>}
             </div>
           </Card>
         </div>}

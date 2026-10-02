@@ -103,7 +103,7 @@ export function SelectorVehiculo({
     if (nivel === 'version') onChange({ ...base, version: valor || undefined });
   };
 
-  const clase = 'w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white disabled:opacity-50';
+  const clase = 'w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-surface-card disabled:opacity-50';
 
   if (sel.manual) {
     return (
@@ -130,7 +130,7 @@ export function SelectorVehiculo({
             onChange={e => onChange({ ...sel, [n]: e.target.value })}
             placeholder={n === 'version' ? 'Versión' : n === 'marca' ? 'Marca' : 'Modelo'}
             disabled={disabled}
-            className="w-full px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+            className="w-full px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-surface-card"
           />
         ))}
       </div>

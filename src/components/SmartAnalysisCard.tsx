@@ -162,13 +162,13 @@ export function SmartAnalysisCard({ result, loading, onRefresh, userName }: Prop
                 {userName ? `Hola ${userName.split(' ')[0]}` : 'Chava'}
               </span>
               {result.source === 'chatgpt' && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-500/20 text-cyan-300">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-500/20 text-cyan-300">
                   <Sparkles className="w-2.5 h-2.5" />
                   IA en vivo
                 </span>
               )}
               {result.source === 'cache' && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-white/30">
+                <span className="inline-flex items-center gap-1 text-[11px] text-white/30">
                   <Zap className="w-2.5 h-2.5" />
                   Guardado
                 </span>
@@ -305,7 +305,7 @@ function ChatBubble({ bullet, visible }: { bullet: AnalysisBullet; visible: bool
             bullet.priority === 'medium' ? 'text-sky-400' : 'text-white/35'
           )} />
           <span className={cn(
-            'text-[10px] font-bold uppercase tracking-wider',
+            'text-[11px] font-bold uppercase tracking-wider',
             bullet.priority === 'high' ? 'text-amber-400' :
             bullet.priority === 'medium' ? 'text-sky-400' : 'text-white/35'
           )}>

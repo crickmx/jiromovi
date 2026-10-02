@@ -67,7 +67,7 @@ export function SeguwalletCompleteProfile() {
 
   if (loading || !customer) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 via-white to-blue-50/30">
         <div className="w-10 h-10 border-[3px] border-blue-200 border-t-[#1C37E0] rounded-full animate-spin" />
       </div>
     );
@@ -190,7 +190,7 @@ export function SeguwalletCompleteProfile() {
   const primaryColor = brand.primaryColor || '#1C37E0';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/20 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-blue-50/20 flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-neutral-100 px-4 py-3 flex items-center justify-between">
         <img
@@ -199,7 +199,7 @@ export function SeguwalletCompleteProfile() {
           className="h-8 object-contain"
           onError={e => { (e.target as HTMLImageElement).src = SEGUWALLET_LOGO; }}
         />
-        <span className="text-xs text-neutral-400">
+        <span className="text-xs text-neutral-500">
           {customer.full_name.split(' ')[0]}
         </span>
       </header>
@@ -253,14 +253,14 @@ export function SeguwalletCompleteProfile() {
                     <select
                       value={form.state}
                       onChange={e => setForm(p => ({ ...p, state: e.target.value }))}
-                      className="w-full appearance-none px-4 py-3.5 rounded-2xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all pr-10 text-neutral-900"
+                      className="w-full appearance-none px-4 py-3.5 rounded-2xl border border-soft bg-surface-card text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-accent transition-all pr-10 text-neutral-900"
                     >
                       <option value="">Selecciona tu estado</option>
                       {MEXICAN_STATES.map(s => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
                   </div>
                 </div>
 
@@ -275,7 +275,7 @@ export function SeguwalletCompleteProfile() {
                     value={form.municipality}
                     onChange={e => setForm(p => ({ ...p, municipality: e.target.value }))}
                     placeholder="Ej. Monterrey, Benito Juárez..."
-                    className="w-full px-4 py-3.5 rounded-2xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all text-neutral-900"
+                    className="w-full px-4 py-3.5 rounded-2xl border border-soft bg-surface-card text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-accent transition-all text-neutral-900"
                   />
                 </div>
 
@@ -290,7 +290,7 @@ export function SeguwalletCompleteProfile() {
                     value={form.birth_date}
                     onChange={e => setForm(p => ({ ...p, birth_date: e.target.value }))}
                     max={new Date(Date.now() - 18 * 365.25 * 24 * 3600 * 1000).toISOString().split('T')[0]}
-                    className="w-full px-4 py-3.5 rounded-2xl border border-neutral-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all text-neutral-900"
+                    className="w-full px-4 py-3.5 rounded-2xl border border-soft bg-surface-card text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-accent transition-all text-neutral-900"
                   />
                 </div>
 
@@ -353,11 +353,11 @@ export function SeguwalletCompleteProfile() {
               )}
 
               {/* Terms preview card */}
-              <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
+              <div className="bg-surface-card border border-soft rounded-2xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold text-neutral-900">{activeTerms.title}</p>
-                    <p className="text-xs text-neutral-400 mt-0.5">Versión {activeTerms.version}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">Versión {activeTerms.version}</p>
                   </div>
                   <button
                     onClick={() => setShowTermsModal(true)}
@@ -405,7 +405,7 @@ export function SeguwalletCompleteProfile() {
                 {needsProfileCompletion && (
                   <button
                     onClick={() => setStep('profile')}
-                    className="flex-1 py-4 rounded-2xl border border-neutral-200 bg-white text-neutral-700 text-sm font-medium transition-all hover:bg-neutral-50"
+                    className="flex-1 py-4 rounded-2xl border border-soft bg-surface-card text-neutral-700 text-sm font-medium transition-all hover:bg-neutral-50"
                   >
                     Atrás
                   </button>
@@ -449,9 +449,9 @@ export function SeguwalletCompleteProfile() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
               <div>
                 <p className="font-bold text-neutral-900">{activeTerms.title}</p>
-                <p className="text-xs text-neutral-400">Versión {activeTerms.version}</p>
+                <p className="text-xs text-neutral-500">Versión {activeTerms.version}</p>
               </div>
-              <button onClick={() => setShowTermsModal(false)} className="p-2 rounded-xl hover:bg-neutral-100 transition-colors text-neutral-400">
+              <button onClick={() => setShowTermsModal(false)} className="p-2 rounded-xl hover:bg-neutral-100 transition-colors text-neutral-500">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>

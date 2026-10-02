@@ -65,7 +65,7 @@ export default function RolesTab() {
         </p>
         <button
           onClick={() => setEditing('nuevo')}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:opacity-90 transition-opacity self-start sm:self-auto"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-opacity self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" /> Nuevo rol
         </button>
@@ -75,30 +75,30 @@ export default function RolesTab() {
         {roles.map((r) => {
           const n = counts[r.id] ?? 0;
           return (
-            <div key={r.id} className="border border-neutral-200 dark:border-white/10 rounded-xl p-4 bg-white dark:bg-neutral-800/30" style={{ borderTopColor: r.color ?? undefined, borderTopWidth: 3 }}>
+            <div key={r.id} className="border border-soft dark:border-white/10 rounded-2xl p-4 bg-surface-card dark:bg-neutral-800/30" style={{ borderTopColor: r.color ?? undefined, borderTopWidth: 3 }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="w-2.5 h-2.5 rounded-full flex-none" style={{ backgroundColor: r.color ?? '#6b7a90' }} />
                     <h3 className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{r.nombre}</h3>
                     {r.es_sistema && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-neutral-100 dark:bg-white/10 text-neutral-500 dark:text-white/50">base</span>
+                      <span className="px-1.5 py-0.5 text-[11px] font-semibold rounded bg-neutral-100 dark:bg-white/10 text-neutral-500 dark:text-white/50">base</span>
                     )}
                   </div>
-                  {r.descripcion && <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 line-clamp-2">{r.descripcion}</p>}
+                  {r.descripcion && <p className="text-xs text-neutral-500 dark:text-white/55 mt-1 line-clamp-2">{r.descripcion}</p>}
                   <div className="flex items-center gap-3 mt-2 text-[11px] text-neutral-500 dark:text-white/45">
                     <span title="Comportamiento base" className="inline-flex items-center gap-1"><ShieldAlert className="w-3 h-3" /> {r.rol_base} · {BASE_HINT[r.rol_base]}</span>
                     <span className="inline-flex items-center gap-1"><Users className="w-3 h-3" /> {n}</span>
                   </div>
                 </div>
                 <div className="flex-none flex items-center gap-1">
-                  <button onClick={() => setEditing(r)} title="Editar" className="p-1.5 rounded-md text-neutral-400 hover:text-accent hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+                  <button onClick={() => setEditing(r)} title="Editar" className="p-1.5 rounded-md text-neutral-500 hover:text-accent-ink hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setRemoving({ rol: r, mode: 'fusionar' })} title="Fusionar en otro rol" className="p-1.5 rounded-md text-neutral-400 hover:text-blue-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+                  <button onClick={() => setRemoving({ rol: r, mode: 'fusionar' })} title="Fusionar en otro rol" className="p-1.5 rounded-md text-neutral-500 hover:text-blue-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
                     <GitMerge className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setRemoving({ rol: r, mode: 'eliminar' })} title="Eliminar" className="p-1.5 rounded-md text-neutral-400 hover:text-red-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+                  <button onClick={() => setRemoving({ rol: r, mode: 'eliminar' })} title="Eliminar" className="p-1.5 rounded-md text-neutral-500 hover:text-red-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -170,13 +170,13 @@ function EliminarFusionarRolModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-xl max-w-md w-full">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-white/10">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">
             {mode === 'fusionar' ? 'Fusionar rol' : 'Eliminar rol'}
           </h2>
-          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-white/70"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-neutral-500 hover:text-neutral-600 dark:hover:text-white/70"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -193,7 +193,7 @@ function EliminarFusionarRolModal({
 
           {destinoRequerido && (
             <div>
-              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
+              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1.5">
                 {mode === 'fusionar' ? 'Fusionar en' : 'Reasignar usuarios a'}
               </label>
               <select
@@ -209,7 +209,7 @@ function EliminarFusionarRolModal({
             </div>
           )}
 
-          <p className="text-xs text-neutral-400 dark:text-white/30">
+          <p className="text-xs text-neutral-500 dark:text-white/45">
             Nota: la plataforma no puede quedarse sin administradores activos.
           </p>
         </div>

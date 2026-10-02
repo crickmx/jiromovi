@@ -209,36 +209,36 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
   const currentStepIdx = STEP_ORDER.indexOf(step);
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-50 flex items-center justify-center p-4">
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-2xl flex flex-col max-h-[90vh] animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Migración Documental</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Importa documentos desde un HTML y almacénalos en el Centro Digital</p>
+            <h2 className="text-lg font-bold text-neutral-900">Migración Documental</h2>
+            <p className="text-xs text-neutral-500 mt-0.5">Importa documentos desde un HTML y almacénalos en el Centro Digital</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-neutral-500 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Step indicator */}
-        <div className="flex items-center gap-0 px-6 py-3 border-b bg-gray-50 flex-shrink-0">
+        <div className="flex items-center gap-0 px-6 py-3 border-b bg-neutral-50 flex-shrink-0">
           {STEP_ORDER.map((s, i) => (
             <div key={s} className="flex items-center">
               <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 i < currentStepIdx ? 'text-green-600' :
                 i === currentStepIdx ? 'bg-blue-50 text-blue-700' :
-                'text-gray-400'
+                'text-neutral-500'
               }`}>
                 {i < currentStepIdx
                   ? <CheckCircle className="w-3.5 h-3.5" />
-                  : <span className="w-4 h-4 rounded-full border-2 flex items-center justify-center text-[10px] font-bold border-current">{i + 1}</span>
+                  : <span className="w-4 h-4 rounded-full border-2 flex items-center justify-center text-[11px] font-bold border-current">{i + 1}</span>
                 }
                 {STEP_LABELS[s]}
               </div>
               {i < STEP_ORDER.length - 1 && (
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300 mx-1" />
+                <ChevronRight className="w-3.5 h-3.5 text-neutral-300 mx-1" />
               )}
             </div>
           ))}
@@ -257,24 +257,24 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
           {step === 'upload' && (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Título de la importación</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Título de la importación</label>
                 <input
                   type="text"
                   value={titulo}
                   onChange={e => setTitulo(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-accent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Carpeta de destino (opcional)</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Carpeta de destino (opcional)</label>
                 {loadingCarpetas ? (
-                  <div className="h-10 bg-gray-100 rounded-xl animate-pulse" />
+                  <div className="h-10 bg-neutral-100 rounded-xl animate-pulse" />
                 ) : (
                   <select
                     value={carpetaId}
                     onChange={e => setCarpetaId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-soft text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-accent bg-surface-card"
                   >
                     <option value="">Sin carpeta raíz — crear carpetas principales automáticamente</option>
                     {carpetas.map(c => (
@@ -282,7 +282,7 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
                     ))}
                   </select>
                 )}
-                <p className="text-xs text-gray-500 mt-1.5">
+                <p className="text-xs text-neutral-500 mt-1.5">
                   {carpetaId
                     ? 'Se crearán subcarpetas por ramo dentro de esta carpeta.'
                     : 'Se crearán carpetas principales por ramo o aseguradora automáticamente.'}
@@ -291,28 +291,28 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
 
               {/* Drop zone */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Archivo HTML</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5">Archivo HTML</label>
                 <div
                   ref={dragRef}
                   onDragOver={e => e.preventDefault()}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${
-                    htmlFile ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/30'
+                    htmlFile ? 'border-green-300 bg-green-50' : 'border-neutral-200 hover:border-blue-300 hover:bg-blue-50/30'
                   }`}
                 >
                   {htmlFile ? (
                     <>
                       <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
                       <p className="text-sm font-medium text-green-700">{htmlFile.name}</p>
-                      <p className="text-xs text-gray-500 mt-1">{(htmlFile.size / 1024).toFixed(1)} KB — clic para cambiar</p>
+                      <p className="text-xs text-neutral-500 mt-1">{(htmlFile.size / 1024).toFixed(1)} KB — clic para cambiar</p>
                     </>
                   ) : (
                     <>
-                      <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                      <p className="text-sm font-medium text-gray-700">Arrastra tu archivo HTML aquí</p>
-                      <p className="text-xs text-gray-500 mt-1">o haz clic para seleccionar</p>
-                      <p className="text-xs text-gray-400 mt-3">Formatos: .html .htm</p>
+                      <Upload className="w-8 h-8 text-neutral-500 mb-2" />
+                      <p className="text-sm font-medium text-neutral-700">Arrastra tu archivo HTML aquí</p>
+                      <p className="text-xs text-neutral-500 mt-1">o haz clic para seleccionar</p>
+                      <p className="text-xs text-neutral-500 mt-3">Formatos: .html .htm</p>
                     </>
                   )}
                 </div>
@@ -343,25 +343,25 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
                   <div key={label} className={`rounded-xl p-3.5 border ${
                     color === 'blue' ? 'bg-blue-50 border-blue-100' :
                     color === 'amber' ? 'bg-amber-50 border-amber-100' :
-                    'bg-gray-50 border-gray-100'
+                    'bg-neutral-50 border-neutral-100'
                   }`}>
                     <Icon className={`w-4 h-4 mb-1.5 ${
                       color === 'blue' ? 'text-blue-500' :
                       color === 'amber' ? 'text-amber-500' :
-                      'text-gray-400'
+                      'text-neutral-500'
                     }`} />
-                    <p className="text-2xl font-bold text-gray-900">{value}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+                    <p className="text-2xl font-bold text-neutral-900">{value}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{label}</p>
                   </div>
                 ))}
               </div>
 
               {jobStats.aseguradoras.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-600 mb-2">Aseguradoras detectadas</p>
+                  <p className="text-xs font-medium text-neutral-600 mb-2">Aseguradoras detectadas</p>
                   <div className="flex flex-wrap gap-1.5">
                     {jobStats.aseguradoras.map(a => (
-                      <span key={a} className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">{a}</span>
+                      <span key={a} className="px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 text-xs font-medium">{a}</span>
                     ))}
                   </div>
                 </div>
@@ -369,10 +369,10 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
 
               <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
                 <div className="flex items-start gap-2.5">
-                  <Folder className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <Folder className="w-4 h-4 text-accent-ink mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-blue-800">Organización automática por ramo</p>
-                    <p className="text-xs text-blue-600 mt-0.5">
+                    <p className="text-xs text-accent-ink mt-0.5">
                       {carpetaId
                         ? 'Los documentos se agruparán en subcarpetas según el ramo detectado dentro de la carpeta de destino seleccionada.'
                         : 'Se crearán carpetas principales en el Centro Digital para cada ramo o aseguradora detectados.'}
@@ -397,24 +397,24 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
             <div className="space-y-5">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <Download className="w-5 h-5 text-blue-600" />
+                  <Download className="w-5 h-5 text-accent-ink" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Descargando documentos</p>
-                  <p className="text-xs text-gray-500">Los archivos se están guardando en el Centro Digital</p>
+                  <p className="font-semibold text-neutral-900">Descargando documentos</p>
+                  <p className="text-xs text-neutral-500">Los archivos se están guardando en el Centro Digital</p>
                 </div>
                 <RefreshCw className="w-4 h-4 text-blue-500 animate-spin ml-auto" />
               </div>
 
               <div>
-                <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                <div className="flex justify-between text-xs text-neutral-500 mb-1.5">
                   <span>Progreso</span>
                   <span>{progress.processed} procesados · {progress.remaining} restantes</span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2.5">
+                <div className="w-full bg-neutral-100 rounded-full h-2.5">
                   {jobStats && jobStats.descargables > 0 && (
                     <div
-                      className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
+                      className="bg-accent h-2.5 rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(100, (progress.processed / jobStats.descargables) * 100)}%` }}
                     />
                   )}
@@ -446,10 +446,10 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
                   <Brain className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-neutral-900">
                     {done ? 'Indexación completada' : 'Indexando para Chava AI'}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-neutral-500">
                     {done
                       ? 'Los documentos ya son consultables por Chava AI'
                       : 'Generando embeddings para búsqueda semántica'}
@@ -460,11 +460,11 @@ export function MigracionDocumentalModal({ onClose, onSuccess }: Props) {
               </div>
 
               <div>
-                <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                <div className="flex justify-between text-xs text-neutral-500 mb-1.5">
                   <span>Indexación</span>
                   <span>{indexProgress.processed} procesados · {indexProgress.remaining} restantes</span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2.5">
+                <div className="w-full bg-neutral-100 rounded-full h-2.5">
                   {progress.successful > 0 && (
                     <div
                       className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"

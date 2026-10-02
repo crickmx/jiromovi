@@ -314,7 +314,7 @@ export function PersonalizarLogoScreen({ imagenProducto, usuarioId, capasInicial
                 <img src={logo.url} alt={logo.nombre} className="w-full h-full object-contain" />
               </button>
             ))}
-            <label className="flex-shrink-0 w-16 h-16 rounded-lg border-2 border-dashed border-white/30 hover:border-accent flex flex-col items-center justify-center gap-0.5 text-white/60 hover:text-white cursor-pointer text-[10px] text-center px-1">
+            <label className="flex-shrink-0 w-16 h-16 rounded-lg border-2 border-dashed border-white/30 hover:border-accent flex flex-col items-center justify-center gap-0.5 text-white/60 hover:text-white cursor-pointer text-[11px] text-center px-1">
               <Upload className="w-4 h-4" />
               {subiendo ? '...' : 'Nuevo'}
               <input
@@ -377,7 +377,7 @@ export function PersonalizarLogoScreen({ imagenProducto, usuarioId, capasInicial
         <button
           onClick={handleGuardar}
           disabled={generandoImagen}
-          className="flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-accent-hover transition-colors disabled:opacity-60"
+          className="flex items-center gap-2 bg-accent text-accent-foreground px-5 py-2.5 rounded-lg font-semibold hover:bg-accent-hover transition-colors disabled:opacity-60"
         >
           <Check className="w-4 h-4" />
           {generandoImagen ? 'Generando imagen...' : 'Guardar'}

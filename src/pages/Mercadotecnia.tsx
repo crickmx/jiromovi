@@ -157,7 +157,7 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
                 }}
                 className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   isActive
-                    ? 'border-accent text-accent'
+                    ? 'border-accent text-accent-ink'
                     : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
                 }`}
               >
@@ -219,7 +219,7 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
                 </span>
                 <button
                   onClick={() => setEditando(false)}
-                  className="text-neutral-400 hover:text-neutral-600 dark:hover:text-white/60 transition"
+                  className="text-neutral-500 hover:text-neutral-600 dark:hover:text-white/60 transition"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -250,7 +250,7 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
                     type="date"
                     value={form.mkt_premium_fecha_inicio}
                     onChange={e => setForm(f => ({ ...f, mkt_premium_fecha_inicio: e.target.value }))}
-                    className="text-sm px-3 py-1.5 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    className="text-sm px-3 py-1.5 rounded-lg border border-purple-200 dark:border-purple-700 bg-surface-card dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                   />
                 </div>
 
@@ -261,7 +261,7 @@ export default function Mercadotecnia({ section }: MercadotecniaProps) {
                     type="date"
                     value={form.mkt_premium_fecha_pago}
                     onChange={e => setForm(f => ({ ...f, mkt_premium_fecha_pago: e.target.value }))}
-                    className="text-sm px-3 py-1.5 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    className="text-sm px-3 py-1.5 rounded-lg border border-purple-200 dark:border-purple-700 bg-surface-card dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
                   />
                 </div>
 

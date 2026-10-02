@@ -159,21 +159,21 @@ export default function SicasRestTest() {
 
         {loading && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-accent" />
-            <span className="ml-3 text-gray-600">Ejecutando pruebas...</span>
+            <Loader2 className="h-8 w-8 animate-spin text-accent-ink" />
+            <span className="ml-3 text-neutral-600">Ejecutando pruebas...</span>
           </div>
         )}
 
         {testData && (
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800">Resultados</h2>
+            <h2 className="text-xl font-bold text-neutral-800">Resultados</h2>
 
             {testData.config && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-800 mb-2">
+              <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                <h3 className="font-semibold text-neutral-800 mb-2">
                   Configuración
                 </h3>
-                <pre className="text-xs text-gray-600 overflow-auto">
+                <pre className="text-xs text-neutral-600 overflow-auto">
                   {JSON.stringify(testData.config, null, 2)}
                 </pre>
               </div>
@@ -214,26 +214,26 @@ export default function SicasRestTest() {
 
                   <div className="space-y-3">
                     <div>
-                      <p className="text-xs font-semibold text-gray-700 mb-1">
+                      <p className="text-xs font-semibold text-neutral-700 mb-1">
                         Request
                       </p>
-                      <pre className="text-xs bg-white p-2 rounded border border-gray-200 overflow-auto">
+                      <pre className="text-xs bg-surface-card p-2 rounded border border-soft overflow-auto">
                         {JSON.stringify(result.request, null, 2)}
                       </pre>
                     </div>
 
                     {result.response && (
                       <div>
-                        <p className="text-xs font-semibold text-gray-700 mb-1">
+                        <p className="text-xs font-semibold text-neutral-700 mb-1">
                           Response
                         </p>
-                        <pre className="text-xs bg-white p-2 rounded border border-gray-200 overflow-auto max-h-96">
+                        <pre className="text-xs bg-surface-card p-2 rounded border border-soft overflow-auto max-h-96">
                           {result.response.bodyParsed
                             ? JSON.stringify(result.response.bodyParsed, null, 2)
                             : result.response.body}
                         </pre>
                         {result.response.bodyLength && (
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-neutral-500 mt-1">
                             Body length: {result.response.bodyLength} caracteres
                           </p>
                         )}
@@ -245,7 +245,7 @@ export default function SicasRestTest() {
                         <p className="text-xs font-semibold text-red-700 mb-1">
                           Error
                         </p>
-                        <pre className="text-xs bg-white p-2 rounded border border-red-200 overflow-auto">
+                        <pre className="text-xs bg-surface-card p-2 rounded border border-red-200 overflow-auto">
                           {result.error}
                         </pre>
                       </div>

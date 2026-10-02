@@ -48,7 +48,7 @@ export default function GraficaColumnas({
 
   if (data.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-6">
+      <div className="bg-surface-card rounded-2xl border border-soft p-4 sm:p-6">
         <h3 className="text-base sm:text-lg font-bold text-neutral-900 mb-4">{title}</h3>
         <div className="flex items-center justify-center h-48 text-neutral-500 text-sm">
           No hay datos para mostrar
@@ -60,7 +60,7 @@ export default function GraficaColumnas({
   const isLargeDataset = data.length > 8;
 
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-6">
+    <div className="bg-surface-card rounded-2xl border border-soft p-4 sm:p-6">
       <h3 className="text-base sm:text-lg font-bold text-neutral-900 mb-4 sm:mb-6">{title}</h3>
 
       <div className="flex gap-3">

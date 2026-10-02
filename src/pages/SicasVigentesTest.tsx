@@ -201,28 +201,28 @@ export default function SicasVigentesTest() {
 
             {/* Metadatos SICAS */}
             {result.raw && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-800 mb-2">
+              <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+                <h4 className="font-semibold text-neutral-800 mb-2">
                   Response SICAS
                 </h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex">
-                    <span className="font-medium text-gray-600 w-32">
+                    <span className="font-medium text-neutral-600 w-32">
                       RESPONSENBR:
                     </span>
-                    <span className="text-gray-800">{result.raw.responseNbr}</span>
+                    <span className="text-neutral-800">{result.raw.responseNbr}</span>
                   </div>
                   <div className="flex">
-                    <span className="font-medium text-gray-600 w-32">
+                    <span className="font-medium text-neutral-600 w-32">
                       RESPONSETXT:
                     </span>
-                    <span className="text-gray-800">{result.raw.responseTxt}</span>
+                    <span className="text-neutral-800">{result.raw.responseTxt}</span>
                   </div>
                   <div className="flex">
-                    <span className="font-medium text-gray-600 w-32">
+                    <span className="font-medium text-neutral-600 w-32">
                       MESSAGE:
                     </span>
-                    <span className="text-gray-800">{result.raw.message}</span>
+                    <span className="text-neutral-800">{result.raw.message}</span>
                   </div>
                 </div>
               </div>
@@ -231,65 +231,65 @@ export default function SicasVigentesTest() {
             {/* Tabla de registros */}
             {result.records.length > 0 && (
               <div>
-                <h4 className="font-semibold text-gray-800 mb-3">
+                <h4 className="font-semibold text-neutral-800 mb-3">
                   Registros Obtenidos ({result.records.length})
                 </h4>
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border border-neutral-200 rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-neutral-200">
+                      <thead className="bg-neutral-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                             ID Docto
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                             Póliza
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                             Fecha
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                             Oficina
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                             Vendedor
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                             Aseguradora
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                             Ramo
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
                             Importe
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-neutral-200">
                         {result.records.map((record, index) => (
                           <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                            <td className="px-4 py-3 text-sm text-neutral-900">
                               {record.idDocto || '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                            <td className="px-4 py-3 text-sm text-neutral-900">
                               {record.poliza || '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                            <td className="px-4 py-3 text-sm text-neutral-900">
                               {record.fecha || '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                            <td className="px-4 py-3 text-sm text-neutral-900">
                               {record.oficina || '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                            <td className="px-4 py-3 text-sm text-neutral-900">
                               {record.vendedor || '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                            <td className="px-4 py-3 text-sm text-neutral-900">
                               {record.aseguradora || '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                            <td className="px-4 py-3 text-sm text-neutral-900">
                               {record.ramo || '-'}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                            <td className="px-4 py-3 text-sm text-neutral-900">
                               {record.importe || '-'}
                             </td>
                           </tr>
@@ -302,10 +302,10 @@ export default function SicasVigentesTest() {
                 {/* Mostrar XML crudo del primer registro para análisis */}
                 {result.records[0]?.rawRecord && (
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                    <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-gray-900">
                       Ver XML crudo del primer registro
                     </summary>
-                    <pre className="mt-2 text-xs bg-gray-50 p-3 rounded border border-gray-200 overflow-auto">
+                    <pre className="mt-2 text-xs bg-neutral-50 p-3 rounded border border-neutral-200 overflow-auto">
                       {result.records[0].rawRecord}
                     </pre>
                   </details>
@@ -316,10 +316,10 @@ export default function SicasVigentesTest() {
             {/* Debug info */}
             {result.debug && (
               <details>
-                <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                <summary className="cursor-pointer text-sm font-medium text-neutral-700 hover:text-gray-900">
                   Ver información de debug
                 </summary>
-                <pre className="mt-2 text-xs bg-gray-50 p-3 rounded border border-gray-200 overflow-auto">
+                <pre className="mt-2 text-xs bg-neutral-50 p-3 rounded border border-neutral-200 overflow-auto">
                   {JSON.stringify(result.debug, null, 2)}
                 </pre>
               </details>

@@ -197,7 +197,7 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <p className="text-sm font-semibold text-neutral-900 dark:text-white">Pagos del Premium</p>
-          <p className="text-xs text-neutral-500 dark:text-white/40">
+          <p className="text-xs text-neutral-500 dark:text-white/55">
             {cuenta.estado === 'sin_plan' ? 'Sin plan asignado'
               : cuenta.estado === 'al_corriente' ? `Al corriente · ${pesos(cuenta.pagado)} de ${pesos(cuenta.esperado)}`
               : cuenta.estado === 'debe' ? `Falta ${pesos(cuenta.saldo)} de ${pesos(cuenta.esperado)}`
@@ -234,27 +234,27 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
           <label className="text-xs text-neutral-600 dark:text-white/60">
             Fecha
             <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
-              className="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white" />
+              className="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white" />
           </label>
           <label className="text-xs text-neutral-600 dark:text-white/60">
             Monto
             <input type="number" min="0" step="0.01" value={monto} onChange={e => setMonto(e.target.value)} placeholder="0.00"
-              className="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white" />
+              className="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white" />
           </label>
           <label className="text-xs text-neutral-600 dark:text-white/60">
             Método
             <select value={metodo} onChange={e => setMetodo(e.target.value)}
-              className="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white">
+              className="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white">
               {METODOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </label>
           <label className="text-xs text-neutral-600 dark:text-white/60">
-            Comentario <span className="text-neutral-400">(opcional)</span>
+            Comentario <span className="text-neutral-500">(opcional)</span>
             <input type="text" value={comentario} onChange={e => setComentario(e.target.value)} placeholder="Ej: parcialidad 2 de 3"
-              className="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white" />
+              className="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white" />
           </label>
           <label className="sm:col-span-2 text-xs text-neutral-600 dark:text-white/60">
-            Comprobante <span className="text-neutral-400">(opcional — PDF, JPG o PNG, máx. 10 MB)</span>
+            Comprobante <span className="text-neutral-500">(opcional — PDF, JPG o PNG, máx. 10 MB)</span>
             <div className="mt-0.5 flex items-center gap-2">
               <input
                 type="file"
@@ -264,7 +264,7 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
               />
               {comprobante && (
                 <button type="button" onClick={() => setComprobante(null)} title="Quitar"
-                  className="p-1 rounded hover:bg-white/60 dark:hover:bg-white/10 text-neutral-400 shrink-0">
+                  className="p-1 rounded hover:bg-white/60 dark:hover:bg-white/10 text-neutral-500 shrink-0">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -281,9 +281,9 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
       )}
 
       {loading ? (
-        <p className="text-xs text-neutral-400 py-2">Cargando pagos…</p>
+        <p className="text-xs text-neutral-500 py-2">Cargando pagos…</p>
       ) : pagos.length === 0 ? (
-        <p className="text-xs text-neutral-400 py-2">Todavía no hay pagos registrados.</p>
+        <p className="text-xs text-neutral-500 py-2">Todavía no hay pagos registrados.</p>
       ) : (
         <div className="divide-y divide-neutral-100 dark:divide-white/5">
           {pagos.map(p => (
@@ -291,9 +291,9 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-neutral-900 dark:text-white">
                   {pesos(Number(p.monto))}
-                  <span className="text-neutral-400 font-normal"> · {ETIQUETA_METODO(p.metodo)}</span>
+                  <span className="text-neutral-500 font-normal"> · {ETIQUETA_METODO(p.metodo)}</span>
                 </p>
-                <p className="text-[11px] text-neutral-400">
+                <p className="text-[11px] text-neutral-500">
                   {soloDia(p.fecha)} · {nombreDe(p.registrador)}
                   {p.comentario && ` · ${p.comentario}`}
                 </p>
@@ -328,7 +328,7 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
             Bitácora — no se puede editar ni borrar
           </p>
           {log.length === 0 ? (
-            <p className="text-xs text-neutral-400">Sin movimientos registrados.</p>
+            <p className="text-xs text-neutral-500">Sin movimientos registrados.</p>
           ) : (
             <div className="space-y-1.5 max-h-64 overflow-y-auto">
               {log.map(l => {

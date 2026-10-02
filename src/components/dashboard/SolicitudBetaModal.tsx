@@ -121,8 +121,8 @@ export function SolicitudBetaModal({ usuario, onClose, onSuccess }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm px-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-sm overflow-hidden animate-scale-in">
         {enviado ? (
           <div className="p-6 text-center space-y-3">
             <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
@@ -132,7 +132,7 @@ export function SolicitudBetaModal({ usuario, onClose, onSuccess }: Props) {
             </p>
             <button
               onClick={onSuccess}
-              className="w-full px-4 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors"
+              className="w-full px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors"
             >
               Cerrar
             </button>
@@ -141,7 +141,7 @@ export function SolicitudBetaModal({ usuario, onClose, onSuccess }: Props) {
           <>
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-neutral-100 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <Rocket className="w-5 h-5 text-accent" />
+                <Rocket className="w-5 h-5 text-accent-ink" />
                 <p className="text-base font-semibold text-neutral-900 dark:text-white">Únete a la Beta</p>
               </div>
               <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-500">
@@ -154,7 +154,7 @@ export function SolicitudBetaModal({ usuario, onClose, onSuccess }: Props) {
               </p>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
-                  Comentarios <span className="text-neutral-400 font-normal">(opcional)</span>
+                  Comentarios <span className="text-neutral-500 font-normal">(opcional)</span>
                 </label>
                 <textarea
                   value={comentario}
@@ -162,14 +162,14 @@ export function SolicitudBetaModal({ usuario, onClose, onSuccess }: Props) {
                   rows={3}
                   maxLength={255}
                   placeholder="¿Qué te gustaría probar?"
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none resize-none bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none resize-none bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                 />
               </div>
               {error && <p className="text-xs text-red-600">{error}</p>}
               <button
                 onClick={handleEnviar}
                 disabled={loading}
-                className="w-full px-4 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+                className="w-full px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
                 {loading ? 'Enviando...' : 'Enviar solicitud'}
               </button>

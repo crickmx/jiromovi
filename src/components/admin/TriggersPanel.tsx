@@ -216,7 +216,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
             onClick={() => setSeleccion(prev => puesto ? prev.filter(x => x !== o.value) : [...prev, o.value])}
             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
               puesto
-                ? 'bg-accent text-white border-accent'
+                ? 'bg-accent text-accent-foreground border-accent'
                 : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-300 dark:border-white/10 hover:border-accent'
             }`}
           >
@@ -238,7 +238,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
         </div>
         <button
           onClick={abrirNuevo}
-          className="flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm shadow-sm whitespace-nowrap shrink-0"
+          className="flex items-center gap-2 bg-accent text-accent-foreground px-5 py-2.5 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm shadow-sm whitespace-nowrap shrink-0"
         >
           <Plus className="w-4 h-4" /><span className="ml-1">Nuevo trigger</span>
         </button>
@@ -251,7 +251,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
       )}
 
       {showForm && (
-        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-6">
+        <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6 mb-6">
           <h3 className="font-semibold text-neutral-900 dark:text-white mb-4">
             {editando ? 'Editar trigger' : 'Nuevo trigger'}
           </h3>
@@ -263,7 +263,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
                 value={nombre}
                 onChange={e => setNombre(e.target.value)}
                 placeholder={config.placeholderNombre}
-                className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
               />
             </div>
 
@@ -273,7 +273,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
                 <select
                   value={disparadorId}
                   onChange={e => setDisparadorId(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                  className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
                 >
                   <option value="">{config.placeholderDisparador}</option>
                   {disparadores.map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
@@ -284,7 +284,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
                 <select
                   value={ticketTipoId}
                   onChange={e => setTicketTipoId(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                  className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
                 >
                   <option value="">Selecciona tipo...</option>
                   {tiposList.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
@@ -295,13 +295,13 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
-                  {config.labelMetodo} <span className="text-neutral-400 font-normal">(opcional, elige varios)</span>
+                  {config.labelMetodo} <span className="text-neutral-500 font-normal">(opcional, elige varios)</span>
                 </label>
                 {pills(config.opcionesMetodo, metodoFiltro, setMetodoFiltro)}
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
-                  {config.labelForma} <span className="text-neutral-400 font-normal">(opcional, elige varias)</span>
+                  {config.labelForma} <span className="text-neutral-500 font-normal">(opcional, elige varias)</span>
                 </label>
                 {pills(config.opcionesForma, formaFiltro, setFormaFiltro)}
               </div>
@@ -328,7 +328,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
                             ...prev,
                             [campo.id]: { fuente: e.target.value, valor_template: prev[campo.id]?.valor_template ?? '' },
                           }))}
-                          className="px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white shrink-0"
+                          className="px-2.5 py-1.5 text-xs border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white shrink-0"
                         >
                           <option value="vacio">No autollenar</option>
                           {/* En un campo de adjunto la plantilla de texto no tiene
@@ -345,7 +345,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
                             value={m.valor_template}
                             onChange={e => setMapeoCampos(prev => ({ ...prev, [campo.id]: { fuente: 'template', valor_template: e.target.value } }))}
                             placeholder={config.placeholderPlantilla}
-                            className="w-full px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                            className="w-full px-2.5 py-1.5 text-xs border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                           />
                           <div className="flex flex-wrap gap-1">
                             {config.placeholders.map(p => (
@@ -357,7 +357,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
                                   ...prev,
                                   [campo.id]: { fuente: 'template', valor_template: `${prev[campo.id]?.valor_template ?? ''}${p.key}` },
                                 }))}
-                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/20"
+                                className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/20"
                               >
                                 {p.key}
                               </button>
@@ -377,7 +377,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
                 value={descripcionTemplate}
                 onChange={e => setDescripcionTemplate(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm resize-none"
+                className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm resize-none"
               />
             </div>
 
@@ -387,7 +387,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
                 id="trigger-activo-chk"
                 checked={activoTrigger}
                 onChange={e => setActivoTrigger(e.target.checked)}
-                className="w-4 h-4 text-accent rounded"
+                className="w-4 h-4 text-accent-ink rounded"
               />
               <label htmlFor="trigger-activo-chk" className="text-sm text-neutral-700 dark:text-white/70">Trigger activo</label>
             </div>
@@ -397,7 +397,7 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
             <button
               onClick={guardar}
               disabled={guardando || !nombre.trim() || !disparadorId || !ticketTipoId}
-              className="bg-accent text-white px-5 py-2 rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium disabled:opacity-50"
+              className="bg-accent text-accent-foreground px-5 py-2 rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium disabled:opacity-50"
             >
               {guardando ? 'Guardando...' : editando ? 'Actualizar' : 'Crear'}
             </button>
@@ -412,13 +412,13 @@ export function TriggersPanel({ config }: { config: ConfigTriggers }) {
       )}
 
       {triggers.length === 0 ? (
-        <div className="text-center py-12 text-neutral-400">No hay triggers configurados. Crea uno para empezar.</div>
+        <div className="text-center py-12 text-neutral-500">No hay triggers configurados. Crea uno para empezar.</div>
       ) : (
         <div className="space-y-3">
           {triggers.map(t => (
             <div
               key={t.id}
-              className={`flex items-center justify-between bg-white dark:bg-white/5 rounded-xl border px-5 py-4 ${t.activo ? 'border-neutral-200 dark:border-white/10' : 'border-neutral-100 dark:border-white/5 opacity-60'}`}
+              className={`flex items-center justify-between bg-surface-card dark:bg-white/5 rounded-xl border px-5 py-4 ${t.activo ? 'border-neutral-200 dark:border-white/10' : 'border-neutral-100 dark:border-white/5 opacity-60'}`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">

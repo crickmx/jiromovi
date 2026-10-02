@@ -53,10 +53,10 @@ function AuthenticatedLayout({
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-200 truncate">{chavaUser.nombre_completo}</p>
-                <p className="text-[10px] text-slate-500 truncate">{chavaUser.email}</p>
+                <p className="text-xs font-medium text-neutral-200 truncate">{chavaUser.nombre_completo}</p>
+                <p className="text-[11px] text-neutral-500 truncate">{chavaUser.email}</p>
               </div>
-              <button onClick={logout} title="Cerrar sesión" className="text-slate-500 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-white/5">
+              <button onClick={logout} title="Cerrar sesión" className="text-neutral-500 hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-white/5">
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -80,7 +80,7 @@ function AuthenticatedLayout({
 
       <div className="flex-1 flex flex-col min-w-0">
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)' }}>
-          <button onClick={() => setMobileSidebarOpen(true)} className="text-slate-400 hover:text-white">
+          <button onClick={() => setMobileSidebarOpen(true)} className="text-neutral-500 hover:text-white">
             <Menu className="w-5 h-5" />
           </button>
           <ChavaBrandLogo size="sm" showDomain={false} />
@@ -177,7 +177,7 @@ export default function ChavaAgenteLanding() {
       <div className="h-screen flex items-center justify-center" style={{ background: '#0A183D' }}>
         <div className="flex flex-col items-center gap-3">
           <ChavaAvatar size="lg" animate />
-          <p className="text-sm text-slate-400">Cargando Chava AI...</p>
+          <p className="text-sm text-neutral-500">Cargando Chava AI...</p>
         </div>
       </div>
     );
@@ -250,7 +250,7 @@ export default function ChavaAgenteLanding() {
                     {/* Live badge */}
                     <div className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-                      <span className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                      <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.38)' }}>
                         IA especializada en seguros · En línea
                       </span>
                     </div>
@@ -288,7 +288,7 @@ export default function ChavaAgenteLanding() {
 
               {/* ── BLOQUE 5: Platform access ────────────────────────── */}
               <div className="mb-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.22)' }}>
                   Accede con tu plataforma
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -375,7 +375,7 @@ export default function ChavaAgenteLanding() {
                 className="flex items-center gap-3 py-4 lg:pb-6"
                 style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
               >
-                <span className="text-[9px] uppercase tracking-widest font-semibold flex-shrink-0" style={{ color: 'rgba(255,255,255,0.16)' }}>
+                <span className="text-[10.5px] uppercase tracking-widest font-semibold flex-shrink-0" style={{ color: 'rgba(255,255,255,0.16)' }}>
                   Desarrollado por
                 </span>
                 {/* JIRO logo: has white bg, use screen blend */}
@@ -413,7 +413,7 @@ export default function ChavaAgenteLanding() {
               <span className="text-xs font-medium flex-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 Chava AI · En línea
               </span>
-              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.18)' }}>
+              <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.18)' }}>
                 agentedeseguros.ai
               </span>
             </div>
@@ -434,7 +434,7 @@ export default function ChavaAgenteLanding() {
             >
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-white leading-tight">Guarda tu historial</p>
-                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.28)' }}>Crea una cuenta gratuita o inicia sesión</p>
+                <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.28)' }}>Crea una cuenta gratuita o inicia sesión</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button

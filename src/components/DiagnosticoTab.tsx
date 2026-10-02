@@ -68,7 +68,7 @@ export default function DiagnosticoTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
+      <div className="bg-surface-card rounded-2xl border border-soft p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold text-neutral-900">Diagnostico del PBX</h2>
@@ -79,7 +79,7 @@ export default function DiagnosticoTab() {
           <button
             onClick={runFullDiagnostic}
             disabled={running}
-            className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+            className="px-4 py-2.5 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 flex items-center gap-2 transition-colors"
           >
             {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
             {running ? currentStep : 'Ejecutar Diagnostico Completo'}
@@ -113,7 +113,7 @@ export default function DiagnosticoTab() {
 function ConnectionSection({ data }: { data: DiagnosticConnectionResult }) {
   const conn = data.connection;
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-6">
+    <div className="bg-surface-card rounded-2xl border border-soft p-6">
       <div className="flex items-center gap-2 mb-4">
         {conn.authenticated ? (
           <Wifi className="w-5 h-5 text-emerald-600" />
@@ -151,9 +151,9 @@ function PbxInfoSection({ data }: { data: PbxInfoResult }) {
   const systemStatus = info.system_status as any;
 
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-6">
+    <div className="bg-surface-card rounded-2xl border border-soft p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Server className="w-5 h-5 text-blue-600" />
+        <Server className="w-5 h-5 text-accent-ink" />
         <h3 className="text-base font-semibold text-neutral-900">Informacion del PBX</h3>
       </div>
 
@@ -183,7 +183,7 @@ function PbxInfoSection({ data }: { data: PbxInfoResult }) {
 
 function ApiVersionsSection({ data }: { data: ApiVersionsResult }) {
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-6">
+    <div className="bg-surface-card rounded-2xl border border-soft p-6">
       <div className="flex items-center gap-2 mb-4">
         <Radio className="w-5 h-5 text-teal-600" />
         <h3 className="text-base font-semibold text-neutral-900">Versiones de API Detectadas</h3>
@@ -228,7 +228,7 @@ function ApiVersionsSection({ data }: { data: ApiVersionsResult }) {
                       <XCircle className="w-3.5 h-3.5" /> {v.list_status}
                     </span>
                   ) : (
-                    <span className="text-neutral-400">—</span>
+                    <span className="text-neutral-500">—</span>
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs text-neutral-500">
@@ -246,7 +246,7 @@ function ApiVersionsSection({ data }: { data: ApiVersionsResult }) {
 function EndpointsSection({ data }: { data: EndpointProbeResult }) {
   const { endpoints, summary } = data;
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-6">
+    <div className="bg-surface-card rounded-2xl border border-soft p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-orange-600" />
@@ -306,7 +306,7 @@ function ReportSummary({ report }: { report: DiagnosticReport }) {
       <div className="flex items-center gap-2 mb-4">
         <Clock className="w-5 h-5 text-neutral-300" />
         <h3 className="text-base font-semibold">Reporte de Diagnostico</h3>
-        <span className="ml-auto text-xs text-neutral-400">
+        <span className="ml-auto text-xs text-neutral-500">
           {new Date(report.generatedAt!).toLocaleString('es-MX')}
         </span>
       </div>
@@ -338,25 +338,25 @@ function ReportSummary({ report }: { report: DiagnosticReport }) {
         <div className="mt-4 pt-4 border-t border-neutral-700 grid grid-cols-2 md:grid-cols-4 gap-3">
           {systemData?.firmware && (
             <div>
-              <p className="text-xs text-neutral-400">Firmware</p>
+              <p className="text-xs text-neutral-500">Firmware</p>
               <p className="text-sm font-medium">{systemData.firmware}</p>
             </div>
           )}
           {systemData?.serial && (
             <div>
-              <p className="text-xs text-neutral-400">Serial</p>
+              <p className="text-xs text-neutral-500">Serial</p>
               <p className="text-sm font-medium font-mono">{systemData.serial}</p>
             </div>
           )}
           {deviceData?.max_extensions && (
             <div>
-              <p className="text-xs text-neutral-400">Max Extensiones</p>
+              <p className="text-xs text-neutral-500">Max Extensiones</p>
               <p className="text-sm font-medium">{deviceData.max_extensions}</p>
             </div>
           )}
           {deviceData?.max_concurrent_calls && (
             <div>
-              <p className="text-xs text-neutral-400">Max Llamadas</p>
+              <p className="text-xs text-neutral-500">Max Llamadas</p>
               <p className="text-sm font-medium">{deviceData.max_concurrent_calls}</p>
             </div>
           )}
@@ -408,7 +408,7 @@ function InfoCard({ icon, title, available, items }: {
 function SummaryCard({ title, value, ok }: { title: string; value: string; ok: boolean }) {
   return (
     <div className="bg-neutral-800/50 rounded-lg p-3 border border-neutral-700">
-      <p className="text-xs text-neutral-400 mb-1">{title}</p>
+      <p className="text-xs text-neutral-500 mb-1">{title}</p>
       <div className="flex items-center gap-2">
         <div className={`w-2 h-2 rounded-full ${ok ? 'bg-emerald-400' : 'bg-red-400'}`} />
         <p className="text-sm font-semibold text-neutral-100 truncate">{value}</p>

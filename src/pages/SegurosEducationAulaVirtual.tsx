@@ -324,10 +324,10 @@ export function SegurosEducationAulaVirtual() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 dark:border-white/10">
+        <div className="bg-surface-card rounded-xl shadow-card border border-soft dark:border-white/10">
           <div className="p-4 border-b border-neutral-200 dark:border-white/10">
             <h2 className="text-lg font-bold text-neutral-800 dark:text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-accent" />
+              <Calendar className="w-5 h-5 text-accent-ink" />
               Próximas Sesiones
             </h2>
           </div>
@@ -335,7 +335,7 @@ export function SegurosEducationAulaVirtual() {
             {upcomingSessions.length === 0 ? (
               <div className="text-center py-12">
                 <Calendar className="w-16 h-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
-                <p className="text-neutral-500 dark:text-white/40">No hay sesiones programadas</p>
+                <p className="text-neutral-500 dark:text-white/55">No hay sesiones programadas</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -345,7 +345,7 @@ export function SegurosEducationAulaVirtual() {
                     className="flex items-start gap-4 p-4 bg-neutral-50 dark:bg-white/5 rounded-lg hover:bg-neutral-100 dark:bg-white/8 transition-all"
                   >
                     <div className="w-16 h-16 bg-primary-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-medium text-accent">
+                      <span className="text-xs font-medium text-accent-ink">
                         {format(new Date(session.fecha_inicio), 'MMM', { locale: es }).toUpperCase()}
                       </span>
                       <span className="text-2xl font-bold text-primary-700">
@@ -355,7 +355,7 @@ export function SegurosEducationAulaVirtual() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">{session.titulo}</h3>
                       <p className="text-neutral-600 dark:text-white/50 text-sm mb-2">{session.descripcion}</p>
-                      <div className="flex items-center gap-4 text-sm text-neutral-500 dark:text-white/40">
+                      <div className="flex items-center gap-4 text-sm text-neutral-500 dark:text-white/55">
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
                           {format(new Date(session.fecha_inicio), 'HH:mm', { locale: es })}
@@ -511,7 +511,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
         type="submit"
         form="crear-sesion-form"
         disabled={loading}
-        className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-all disabled:opacity-50"
+        className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover transition-all disabled:opacity-50"
       >
         {loading ? 'Creando...' : 'Crear Sesión'}
       </button>
@@ -533,7 +533,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             value={formData.titulo}
             onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
             required
-            className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             placeholder="Ej: Introducción a Seguros de Vida"
           />
         </div>
@@ -544,7 +544,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             value={formData.descripcion}
             onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
             rows={2}
-            className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
             placeholder="Descripción de la sesión"
           />
         </div>
@@ -557,7 +557,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
               value={formData.fecha_inicio}
               onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })}
               required
-              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>
 
@@ -568,7 +568,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
               value={formData.hora_inicio}
               onChange={(e) => setFormData({ ...formData, hora_inicio: e.target.value })}
               required
-              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>
         </div>
@@ -582,7 +582,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
               onChange={(e) => setFormData({ ...formData, duracion_minutos: parseInt(e.target.value) })}
               min="15"
               max="480"
-              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>
 
@@ -594,7 +594,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
               onChange={(e) => setFormData({ ...formData, max_participantes: parseInt(e.target.value) })}
               min="2"
               max="100"
-              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-white/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>
         </div>
@@ -605,7 +605,7 @@ function CrearSesionModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             id="grabar"
             checked={formData.grabar_sesion}
             onChange={(e) => setFormData({ ...formData, grabar_sesion: e.target.checked })}
-            className="w-4 h-4 text-accent border-neutral-300 dark:border-white/15 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-accent-ink border-neutral-300 dark:border-white/15 rounded focus:ring-accent/40"
           />
           <label htmlFor="grabar" className="text-sm text-neutral-700 dark:text-white/70">
             Grabar sesión automáticamente
@@ -633,17 +633,17 @@ function GrabacionesModal({
         {grabaciones.length === 0 ? (
           <div className="text-center py-12">
             <FileVideo className="w-16 h-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
-            <p className="text-neutral-500 dark:text-white/40">No hay grabaciones disponibles</p>
+            <p className="text-neutral-500 dark:text-white/55">No hay grabaciones disponibles</p>
           </div>
         ) : (
           grabaciones.map((grabacion) => (
-            <div key={grabacion.id} className="p-4 bg-white rounded-lg border border-neutral-200 dark:border-white/10 hover:border-neutral-300 dark:border-white/15 transition-colors">
+            <div key={grabacion.id} className="p-4 bg-surface-card rounded-2xl border border-soft dark:border-white/10 hover:border-neutral-300 dark:border-white/15 transition-colors">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <h3 className="font-semibold text-neutral-900 dark:text-white mb-1">
                     {grabacion.sesion?.titulo || 'Grabación de sesión'}
                   </h3>
-                  <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-white/40 mb-2 flex-wrap">
+                  <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-white/55 mb-2 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {grabacion.duracion_segundos ? `${Math.floor(grabacion.duracion_segundos / 60)} min` : 'N/A'}
@@ -666,7 +666,7 @@ function GrabacionesModal({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-neutral-400 dark:text-white/30">
+                  <div className="text-xs text-neutral-500 dark:text-white/45">
                     ID: {grabacion.id.substring(0, 8)}...
                   </div>
                 </div>
@@ -675,14 +675,14 @@ function GrabacionesModal({
                     <a
                       href={grabacion.archivo_procesado_url}
                       download
-                      className="flex items-center gap-2 px-4 py-2 bg-accent text-white hover:bg-accent-hover rounded-lg text-sm font-medium transition-all"
+                      className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground hover:bg-accent-hover rounded-lg text-sm font-medium transition-all"
                       title="Descargar grabación"
                     >
                       <Download className="w-4 h-4" />
                       Descargar
                     </a>
                   ) : (
-                    <div className="px-4 py-2 bg-neutral-100 dark:bg-white/8 text-neutral-400 dark:text-white/30 rounded-lg text-sm font-medium cursor-not-allowed">
+                    <div className="px-4 py-2 bg-neutral-100 dark:bg-white/8 text-neutral-500 dark:text-white/45 rounded-lg text-sm font-medium cursor-not-allowed">
                       Sin archivo
                     </div>
                   )}
@@ -697,7 +697,7 @@ function GrabacionesModal({
                     </button>
                   )}
                   {!isAdmin && (
-                    <div className="text-xs text-neutral-400 dark:text-white/30 text-center">
+                    <div className="text-xs text-neutral-500 dark:text-white/45 text-center">
                       Requiere permisos de administrador
                     </div>
                   )}

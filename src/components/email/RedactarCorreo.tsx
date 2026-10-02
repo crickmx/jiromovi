@@ -108,7 +108,7 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-strong max-w-4xl w-full sm:mx-4 sm:my-8 flex flex-col max-h-[95dvh] sm:max-h-[85vh]">
-        <div className="bg-white border-b border-neutral-200 px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-3xl z-10 flex-shrink-0">
+        <div className="bg-surface-card border-b border-soft px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-3xl z-10 flex-shrink-0">
           <h2 className="text-2xl font-display font-bold text-neutral-900">
             Redactar correo
           </h2>
@@ -138,13 +138,13 @@ export function RedactarCorreo({ isOpen, onClose, onSuccess, configuracion }: Re
               />
               <button
                 onClick={() => setShowCC(!showCC)}
-                className="text-sm text-accent hover:text-primary-700 px-3 py-1"
+                className="text-sm text-accent-ink hover:text-primary-700 px-3 py-1"
               >
                 CC
               </button>
               <button
                 onClick={() => setShowBCC(!showBCC)}
-                className="text-sm text-accent hover:text-primary-700 px-3 py-1"
+                className="text-sm text-accent-ink hover:text-primary-700 px-3 py-1"
               >
                 CCO
               </button>

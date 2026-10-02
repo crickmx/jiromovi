@@ -144,16 +144,16 @@ export function AgentTramiteTeamsSection({
           {grouped.map((category) => {
             const hasSelection = category.teams.some((team) => selectedIds.includes(team.id));
             return (
-              <div key={category.key} className="rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden bg-white dark:bg-white/5">
+              <div key={category.key} className="rounded-xl border border-soft dark:border-white/10 overflow-hidden bg-surface-card dark:bg-white/5">
                 <div className="flex items-center justify-between gap-3 px-4 py-3 bg-neutral-50 dark:bg-white/5 border-b border-neutral-200 dark:border-white/10">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">{category.label}</h4>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-white/10 text-neutral-600 dark:text-white/50">
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-white/10 text-neutral-600 dark:text-white/50">
                         {category.teams.length} equipo{category.teams.length !== 1 ? 's' : ''}
                       </span>
                     </div>
-                    <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
+                    <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">
                       Selecciona 1 equipo de esta categoría.
                     </p>
                   </div>
@@ -186,7 +186,7 @@ export function AgentTramiteTeamsSection({
                           checked={checked}
                           onChange={() => toggleTeam(team.id)}
                           disabled={disabled}
-                          className="mt-1 h-4 w-4 rounded border-neutral-300 text-accent focus:ring-accent"
+                          className="mt-1 h-4 w-4 rounded border-neutral-300 text-accent-ink focus:ring-accent"
                         />
                         <span
                           className="mt-1 w-2.5 h-2.5 rounded-full flex-none"
@@ -197,7 +197,7 @@ export function AgentTramiteTeamsSection({
                             <span className="text-sm font-medium text-neutral-900 dark:text-white">{teamLabel(team)}</span>
                           </div>
                           {team.area_categoria && (
-                            <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">
+                            <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">
                               {team.area_categoria}
                             </p>
                           )}

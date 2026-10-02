@@ -10,7 +10,7 @@ export function ResponseCrossSell({ opportunities }: ResponseCrossSellProps) {
   return (
     <div className="space-y-2">
       {opportunities.map((opp, index) => (
-        <div key={index} className="p-3 border rounded bg-white">
+        <div key={index} className="p-3 border rounded bg-surface-card">
           <div className="flex items-start gap-2 mb-2">
             <Target className="h-4 w-4 text-green-600 mt-0.5" />
             <div className="flex-1">
@@ -20,16 +20,16 @@ export function ResponseCrossSell({ opportunities }: ResponseCrossSellProps) {
                   Score: {opp.score}
                 </Badge>
               </div>
-              <p className="text-xs text-gray-600 mb-2">{opp.reason}</p>
+              <p className="text-xs text-neutral-600 mb-2">{opp.reason}</p>
               <div className="flex gap-4 text-xs">
                 <div>
-                  <span className="text-gray-500">Actual:</span>
-                  <span className="ml-1 text-gray-900">
+                  <span className="text-neutral-500">Actual:</span>
+                  <span className="ml-1 text-neutral-900">
                     {opp.current_products.join(', ')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Sugerido:</span>
+                  <span className="text-neutral-500">Sugerido:</span>
                   <span className="ml-1 text-green-600 font-medium">
                     {opp.suggested_products.join(', ')}
                   </span>

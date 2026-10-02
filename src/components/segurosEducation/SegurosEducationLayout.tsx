@@ -25,7 +25,7 @@ export function SegurosEducationLayout({ children, sectionTitle, sectionDescript
         <div>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white leading-tight">{sectionTitle}</h1>
           {sectionDescription && (
-            <p className="text-sm text-neutral-500 dark:text-white/40 mt-0.5">{sectionDescription}</p>
+            <p className="text-sm text-neutral-500 dark:text-white/55 mt-0.5">{sectionDescription}</p>
           )}
         </div>
       )}

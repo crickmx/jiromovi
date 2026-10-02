@@ -28,7 +28,7 @@ interface Alta {
 interface Oficina { id: string; nombre: string; }
 
 const ESTADO_META: Record<Estado, { label: string; cls: string }> = {
-  draft: { label: 'Borrador', cls: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
+  draft: { label: 'Borrador', cls: 'bg-neutral-100 text-neutral-600 dark:bg-gray-700 dark:text-gray-300' },
   in_progress: { label: 'En captura', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
   identity_pending: { label: 'Verificando identidad', cls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
   signature_pending: { label: 'Esperando firma', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' },
@@ -37,7 +37,7 @@ const ESTADO_META: Record<Estado, { label: string; cls: string }> = {
   rejected: { label: 'Rechazado', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
   completed: { label: 'Completado', cls: 'bg-emerald-600 text-white' },
   needs_retry: { label: 'Requiere reintento', cls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
-  resume_later: { label: 'Retomar después', cls: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
+  resume_later: { label: 'Retomar después', cls: 'bg-neutral-100 text-neutral-600 dark:bg-gray-700 dark:text-gray-300' },
   human_review: { label: 'Revisión humana', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' },
   incomplete: { label: 'Incompleta / abandono', cls: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' },
 };
@@ -125,10 +125,10 @@ export default function AdminAltas() {
     <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-5">
       <div className="flex items-center gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Altas de agentes</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Onboarding vía <code>/alta</code>. Asigna oficina y da seguimiento.</p>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Altas de agentes</h1>
+          <p className="text-sm text-neutral-500 dark:text-gray-400">Onboarding vía <code>/alta</code>. Asigna oficina y da seguimiento.</p>
         </div>
-        <button onClick={cargar} className="ml-auto flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">
+        <button onClick={cargar} className="ml-auto flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-neutral-300 dark:border-gray-600 text-neutral-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
         </button>
       </div>
@@ -138,7 +138,7 @@ export default function AdminAltas() {
         {FILTROS.map((f) => (
           <button key={f.key} onClick={() => setFiltro(f.key)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              filtro === f.key ? 'bg-[#164281] text-white border-[#164281]' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              filtro === f.key ? 'bg-accent text-accent-foreground border-accent' : 'border-neutral-200 dark:border-gray-700 text-neutral-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}>
             {f.label} <span className="opacity-60">({conteo(f.key)})</span>
           </button>
@@ -146,25 +146,25 @@ export default function AdminAltas() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-[#164281]" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-accent-ink" /></div>
       ) : visibles.length === 0 ? (
-        <div className="text-center py-16 text-sm text-gray-400">No hay altas en este filtro.</div>
+        <div className="text-center py-16 text-sm text-neutral-500">No hay altas en este filtro.</div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/50">
+        <div className="bg-surface-card dark:bg-gray-800 rounded-xl border border-soft dark:border-gray-700 divide-y divide-neutral-100 dark:divide-gray-700/50">
           {visibles.map((a) => (
             <div key={a.id}>
               <button onClick={() => setExpandida(expandida === a.id ? null : a.id)}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/40">
-                {expandida === a.id ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
+                {expandida === a.id ? <ChevronDown className="w-4 h-4 text-neutral-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-neutral-500 shrink-0" />}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900 dark:text-white truncate">{a.nombre || '—'} {a.apellidos || ''}</span>
-                    <span className="text-[11px] text-gray-400">{a.tipo_agente === 'con_cedula' ? 'Con cédula' : a.tipo_agente === 'en_desarrollo' ? 'En desarrollo' : ''}</span>
+                    <span className="font-medium text-neutral-900 dark:text-white truncate">{a.nombre || '—'} {a.apellidos || ''}</span>
+                    <span className="text-[11px] text-neutral-500">{a.tipo_agente === 'con_cedula' ? 'Con cédula' : a.tipo_agente === 'en_desarrollo' ? 'En desarrollo' : ''}</span>
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{a.email || ''} {a.whatsapp ? `· ${a.whatsapp}` : ''} · <span className="font-mono">{a.folio}</span></div>
+                  <div className="text-xs text-neutral-500 dark:text-gray-400 truncate">{a.email || ''} {a.whatsapp ? `· ${a.whatsapp}` : ''} · <span className="font-mono">{a.folio}</span></div>
                 </div>
                 {!a.oficina_id && (a.estado === 'completed' || a.estado === 'approved') && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 shrink-0">Falta oficina</span>
+                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 shrink-0">Falta oficina</span>
                 )}
                 <Badge estado={a.estado} />
               </button>
@@ -223,15 +223,15 @@ function Detalle({ alta, oficinas, onAsignar }: { alta: Alta; oficinas: Oficina[
         </div>
 
         <div className="flex items-center gap-4 text-xs">
-          <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300"><ShieldCheck className="w-3.5 h-3.5" /> Identidad: <strong>{verif}</strong></span>
-          <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300"><PenLine className="w-3.5 h-3.5" /> Firma: <strong>{firma}</strong></span>
+          <span className="flex items-center gap-1 text-neutral-600 dark:text-gray-300"><ShieldCheck className="w-3.5 h-3.5" /> Identidad: <strong>{verif}</strong></span>
+          <span className="flex items-center gap-1 text-neutral-600 dark:text-gray-300"><PenLine className="w-3.5 h-3.5" /> Firma: <strong>{firma}</strong></span>
         </div>
 
         {/* Asignar oficina */}
         <div className="flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-gray-400" />
+          <Building2 className="w-4 h-4 text-neutral-500" />
           <select value={oficinaSel} onChange={(e) => setOficinaSel(e.target.value)}
-            className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100">
+            className="flex-1 px-3 py-2 text-sm rounded-lg border border-soft dark:border-gray-700 bg-surface-card dark:bg-gray-800 dark:text-gray-100">
             <option value="">— Sin asignar —</option>
             {oficinas.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
           </select>
@@ -245,22 +245,22 @@ function Detalle({ alta, oficinas, onAsignar }: { alta: Alta; oficinas: Oficina[
       {/* Documentos + bitácora */}
       <div className="space-y-4">
         <div>
-          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Documentos ({docs.length})</h4>
-          {cargando ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : (
+          <h4 className="text-xs font-semibold text-neutral-500 dark:text-gray-400 mb-1.5 flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Documentos ({docs.length})</h4>
+          {cargando ? <Loader2 className="w-4 h-4 animate-spin text-neutral-500" /> : (
             <div className="flex flex-wrap gap-1.5">
               {docs.length ? docs.map((d, i) => (
-                <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{d.tipo_documento}</span>
-              )) : <span className="text-xs text-gray-400">Sin documentos</span>}
+                <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-surface-card dark:bg-gray-800 border border-soft dark:border-gray-700 text-neutral-600 dark:text-gray-300">{d.tipo_documento}</span>
+              )) : <span className="text-xs text-neutral-500">Sin documentos</span>}
             </div>
           )}
         </div>
         <div>
-          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Bitácora</h4>
+          <h4 className="text-xs font-semibold text-neutral-500 dark:text-gray-400 mb-1.5 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Bitácora</h4>
           <ul className="space-y-1 max-h-40 overflow-y-auto">
             {bitacora.map((b, i) => (
-              <li key={i} className="text-[11px] text-gray-500 dark:text-gray-400 flex justify-between gap-2">
+              <li key={i} className="text-[11px] text-neutral-500 dark:text-gray-400 flex justify-between gap-2">
                 <span>{b.evento}</span>
-                <span className="text-gray-300 dark:text-gray-600 shrink-0">{new Date(b.created_at).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="text-neutral-300 dark:text-gray-600 shrink-0">{new Date(b.created_at).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
               </li>
             ))}
           </ul>
@@ -273,8 +273,8 @@ function Detalle({ alta, oficinas, onAsignar }: { alta: Alta; oficinas: Oficina[
 function Dato({ k, v }: { k: string; v: string | null | undefined }) {
   return (
     <div className="flex justify-between gap-2">
-      <span className="text-gray-400">{k}</span>
-      <span className="text-gray-700 dark:text-gray-200 text-right truncate">{v || '—'}</span>
+      <span className="text-neutral-500">{k}</span>
+      <span className="text-neutral-700 dark:text-gray-200 text-right truncate">{v || '—'}</span>
     </div>
   );
 }

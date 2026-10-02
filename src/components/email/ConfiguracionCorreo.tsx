@@ -164,7 +164,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-strong max-w-2xl w-full mx-4 my-8">
-        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
+        <div className="sticky top-0 bg-surface-card border-b border-soft px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
           <div>
             <h2 className="text-2xl font-display font-bold text-neutral-900">
               Configuración de correo (IONOS)
@@ -198,7 +198,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
 
           <div className="space-y-4">
             <h3 className="font-semibold text-neutral-900 flex items-center space-x-2">
-              <Mail className="w-5 h-5 text-accent" />
+              <Mail className="w-5 h-5 text-accent-ink" />
               <span>Tus credenciales de correo</span>
             </h3>
 
@@ -260,7 +260,7 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
 
           <div className="space-y-4 bg-neutral-50 rounded-xl p-4 border border-neutral-200">
             <h3 className="font-semibold text-neutral-900 flex items-center space-x-2">
-              <Server className="w-5 h-5 text-accent" />
+              <Server className="w-5 h-5 text-accent-ink" />
               <span>Servidores (preconfigurados)</span>
             </h3>
 

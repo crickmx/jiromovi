@@ -99,7 +99,7 @@ function TriToggle({
       title={value === null ? 'Hereda del rol' : value ? 'Permitido (override)' : 'Denegado (override)'}
       className={[
         'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors',
-        value === null  ? 'bg-neutral-50 border-neutral-200 text-neutral-400 hover:bg-neutral-100' : '',
+        value === null  ? 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100' : '',
         value === true  ? 'bg-green-50 border-green-200 text-green-600 hover:bg-green-100' : '',
         value === false ? 'bg-red-50 border-red-200 text-red-500 hover:bg-red-100' : '',
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
@@ -265,22 +265,22 @@ function AreasTab() {
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-xs text-neutral-400 font-mono">{a.slug}</span>
-                    <span className="text-xs text-neutral-400">{a.equipo_count} equipo{a.equipo_count !== 1 ? 's' : ''}</span>
-                    <span className="text-xs text-neutral-400">{a.tipo_count} tipo{a.tipo_count !== 1 ? 's' : ''}</span>
+                    <span className="text-xs text-neutral-500 font-mono">{a.slug}</span>
+                    <span className="text-xs text-neutral-500">{a.equipo_count} equipo{a.equipo_count !== 1 ? 's' : ''}</span>
+                    <span className="text-xs text-neutral-500">{a.tipo_count} tipo{a.tipo_count !== 1 ? 's' : ''}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={() => handleToggleActiva(a)}
-                    className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors"
+                    className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
                     title={a.activa ? 'Desactivar' : 'Activar'}
                   >
                     {a.activa ? <ToggleRight className="w-4 h-4 text-green-600" /> : <ToggleLeft className="w-4 h-4" />}
                   </button>
                   <button
                     onClick={() => openEdit(a)}
-                    className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors"
+                    className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
                     title="Editar"
                   >
                     <Pencil className="w-4 h-4" />
@@ -288,7 +288,7 @@ function AreasTab() {
                   <button
                     onClick={() => setConfirmDel(a)}
                     disabled={a.equipo_count > 0 || a.tipo_count > 0}
-                    className="p-2 rounded-lg hover:bg-red-50 text-neutral-400 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="p-2 rounded-lg hover:bg-red-50 text-neutral-500 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     title={a.equipo_count > 0 || a.tipo_count > 0 ? 'No se puede eliminar: tiene equipos o tipos asignados' : 'Eliminar'}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -302,8 +302,8 @@ function AreasTab() {
 
       {/* Form modal */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
+          <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-md p-6 space-y-5 animate-scale-in">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-neutral-900">{modal === 'edit' ? 'Editar área' : 'Nueva área'}</h3>
               <button onClick={() => setModal(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500"><X className="w-4 h-4" /></button>
@@ -321,8 +321,8 @@ function AreasTab() {
                     style={{ backgroundColor: fColor }}
                   />
                   {colorOpen && (
-                    <div className="absolute top-full left-0 mt-2 z-30 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 w-48">
-                      <p className="text-[10px] text-neutral-400 uppercase tracking-wider mb-2">Color</p>
+                    <div className="absolute top-full left-0 mt-2 z-30 bg-surface-card border border-soft rounded-2xl shadow-xl p-3 w-48">
+                      <p className="text-[11px] text-neutral-500 uppercase tracking-wider mb-2">Color</p>
                       <div className="grid grid-cols-6 gap-1.5 mb-3">
                         {COLOR_PALETTE.map(c => (
                           <button
@@ -350,7 +350,7 @@ function AreasTab() {
                 />
               </div>
               {fNombre && (
-                <p className="text-xs text-neutral-400 mt-1 font-mono">slug: {toSlug(fNombre)}</p>
+                <p className="text-xs text-neutral-500 mt-1 font-mono">slug: {toSlug(fNombre)}</p>
               )}
             </div>
 
@@ -385,8 +385,8 @@ function AreasTab() {
 
       {/* Delete confirm */}
       {confirmDel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
+          <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-sm p-6 animate-scale-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-red-50 rounded-xl"><Trash2 className="w-5 h-5 text-red-600" /></div>
               <div>
@@ -491,7 +491,7 @@ function VisibilidadTab() {
   const selectedEquipo = equipos.find(e => e.id === selectedEquipoId);
 
   if (loading) {
-    return <div className="h-40 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-neutral-400" /></div>;
+    return <div className="h-40 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-neutral-500" /></div>;
   }
 
   return (
@@ -505,7 +505,7 @@ function VisibilidadTab() {
         <div className="relative flex-shrink-0" ref={dropRef}>
           <button
             onClick={() => setEquipoDropOpen(v => !v)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-neutral-200 rounded-xl text-sm hover:border-neutral-400 transition-colors bg-white min-w-[200px] justify-between"
+            className="flex items-center gap-2 px-4 py-2.5 border border-soft rounded-xl text-sm hover:border-neutral-400 transition-colors bg-surface-card min-w-[200px] justify-between"
           >
             {selectedEquipo ? (
               <span className="flex items-center gap-2">
@@ -513,12 +513,12 @@ function VisibilidadTab() {
                 <span className="font-medium text-neutral-900 truncate max-w-[150px]">{selectedEquipo.nombre}</span>
               </span>
             ) : (
-              <span className="text-neutral-400">Selecciona un equipo…</span>
+              <span className="text-neutral-500">Selecciona un equipo…</span>
             )}
-            <ChevronDown className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-neutral-500 flex-shrink-0" />
           </button>
           {equipoDropOpen && (
-            <div className="absolute top-full right-0 mt-1.5 z-30 bg-white border border-neutral-200 rounded-xl shadow-xl w-64 py-1 max-h-64 overflow-y-auto">
+            <div className="absolute top-full right-0 mt-1.5 z-30 bg-surface-card border border-soft rounded-xl shadow-xl w-64 py-1 max-h-64 overflow-y-auto">
               {equipos.map(e => (
                 <button
                   key={e.id}
@@ -527,7 +527,7 @@ function VisibilidadTab() {
                 >
                   <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: e.color }} />
                   <span className="flex-1 truncate font-medium text-neutral-800">{e.nombre}</span>
-                  {e.area_categoria && <span className="text-[11px] text-neutral-400 flex-shrink-0">{e.area_categoria}</span>}
+                  {e.area_categoria && <span className="text-[11px] text-neutral-500 flex-shrink-0">{e.area_categoria}</span>}
                   {selectedEquipoId === e.id && <Check className="w-3.5 h-3.5 text-neutral-600 flex-shrink-0" />}
                 </button>
               ))}
@@ -553,7 +553,7 @@ function VisibilidadTab() {
           </div>
 
           {tipos.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-neutral-400">No hay tipos de trámite activos.</div>
+            <div className="px-5 py-8 text-center text-sm text-neutral-500">No hay tipos de trámite activos.</div>
           ) : (
             <div className="divide-y divide-neutral-100">
               {tipos.map(t => {
@@ -576,10 +576,10 @@ function VisibilidadTab() {
                         title={habilitado ? 'Deshabilitar para este equipo' : 'Habilitar para este equipo'}
                       >
                         {saving === `cfg_${t.id}`
-                          ? <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
+                          ? <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />
                           : habilitado
                             ? <ToggleRight className="w-5 h-5 text-green-500" />
-                            : <ToggleLeft className="w-5 h-5 text-neutral-400" />
+                            : <ToggleLeft className="w-5 h-5 text-neutral-500" />
                         }
                       </button>
                     </div>
@@ -587,7 +587,7 @@ function VisibilidadTab() {
                     {(['puede_ver', 'puede_crear', 'puede_editar'] as const).map(campo => (
                       <div key={campo} className="flex justify-center">
                         {savingKey(campo)
-                          ? <div className="w-8 h-8 flex items-center justify-center"><Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-400" /></div>
+                          ? <div className="w-8 h-8 flex items-center justify-center"><Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-500" /></div>
                           : <TriToggle
                               value={perm?.[campo] ?? null}
                               onChange={v => handlePermiso(t.id, campo, v)}
@@ -602,7 +602,7 @@ function VisibilidadTab() {
             </div>
           )}
 
-          <div className="px-5 py-3 bg-neutral-50 border-t border-neutral-100 flex items-center gap-4 text-xs text-neutral-400">
+          <div className="px-5 py-3 bg-neutral-50 border-t border-neutral-100 flex items-center gap-4 text-xs text-neutral-500">
             <span><strong className="text-neutral-600">Habilitado</strong>: el equipo puede acceder a este tipo</span>
             <span><span className="font-mono bg-neutral-200 px-1 rounded text-neutral-500">—</span> Hereda del rol</span>
             <span><span className="font-mono bg-green-50 text-green-600 px-1 rounded border border-green-200">✓</span> Override: permitido</span>
@@ -657,7 +657,7 @@ function ReglasTab({ onGoToEquipos }: { onGoToEquipos: () => void }) {
   }, []);
 
   if (loading) {
-    return <div className="h-40 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-neutral-400" /></div>;
+    return <div className="h-40 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-neutral-500" /></div>;
   }
 
   // Group by equipo
@@ -703,7 +703,7 @@ function ReglasTab({ onGoToEquipos }: { onGoToEquipos: () => void }) {
               <div className="flex items-center gap-3 px-5 py-3 bg-neutral-50 border-b border-neutral-100">
                 <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: first.grupo_color }} />
                 <span className="text-sm font-bold text-neutral-800">{first.grupo_nombre}</span>
-                <span className="ml-auto text-xs text-neutral-400">{reglasGrupo.length} regla{reglasGrupo.length !== 1 ? 's' : ''}</span>
+                <span className="ml-auto text-xs text-neutral-500">{reglasGrupo.length} regla{reglasGrupo.length !== 1 ? 's' : ''}</span>
               </div>
               <div className="divide-y divide-neutral-100">
                 {reglasGrupo.map(r => (
@@ -711,7 +711,7 @@ function ReglasTab({ onGoToEquipos }: { onGoToEquipos: () => void }) {
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-neutral-800">{r.usuario_nombre}</span>
                       {r.area && (
-                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{r.area}</span>
+                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-accent-ink font-medium">{r.area}</span>
                       )}
                     </div>
                     {r.ejecutivo_nombre ? (
@@ -720,7 +720,7 @@ function ReglasTab({ onGoToEquipos }: { onGoToEquipos: () => void }) {
                         <span className="font-medium text-neutral-700">{r.ejecutivo_nombre}</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-neutral-400 italic flex-shrink-0">Pool del equipo</span>
+                      <span className="text-xs text-neutral-500 italic flex-shrink-0">Pool del equipo</span>
                     )}
                   </div>
                 ))}
@@ -775,7 +775,7 @@ export default function AdminTramites() {
           >
             <Icon className="w-4 h-4" />
             {label}
-            <span className="hidden sm:inline text-xs text-neutral-400 font-normal">— {desc}</span>
+            <span className="hidden sm:inline text-xs text-neutral-500 font-normal">— {desc}</span>
           </button>
         ))}
       </div>

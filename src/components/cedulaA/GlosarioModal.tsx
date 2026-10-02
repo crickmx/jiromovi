@@ -45,12 +45,12 @@ export default function GlosarioModal({ moduloId, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 animate-fade-in">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 animate-fade-in">
       <div className="bg-white rounded-ios-xl w-full max-w-4xl max-h-[90vh] sm:max-h-[80vh] flex flex-col shadow-ios-xl animate-scale-in">
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-neutral-200">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-100 rounded-ios flex items-center justify-center flex-shrink-0">
-              <BookMarked className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+              <BookMarked className="w-4 h-4 sm:w-5 sm:h-5 text-accent-ink" />
             </div>
             <div className="min-w-0">
               <h2 className="text-lg sm:text-xl font-bold text-neutral-900 truncate">Glosario de Términos</h2>
@@ -67,7 +67,7 @@ export default function GlosarioModal({ moduloId, onClose }: Props) {
 
         <div className="p-4 sm:p-6 border-b border-neutral-200">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-neutral-500" />
             <input
               type="text"
               value={busqueda}

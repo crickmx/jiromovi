@@ -38,10 +38,10 @@ export function BetaBanner() {
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="hidden sm:inline rounded bg-black/20 text-white px-2 py-0.5 font-mono text-[10px]" title={`Build: ${buildTime}`}>
+          <span className="hidden sm:inline rounded bg-black/20 text-white px-2 py-0.5 font-mono text-[11px]" title={`Build: ${buildTime}`}>
             Commit: <strong>{__COMMIT_HASH__}</strong>
           </span>
-          <span className="hidden xl:inline rounded bg-black/20 text-white px-2 py-0.5 font-mono text-[10px]">
+          <span className="hidden xl:inline rounded bg-black/20 text-white px-2 py-0.5 font-mono text-[11px]">
             Build: {buildTime}
           </span>
           <button

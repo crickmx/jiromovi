@@ -115,9 +115,9 @@ export default function TablerosSeccion() {
       case 'admin':
         return <Shield className="h-4 w-4 text-purple-600" />;
       case 'editor':
-        return <Edit className="h-4 w-4 text-blue-600" />;
+        return <Edit className="h-4 w-4 text-accent-ink" />;
       case 'viewer':
-        return <Eye className="h-4 w-4 text-gray-600" />;
+        return <Eye className="h-4 w-4 text-neutral-600" />;
       default:
         return null;
     }
@@ -156,10 +156,10 @@ export default function TablerosSeccion() {
   if (!rolPermitido) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-sm text-gray-600 text-center mb-2">
+        <p className="text-sm text-neutral-600 text-center mb-2">
           Los tableros compartidos están disponibles solo para Empleados, Gerentes y Administradores.
         </p>
-        <p className="text-xs text-gray-500 text-center">
+        <p className="text-xs text-neutral-500 text-center">
           Tu rol actual: {usuario?.rol || 'No definido'}
         </p>
       </div>
@@ -173,13 +173,13 @@ export default function TablerosSeccion() {
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-            <LayoutGrid className="h-5 w-5 mr-2 text-accent" />
+          <h2 className="text-lg font-semibold text-neutral-900 flex items-center">
+            <LayoutGrid className="h-5 w-5 mr-2 text-accent-ink" />
             Mis Tableros
           </h2>
           <button
             onClick={() => setCreandoTablero(true)}
-            className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition flex items-center text-sm"
+            className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition flex items-center text-sm"
           >
             <Plus className="h-4 w-4 mr-1" />
             Nuevo Tablero
@@ -193,8 +193,8 @@ export default function TablerosSeccion() {
         )}
 
         {creandoTablero && (
-          <form onSubmit={handleCrearTablero} className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <form onSubmit={handleCrearTablero} className="mb-4 p-4 bg-neutral-50 rounded-lg">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Nombre del tablero
             </label>
             <div className="flex space-x-2">
@@ -203,13 +203,13 @@ export default function TablerosSeccion() {
                 value={nombreNuevoTablero}
                 onChange={(e) => setNombreNuevoTablero(e.target.value)}
                 placeholder="Ej: Clientes Corporativos 2024"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
+                className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
                 autoFocus
               />
               <button
                 type="submit"
                 disabled={!nombreNuevoTablero.trim()}
-                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Crear
               </button>
@@ -219,7 +219,7 @@ export default function TablerosSeccion() {
                   setCreandoTablero(false);
                   setNombreNuevoTablero('');
                 }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-gray-300 transition"
               >
                 Cancelar
               </button>
@@ -233,16 +233,16 @@ export default function TablerosSeccion() {
           </div>
         ) : misTableros.length === 0 ? (
           <div className="text-center py-8">
-            <LayoutGrid className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-600">No tienes tableros todavía</p>
-            <p className="text-xs text-gray-500 mt-1">Crea tu primer tablero para comenzar</p>
+            <LayoutGrid className="h-12 w-12 text-neutral-500 mx-auto mb-3" />
+            <p className="text-sm text-neutral-600">No tienes tableros todavía</p>
+            <p className="text-xs text-neutral-500 mt-1">Crea tu primer tablero para comenzar</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {misTableros.map((tablero) => (
               <div
                 key={tablero.board_id}
-                className="p-4 border border-gray-200 rounded-lg hover:border-accent transition bg-gradient-to-br from-white to-gray-50"
+                className="p-4 border border-neutral-200 rounded-lg hover:border-accent transition bg-gradient-to-br from-white to-neutral-50"
               >
                 <div className="flex items-start justify-between mb-3">
                   {editando === tablero.board_id ? (
@@ -262,7 +262,7 @@ export default function TablerosSeccion() {
                       autoFocus
                     />
                   ) : (
-                    <h3 className="font-semibold text-gray-900">{tablero.board_name}</h3>
+                    <h3 className="font-semibold text-neutral-900">{tablero.board_name}</h3>
                   )}
                   <div className="relative">
                     <button
@@ -271,10 +271,10 @@ export default function TablerosSeccion() {
                       }
                       className="p-1 hover:bg-gray-200 rounded transition"
                     >
-                      <MoreVertical className="h-4 w-4 text-gray-600" />
+                      <MoreVertical className="h-4 w-4 text-neutral-600" />
                     </button>
                     {menuAbierto === tablero.board_id && (
-                      <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                      <div className="absolute right-0 mt-1 w-48 bg-surface-card border border-soft rounded-lg shadow-lg z-10">
                         <button
                           onClick={() => {
                             setEditando(tablero.board_id);
@@ -312,7 +312,7 @@ export default function TablerosSeccion() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-gray-600">
+                <div className="flex items-center justify-between text-xs text-neutral-600">
                   <div className="flex items-center space-x-1">
                     {getRoleIcon(tablero.my_role)}
                     <span>{getRoleLabel(tablero.my_role)}</span>
@@ -323,13 +323,13 @@ export default function TablerosSeccion() {
                   </div>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
-                  <p className="text-xs text-gray-500">
+                <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between">
+                  <p className="text-xs text-neutral-500">
                     Actualizado {new Date(tablero.updated_at).toLocaleDateString('es-MX')}
                   </p>
                   <button
                     onClick={() => handleAbrirTablero(tablero.board_id)}
-                    className="px-3 py-1.5 bg-accent text-white rounded hover:bg-accent/90 transition flex items-center text-xs"
+                    className="px-3 py-1.5 bg-accent text-accent-foreground rounded hover:bg-accent/90 transition flex items-center text-xs"
                   >
                     Abrir
                     <ArrowRight className="h-3 w-3 ml-1" />
@@ -343,8 +343,8 @@ export default function TablerosSeccion() {
 
       {tablerosCompartidos.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Share2 className="h-5 w-5 mr-2 text-accent" />
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center">
+            <Share2 className="h-5 w-5 mr-2 text-accent-ink" />
             Tableros Compartidos Conmigo
           </h2>
 
@@ -352,19 +352,19 @@ export default function TablerosSeccion() {
             {tablerosCompartidos.map((tablero) => (
               <div
                 key={tablero.board_id}
-                className="p-4 border border-gray-200 rounded-lg hover:border-accent transition bg-gradient-to-br from-blue-50 to-white"
+                className="p-4 border border-neutral-200 rounded-lg hover:border-accent transition bg-gradient-to-br from-blue-50 to-white"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-semibold text-gray-900">{tablero.board_name}</h3>
+                  <h3 className="font-semibold text-neutral-900">{tablero.board_name}</h3>
                   <button
                     onClick={() => handleVerMiembros(tablero)}
                     className="p-1 hover:bg-white rounded transition"
                   >
-                    <Users className="h-4 w-4 text-gray-600" />
+                    <Users className="h-4 w-4 text-neutral-600" />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
+                <div className="flex items-center justify-between text-xs text-neutral-600 mb-2">
                   <div className="flex items-center space-x-1">
                     {getRoleIcon(tablero.my_role)}
                     <span>{getRoleLabel(tablero.my_role)}</span>
@@ -375,17 +375,17 @@ export default function TablerosSeccion() {
                   </div>
                 </div>
 
-                <div className="mt-2 pt-2 border-t border-gray-200">
-                  <p className="text-xs text-gray-600 mb-2">
+                <div className="mt-2 pt-2 border-t border-neutral-200">
+                  <p className="text-xs text-neutral-600 mb-2">
                     Propietario: {tablero.owner_name}
                   </p>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-neutral-500">
                       {tablero.owner_office}
                     </p>
                     <button
                       onClick={() => handleAbrirTablero(tablero.board_id)}
-                      className="px-3 py-1.5 bg-accent text-white rounded hover:bg-accent/90 transition flex items-center text-xs"
+                      className="px-3 py-1.5 bg-accent text-accent-foreground rounded hover:bg-accent/90 transition flex items-center text-xs"
                     >
                       Abrir
                       <ArrowRight className="h-3 w-3 ml-1" />
@@ -412,19 +412,19 @@ export default function TablerosSeccion() {
           />
 
           {miembrosModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] overflow-hidden">
+            <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+              <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 w-full max-w-3xl max-h-[80vh] overflow-hidden animate-scale-in">
                 <div className="flex items-center justify-between p-6 border-b">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Miembros del Tablero</h3>
-                    <p className="text-sm text-gray-600 mt-1">{tableroSeleccionado.board_name}</p>
+                    <h3 className="text-lg font-semibold text-neutral-900">Miembros del Tablero</h3>
+                    <p className="text-sm text-neutral-600 mt-1">{tableroSeleccionado.board_name}</p>
                   </div>
                   <button
                     onClick={() => {
                       setMiembrosModalOpen(false);
                       setTableroSeleccionado(null);
                     }}
-                    className="text-gray-400 hover:text-gray-600 transition"
+                    className="text-neutral-500 hover:text-gray-600 transition"
                   >
                     <Edit3 className="h-5 w-5" />
                   </button>

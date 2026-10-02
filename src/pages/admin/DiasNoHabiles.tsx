@@ -191,7 +191,7 @@ export default function DiasNoHabiles() {
           </div>
 
           {/* Panel: Agregar día individual */}
-          <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-3">
+          <div className="bg-surface-card rounded-2xl border border-soft p-5 space-y-3">
             <h3 className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
               <Plus className="w-4 h-4 text-blue-500" /> Agregar día no hábil
             </h3>
@@ -200,7 +200,7 @@ export default function DiasNoHabiles() {
                 type="date"
                 value={nuevaFecha}
                 onChange={e => setNuevaFecha(e.target.value)}
-                className="px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                className="px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-accent/40 focus:outline-none"
               />
               <input
                 type="text"
@@ -208,7 +208,7 @@ export default function DiasNoHabiles() {
                 value={nuevaDesc}
                 onChange={e => setNuevaDesc(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && agregar()}
-                className="flex-1 min-w-48 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                className="flex-1 min-w-48 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-accent/40 focus:outline-none"
               />
               <label className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-neutral-600 whitespace-nowrap">
                 <input
@@ -222,7 +222,7 @@ export default function DiasNoHabiles() {
               <button
                 onClick={agregar}
                 disabled={agregando}
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                className="px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:bg-accent-hover disabled:opacity-60 transition-colors"
               >
                 {agregando ? 'Agregando…' : 'Agregar'}
               </button>
@@ -230,7 +230,7 @@ export default function DiasNoHabiles() {
           </div>
 
           {/* Panel: Agregar rango de fechas */}
-          <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-3">
+          <div className="bg-surface-card rounded-2xl border border-soft p-5 space-y-3">
             <h3 className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
               <CalendarRange className="w-4 h-4 text-emerald-500" /> Agregar rango de fechas
             </h3>
@@ -242,7 +242,7 @@ export default function DiasNoHabiles() {
                   onChange={e => setRangoInicio(e.target.value)}
                   className="px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                 />
-                <span className="text-neutral-400 text-sm">—</span>
+                <span className="text-neutral-500 text-sm">—</span>
                 <input
                   type="date"
                   value={rangoFin}
@@ -291,7 +291,7 @@ export default function DiasNoHabiles() {
           ) : (
             <div className="space-y-4">
               {Object.entries(grupos).map(([mIdx, dias]) => (
-                <div key={mIdx} className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <div key={mIdx} className="bg-surface-card rounded-2xl border border-soft overflow-hidden">
                   <div className="px-4 py-2.5 bg-neutral-50 border-b border-neutral-200">
                     <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
                       {meses[Number(mIdx)]}
@@ -308,7 +308,7 @@ export default function DiasNoHabiles() {
                               <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium shrink-0">½ jornada</span>
                             )}
                           </div>
-                          <p className="text-xs text-neutral-400">
+                          <p className="text-xs text-neutral-500">
                             {new Date(f.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
                             {' · '}
                             <span className={f.tipo === 'automatico' ? 'text-blue-500' : 'text-amber-600'}>
@@ -345,7 +345,7 @@ export default function DiasNoHabiles() {
                 </div>
               ))}
               {Object.keys(grupos).length === 0 && (
-                <div className="text-center py-12 text-neutral-400">
+                <div className="text-center py-12 text-neutral-500">
                   <Calendar className="w-10 h-10 mx-auto mb-2 text-neutral-200" />
                   <p className="text-sm">Sin días registrados para {year}</p>
                 </div>

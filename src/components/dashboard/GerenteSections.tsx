@@ -63,7 +63,7 @@ function nivelChip(nivel: string) {
     return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-white/60">🥈 {nivel}</span>;
   if (n.includes('BRONCE'))
     return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">⭐ {nivel}</span>;
-  return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-400 dark:bg-white/8 dark:text-white/35">En camino</span>;
+  return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500 dark:bg-white/8 dark:text-white/50">En camino</span>;
 }
 
 function estatusChip(label?: string | null) {
@@ -149,7 +149,7 @@ function EjecutivosPanel({ usuario }: { usuario: Usuario }) {
       {loading ? (
         <><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /></>
       ) : ejecutivos.length === 0 ? (
-        <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-6">Sin ejecutivos en esta oficina</p>
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin ejecutivos en esta oficina</p>
       ) : (
         <>
           <div className="flex flex-col">
@@ -165,7 +165,7 @@ function EjecutivosPanel({ usuario }: { usuario: Usuario }) {
                   <p className="text-[13px] font-bold text-neutral-900 dark:text-white truncate">
                     {e.nombre} {e.apellidos}
                   </p>
-                  <p className="text-[11px] text-neutral-500 dark:text-white/40 mt-0.5">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">
                     {e.total} trámite{e.total !== 1 ? 's' : ''} activo{e.total !== 1 ? 's' : ''}
                   </p>
                 </div>
@@ -195,25 +195,25 @@ function EjecutivosPanel({ usuario }: { usuario: Usuario }) {
 
           {/* Summary */}
           <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3 mt-1">
-            <p className="text-[10.5px] font-bold uppercase tracking-wide text-neutral-400 dark:text-white/35 mb-2">Oficina · resumen</p>
+            <p className="text-[10.5px] font-bold uppercase tracking-wide text-neutral-500 dark:text-white/50 mb-2">Oficina · resumen</p>
             <div className="flex justify-between">
               <div className="text-center">
                 <p className="text-base font-extrabold text-neutral-900 dark:text-white font-variant-numeric tabular-nums">
                   {ejecutivos.reduce((s, e) => s + e.total, 0)}
                 </p>
-                <p className="text-[10.5px] text-neutral-400 dark:text-white/35 mt-0.5">Trámites totales</p>
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Trámites totales</p>
               </div>
               <div className="text-center">
                 <p className={cn('text-base font-extrabold font-variant-numeric tabular-nums', ejecutivos.some(e => e.urgentes > 0) ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400')}>
                   {ejecutivos.reduce((s, e) => s + e.urgentes, 0)}
                 </p>
-                <p className="text-[10.5px] text-neutral-400 dark:text-white/35 mt-0.5">Urgentes</p>
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Urgentes</p>
               </div>
               <div className="text-center">
                 <p className="text-base font-extrabold text-neutral-900 dark:text-white">
                   {ejecutivos.length}
                 </p>
-                <p className="text-[10.5px] text-neutral-400 dark:text-white/35 mt-0.5">Ejecutivos</p>
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Ejecutivos</p>
               </div>
             </div>
           </div>
@@ -265,16 +265,16 @@ function MetasPanel() {
                 <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">En convención</p>
                 <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
                   {ce ? ce.en_convencion.length : '—'}
-                  {ce && <span className="text-[11px] font-normal text-neutral-400 dark:text-white/35"> / {ce.total_vendedores}</span>}
+                  {ce && <span className="text-[11px] font-normal text-neutral-500 dark:text-white/50"> / {ce.total_vendedores}</span>}
                 </p>
-                <p className="text-[11px] text-neutral-400 dark:text-white/35 mt-1">ejecutivos</p>
+                <p className="text-[11px] text-neutral-500 dark:text-white/50 mt-1">ejecutivos</p>
               </div>
             </div>
           )}
 
           {ce && ce.en_convencion.length > 0 && (
             <div>
-              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2">Nivel por ejecutivo</p>
+              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/50 mb-2">Nivel por ejecutivo</p>
               <div className="flex flex-col gap-1.5">
                 {ce.en_convencion.map(v => (
                   <div
@@ -283,7 +283,7 @@ function MetasPanel() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-bold text-neutral-900 dark:text-white truncate">{v.entity}</p>
-                      <p className="text-[11px] text-neutral-400 dark:text-white/35 mt-0.5">
+                      <p className="text-[11px] text-neutral-500 dark:text-white/50 mt-0.5">
                         {v.pct_conv}% hacia {v.sig_conv ?? 'máximo'}
                       </p>
                     </div>
@@ -296,11 +296,11 @@ function MetasPanel() {
 
           {ce && ce.cerca.length > 0 && (
             <div>
-              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2">Cerca del siguiente nivel</p>
+              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/50 mb-2">Cerca del siguiente nivel</p>
               {ce.cerca.map(v => (
                 <div key={v.entity} className="bg-sky-50 dark:bg-sky-950/20 border-l-[3px] border-sky-500 rounded-r-xl p-2.5 mb-2">
                   <p className="text-[11px] font-bold text-neutral-800 dark:text-white">{v.entity}</p>
-                  <p className="text-[11px] text-neutral-500 dark:text-white/40">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/55">
                     Falta {money(v.falta_conv)} para {v.sig_conv}
                   </p>
                   <div className="h-1.5 bg-sky-100 dark:bg-sky-950/30 rounded-full overflow-hidden mt-1.5">
@@ -312,13 +312,13 @@ function MetasPanel() {
           )}
 
           {!ce && (
-            <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-6">Sin datos de convención del equipo</p>
+            <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin datos de convención del equipo</p>
           )}
 
           {prod?.meta_monto != null && (
             <div>
               <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-neutral-500 dark:text-white/40">Meta anual de oficina</span>
+                <span className="text-neutral-500 dark:text-white/55">Meta anual de oficina</span>
                 <span className="font-bold text-sky-600 dark:text-sky-400">{prod.meta_pct}%</span>
               </div>
               <div className="h-1.5 bg-neutral-200 dark:bg-white/10 rounded-full overflow-hidden">
@@ -418,17 +418,17 @@ function SolicitudesPanel({ usuario }: { usuario: Usuario }) {
                 >
                   <div className="min-w-0">
                     <p className="text-[12px] font-bold text-neutral-900 dark:text-white font-variant-numeric tabular-nums">{t.folio}</p>
-                    <p className="text-[11px] text-neutral-400 dark:text-white/35 truncate">
+                    <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate">
                       {(t.ticket_tipos as { label: string } | null)?.label ?? t.tipo_tramite}
                     </p>
-                    <p className="text-[11px] text-neutral-500 dark:text-white/40 mt-0.5">👤 {t._agente_nombre}</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">👤 {t._agente_nombre}</p>
                   </div>
                   {estatusChip(t.custom_estatus_label)}
                 </button>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-4">Sin solicitudes abiertas</p>
+            <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-4">Sin solicitudes abiertas</p>
           )}
 
           <button
@@ -438,9 +438,9 @@ function SolicitudesPanel({ usuario }: { usuario: Usuario }) {
             <div className="w-8 h-8 rounded-lg bg-violet-500/10 grid place-items-center shrink-0 text-sm">📋</div>
             <div className="min-w-0 flex-1">
               <p className="text-[12px] font-semibold text-neutral-900 dark:text-white">Ver todas las solicitudes</p>
-              <p className="text-[11px] text-neutral-400 dark:text-white/35">Bandeja completa de la oficina</p>
+              <p className="text-[11px] text-neutral-500 dark:text-white/50">Bandeja completa de la oficina</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-white/30 shrink-0" />
+            <ArrowRight className="w-4 h-4 text-neutral-500 dark:text-white/45 shrink-0" />
           </button>
         </>
       )}
@@ -454,7 +454,7 @@ export function GerenteSections({ usuario }: { usuario: Usuario }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full border-2 border-neutral-200 dark:border-white/15 bg-white dark:bg-white/5 grid place-items-center text-base">
+        <div className="w-9 h-9 rounded-full border-2 border-soft dark:border-white/15 bg-surface-card dark:bg-white/5 grid place-items-center text-base">
           🏦
         </div>
         <div>

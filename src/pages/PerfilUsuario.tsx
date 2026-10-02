@@ -314,7 +314,7 @@ export function PerfilUsuario() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-white/5 rounded-2xl shadow-sm border border-neutral-200 dark:border-white/10 overflow-hidden">
+      <div className="bg-surface-card dark:bg-white/5 rounded-2xl shadow-card border border-soft dark:border-white/10 overflow-hidden">
         <PageHeader
           title="Ver / Editar Usuario"
           description={`${usuario.nombre} ${usuario.apellidos}`}
@@ -379,20 +379,20 @@ export function PerfilUsuario() {
 
             <div className="space-y-2 text-sm">
               <div>
-                <span className="text-neutral-500 dark:text-white/40">Email:</span>
+                <span className="text-neutral-500 dark:text-white/55">Email:</span>
                 <p className="text-neutral-900 dark:text-white font-medium">{usuario.email_laboral || usuario.email_personal}</p>
               </div>
               <div>
-                <span className="text-neutral-500 dark:text-white/40">Teléfono:</span>
+                <span className="text-neutral-500 dark:text-white/55">Teléfono:</span>
                 <p className="text-neutral-900 dark:text-white font-medium">{usuario.celular_laboral || usuario.celular_personal}</p>
               </div>
               <div>
-                <span className="text-neutral-500 dark:text-white/40">Oficina:</span>
+                <span className="text-neutral-500 dark:text-white/55">Oficina:</span>
                 <p className="text-neutral-900 dark:text-white font-medium">{oficinas.find(o => o.id === usuario.oficina_id)?.nombre || '-'}</p>
               </div>
               {usuario.fecha_nacimiento && (
                 <div>
-                  <span className="text-neutral-500 dark:text-white/40">Cumpleaños:</span>
+                  <span className="text-neutral-500 dark:text-white/55">Cumpleaños:</span>
                   <p className="text-neutral-900 dark:text-white font-medium">
                     {new Date(usuario.fecha_nacimiento + 'T00:00:00').toLocaleDateString('es-MX', {
                       day: 'numeric',
@@ -403,7 +403,7 @@ export function PerfilUsuario() {
               )}
               {usuario.fecha_ingreso && (
                 <div>
-                  <span className="text-neutral-500 dark:text-white/40">Aniversario Laboral:</span>
+                  <span className="text-neutral-500 dark:text-white/55">Aniversario Laboral:</span>
                   <p className="text-neutral-900 dark:text-white font-medium">
                     {new Date(usuario.fecha_ingreso + 'T00:00:00').toLocaleDateString('es-MX', {
                       day: 'numeric',
@@ -415,13 +415,13 @@ export function PerfilUsuario() {
               )}
               {usuario.equipo_computo && (
                 <div>
-                  <span className="text-neutral-500 dark:text-white/40">Equipo de Cómputo:</span>
+                  <span className="text-neutral-500 dark:text-white/55">Equipo de Cómputo:</span>
                   <p className="text-neutral-900 dark:text-white font-medium">{usuario.equipo_computo}</p>
                 </div>
               )}
               {usuario.equipo_celular && (
                 <div>
-                  <span className="text-neutral-500 dark:text-white/40">Equipo Celular:</span>
+                  <span className="text-neutral-500 dark:text-white/55">Equipo Celular:</span>
                   <p className="text-neutral-900 dark:text-white font-medium">{usuario.equipo_celular}</p>
                 </div>
               )}
@@ -439,8 +439,8 @@ export function PerfilUsuario() {
                       onClick={() => setActiveTab(tab.id)}
                       className={`flex items-center space-x-2 px-4 py-4 border-b-2 font-medium text-sm transition ${
                         activeTab === tab.id
-                          ? 'border-accent text-accent'
-                          : 'border-transparent text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/70 hover:border-neutral-200 dark:hover:border-white/10'
+                          ? 'border-accent text-accent-ink'
+                          : 'border-transparent text-neutral-500 dark:text-white/55 hover:text-neutral-700 dark:hover:text-white/70 hover:border-neutral-200 dark:hover:border-white/10'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -506,7 +506,7 @@ export function PerfilUsuario() {
                         {isAdmin && <option value="Administrador">Administrador</option>}
                       </select>
                       {!canEditRole && (
-                        <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
+                        <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">
                           Solo los Administradores y Gerentes pueden cambiar roles
                         </p>
                       )}
@@ -661,7 +661,7 @@ export function PerfilUsuario() {
                         onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
                         className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
-                      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">Modelo y detalles del equipo de cómputo asignado</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">Modelo y detalles del equipo de cómputo asignado</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
@@ -674,7 +674,7 @@ export function PerfilUsuario() {
                         onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
                         className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
-                      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">Modelo y detalles del equipo celular asignado</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">Modelo y detalles del equipo celular asignado</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
@@ -692,7 +692,7 @@ export function PerfilUsuario() {
                         }}
                         className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                       />
-                      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">Días disponibles: 0 - 50</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">Días disponibles: 0 - 50</p>
                     </div>
                   </div>
 
@@ -708,11 +708,11 @@ export function PerfilUsuario() {
                           type="checkbox"
                           checked={!!formData.seguros_express_habilitado}
                           onChange={(e) => setFormData({ ...formData, seguros_express_habilitado: e.target.checked })}
-                          className="mt-1 h-4 w-4 text-accent border-neutral-300 rounded focus:ring-2 focus:ring-accent"
+                          className="mt-1 h-4 w-4 text-accent-ink border-neutral-300 rounded focus:ring-2 focus:ring-accent"
                         />
                         <span className="flex-1">
                           <span className="text-sm font-medium text-neutral-900 dark:text-white">Habilitar recepción de leads de seguros.express</span>
-                          <span className="block text-xs text-neutral-500 dark:text-white/40 mt-0.5">
+                          <span className="block text-xs text-neutral-500 dark:text-white/55 mt-0.5">
                             El agente entrará al matching por cercanía y recibirá avisos de leads dentro de su radio.
                           </span>
                         </span>
@@ -788,7 +788,7 @@ export function PerfilUsuario() {
                           placeholder="ejemplo: juanperez"
                           className="w-full px-4 py-2.5 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                         />
-                        <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
+                        <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">
                           Solo minúsculas, números y guiones. Sin espacios ni caracteres especiales.
                         </p>
                       </div>
@@ -816,7 +816,7 @@ export function PerfilUsuario() {
                                 setTimeout(() => setCopiedUrl(false), 2000);
                               }
                             }}
-                            className="px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent-hover transition flex items-center gap-2"
+                            className="px-4 py-2.5 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition flex items-center gap-2"
                           >
                             {copiedUrl ? (
                               <>
@@ -831,7 +831,7 @@ export function PerfilUsuario() {
                             )}
                           </button>
                         </div>
-                        <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
+                        <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">
                           Esta es la página web pública del agente que puede compartir con sus clientes
                         </p>
                       </div>

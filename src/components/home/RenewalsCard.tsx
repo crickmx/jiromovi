@@ -61,7 +61,7 @@ function formatPrima(value: number): string {
 export function RenewalsCard({ data, loading, onViewMore, onClickItem }: Props) {
   if (loading) {
     return (
-      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 animate-pulse">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 animate-pulse">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-white/8" />
           <div className="h-4 w-36 bg-neutral-100 dark:bg-white/8 rounded" />
@@ -78,7 +78,7 @@ export function RenewalsCard({ data, loading, onViewMore, onClickItem }: Props) 
   const renewals = data || [];
 
   return (
-    <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 h-full flex flex-col">
+    <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
@@ -87,7 +87,7 @@ export function RenewalsCard({ data, loading, onViewMore, onClickItem }: Props) 
           </div>
           <div>
             <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Proximas Renovaciones</h3>
-            <p className="text-[11px] text-neutral-400 dark:text-white/30">Proximos 90 dias</p>
+            <p className="text-[11px] text-neutral-500 dark:text-white/45">Proximos 90 dias</p>
           </div>
         </div>
         {renewals.length > 0 && (
@@ -104,7 +104,7 @@ export function RenewalsCard({ data, loading, onViewMore, onClickItem }: Props) 
         {renewals.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Calendar className="w-8 h-8 text-neutral-200 dark:text-white/15 mb-2" />
-            <p className="text-sm text-neutral-400 dark:text-white/30">Sin renovaciones proximas</p>
+            <p className="text-sm text-neutral-500 dark:text-white/45">Sin renovaciones proximas</p>
           </div>
         ) : (
           renewals.map((renewal) => {
@@ -131,7 +131,7 @@ export function RenewalsCard({ data, loading, onViewMore, onClickItem }: Props) 
                       {renewal.cliente}
                     </p>
                   </div>
-                  <p className="text-[10px] text-neutral-500 dark:text-white/40 truncate mt-0.5">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/55 truncate mt-0.5">
                     {renewal.poliza} - {renewal.compania.split(' ')[0]}
                   </p>
                 </div>
@@ -141,7 +141,7 @@ export function RenewalsCard({ data, loading, onViewMore, onClickItem }: Props) 
                   <div className={cn("text-[11px] font-bold", config.text)}>
                     {renewal.dias_restantes === 0 ? 'Hoy' : `${renewal.dias_restantes}d`}
                   </div>
-                  <p className="text-[10px] text-neutral-400 dark:text-white/25 mt-0.5">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/25 mt-0.5">
                     {formatPrima(renewal.prima_neta)}
                   </p>
                 </div>

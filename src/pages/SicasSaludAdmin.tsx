@@ -194,7 +194,7 @@ function TabSalud() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <RefreshCw className="w-6 h-6 animate-spin text-neutral-400" />
+      <RefreshCw className="w-6 h-6 animate-spin text-neutral-500" />
     </div>
   );
 
@@ -210,7 +210,7 @@ function TabSalud() {
   return (
     <div className="space-y-6">
       {/* Connection status */}
-      <div className="bg-white border border-neutral-200 rounded-xl p-5">
+      <div className="bg-surface-card border border-soft rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-neutral-800 flex items-center gap-2">
             <Activity className="w-4 h-4 text-sky-500" /> Estado de Conexión
@@ -235,7 +235,7 @@ function TabSalud() {
                 ? <CheckCircle className="w-4 h-4 text-emerald-500" />
                 : report.last_test_success === false
                   ? <XCircle className="w-4 h-4 text-red-500" />
-                  : <Clock className="w-4 h-4 text-neutral-400" />}
+                  : <Clock className="w-4 h-4 text-neutral-500" />}
               <span className="text-sm font-medium">
                 {report.last_test_success === true ? 'OK' : report.last_test_success === false ? 'Falló' : 'Sin datos'}
               </span>
@@ -265,7 +265,7 @@ function TabSalud() {
       </div>
 
       {/* Mapping progress bar */}
-      <div className="bg-white border border-neutral-200 rounded-xl p-5">
+      <div className="bg-surface-card border border-soft rounded-2xl p-5">
         <h3 className="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-amber-500" /> Cobertura de Mapeo
         </h3>
@@ -294,7 +294,7 @@ function TabSalud() {
       </div>
 
       {/* Quick actions */}
-      <div className="bg-white border border-neutral-200 rounded-xl p-5">
+      <div className="bg-surface-card border border-soft rounded-2xl p-5">
         <h3 className="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
           <Zap className="w-4 h-4 text-sky-500" /> Acciones de Mantenimiento
         </h3>
@@ -439,7 +439,7 @@ function TabMapeo() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
           <input
             type="text"
             placeholder="Buscar vendedor o ID..."
@@ -451,7 +451,7 @@ function TabMapeo() {
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+          className="px-3 py-2 border border-soft rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-surface-card"
         >
           <option value="">Todos los estados</option>
           <option value="active">Activos</option>
@@ -461,7 +461,7 @@ function TabMapeo() {
         <select
           value={matchFilter}
           onChange={e => { setMatchFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+          className="px-3 py-2 border border-soft rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-surface-card"
         >
           <option value="">Todos los tipos</option>
           <option value="id_sicas_exact">ID exacto</option>
@@ -518,7 +518,7 @@ function TabMapeo() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-soft rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -536,31 +536,31 @@ function TabMapeo() {
             <tbody className="divide-y divide-neutral-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-neutral-400">
+                  <td colSpan={8} className="py-12 text-center text-neutral-500">
                     <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
                     Cargando...
                   </td>
                 </tr>
               ) : mappings.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-neutral-400">Sin resultados</td>
+                  <td colSpan={8} className="py-12 text-center text-neutral-500">Sin resultados</td>
                 </tr>
               ) : mappings.map(m => (
                 <>
                   <tr key={m.id} className={`hover:bg-neutral-50 transition-colors ${linkingVend === m.vend_id ? 'bg-sky-50' : ''}`}>
                     <td className="px-4 py-3">
                       <p className="font-medium text-neutral-800">{m.vend_nombre}</p>
-                      <p className="text-xs text-neutral-400">{m.vend_id}</p>
+                      <p className="text-xs text-neutral-500">{m.vend_id}</p>
                     </td>
                     <td className="px-4 py-3">
                       {m.usuario ? (
                         <div>
                           <p className="font-medium text-neutral-700">{m.usuario.nombre} {m.usuario.apellidos}</p>
-                          <p className="text-xs text-neutral-400">{m.usuario.email}</p>
-                          {m.usuario.oficina && <p className="text-xs text-neutral-400">{m.usuario.oficina.nombre}</p>}
+                          <p className="text-xs text-neutral-500">{m.usuario.email}</p>
+                          {m.usuario.oficina && <p className="text-xs text-neutral-500">{m.usuario.oficina.nombre}</p>}
                         </div>
                       ) : (
-                        <span className="text-neutral-400 text-xs italic">Sin asignar</span>
+                        <span className="text-neutral-500 text-xs italic">Sin asignar</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-neutral-700">{(m.total_docs || 0).toLocaleString('es-MX')}</td>
@@ -607,11 +607,11 @@ function TabMapeo() {
                               placeholder="Buscar usuario por nombre o email..."
                               value={userSearch}
                               onChange={e => { setUserSearch(e.target.value); searchUsers(e.target.value); }}
-                              className="w-full px-3 py-1.5 border border-sky-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white"
+                              className="w-full px-3 py-1.5 border border-sky-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-surface-card"
                             />
                             {userSearchLoading && <RefreshCw className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-sky-400" />}
                             {userResults.length > 0 && (
-                              <div className="absolute top-full left-0 right-0 bg-white border border-sky-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                              <div className="absolute top-full left-0 right-0 bg-surface-card border border-sky-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                                 {userResults.map(u => (
                                   <button
                                     key={u.id}
@@ -620,8 +620,8 @@ function TabMapeo() {
                                     className="w-full text-left px-3 py-2 hover:bg-sky-50 text-sm transition-colors"
                                   >
                                     <span className="font-medium text-neutral-700">{u.nombre} {u.apellidos}</span>
-                                    <span className="text-neutral-400 ml-2">{u.email}</span>
-                                    {u.oficina && <span className="text-neutral-400 ml-2 text-xs">· {u.oficina.nombre}</span>}
+                                    <span className="text-neutral-500 ml-2">{u.email}</span>
+                                    {u.oficina && <span className="text-neutral-500 ml-2 text-xs">· {u.oficina.nombre}</span>}
                                   </button>
                                 ))}
                               </div>
@@ -721,7 +721,7 @@ function TabCalidad() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <RefreshCw className="w-6 h-6 animate-spin text-neutral-400" />
+      <RefreshCw className="w-6 h-6 animate-spin text-neutral-500" />
     </div>
   );
 
@@ -901,7 +901,7 @@ function TabCatalogos() {
           <p className="text-sm text-amber-700">{staleCount} catálogos sin sincronizar en los últimos 7 días.</p>
         </div>
       )}
-      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="bg-surface-card border border-soft rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-neutral-50 border-b border-neutral-200">
@@ -914,7 +914,7 @@ function TabCatalogos() {
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {loading ? (
-              <tr><td colSpan={5} className="py-12 text-center text-neutral-400"><RefreshCw className="w-5 h-5 animate-spin mx-auto" /></td></tr>
+              <tr><td colSpan={5} className="py-12 text-center text-neutral-500"><RefreshCw className="w-5 h-5 animate-spin mx-auto" /></td></tr>
             ) : catalogs.map(c => (
               <tr key={c.name} className="hover:bg-neutral-50 transition-colors">
                 <td className="px-4 py-2.5 font-medium text-neutral-700">{c.name}</td>

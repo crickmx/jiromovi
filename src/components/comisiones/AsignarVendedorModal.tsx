@@ -76,13 +76,13 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
-          <h2 className="text-xl font-bold text-gray-900">Asignar Usuario MOVI</h2>
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-3xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+        <div className="flex items-center justify-between p-6 border-b border-neutral-200 sticky top-0 bg-white">
+          <h2 className="text-xl font-bold text-neutral-900">Asignar Usuario MOVI</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-neutral-500 hover:text-gray-600 transition-colors"
           >
             <X className="h-6 w-6" />
           </button>
@@ -154,18 +154,18 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
               </summary>
               <div className="mt-3 bg-white rounded-lg overflow-hidden">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-neutral-50">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700">
                         Póliza
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700">
                         Ramo
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700">
                         Aseguradora
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">
+                      <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700">
                         Comisión
                       </th>
                     </tr>
@@ -188,7 +188,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-3">
+            <label className="block text-sm font-semibold text-neutral-900 mb-3">
               Seleccionar Usuario MOVI
             </label>
             {usuarioSeleccionado ? (
@@ -214,7 +214,7 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
             ) : (
               <div className="relative">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500" />
                   <input
                     type="text"
                     value={busqueda}
@@ -224,14 +224,14 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
                     }}
                     onFocus={() => setMostrarLista(true)}
                     placeholder="Buscar por nombre o email..."
-                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-accent"
+                    className="w-full pl-10 pr-3 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:border-accent"
                   />
                 </div>
 
                 {mostrarLista && busqueda && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  <div className="absolute z-10 mt-1 w-full bg-surface-card border border-neutral-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
                     {usuariosFiltrados.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-gray-500">
+                      <div className="p-4 text-center text-sm text-neutral-500">
                         No se encontraron usuarios
                       </div>
                     ) : (
@@ -244,14 +244,14 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
                             setMostrarLista(false);
                             setBusqueda('');
                           }}
-                          className="w-full flex items-center space-x-3 p-3 hover:bg-primary-50 border-b border-gray-100 last:border-b-0 text-left transition-colors"
+                          className="w-full flex items-center space-x-3 p-3 hover:bg-primary-50 border-b border-neutral-100 last:border-b-0 text-left transition-colors"
                         >
-                          <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold">
+                          <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-semibold">
                             {u.nombre_completo.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-gray-900">{u.nombre_completo}</p>
-                            <p className="text-sm text-gray-600">{u.email}</p>
+                            <p className="font-semibold text-neutral-900">{u.nombre_completo}</p>
+                            <p className="text-sm text-neutral-600">{u.email}</p>
                           </div>
                         </button>
                       ))
@@ -262,20 +262,20 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
             )}
           </div>
 
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
             <label className="flex items-start space-x-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={guardarMapeo}
                 onChange={(e) => setGuardarMapeo(e.target.checked)}
-                className="mt-1 h-4 w-4 text-accent border-gray-300 rounded focus:ring-blue-500"
+                className="mt-1 h-4 w-4 text-accent-ink border-neutral-300 rounded focus:ring-accent/40"
               />
               <div>
-                <p className="font-medium text-gray-900 flex items-center space-x-2">
+                <p className="font-medium text-neutral-900 flex items-center space-x-2">
                   <Save className="h-4 w-4" />
                   <span>Recordar esta asignación para futuros lotes</span>
                 </p>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-neutral-600 mt-1">
                   {vendor.vendor_type === 'email'
                     ? `Se guardará un mapeo por email (${vendor.vendor_email}) para reconocimiento automático en futuras cargas.`
                     : `Se guardará un mapeo por nombre (${vendor.vendor_name}) para reconocimiento automático en futuras cargas.`}
@@ -285,18 +285,18 @@ export default function AsignarVendedorModal({ batchId, vendor, onClose, onSucce
           </div>
         </div>
 
-        <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 sticky bottom-0">
+        <div className="flex items-center justify-end space-x-3 p-6 border-t border-neutral-200 bg-neutral-50 sticky bottom-0">
           <button
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
+            className="px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleAsignar}
             disabled={!usuarioSeleccionado || loading}
-            className="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="px-6 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
             {loading ? (
               <>

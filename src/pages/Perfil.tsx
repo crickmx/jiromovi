@@ -121,7 +121,7 @@ interface FieldRowProps {
 function FieldRow({ label, value, editable, editing, onChange, type = 'text', icon: Icon }: FieldRowProps) {
   return (
     <div className="group flex flex-col gap-1">
-      <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/35 flex items-center gap-1.5">
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-white/50 flex items-center gap-1.5">
         {Icon && <Icon className="w-3 h-3" />}
         {label}
       </label>
@@ -135,7 +135,7 @@ function FieldRow({ label, value, editable, editing, onChange, type = 'text', ic
       ) : (
         <p className={cn(
           'text-sm min-h-[36px] flex items-center px-3 rounded-xl',
-          value ? 'text-neutral-800 dark:text-white/85' : 'text-neutral-400 dark:text-white/25 italic',
+          value ? 'text-neutral-800 dark:text-white/85' : 'text-neutral-500 dark:text-white/25 italic',
           !editable && editing && 'bg-neutral-50 dark:bg-white/[0.02] border border-neutral-100 dark:border-white/5',
         )}>
           {value || '—'}
@@ -240,10 +240,10 @@ function PasswordSection() {
   const inputCls = "w-full h-10 rounded-xl text-sm px-3 outline-none border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-900 dark:text-white/90 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all";
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-white/[0.02] border border-neutral-100 dark:border-white/[0.06] p-5 sm:p-6 space-y-4">
+    <div className="rounded-2xl bg-surface-card dark:bg-white/[0.02] border border-soft dark:border-white/[0.06] p-5 sm:p-6 space-y-4">
       <div className="flex items-center gap-3 pb-3 border-b border-neutral-100 dark:border-white/[0.06]">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent/10">
-          <Lock className="w-4 h-4 text-accent" />
+          <Lock className="w-4 h-4 text-accent-ink" />
         </div>
         <h3 className="text-base font-bold text-neutral-900 dark:text-white/90">Contraseña de acceso</h3>
       </div>
@@ -266,7 +266,7 @@ function PasswordSection() {
               </p>
               <button
                 onClick={() => { setMode('change'); setMsg(null); }}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent/10 text-accent-ink hover:bg-accent/20 transition-colors"
               >
                 <Lock className="w-4 h-4" />
                 Cambiar contraseña
@@ -279,7 +279,7 @@ function PasswordSection() {
               </p>
               <button
                 onClick={() => { setMode('create'); setMsg(null); }}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent/10 text-accent-ink hover:bg-accent/20 transition-colors"
               >
                 <Lock className="w-4 h-4" />
                 Crear contraseña
@@ -292,7 +292,7 @@ function PasswordSection() {
       {mode === 'create' && (
         <form onSubmit={handleCreatePassword} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Nueva contraseña</label>
+            <label className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wide">Nueva contraseña</label>
             <div className="relative">
               <input
                 type={showNew ? 'text' : 'password'}
@@ -302,7 +302,7 @@ function PasswordSection() {
                 className={inputCls}
                 autoComplete="new-password"
               />
-              <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400" tabIndex={-1}>
+              <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500" tabIndex={-1}>
                 {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -317,7 +317,7 @@ function PasswordSection() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Confirmar contraseña</label>
+            <label className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wide">Confirmar contraseña</label>
             <input
               type="password"
               value={confirmPw}
@@ -332,7 +332,7 @@ function PasswordSection() {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-accent hover:bg-accent/90 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-accent-foreground bg-accent hover:bg-accent/90 transition-colors disabled:opacity-50"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Crear contraseña
@@ -340,7 +340,7 @@ function PasswordSection() {
             <button
               type="button"
               onClick={() => { setMode('idle'); setNewPw(''); setConfirmPw(''); setMsg(null); }}
-              className="text-sm font-medium text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/60 transition-colors"
+              className="text-sm font-medium text-neutral-500 dark:text-white/55 hover:text-neutral-700 dark:hover:text-white/60 transition-colors"
             >
               Cancelar
             </button>
@@ -351,7 +351,7 @@ function PasswordSection() {
       {mode === 'change' && (
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Nueva contraseña</label>
+            <label className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wide">Nueva contraseña</label>
             <div className="relative">
               <input
                 type={showNew ? 'text' : 'password'}
@@ -361,7 +361,7 @@ function PasswordSection() {
                 className={inputCls}
                 autoComplete="new-password"
               />
-              <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400" tabIndex={-1}>
+              <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500" tabIndex={-1}>
                 {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -376,7 +376,7 @@ function PasswordSection() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wide">Confirmar nueva contraseña</label>
+            <label className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wide">Confirmar nueva contraseña</label>
             <input
               type="password"
               value={confirmPw}
@@ -391,7 +391,7 @@ function PasswordSection() {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-accent hover:bg-accent/90 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-accent-foreground bg-accent hover:bg-accent/90 transition-colors disabled:opacity-50"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Actualizar contraseña
@@ -399,7 +399,7 @@ function PasswordSection() {
             <button
               type="button"
               onClick={() => { setMode('idle'); setNewPw(''); setConfirmPw(''); setMsg(null); }}
-              className="text-sm font-medium text-neutral-500 dark:text-white/40 hover:text-neutral-700 dark:hover:text-white/60 transition-colors"
+              className="text-sm font-medium text-neutral-500 dark:text-white/55 hover:text-neutral-700 dark:hover:text-white/60 transition-colors"
             >
               Cancelar
             </button>
@@ -566,12 +566,12 @@ export default function Perfil() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Mi Perfil</h1>
-          <p className="text-sm text-neutral-400 dark:text-white/40 mt-0.5">Información de tu cuenta MOVI Digital</p>
+          <p className="text-sm text-neutral-500 dark:text-white/55 mt-0.5">Información de tu cuenta MOVI Digital</p>
         </div>
         {hasAnyEditable && !editing && (
           <button
             onClick={() => setEditing(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 active:scale-95 transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 active:scale-95 transition-all shadow-sm"
           >
             <Pencil className="w-3.5 h-3.5" />
             Editar perfil
@@ -590,7 +590,7 @@ export default function Perfil() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 active:scale-95 transition-all shadow-sm disabled:opacity-60"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 active:scale-95 transition-all shadow-sm disabled:opacity-60"
             >
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               {saving ? 'Guardando...' : 'Guardar'}
@@ -616,7 +616,7 @@ export default function Perfil() {
         {/* Left column: avatar + identity */}
         <div className="lg:col-span-1 space-y-4">
           {/* Avatar card */}
-          <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-6 flex flex-col items-center gap-4">
+          <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-soft dark:border-white/[0.06] p-6 flex flex-col items-center gap-4">
             <div className="relative">
               <Avatar className="h-24 w-24 rounded-2xl">
                 <AvatarImage
@@ -625,14 +625,14 @@ export default function Perfil() {
                   crossOrigin="anonymous"
                   className="rounded-2xl object-cover"
                 />
-                <AvatarFallback className="rounded-2xl text-2xl font-bold bg-accent/10 text-accent">
+                <AvatarFallback className="rounded-2xl text-2xl font-bold bg-accent/10 text-accent-ink">
                   {initials || <User className="w-10 h-10" />}
                 </AvatarFallback>
               </Avatar>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
-                className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-accent text-white flex items-center justify-center shadow-md hover:bg-accent/90 active:scale-90 transition-all disabled:opacity-60"
+                className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-accent text-accent-foreground flex items-center justify-center shadow-md hover:bg-accent/90 active:scale-90 transition-all disabled:opacity-60"
                 title="Cambiar foto"
               >
                 {uploadingAvatar ? (
@@ -657,7 +657,7 @@ export default function Perfil() {
             <div className="text-center">
               <p className="font-bold text-neutral-900 dark:text-white text-lg leading-tight">{fullName || '—'}</p>
               {usuario.puesto && (
-                <p className="text-sm text-neutral-400 dark:text-white/40 mt-0.5">{usuario.puesto}</p>
+                <p className="text-sm text-neutral-500 dark:text-white/55 mt-0.5">{usuario.puesto}</p>
               )}
               <span className={cn('inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full mt-2', rolBadgeCls)}>
                 <Shield className="w-3 h-3" />
@@ -666,7 +666,7 @@ export default function Perfil() {
             </div>
 
             {usuario.fecha_ingreso && (
-              <div className="w-full flex items-center gap-2 text-xs text-neutral-400 dark:text-white/35 border-t border-neutral-100 dark:border-white/5 pt-3 justify-center">
+              <div className="w-full flex items-center gap-2 text-xs text-neutral-500 dark:text-white/50 border-t border-neutral-100 dark:border-white/5 pt-3 justify-center">
                 <Calendar className="w-3.5 h-3.5" />
                 <span>Ingresó el {new Date(usuario.fecha_ingreso).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
               </div>
@@ -675,9 +675,9 @@ export default function Perfil() {
 
           {/* Office card */}
           {oficina && (
-            <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5 space-y-4">
+            <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-soft dark:border-white/[0.06] p-5 space-y-4">
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-accent" />
+                <Building2 className="w-4 h-4 text-accent-ink" />
                 <p className="text-sm font-semibold text-neutral-700 dark:text-white/80">Mi Oficina</p>
               </div>
 
@@ -696,31 +696,31 @@ export default function Perfil() {
 
               <div className="space-y-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/30">Nombre</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-white/45">Nombre</p>
                   <p className="text-sm text-neutral-800 dark:text-white/80 mt-0.5">{oficina.nombre}</p>
                 </div>
                 {oficina.domicilio && (
                   <div className="flex items-start gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-neutral-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-neutral-500 dark:text-white/40">{oficina.domicilio}</p>
+                    <MapPin className="w-3.5 h-3.5 text-neutral-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-neutral-500 dark:text-white/55">{oficina.domicilio}</p>
                   </div>
                 )}
                 {oficina.telefono && (
                   <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-                    <p className="text-xs text-neutral-500 dark:text-white/40">{oficina.telefono}</p>
+                    <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                    <p className="text-xs text-neutral-500 dark:text-white/55">{oficina.telefono}</p>
                   </div>
                 )}
                 {oficina.email && (
                   <div className="flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-                    <p className="text-xs text-neutral-500 dark:text-white/40">{oficina.email}</p>
+                    <Mail className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                    <p className="text-xs text-neutral-500 dark:text-white/55">{oficina.email}</p>
                   </div>
                 )}
                 {oficina.whatsapp && (
                   <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-                    <p className="text-xs text-neutral-500 dark:text-white/40">{oficina.whatsapp} (WhatsApp)</p>
+                    <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                    <p className="text-xs text-neutral-500 dark:text-white/55">{oficina.whatsapp} (WhatsApp)</p>
                   </div>
                 )}
               </div>
@@ -734,10 +734,10 @@ export default function Perfil() {
             const SectionIcon = section.icon;
 
             return (
-              <div key={section.title} className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
+              <div key={section.title} className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-soft dark:border-white/[0.06] p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-neutral-100 dark:border-white/[0.05]">
                   <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <SectionIcon className="w-3.5 h-3.5 text-accent" />
+                    <SectionIcon className="w-3.5 h-3.5 text-accent-ink" />
                   </div>
                   <p className="text-sm font-semibold text-neutral-700 dark:text-white/80">{section.title}</p>
                 </div>
@@ -751,7 +751,7 @@ export default function Perfil() {
                       const selectedRegimen = regimenesFiscales.find(r => r.id === form.regimen_fiscal_id);
                       return (
                         <div key={field} className="group flex flex-col gap-1 sm:col-span-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/35 flex items-center gap-1.5">
+                          <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-white/50 flex items-center gap-1.5">
                             {formatFieldName(field)}
                           </label>
                           {editing && isEditable ? (
@@ -767,7 +767,7 @@ export default function Perfil() {
                                 ))}
                               </select>
                               {form.regimen_fiscal_id && selectedRegimen && (
-                                <p className="text-xs text-neutral-500 dark:text-white/40 mt-1">
+                                <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">
                                   ISR: {(selectedRegimen.isr * 100).toFixed(2)}% | IVA Ret: {(selectedRegimen.iva_retenido * 100).toFixed(2)}%
                                 </p>
                               )}
@@ -776,13 +776,13 @@ export default function Perfil() {
                             <div>
                               <p className={cn(
                                 'text-sm min-h-[36px] flex items-center px-3 rounded-xl',
-                                selectedRegimen ? 'text-neutral-800 dark:text-white/85' : 'text-neutral-400 dark:text-white/25 italic',
+                                selectedRegimen ? 'text-neutral-800 dark:text-white/85' : 'text-neutral-500 dark:text-white/25 italic',
                                 !isEditable && editing && 'bg-neutral-50 dark:bg-white/[0.02] border border-neutral-100 dark:border-white/5',
                               )}>
                                 {selectedRegimen?.name || '—'}
                               </p>
                               {selectedRegimen && (
-                                <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 px-3">
+                                <p className="text-xs text-neutral-500 dark:text-white/55 mt-1 px-3">
                                   ISR: {(selectedRegimen.isr * 100).toFixed(2)}% | IVA Ret: {(selectedRegimen.iva_retenido * 100).toFixed(2)}%
                                 </p>
                               )}
@@ -824,7 +824,7 @@ export default function Perfil() {
                 {section.title === 'Datos Laborales' && usuario.web_slug && (
                   <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-white/[0.05]">
                     <div className="group flex flex-col gap-1">
-                      <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/35 flex items-center gap-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-white/50 flex items-center gap-1.5">
                         <Globe className="w-3 h-3" />
                         Página Web MOVI
                       </label>
@@ -836,7 +836,7 @@ export default function Perfil() {
                           href={`https://agentedeseguros.website/${usuario.web_slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent/80 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-accent-ink hover:text-accent/80 transition-colors"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                           Abrir
@@ -859,10 +859,10 @@ export default function Perfil() {
           })}
 
           {/* ── Ubicación + seguros.express ── */}
-          <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
+          <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-soft dark:border-white/[0.06] p-5">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-neutral-100 dark:border-white/[0.05]">
               <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
-                <MapPin className="w-3.5 h-3.5 text-accent" />
+                <MapPin className="w-3.5 h-3.5 text-accent-ink" />
               </div>
               <p className="text-sm font-semibold text-neutral-700 dark:text-white/80">Mi Ubicación</p>
             </div>
@@ -875,12 +875,12 @@ export default function Perfil() {
                   <p className="text-neutral-800 dark:text-white/85 flex items-center gap-2">
                     <BadgeCheck className="w-4 h-4 text-emerald-500" />
                     Ubicación GPS guardada
-                    <span className="text-neutral-400 dark:text-white/35">({ubic.lat}, {ubic.lng})</span>
+                    <span className="text-neutral-500 dark:text-white/50">({ubic.lat}, {ubic.lng})</span>
                   </p>
                 ) : ubic.metodo === 'manual' && ubic.direccion_manual ? (
                   <p className="text-neutral-800 dark:text-white/85">{ubic.direccion_manual}</p>
                 ) : (
-                  <p className="text-neutral-400 dark:text-white/25 italic">Sin ubicación registrada</p>
+                  <p className="text-neutral-500 dark:text-white/25 italic">Sin ubicación registrada</p>
                 )}
               </div>
             )}
@@ -888,7 +888,7 @@ export default function Perfil() {
             {/* seguros.express — estado (solo lectura para el usuario) */}
             <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-white/[0.05] flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5 text-neutral-400" />
+                <Shield className="w-3.5 h-3.5 text-neutral-500" />
                 <span className="text-sm text-neutral-600 dark:text-white/60">seguros.express</span>
               </div>
               {(usuario as any).seguros_express_habilitado ? (
@@ -901,13 +901,13 @@ export default function Perfil() {
                 </span>
               )}
             </div>
-            <p className="mt-1 text-xs text-neutral-400 dark:text-white/35">
+            <p className="mt-1 text-xs text-neutral-500 dark:text-white/50">
               La habilitación para recibir leads de seguros.express la gestiona un administrador.
             </p>
           </div>
 
           {/* ── TOTP Autenticador ── */}
-          <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
+          <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-soft dark:border-white/[0.06] p-5">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-neutral-100 dark:border-white/[0.05]">
               <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center">
                 <Shield className="w-3.5 h-3.5 text-violet-500" />

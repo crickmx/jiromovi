@@ -45,7 +45,7 @@ export function ProximasReuniones() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <div className="bg-surface-card rounded-2xl shadow-card border border-soft p-6">
         <div className="flex justify-center py-8">
           <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -55,18 +55,18 @@ export function ProximasReuniones() {
 
   if (meetings.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <div className="bg-surface-card rounded-2xl shadow-card border border-soft p-6">
         <div className="flex items-center space-x-3 mb-4">
           <div className="p-2 bg-purple-100 rounded-lg">
             <Video className="w-6 h-6 text-purple-600" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Próximas Reuniones</h2>
-            <p className="text-sm text-slate-600">No hay reuniones programadas</p>
+            <h2 className="text-xl font-bold text-neutral-800">Próximas Reuniones</h2>
+            <p className="text-sm text-neutral-600">No hay reuniones programadas</p>
           </div>
         </div>
         <div className="text-center py-8">
-          <p className="text-slate-500 mb-4">No tienes reuniones próximas</p>
+          <p className="text-neutral-500 mb-4">No tienes reuniones próximas</p>
           <button
             onClick={() => navigate('/movi-meet')}
             className="text-purple-600 hover:text-purple-700 font-medium text-sm"
@@ -79,15 +79,15 @@ export function ProximasReuniones() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+    <div className="bg-surface-card rounded-2xl shadow-card border border-soft p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-purple-100 rounded-lg">
             <Video className="w-6 h-6 text-purple-600" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Próximas Reuniones</h2>
-            <p className="text-sm text-slate-600">
+            <h2 className="text-xl font-bold text-neutral-800">Próximas Reuniones</h2>
+            <p className="text-sm text-neutral-600">
               {meetings.length} {meetings.length === 1 ? 'reunión programada' : 'reuniones programadas'}
             </p>
           </div>
@@ -106,14 +106,14 @@ export function ProximasReuniones() {
           return (
             <div
               key={meeting.id}
-              className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition"
+              className="border border-neutral-200 rounded-lg p-4 hover:bg-slate-50 transition"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 mb-2">
+                  <h3 className="font-semibold text-neutral-900 mb-2">
                     {meeting.title}
                   </h3>
-                  <div className="flex items-center space-x-4 text-sm text-slate-600">
+                  <div className="flex items-center space-x-4 text-sm text-neutral-600">
                     <span className="flex items-center">
                       <Calendar className="w-4 h-4 mr-1" />
                       {date}

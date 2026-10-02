@@ -20,7 +20,7 @@ function AgentCard({ primary, secondary }: { primary: string; secondary: string 
   const initialsContrast = getContrastColor(primary);
 
   return (
-    <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-[0_2px_16px_rgba(0,0,0,0.05)] overflow-hidden">
+    <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-[0_2px_16px_rgba(0,0,0,0.05)] overflow-hidden">
       {/* Color strip */}
       <div
         className="h-2"
@@ -28,7 +28,7 @@ function AgentCard({ primary, secondary }: { primary: string; secondary: string 
       />
 
       <div className="p-5 sm:p-6">
-        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">Tu agente de seguros</p>
+        <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4">Tu agente de seguros</p>
 
         <div className="flex items-center gap-4 mb-5">
           {brand.profileImageUrl ? (
@@ -54,7 +54,7 @@ function AgentCard({ primary, secondary }: { primary: string; secondary: string 
               <p className="text-xs text-neutral-500 mt-0.5 truncate">{brand.officeName}</p>
             )}
             {brand.email && (
-              <p className="text-xs text-neutral-400 mt-0.5 truncate">{brand.email}</p>
+              <p className="text-xs text-neutral-500 mt-0.5 truncate">{brand.email}</p>
             )}
           </div>
         </div>
@@ -71,7 +71,7 @@ function AgentCard({ primary, secondary }: { primary: string; secondary: string 
               <div className="w-8 h-8 rounded-xl bg-[#25D366]/10 flex items-center justify-center group-hover:bg-[#25D366]/20 transition-colors">
                 <MessageCircle className="w-4 h-4 text-[#25D366]" />
               </div>
-              <span className="text-[10px] font-semibold text-neutral-500 group-hover:text-[#25D366] transition-colors">WhatsApp</span>
+              <span className="text-[11px] font-semibold text-neutral-500 group-hover:text-[#25D366] transition-colors">WhatsApp</span>
             </a>
           )}
 
@@ -87,7 +87,7 @@ function AgentCard({ primary, secondary }: { primary: string; secondary: string 
               >
                 <Phone className="w-4 h-4" style={{ color: primary }} />
               </div>
-              <span className="text-[10px] font-semibold text-neutral-500 group-hover:text-neutral-700 transition-colors">Llamar</span>
+              <span className="text-[11px] font-semibold text-neutral-500 group-hover:text-neutral-700 transition-colors">Llamar</span>
             </a>
           )}
 
@@ -99,7 +99,7 @@ function AgentCard({ primary, secondary }: { primary: string; secondary: string 
               <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center group-hover:bg-neutral-200 transition-colors">
                 <Mail className="w-4 h-4 text-neutral-500" />
               </div>
-              <span className="text-[10px] font-semibold text-neutral-500 group-hover:text-neutral-700 transition-colors">Correo</span>
+              <span className="text-[11px] font-semibold text-neutral-500 group-hover:text-neutral-700 transition-colors">Correo</span>
             </a>
           )}
 
@@ -113,7 +113,7 @@ function AgentCard({ primary, secondary }: { primary: string; secondary: string 
               <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center group-hover:bg-neutral-200 transition-colors">
                 <Globe className="w-4 h-4 text-neutral-500" />
               </div>
-              <span className="text-[10px] font-semibold text-neutral-500 group-hover:text-neutral-700 transition-colors">Web</span>
+              <span className="text-[11px] font-semibold text-neutral-500 group-hover:text-neutral-700 transition-colors">Web</span>
             </a>
           )}
         </div>
@@ -218,7 +218,7 @@ export function SeguwalletDashboard() {
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => navigate('/seguwallet/polizas')}
-          className="bg-white rounded-2xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-md transition-all group text-left"
+          className="bg-surface-card rounded-2xl border border-neutral-200/50 p-5 shadow-card hover:shadow-card-hover transition-all group text-left"
           style={{ '--hover-border': primary + '40' } as any}
         >
           <div
@@ -234,7 +234,7 @@ export function SeguwalletDashboard() {
         <button
           onClick={() => navigate('/seguwallet/polizas')}
           className={cn(
-            "bg-white rounded-2xl border border-neutral-200/50 p-5 shadow-sm hover:shadow-md transition-all group text-left",
+            "bg-surface-card rounded-2xl border border-neutral-200/50 p-5 shadow-card hover:shadow-card-hover transition-all group text-left",
           )}
         >
           <div className={cn(
@@ -243,13 +243,13 @@ export function SeguwalletDashboard() {
           )}>
             {expiringCount > 0
               ? <AlertTriangle className="w-5 h-5 text-amber-500" />
-              : <Clock className="w-5 h-5 text-neutral-400" />
+              : <Clock className="w-5 h-5 text-neutral-500" />
             }
           </div>
           <p className="text-3xl font-bold text-neutral-900">{expiringCount}</p>
           <p className="text-xs text-neutral-500 mt-0.5">Proximas a vencer</p>
           {expiringCount > 0 && (
-            <p className="text-[10px] text-amber-500 font-semibold mt-1">En los proximos 30 dias</p>
+            <p className="text-[11px] text-amber-500 font-semibold mt-1">En los proximos 30 dias</p>
           )}
         </button>
       </div>
@@ -276,7 +276,7 @@ export function SeguwalletDashboard() {
         >
           <Calculator className="w-6 h-6 mb-3 opacity-80" style={{ color: primary }} />
           <p className="font-bold text-sm" style={{ color: primary }}>Cotizar seguro</p>
-          <p className="text-xs mt-0.5 text-neutral-400">Solicita una propuesta</p>
+          <p className="text-xs mt-0.5 text-neutral-500">Solicita una propuesta</p>
         </button>
       </div>
 

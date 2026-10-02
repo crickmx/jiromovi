@@ -791,7 +791,7 @@ export default function TramitesReportes() {
               type="date"
               value={fechaInicio}
               onChange={(e) => setFechaInicio(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>
 
@@ -803,7 +803,7 @@ export default function TramitesReportes() {
               type="date"
               value={fechaFin}
               onChange={(e) => setFechaFin(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>
 
@@ -815,7 +815,7 @@ export default function TramitesReportes() {
               <select
                 value={oficinaFiltro}
                 onChange={(e) => setOficinaFiltro(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
               >
                 <option value="">Todas</option>
                 {oficinas.map(o => (
@@ -837,7 +837,7 @@ export default function TramitesReportes() {
                   setUsuarioFiltro('');
                 }
               }}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             >
               <option value="">Sin filtro de equipo</option>
               {grupos.map(g => (
@@ -865,7 +865,7 @@ export default function TramitesReportes() {
                   setGrupoFiltro(''); // Limpiar filtro de grupo si se selecciona usuario individual
                 }
               }}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
               disabled={!!grupoFiltro}
             >
               <option value="">Todos</option>
@@ -884,7 +884,7 @@ export default function TramitesReportes() {
             <select
               value={tipoTramiteFiltro}
               onChange={(e) => setTipoTramiteFiltro(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             >
               <option value="">Todos</option>
               {(!userArea || userArea === 'Comercial') && (
@@ -911,7 +911,7 @@ export default function TramitesReportes() {
             <select
               value={estatusFiltro}
               onChange={(e) => setEstatusFiltro(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             >
               <option value="">Todos</option>
               {estatusOptions.map(e => (
@@ -927,7 +927,7 @@ export default function TramitesReportes() {
             <select
               value={prioridadFiltro}
               onChange={(e) => setPrioridadFiltro(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             >
               <option value="">Todas</option>
               {prioridadOptions.map(p => (
@@ -1024,11 +1024,11 @@ export default function TramitesReportes() {
       {/* Salud Operativa */}
       <div>
         <h2 className="text-xl font-bold text-neutral-900 mb-4 flex items-center gap-2">
-          <Activity className="w-6 h-6 text-accent" />
+          <Activity className="w-6 h-6 text-accent-ink" />
           Salud Operativa
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
+          <div className="bg-surface-card rounded-2xl shadow-card p-6 border-l-4 border-accent">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-neutral-600">Backlog abierto</span>
               <Inbox className="w-5 h-5 text-blue-500" />
@@ -1037,7 +1037,7 @@ export default function TramitesReportes() {
             <p className="text-xs text-neutral-500 mt-1">Pendientes + En Proceso</p>
           </div>
 
-          <div className={`bg-white rounded-xl shadow-sm p-6 border-l-4 ${tramitesVencidos.length > 0 ? 'border-red-500' : 'border-neutral-200'}`}>
+          <div className={`bg-surface-card rounded-2xl shadow-card p-6 border-l-4 ${tramitesVencidos.length > 0 ? 'border-red-500' : 'border-neutral-200'}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-neutral-600">Vencidos (&gt;{SLA_DIAS}d)</span>
               <AlertTriangle className={`w-5 h-5 ${tramitesVencidos.length > 0 ? 'text-red-500' : 'text-neutral-400'}`} />
@@ -1050,7 +1050,7 @@ export default function TramitesReportes() {
             </p>
           </div>
 
-          <div className={`bg-white rounded-xl shadow-sm p-6 border-l-4 ${altaPrioridadAbierta.length > 0 ? 'border-orange-500' : 'border-neutral-200'}`}>
+          <div className={`bg-surface-card rounded-2xl shadow-card p-6 border-l-4 ${altaPrioridadAbierta.length > 0 ? 'border-orange-500' : 'border-neutral-200'}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-neutral-600">Alta prioridad abierta</span>
               <Flame className={`w-5 h-5 ${altaPrioridadAbierta.length > 0 ? 'text-orange-500' : 'text-neutral-400'}`} />
@@ -1063,7 +1063,7 @@ export default function TramitesReportes() {
             </p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-amber-500">
+          <div className="bg-surface-card rounded-2xl shadow-card p-6 border-l-4 border-amber-500">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-neutral-600">Más antiguo abierto</span>
               <Timer className="w-5 h-5 text-amber-500" />
@@ -1091,7 +1091,7 @@ export default function TramitesReportes() {
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-neutral-100 rounded h-3 relative overflow-hidden">
                       <div
-                        className="bg-blue-500 h-full rounded"
+                        className="bg-accent h-full rounded"
                         style={{ width: `${(b.creados / maxSemana) * 100}%` }}
                       />
                     </div>
@@ -1112,7 +1112,7 @@ export default function TramitesReportes() {
           </div>
           <div className="flex gap-4 mt-4 text-xs text-neutral-600">
             <span className="flex items-center gap-1">
-              <span className="w-3 h-3 bg-blue-500 rounded-sm inline-block" /> Creados
+              <span className="w-3 h-3 bg-accent rounded-sm inline-block" /> Creados
             </span>
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 bg-green-500 rounded-sm inline-block" /> Finalizados
@@ -1171,7 +1171,7 @@ export default function TramitesReportes() {
                   <span className="text-neutral-900">
                     <span className="font-semibold">{item.promedio.toFixed(1)}</span>
                     <span className="text-neutral-500 ml-1">días</span>
-                    <span className="text-xs text-neutral-400 ml-2">({item.cantidad} cerrados)</span>
+                    <span className="text-xs text-neutral-500 ml-2">({item.cantidad} cerrados)</span>
                   </span>
                 </div>
                 <div className="w-full bg-neutral-200 rounded-full h-2">
@@ -1189,7 +1189,7 @@ export default function TramitesReportes() {
       {/* Análisis por Tipo de Trámite */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <div className="flex items-center gap-2 mb-2">
-          <BarChart3 className="w-6 h-6 text-blue-600" />
+          <BarChart3 className="w-6 h-6 text-accent-ink" />
           <h2 className="text-xl font-bold text-neutral-900">Análisis por Tipo de Trámite</h2>
         </div>
         <p className="text-sm text-neutral-500 mb-5">
@@ -1229,7 +1229,7 @@ export default function TramitesReportes() {
                   <div className="flex items-center gap-4 text-left">
                     <div className={`p-2 rounded-lg ${isCotizacion ? 'bg-blue-100' : 'bg-neutral-100'}`}>
                       {isCotizacion
-                        ? <TrendingUp className="w-5 h-5 text-blue-600" />
+                        ? <TrendingUp className="w-5 h-5 text-accent-ink" />
                         : <BarChart3 className="w-5 h-5 text-neutral-600" />}
                     </div>
                     <div>
@@ -1262,32 +1262,32 @@ export default function TramitesReportes() {
                 {isExpanded && (
                   <div className="border-t border-neutral-200 p-5 bg-neutral-50/50 space-y-5">
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                      <div className="bg-surface-card rounded-2xl p-3 border border-soft">
                         <div className="text-xs text-neutral-600">Total</div>
                         <div className="text-2xl font-bold text-neutral-900">{item.total}</div>
                       </div>
-                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                      <div className="bg-surface-card rounded-2xl p-3 border border-soft">
                         <div className="text-xs text-neutral-600">Abiertos</div>
-                        <div className="text-2xl font-bold text-blue-600">{item.abiertos}</div>
+                        <div className="text-2xl font-bold text-accent-ink">{item.abiertos}</div>
                       </div>
-                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                      <div className="bg-surface-card rounded-2xl p-3 border border-soft">
                         <div className="text-xs text-neutral-600">Cerrados</div>
                         <div className="text-2xl font-bold text-green-600">{item.cerrados}</div>
                       </div>
-                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                      <div className="bg-surface-card rounded-2xl p-3 border border-soft">
                         <div className="text-xs text-neutral-600">Vencidos</div>
                         <div className={`text-2xl font-bold ${item.vencidos > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
                           {item.vencidos}
                         </div>
                       </div>
-                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                      <div className="bg-surface-card rounded-2xl p-3 border border-soft">
                         <div className="text-xs text-neutral-600">Tiempo prom.</div>
                         <div className="text-2xl font-bold text-neutral-900">
                           {item.tiempoPromedio.toFixed(1)}
                           <span className="text-sm text-neutral-500 ml-1">d</span>
                         </div>
                       </div>
-                      <div className="bg-white rounded-lg p-3 border border-neutral-200">
+                      <div className="bg-surface-card rounded-2xl p-3 border border-soft">
                         <div className="text-xs text-neutral-600">% Finalización</div>
                         <div className={`text-2xl font-bold ${porcentajeColor}`}>
                           {item.porcentajeFinalizacion.toFixed(0)}%
@@ -1296,9 +1296,9 @@ export default function TramitesReportes() {
                     </div>
 
                     {isCotizacion && fechaInicio && fechaFin && (
-                      <div className="bg-white rounded-lg p-5 border border-blue-200">
+                      <div className="bg-surface-card rounded-2xl p-5 border border-blue-200">
                         <div className="flex items-center gap-2 mb-4">
-                          <Target className="w-5 h-5 text-blue-600" />
+                          <Target className="w-5 h-5 text-accent-ink" />
                           <h3 className="font-semibold text-neutral-900">Conversión: Cotizaciones y Emisiones</h3>
                         </div>
                         <ConversionDashboard
@@ -1323,7 +1323,7 @@ export default function TramitesReportes() {
                       const MAX_INLINE = 20;
                       const visibles = listaTipo.slice(0, MAX_INLINE);
                       return (
-                        <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+                        <div className="bg-surface-card rounded-lg border border-soft overflow-hidden">
                           <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 bg-neutral-50">
                             <h4 className="text-sm font-semibold text-neutral-900">
                               Trámites de este tipo
@@ -1386,7 +1386,7 @@ export default function TramitesReportes() {
                                     <td className="py-2 px-3 text-center">
                                       <button
                                         onClick={() => handleVerTramite(tramite.id)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent hover:bg-accent-hover text-accent-foreground text-xs rounded-lg transition-colors"
                                       >
                                         <Eye className="w-3 h-3" />
                                         Ver detalles
@@ -1521,7 +1521,7 @@ export default function TramitesReportes() {
           </div>
           <button
             onClick={() => setShowTramitesPorUsuario(!showTramitesPorUsuario)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors"
           >
             <ChevronDown className={`w-4 h-4 transition-transform ${showTramitesPorUsuario ? 'rotate-180' : ''}`} />
             {showTramitesPorUsuario ? 'Ocultar' : 'Mostrar'}
@@ -1571,7 +1571,7 @@ export default function TramitesReportes() {
                             <td className="py-3 px-4">
                               <div className="flex flex-col">
                                 <span className="text-sm text-neutral-900 font-medium">{tramite.solicitante_nombre}</span>
-                                <span className="text-sm font-mono text-accent font-semibold">{tramite.folio}</span>
+                                <span className="text-sm font-mono text-accent-ink font-semibold">{tramite.folio}</span>
                               </div>
                             </td>
                             <td className="py-3 px-4 text-sm text-neutral-600">{tramite.tipo_tramite?.replace(/_/g, ' ')}</td>
@@ -1590,7 +1590,7 @@ export default function TramitesReportes() {
                             <td className="py-3 px-4 text-center">
                               <button
                                 onClick={() => handleVerTramite(tramite.id)}
-                                className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-accent hover:bg-accent-hover text-accent-foreground text-xs rounded-lg transition-colors"
                               >
                                 <Eye className="w-3 h-3" />
                                 Ver
@@ -1629,13 +1629,13 @@ export default function TramitesReportes() {
         {/* Búsqueda */}
         <div className="mb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
             <input
               type="text"
               placeholder="Buscar por folio, solicitante o asignado..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>
         </div>
@@ -1659,7 +1659,7 @@ export default function TramitesReportes() {
                   <td className="py-3 px-4">
                     <div className="flex flex-col">
                       <span className="text-sm text-neutral-900 font-medium">{tramite.solicitante_nombre}</span>
-                      <span className="text-sm font-mono text-accent font-semibold">{tramite.folio}</span>
+                      <span className="text-sm font-mono text-accent-ink font-semibold">{tramite.folio}</span>
                     </div>
                   </td>
                   <td className="py-3 px-4 text-sm text-neutral-600">{tramite.tipo_tramite?.replace(/_/g, ' ')}</td>
@@ -1680,7 +1680,7 @@ export default function TramitesReportes() {
                   <td className="py-3 px-4 text-center">
                     <button
                       onClick={() => handleVerTramite(tramite.id)}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-accent hover:bg-accent-hover text-accent-foreground text-xs rounded-lg transition-colors"
                     >
                       <Eye className="w-3 h-3" />
                       Ver
@@ -1725,7 +1725,7 @@ export default function TramitesReportes() {
               type="date"
               value={reporteDesde}
               onChange={e => setReporteDesde(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>
           <div>
@@ -1734,7 +1734,7 @@ export default function TramitesReportes() {
               type="date"
               value={reporteHasta}
               onChange={e => setReporteHasta(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
           </div>
           <div>
@@ -1742,7 +1742,7 @@ export default function TramitesReportes() {
             <select
               value={reporteAreaId}
               onChange={e => setReporteAreaId(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             >
               <option value="">Todas</option>
               {areasFormBuilder.map(a => (
@@ -1755,7 +1755,7 @@ export default function TramitesReportes() {
             <select
               value={reporteTipo}
               onChange={e => setReporteTipo(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             >
               <option value="">Todos</option>
               {tiposFormBuilder.map(t => (
@@ -1768,7 +1768,7 @@ export default function TramitesReportes() {
             <select
               value={reporteEquipoId}
               onChange={e => setReporteEquipoId(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
             >
               <option value="">Todos</option>
               {grupos.map(g => (
@@ -1782,7 +1782,7 @@ export default function TramitesReportes() {
           <button
             onClick={consultarReporte}
             disabled={reporteLoading || !reporteDesde || !reporteHasta}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+            className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground text-sm font-medium rounded-lg transition-colors"
           >
             {reporteLoading ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1807,7 +1807,7 @@ export default function TramitesReportes() {
               <tbody>
                 {reporteRows.slice(0, 50).map((r: any, i: number) => (
                   <tr key={i} className="border-t border-neutral-100 hover:bg-neutral-50">
-                    <td className="py-2 px-3 font-mono text-accent font-semibold whitespace-nowrap">{r.folio}</td>
+                    <td className="py-2 px-3 font-mono text-accent-ink font-semibold whitespace-nowrap">{r.folio}</td>
                     <td className="py-2 px-3 text-neutral-700 whitespace-nowrap">{r.tipo_nombre}</td>
                     <td className="py-2 px-3 text-neutral-600 whitespace-nowrap">{r.area_nombre}</td>
                     <td className="py-2 px-3 text-neutral-600 whitespace-nowrap">{r.equipo_nombre ?? '—'}</td>
@@ -1823,7 +1823,7 @@ export default function TramitesReportes() {
                         <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                           {r.estatus_actual}
                         </span>
-                      ) : <span className="text-neutral-400">Sin estatus</span>}
+                      ) : <span className="text-neutral-500">Sin estatus</span>}
                     </td>
                     <td className="py-2 px-3 text-neutral-600 text-center">{r.total_eventos}</td>
                   </tr>
@@ -1847,8 +1847,8 @@ export default function TramitesReportes() {
 
       {/* Modal de Vista Previa */}
       {showPreviewModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-card rounded-2xl shadow-e4 max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-scale-in">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-neutral-200">
               <div>
@@ -1892,7 +1892,7 @@ export default function TramitesReportes() {
                     onClick={() => setPreviewTab(tab)}
                     className={`px-4 py-2 font-semibold transition-all capitalize ${
                       previewTab === tab
-                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        ? 'text-accent-ink border-b-2 border-accent'
                         : 'text-neutral-600 hover:text-neutral-900'
                     }`}
                   >
@@ -1906,7 +1906,7 @@ export default function TramitesReportes() {
             <div className="flex-1 overflow-y-auto p-6">
               {loadingPreview ? (
                 <div className="flex justify-center items-center h-64">
-                  <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
                 </div>
               ) : selectedTramite ? (
                 <>

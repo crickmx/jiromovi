@@ -47,7 +47,7 @@ function VideoTile({ participant, isLocal, stream }: VideoTileProps) {
   }, [stream]);
 
   return (
-    <div className="relative bg-slate-900 rounded-lg overflow-hidden aspect-video">
+    <div className="relative bg-neutral-900 rounded-lg overflow-hidden aspect-video">
       {participant.videoEnabled && stream ? (
         <video
           ref={videoRef}
@@ -58,7 +58,7 @@ function VideoTile({ participant, isLocal, stream }: VideoTileProps) {
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <UserCircle className="w-24 h-24 text-slate-600" />
+          <UserCircle className="w-24 h-24 text-neutral-600" />
         </div>
       )}
 

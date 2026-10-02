@@ -1645,7 +1645,7 @@ export function TramiteDetalle() {
       {/* Centinela: mientras se vea, el encabezado va completo. */}
       <div ref={centinelaRef} className="h-px -mb-px" aria-hidden="true" />
 
-      <div className="sticky top-0 z-30 bg-white dark:bg-neutral-800 rounded-3xl shadow-card overflow-hidden border border-neutral-200 dark:border-neutral-700">
+      <div className="sticky top-0 z-30 bg-surface-card dark:bg-neutral-800 rounded-3xl shadow-card overflow-hidden border border-soft dark:border-neutral-700">
         {/* Encabezado del tipo — fondo configurable (color, degradado o imagen) */}
         <div style={header.style} className={`relative px-6 transition-all duration-200 ${encabezadoCompacto ? 'pt-2 pb-2' : 'pt-4 pb-5'}`}>
           {header.conVelo && <div className={CLASE_VELO} />}
@@ -1752,7 +1752,7 @@ export function TramiteDetalle() {
                         {showEstatusMenu && estatusMenuPos && createPortal(
                           <div
                             ref={estatusPanelRef}
-                            className="fixed w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-[70] overflow-hidden"
+                            className="fixed w-72 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-xl shadow-lg z-[70] overflow-hidden"
                             style={{ top: estatusMenuPos.top, right: estatusMenuPos.right }}
                           >
                             <p className="px-3 py-2 text-[11px] font-semibold text-neutral-500 dark:text-white/50 bg-neutral-50 dark:bg-neutral-700/60 border-b border-neutral-200 dark:border-neutral-600">
@@ -1778,7 +1778,7 @@ export function TramiteDetalle() {
                                       <span className="block text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">{opt.label}</span>
                                       <span className="block text-[11px]" style={{ color: col }}>{efecto}</span>
                                     </span>
-                                    {elegida && <Check className="w-3.5 h-3.5 text-neutral-400 shrink-0 mt-1" />}
+                                    {elegida && <Check className="w-3.5 h-3.5 text-neutral-500 shrink-0 mt-1" />}
                                   </button>
                                 );
                               })}
@@ -1858,7 +1858,7 @@ export function TramiteDetalle() {
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className={`flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all font-semibold cursor-pointer disabled:opacity-50 ${!isDirty && !saving ? 'opacity-50' : ''}`}
+                      className={`flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground rounded-xl transition-all font-semibold cursor-pointer disabled:opacity-50 ${!isDirty && !saving ? 'opacity-50' : ''}`}
                     >
                       <Save className="w-4 h-4" />
                       <span>{saving ? 'Guardando...' : 'Guardar'}</span>
@@ -1874,7 +1874,7 @@ export function TramiteDetalle() {
                         <ChevronDown className="w-4 h-4" />
                       </button>
                       {showCerrarMenu && cerrarOptions.length > 0 && (
-                        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-20 overflow-hidden">
+                        <div className="absolute right-0 mt-2 w-64 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-xl shadow-lg z-20 overflow-hidden">
                           <div className="px-4 py-2 text-xs font-semibold text-neutral-500 dark:text-white/50 bg-neutral-50 dark:bg-neutral-700 border-b border-neutral-200 dark:border-neutral-600">
                             Cerrar con estatus:
                           </div>
@@ -1943,7 +1943,7 @@ export function TramiteDetalle() {
                 onClick={() => setActiveTab(tab)}
                 className={`px-3 sm:px-6 py-3 font-semibold transition-all capitalize shrink-0 ${
                   activeTab === tab
-                    ? 'text-accent border-b-2 border-accent'
+                    ? 'text-accent-ink border-b-2 border-accent'
                     : 'text-neutral-600 hover:text-neutral-900'
                 }`}
               >
@@ -1955,7 +1955,7 @@ export function TramiteDetalle() {
                 onClick={() => setActiveTab('comisiones')}
                 className={`px-6 py-3 font-semibold transition-all capitalize ${
                   activeTab === 'comisiones'
-                    ? 'text-accent border-b-2 border-accent'
+                    ? 'text-accent-ink border-b-2 border-accent'
                     : 'text-neutral-600 hover:text-neutral-900'
                 }`}
               >
@@ -1967,7 +1967,7 @@ export function TramiteDetalle() {
                 onClick={() => setActiveTab('diagnostico')}
                 className={`px-6 py-3 font-semibold transition-all capitalize ${
                   activeTab === 'diagnostico'
-                    ? 'text-accent border-b-2 border-accent'
+                    ? 'text-accent-ink border-b-2 border-accent'
                     : 'text-neutral-600 hover:text-neutral-900'
                 }`}
               >
@@ -1978,12 +1978,12 @@ export function TramiteDetalle() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-card border border-neutral-200 dark:border-neutral-700 p-6">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card border border-soft dark:border-neutral-700 p-6">
         {activeTab === 'detalles' && (
           <>
             {comentarioInicial && (
               <div className="mb-6 p-4 rounded-2xl border border-blue-200 bg-blue-50">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-accent-ink uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5" />
                   Comentario inicial{comentarioInicial.usuario?.nombre_completo ? ` — ${comentarioInicial.usuario.nombre_completo}` : ''}
                 </p>
@@ -1991,7 +1991,7 @@ export function TramiteDetalle() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('comentarios')}
-                  className="mt-2 text-xs font-semibold text-blue-600 hover:underline"
+                  className="mt-2 text-xs font-semibold text-accent-ink hover:underline"
                 >
                   Ver todos los comentarios →
                 </button>
@@ -2049,18 +2049,18 @@ export function TramiteDetalle() {
                       const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
                       const adminEditable = isAdmin && !isCerrado && campo.sistema_key !== 'fecha_finalizacion' && campo.sistema_key !== 'creado_por';
                       const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700';
-                      const muted  = 'px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-400 italic';
-                      const inputCls = 'w-full px-3 py-2 border border-violet-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white';
+                      const muted  = 'px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-500 italic';
+                      const inputCls = 'w-full px-3 py-2 border border-violet-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-surface-card';
                       return (
                         <div key={campo.id}>
                           <label className="block text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
                             {campo.label}
                           </label>
                           {campo.sistema_key === 'agente_vendedor' && (
-                            <p className="text-[11px] text-neutral-400 mb-1">Solicitante — para quién es este trámite.</p>
+                            <p className="text-[11px] text-neutral-500 mb-1">Solicitante — para quién es este trámite.</p>
                           )}
                           {campo.sistema_key === 'creado_por' && (
-                            <p className="text-[11px] text-neutral-400 mb-1">Quién registró este trámite en el sistema.</p>
+                            <p className="text-[11px] text-neutral-500 mb-1">Quién registró este trámite en el sistema.</p>
                           )}
                           {adminEditable ? (
                             campo.sistema_key === 'agente_vendedor' ? (
@@ -2125,21 +2125,21 @@ export function TramiteDetalle() {
                       <span className="text-xs text-amber-600">— {parentTicket.tipo_label}</span>
                     )}
                     {parentTicket.cerrado_en && (
-                      <span className="ml-auto text-xs text-neutral-400 shrink-0">Cerrado</span>
+                      <span className="ml-auto text-xs text-neutral-500 shrink-0">Cerrado</span>
                     )}
                   </div>
                 )}
                 {childTickets.map(child => (
                   <div key={child.id} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
-                    <GitBranch className="w-3 h-3 text-neutral-400 shrink-0" />
-                    <Link to={`/tramites/${child.id}`} className="text-xs font-semibold text-neutral-700 hover:text-blue-600 hover:underline">
+                    <GitBranch className="w-3 h-3 text-neutral-500 shrink-0" />
+                    <Link to={`/tramites/${child.id}`} className="text-xs font-semibold text-neutral-700 hover:text-accent-ink hover:underline">
                       {child.folio}
                     </Link>
                     {child.tipo_label && (
                       <span className="text-xs text-neutral-500">— {child.tipo_label}</span>
                     )}
                     {child.cerrado_en && (
-                      <span className="ml-auto text-xs text-neutral-400 shrink-0">Cerrado</span>
+                      <span className="ml-auto text-xs text-neutral-500 shrink-0">Cerrado</span>
                     )}
                   </div>
                 ))}
@@ -2163,7 +2163,7 @@ export function TramiteDetalle() {
                 if (!editable && !TIPOS_CON_LECTURA_PROPIA.includes(campo.tipo)) {
                   return (
                     <div key={campo.id} className={CAMPOS_ANCHOS.includes(campo.tipo) ? 'md:col-span-2 xl:col-span-3' : ''}>
-                      <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide">{campo.label}</p>
+                      <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">{campo.label}</p>
                       <p className="text-sm text-neutral-800 dark:text-neutral-100 break-words whitespace-pre-wrap">
                         {textoDeValor(campo, val)}
                       </p>
@@ -2180,7 +2180,7 @@ export function TramiteDetalle() {
                       <label className="block text-[13px] font-semibold text-neutral-600 dark:text-neutral-300 mb-0.5">
                         {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
                       </label>
-                      {campo.ayuda && <p className="text-[11px] leading-4 text-neutral-400 mb-0.5">{campo.ayuda}</p>}
+                      {campo.ayuda && <p className="text-[11px] leading-4 text-neutral-500 mb-0.5">{campo.ayuda}</p>}
 
                       {campo.tipo === 'texto_corto' && (
                         <input type="text" value={val || ''} onChange={e => set(e.target.value)} disabled={!editable}
@@ -2211,7 +2211,7 @@ export function TramiteDetalle() {
                           <input type="number" value={val ?? ''} onChange={e => set(e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value))))} disabled={!editable}
                             min={0} max={100} step="0.01"
                             className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-50 disabled:text-neutral-500" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none">%</span>
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">%</span>
                         </div>
                       )}
                       {campo.tipo === 'texto_largo' && (
@@ -2231,7 +2231,7 @@ export function TramiteDetalle() {
                       )}
                       {campo.tipo === 'booleano' && (
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={!!val} onChange={e => set(e.target.checked)} disabled={!editable} className="w-4 h-4 text-blue-600 rounded" />
+                          <input type="checkbox" checked={!!val} onChange={e => set(e.target.checked)} disabled={!editable} className="w-4 h-4 text-accent-ink rounded" />
                           <span className="text-sm text-neutral-700">Sí</span>
                         </label>
                       )}
@@ -2278,7 +2278,7 @@ export function TramiteDetalle() {
                                 }
                               }
                             }
-                          }} className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white">
+                          }} className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-surface-card">
                             <option value="">Selecciona ramo...</option>
                             {catalogoRamos.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
                           </select>
@@ -2327,17 +2327,17 @@ export function TramiteDetalle() {
                           return (
                             <div className="relative" ref={el => { asegRefs.current[campo.id] = el; }}>
                               <div
-                                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[38px] flex items-center justify-between gap-2 bg-white hover:border-neutral-400 focus-within:ring-2 focus-within:ring-blue-500"
+                                className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[38px] flex items-center justify-between gap-2 bg-surface-card hover:border-neutral-400 focus-within:ring-2 focus-within:ring-blue-500"
                                 onClick={() => setUi({ open: !ui.open })}
                               >
                                 {seleccionadas.length === 0
-                                  ? <span className="text-neutral-400">{ramoCampo && !ramoVal ? 'Selecciona primero un ramo (opcional)...' : 'Selecciona aseguradoras...'}</span>
+                                  ? <span className="text-neutral-500">{ramoCampo && !ramoVal ? 'Selecciona primero un ramo (opcional)...' : 'Selecciona aseguradoras...'}</span>
                                   : <span className="text-neutral-900">{seleccionadas.join(', ')}</span>
                                 }
-                                <ChevronDown className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${ui.open ? 'rotate-180' : ''}`} />
+                                <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${ui.open ? 'rotate-180' : ''}`} />
                               </div>
                               {ui.open && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-300 rounded-xl shadow-lg max-h-64 overflow-auto">
+                                <div className="absolute z-10 w-full mt-1 bg-surface-card border border-neutral-300 rounded-xl shadow-lg max-h-64 overflow-auto">
                                   <div className="p-2 border-b border-neutral-200 sticky top-0 bg-white">
                                     <input
                                       type="text"
@@ -2350,7 +2350,7 @@ export function TramiteDetalle() {
                                   </div>
                                   <div className="p-1">
                                     {preferentes.length > 0 && (
-                                      <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider px-1.5 pt-1">Preferentes</p>
+                                      <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wider px-1.5 pt-1">Preferentes</p>
                                     )}
                                     {preferentes.map(c => (
                                       <label key={c.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
@@ -2359,7 +2359,7 @@ export function TramiteDetalle() {
                                       </label>
                                     ))}
                                     {resto.length > 0 && !ui.verMas && (
-                                      <button type="button" onClick={() => setUi({ verMas: true })} className="w-full text-left px-1.5 py-1.5 text-xs text-blue-600 hover:underline">
+                                      <button type="button" onClick={() => setUi({ verMas: true })} className="w-full text-left px-1.5 py-1.5 text-xs text-accent-ink hover:underline">
                                         + Mostrar {resto.length} más
                                       </button>
                                     )}
@@ -2370,7 +2370,7 @@ export function TramiteDetalle() {
                                       </label>
                                     ))}
                                     {companiasDisponibles.length === 0 && (
-                                      <p className="text-xs text-neutral-400 p-2">Sin aseguradoras para el ramo seleccionado</p>
+                                      <p className="text-xs text-neutral-500 p-2">Sin aseguradoras para el ramo seleccionado</p>
                                     )}
                                   </div>
                                 </div>
@@ -2413,12 +2413,12 @@ export function TramiteDetalle() {
                               }}
                               placeholder="Ej: 76000" maxLength={5}
                               className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                            {cpState.loading && <p className="text-xs text-neutral-400">Buscando colonias...</p>}
+                            {cpState.loading && <p className="text-xs text-neutral-500">Buscando colonias...</p>}
                             {cpState.colonias.length > 0 && (
                               <select value={stored?.colonia || ''} onChange={e => {
                                 const col = cpState.colonias.find(c => c.colonia === e.target.value);
                                 if (col) set({ codigo: stored?.codigo, ...col });
-                              }} className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white">
+                              }} className="w-full px-3 py-1.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-surface-card">
                                 <option value="">Selecciona colonia...</option>
                                 {cpState.colonias.map(c => <option key={c.colonia} value={c.colonia}>{c.colonia}</option>)}
                               </select>
@@ -2483,12 +2483,12 @@ export function TramiteDetalle() {
                                   const isPending = pendingExtractions.some(p => p.archivo_id === archivo.id);
                                   const st = extractionStatus[archivo.id];
                                   const enCola = entrenamientoStatus[archivo.id];
-                                  if (isPending) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0 font-medium whitespace-nowrap" title="Se procesa al dar Guardar cambios">⏳ Pendiente de guardar</span>;
-                                  if (st === 'ok') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0 font-medium whitespace-nowrap">✓ Datos extraídos</span>;
-                                  if (enCola === 'pendiente') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 shrink-0 font-medium whitespace-nowrap">📚 En entrenamiento</span>;
-                                  if (enCola === 'procesado') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-500 shrink-0 font-medium whitespace-nowrap">✓ Entrenado</span>;
-                                  if (st === 'error') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0 font-medium whitespace-nowrap">⚠ Sin extracción</span>;
-                                  if (st === 'pendiente') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0 font-medium whitespace-nowrap">↻ Procesando...</span>;
+                                  if (isPending) return <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0 font-medium whitespace-nowrap" title="Se procesa al dar Guardar cambios">⏳ Pendiente de guardar</span>;
+                                  if (st === 'ok') return <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0 font-medium whitespace-nowrap">✓ Datos extraídos</span>;
+                                  if (enCola === 'pendiente') return <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 shrink-0 font-medium whitespace-nowrap">📚 En entrenamiento</span>;
+                                  if (enCola === 'procesado') return <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-500 shrink-0 font-medium whitespace-nowrap">✓ Entrenado</span>;
+                                  if (st === 'error') return <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0 font-medium whitespace-nowrap">⚠ Sin extracción</span>;
+                                  if (st === 'pendiente') return <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-100 text-accent-ink shrink-0 font-medium whitespace-nowrap">↻ Procesando...</span>;
                                   return null;
                                 })()}
                                 {tiposConfig.length === 1 ? (
@@ -2499,7 +2499,7 @@ export function TramiteDetalle() {
                                   <select
                                     value={archivo.categoria_id ?? ''}
                                     onChange={e => changeCat(archivo, e.target.value, i)}
-                                    className="text-[11px] border border-neutral-300 rounded px-1 py-0.5 bg-white shrink-0 max-w-[130px]"
+                                    className="text-[11px] border border-neutral-300 rounded px-1 py-0.5 bg-surface-card shrink-0 max-w-[130px]"
                                     onClick={e => e.stopPropagation()}
                                   >
                                     <option value="">— Tipo —</option>
@@ -2508,9 +2508,9 @@ export function TramiteDetalle() {
                                     ))}
                                   </select>
                                 ) : null}
-                                <span className="text-xs text-neutral-400 shrink-0">{(archivo.tamano / 1024).toFixed(0)} KB</span>
+                                <span className="text-xs text-neutral-500 shrink-0">{(archivo.tamano / 1024).toFixed(0)} KB</span>
                                 <a href={archivo.url} target="_blank" rel="noopener noreferrer"
-                                  className="p-1 text-blue-500 hover:text-blue-700 transition-colors shrink-0" title="Descargar">
+                                  className="p-1 text-blue-500 hover:text-accent-ink transition-colors shrink-0" title="Descargar">
                                   <Upload className="w-3.5 h-3.5 rotate-180" />
                                 </a>
                                 {editable && (
@@ -2537,7 +2537,7 @@ export function TramiteDetalle() {
                                 <span className="text-sm font-medium text-neutral-500 group-hover:text-blue-500 transition-colors">
                                   {remaining > 1 ? 'Adjuntar archivos' : 'Adjuntar archivo'}
                                 </span>
-                                <span className="text-xs text-neutral-400 text-center">
+                                <span className="text-xs text-neutral-500 text-center">
                                   {accept ? (campo.config.tipos_mime || []).join(', ').replace(/[^/]+\//g, '').toUpperCase() + ' · ' : ''}máx. {maxMb} MB{remaining > 1 ? ` · hasta ${remaining} archivos` : ''}
                                   {defaultCatId && adjuntoCatNombres[defaultCatId] ? ` · ${adjuntoCatNombres[defaultCatId]}` : ''}
                                 </span>
@@ -2669,7 +2669,7 @@ export function TramiteDetalle() {
                           disabled={!desbloqueada}
                           className={`w-full flex items-center gap-2 px-4 py-2 text-left ${desbloqueada ? 'cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/5' : 'cursor-default'}`}
                         >
-                          {!desbloqueada ? <Lock className="w-4 h-4 text-neutral-300 shrink-0" /> : <Layers className="w-4 h-4 text-accent shrink-0" />}
+                          {!desbloqueada ? <Lock className="w-4 h-4 text-neutral-300 shrink-0" /> : <Layers className="w-4 h-4 text-accent-ink shrink-0" />}
                           <div className="flex-1 min-w-0">
                             <p className={`text-[15px] font-bold ${desbloqueada ? 'text-neutral-900 dark:text-white' : 'text-neutral-400'}`}>
                               {seccion.opcional && !expandida && desbloqueada ? '+ ' : ''}{seccion.nombre}{seccion.opcional ? ' (opcional)' : ''}
@@ -2683,14 +2683,14 @@ export function TramiteDetalle() {
                             </p>
                             {desbloqueada ? (
                               seccion.descripcion && (!seccion.opcional || expandida) && (
-                                <p className="text-xs text-neutral-400 mt-0.5">{seccion.descripcion}</p>
+                                <p className="text-xs text-neutral-500 mt-0.5">{seccion.descripcion}</p>
                               )
                             ) : (
-                              <p className="text-xs text-neutral-400 mt-0.5">{motivoSeccionBloqueada(seccion, secciones, camposDinamicos)}</p>
+                              <p className="text-xs text-neutral-500 mt-0.5">{motivoSeccionBloqueada(seccion, secciones, camposDinamicos)}</p>
                             )}
                           </div>
                           {desbloqueada && (
-                            <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform shrink-0 ${expandida ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform shrink-0 ${expandida ? 'rotate-180' : ''}`} />
                           )}
                         </button>
                         {mostrarCampos && (
@@ -2729,10 +2729,10 @@ export function TramiteDetalle() {
       )}
 
       {extractionProgress && (
-        <div className="fixed bottom-6 right-6 w-72 bg-white border border-neutral-200 rounded-xl shadow-lg z-50 p-3.5 space-y-2">
+        <div className="fixed bottom-6 right-6 w-72 bg-surface-card border border-soft rounded-xl shadow-lg z-50 p-3.5 space-y-2">
           <div className="flex items-center justify-between text-xs font-medium text-neutral-600">
             <span className="truncate pr-2">Extrayendo: {extractionProgress.nombre}</span>
-            <span className="shrink-0 text-neutral-400">{extractionProgress.actual}/{extractionProgress.total}</span>
+            <span className="shrink-0 text-neutral-500">{extractionProgress.actual}/{extractionProgress.total}</span>
           </div>
           <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
             <div
@@ -2745,8 +2745,8 @@ export function TramiteDetalle() {
 
       {/* ── Modal: ¿Cambiar estatus antes de guardar? ─────────────────────────── */}
       {estatusModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm px-4">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-e4 w-full max-w-sm overflow-hidden animate-scale-in">
             {/* Cabecera */}
             <div className="px-5 pt-5 pb-4 border-b border-neutral-100 dark:border-neutral-700">
               <p className="text-base font-semibold text-neutral-900 dark:text-white">Antes de guardar…</p>
@@ -2864,7 +2864,7 @@ export function TramiteDetalle() {
               </button>
               <button
                 onClick={handleEstatusModalConfirm}
-                className="px-4 py-2 text-sm rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 text-sm rounded-xl bg-accent text-accent-foreground font-medium hover:bg-accent-hover transition-colors"
               >
                 Guardar cambios
               </button>
@@ -2891,8 +2891,8 @@ export function TramiteDetalle() {
 
       {/* Modal de escalación — comentario obligatorio */}
       {escalacionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-md p-6 space-y-4 animate-scale-in">
             <div className="flex items-start gap-3">
               <span className="text-2xl">🔔</span>
               <div>
@@ -2910,7 +2910,7 @@ export function TramiteDetalle() {
               value={escalacionComentario}
               onChange={e => setEscalacionComentario(e.target.value)}
               placeholder="Ej: El cliente solicita condiciones especiales que requieren autorización..."
-              className="w-full px-3 py-2.5 text-sm border border-neutral-300 dark:border-white/20 rounded-xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-white placeholder-neutral-400 dark:placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+              className="w-full px-3 py-2.5 text-sm border border-neutral-300 dark:border-white/20 rounded-xl bg-surface-card dark:bg-neutral-800 text-neutral-800 dark:text-white placeholder-neutral-400 dark:placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
             />
             <div className="flex gap-2 justify-end">
               <button
@@ -2941,7 +2941,7 @@ export function TramiteDetalle() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Guardando...' : 'Guardar cambios'}
@@ -2959,8 +2959,8 @@ export function TramiteDetalle() {
 
       {/* Comentario obligatorio al cambiar estatus */}
       {pendingEstatusComentario && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-md p-6 space-y-4 animate-scale-in">
             <div>
               <p className="text-base font-semibold text-neutral-900 dark:text-white">Cambio de estatus</p>
               <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5">Agrega un comentario explicando el cambio de estatus.</p>
@@ -2972,13 +2972,13 @@ export function TramiteDetalle() {
               rows={3}
               maxLength={500}
               placeholder="¿Por qué cambia el estatus?"
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none resize-none bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none resize-none bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
             />
             <div className="flex gap-2">
               <button
                 onClick={confirmarCambioConComentario}
                 disabled={!comentarioCambioEstatus.trim()}
-                className="flex-1 px-4 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
                 Guardar
               </button>

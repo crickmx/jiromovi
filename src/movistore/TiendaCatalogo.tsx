@@ -146,7 +146,7 @@ export function TiendaCatalogo() {
   if (cargando) {
     return (
       <div className="min-h-screen bg-surface-50 flex flex-col items-center justify-center font-sans">
-        <div className="w-10 h-10 border-[3px] border-surface-200 border-t-[#164281] rounded-full animate-spin mb-4" />
+        <div className="w-10 h-10 border-[3px] border-surface-200 border-t-accent rounded-full animate-spin mb-4" />
         <p className="text-surface-500 text-sm font-medium">Cargando catálogo...</p>
       </div>
     );
@@ -197,7 +197,7 @@ export function TiendaCatalogo() {
             href="https://app.movi.digital/store"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-[#164281] hover:bg-[#1e5fac] text-white transition-all shadow-sm"
+            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-accent hover:bg-[#1e5fac] text-accent-foreground transition-all shadow-sm"
           >
             <span>Ir a MOVI</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -226,7 +226,7 @@ export function TiendaCatalogo() {
               {catalogo.nombre}
             </h1>
             {catalogo.descripcion && (
-              <p className="text-base sm:text-lg text-slate-300 font-normal leading-relaxed mb-6">
+              <p className="text-base sm:text-lg text-neutral-300 font-normal leading-relaxed mb-6">
                 {catalogo.descripcion}
               </p>
             )}
@@ -234,18 +234,18 @@ export function TiendaCatalogo() {
             {/* In-catalog live search */}
             <div className="relative max-w-xl">
               <div className="relative flex items-center">
-                <Search className="absolute left-4 w-4 h-4 text-slate-400 pointer-events-none" />
+                <Search className="absolute left-4 w-4 h-4 text-neutral-500 pointer-events-none" />
                 <input
                   type="text"
                   value={busqueda}
                   onChange={e => actualizarFiltros({ q: e.target.value })}
                   placeholder={`Buscar dentro de ${catalogo.nombre}...`}
-                  className="w-full pl-11 pr-10 py-3 rounded-2xl bg-white/95 text-slate-900 placeholder:text-slate-400 font-medium text-sm shadow-lg shadow-black/30 border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all"
+                  className="w-full pl-11 pr-10 py-3 rounded-2xl bg-white/95 text-neutral-900 placeholder:text-neutral-500 font-medium text-sm shadow-lg shadow-black/30 border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:bg-white transition-all"
                 />
                 {busqueda && (
                   <button
                     onClick={() => actualizarFiltros({ q: '' })}
-                    className="absolute right-3 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    className="absolute right-3 p-1 rounded-full text-neutral-500 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -281,7 +281,7 @@ export function TiendaCatalogo() {
                       : 'text-surface-600 hover:text-surface-900'
                   }`}
                 >
-                  <Package className="w-3.5 h-3.5 text-blue-600" />
+                  <Package className="w-3.5 h-3.5 text-accent-ink" />
                   <span>Productos ({totalProductos})</span>
                 </button>
               )}
@@ -312,7 +312,7 @@ export function TiendaCatalogo() {
               </button>
             )}
 
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-surface-200 shadow-sm">
+            <div className="flex items-center gap-2 bg-surface-card px-3 py-1.5 rounded-xl border border-surface-200 shadow-card">
               <SlidersHorizontal className="w-3.5 h-3.5 text-surface-400" />
               <select
                 value={orden}
@@ -329,7 +329,7 @@ export function TiendaCatalogo() {
         </div>
 
         {productosFiltrados.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-surface-200 p-8 max-w-lg mx-auto shadow-sm">
+          <div className="text-center py-20 bg-surface-card rounded-3xl border border-surface-200 p-8 max-w-lg mx-auto shadow-card">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-surface-100 flex items-center justify-center text-surface-400 mb-4">
               <Package className="w-7 h-7" />
             </div>
@@ -342,14 +342,14 @@ export function TiendaCatalogo() {
             {hayFiltrosActivos ? (
               <button
                 onClick={limpiarFiltros}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#164281] text-white text-xs font-bold hover:bg-[#1e5fac] transition-colors shadow-md"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-accent-foreground text-xs font-bold hover:bg-[#1e5fac] transition-colors shadow-md"
               >
                 Ver todos los de este catálogo
               </button>
             ) : (
               <Link
                 to="/"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#164281] text-white text-xs font-bold hover:bg-[#1e5fac] transition-colors shadow-md"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-accent-foreground text-xs font-bold hover:bg-[#1e5fac] transition-colors shadow-md"
               >
                 Explorar otros catálogos
               </Link>
@@ -365,7 +365,7 @@ export function TiendaCatalogo() {
               return (
                 <div
                   key={p.id}
-                  className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-surface-200/80 group flex flex-col hover:-translate-y-1"
+                  className="bg-surface-card rounded-2xl overflow-hidden shadow-card hover:shadow-xl transition-all duration-300 border border-surface-200/80 group flex flex-col hover:-translate-y-1"
                 >
                   <Link to={`/producto/${p.id}`} className="block relative aspect-square bg-surface-100 overflow-hidden">
                     <img
@@ -378,7 +378,7 @@ export function TiendaCatalogo() {
                     />
                     <div className="absolute top-2.5 left-2.5">
                       {p.categoria && (
-                        <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-white/95 text-surface-800 shadow-sm backdrop-blur-sm">
+                        <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-white/95 text-surface-800 shadow-sm backdrop-blur-sm">
                           {p.categoria.nombre}
                         </span>
                       )}
@@ -413,13 +413,13 @@ export function TiendaCatalogo() {
 
                     <div className="mt-4 pt-3 border-t border-surface-100 flex items-baseline justify-between">
                       <div>
-                        <span className="text-[10px] uppercase font-semibold text-surface-400 block">Precio</span>
-                        <span className="text-lg font-black text-[#164281]">{fmt(p.precio)}</span>
-                        <span className="text-[10px] text-surface-500 ml-1">MXN</span>
+                        <span className="text-[11px] uppercase font-semibold text-surface-400 block">Precio</span>
+                        <span className="text-lg font-black text-accent-ink">{fmt(p.precio)}</span>
+                        <span className="text-[11px] text-surface-500 ml-1">MXN</span>
                       </div>
                       <Link
                         to={`/producto/${p.id}`}
-                        className="text-xs font-bold text-[#164281] hover:underline flex items-center gap-0.5"
+                        className="text-xs font-bold text-accent-ink hover:underline flex items-center gap-0.5"
                       >
                         Detalles <ChevronRight className="w-3 h-3" />
                       </Link>
@@ -431,7 +431,7 @@ export function TiendaCatalogo() {
                       href={comprarUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full inline-flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl bg-[#164281] hover:bg-[#1e5fac] active:scale-[0.98] text-white transition-all shadow-sm"
+                      className="w-full inline-flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl bg-accent hover:bg-[#1e5fac] active:scale-[0.98] text-accent-foreground transition-all shadow-sm"
                     >
                       <span>{esServicio ? 'Solicitar en MOVI' : 'Comprar en MOVI'}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -445,13 +445,13 @@ export function TiendaCatalogo() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#040c1f] text-slate-400 text-xs py-10 border-t border-white/10 mt-16">
+      <footer className="bg-[#040c1f] text-neutral-500 text-xs py-10 border-t border-white/10 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <img src="/movirecurso_7.png" alt="MOVI" className="h-6 w-auto object-contain" />
             <span className="text-white font-bold text-xs">MOVI Store · Grupo Jiro</span>
           </div>
-          <p className="text-slate-500 text-[11px]">
+          <p className="text-neutral-500 text-[11px]">
             © {new Date().getFullYear()} MOVI Digital. Todos los derechos reservados.
           </p>
         </div>

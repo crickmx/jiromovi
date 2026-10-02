@@ -18,17 +18,17 @@ import type { WebSource } from '../lib/assistantTypes';
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
   if (confidence >= 0.85) return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400">
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />Alta confianza
     </span>
   );
   if (confidence >= 0.70) return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400">
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400">
       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />Confianza media
     </span>
   );
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-400">
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-400">
       <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />Confianza baja
     </span>
   );
@@ -47,7 +47,7 @@ function SourcesPanel({ sources, confidence, ragSources }: { sources: WebSource[
         {totalSources > 0 && (
           <button
             onClick={() => setOpen(!open)}
-            className="ml-auto flex items-center gap-1 text-[10px] text-white/30 hover:text-cyan-400 transition-colors font-medium"
+            className="ml-auto flex items-center gap-1 text-[11px] text-white/30 hover:text-cyan-400 transition-colors font-medium"
           >
             {open ? 'Ocultar fuentes' : `Ver fuentes (${totalSources})`}
             {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -65,8 +65,8 @@ function SourcesPanel({ sources, confidence, ragSources }: { sources: WebSource[
               <div className="min-w-0">
                 <p className="text-[11px] font-medium text-white/60 truncate">{src.documento_titulo}</p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  {src.carpeta && <span className="text-[10px] text-white/25">{src.carpeta}</span>}
-                  <span className="text-[10px] text-cyan-400/50">{Math.round(src.similitud * 100)}% relevancia</span>
+                  {src.carpeta && <span className="text-[11px] text-white/25">{src.carpeta}</span>}
+                  <span className="text-[11px] text-cyan-400/50">{Math.round(src.similitud * 100)}% relevancia</span>
                 </div>
               </div>
             </div>
@@ -83,7 +83,7 @@ function SourcesPanel({ sources, confidence, ragSources }: { sources: WebSource[
               <div className="min-w-0">
                 <p className="text-[11px] font-medium text-white/60 group-hover:text-cyan-300 transition-colors truncate">{src.title}</p>
                 {src.snippet && (
-                  <p className="text-[10px] text-white/25 mt-0.5 line-clamp-2 leading-relaxed">{src.snippet}</p>
+                  <p className="text-[11px] text-white/25 mt-0.5 line-clamp-2 leading-relaxed">{src.snippet}</p>
                 )}
               </div>
             </a>
@@ -296,7 +296,7 @@ export default function Chava() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-white">Chava AI</span>
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,229,255,0.1)', color: '#00E5FF', border: '1px solid rgba(0,229,255,0.2)' }}>
+              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,229,255,0.1)', color: '#00E5FF', border: '1px solid rgba(0,229,255,0.2)' }}>
                 agentedeseguros.ai
               </span>
             </div>
@@ -659,7 +659,7 @@ export default function Chava() {
                 <Send className="h-4.5 w-4.5" />
               </button>
             </div>
-            <p className="text-[10px] text-center mt-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            <p className="text-[11px] text-center mt-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
               Chava puede cometer errores. Verifica la informacion importante antes de tomar decisiones.
             </p>
           </div>

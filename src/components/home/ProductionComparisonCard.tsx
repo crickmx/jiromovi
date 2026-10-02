@@ -43,7 +43,7 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 export function ProductionComparisonCard({ data, loading, onClick }: Props) {
   if (loading) {
     return (
-      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 animate-pulse">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 animate-pulse">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-white/8" />
           <div className="h-4 w-40 bg-neutral-100 dark:bg-white/8 rounded" />
@@ -60,14 +60,14 @@ export function ProductionComparisonCard({ data, loading, onClick }: Props) {
 
   if (!data) {
     return (
-      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/15">
             <BarChart3 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Produccion Comparativa</h3>
         </div>
-        <p className="text-sm text-neutral-400 dark:text-white/30 text-center py-6">Sin datos disponibles</p>
+        <p className="text-sm text-neutral-500 dark:text-white/45 text-center py-6">Sin datos disponibles</p>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export function ProductionComparisonCard({ data, loading, onClick }: Props) {
     <div
       onClick={onClick}
       className={cn(
-        "bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 transition-all duration-200 ease-smooth h-full flex flex-col",
+        "bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 transition-all duration-200 ease-smooth h-full flex flex-col",
         onClick && "cursor-pointer hover:shadow-card-hover hover:border-neutral-300 dark:hover:border-white/15 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]"
       )}
     >
@@ -91,7 +91,7 @@ export function ProductionComparisonCard({ data, loading, onClick }: Props) {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Produccion</h3>
-            <p className="text-[11px] text-neutral-400 dark:text-white/30">Ene - Hoy {data.current_year}</p>
+            <p className="text-[11px] text-neutral-500 dark:text-white/45">Ene - Hoy {data.current_year}</p>
           </div>
         </div>
         <div className={cn(
@@ -109,7 +109,7 @@ export function ProductionComparisonCard({ data, loading, onClick }: Props) {
       <div className="flex-1 space-y-4">
         <div>
           <div className="flex items-baseline justify-between mb-1.5">
-            <span className="text-xs font-medium text-neutral-500 dark:text-white/40">Prima Neta</span>
+            <span className="text-xs font-medium text-neutral-500 dark:text-white/55">Prima Neta</span>
             <span className="text-lg font-bold text-neutral-900 dark:text-white tracking-tight">
               {formatCurrency(data.current_prima)}
             </span>
@@ -120,12 +120,12 @@ export function ProductionComparisonCard({ data, loading, onClick }: Props) {
             color="bg-gradient-to-r from-emerald-400 to-emerald-500"
           />
           <div className="flex justify-between mt-1.5">
-            <span className="text-[10px] text-neutral-400 dark:text-white/25">
+            <span className="text-[11px] text-neutral-500 dark:text-white/25">
               {data.prev_year}: {formatCurrency(data.prev_prima)}
             </span>
             <div className="flex items-center gap-1">
-              <Target className="w-3 h-3 text-neutral-400 dark:text-white/30" />
-              <span className="text-[10px] text-neutral-400 dark:text-white/25">
+              <Target className="w-3 h-3 text-neutral-500 dark:text-white/45" />
+              <span className="text-[11px] text-neutral-500 dark:text-white/25">
                 Meta: {formatCurrency(data.meta_prima)}
               </span>
             </div>
@@ -135,7 +135,7 @@ export function ProductionComparisonCard({ data, loading, onClick }: Props) {
         {/* Polizas Section */}
         <div>
           <div className="flex items-baseline justify-between mb-1.5">
-            <span className="text-xs font-medium text-neutral-500 dark:text-white/40">Polizas</span>
+            <span className="text-xs font-medium text-neutral-500 dark:text-white/55">Polizas</span>
             <div className="flex items-baseline gap-2">
               <span className="text-lg font-bold text-neutral-900 dark:text-white tracking-tight">
                 {data.current_polizas.toLocaleString()}
@@ -154,10 +154,10 @@ export function ProductionComparisonCard({ data, loading, onClick }: Props) {
             color="bg-gradient-to-r from-sky-400 to-sky-500"
           />
           <div className="flex justify-between mt-1.5">
-            <span className="text-[10px] text-neutral-400 dark:text-white/25">
+            <span className="text-[11px] text-neutral-500 dark:text-white/25">
               {data.prev_year}: {data.prev_polizas.toLocaleString()}
             </span>
-            <span className="text-[10px] text-neutral-400 dark:text-white/25">
+            <span className="text-[11px] text-neutral-500 dark:text-white/25">
               Meta: {data.meta_polizas.toLocaleString()}
             </span>
           </div>
@@ -166,7 +166,7 @@ export function ProductionComparisonCard({ data, loading, onClick }: Props) {
         {/* Avance Meta */}
         <div className="pt-2 border-t border-neutral-100 dark:border-white/5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-neutral-500 dark:text-white/40">Avance vs Meta (+20%)</span>
+            <span className="text-[11px] font-medium text-neutral-500 dark:text-white/55">Avance vs Meta (+20%)</span>
             <span className={cn(
               "text-sm font-bold",
               data.avance_meta_prima_pct >= 100

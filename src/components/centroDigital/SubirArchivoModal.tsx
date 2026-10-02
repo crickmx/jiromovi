@@ -151,21 +151,21 @@ export function SubirArchivoModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 w-full max-w-lg animate-scale-in">
         <div className="border-b px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
               <Upload className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Subir archivo</h2>
-              <p className="text-sm text-gray-500">A: {carpetaNombre}</p>
+              <h2 className="text-xl font-semibold text-neutral-900">Subir archivo</h2>
+              <p className="text-sm text-neutral-500">A: {carpetaNombre}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-neutral-500 hover:text-gray-600 transition-colors"
             disabled={loading}
           >
             <X className="w-5 h-5" />
@@ -194,24 +194,24 @@ export function SubirArchivoModal({
                   className="hidden"
                   disabled={loading}
                 />
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors">
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors">
                   {archivo ? (
                     <div className="flex items-center justify-center gap-3">
-                      <File className="w-8 h-8 text-accent" />
+                      <File className="w-8 h-8 text-accent-ink" />
                       <div className="text-left">
-                        <p className="font-medium text-gray-900">{archivo.name}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="font-medium text-neutral-900">{archivo.name}</p>
+                        <p className="text-sm text-neutral-500">
                           {(archivo.size / 1024 / 1024).toFixed(2)} MB
                         </p>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-sm font-medium text-gray-700">
+                      <Upload className="w-12 h-12 text-neutral-500 mx-auto mb-3" />
+                      <p className="text-sm font-medium text-neutral-700">
                         Haz clic para seleccionar un archivo
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-neutral-500 mt-1">
                         Máximo 100 MB
                       </p>
                     </>
@@ -233,7 +233,7 @@ export function SubirArchivoModal({
                   required
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-neutral-500 mt-1">
                   Este nombre aparecerá en el Centro Digital
                 </p>
               </div>
@@ -242,21 +242,21 @@ export function SubirArchivoModal({
                 <button
                   type="button"
                   onClick={() => setMostrarPermisos(!mostrarPermisos)}
-                  className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 mb-3"
+                  className="flex items-center gap-2 text-sm font-medium text-neutral-700 hover:text-gray-900 mb-3"
                 >
                   <Users className="w-4 h-4" />
                   Configurar permisos de visibilidad
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-neutral-500">
                     ({mostrarPermisos ? 'ocultar' : 'mostrar'})
                   </span>
                 </button>
 
                 {mostrarPermisos && (
-                  <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="space-y-4 bg-neutral-50 p-4 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
                         <Label>Visible para todos</Label>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-neutral-500">
                           Todos los usuarios podrán ver este archivo
                         </p>
                       </div>
@@ -279,7 +279,7 @@ export function SubirArchivoModal({
                             value={oficinaSeleccionada}
                             onChange={(e) => setOficinaSeleccionada(e.target.value)}
                             disabled={loading || (esGerente && !!usuario?.oficina_id)}
-                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            className="mt-1 w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"
                           >
                             <option value="">Ninguna (hereda de carpeta)</option>
                             {oficinas.map((oficina) => (
@@ -300,7 +300,7 @@ export function SubirArchivoModal({
                             <Users className="w-4 h-4 inline mr-2" />
                             Usuarios con permiso individual
                           </Label>
-                          <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md">
+                          <div className="mt-2 max-h-40 overflow-y-auto border border-neutral-200 rounded-md">
                             {usuarios.map((u) => (
                               <label
                                 key={u.id}
@@ -313,13 +313,13 @@ export function SubirArchivoModal({
                                   disabled={loading}
                                   className="rounded"
                                 />
-                                <span className="text-sm text-gray-700">
+                                <span className="text-sm text-neutral-700">
                                   {u.nombre_completo}
                                 </span>
                               </label>
                             ))}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-neutral-500 mt-1">
                             {usuariosSeleccionados.length} usuario(s) seleccionado(s)
                           </p>
                         </div>
@@ -333,11 +333,11 @@ export function SubirArchivoModal({
 
           {loading && progreso > 0 && (
             <div>
-              <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <div className="flex justify-between text-sm text-neutral-600 mb-2">
                 <span>Subiendo archivo...</span>
                 <span>{progreso}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-neutral-200 rounded-full h-2">
                 <div
                   className="bg-accent h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progreso}%` }}

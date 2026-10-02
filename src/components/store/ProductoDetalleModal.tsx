@@ -161,15 +161,15 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
   return (
     <>
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-neutral-900">
             {esServicio ? 'Detalle del Servicio' : 'Detalle del Producto'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-neutral-500 hover:text-gray-600 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
@@ -178,7 +178,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Imagen */}
-            <div className="aspect-square w-full bg-gray-100 rounded-lg overflow-hidden relative">
+            <div className="aspect-square w-full bg-neutral-100 rounded-lg overflow-hidden relative">
               <img
                 src={getImageUrl(producto.imagen_url)}
                 alt={producto.titulo}
@@ -195,7 +195,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               )}
               {esPorPedido && !esServicio && (
                 <div className="absolute top-3 right-3">
-                  <span className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-sm font-semibold px-3 py-1.5 rounded-full">
+                  <span className="inline-flex items-center gap-1.5 bg-accent text-accent-foreground text-sm font-semibold px-3 py-1.5 rounded-full">
                     Por pedido
                   </span>
                 </div>
@@ -211,7 +211,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               )}
 
               <div className="flex items-center gap-3 flex-wrap mb-4">
-                <h1 className="text-3xl font-bold text-gray-900">{producto.titulo}</h1>
+                <h1 className="text-3xl font-bold text-neutral-900">{producto.titulo}</h1>
                 {agotado && (
                   <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-300 whitespace-nowrap">
                     Sin existencias
@@ -227,7 +227,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               {/* ── Selector de plan (solo para premium) ── */}
               {esPremium && (
                 <div className="mb-5 space-y-3">
-                  <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <p className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                     Elige tu plan:
                     {cargandoVariantes && <Loader2 className="w-3 h-3 animate-spin text-purple-500" />}
                   </p>
@@ -238,12 +238,12 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                       className={`relative p-4 rounded-xl border-2 text-left transition-all ${
                         planSeleccionado === 'mensual'
                           ? 'border-purple-500 bg-purple-50 shadow-sm'
-                          : 'border-gray-200 bg-white hover:border-purple-300'
+                          : 'border-neutral-200 bg-white hover:border-purple-300'
                       }`}
                     >
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Mensual</p>
+                      <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">Mensual</p>
                       <p className="text-2xl font-bold text-purple-700 leading-none">$200</p>
-                      <p className="text-xs text-gray-400 mt-1">MXN / mes</p>
+                      <p className="text-xs text-neutral-500 mt-1">MXN / mes</p>
                       {planSeleccionado === 'mensual' && (
                         <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-purple-500" />
                       )}
@@ -255,18 +255,18 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                       className={`relative pt-5 pb-4 px-4 rounded-xl border-2 text-left transition-all ${
                         planSeleccionado === 'anual'
                           ? 'border-emerald-500 bg-emerald-50 shadow-sm'
-                          : 'border-gray-200 bg-white hover:border-emerald-400'
+                          : 'border-neutral-200 bg-white hover:border-emerald-400'
                       }`}
                     >
-                      <span className="absolute -top-2.5 left-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap tracking-wide">
+                      <span className="absolute -top-2.5 left-3 bg-emerald-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap tracking-wide">
                         AHORRA 17%
                       </span>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Anual</p>
+                      <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">Anual</p>
                       <div className="flex items-baseline gap-1.5">
                         <p className="text-2xl font-bold text-emerald-600 leading-none">$167</p>
-                        <p className="text-xs text-gray-400">/mes</p>
+                        <p className="text-xs text-neutral-500">/mes</p>
                       </div>
-                      <p className="text-xs text-gray-400 line-through mt-0.5">$200/mes</p>
+                      <p className="text-xs text-neutral-500 line-through mt-0.5">$200/mes</p>
                       <p className="text-xs font-medium text-emerald-700 mt-1">$2,000 MXN / año</p>
                       {planSeleccionado === 'anual' && (
                         <CheckCircle className="absolute top-2.5 right-2.5 w-4 h-4 text-emerald-500" />
@@ -287,16 +287,16 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
               {/* Precio */}
               <div className="mb-4">
-                <p className="text-4xl font-bold text-accent leading-none">
+                <p className="text-4xl font-bold text-accent-ink leading-none">
                   ${precioMostrado.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                   {esPremium && (
-                    <span className="text-base font-normal text-gray-500 ml-2">
+                    <span className="text-base font-normal text-neutral-500 ml-2">
                       MXN / {planSeleccionado === 'mensual' ? 'mes' : 'año'}
                     </span>
                   )}
                 </p>
                 {esPremium && planSeleccionado === 'anual' && (
-                  <p className="text-sm text-gray-500 mt-1">Equivale a $167 MXN/mes · facturación anual</p>
+                  <p className="text-sm text-neutral-500 mt-1">Equivale a $167 MXN/mes · facturación anual</p>
                 )}
               </div>
 
@@ -323,8 +323,8 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
               {/* Descripción */}
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Descripcion</h3>
-                <p className="text-gray-600 whitespace-pre-wrap">{producto.descripcion}</p>
+                <h3 className="text-lg font-semibold text-neutral-900 mb-2">Descripcion</h3>
+                <p className="text-neutral-600 whitespace-pre-wrap">{producto.descripcion}</p>
               </div>
 
               {/* Attribute selectors (solo para productos normales) */}
@@ -332,7 +332,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 <div className="mb-6 space-y-4">
                   {atributosConOpciones.map(attr => (
                     <div key={attr.id}>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-neutral-700 mb-2">
                         {attr.nombre} <span className="text-red-500">*</span>
                       </label>
                       <div className="flex flex-wrap gap-2">
@@ -344,8 +344,8 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                               onClick={() => setAtributosSeleccionados(prev => ({ ...prev, [attr.nombre]: opt.valor }))}
                               className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
                                 isSelected
-                                  ? 'border-accent bg-primary-50 text-accent'
-                                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                                  ? 'border-accent bg-primary-50 text-accent-ink'
+                                  : 'border-neutral-200 bg-white text-neutral-700 hover:border-gray-300 hover:bg-gray-50'
                               }`}
                             >
                               {opt.valor}
@@ -366,22 +366,22 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               {/* Personalización */}
               {!esPremium && permitePersonalizacion && (
                 <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
                     {labelPersonalizacion}
-                    {' '}<span className="text-gray-400 font-normal">(opcional)</span>
+                    {' '}<span className="text-neutral-500 font-normal">(opcional)</span>
                   </label>
                   <textarea
                     rows={3}
                     value={personalizacion}
                     onChange={e => setPersonalizacion(e.target.value)}
                     placeholder="Describe cómo deseas personalizar este producto…"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
                   />
                   {usuario && producto.imagen_personalizacion_url && (
                     <button
                       type="button"
                       onClick={() => setMostrarEditorLogo(true)}
-                      className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-hover transition-colors"
+                      className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-accent-ink hover:text-accent-hover transition-colors"
                     >
                       <ImageIcon className="w-4 h-4" />
                       {capasPersonalizacion.length > 0 ? 'Editar tu logo/texto' : 'Personalizar con tu logo o texto'}
@@ -393,13 +393,13 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
               {/* Cantidad (oculta para premium) */}
               {!esPremium && !agotado && (
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cantidad {!esPorPedido && maxCantidad > 0 && <span className="text-gray-400 font-normal">(max: {maxCantidad})</span>}
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Cantidad {!esPorPedido && maxCantidad > 0 && <span className="text-neutral-500 font-normal">(max: {maxCantidad})</span>}
                   </label>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setCantidad(Math.max(1, cantidad - 1))}
-                      className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="w-10 h-10 flex items-center justify-center border border-neutral-300 rounded-lg hover:bg-gray-50 transition-colors"
                       disabled={cantidad <= 1}
                     >
                       <Minus className="w-4 h-4" />
@@ -410,11 +410,11 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                       max={maxCantidad}
                       value={cantidad}
                       onChange={(e) => setCantidad(Math.max(1, Math.min(maxCantidad, parseInt(e.target.value) || 1)))}
-                      className="w-20 text-center px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-20 text-center px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                     />
                     <button
                       onClick={() => setCantidad(Math.min(maxCantidad, cantidad + 1))}
-                      className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="w-10 h-10 flex items-center justify-center border border-neutral-300 rounded-lg hover:bg-gray-50 transition-colors"
                       disabled={cantidad >= maxCantidad}
                     >
                       <Plus className="w-4 h-4" />
@@ -430,8 +430,8 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                   disabled={!todosAtributosSeleccionados}
                   className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-lg transition-colors ${
                     !todosAtributosSeleccionados
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-accent text-white hover:bg-accent-hover'
+                      ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
+                      : 'bg-accent text-accent-foreground hover:bg-accent-hover'
                   }`}
                 >
                   <ShoppingCart className="w-5 h-5" />
@@ -447,7 +447,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                  className="px-6 py-3 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-gray-50 transition-colors font-medium"
                 >
                   Continuar Comprando
                 </button>
@@ -469,18 +469,18 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
           {/* ── Detalle completo Marketing Premium ── */}
           {esPremium && (
-            <div className="mt-8 border-t border-gray-100 pt-8 space-y-6">
+            <div className="mt-8 border-t border-neutral-100 pt-8 space-y-6">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-purple-600" />
-                <h3 className="text-lg font-bold text-gray-900">¿Qué incluye el Plan Marketing Premium?</h3>
+                <h3 className="text-lg font-bold text-neutral-900">¿Qué incluye el Plan Marketing Premium?</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Servicios incluidos</h4>
+                  <h4 className="text-sm font-semibold text-neutral-700 mb-3">Servicios incluidos</h4>
                   <ul className="space-y-2">
                     {MKT_INCLUYE.map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                      <li key={i} className="flex items-start gap-2 text-sm text-neutral-600">
                         <CheckCircle className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
                         {item}
                       </li>
@@ -490,10 +490,10 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
 
                 <div className="space-y-5">
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Beneficios</h4>
+                    <h4 className="text-sm font-semibold text-neutral-700 mb-3">Beneficios</h4>
                     <ul className="space-y-2">
                       {MKT_BENEFICIOS.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-neutral-600">
                           <ArrowRight className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
                           {item}
                         </li>
@@ -501,11 +501,11 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                     </ul>
                   </div>
 
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Métodos de pago aceptados</h4>
+                  <div className="rounded-xl border border-neutral-200 p-4">
+                    <h4 className="text-sm font-semibold text-neutral-700 mb-2">Métodos de pago aceptados</h4>
                     <ul className="space-y-1.5">
                       {MKT_METODOS.map((m, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                        <li key={i} className="flex items-center gap-2 text-sm text-neutral-600">
                           <span className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-600 shrink-0">{i + 1}</span>
                           {m}
                         </li>
@@ -515,7 +515,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
                 </div>
               </div>
 
-              <p className="text-xs text-gray-500 leading-relaxed">
+              <p className="text-xs text-neutral-500 leading-relaxed">
                 Marketing Premium está pensado para agentes de Jiro que desean contar con un departamento de marketing dedicado, con atención cercana, soluciones personalizadas y un enfoque claro en resultados.
               </p>
             </div>

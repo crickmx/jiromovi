@@ -118,7 +118,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-strong max-w-2xl w-full mx-4 my-8">
-        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
+        <div className="sticky top-0 bg-surface-card border-b border-soft px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
           <div>
             <h2 className="text-2xl font-display font-bold text-neutral-900">
               Buscador avanzado
@@ -229,7 +229,7 @@ export function BuscadorAvanzado({ isOpen, onClose, onSearch }: BuscadorAvanzado
                   type="checkbox"
                   checked={conAdjuntos}
                   onChange={(e) => setConAdjuntos(e.target.checked)}
-                  className="w-4 h-4 text-accent border-neutral-300 rounded focus:ring-accent"
+                  className="w-4 h-4 text-accent-ink border-neutral-300 rounded focus:ring-accent"
                 />
                 <span className="text-sm text-neutral-700 flex items-center space-x-1">
                   <Paperclip className="w-4 h-4" />

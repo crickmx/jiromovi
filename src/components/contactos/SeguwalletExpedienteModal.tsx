@@ -50,10 +50,10 @@ function formatBytes(bytes: number | null): string {
 }
 
 function getFileIcon(mime: string | null) {
-  if (!mime) return <File className="h-5 w-5 text-neutral-400" />;
+  if (!mime) return <File className="h-5 w-5 text-neutral-500" />;
   if (mime.startsWith('image/')) return <FileImage className="h-5 w-5 text-blue-500" />;
   if (mime === 'application/pdf') return <FileText className="h-5 w-5 text-red-500" />;
-  return <File className="h-5 w-5 text-neutral-400" />;
+  return <File className="h-5 w-5 text-neutral-500" />;
 }
 
 export default function SeguwalletExpedienteModal({ customerId, customerName, agentUserId, onClose, readOnly = false }: Props) {
@@ -247,8 +247,8 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+        <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-2xl max-h-[90vh] flex flex-col animate-scale-in">
           {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-neutral-800">
             <div className="flex items-center gap-3">
@@ -273,7 +273,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
               )}
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -293,7 +293,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                   <div>
                     <Upload className="h-6 w-6 text-neutral-300 dark:text-neutral-600 mx-auto mb-1" />
                     <p className="text-xs text-neutral-500 dark:text-white/50">Haz clic para seleccionar archivo</p>
-                    <p className="text-xs text-neutral-400 dark:text-white/30 mt-0.5">PDF, imagen, Word, Excel — máx 50 MB</p>
+                    <p className="text-xs text-neutral-500 dark:text-white/45 mt-0.5">PDF, imagen, Word, Excel — máx 50 MB</p>
                   </div>
                 )}
               </div>
@@ -307,7 +307,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                     value={uploadNombre}
                     onChange={e => setUploadNombre(e.target.value)}
                     placeholder="Ej: INE Juan García"
-                    className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm border border-soft dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
                   />
                 </div>
                 <div>
@@ -315,7 +315,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                   <select
                     value={uploadTipo}
                     onChange={e => setUploadTipo(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm border border-soft dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
                   >
                     {TIPOS_DOCUMENTO.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
@@ -328,7 +328,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                   value={uploadDesc}
                   onChange={e => setUploadDesc(e.target.value)}
                   placeholder="Notas adicionales..."
-                  className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                  className="w-full px-3 py-2 text-sm border border-soft dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
                 />
               </div>
               <div className="flex justify-end gap-2">
@@ -370,7 +370,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                 <FolderOpen className="h-10 w-10 text-neutral-200 dark:text-neutral-700 mx-auto mb-3" />
                 <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Sin documentos</p>
                 {!readOnly && (
-                  <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">
+                  <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">
                     Usa el botón "Subir" para agregar documentos al expediente.
                   </p>
                 )}
@@ -385,13 +385,13 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                           type="text"
                           value={editNombre}
                           onChange={e => setEditNombre(e.target.value)}
-                          className="w-full px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                          className="w-full px-3 py-1.5 text-sm border border-soft dark:border-neutral-700 rounded-lg bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
                         />
                         <div className="grid grid-cols-2 gap-2">
                           <select
                             value={editTipo}
                             onChange={e => setEditTipo(e.target.value)}
-                            className="px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                            className="px-3 py-1.5 text-sm border border-soft dark:border-neutral-700 rounded-lg bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
                           >
                             {TIPOS_DOCUMENTO.map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
@@ -400,7 +400,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                             value={editDesc}
                             onChange={e => setEditDesc(e.target.value)}
                             placeholder="Descripción..."
-                            className="px-3 py-1.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                            className="px-3 py-1.5 text-sm border border-soft dark:border-neutral-700 rounded-lg bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
                           />
                         </div>
                         <div className="flex justify-end gap-2">
@@ -417,24 +417,24 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{doc.nombre_archivo}</p>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-neutral-500 dark:text-white/40 bg-neutral-100 dark:bg-neutral-700 px-1.5 py-0.5 rounded">{doc.tipo_documento}</span>
-                            {doc.size_bytes && <span className="text-xs text-neutral-400 dark:text-white/30">{formatBytes(doc.size_bytes)}</span>}
-                            <span className="text-xs text-neutral-400 dark:text-white/30">{new Date(doc.created_at).toLocaleDateString('es-MX')}</span>
+                            <span className="text-xs text-neutral-500 dark:text-white/55 bg-neutral-100 dark:bg-neutral-700 px-1.5 py-0.5 rounded">{doc.tipo_documento}</span>
+                            {doc.size_bytes && <span className="text-xs text-neutral-500 dark:text-white/45">{formatBytes(doc.size_bytes)}</span>}
+                            <span className="text-xs text-neutral-500 dark:text-white/45">{new Date(doc.created_at).toLocaleDateString('es-MX')}</span>
                           </div>
-                          {doc.descripcion && <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5 truncate">{doc.descripcion}</p>}
+                          {doc.descripcion && <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5 truncate">{doc.descripcion}</p>}
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <button
                             onClick={() => handlePreview(doc)}
                             title="Vista previa"
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                            className="p-1.5 rounded-lg text-neutral-500 hover:text-accent-ink hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => handleDownload(doc)}
                             title="Descargar"
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
+                            className="p-1.5 rounded-lg text-neutral-500 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
                           >
                             <Download className="h-3.5 w-3.5" />
                           </button>
@@ -443,7 +443,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                               <button
                                 onClick={() => startEdit(doc)}
                                 title="Editar"
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                                className="p-1.5 rounded-lg text-neutral-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
@@ -451,7 +451,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
                                 onClick={() => handleDelete(doc)}
                                 disabled={deletingId === doc.id}
                                 title="Eliminar"
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition disabled:opacity-50"
+                                className="p-1.5 rounded-lg text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition disabled:opacity-50"
                               >
                                 {deletingId === doc.id
                                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -470,7 +470,7 @@ export default function SeguwalletExpedienteModal({ customerId, customerName, ag
 
           {/* Footer */}
           <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
-            <p className="text-xs text-neutral-400 dark:text-white/30">{docs.length} documento{docs.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-neutral-500 dark:text-white/45">{docs.length} documento{docs.length !== 1 ? 's' : ''}</p>
             <button
               onClick={onClose}
               className="px-4 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-white/70 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"

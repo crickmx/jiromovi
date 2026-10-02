@@ -46,7 +46,7 @@ export function SearchableSelect({ value, onChange, options, placeholder = 'Sele
   if (disabled) {
     return (
       <div className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm bg-neutral-50 text-neutral-500">
-        {selected?.label || <span className="text-neutral-400">{placeholder}</span>}
+        {selected?.label || <span className="text-neutral-500">{placeholder}</span>}
       </div>
     );
   }
@@ -56,26 +56,26 @@ export function SearchableSelect({ value, onChange, options, placeholder = 'Sele
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm text-left flex items-center justify-between bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-neutral-400 transition-colors"
+        className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm text-left flex items-center justify-between bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent/40 hover:border-neutral-400 transition-colors"
       >
-        <span className={selected ? 'text-neutral-900 truncate' : 'text-neutral-400'}>
+        <span className={selected ? 'text-neutral-900 truncate' : 'text-neutral-500'}>
           {selected?.label || placeholder}
         </span>
-        <ChevronDown className={`w-4 h-4 text-neutral-400 shrink-0 ml-2 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 ml-2 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 bg-surface-card border border-soft rounded-xl shadow-lg overflow-hidden">
           <div className="p-2 border-b border-neutral-100">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500 pointer-events-none" />
               <input
                 ref={inputRef}
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar..."
-                className="w-full pl-7 pr-3 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full pl-7 pr-3 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
               />
             </div>
           </div>
@@ -88,7 +88,7 @@ export function SearchableSelect({ value, onChange, options, placeholder = 'Sele
               {placeholder}
             </button>
             {filtered.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-neutral-400">Sin resultados</p>
+              <p className="px-3 py-2 text-sm text-neutral-500">Sin resultados</p>
             ) : filtered.map(opt => (
               <button
                 key={opt.value}

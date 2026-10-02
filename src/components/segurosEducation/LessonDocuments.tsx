@@ -207,7 +207,7 @@ export function LessonDocuments({ lessonId, isAdmin, isEditMode }: LessonDocumen
             disabled={uploading}
           />
           <label htmlFor="document-upload" className="cursor-pointer">
-            <Upload className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+            <Upload className="w-8 h-8 text-neutral-500 mx-auto mb-2" />
             <p className="text-sm text-neutral-600">
               {uploading ? 'Subiendo...' : 'Click para subir documento'}
             </p>
@@ -229,7 +229,7 @@ export function LessonDocuments({ lessonId, isAdmin, isEditMode }: LessonDocumen
               }`}
             >
               <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                <div className="text-accent flex-shrink-0">
+                <div className="text-accent-ink flex-shrink-0">
                   {getFileIcon(doc.nombre_archivo)}
                 </div>
                 <div className="flex-1 min-w-0">

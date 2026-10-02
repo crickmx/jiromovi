@@ -66,13 +66,13 @@ function VehicleSelector({ state, onChange, onRemove, index, canRemove, allMarca
   }, [state.brand, state.anio, state.model]);
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3 relative">
+    <div className="bg-surface-card dark:bg-gray-800 border border-soft dark:border-gray-700 rounded-2xl p-4 space-y-3 relative">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
             <span className="text-xs font-bold text-blue-700 dark:text-blue-300">{index + 1}</span>
           </div>
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
+          <span className="text-sm font-medium text-neutral-900 dark:text-white">
             {state.vehicle?.descripcionCompleta || 'Nuevo vehiculo'}
           </span>
         </div>
@@ -88,7 +88,7 @@ function VehicleSelector({ state, onChange, onRemove, index, canRemove, allMarca
           <select
             value={state.brand}
             onChange={(e) => onChange({ ...state, brand: e.target.value, anio: '', model: '', vehicle: null })}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-gray-600 bg-surface-card dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent"
           >
             <option value="">Marca</option>
             {allMarcas.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -100,7 +100,7 @@ function VehicleSelector({ state, onChange, onRemove, index, canRemove, allMarca
             value={state.anio}
             onChange={(e) => onChange({ ...state, anio: e.target.value, model: '', vehicle: null })}
             disabled={!state.brand || loadingAnios}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-gray-600 bg-surface-card dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent disabled:opacity-50"
           >
             <option value="">{loadingAnios ? 'Cargando...' : 'Anio'}</option>
             {anios.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -113,7 +113,7 @@ function VehicleSelector({ state, onChange, onRemove, index, canRemove, allMarca
             value={state.model}
             onChange={(e) => onChange({ ...state, model: e.target.value, vehicle: null })}
             disabled={!state.anio || loadingModelos}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-gray-600 bg-surface-card dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent disabled:opacity-50"
           >
             <option value="">{loadingModelos ? 'Cargando...' : 'Modelo'}</option>
             {modelos.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -126,7 +126,7 @@ function VehicleSelector({ state, onChange, onRemove, index, canRemove, allMarca
             value={state.vehicle?.id || ''}
             onChange={(e) => onChange({ ...state, vehicle: versiones.find((v) => v.id === e.target.value) || null })}
             disabled={!state.model || loadingVersiones}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-gray-600 bg-surface-card dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent disabled:opacity-50"
           >
             <option value="">{loadingVersiones ? 'Cargando...' : 'Version'}</option>
             {versiones.map((v) => <option key={v.id} value={v.id}>{v.version}{v.valorReferencia > 0 ? ` - $${v.valorReferencia.toLocaleString()}` : ''}</option>)}
@@ -136,15 +136,15 @@ function VehicleSelector({ state, onChange, onRemove, index, canRemove, allMarca
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500 dark:text-gray-400">Paquete:</span>
+        <span className="text-xs text-neutral-500 dark:text-gray-400">Paquete:</span>
         {(['Amplia', 'Limitada', 'RC'] as PaqueteCobertura[]).map((p) => (
           <button
             key={p}
             onClick={() => onChange({ ...state, paquete: p })}
             className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
               state.paquete === p
-                ? 'bg-blue-600 border-blue-600 text-white'
-                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                ? 'bg-accent border-accent text-accent-foreground'
+                : 'border-neutral-300 dark:border-gray-600 text-neutral-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
           >
             {p}
@@ -234,16 +234,16 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
   const configuredCount = vehicles.filter((v) => v.vehicle).length;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+    <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 shadow-card overflow-hidden">
       {/* Step indicator */}
-      <div className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="bg-neutral-50 dark:bg-gray-900/50 border-b border-neutral-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${step === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
               <User className="w-4 h-4" />
               1. Cliente
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <ChevronRight className="w-4 h-4 text-neutral-500" />
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${step === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
               <Car className="w-4 h-4" />
               2. Flota
@@ -261,78 +261,78 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
       <div className="p-6">
         {step === 1 ? (
           <div className="space-y-5">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Datos del Conductor / Contratante</h3>
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Datos del Conductor / Contratante</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre completo *</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-1">Nombre completo *</label>
                 <input
                   type="text"
                   value={cliente.nombre || ''}
                   onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
-                  className={`w-full px-4 py-2.5 rounded-xl border ${errors.nombre ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`w-full px-4 py-2.5 rounded-xl border ${errors.nombre ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent`}
                   placeholder="Nombre del asegurado"
                 />
                 {errors.nombre && <p className="text-xs text-red-500 mt-1">{errors.nombre}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Codigo Postal *</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-1">Codigo Postal *</label>
                 <input
                   type="text"
                   maxLength={5}
                   value={cliente.codigoPostal || ''}
                   onChange={(e) => setCliente({ ...cliente, codigoPostal: e.target.value.replace(/\D/g, '') })}
-                  className={`w-full px-4 py-2.5 rounded-xl border ${errors.codigoPostal ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`w-full px-4 py-2.5 rounded-xl border ${errors.codigoPostal ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent`}
                   placeholder="06600"
                 />
                 {errors.codigoPostal && <p className="text-xs text-red-500 mt-1">{errors.codigoPostal}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Edad *</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-1">Edad *</label>
                 <input
                   type="number"
                   min={18}
                   max={99}
                   value={cliente.edad || ''}
                   onChange={(e) => setCliente({ ...cliente, edad: parseInt(e.target.value) || 0 })}
-                  className={`w-full px-4 py-2.5 rounded-xl border ${errors.edad ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  className={`w-full px-4 py-2.5 rounded-xl border ${errors.edad ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent`}
                   placeholder="35"
                 />
                 {errors.edad && <p className="text-xs text-red-500 mt-1">{errors.edad}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genero *</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-1">Genero *</label>
                 <select
                   value={cliente.genero}
                   onChange={(e) => setCliente({ ...cliente, genero: e.target.value as 'Masculino' | 'Femenino' })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-gray-600 bg-surface-card dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent"
                 >
                   <option value="Masculino">Masculino</option>
                   <option value="Femenino">Femenino</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo electronico</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-1">Correo electronico</label>
                 <input
                   type="email"
                   value={cliente.correo || ''}
                   onChange={(e) => setCliente({ ...cliente, correo: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-gray-600 bg-surface-card dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent"
                   placeholder="correo@ejemplo.com"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RFC</label>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-1">RFC</label>
                 <input
                   type="text"
                   value={cliente.rfc || ''}
                   onChange={(e) => setCliente({ ...cliente, rfc: e.target.value.toUpperCase() })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-gray-600 bg-surface-card dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent"
                   placeholder="XAXX010101000"
                 />
               </div>
             </div>
             <div className="flex justify-end pt-2">
-              <button onClick={handleNext} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
+              <button onClick={handleNext} className="flex items-center gap-2 px-6 py-2.5 bg-accent text-accent-foreground text-sm font-medium rounded-xl hover:bg-accent-hover transition-colors shadow-sm">
                 Siguiente <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -341,24 +341,24 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Flota de Vehiculos</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5">
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Flota de Vehiculos</h3>
+                <p className="text-xs text-neutral-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5">
                   <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   Catálogo oficial Quálitas en base propia · {marcas.length} marcas · {catalogStatus?.row_count?.toLocaleString() || 0} versiones
                 </p>
                 {catalogStatus?.source_file_date && (
-                  <p className="text-[11px] text-gray-400 mt-1">
+                  <p className="text-[11px] text-neutral-500 mt-1">
                     Fuente EMICAT: {catalogStatus.source_file_date} · {catalogStatus.status === 'awaiting_source' ? 'verificación diaria; esperando fuente vigente' : 'sincronización automática diaria'}
                   </p>
                 )}
               </div>
-              <button onClick={() => setStep(1)} className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <button onClick={() => setStep(1)} className="flex items-center gap-1 text-sm text-accent-ink hover:text-accent-ink font-medium">
                 <ChevronLeft className="w-4 h-4" /> Volver
               </button>
             </div>
 
             {loadingMarcas ? (
-              <div className="flex items-center justify-center py-8 gap-3 text-gray-500 dark:text-gray-400">
+              <div className="flex items-center justify-center py-8 gap-3 text-neutral-500 dark:text-gray-400">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span className="text-sm">Cargando catalogo Qualitas...</span>
               </div>
@@ -380,7 +380,7 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
 
             <button
               onClick={addVehicle}
-              className="w-full py-2.5 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:border-blue-400 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 border-2 border-dashed border-neutral-300 dark:border-gray-600 rounded-xl text-sm font-medium text-neutral-600 dark:text-gray-400 hover:border-blue-400 hover:text-accent-ink dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" /> Agregar vehiculo a la flota
             </button>
@@ -388,14 +388,14 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
             {errors.vehiculo && <p className="text-xs text-red-500">{errors.vehiculo}</p>}
 
             {/* Payment and global config */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-neutral-200 dark:border-gray-700 pt-4">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Forma de Pago</label>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-1">Forma de Pago</label>
                   <select
                     value={formaPago}
                     onChange={(e) => setFormaPago(e.target.value as FormaPago)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-gray-600 bg-surface-card dark:bg-gray-700 text-neutral-900 dark:text-white text-sm focus:ring-2 focus:ring-accent/40 focus:border-transparent"
                   >
                     <option value="Anual">Anual (sin recargo)</option>
                     <option value="Semestral">Semestral</option>
@@ -407,7 +407,7 @@ export function MultiAutosQuoteForm({ onCalculate, isCalculating }: QuoteFormPro
                   <button
                     onClick={handleCalculate}
                     disabled={isCalculating || configuredCount === 0}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-6 py-2.5 bg-accent text-accent-foreground text-sm font-medium rounded-xl hover:bg-accent-hover transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isCalculating ? (
                       <>

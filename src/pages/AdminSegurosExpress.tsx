@@ -145,7 +145,7 @@ export default function AdminSegurosExpress() {
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <ShieldAlert className="mx-auto h-12 w-12 text-neutral-400" />
+        <ShieldAlert className="mx-auto h-12 w-12 text-neutral-500" />
         <h1 className="mt-4 text-xl font-bold text-neutral-900 dark:text-white">Acceso restringido</h1>
         <p className="mt-2 text-neutral-500 dark:text-white/50">Sólo administradores pueden acceder a seguros.express.</p>
       </div>
@@ -161,7 +161,7 @@ export default function AdminSegurosExpress() {
     { key: 'sin_tomar', label: 'Sin tomar', accent: 'text-sky-600 dark:text-sky-400' },
     { key: 'contactado', label: 'Tomados', accent: 'text-indigo-600 dark:text-indigo-400' },
     { key: 'convertido', label: 'Convertidos', accent: 'text-emerald-600 dark:text-emerald-400' },
-    { key: 'expirado', label: 'Expirados', accent: 'text-neutral-400 dark:text-white/40' },
+    { key: 'expirado', label: 'Expirados', accent: 'text-neutral-500 dark:text-white/55' },
   ];
 
   return (
@@ -189,7 +189,7 @@ export default function AdminSegurosExpress() {
       {/* KPIs */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {KPIS.map((k) => (
-          <div key={k.key} className="rounded-xl border border-neutral-200 bg-white p-3 text-center dark:border-white/10 dark:bg-white/[0.03]">
+          <div key={k.key} className="rounded-2xl border border-soft bg-surface-card p-3 text-center dark:border-white/10 dark:bg-white/[0.03]">
             <p className={`text-2xl font-bold ${k.accent}`}>{counts[k.key] || 0}</p>
             <p className="text-xs text-neutral-500 dark:text-white/50">{k.label}</p>
           </div>
@@ -277,18 +277,18 @@ function LeadsTab({
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por cliente, teléfono, seguro o agente…"
-            className="w-full rounded-lg border border-neutral-300 bg-white py-2 pl-9 pr-3 text-sm text-neutral-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            className="w-full rounded-lg border border-neutral-300 bg-surface-card py-2 pl-9 pr-3 text-sm text-neutral-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
           />
         </div>
         <select
           value={estadoFiltro}
           onChange={(e) => setEstadoFiltro(e.target.value)}
-          className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-sky-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+          className="rounded-lg border border-neutral-300 bg-surface-card px-3 py-2 text-sm text-neutral-900 outline-none focus:border-sky-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
         >
           <option value="todos">Todos los estados</option>
           {ESTADOS.map((e) => <option key={e} value={e} className="capitalize">{e}</option>)}
@@ -296,7 +296,7 @@ function LeadsTab({
       </div>
 
       {filtrados.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-neutral-200 p-10 text-center text-sm text-neutral-400 dark:border-white/10 dark:text-white/40">
+        <p className="rounded-xl border border-dashed border-neutral-200 p-10 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-white/55">
           No hay leads que coincidan.
         </p>
       ) : (
@@ -322,12 +322,12 @@ function LeadsTab({
                 >
                   <td className="px-4 py-3">
                     <p className="font-medium text-neutral-900 dark:text-white">{l.nombre}</p>
-                    <p className="text-xs text-neutral-400">{l.telefono}</p>
+                    <p className="text-xs text-neutral-500">{l.telefono}</p>
                   </td>
                   <td className="px-4 py-3 text-neutral-600 dark:text-white/70">{l.tipo_seguro_interes || '—'}</td>
                   <td className="px-4 py-3 text-neutral-600 dark:text-white/70">
                     <span className="flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                      <MapPin className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
                       {l.direccion_manual || (l.lat != null ? 'GPS' : 'Sin ubicación')}
                     </span>
                   </td>
@@ -335,10 +335,10 @@ function LeadsTab({
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${ESTADO_BADGE[l.estado] || ''}`}>{l.estado}</span>
                   </td>
                   <td className="px-4 py-3 text-neutral-600 dark:text-white/70">
-                    {l.agente_asignado_id ? nombreCompleto(agentesById[l.agente_asignado_id]) : <span className="text-neutral-400">—</span>}
+                    {l.agente_asignado_id ? nombreCompleto(agentesById[l.agente_asignado_id]) : <span className="text-neutral-500">—</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-neutral-500 dark:text-white/50">{fmtFecha(l.created_at)}</td>
-                  <td className="px-4 py-3 text-right text-neutral-400">
+                  <td className="px-4 py-3 text-right text-neutral-500">
                     {l.estado === 'convertido' && l.crm_contacto_id ? (
                       <Link to={`/mi-crm/contactos/${l.crm_contacto_id}`} onClick={(e) => e.stopPropagation()} className="text-emerald-600 hover:underline dark:text-emerald-400">
                         <ExternalLink className="inline h-4 w-4" />
@@ -415,10 +415,10 @@ function LeadDetalleModal({
   const puedeIntervenir = lead.estado !== 'convertido';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface-card p-6 shadow-e4 dark:bg-neutral-900 animate-scale-in"
       >
         <div className="mb-4 flex items-start justify-between">
           <div>
@@ -428,7 +428,7 @@ function LeadDetalleModal({
             </div>
             <p className="text-sm text-neutral-500 dark:text-white/50">{lead.tipo_seguro_interes || 'Seguro'}</p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="rounded-lg p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
         </div>
 
         {/* Contacto */}
@@ -438,7 +438,7 @@ function LeadDetalleModal({
           <span className="flex items-center gap-2 text-neutral-700 dark:text-white/70">
             <MapPin className="h-4 w-4" />
             {lead.direccion_manual || (lead.lat != null ? `GPS: ${lead.lat?.toFixed(4)}, ${lead.lng?.toFixed(4)}` : 'Sin ubicación')}
-            {lead.ubicacion_metodo && <span className="text-xs text-neutral-400">({lead.ubicacion_metodo})</span>}
+            {lead.ubicacion_metodo && <span className="text-xs text-neutral-500">({lead.ubicacion_metodo})</span>}
           </span>
         </div>
 
@@ -449,7 +449,7 @@ function LeadDetalleModal({
             <li key={i} className="relative">
               <span className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-sky-500" />
               <p className="text-sm text-neutral-800 dark:text-white/80">{t.label}</p>
-              <p className="text-xs text-neutral-400">{fmtFechaHora(t.at)}</p>
+              <p className="text-xs text-neutral-500">{fmtFechaHora(t.at)}</p>
             </li>
           ))}
         </ol>
@@ -475,7 +475,7 @@ function LeadDetalleModal({
                 <select
                   value={reasignarA}
                   onChange={(e) => setReasignarA(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-sky-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  className="w-full rounded-lg border border-neutral-300 bg-surface-card px-3 py-2 text-sm text-neutral-900 outline-none focus:border-sky-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
                 >
                   <option value="">Elegir agente…</option>
                   {agentesHabilitados.map((a) => (
@@ -511,7 +511,7 @@ function LeadDetalleModal({
                 </button>
               )}
             </div>
-            {busy && <p className="mt-2 flex items-center gap-1.5 text-xs text-neutral-400"><Loader2 className="h-3 w-3 animate-spin" /> Procesando…</p>}
+            {busy && <p className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500"><Loader2 className="h-3 w-3 animate-spin" /> Procesando…</p>}
           </div>
         )}
       </div>
@@ -580,12 +580,12 @@ function AgentesTab({
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar agente por nombre, email o teléfono…"
-            className="w-full rounded-lg border border-neutral-300 bg-white py-2 pl-9 pr-3 text-sm text-neutral-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            className="w-full rounded-lg border border-neutral-300 bg-surface-card py-2 pl-9 pr-3 text-sm text-neutral-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
           />
         </div>
         <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-white/70">
@@ -618,7 +618,7 @@ function AgentesTab({
                 <tr key={a.id} className="hover:bg-neutral-50 dark:hover:bg-white/[0.03]">
                   <td className="px-4 py-3">
                     <p className="font-medium text-neutral-900 dark:text-white">{nombreCompleto(a)}</p>
-                    <p className="text-xs text-neutral-400">{a.rol}{!a.activo && ' · inactivo'}</p>
+                    <p className="text-xs text-neutral-500">{a.rol}{!a.activo && ' · inactivo'}</p>
                   </td>
                   <td className="px-4 py-3 text-xs text-neutral-600 dark:text-white/60">
                     {a.email_laboral && <p>{a.email_laboral}</p>}
@@ -663,12 +663,12 @@ function AgentesTab({
               );
             })}
             {filtrados.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-neutral-400">No hay agentes que coincidan.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-neutral-500">No hay agentes que coincidan.</td></tr>
             )}
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-neutral-400 dark:text-white/40">
+      <p className="mt-3 text-xs text-neutral-500 dark:text-white/55">
         Un agente habilitado sin ubicación cargada no recibe leads geolocalizados. La ubicación se carga desde su perfil o desde la ficha del usuario en Directorio.
       </p>
     </div>
@@ -713,7 +713,7 @@ function ConfigTab({
   }
 
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.03]">
+    <div className="rounded-2xl border border-soft bg-surface-card p-6 dark:border-white/10 dark:bg-white/[0.03]">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-semibold text-neutral-900 dark:text-white">
           <MapPin className="h-4 w-4 text-sky-600" /> Parámetros del motor de reparto
@@ -742,9 +742,9 @@ function ConfigTab({
                 const v = Math.max(c.min, Math.min(c.max, parseInt(e.target.value) || c.min));
                 setConfig({ ...config, [c.key]: v });
               }}
-              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
+              className="w-full rounded-lg border border-neutral-300 bg-surface-card px-3 py-2 text-sm text-neutral-900 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
             />
-            <p className="mt-1 text-xs text-neutral-400 dark:text-white/35">{c.help}</p>
+            <p className="mt-1 text-xs text-neutral-500 dark:text-white/50">{c.help}</p>
           </div>
         ))}
       </div>

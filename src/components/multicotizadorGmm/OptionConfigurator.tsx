@@ -61,7 +61,7 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
   };
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] overflow-hidden transition-all">
+    <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] overflow-hidden transition-all">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-3.5 cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors" onClick={onToggleExpand}>
         <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
@@ -77,15 +77,15 @@ export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, ca
           {PRODUCT_LABELS[option.product_id]}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
-          <button onClick={e => { e.stopPropagation(); onDuplicate(); }} className="p-1.5 rounded-lg text-neutral-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors" title="Duplicar">
+          <button onClick={e => { e.stopPropagation(); onDuplicate(); }} className="p-1.5 rounded-lg text-neutral-500 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors" title="Duplicar">
             <Copy className="w-3.5 h-3.5" />
           </button>
           {canRemove && (
-            <button onClick={e => { e.stopPropagation(); onRemove(); }} className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Eliminar">
+            <button onClick={e => { e.stopPropagation(); onRemove(); }} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Eliminar">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
-          {isExpanded ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
+          {isExpanded ? <ChevronUp className="w-4 h-4 text-neutral-500" /> : <ChevronDown className="w-4 h-4 text-neutral-500" />}
         </div>
       </div>
 
@@ -364,7 +364,7 @@ function CoverageHelpIcon({ coverageKey }: { coverageKey: string }) {
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
         onClick={e => { e.preventDefault(); setShow(!show); }}
-        className="p-0.5 rounded-full text-neutral-400 hover:text-sky-500 dark:text-neutral-500 dark:hover:text-sky-400 transition-colors"
+        className="p-0.5 rounded-full text-neutral-500 hover:text-sky-500 dark:text-neutral-500 dark:hover:text-sky-400 transition-colors"
       >
         <Info className="w-3.5 h-3.5" />
       </button>

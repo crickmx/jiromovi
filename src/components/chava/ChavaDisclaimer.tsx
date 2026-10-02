@@ -52,7 +52,7 @@ export function ChavaDisclaimer({
 
   if (variant === 'compact') {
     return (
-      <div className={cn('flex items-start gap-1.5 text-xs text-gray-400', className)}>
+      <div className={cn('flex items-start gap-1.5 text-xs text-neutral-500', className)}>
         <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
         <span>Respuestas generadas por IA — verifica con tu agente.</span>
       </div>

@@ -40,12 +40,12 @@ function Panel({
   stripe: string; eyebrow: string; title: string; desc: string; children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl overflow-hidden flex flex-col shadow-sm">
+    <div className="bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-2xl overflow-hidden flex flex-col shadow-card">
       <div className={cn('h-1 w-full', stripe)} />
       <div className="px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-white/8">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-1">{eyebrow}</p>
+        <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/50 mb-1">{eyebrow}</p>
         <p className="text-base font-extrabold text-neutral-900 dark:text-white leading-tight">{title}</p>
-        <p className="text-[11px] text-neutral-500 dark:text-white/40 mt-0.5">{desc}</p>
+        <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">{desc}</p>
       </div>
       <div className="p-4 flex-1 flex flex-col gap-3">{children}</div>
     </div>
@@ -69,22 +69,22 @@ function nivelChip(nivel?: string | null) {
   if (!nivel) return null;
   const n = nivel.toUpperCase();
   if (n.includes('ORO') || n.includes('MAX') || n.includes('MÁX'))
-    return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">🥇 {nivel}</span>;
+    return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">🥇 {nivel}</span>;
   if (n.includes('PLATA'))
-    return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-white/60">🥈 {nivel}</span>;
+    return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-white/60">🥈 {nivel}</span>;
   if (n.includes('BRONCE'))
-    return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">⭐ {nivel}</span>;
-  return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-400 dark:bg-white/8 dark:text-white/35">En camino</span>;
+    return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400">⭐ {nivel}</span>;
+  return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500 dark:bg-white/8 dark:text-white/50">En camino</span>;
 }
 
 function estatusChip(label?: string | null) {
-  if (!label) return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-white/50">Activo</span>;
+  if (!label) return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-white/50">Activo</span>;
   const lc = label.toLowerCase();
   if (lc.includes('urgente') || lc.includes('bloqueado'))
-    return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400">{label}</span>;
+    return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400">{label}</span>;
   if (lc.includes('revis') || lc.includes('espera') || lc.includes('pendient'))
-    return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">{label}</span>;
-  return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400">{label}</span>;
+    return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">{label}</span>;
+  return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400">{label}</span>;
 }
 
 // ── Asesores panel ─────────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ function AsesoresPanel({ usuario }: { usuario: Usuario }) {
       {loading ? (
         <><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /></>
       ) : asesores.length === 0 ? (
-        <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-6">Sin asesores en esta oficina</p>
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin asesores en esta oficina</p>
       ) : (
         <>
           <div className="flex flex-col">
@@ -182,18 +182,18 @@ function AsesoresPanel({ usuario }: { usuario: Usuario }) {
                   <p className="text-[13px] font-bold text-neutral-900 dark:text-white truncate">
                     {a.nombre} {a.apellidos}
                   </p>
-                  <p className="text-[10px] text-neutral-500 dark:text-white/40 mt-0.5">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">
                     {a.total_tickets} trámite{a.total_tickets !== 1 ? 's' : ''} activo{a.total_tickets !== 1 ? 's' : ''}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                   {a.nivel_conv ? nivelChip(a.nivel_conv) : (
                     a.urgentes > 0 ? (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400">
+                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400">
                         {a.urgentes} urgente{a.urgentes !== 1 ? 's' : ''}
                       </span>
                     ) : (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
                         Al día
                       </span>
                     )
@@ -213,23 +213,23 @@ function AsesoresPanel({ usuario }: { usuario: Usuario }) {
           </div>
 
           <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3 mt-1">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-400 dark:text-white/35 mb-2">Oficina · resumen</p>
+            <p className="text-[10.5px] font-bold uppercase tracking-wide text-neutral-500 dark:text-white/50 mb-2">Oficina · resumen</p>
             <div className="flex justify-between">
               <div className="text-center">
                 <p className="text-base font-extrabold text-neutral-900 dark:text-white tabular-nums">
                   {asesores.reduce((s, a) => s + a.total_tickets, 0)}
                 </p>
-                <p className="text-[9px] text-neutral-400 dark:text-white/35 mt-0.5">Trámites</p>
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Trámites</p>
               </div>
               <div className="text-center">
                 <p className={cn('text-base font-extrabold tabular-nums', asesores.some(a => a.urgentes > 0) ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400')}>
                   {asesores.reduce((s, a) => s + a.urgentes, 0)}
                 </p>
-                <p className="text-[9px] text-neutral-400 dark:text-white/35 mt-0.5">Urgentes</p>
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Urgentes</p>
               </div>
               <div className="text-center">
                 <p className="text-base font-extrabold text-neutral-900 dark:text-white">{asesores.length}</p>
-                <p className="text-[9px] text-neutral-400 dark:text-white/35 mt-0.5">Asesores</p>
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Asesores</p>
               </div>
             </div>
           </div>
@@ -258,7 +258,7 @@ function CampañasPanel() {
   if (campanias.length === 0) {
     return (
       <Panel stripe="bg-gradient-to-r from-[#D97706] to-[#FBBF24]" eyebrow="Activas" title="Campañas" desc="Tu posición en cada campaña">
-        <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-6">Sin campañas activas</p>
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin campañas activas</p>
       </Panel>
     );
   }
@@ -271,7 +271,7 @@ function CampañasPanel() {
           <div className="flex items-start justify-between gap-2 mb-3">
             <div className="min-w-0">
               <p className="text-[13px] font-extrabold text-neutral-900 dark:text-white leading-tight">{c.nombre}</p>
-              <p className="text-[10px] text-neutral-500 dark:text-white/40 mt-1">{c.descripcion ?? 'Campaña activa'}</p>
+              <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-1">{c.descripcion ?? 'Campaña activa'}</p>
             </div>
             {c.dias_restantes != null && (
               <span className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
@@ -299,12 +299,12 @@ function CampañasPanel() {
                       dimmed && 'opacity-45'
                     )}
                   >
-                    <span className="w-6 text-center text-[11px] font-bold text-neutral-500 dark:text-white/40 flex-shrink-0">
+                    <span className="w-6 text-center text-[11px] font-bold text-neutral-500 dark:text-white/55 flex-shrink-0">
                       {row.rank ?? ri + 1}
                     </span>
                     <p className="flex-1 min-w-0 text-[12px] font-bold text-neutral-900 dark:text-white truncate">
                       {row.entity ?? row.entity_name ?? '—'}
-                      {isMe && <span className="text-[10px] font-normal text-indigo-500 ml-1">tú</span>}
+                      {isMe && <span className="text-[11px] font-normal text-indigo-500 ml-1">tú</span>}
                     </p>
                     <div className="text-right flex-shrink-0">
                       {row.prima_ponderada != null && (
@@ -313,7 +313,7 @@ function CampañasPanel() {
                         </p>
                       )}
                       {row.pct_meta != null && (
-                        <p className={cn('text-[10px] font-semibold', row.pct_meta >= 100 ? 'text-emerald-600 dark:text-emerald-400' : row.pct_meta >= 75 ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400')}>
+                        <p className={cn('text-[11px] font-semibold', row.pct_meta >= 100 ? 'text-emerald-600 dark:text-emerald-400' : row.pct_meta >= 75 ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400')}>
                           {row.pct_meta}%
                         </p>
                       )}
@@ -398,7 +398,7 @@ function TrámitesPanel({ usuario }: { usuario: Usuario }) {
                 >
                   <div className="min-w-0">
                     <p className="text-[12px] font-bold text-neutral-900 dark:text-white tabular-nums">{t.folio}</p>
-                    <p className="text-[10px] text-neutral-400 dark:text-white/35 truncate">
+                    <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate">
                       {(t.ticket_tipos as { label: string } | null)?.label ?? t.tipo_tramite}
                     </p>
                   </div>
@@ -407,7 +407,7 @@ function TrámitesPanel({ usuario }: { usuario: Usuario }) {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-4">Sin solicitudes abiertas</p>
+            <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-4">Sin solicitudes abiertas</p>
           )}
 
           <button
@@ -417,9 +417,9 @@ function TrámitesPanel({ usuario }: { usuario: Usuario }) {
             <div className="w-8 h-8 rounded-lg bg-rose-500/10 grid place-items-center shrink-0 text-sm">📋</div>
             <div className="min-w-0 flex-1">
               <p className="text-[12px] font-semibold text-neutral-900 dark:text-white">Ver todas las solicitudes</p>
-              <p className="text-[10px] text-neutral-400 dark:text-white/35">Bandeja completa</p>
+              <p className="text-[11px] text-neutral-500 dark:text-white/50">Bandeja completa</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-white/30 shrink-0" />
+            <ArrowRight className="w-4 h-4 text-neutral-500 dark:text-white/45 shrink-0" />
           </button>
         </>
       )}
@@ -433,12 +433,12 @@ export function EjecutivoSections({ usuario }: { usuario: Usuario }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full border-2 border-neutral-200 dark:border-white/15 bg-white dark:bg-white/5 grid place-items-center text-base">
+        <div className="w-9 h-9 rounded-full border-2 border-soft dark:border-white/15 bg-surface-card dark:bg-white/5 grid place-items-center text-base">
           💼
         </div>
         <div>
           <p className="text-lg font-extrabold text-neutral-900 dark:text-white leading-tight">Ejecutivo</p>
-          <p className="text-[11px] text-neutral-400 dark:text-white/35">Tu equipo y solicitudes</p>
+          <p className="text-[11px] text-neutral-500 dark:text-white/50">Tu equipo y solicitudes</p>
         </div>
       </div>
 

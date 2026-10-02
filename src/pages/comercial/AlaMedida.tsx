@@ -38,7 +38,7 @@ export default function AlaMedida() {
         {/* Auto Card */}
         <button
           onClick={() => navigate('/cotizar/a-la-medida/auto')}
-          className="group relative text-left rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/[0.06] overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-sky-100/40 dark:hover:shadow-sky-900/20 hover:-translate-y-1 hover:border-sky-200 dark:hover:border-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          className="group relative text-left rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-sky-100/40 dark:hover:shadow-sky-900/20 hover:-translate-y-1 hover:border-sky-200 dark:hover:border-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         >
           <div className="h-1.5 bg-gradient-to-r from-sky-500 to-blue-600" />
 
@@ -70,15 +70,15 @@ export default function AlaMedida() {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-medium uppercase tracking-wide">Incluye:</span>
+              <span className="text-[11px] text-neutral-500 dark:text-neutral-500 font-medium uppercase tracking-wide">Incluye:</span>
               <div className="flex items-center -space-x-1">
                 {AUTO_LOGOS.map((logo, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-white dark:bg-neutral-800 border-2 border-white dark:border-neutral-900 shadow-sm flex items-center justify-center overflow-hidden">
+                  <div key={i} className="w-8 h-8 rounded-full bg-surface-card dark:bg-neutral-800 border-2 border-white dark:border-neutral-900 shadow-card flex items-center justify-center overflow-hidden">
                     <img src={logo} alt="" className="w-6 h-6 object-contain" />
                   </div>
                 ))}
                 <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 border-2 border-white dark:border-neutral-900 shadow-sm flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400">+2</span>
+                  <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">+2</span>
                 </div>
               </div>
             </div>
@@ -88,7 +88,7 @@ export default function AlaMedida() {
         {/* GMM Card */}
         <button
           onClick={() => navigate('/cotizar/a-la-medida/gmm')}
-          className="group relative text-left rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/[0.06] overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-teal-100/40 dark:hover:shadow-teal-900/20 hover:-translate-y-1 hover:border-teal-200 dark:hover:border-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+          className="group relative text-left rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-teal-100/40 dark:hover:shadow-teal-900/20 hover:-translate-y-1 hover:border-teal-200 dark:hover:border-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
         >
           <div className="h-1.5 bg-gradient-to-r from-teal-500 to-emerald-600" />
 
@@ -120,15 +120,15 @@ export default function AlaMedida() {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-medium uppercase tracking-wide">Incluye:</span>
+              <span className="text-[11px] text-neutral-500 dark:text-neutral-500 font-medium uppercase tracking-wide">Incluye:</span>
               <div className="flex items-center -space-x-1">
                 {GMM_LOGOS.map((logo, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-white dark:bg-neutral-800 border-2 border-white dark:border-neutral-900 shadow-sm flex items-center justify-center overflow-hidden">
+                  <div key={i} className="w-8 h-8 rounded-full bg-surface-card dark:bg-neutral-800 border-2 border-white dark:border-neutral-900 shadow-card flex items-center justify-center overflow-hidden">
                     <img src={logo} alt="" className="w-6 h-6 object-contain" />
                   </div>
                 ))}
                 <div className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 border-2 border-white dark:border-neutral-900 shadow-sm flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400">+2</span>
+                  <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">+2</span>
                 </div>
               </div>
             </div>

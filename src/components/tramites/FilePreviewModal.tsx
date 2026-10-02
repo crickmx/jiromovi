@@ -186,14 +186,14 @@ export function FilePreviewModal({
       return (
         <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl">
           <div className="text-center space-y-4">
-            <AlertCircle className="w-16 h-16 text-neutral-400 mx-auto" />
+            <AlertCircle className="w-16 h-16 text-neutral-500 mx-auto" />
             <div>
               <p className="text-lg font-semibold text-neutral-900">No se pudo cargar el archivo</p>
               <p className="text-sm text-neutral-500 mt-1">La URL puede haber expirado o el archivo no está disponible</p>
             </div>
             <button
               onClick={handleDownload}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
             >
               <Download className="w-4 h-4" />
               <span>Intentar descargar</span>
@@ -240,7 +240,7 @@ export function FilePreviewModal({
                 </div>
                 <button
                   onClick={() => { setLoading(false); window.open(signedUrl, '_blank'); }}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
                 >
                   <Download className="w-4 h-4" />
                   <span>Abrir en nueva pestaña</span>
@@ -289,7 +289,7 @@ export function FilePreviewModal({
       return (
         <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl">
           <div className="text-center space-y-6">
-            <FileText className="w-16 h-16 text-neutral-400 mx-auto" />
+            <FileText className="w-16 h-16 text-neutral-500 mx-auto" />
             <div>
               <p className="text-lg font-semibold text-neutral-900">{friendlyName}</p>
               <p className="text-sm text-neutral-500 mt-1">{formatFileSize(fileSize)}</p>
@@ -313,16 +313,16 @@ export function FilePreviewModal({
     return (
       <div className="flex-1 flex items-center justify-center bg-neutral-50 rounded-xl">
         <div className="text-center space-y-4">
-          <FileText className="w-16 h-16 text-neutral-400 mx-auto" />
+          <FileText className="w-16 h-16 text-neutral-500 mx-auto" />
           <div>
             <p className="text-lg font-semibold text-neutral-900">{friendlyName}</p>
             {fileSize && <p className="text-sm text-neutral-500 mt-1">{formatFileSize(fileSize)}</p>}
-            {effectiveType && <p className="text-xs text-neutral-400 mt-1 font-mono">{effectiveType}</p>}
+            {effectiveType && <p className="text-xs text-neutral-500 mt-1 font-mono">{effectiveType}</p>}
           </div>
           <p className="text-sm text-neutral-600">Vista previa no disponible para este tipo de archivo</p>
           <button
             onClick={handleDownload}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground rounded-lg transition-all font-semibold inline-flex items-center space-x-2"
           >
             <Download className="w-4 h-4" />
             <span>Descargar archivo</span>
@@ -349,7 +349,7 @@ export function FilePreviewModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col"
+        className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-6xl max-h-[90vh] flex flex-col animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -360,7 +360,7 @@ export function FilePreviewModal({
             </h2>
             <p className="text-sm text-neutral-500">
               {formatFileSize(fileSize)}
-              {effectiveType && <span className="ml-2 text-neutral-400 text-xs font-mono">{effectiveType}</span>}
+              {effectiveType && <span className="ml-2 text-neutral-500 text-xs font-mono">{effectiveType}</span>}
             </p>
           </div>
 

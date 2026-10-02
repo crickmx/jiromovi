@@ -88,21 +88,21 @@ export default function TerminarTramiteModal({ tramiteId, folio, tipoTramite, us
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 border border-soft dark:border-neutral-700 w-full max-w-md animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-emerald-500" />
-            <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Terminar trámite <span className="text-neutral-400 font-normal">{folio}</span></p>
+            <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Terminar trámite <span className="text-neutral-500 font-normal">{folio}</span></p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="px-5 py-5 space-y-4">
           {loading ? (
-            <div className="flex items-center gap-2 text-sm text-neutral-400 py-4 justify-center">
+            <div className="flex items-center gap-2 text-sm text-neutral-500 py-4 justify-center">
               <Loader2 className="w-4 h-4 animate-spin" /> Cargando opciones...
             </div>
           ) : (
@@ -111,7 +111,7 @@ export default function TerminarTramiteModal({ tramiteId, folio, tipoTramite, us
                 <div>
                   <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">Estatus de cierre</label>
                   <select value={slug} onChange={e => setSlug(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-xl bg-surface-card dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                     {opciones.map(o => <option key={o.slug} value={o.slug}>{o.label}</option>)}
                   </select>
                 </div>
@@ -127,7 +127,7 @@ export default function TerminarTramiteModal({ tramiteId, folio, tipoTramite, us
                   onChange={e => { setComentario(e.target.value); setErr(''); }}
                   placeholder="Describe el motivo de cierre o un resumen del resultado..."
                   rows={4}
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-xl bg-surface-card dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                 />
                 {err && <p className="text-xs text-red-500 mt-1">{err}</p>}
               </div>

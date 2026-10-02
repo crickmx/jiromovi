@@ -73,13 +73,13 @@ export default function VendorSearchCombobox({
           <p className="text-xs font-semibold text-neutral-800 dark:text-white truncate leading-tight">
             {selectedVendor.nombre}
           </p>
-          <p className="text-[10px] text-neutral-500 dark:text-white/50 truncate leading-tight">
+          <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate leading-tight">
             {[selectedVendor.clave, selectedVendor.despachoName, selectedVendor.gerenciaName].filter(Boolean).join(' · ')}
           </p>
         </div>
         <button
           onClick={handleClear}
-          className="flex-shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-neutral-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+          className="flex-shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-neutral-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
         >
           <X className="w-3 h-3" />
         </button>
@@ -97,7 +97,7 @@ export default function VendorSearchCombobox({
         `}
         onClick={() => { setIsOpen(true); inputRef.current?.focus(); }}
       >
-        <Search className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+        <Search className="w-3 h-3 text-neutral-500 flex-shrink-0" />
         <input
           ref={inputRef}
           type="text"
@@ -105,13 +105,13 @@ export default function VendorSearchCombobox({
           onChange={(e) => { setSearch(e.target.value); setIsOpen(true); }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className={`flex-1 min-w-0 bg-transparent text-xs text-neutral-800 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-white/40 outline-none ${compact ? 'w-[120px]' : 'w-[160px]'}`}
+          className={`flex-1 min-w-0 bg-transparent text-xs text-neutral-800 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-white/40 outline-none ${compact ? 'w-[120px]' : 'w-[160px]'}`}
         />
-        <ChevronDown className={`w-3 h-3 text-neutral-400 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3 h-3 text-neutral-500 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-72 max-h-60 overflow-y-auto bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/15 rounded-xl shadow-xl">
+        <div className="absolute z-50 mt-1 w-72 max-h-60 overflow-y-auto bg-surface-card dark:bg-neutral-800 border border-soft dark:border-white/15 rounded-xl shadow-xl">
           {displayed.length === 0 ? (
             <div className="px-3 py-4 text-center text-xs text-neutral-500 dark:text-white/50">
               {search ? 'Sin resultados para esta busqueda' : 'No hay vendedores disponibles'}
@@ -120,7 +120,7 @@ export default function VendorSearchCombobox({
             <>
               {filtered.length > 50 && (
                 <div className="px-3 py-1.5 border-b border-neutral-100 dark:border-white/10 bg-neutral-50 dark:bg-white/5">
-                  <p className="text-[10px] text-neutral-500 dark:text-white/50">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/50">
                     Mostrando 50 de {filtered.length} resultados. Refina tu busqueda.
                   </p>
                 </div>
@@ -132,7 +132,7 @@ export default function VendorSearchCombobox({
                   className="w-full flex items-start gap-2.5 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors text-left border-b border-neutral-50 dark:border-white/5 last:border-0"
                 >
                   <div className="flex-shrink-0 mt-0.5 p-1 bg-accent/10 rounded-md">
-                    <User className="w-3 h-3 text-accent" />
+                    <User className="w-3 h-3 text-accent-ink" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-neutral-800 dark:text-white truncate">
@@ -140,25 +140,25 @@ export default function VendorSearchCombobox({
                     </p>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                       {vendor.clave && (
-                        <span className="inline-flex items-center px-1.5 py-0 bg-neutral-100 dark:bg-white/10 rounded text-[10px] font-mono text-neutral-600 dark:text-white/60">
+                        <span className="inline-flex items-center px-1.5 py-0 bg-neutral-100 dark:bg-white/10 rounded text-[11px] font-mono text-neutral-600 dark:text-white/60">
                           {vendor.clave}
                         </span>
                       )}
                       {vendor.idSicas && (
-                        <span className="text-[10px] text-neutral-400 dark:text-white/40">
+                        <span className="text-[11px] text-neutral-500 dark:text-white/55">
                           ID:{vendor.idSicas}
                         </span>
                       )}
                       {vendor.tipoVend && (
-                        <span className="text-[10px] text-neutral-400 dark:text-white/40">
+                        <span className="text-[11px] text-neutral-500 dark:text-white/55">
                           {vendor.tipoVend}
                         </span>
                       )}
                     </div>
                     {(vendor.despachoName || vendor.gerenciaName) && (
                       <div className="flex items-center gap-1 mt-0.5">
-                        <Building className="w-2.5 h-2.5 text-neutral-400" />
-                        <span className="text-[10px] text-neutral-500 dark:text-white/50 truncate">
+                        <Building className="w-2.5 h-2.5 text-neutral-500" />
+                        <span className="text-[11px] text-neutral-500 dark:text-white/50 truncate">
                           {[vendor.despachoName, vendor.gerenciaName].filter(Boolean).join(' · ')}
                         </span>
                       </div>

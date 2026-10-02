@@ -66,7 +66,7 @@ export function LoadingFactCard() {
       <h3 className="text-neutral-800 font-semibold text-sm mb-2">{fact.titulo}</h3>
       <p className="text-neutral-600 text-xs leading-relaxed">{fact.hecho}</p>
       {fact.fuente && (
-        <p className="text-neutral-400 text-xs mt-2">— {fact.fuente}</p>
+        <p className="text-neutral-500 text-xs mt-2">— {fact.fuente}</p>
       )}
     </div>
   );

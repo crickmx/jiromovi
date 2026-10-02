@@ -77,33 +77,33 @@ function UsuarioBuscador({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm text-left flex items-center justify-between gap-2"
+        className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm text-left flex items-center justify-between gap-2"
       >
         <span className="truncate">
-          {seleccionado ? `${seleccionado.nombre} ${seleccionado.apellidos}` : <span className="text-neutral-400">Sin asignar</span>}
+          {seleccionado ? `${seleccionado.nombre} ${seleccionado.apellidos}` : <span className="text-neutral-500">Sin asignar</span>}
         </span>
         {seleccionado && (
-          <X className="w-3.5 h-3.5 text-neutral-400 hover:text-neutral-600 shrink-0" onClick={e => { e.stopPropagation(); onChange(null); }} />
+          <X className="w-3.5 h-3.5 text-neutral-500 hover:text-neutral-600 shrink-0" onClick={e => { e.stopPropagation(); onChange(null); }} />
         )}
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-lg shadow-lg overflow-hidden">
+        <div className="absolute z-20 mt-1 w-full bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/10 rounded-lg shadow-lg overflow-hidden">
           <div className="p-2 border-b border-neutral-100 dark:border-white/5 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
             <input
               autoFocus
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar usuario..."
-              className="w-full pl-7 pr-2 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-md bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+              className="w-full pl-7 pr-2 py-1.5 text-sm border border-soft dark:border-white/10 rounded-md bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
             />
           </div>
           <div className="max-h-48 overflow-y-auto">
             <button
               type="button"
               onClick={() => { onChange(null); setOpen(false); setSearch(''); }}
-              className="w-full px-3 py-2 text-sm text-left text-neutral-400 hover:bg-neutral-50 dark:hover:bg-white/5"
+              className="w-full px-3 py-2 text-sm text-left text-neutral-500 hover:bg-neutral-50 dark:hover:bg-white/5"
             >
               Sin asignar
             </button>
@@ -118,7 +118,7 @@ function UsuarioBuscador({
               </button>
             ))}
             {filtrados.length === 0 && (
-              <p className="text-xs text-neutral-400 text-center py-3">Sin resultados</p>
+              <p className="text-xs text-neutral-500 text-center py-3">Sin resultados</p>
             )}
           </div>
         </div>
@@ -343,7 +343,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
       </div>
 
       {showForm && (
-        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 space-y-4">
+        <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6 space-y-4">
           <h3 className="font-semibold text-neutral-900 dark:text-white">{editando ? 'Editar campaña' : 'Nueva campaña'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -353,7 +353,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
                 value={nombre}
                 onChange={e => setNombre(e.target.value)}
                 placeholder="Ej: Campaña Seguro de Auto — Agosto"
-                className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
               />
             </div>
             <div>
@@ -361,7 +361,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
               <select
                 value={plataforma}
                 onChange={e => setPlataforma(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
               >
                 {PLATAFORMAS.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
@@ -375,7 +375,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
                 value={presupuesto}
                 onChange={e => setPresupuesto(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -385,7 +385,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
                   type="date"
                   value={fechaInicio}
                   onChange={e => setFechaInicio(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                  className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
                 />
               </div>
               <div>
@@ -394,7 +394,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
                   type="date"
                   value={fechaFin}
                   onChange={e => setFechaFin(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
+                  className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm"
                 />
               </div>
             </div>
@@ -411,7 +411,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
               <select
                 value={oficinaAsignadaId ?? ''}
                 onChange={e => setOficinaAsignadaId(e.target.value || null)}
-                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm ${!oficinaAsignadaId ? 'border-red-400' : 'border-neutral-200 dark:border-white/10'}`}
+                className={`w-full px-3 py-2 border rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm ${!oficinaAsignadaId ? 'border-red-400' : 'border-neutral-200 dark:border-white/10'}`}
               >
                 <option value="">Selecciona oficina...</option>
                 {oficinas.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
@@ -424,7 +424,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
               value={descripcion}
               onChange={e => setDescripcion(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white text-sm resize-none"
+              className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white text-sm resize-none"
             />
           </div>
           {errorForm && (
@@ -465,7 +465,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
             return (
               <div
                 key={c.id}
-                className={`bg-white dark:bg-white/5 rounded-xl border ${c.activa ? 'border-neutral-200 dark:border-white/10' : 'border-neutral-100 dark:border-white/5 opacity-60'} overflow-hidden`}
+                className={`bg-surface-card dark:bg-white/5 rounded-xl border ${c.activa ? 'border-neutral-200 dark:border-white/10' : 'border-neutral-100 dark:border-white/5 opacity-60'} overflow-hidden`}
               >
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -484,7 +484,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-neutral-400">{formatFecha(c.fecha_inicio)} — {formatFecha(c.fecha_fin)}</p>
+                      <p className="text-xs text-neutral-500">{formatFecha(c.fecha_inicio)} — {formatFecha(c.fecha_fin)}</p>
                       {(c.usuario_id || c.oficina_id) && (
                         <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                           {c.usuario_id && (() => {
@@ -508,10 +508,10 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
                       {c.descripcion && <p className="text-xs text-neutral-500 dark:text-white/50 mt-1">{c.descripcion}</p>}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button onClick={() => toggleActiva(c)} className="p-2 rounded-lg text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors" title={c.activa ? 'Archivar' : 'Reactivar'}>
+                      <button onClick={() => toggleActiva(c)} className="p-2 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors" title={c.activa ? 'Archivar' : 'Reactivar'}>
                         {c.activa ? <Archive className="w-4 h-4" /> : <ArchiveRestore className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => abrirFormEditar(c)} className="p-2 rounded-lg text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+                      <button onClick={() => abrirFormEditar(c)} className="p-2 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button onClick={() => eliminarCampania(c.id)} className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
@@ -545,17 +545,17 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
                 {expandida && (
                   <div className="border-t border-neutral-100 dark:border-white/5 p-4 bg-neutral-50 dark:bg-white/3 space-y-2">
                     {c.gastos.length === 0 && (
-                      <p className="text-xs text-neutral-400 text-center py-2">Sin gastos registrados todavía</p>
+                      <p className="text-xs text-neutral-500 text-center py-2">Sin gastos registrados todavía</p>
                     )}
                     {c.gastos.map(g => (
-                      <div key={g.id} className="flex items-center justify-between bg-white dark:bg-white/5 rounded-lg border border-neutral-200 dark:border-white/10 px-3 py-2">
+                      <div key={g.id} className="flex items-center justify-between bg-surface-card dark:bg-white/5 rounded-lg border border-soft dark:border-white/10 px-3 py-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm text-neutral-800 dark:text-white/80 truncate">{g.concepto}</p>
-                          <p className="text-xs text-neutral-400">{formatFecha(g.fecha)}</p>
+                          <p className="text-xs text-neutral-500">{formatFecha(g.fecha)}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-sm font-medium text-neutral-700 dark:text-white/70">{formatMonto(g.monto)}</span>
-                          <button onClick={() => eliminarGasto(g.id)} className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                          <button onClick={() => eliminarGasto(g.id)} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -563,20 +563,20 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
                     ))}
 
                     {nuevoGasto?.campaniaId === c.id ? (
-                      <div className="bg-white dark:bg-white/5 rounded-lg border border-purple-200 dark:border-purple-800 p-3 space-y-2 mt-2">
+                      <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-purple-200 dark:border-purple-800 p-3 space-y-2 mt-2">
                         <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_120px] gap-2">
                           <input
                             type="text"
                             value={nuevoGasto.concepto}
                             onChange={e => setNuevoGasto(g => g && { ...g, concepto: e.target.value })}
                             placeholder="Concepto (ej. Anuncio 5-11 ago)"
-                            className="px-2.5 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                            className="px-2.5 py-1.5 text-sm border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                           />
                           <input
                             type="date"
                             value={nuevoGasto.fecha}
                             onChange={e => setNuevoGasto(g => g && { ...g, fecha: e.target.value })}
-                            className="px-2.5 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                            className="px-2.5 py-1.5 text-sm border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                           />
                           <input
                             type="number"
@@ -585,7 +585,7 @@ export default function MktPresupuestosAdmin({ embedded }: { embedded?: boolean 
                             value={nuevoGasto.monto}
                             onChange={e => setNuevoGasto(g => g && { ...g, monto: e.target.value })}
                             placeholder="Monto"
-                            className="px-2.5 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                            className="px-2.5 py-1.5 text-sm border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                           />
                         </div>
                         <div className="flex gap-2">

@@ -91,20 +91,20 @@ export function LogosAsesoresPanel() {
       <div className="w-72 flex-shrink-0 border-r border-neutral-200 dark:border-white/10 flex flex-col bg-neutral-50 dark:bg-white/3">
         <div className="p-3 border-b border-neutral-200 dark:border-white/10">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
             <input
               type="text"
               placeholder="Buscar asesor..."
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full pl-8 pr-3 py-1.5 text-sm border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {filtrados.length === 0 && (
-            <p className="text-sm text-neutral-400 py-8 text-center">Sin resultados</p>
+            <p className="text-sm text-neutral-500 py-8 text-center">Sin resultados</p>
           )}
           {filtrados.map(asesor => {
             const activo = seleccionado?.id === asesor.id;
@@ -119,7 +119,7 @@ export function LogosAsesoresPanel() {
                 }`}
               >
                 {/* Thumbnail pequeño */}
-                <div className="w-9 h-9 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                <div className="w-9 h-9 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 flex-shrink-0 flex items-center justify-center overflow-hidden">
                   {asesor.mi_logotipo_url ? (
                     <img src={asesor.mi_logotipo_url} alt="" className="w-full h-full object-contain" />
                   ) : (
@@ -130,7 +130,7 @@ export function LogosAsesoresPanel() {
                   <p className={`text-sm font-medium truncate ${activo ? 'text-accent' : 'text-neutral-900 dark:text-white'}`}>
                     {asesor.nombre}
                   </p>
-                  <p className="text-xs text-neutral-400 dark:text-white/40">
+                  <p className="text-xs text-neutral-500 dark:text-white/55">
                     {asesor.mi_logotipo_url ? 'Con logo' : 'Sin logo'}
                   </p>
                 </div>
@@ -143,7 +143,7 @@ export function LogosAsesoresPanel() {
         </div>
 
         <div className="px-3 py-2 border-t border-neutral-200 dark:border-white/10">
-          <p className="text-xs text-neutral-400 dark:text-white/30">
+          <p className="text-xs text-neutral-500 dark:text-white/45">
             {asesores.filter(a => a.mi_logotipo_url).length} de {asesores.length} con logo
           </p>
         </div>
@@ -152,7 +152,7 @@ export function LogosAsesoresPanel() {
       {/* Panel derecho — detalle */}
       <div className="flex-1 flex flex-col bg-white dark:bg-neutral-900">
         {!seleccionado ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-neutral-400 dark:text-white/30">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-neutral-500 dark:text-white/45">
             <ImageIcon className="w-12 h-12" />
             <p className="text-sm">Selecciona un asesor para ver su logo</p>
           </div>
@@ -185,7 +185,7 @@ export function LogosAsesoresPanel() {
                     <ImageIcon className="w-16 h-16 text-neutral-200 dark:text-white/15" />
                   )}
                 </div>
-                <p className="text-xs text-neutral-400 dark:text-white/30 text-center mt-2">
+                <p className="text-xs text-neutral-500 dark:text-white/45 text-center mt-2">
                   {seleccionado.mi_logotipo_url ? 'Logo actual' : 'Sin logo'}
                 </p>
               </div>
@@ -196,7 +196,7 @@ export function LogosAsesoresPanel() {
                   <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">
                     Se usa en PDFs y materiales de marketing.
                   </p>
-                  <p className="text-xs text-neutral-400 dark:text-white/30">
+                  <p className="text-xs text-neutral-500 dark:text-white/45">
                     Formatos: PNG, JPG · Tamaño máx: 5MB
                   </p>
                 </div>
@@ -205,7 +205,7 @@ export function LogosAsesoresPanel() {
                   <button
                     onClick={handleSubir}
                     disabled={accion !== null}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-200 dark:border-white/10 text-sm font-medium text-neutral-700 dark:text-white/70 hover:border-accent hover:text-accent disabled:opacity-50 transition-colors bg-white dark:bg-white/5"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-soft dark:border-white/10 text-sm font-medium text-neutral-700 dark:text-white/70 hover:border-accent hover:text-accent-ink disabled:opacity-50 transition-colors bg-surface-card dark:bg-white/5"
                   >
                     {accion === 'subiendo'
                       ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -218,7 +218,7 @@ export function LogosAsesoresPanel() {
                     <button
                       onClick={handleEliminar}
                       disabled={accion !== null}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-200 dark:border-white/10 text-sm font-medium text-neutral-400 hover:border-red-300 hover:text-red-500 disabled:opacity-50 transition-colors bg-white dark:bg-white/5"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-soft dark:border-white/10 text-sm font-medium text-neutral-500 hover:border-red-300 hover:text-red-500 disabled:opacity-50 transition-colors bg-surface-card dark:bg-white/5"
                     >
                       {accion === 'eliminando'
                         ? <Loader2 className="w-4 h-4 animate-spin" />

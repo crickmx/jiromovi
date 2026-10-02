@@ -72,7 +72,7 @@ export default function MktAdminDashboard() {
                 onClick={() => setTab(t.key)}
                 className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   isActive
-                    ? 'border-accent text-accent'
+                    ? 'border-accent text-accent-ink'
                     : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70'
                 }`}
               >

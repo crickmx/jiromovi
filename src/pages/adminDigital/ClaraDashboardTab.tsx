@@ -30,16 +30,16 @@ function buildSummary(data: DBTransaction[], key: 'cost_center' | 'simple_concep
 }
 
 function HorizontalBarChart({ data }: { data: { name: string; amount: number; pct: number }[] }) {
-  if (data.length === 0) return <p className="text-xs text-gray-400 italic text-center py-4">Sin datos</p>;
+  if (data.length === 0) return <p className="text-xs text-neutral-500 italic text-center py-4">Sin datos</p>;
   const maxAmt = Math.max(...data.map((d) => d.amount));
   return (
     <div className="space-y-2">
       {data.slice(0, 8).map((item, i) => (
         <div key={item.name} className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-600 dark:text-gray-400 w-24 truncate text-right flex-shrink-0">
+          <span className="text-[11px] text-neutral-600 dark:text-gray-400 w-24 truncate text-right flex-shrink-0">
             {item.name}
           </span>
-          <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-700 rounded overflow-hidden relative">
+          <div className="flex-1 h-5 bg-neutral-100 dark:bg-gray-700 rounded overflow-hidden relative">
             <div
               className="h-full rounded transition-all duration-500"
               style={{
@@ -48,10 +48,10 @@ function HorizontalBarChart({ data }: { data: { name: string; amount: number; pc
               }}
             />
           </div>
-          <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300 w-20 text-right flex-shrink-0">
+          <span className="text-[11px] font-medium text-neutral-700 dark:text-gray-300 w-20 text-right flex-shrink-0">
             ${formatMXN(item.amount)}
           </span>
-          <span className="text-[10px] text-gray-400 w-10 text-right flex-shrink-0">
+          <span className="text-[11px] text-neutral-500 w-10 text-right flex-shrink-0">
             {item.pct.toFixed(1)}%
           </span>
         </div>
@@ -64,25 +64,25 @@ function SummaryTable({ rows }: { rows: { name: string; amount: number; count: n
   return (
     <table className="w-full text-xs">
       <thead>
-        <tr className="border-b border-gray-200 dark:border-gray-700">
-          <th className="text-left py-1.5 font-semibold text-gray-600 dark:text-gray-400">Nombre</th>
-          <th className="text-center py-1.5 font-semibold text-gray-600 dark:text-gray-400">Cant</th>
-          <th className="text-right py-1.5 font-semibold text-gray-600 dark:text-gray-400">Monto</th>
-          <th className="text-right py-1.5 font-semibold text-gray-600 dark:text-gray-400">%</th>
+        <tr className="border-b border-neutral-200 dark:border-gray-700">
+          <th className="text-left py-1.5 font-semibold text-neutral-600 dark:text-gray-400">Nombre</th>
+          <th className="text-center py-1.5 font-semibold text-neutral-600 dark:text-gray-400">Cant</th>
+          <th className="text-right py-1.5 font-semibold text-neutral-600 dark:text-gray-400">Monto</th>
+          <th className="text-right py-1.5 font-semibold text-neutral-600 dark:text-gray-400">%</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => (
-          <tr key={r.name} className="border-b border-gray-50 dark:border-gray-800">
-            <td className="py-1.5 text-gray-900 dark:text-gray-100 font-medium">{r.name}</td>
-            <td className="py-1.5 text-center text-gray-600 dark:text-gray-400">{r.count}</td>
-            <td className="py-1.5 text-right font-medium text-gray-900 dark:text-gray-100">$ {formatMXN(r.amount)}</td>
-            <td className="py-1.5 text-right text-gray-500 dark:text-gray-400">{r.pct.toFixed(1)}%</td>
+          <tr key={r.name} className="border-b border-neutral-50 dark:border-gray-800">
+            <td className="py-1.5 text-neutral-900 dark:text-gray-100 font-medium">{r.name}</td>
+            <td className="py-1.5 text-center text-neutral-600 dark:text-gray-400">{r.count}</td>
+            <td className="py-1.5 text-right font-medium text-neutral-900 dark:text-gray-100">$ {formatMXN(r.amount)}</td>
+            <td className="py-1.5 text-right text-neutral-500 dark:text-gray-400">{r.pct.toFixed(1)}%</td>
           </tr>
         ))}
         {rows.length === 0 && (
           <tr>
-            <td colSpan={4} className="py-4 text-center text-gray-400 italic">Sin datos</td>
+            <td colSpan={4} className="py-4 text-center text-neutral-500 italic">Sin datos</td>
           </tr>
         )}
       </tbody>
@@ -228,11 +228,11 @@ export function ClaraDashboardTab() {
   return (
     <div className="space-y-5">
       {/* Controls */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+      <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-4 shadow-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Tablero de Conciliacion</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Tablero de Conciliacion</h3>
+            <p className="text-xs text-neutral-500 dark:text-gray-400 mt-0.5">
               Filtra por periodo de carga o rango de fechas.
             </p>
           </div>
@@ -240,7 +240,7 @@ export function ClaraDashboardTab() {
             <button
               onClick={() => setFilterMode('period')}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                filterMode === 'period' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                filterMode === 'period' ? 'bg-accent text-accent-foreground' : 'bg-neutral-100 dark:bg-gray-700 text-neutral-600 dark:text-gray-300'
               }`}
             >
               <Calendar className="w-3.5 h-3.5 inline mr-1" />
@@ -249,7 +249,7 @@ export function ClaraDashboardTab() {
             <button
               onClick={() => setFilterMode('dates')}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                filterMode === 'dates' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                filterMode === 'dates' ? 'bg-accent text-accent-foreground' : 'bg-neutral-100 dark:bg-gray-700 text-neutral-600 dark:text-gray-300'
               }`}
             >
               Rango Fechas
@@ -268,7 +268,7 @@ export function ClaraDashboardTab() {
         <div className="mt-4">
           {filterMode === 'period' ? (
             periods.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No hay periodos cargados aun.</p>
+              <p className="text-xs text-neutral-500 italic">No hay periodos cargados aun.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {periods.map((p) => (
@@ -277,8 +277,8 @@ export function ClaraDashboardTab() {
                     onClick={() => setSelectedPeriodId(p.id)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
                       selectedPeriodId === p.id
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-300'
+                        ? 'bg-accent text-accent-foreground border-accent'
+                        : 'bg-white dark:bg-gray-700 text-neutral-700 dark:text-gray-300 border-neutral-200 dark:border-gray-600 hover:border-blue-300'
                     }`}
                   >
                     {p.label}
@@ -289,26 +289,26 @@ export function ClaraDashboardTab() {
           ) : (
             <div className="flex items-center gap-3">
               <div>
-                <label className="text-[10px] text-gray-500 block mb-0.5">Desde</label>
+                <label className="text-[11px] text-neutral-500 block mb-0.5">Desde</label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-white"
+                  className="border border-neutral-300 dark:border-gray-600 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-accent/40 focus:outline-none bg-surface-card dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div>
-                <label className="text-[10px] text-gray-500 block mb-0.5">Hasta</label>
+                <label className="text-[11px] text-neutral-500 block mb-0.5">Hasta</label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-white"
+                  className="border border-neutral-300 dark:border-gray-600 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-accent/40 focus:outline-none bg-surface-card dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <button
                 onClick={load}
-                className="mt-3 px-4 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                className="mt-3 px-4 py-1.5 text-xs font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover transition-colors"
               >
                 Buscar
               </button>
@@ -317,7 +317,7 @@ export function ClaraDashboardTab() {
         </div>
 
         {selectedPeriod && filterMode === 'period' && (
-          <p className="text-[10px] text-gray-400 mt-2">
+          <p className="text-[11px] text-neutral-500 mt-2">
             {selectedPeriod.date_from} a {selectedPeriod.date_to} -- Archivo: {selectedPeriod.file_name || '--'}
           </p>
         )}
@@ -347,32 +347,32 @@ export function ClaraDashboardTab() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Por Centro de Costo</h4>
+        <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-4 shadow-card">
+          <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Por Centro de Costo</h4>
           <HorizontalBarChart data={ccSummary} />
-          <hr className="my-4 border-gray-100 dark:border-gray-700" />
+          <hr className="my-4 border-neutral-100 dark:border-gray-700" />
           <SummaryTable rows={ccSummary} />
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Por Concepto Simple</h4>
+        <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-4 shadow-card">
+          <h4 className="text-sm font-semibold text-neutral-900 dark:text-white mb-4">Por Concepto Simple</h4>
           <HorizontalBarChart data={conceptSummary} />
-          <hr className="my-4 border-gray-100 dark:border-gray-700" />
+          <hr className="my-4 border-neutral-100 dark:border-gray-700" />
           <SummaryTable rows={conceptSummary} />
         </div>
       </div>
 
       {/* Drill Down */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="bg-surface-card dark:bg-gray-800 rounded-xl border border-soft dark:border-gray-700 overflow-hidden shadow-card">
+        <div className="px-5 py-4 border-b border-neutral-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Detalle de Movimientos</h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Filtra por centro de costo o concepto.</p>
+            <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">Detalle de Movimientos</h4>
+            <p className="text-xs text-neutral-500 dark:text-gray-400">Filtra por centro de costo o concepto.</p>
           </div>
           <div className="flex gap-2">
             <select
               value={filterCC}
               onChange={(e) => setFilterCC(e.target.value)}
-              className="text-xs border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-xs border border-neutral-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-surface-card dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-accent/40"
             >
               <option value="Todos">Todos los centros</option>
               {ccSummary.map((r) => <option key={r.name} value={r.name}>{r.name}</option>)}
@@ -380,7 +380,7 @@ export function ClaraDashboardTab() {
             <select
               value={filterConcept}
               onChange={(e) => setFilterConcept(e.target.value)}
-              className="text-xs border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className="text-xs border border-neutral-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-surface-card dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
             >
               <option value="Todos">Todos los conceptos</option>
               {conceptSummary.map((r) => <option key={r.name} value={r.name}>{r.name}</option>)}
@@ -390,27 +390,27 @@ export function ClaraDashboardTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-700/50">
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Fecha</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Proveedor</th>
-                <th className="px-3 py-2.5 text-right font-semibold text-gray-600 dark:text-gray-300">Monto MXN</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">
+              <tr className="bg-neutral-50 dark:bg-gray-700/50">
+                <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">Fecha</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">Proveedor</th>
+                <th className="px-3 py-2.5 text-right font-semibold text-neutral-600 dark:text-gray-300">Monto MXN</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">
                   <span className="flex items-center gap-1">Centro de Costo <Pencil className="w-3 h-3 text-blue-400" /></span>
                 </th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">
+                <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">
                   <span className="flex items-center gap-1">Concepto <Pencil className="w-3 h-3 text-teal-400" /></span>
                 </th>
-                <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">
-                  <span className="flex items-center gap-1">Detalles <Pencil className="w-3 h-3 text-gray-400" /></span>
+                <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">
+                  <span className="flex items-center gap-1">Detalles <Pencil className="w-3 h-3 text-neutral-500" /></span>
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {drillData.slice(0, 100).map((t) => (
                 <tr key={t.id} className="hover:bg-blue-50/30 dark:hover:bg-gray-700/30 group">
-                  <td className="px-3 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{t.transaction_date}</td>
-                  <td className="px-3 py-2 text-gray-900 dark:text-white truncate max-w-[180px]" title={t.original_vendor}>{t.normalized_vendor || t.original_vendor}</td>
-                  <td className="px-3 py-2 text-right font-medium text-gray-900 dark:text-white whitespace-nowrap">$ {formatMXN(Number(t.amount_mxn))}</td>
+                  <td className="px-3 py-2 text-neutral-700 dark:text-gray-300 whitespace-nowrap">{t.transaction_date}</td>
+                  <td className="px-3 py-2 text-neutral-900 dark:text-white truncate max-w-[180px]" title={t.original_vendor}>{t.normalized_vendor || t.original_vendor}</td>
+                  <td className="px-3 py-2 text-right font-medium text-neutral-900 dark:text-white whitespace-nowrap">$ {formatMXN(Number(t.amount_mxn))}</td>
                   {/* Editable: Centro de Costo */}
                   <td className="px-1 py-1">
                     {editingCell?.rowId === t.id && editingCell.field === 'cost_center' ? (
@@ -421,21 +421,21 @@ export function ClaraDashboardTab() {
                           onBlur={commitEdit}
                           onKeyDown={(e) => e.key === 'Enter' && commitEdit()}
                           autoFocus
-                          className="w-full text-xs border border-blue-400 rounded px-1.5 py-1 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full text-xs border border-blue-400 rounded px-1.5 py-1 bg-surface-card dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-accent/40"
                         >
                           <option value="">-- Sin asignar --</option>
                           {costCenters.map((cc) => <option key={cc} value={cc}>{cc}</option>)}
                         </select>
-                        <button onClick={commitEdit} className="text-blue-600 hover:text-blue-800 flex-shrink-0">
+                        <button onClick={commitEdit} className="text-accent-ink hover:text-accent-ink flex-shrink-0">
                           <Check className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ) : (
                       <span
                         onClick={() => startEditing(t.id, 'cost_center', t.cost_center)}
-                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 text-gray-700 dark:text-gray-300 transition-colors"
+                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 text-neutral-700 dark:text-gray-300 transition-colors"
                       >
-                        {t.cost_center || <span className="text-gray-400 italic">Sin asignar</span>}
+                        {t.cost_center || <span className="text-neutral-500 italic">Sin asignar</span>}
                       </span>
                     )}
                   </td>
@@ -449,7 +449,7 @@ export function ClaraDashboardTab() {
                           onBlur={commitEdit}
                           onKeyDown={(e) => e.key === 'Enter' && commitEdit()}
                           autoFocus
-                          className="w-full text-xs border border-teal-400 rounded px-1.5 py-1 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                          className="w-full text-xs border border-teal-400 rounded px-1.5 py-1 bg-surface-card dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
                         >
                           <option value="">-- Sin asignar --</option>
                           {simpleConcepts.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -461,9 +461,9 @@ export function ClaraDashboardTab() {
                     ) : (
                       <span
                         onClick={() => startEditing(t.id, 'simple_concept', t.simple_concept)}
-                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/30 text-gray-700 dark:text-gray-300 transition-colors"
+                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/30 text-neutral-700 dark:text-gray-300 transition-colors"
                       >
-                        {t.simple_concept || <span className="text-gray-400 italic">Sin asignar</span>}
+                        {t.simple_concept || <span className="text-neutral-500 italic">Sin asignar</span>}
                       </span>
                     )}
                   </td>
@@ -479,16 +479,16 @@ export function ClaraDashboardTab() {
                           onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditingCell(null); }}
                           autoFocus
                           placeholder="Descripcion..."
-                          className="w-full text-xs border border-gray-400 rounded px-1.5 py-1 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                          className="w-full text-xs border border-neutral-400 rounded px-1.5 py-1 bg-surface-card dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
                         />
-                        <button onClick={commitEdit} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 flex-shrink-0">
+                        <button onClick={commitEdit} className="text-neutral-600 hover:text-gray-800 dark:text-gray-400 flex-shrink-0">
                           <Check className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ) : (
                       <span
                         onClick={() => startEditing(t.id, 'description', t.description)}
-                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-neutral-500 dark:text-gray-400 transition-colors"
                       >
                         {t.description || <span className="italic">-</span>}
                       </span>
@@ -498,7 +498,7 @@ export function ClaraDashboardTab() {
               ))}
               {drillData.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-gray-400 italic">
+                  <td colSpan={6} className="px-3 py-8 text-center text-neutral-500 italic">
                     Sin transacciones en este periodo
                   </td>
                 </tr>
@@ -507,7 +507,7 @@ export function ClaraDashboardTab() {
           </table>
         </div>
         {drillData.length > 100 && (
-          <div className="px-5 py-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400 text-center">
+          <div className="px-5 py-2 border-t border-neutral-100 dark:border-gray-700 text-xs text-neutral-500 text-center">
             Mostrando 100 de {drillData.length} transacciones
           </div>
         )}

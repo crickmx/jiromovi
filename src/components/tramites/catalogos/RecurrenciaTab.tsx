@@ -54,7 +54,7 @@ const ASIG_LABEL: Record<string, string> = {
   usuarios_especificos:'Usuarios específicos',
 };
 
-const inputCls = 'w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500';
+const inputCls = 'w-full px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-xl bg-surface-card dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-accent/40';
 const labelCls = 'block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1';
 
 export default function RecurrenciaTab({ tipoId, showToast }: Props) {
@@ -273,7 +273,7 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
 
   if (loading) return (
     <div className="flex items-center justify-center p-10">
-      <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />
+      <Loader2 className="w-5 h-5 animate-spin text-neutral-500" />
     </div>
   );
 
@@ -289,11 +289,11 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
           <p className="text-xs text-neutral-500">Trámites que se generan automáticamente según una frecuencia.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={loadAll} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+          <button onClick={loadAll} className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800">
             <RefreshCw className="w-4 h-4" />
           </button>
           {!showingForm && (
-            <button onClick={openNew} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors">
+            <button onClick={openNew} className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-accent-foreground text-xs rounded-lg hover:bg-accent-hover transition-colors">
               <Plus className="w-3.5 h-3.5" /> Nueva
             </button>
           )}
@@ -302,7 +302,7 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
 
       {/* List */}
       {rows.length === 0 && !showingForm ? (
-        <div className="text-center py-10 text-sm text-neutral-400">
+        <div className="text-center py-10 text-sm text-neutral-500">
           Sin recurrencias. Crea una para generar trámites automáticamente.
         </div>
       ) : (
@@ -332,7 +332,7 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
               >
                 {dispararLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
               </button>
-              <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700">
+              <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-700">
                 <Pencil className="w-3.5 h-3.5" />
               </button>
               <button onClick={() => eliminar(r.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
@@ -350,7 +350,7 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
             <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
               {editingId === 'new' ? 'Nueva recurrencia' : 'Editar recurrencia'}
             </p>
-            <button onClick={cancelEdit} className="p-1 rounded-lg text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700">
+            <button onClick={cancelEdit} className="p-1 rounded-lg text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -376,19 +376,19 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
             <div>
               <label className={labelCls}>Hora de disparo (hora CST)</label>
               <input type="time" value={form.hora_disparo} onChange={e => setF('hora_disparo', e.target.value)} className={inputCls} />
-              <p className="text-[10px] text-neutral-400 mt-0.5">Hora local (Ciudad de México) en que se crean los trámites.</p>
+              <p className="text-[11px] text-neutral-500 mt-0.5">Hora local (Ciudad de México) en que se crean los trámites.</p>
             </div>
 
             {/* Días para vencer */}
             <div className="col-span-2">
               <label className={labelCls}>
                 Días para vencer
-                <span className="ml-1 inline-flex items-center text-neutral-400" title="Días contados desde hoy para calcular la fecha de vencimiento. Ej: 1 = vence mañana, 7 = vence en una semana, 0 = vence el mismo día.">
+                <span className="ml-1 inline-flex items-center text-neutral-500" title="Días contados desde hoy para calcular la fecha de vencimiento. Ej: 1 = vence mañana, 7 = vence en una semana, 0 = vence el mismo día.">
                   <HelpCircle className="w-3 h-3" />
                 </span>
               </label>
               <input type="number" min={0} max={365} value={form.dias_para_vencer} onChange={e => setF('dias_para_vencer', Number(e.target.value))} className={inputCls} />
-              <p className="text-[10px] text-neutral-400 mt-0.5">
+              <p className="text-[11px] text-neutral-500 mt-0.5">
                 Días desde la fecha de creación hasta el vencimiento. Ej: 1 = vence al día siguiente.
               </p>
             </div>
@@ -448,7 +448,7 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
               <div className="col-span-2">
                 <label className={labelCls}>Usuario</label>
                 {loadingUsuarios ? (
-                  <div className="flex items-center gap-2 text-xs text-neutral-400 py-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />Cargando...</div>
+                  <div className="flex items-center gap-2 text-xs text-neutral-500 py-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />Cargando...</div>
                 ) : (
                   <select value={form.usuario_id ?? ''} onChange={e => setF('usuario_id', e.target.value || null)} className={inputCls}>
                     <option value="">Seleccionar usuario</option>
@@ -465,22 +465,22 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
                   Usuarios ({selectedUsuarios.length} seleccionado{selectedUsuarios.length !== 1 ? 's' : ''})
                 </label>
                 {loadingUsuarios ? (
-                  <div className="flex items-center gap-2 text-xs text-neutral-400 py-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />Cargando...</div>
+                  <div className="flex items-center gap-2 text-xs text-neutral-500 py-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />Cargando...</div>
                 ) : (
-                  <div className="max-h-44 overflow-y-auto border border-neutral-300 dark:border-neutral-600 rounded-xl divide-y divide-neutral-100 dark:divide-neutral-700 bg-white dark:bg-neutral-800">
+                  <div className="max-h-44 overflow-y-auto border border-neutral-300 dark:border-neutral-600 rounded-xl divide-y divide-neutral-100 dark:divide-neutral-700 bg-surface-card dark:bg-neutral-800">
                     {usuarios.map(u => {
                       const checked = selectedUsuarios.includes(u.id);
                       return (
                         <label key={u.id} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700/40 transition-colors ${checked ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
-                          <input type="checkbox" checked={checked} onChange={() => toggleUsuario(u.id)} className="w-3.5 h-3.5 rounded text-blue-600" />
+                          <input type="checkbox" checked={checked} onChange={() => toggleUsuario(u.id)} className="w-3.5 h-3.5 rounded text-accent-ink" />
                           <span className={`text-xs ${checked ? 'text-blue-700 dark:text-blue-400 font-medium' : 'text-neutral-700 dark:text-neutral-300'}`}>{u.nombre_completo}</span>
                         </label>
                       );
                     })}
-                    {usuarios.length === 0 && <p className="px-3 py-4 text-xs text-neutral-400 text-center">Sin usuarios activos</p>}
+                    {usuarios.length === 0 && <p className="px-3 py-4 text-xs text-neutral-500 text-center">Sin usuarios activos</p>}
                   </div>
                 )}
-                <p className="text-[10px] text-neutral-400 mt-1">Se creará un trámite por cada usuario seleccionado.</p>
+                <p className="text-[11px] text-neutral-500 mt-1">Se creará un trámite por cada usuario seleccionado.</p>
               </div>
             )}
 
@@ -523,7 +523,7 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
 
           <div className="flex gap-2 pt-1">
             <button onClick={save} disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 px-4 py-2 bg-accent text-accent-foreground text-sm rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Guardar
             </button>
@@ -536,8 +536,8 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
 
       {/* ── Modal "Disparar ahora" ──────────────────────────────────────────── */}
       {dispararRec && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-sm mx-4 overflow-hidden animate-scale-in">
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
@@ -549,7 +549,7 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
                 </div>
               </div>
               <button onClick={() => setDispararRec(null)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
-                <X className="w-4 h-4 text-neutral-400" />
+                <X className="w-4 h-4 text-neutral-500" />
               </button>
             </div>
 
@@ -563,7 +563,7 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
                 </div>
               ) : (
                 <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-accent-ink shrink-0 mt-0.5" />
                   <p className="text-xs text-blue-700 dark:text-blue-400">
                     Se crearán los trámites de esta recurrencia ahora mismo.
                   </p>
@@ -575,13 +575,13 @@ export default function RecurrenciaTab({ tipoId, showToast }: Props) {
                   type="checkbox"
                   checked={dispararMarcarLog}
                   onChange={e => setDispararMarcarLog(e.target.checked)}
-                  className="w-4 h-4 rounded mt-0.5 text-blue-600"
+                  className="w-4 h-4 rounded mt-0.5 text-accent-ink"
                 />
                 <div>
                   <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
                     Marcar como ejecutado hoy
                   </p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">
+                  <p className="text-[11px] text-neutral-500 mt-0.5">
                     El cron automático no volverá a correr esta recurrencia el día de hoy.
                     Desactívalo si quieres que igual corra a la hora programada.
                   </p>

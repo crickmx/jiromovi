@@ -290,7 +290,7 @@ export function Directorio() {
         description={isGerente ? 'Gestiona usuarios de tu oficina' : 'Directorio de usuarios del sistema (v2)'}
         icon={Users}
         badge={isReadOnly ? (
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">
+          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">
             Solo lectura
           </span>
         ) : undefined}
@@ -317,17 +317,17 @@ export function Directorio() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
         <div className="p-4 border-b border-neutral-100 dark:border-white/5">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div className="sm:col-span-2 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-white/30" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 dark:text-white/45" />
               <input
                 type="text"
                 placeholder="Buscar por nombre, correo, telefono..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-400 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
+                className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-500 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
               />
             </div>
 
@@ -370,7 +370,7 @@ export function Directorio() {
           </div>
 
           <div className="mt-3 flex items-center justify-between">
-            <p className="text-xs text-neutral-500 dark:text-white/40">
+            <p className="text-xs text-neutral-500 dark:text-white/55">
               {filteredUsuarios.length} de {usuarios.length} usuarios
             </p>
           </div>
@@ -378,26 +378,26 @@ export function Directorio() {
 
         <div className="overflow-auto max-h-[65vh]">
           <table className="w-full min-w-[760px]">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+            <thead className="bg-neutral-50 border-b border-neutral-200 sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Usuario
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Rol
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Oficina
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Estado
                 </th>
-                <th className="px-3 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
+            <tbody className="bg-white divide-y divide-neutral-200">
               {filteredUsuarios.map((usuario) => (
                 <tr key={usuario.id} className="hover:bg-slate-50 transition">
                   <td className="px-3 py-3 whitespace-nowrap">
@@ -419,7 +419,7 @@ export function Directorio() {
                       )}
                       <div className="ml-4">
                         <div className="flex items-center space-x-2">
-                          <div className="text-sm font-medium text-slate-900">
+                          <div className="text-sm font-medium text-neutral-900">
                             {usuario.nombre} {usuario.apellidos}
                           </div>
                           {usuario.estado === 'pendiente' && (
@@ -428,7 +428,7 @@ export function Directorio() {
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-slate-500">{usuario.puesto}</div>
+                        <div className="text-sm text-neutral-500">{usuario.puesto}</div>
                       </div>
                     </div>
                   </td>
@@ -447,7 +447,7 @@ export function Directorio() {
                       {usuario.rol}
                     </span>
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-sm text-slate-900">
+                  <td className="px-3 py-3 whitespace-nowrap text-sm text-neutral-900">
                     {usuario.oficinas?.nombre || '-'}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
@@ -463,8 +463,8 @@ export function Directorio() {
                           </>
                         ) : (
                           <>
-                            <ToggleLeft className="w-6 h-6 text-slate-400" />
-                            <span className="text-sm text-slate-400 font-medium">Inactivo</span>
+                            <ToggleLeft className="w-6 h-6 text-neutral-500" />
+                            <span className="text-sm text-neutral-500 font-medium">Inactivo</span>
                           </>
                         )}
                       </button>
@@ -477,8 +477,8 @@ export function Directorio() {
                           </>
                         ) : (
                           <>
-                            <ToggleLeft className="w-6 h-6 text-slate-400" />
-                            <span className="text-sm text-slate-400 font-medium">Inactivo</span>
+                            <ToggleLeft className="w-6 h-6 text-neutral-500" />
+                            <span className="text-sm text-neutral-500 font-medium">Inactivo</span>
                           </>
                         )}
                       </div>
@@ -493,14 +493,14 @@ export function Directorio() {
                           className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
                             accessSentId === usuario.id
                               ? 'text-green-700 bg-green-50'
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                              : 'text-neutral-600 hover:text-slate-900 hover:bg-slate-100'
                           }`}
                           title="Enviar código de acceso al correo y WhatsApp"
                         >
                           {accessSentId === usuario.id
                             ? <CheckCircle className="w-4 h-4" />
                             : sendingAccessId === usuario.id
-                            ? <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
+                            ? <span className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-500 rounded-full animate-spin" />
                             : <Send className="w-4 h-4" />
                           }
                         </button>
@@ -512,7 +512,7 @@ export function Directorio() {
                           className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
                             betaIds.has(usuario.id)
                               ? 'text-violet-700 bg-violet-50 hover:bg-violet-100'
-                              : 'text-slate-500 hover:text-violet-700 hover:bg-violet-50'
+                              : 'text-neutral-500 hover:text-violet-700 hover:bg-violet-50'
                           }`}
                           title={betaIds.has(usuario.id) ? 'Quitar de Beta' : 'Agregar a Beta'}
                         >
@@ -548,7 +548,7 @@ export function Directorio() {
                           setSelectedUser(usuario);
                           setModalOpen(true);
                         }}
-                        className="flex items-center p-2 text-accent hover:text-primary-900 hover:bg-primary-50 rounded-lg transition"
+                        className="flex items-center p-2 text-accent-ink hover:text-primary-900 hover:bg-primary-50 rounded-lg transition"
                         title={isReadOnly ? "Ver Usuario" : "Ver / Editar Usuario"}
                       >
                         <Edit className="w-4 h-4" />
@@ -571,8 +571,8 @@ export function Directorio() {
 
           {filteredUsuarios.length === 0 && (
             <div className="text-center py-12">
-              <Filter className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500">No se encontraron usuarios</p>
+              <Filter className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
+              <p className="text-neutral-500">No se encontraron usuarios</p>
             </div>
           )}
         </div>
@@ -594,8 +594,8 @@ export function Directorio() {
       )}
 
       {deleteModalOpen && userToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full p-6 animate-scale-in">
             <div className="flex items-start space-x-4 mb-6">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -603,33 +603,33 @@ export function Directorio() {
                 </div>
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                <h3 className="text-xl font-bold text-neutral-900 mb-2">
                   Eliminar Usuario
                 </h3>
-                <p className="text-sm text-slate-600 mb-4">
+                <p className="text-sm text-neutral-600 mb-4">
                   Esta acción bloqueará el acceso del usuario al sistema.
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-50 rounded-lg p-4 mb-6">
+            <div className="bg-neutral-50 rounded-lg p-4 mb-6">
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="font-semibold text-slate-700">Nombre:</span>{' '}
-                  <span className="text-slate-900">{userToDelete.nombre} {userToDelete.apellidos}</span>
+                  <span className="font-semibold text-neutral-700">Nombre:</span>{' '}
+                  <span className="text-neutral-900">{userToDelete.nombre} {userToDelete.apellidos}</span>
                 </div>
                 <div>
-                  <span className="font-semibold text-slate-700">Email:</span>{' '}
-                  <span className="text-slate-900">{userToDelete.email_laboral || 'N/A'}</span>
+                  <span className="font-semibold text-neutral-700">Email:</span>{' '}
+                  <span className="text-neutral-900">{userToDelete.email_laboral || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="font-semibold text-slate-700">Rol:</span>{' '}
-                  <span className="text-slate-900">{userToDelete.rol}</span>
+                  <span className="font-semibold text-neutral-700">Rol:</span>{' '}
+                  <span className="text-neutral-900">{userToDelete.rol}</span>
                 </div>
                 {userToDelete.oficinas && (
                   <div>
-                    <span className="font-semibold text-slate-700">Oficina:</span>{' '}
-                    <span className="text-slate-900">{userToDelete.oficinas.nombre}</span>
+                    <span className="font-semibold text-neutral-700">Oficina:</span>{' '}
+                    <span className="text-neutral-900">{userToDelete.oficinas.nombre}</span>
                   </div>
                 )}
               </div>
@@ -646,14 +646,14 @@ export function Directorio() {
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Escribe <span className="font-bold text-red-600">ELIMINAR</span> para confirmar:
               </label>
               <input
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 placeholder="ELIMINAR"
                 autoFocus
               />
@@ -666,7 +666,7 @@ export function Directorio() {
                   setUserToDelete(null);
                   setDeleteConfirmText('');
                 }}
-                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition"
+                className="flex-1 px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-slate-50 font-medium transition"
               >
                 Cancelar
               </button>

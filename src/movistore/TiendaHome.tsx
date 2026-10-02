@@ -213,7 +213,7 @@ export function TiendaHome() {
               href="https://app.movi.digital"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl bg-[#164281] hover:bg-[#1e5fac] text-white transition-all shadow-md shadow-blue-900/40"
+              className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl bg-accent hover:bg-[#1e5fac] text-accent-foreground transition-all shadow-md shadow-blue-900/40"
             >
               <ShoppingBag className="w-3.5 h-3.5" />
               <span>Acceder a MOVI</span>
@@ -236,7 +236,7 @@ export function TiendaHome() {
                 ? (catActivaData.descripcion || `Todo lo que necesitas en ${catActivaData.nombre}.`)
                 : 'Todo lo que necesitas para potenciar tu marca y operación.'}
             </h1>
-            <p className="text-base sm:text-lg text-slate-300 font-normal leading-relaxed mb-6">
+            <p className="text-base sm:text-lg text-neutral-300 font-normal leading-relaxed mb-6">
               {catActivaData
                 ? `Explora los productos y servicios disponibles en la categoría ${catActivaData.nombre}.`
                 : 'Explora artículos oficiales, servicios exclusivos y soluciones diseñadas para agentes y aliados MOVI Digital.'}
@@ -245,18 +245,18 @@ export function TiendaHome() {
             {/* Live Search Bar */}
             <div className="relative max-w-2xl">
               <div className="relative flex items-center">
-                <Search className="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none" />
+                <Search className="absolute left-4 w-5 h-5 text-neutral-500 pointer-events-none" />
                 <input
                   type="text"
                   value={busqueda}
                   onChange={e => actualizarFiltros({ q: e.target.value })}
                   placeholder="Buscar productos, servicios, marketing, papelería..."
-                  className="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-white/95 text-slate-900 placeholder:text-slate-400 font-medium text-sm sm:text-base shadow-lg shadow-black/30 border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all"
+                  className="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-white/95 text-neutral-900 placeholder:text-neutral-500 font-medium text-sm sm:text-base shadow-lg shadow-black/30 border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:bg-white transition-all"
                 />
                 {busqueda && (
                   <button
                     onClick={() => actualizarFiltros({ q: '' })}
-                    className="absolute right-3.5 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    className="absolute right-3.5 p-1 rounded-full text-neutral-500 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -273,7 +273,7 @@ export function TiendaHome() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Layers className="w-5 h-5 text-[#164281]" />
+                <Layers className="w-5 h-5 text-accent-ink" />
                 <h2 className="text-lg font-bold text-surface-900 tracking-tight">Colecciones y Catálogos</h2>
               </div>
               <span className="text-xs text-surface-500 font-medium">{catalogos.length} colecciones activas</span>
@@ -299,7 +299,7 @@ export function TiendaHome() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent group-hover:from-black/90 transition-colors" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 flex flex-col justify-end">
-                    <span className="text-[10px] uppercase font-bold text-blue-300 tracking-widest mb-1 flex items-center gap-1">
+                    <span className="text-[11px] uppercase font-bold text-blue-300 tracking-widest mb-1 flex items-center gap-1">
                       Catálogo <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                     <p className="text-white text-base font-bold line-clamp-1 leading-snug">{cat.nombre}</p>
@@ -340,7 +340,7 @@ export function TiendaHome() {
                     : 'text-surface-600 hover:text-surface-900'
                 }`}
               >
-                <Package className="w-3.5 h-3.5 text-blue-600" />
+                <Package className="w-3.5 h-3.5 text-accent-ink" />
                 <span>Productos ({totalProductosCount})</span>
               </button>
               <button
@@ -364,7 +364,7 @@ export function TiendaHome() {
                 onClick={() => actualizarFiltros({ cat: '' })}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                   !catActiva
-                    ? 'bg-[#164281] text-white shadow-sm'
+                    ? 'bg-accent text-accent-foreground shadow-sm'
                     : 'bg-white text-surface-700 border border-surface-200 hover:bg-surface-100'
                 }`}
               >
@@ -376,7 +376,7 @@ export function TiendaHome() {
                   onClick={() => actualizarFiltros({ cat: c.id })}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                     catActiva === c.id
-                      ? 'bg-[#164281] text-white shadow-sm'
+                      ? 'bg-accent text-accent-foreground shadow-sm'
                       : 'bg-white text-surface-700 border border-surface-200 hover:bg-surface-100'
                   }`}
                 >
@@ -398,7 +398,7 @@ export function TiendaHome() {
               </button>
             )}
 
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-surface-200 shadow-sm">
+            <div className="flex items-center gap-2 bg-surface-card px-3 py-1.5 rounded-xl border border-surface-200 shadow-card">
               <SlidersHorizontal className="w-3.5 h-3.5 text-surface-400" />
               <select
                 value={orden}
@@ -417,11 +417,11 @@ export function TiendaHome() {
         {/* Product Results */}
         {cargando ? (
           <div className="flex flex-col items-center justify-center py-24">
-            <div className="w-10 h-10 border-[3px] border-surface-200 border-t-[#164281] rounded-full animate-spin mb-4" />
+            <div className="w-10 h-10 border-[3px] border-surface-200 border-t-accent rounded-full animate-spin mb-4" />
             <p className="text-surface-500 text-sm font-medium">Cargando catálogo...</p>
           </div>
         ) : productosFiltrados.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-surface-200 p-8 max-w-lg mx-auto shadow-sm">
+          <div className="text-center py-20 bg-surface-card rounded-3xl border border-surface-200 p-8 max-w-lg mx-auto shadow-card">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-surface-100 flex items-center justify-center text-surface-400 mb-4">
               <Package className="w-7 h-7" />
             </div>
@@ -433,7 +433,7 @@ export function TiendaHome() {
             </p>
             <button
               onClick={limpiarFiltros}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#164281] text-white text-xs font-bold hover:bg-[#1e5fac] transition-colors shadow-md"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-accent-foreground text-xs font-bold hover:bg-[#1e5fac] transition-colors shadow-md"
             >
               <span>Ver todos los productos</span>
             </button>
@@ -455,7 +455,7 @@ export function TiendaHome() {
                 return (
                   <div
                     key={p.id}
-                    className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-surface-200/80 group flex flex-col hover:-translate-y-1"
+                    className="bg-surface-card rounded-2xl overflow-hidden shadow-card hover:shadow-xl transition-all duration-300 border border-surface-200/80 group flex flex-col hover:-translate-y-1"
                   >
                     {/* Image Area */}
                     <Link to={`/producto/${p.id}`} className="block relative aspect-square bg-surface-100 overflow-hidden">
@@ -470,7 +470,7 @@ export function TiendaHome() {
                       {/* Badges */}
                       <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 items-start">
                         {p.categoria && (
-                          <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-white/95 text-surface-800 shadow-sm backdrop-blur-sm">
+                          <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-white/95 text-surface-800 shadow-sm backdrop-blur-sm">
                             {p.categoria.nombre}
                           </span>
                         )}
@@ -506,13 +506,13 @@ export function TiendaHome() {
 
                       <div className="mt-4 pt-3 border-t border-surface-100 flex items-baseline justify-between">
                         <div>
-                          <span className="text-[10px] uppercase font-semibold text-surface-400 block">Precio</span>
-                          <span className="text-lg font-black text-[#164281]">{fmt(p.precio)}</span>
-                          <span className="text-[10px] text-surface-500 ml-1">MXN</span>
+                          <span className="text-[11px] uppercase font-semibold text-surface-400 block">Precio</span>
+                          <span className="text-lg font-black text-accent-ink">{fmt(p.precio)}</span>
+                          <span className="text-[11px] text-surface-500 ml-1">MXN</span>
                         </div>
                         <Link
                           to={`/producto/${p.id}`}
-                          className="text-xs font-bold text-[#164281] hover:underline flex items-center gap-0.5"
+                          className="text-xs font-bold text-accent-ink hover:underline flex items-center gap-0.5"
                         >
                           Detalles <ChevronRight className="w-3 h-3" />
                         </Link>
@@ -525,7 +525,7 @@ export function TiendaHome() {
                         href={comprarUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full inline-flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl bg-[#164281] hover:bg-[#1e5fac] active:scale-[0.98] text-white transition-all shadow-sm"
+                        className="w-full inline-flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl bg-accent hover:bg-[#1e5fac] active:scale-[0.98] text-accent-foreground transition-all shadow-sm"
                       >
                         <span>{esServicio ? 'Solicitar en MOVI' : 'Comprar en MOVI'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -540,7 +540,7 @@ export function TiendaHome() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#040c1f] text-slate-400 text-xs py-12 border-t border-white/10 mt-16">
+      <footer className="bg-[#040c1f] text-neutral-500 text-xs py-12 border-t border-white/10 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-white/10">
             <div className="flex items-center gap-3">
@@ -572,7 +572,7 @@ export function TiendaHome() {
               </a>
             </div>
           </div>
-          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-neutral-500 text-[11px]">
             <p>© {new Date().getFullYear()} MOVI Digital · Grupo Jiro. Todos los derechos reservados.</p>
             <p className="flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3 text-blue-400" /> Catálogo oficial y compras seguras dentro de MOVI

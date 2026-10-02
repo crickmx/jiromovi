@@ -98,7 +98,7 @@ export default function CotizarHub() {
             <button
               key={mod.path}
               onClick={() => navigate(mod.path)}
-              className={`group relative text-left rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/[0.06] overflow-hidden transition-all duration-300 hover:shadow-2xl ${mod.shadowHover} hover:-translate-y-1 ${mod.borderHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500`}
+              className={`group relative text-left rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] overflow-hidden transition-all duration-300 hover:shadow-2xl ${mod.shadowHover} hover:-translate-y-1 ${mod.borderHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500`}
             >
               {/* Gradient top bar */}
               <div className={`h-1.5 bg-gradient-to-r ${mod.color}`} />

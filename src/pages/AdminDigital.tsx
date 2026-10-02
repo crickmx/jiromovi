@@ -39,14 +39,14 @@ function PasswordGate({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 flex items-center justify-center p-6">
       <div className={`w-full max-w-sm ${shake ? 'animate-[shake_0.6s_ease-in-out]' : ''}`}>
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-8 shadow-2xl">
           <div className="w-14 h-14 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Lock className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-xl font-bold text-white text-center mb-1">Admin Digital</h1>
-          <p className="text-sm text-slate-400 text-center mb-6">Ingresa la contrasena para acceder</p>
+          <p className="text-sm text-neutral-500 text-center mb-6">Ingresa la contrasena para acceder</p>
 
           <form onSubmit={handleSubmit}>
             <div className="relative">
@@ -56,12 +56,12 @@ function PasswordGate({ onSuccess }: { onSuccess: () => void }) {
                 onChange={(e) => { setPassword(e.target.value); setError(false); }}
                 placeholder="Contrasena"
                 autoFocus
-                className={`w-full bg-white/10 border ${error ? 'border-red-500' : 'border-white/20'} text-white placeholder-slate-500 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
+                className={`w-full bg-white/10 border ${error ? 'border-red-500' : 'border-white/20'} text-white placeholder-slate-500 rounded-xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-transparent transition-all`}
               />
               <button
                 type="button"
                 onClick={() => setShowPwd(!showPwd)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition-colors"
               >
                 {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -177,17 +177,17 @@ export default function AdminDigital() {
       ? 'bg-emerald-600'
       : toast?.type === 'error'
       ? 'bg-red-600'
-      : 'bg-blue-600';
+      : 'bg-accent';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen dark:bg-gray-900">
       {/* Module Header */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-5 border-b border-slate-700">
+      <div className="bg-gradient-to-r from-neutral-900 to-neutral-800 px-6 py-5 border-b border-neutral-700">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-white">Admin Digital</h1>
-              <p className="text-sm text-slate-400 mt-0.5">
+              <p className="text-sm text-neutral-500 mt-0.5">
                 Monitor de sitios web y conciliacion de gastos
               </p>
             </div>
@@ -204,7 +204,7 @@ export default function AdminDigital() {
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                 activeModule === 'monitor'
                   ? 'bg-white/15 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : 'text-neutral-500 hover:text-white hover:bg-white/5'
               }`}
             >
               <Globe className="w-4 h-4" />
@@ -215,7 +215,7 @@ export default function AdminDigital() {
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                 activeModule === 'clara'
                   ? 'bg-white/15 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : 'text-neutral-500 hover:text-white hover:bg-white/5'
               }`}
             >
               <CreditCard className="w-4 h-4" />
@@ -226,7 +226,7 @@ export default function AdminDigital() {
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                 activeModule === 'multiautos'
                   ? 'bg-white/15 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : 'text-neutral-500 hover:text-white hover:bg-white/5'
               }`}
             >
               <Car className="w-4 h-4" />
@@ -264,13 +264,13 @@ export default function AdminDigital() {
             {/* Main Content */}
             <div className="flex-1 min-w-0">
               {/* Tab Nav */}
-              <div className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-1 mb-5 shadow-sm w-fit">
+              <div className="flex items-center gap-1 bg-surface-card dark:bg-gray-800 border border-soft dark:border-gray-700 rounded-xl p-1 mb-5 shadow-card w-fit">
                 <button
                   onClick={() => setActiveTab('revision')}
                   className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                     activeTab === 'revision'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      ? 'bg-accent text-accent-foreground shadow-sm'
+                      : 'text-neutral-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <FileText className="w-4 h-4" />
@@ -280,8 +280,8 @@ export default function AdminDigital() {
                   onClick={() => setActiveTab('conciliacion')}
                   className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                     activeTab === 'conciliacion'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      ? 'bg-accent text-accent-foreground shadow-sm'
+                      : 'text-neutral-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <PieChart className="w-4 h-4" />

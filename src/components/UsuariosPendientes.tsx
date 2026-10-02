@@ -152,7 +152,7 @@ export function UsuariosPendientes() {
           {usuarios.map((usuario) => (
             <div
               key={usuario.id}
-              className="bg-white border border-amber-200 rounded-xl p-4 flex items-center justify-between"
+              className="bg-surface-card border border-amber-200 rounded-2xl p-4 flex items-center justify-between"
             >
               <div className="flex items-center gap-4">
                 <Avatar className="w-12 h-12">

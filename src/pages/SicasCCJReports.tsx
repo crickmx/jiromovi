@@ -354,7 +354,7 @@ export default function SicasCCJReports() {
           </div>
         </div>
 
-        <div className="inline-flex rounded-2xl border border-neutral-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-neutral-900">
+        <div className="inline-flex rounded-2xl border border-soft bg-surface-card p-1 shadow-card dark:border-white/10 dark:bg-neutral-900">
           {(['efectuada', 'pendiente'] as ReportType[]).map((type) => (
             <button
               key={type}
@@ -362,7 +362,7 @@ export default function SicasCCJReports() {
               onClick={() => selectReport(type)}
               className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
                 reportType === type
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-slate-950'
                   : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white'
               }`}
             >
@@ -460,13 +460,13 @@ export default function SicasCCJReports() {
               <button
                 type="button"
                 onClick={stopSync}
-                className="ml-2 shrink-0 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-500/30 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-950"
+                className="ml-2 shrink-0 rounded-lg border border-blue-300 bg-surface-card px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-500/30 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-950"
               >
                 Detener
               </button>
             </div>
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-blue-200/70 dark:bg-blue-950">
-              <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-600" />
+              <div className="h-full w-1/3 animate-pulse rounded-full bg-accent" />
             </div>
           </div>
         )}
@@ -487,7 +487,7 @@ export default function SicasCCJReports() {
               <select
                 value={pageSize}
                 onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}
-                className="h-8 rounded-lg border border-neutral-200 bg-white px-2 text-neutral-800 outline-none dark:border-white/15 dark:bg-neutral-900 dark:text-white"
+                className="h-8 rounded-lg border border-soft bg-surface-card px-2 text-neutral-800 outline-none dark:border-white/15 dark:bg-neutral-900 dark:text-white"
               >
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -512,7 +512,7 @@ export default function SicasCCJReports() {
               </thead>
               <tbody className="divide-y divide-neutral-100 bg-white dark:divide-white/5 dark:bg-neutral-900">
                 {!loading && rows.length === 0 ? (
-                  <tr><td colSpan={columns.length} className="h-72 px-4 text-center text-sm text-neutral-400">No hay registros para los filtros seleccionados.</td></tr>
+                  <tr><td colSpan={columns.length} className="h-72 px-4 text-center text-sm text-neutral-500">No hay registros para los filtros seleccionados.</td></tr>
                 ) : rows.map((row, rowIndex) => (
                   <tr key={`${String(row.Documento || '')}-${rowIndex}`} className="hover:bg-blue-50/40 dark:hover:bg-blue-500/5">
                     {columns.map((column) => (

@@ -36,16 +36,16 @@ export default function VendedoresReconocidosTable({
   return (
     <>
       <div className="bg-white rounded-xl sm:rounded-2xl shadow-card overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-gray-200">
+        <div className="p-4 sm:p-6 border-b border-neutral-200">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
               <CheckCircle2 className="h-5 h-5 sm:h-6 sm:w-6 text-green-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+              <h3 className="text-base sm:text-lg font-semibold text-neutral-900">
                 Vendedores reconocidos
               </h3>
-              <p className="text-xs sm:text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-neutral-600">
                 {groups.length} {groups.length === 1 ? 'usuario tiene' : 'usuarios tienen'} documentos asignados
               </p>
             </div>
@@ -54,21 +54,21 @@ export default function VendedoresReconocidosTable({
 
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Usuario asignado
                 </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   # Documentos
                 </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider hidden md:table-cell">
                   Vendedores detectados
                 </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider hidden lg:table-cell">
                   Emails detectados
                 </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
@@ -78,19 +78,19 @@ export default function VendedoresReconocidosTable({
                 <tr key={group.movi_user_id} className="hover:bg-gray-50 transition">
                   <td className="px-3 sm:px-6 py-4">
                     <div className="flex items-center gap-2 min-w-0">
-                      <User className="h-5 w-5 text-accent flex-shrink-0" />
+                      <User className="h-5 w-5 text-accent-ink flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-neutral-900 truncate">
                           {group.user_name}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">{group.user_email}</p>
+                        <p className="text-xs text-neutral-500 truncate">{group.user_email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-sm font-semibold text-gray-900">
+                      <FileText className="h-4 w-4 text-neutral-500 flex-shrink-0" />
+                      <span className="text-sm font-semibold text-neutral-900">
                         {group.document_count}
                       </span>
                     </div>
@@ -107,13 +107,13 @@ export default function VendedoresReconocidosTable({
                           </span>
                         ))}
                         {group.vendor_names_detected.length > 2 && (
-                          <span className="px-2 py-1 text-xs text-gray-500">
+                          <span className="px-2 py-1 text-xs text-neutral-500">
                             +{group.vendor_names_detected.length - 2}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400">-</span>
+                      <span className="text-xs text-neutral-500">-</span>
                     )}
                   </td>
                   <td className="px-3 sm:px-6 py-4 hidden lg:table-cell">
@@ -129,19 +129,19 @@ export default function VendedoresReconocidosTable({
                           </span>
                         ))}
                         {group.vendor_emails_detected.length > 2 && (
-                          <span className="px-2 py-1 text-xs text-gray-500">
+                          <span className="px-2 py-1 text-xs text-neutral-500">
                             +{group.vendor_emails_detected.length - 2}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400">-</span>
+                      <span className="text-xs text-neutral-500">-</span>
                     )}
                   </td>
                   <td className="px-3 sm:px-6 py-4">
                     <button
                       onClick={() => handleOpenModal(group)}
-                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-gray-200 transition min-h-[36px]"
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-neutral-100 text-neutral-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-gray-200 transition min-h-[36px]"
                     >
                       <RefreshCw className="h-4 w-4 flex-shrink-0" />
                       <span className="hidden sm:inline">Reasignar</span>

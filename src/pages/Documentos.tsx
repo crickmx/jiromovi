@@ -89,7 +89,7 @@ export default function Documentos() {
           </button>
           <button onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-60">
             {uploading
               ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
               : <Plus className="w-4 h-4" />}
@@ -111,22 +111,22 @@ export default function Documentos() {
           compact
         />
       ) : (
-        <div className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
+        <div className="bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
           <div className="divide-y divide-neutral-100 dark:divide-white/5">
             {docs.map(doc => (
               <div key={doc.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-neutral-50 dark:hover:bg-white/4 transition-colors">
                 <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <FileText className="w-4 h-4 text-accent-ink dark:text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-800 dark:text-white truncate">{doc.nombre_archivo}</p>
-                  <p className="text-xs text-neutral-400 dark:text-white/30">
+                  <p className="text-xs text-neutral-500 dark:text-white/45">
                     {doc.tipo_documento} · {formatSize(doc.size_bytes)} · {new Date(doc.created_at).toLocaleDateString('es-MX')}
                   </p>
                 </div>
                 {doc.archivo_url && (
                   <a href={doc.archivo_url} target="_blank" rel="noopener noreferrer"
-                    className="p-2 rounded-lg text-neutral-400 dark:text-white/30 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/15 transition-colors">
+                    className="p-2 rounded-lg text-neutral-500 dark:text-white/45 hover:text-accent-ink dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/15 transition-colors">
                     <Download className="w-4 h-4" />
                   </a>
                 )}

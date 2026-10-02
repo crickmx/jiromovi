@@ -76,7 +76,7 @@ export const SearchableUserSelect = memo(function SearchableUserSelect({
         type="button"
         onClick={handleToggle}
         disabled={disabled || loading}
-        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white text-left flex items-center justify-between gap-2"
+        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-surface-card text-left flex items-center justify-between gap-2"
       >
         <span className="flex-1 truncate">
           {loading ? (
@@ -91,25 +91,25 @@ export const SearchableUserSelect = memo(function SearchableUserSelect({
               )}
             </span>
           ) : (
-            <span className="text-neutral-400">-- Sin asignar --</span>
+            <span className="text-neutral-500">-- Sin asignar --</span>
           )}
         </span>
         <div className="flex items-center gap-1">
           {selectedUser && !disabled && !loading && (
             <X
-              className="w-4 h-4 text-neutral-400 hover:text-neutral-600"
+              className="w-4 h-4 text-neutral-500 hover:text-neutral-600"
               onClick={handleClear}
             />
           )}
-          <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </div>
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-neutral-300 rounded-lg shadow-lg overflow-hidden">
+        <div className="absolute z-50 mt-1 w-full bg-surface-card border border-neutral-300 rounded-lg shadow-lg overflow-hidden">
           <div className="p-2 border-b border-neutral-200">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
               <input
                 ref={inputRef}
                 type="text"
@@ -133,7 +133,7 @@ export const SearchableUserSelect = memo(function SearchableUserSelect({
                   onClick={() => handleSelect('')}
                   className="w-full px-3 py-2 text-sm text-left hover:bg-neutral-50 transition-colors border-b border-neutral-100"
                 >
-                  <span className="text-neutral-400">-- Sin asignar --</span>
+                  <span className="text-neutral-500">-- Sin asignar --</span>
                 </button>
                 {filteredUsers.map((user) => (
                   <button

@@ -22,7 +22,7 @@ export function TarjetaEvento({
   const porComenzar = eventoPorComenzar(evento.fecha, evento.hora);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-neutral-200 hover:shadow-lg transition-all duration-300 overflow-hidden group">
+    <div className="bg-surface-card rounded-xl shadow-card border border-soft hover:shadow-lg transition-all duration-300 overflow-hidden group">
       {/* Header con estado */}
       <div className={`px-6 py-3 ${esFuturo ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-neutral-400 to-neutral-500'}`}>
         <div className="flex items-center justify-between">
@@ -55,13 +55,13 @@ export function TarjetaEvento({
         <div className="space-y-2 mb-5">
           {/* Ponente */}
           <div className="flex items-center gap-2 text-neutral-700">
-            <User className="w-4 h-4 text-accent flex-shrink-0" />
+            <User className="w-4 h-4 text-accent-ink flex-shrink-0" />
             <span className="text-sm font-medium">{evento.ponente}</span>
           </div>
 
           {/* Fecha */}
           <div className="flex items-center gap-2 text-neutral-700">
-            <Calendar className="w-4 h-4 text-accent flex-shrink-0" />
+            <Calendar className="w-4 h-4 text-accent-ink flex-shrink-0" />
             <span className="text-sm">
               {formatearFechaEvento(evento.fecha)}
             </span>
@@ -69,7 +69,7 @@ export function TarjetaEvento({
 
           {/* Hora */}
           <div className="flex items-center gap-2 text-neutral-700">
-            <Clock className="w-4 h-4 text-accent flex-shrink-0" />
+            <Clock className="w-4 h-4 text-accent-ink flex-shrink-0" />
             <span className="text-sm font-medium">
               {formatearHoraEvento(evento.hora)}
             </span>

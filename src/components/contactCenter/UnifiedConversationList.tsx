@@ -92,7 +92,7 @@ export function UnifiedConversationList({
             Conversaciones
           </h2>
           {totalUnread > 0 && (
-            <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full min-w-[20px] text-center">
+            <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[11px] font-bold rounded-full min-w-[20px] text-center">
               {totalUnread > 99 ? '99+' : totalUnread}
             </span>
           )}
@@ -100,17 +100,17 @@ export function UnifiedConversationList({
 
         {/* Search */}
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             value={search}
             onChange={e => onSearchChange(e.target.value)}
             placeholder="Buscar..."
-            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/60 border-0 transition"
+            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-emerald-400/60 border-0 transition"
           />
           {search && (
             <button
               onClick={() => onSearchChange('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 text-sm leading-none"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-600 text-sm leading-none"
             >
               ×
             </button>
@@ -126,12 +126,12 @@ export function UnifiedConversationList({
             'flex-1 flex items-center justify-center gap-1 py-2 text-[11px] font-medium transition-colors border-b-2',
             filterStatus === 'open' && filterChannel === 'all'
               ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
-              : 'border-transparent text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
+              : 'border-transparent text-neutral-500 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
           )}
         >
           Todos
           {openConversations.length > 0 && (
-            <span className="text-[9px] font-bold px-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+            <span className="text-[10.5px] font-bold px-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
               {openConversations.length}
             </span>
           )}
@@ -142,12 +142,12 @@ export function UnifiedConversationList({
             'flex-1 flex items-center justify-center gap-1 py-2 text-[11px] font-medium transition-colors border-b-2',
             filterStatus === 'all' && filterChannel === 'all'
               ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
-              : 'border-transparent text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
+              : 'border-transparent text-neutral-500 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
           )}
         >
           No leidos
           {unreadConvCount > 0 && (
-            <span className="text-[9px] font-bold px-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+            <span className="text-[10.5px] font-bold px-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
               {unreadConvCount}
             </span>
           )}
@@ -158,7 +158,7 @@ export function UnifiedConversationList({
             'flex-1 flex items-center justify-center gap-1 py-2 text-[11px] font-medium transition-colors border-b-2',
             filterStatus === 'archived'
               ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
-              : 'border-transparent text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
+              : 'border-transparent text-neutral-500 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
           )}
         >
           Archivo
@@ -189,7 +189,7 @@ export function UnifiedConversationList({
               {search || filterChannel !== 'all' ? 'Sin resultados' : 'Sin conversaciones'}
             </p>
             {!search && filterChannel === 'all' && filterStatus === 'open' && (
-              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 leading-relaxed">
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-500 leading-relaxed">
                 Los mensajes de WA MOVI y WA Personal apareceran aqui
               </p>
             )}
@@ -221,7 +221,7 @@ export function UnifiedConversationList({
                   <div className="relative flex-shrink-0">
                     <ConvAvatar name={name} avatarUrl={conv.avatarUrl} channel={conv.channel} />
                     {hasUnread && (
-                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-emerald-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 shadow-sm">
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-emerald-500 text-white text-[10.5px] font-bold rounded-full flex items-center justify-center px-0.5 shadow-sm">
                         {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
                       </span>
                     )}
@@ -239,10 +239,10 @@ export function UnifiedConversationList({
                         {name}
                       </span>
                       <span className={cn(
-                        'text-[10px] flex-shrink-0 tabular-nums',
+                        'text-[11px] flex-shrink-0 tabular-nums',
                         hasUnread
                           ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-                          : 'text-neutral-400 dark:text-neutral-500'
+                          : 'text-neutral-500 dark:text-neutral-500'
                       )}>
                         {formatTime(conv.lastMessageAt)}
                       </span>
@@ -254,7 +254,7 @@ export function UnifiedConversationList({
                         'text-[11px] truncate',
                         hasUnread
                           ? 'text-neutral-600 dark:text-neutral-300 font-medium'
-                          : 'text-neutral-400 dark:text-neutral-500'
+                          : 'text-neutral-500 dark:text-neutral-500'
                       )}>
                         <LastMessagePreview conv={conv} />
                       </span>

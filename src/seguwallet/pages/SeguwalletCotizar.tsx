@@ -113,12 +113,12 @@ export function SeguwalletCotizar() {
       </div>
 
       {links.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm p-14 text-center">
+        <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-card p-14 text-center">
           <div className="w-14 h-14 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mx-auto mb-4">
             <Calculator className="w-7 h-7 text-neutral-300" />
           </div>
           <p className="text-sm font-semibold text-neutral-500">Formularios no disponibles</p>
-          <p className="text-xs text-neutral-400 mt-1">No encontramos formularios de cotizacion activos para tu agente. Intenta mas tarde o contacta directamente a tu agente.</p>
+          <p className="text-xs text-neutral-500 mt-1">No encontramos formularios de cotizacion activos para tu agente. Intenta mas tarde o contacta directamente a tu agente.</p>
         </div>
       ) : (
         <>
@@ -147,7 +147,7 @@ export function SeguwalletCotizar() {
                 <button
                   key={link.id}
                   onClick={() => handleOpenForm(link)}
-                  className="group bg-white rounded-2xl border border-neutral-200/60 shadow-sm hover:shadow-lg hover:border-neutral-200 transition-all duration-200 p-5 text-left flex flex-col gap-3 relative overflow-hidden"
+                  className="group bg-surface-card rounded-2xl border border-neutral-200/60 shadow-card hover:shadow-lg hover:border-neutral-200 transition-all duration-200 p-5 text-left flex flex-col gap-3 relative overflow-hidden"
                 >
                   {/* Subtle color bleed top-right */}
                   <div
@@ -166,7 +166,7 @@ export function SeguwalletCotizar() {
                   {/* Title */}
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-neutral-900 text-sm leading-snug line-clamp-2">{link.form_title}</p>
-                    <p className="text-[11px] text-neutral-400 mt-1 capitalize">{link.form_type?.replace(/_/g, ' ')}</p>
+                    <p className="text-[11px] text-neutral-500 mt-1 capitalize">{link.form_type?.replace(/_/g, ' ')}</p>
                   </div>
 
                   {/* CTA row */}
@@ -190,7 +190,7 @@ export function SeguwalletCotizar() {
           </div>
 
           {brand.agentName && brand.agentName !== 'Tu Agente' && (
-            <p className="text-xs text-neutral-400 text-center pt-1">
+            <p className="text-xs text-neutral-500 text-center pt-1">
               Formularios de <span className="font-medium text-neutral-500">{brand.agentName}</span>. Tu agente recibira tu solicitud directamente.
             </p>
           )}

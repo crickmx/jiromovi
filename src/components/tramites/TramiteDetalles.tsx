@@ -261,7 +261,7 @@ export function TramiteDetalles({
       {/* Personas involucradas: Agente (solicitante) | Equipo | Responsable */}
       <div className="p-4 border border-neutral-200 rounded-2xl bg-neutral-50/60 space-y-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700">
-          <Users className="w-4 h-4 text-accent" />
+          <Users className="w-4 h-4 text-accent-ink" />
           Personas involucradas
         </div>
 
@@ -271,7 +271,7 @@ export function TramiteDetalles({
               <User className="w-4 h-4 inline mr-2" />
               Agente
             </label>
-            <p className="text-[11px] text-neutral-400 -mt-1 mb-2">Solicitante — para quién es este trámite.</p>
+            <p className="text-[11px] text-neutral-500 -mt-1 mb-2">Solicitante — para quién es este trámite.</p>
             <div className="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
               {tramite.agente?.nombre_completo || 'Sin agente asignado'}
             </div>
@@ -312,12 +312,12 @@ export function TramiteDetalles({
               <UserCheck className="w-4 h-4 inline mr-2" />
               Responsable
               {canManageAssignment && selectedGrupoId && (
-                <span className="ml-2 text-xs font-normal text-neutral-400">
+                <span className="ml-2 text-xs font-normal text-neutral-500">
                   — miembros de {grupos.find(g => g.id === selectedGrupoId)?.nombre}
                 </span>
               )}
             </label>
-            <p className="text-[11px] text-neutral-400 -mt-1 mb-2">Quién debe atender este trámite.</p>
+            <p className="text-[11px] text-neutral-500 -mt-1 mb-2">Quién debe atender este trámite.</p>
             {canManageAssignment && onResponsableChange ? (
               <select
                 value={selectedResponsable}
@@ -325,7 +325,7 @@ export function TramiteDetalles({
                   setSelectedResponsable(e.target.value);
                   onResponsableChange(e.target.value);
                 }}
-                className="w-full px-3 py-2 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer bg-blue-50 text-blue-900"
+                className="w-full px-3 py-2 border border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all cursor-pointer bg-blue-50 text-blue-900"
               >
                 <option value="">Sin responsable asignado</option>
                 {teamMembers.map(m => (

@@ -155,7 +155,7 @@ export function HistorialEnvios() {
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
           <input
             type="text"
             value={busqueda}
@@ -189,7 +189,7 @@ export function HistorialEnvios() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+      <div className="bg-surface-card rounded-lg border border-soft overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-neutral-50 border-b border-neutral-200">
@@ -260,7 +260,7 @@ export function HistorialEnvios() {
                   <td className="px-4 py-3">
                     <button
                       onClick={() => setEnvioSeleccionado(envio)}
-                      className="p-2 text-neutral-600 hover:text-accent hover:bg-neutral-100 rounded-lg transition-colors"
+                      className="p-2 text-neutral-600 hover:text-accent-ink hover:bg-neutral-100 rounded-lg transition-colors"
                       title="Ver detalles"
                     >
                       <Eye className="w-4 h-4" />
@@ -286,8 +286,8 @@ export function HistorialEnvios() {
 
       {/* Modal de Detalles */}
       {envioSeleccionado && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-scale-in">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-neutral-200">
               <div className="flex items-center gap-3">

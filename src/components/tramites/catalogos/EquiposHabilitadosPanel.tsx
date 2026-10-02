@@ -113,7 +113,7 @@ export function EquiposHabilitadosPanel({ tipoId, area, showToast }: Props) {
   };
 
   if (loading) {
-    return <div className="p-4 text-sm text-neutral-400">Cargando equipos...</div>;
+    return <div className="p-4 text-sm text-neutral-500">Cargando equipos...</div>;
   }
 
   return (
@@ -125,7 +125,7 @@ export function EquiposHabilitadosPanel({ tipoId, area, showToast }: Props) {
       </div>
 
       {equipos.length === 0 ? (
-        <p className="text-sm text-neutral-400 italic">No hay equipos activos en el área "{area}".</p>
+        <p className="text-sm text-neutral-500 italic">No hay equipos activos en el área "{area}".</p>
       ) : (
         <div className="space-y-2">
           {equipos.map(equipo => {
@@ -143,11 +143,11 @@ export function EquiposHabilitadosPanel({ tipoId, area, showToast }: Props) {
                   checked ? 'border-blue-300 bg-blue-50' : 'border-neutral-200 bg-white hover:border-neutral-300'
                 }`}
               >
-                {checked ? <CheckSquare className="w-4 h-4 text-blue-600 shrink-0" /> : <Square className="w-4 h-4 text-neutral-300 shrink-0" />}
+                {checked ? <CheckSquare className="w-4 h-4 text-accent-ink shrink-0" /> : <Square className="w-4 h-4 text-neutral-300 shrink-0" />}
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: equipo.color }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-800">{equipo.nombre}</p>
-                  <p className="text-xs text-neutral-400 flex items-center gap-1">
+                  <p className="text-xs text-neutral-500 flex items-center gap-1">
                     <Building2 className="w-3 h-3" />
                     {oficinasLabel}
                   </p>

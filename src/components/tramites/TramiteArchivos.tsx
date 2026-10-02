@@ -505,9 +505,9 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
     if (isWord) return (
       <div className="flex flex-col items-center gap-1.5">
         <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-          <FileText className="w-7 h-7 text-blue-600" />
+          <FileText className="w-7 h-7 text-accent-ink" />
         </div>
-        <span className="text-[11px] font-bold text-blue-600 tracking-widest">{ext || 'DOC'}</span>
+        <span className="text-[11px] font-bold text-accent-ink tracking-widest">{ext || 'DOC'}</span>
       </div>
     );
     if (isExcel) return (
@@ -521,9 +521,9 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
     return (
       <div className="flex flex-col items-center gap-1.5">
         <div className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center">
-          <File className="w-7 h-7 text-neutral-400" />
+          <File className="w-7 h-7 text-neutral-500" />
         </div>
-        {ext && <span className="text-[11px] font-bold text-neutral-400 tracking-widest">{ext}</span>}
+        {ext && <span className="text-[11px] font-bold text-neutral-500 tracking-widest">{ext}</span>}
       </div>
     );
   };
@@ -602,7 +602,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
           )}
           <label
             htmlFor="file-upload-archivos"
-            className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl cursor-pointer transition-all font-semibold"
+            className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground rounded-xl cursor-pointer transition-all font-semibold"
           >
             <Upload className="w-5 h-5" />
             <span>{uploading ? 'Subiendo...' : 'Subir Archivo'}</span>
@@ -629,7 +629,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
           {archivos.map((archivo) => (
             <div
               key={archivo.id}
-              className="border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden hover:shadow-md hover:border-neutral-300 dark:hover:border-neutral-600 transition-all flex flex-col bg-white dark:bg-neutral-800/50"
+              className="border border-soft dark:border-neutral-700 rounded-xl overflow-hidden hover:shadow-card-hover hover:border-neutral-300 dark:hover:border-neutral-600 transition-all flex flex-col bg-surface-card dark:bg-neutral-800/50"
             >
               {/* Thumbnail */}
               <div
@@ -674,11 +674,11 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                 >
                   {friendlyName(archivo.nombre)}
                 </p>
-                <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">
+                <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">
                   {formatFileSize(archivo.tamano)} · {new Date(archivo.fecha_subida).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
                 {archivo.usuarios && (
-                  <p className="text-[11px] text-neutral-400 dark:text-white/30 mt-0.5 truncate">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/45 mt-0.5 truncate">
                     {archivo.usuarios.nombre_completo}
                   </p>
                 )}
@@ -706,7 +706,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                       onChange={(e) => handleCambiarCategoria(archivo.id, e.target.value)}
                       onBlur={() => setEditingCategoriaId(null)}
                       onClick={(e) => e.stopPropagation()}
-                      className="mt-1.5 w-full text-[11px] font-medium border border-blue-300 rounded px-1 py-0.5 bg-white dark:bg-neutral-800 dark:text-white"
+                      className="mt-1.5 w-full text-[11px] font-medium border border-blue-300 rounded px-1 py-0.5 bg-surface-card dark:bg-neutral-800 dark:text-white"
                     >
                       <option value="">Sin categoría</option>
                       {categorias.map(c => (
@@ -716,7 +716,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                   ) : (
                     <button
                       onClick={(e) => { e.stopPropagation(); setEditingCategoriaId(archivo.id); }}
-                      className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium transition-colors"
+                      className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-accent-ink dark:text-blue-400 rounded text-[11px] font-medium transition-colors"
                       title="Cambiar categoría"
                     >
                       <Tag className="w-2.5 h-2.5" />
@@ -725,7 +725,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                   )
                 ) : (
                   archivo.categoria && (
-                    <span className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-medium">
+                    <span className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 bg-blue-50 text-accent-ink rounded text-[11px] font-medium">
                       <Tag className="w-2.5 h-2.5" />
                       {archivo.categoria.nombre}
                     </span>
@@ -738,14 +738,14 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => { setPreviewFile(archivo); setPreviewAutoPrint(false); }}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg transition-all font-semibold text-xs"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-accent hover:bg-accent-hover text-accent-foreground rounded-lg transition-all font-semibold text-xs"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     Ver
                   </button>
                   <button
                     onClick={() => { setPreviewFile(archivo); setPreviewAutoPrint(true); }}
-                    className="p-1.5 text-neutral-400 dark:text-white/30 hover:text-accent hover:bg-accent/10 rounded-lg transition-colors"
+                    className="p-1.5 text-neutral-500 dark:text-white/45 hover:text-accent-ink hover:bg-accent/10 rounded-lg transition-colors"
                     title="Imprimir"
                   >
                     <Printer className="w-3.5 h-3.5" />
@@ -842,12 +842,12 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
 
       {/* Category picker modal */}
       {pendingFiles && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+          <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-sm mx-4 overflow-hidden animate-scale-in">
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                  <Tag className="w-4 h-4 text-blue-600" />
+                  <Tag className="w-4 h-4 text-accent-ink" />
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold text-neutral-900">Categoría del adjunto</h2>
@@ -862,7 +862,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                 onClick={() => setPendingFiles(null)}
                 className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors"
               >
-                <X className="w-4 h-4 text-neutral-400" />
+                <X className="w-4 h-4 text-neutral-500" />
               </button>
             </div>
 
@@ -932,7 +932,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
               </button>
               <button
                 onClick={handleConfirmUpload}
-                className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors font-semibold"
+                className="px-4 py-2 text-sm text-accent-foreground bg-accent hover:bg-accent-hover rounded-xl transition-colors font-semibold"
               >
                 Subir archivo{pendingFiles.length > 1 ? 's' : ''}
               </button>

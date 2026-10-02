@@ -88,7 +88,7 @@ function DebouncedInput({
       maxLength={maxLength}
       className={
         className ??
-        'w-full px-3 py-1.5 text-xs sm:text-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none transition-shadow'
+        'w-full px-3 py-1.5 text-xs sm:text-sm bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/15 dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none transition-shadow'
       }
     />
   );
@@ -97,7 +97,7 @@ function DebouncedInput({
 function SavingSlot({ saving }: { saving: boolean }) {
   return (
     <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-      {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />}
+      {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-ink" />}
     </div>
   );
 }
@@ -231,9 +231,9 @@ function VcardsEditor({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
-        <p className="text-xs text-neutral-400">Cargando configuración de tarjetas...</p>
+      <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5">
+        <Loader2 className="w-6 h-6 animate-spin text-accent-ink" />
+        <p className="text-xs text-neutral-500">Cargando configuración de tarjetas...</p>
       </div>
     );
   }
@@ -244,7 +244,7 @@ function VcardsEditor({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
         <div>
           <div className="flex items-center gap-2">
-            <LayoutGrid className="w-4 h-4 text-accent" />
+            <LayoutGrid className="w-4 h-4 text-accent-ink" />
             <h2 className="text-sm font-bold text-neutral-800 dark:text-white">
               Tarjetas del Grid Principal
             </h2>
@@ -252,14 +252,14 @@ function VcardsEditor({
               {vcards.length}
             </span>
           </div>
-          <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">
+          <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">
             Arrastra para reordenar. Haz clic en los campos para editar en tiempo real.
           </p>
         </div>
 
         <button
           onClick={handleCreate}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-accent text-white hover:bg-accent/90 active:scale-[0.98] transition-all shadow-sm cursor-pointer self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all shadow-sm cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Nueva tarjeta</span>
@@ -267,7 +267,7 @@ function VcardsEditor({
       </div>
 
       {/* Contenedor Principal de Tarjetas */}
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900/90 shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-neutral-900/90 shadow-card overflow-hidden">
         {/* Cabecera de Columnas en Escritorio (lg+) */}
         <div className="hidden lg:grid grid-cols-12 gap-3 px-4 py-2.5 bg-neutral-50 dark:bg-white/5 border-b border-neutral-200 dark:border-white/10 text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-white/50">
           <div className="col-span-3">Identidad & Título</div>
@@ -312,7 +312,7 @@ function VcardsEditor({
                   {/* Identidad */}
                   <div className="col-span-3 flex items-center gap-2.5 min-w-0">
                     <div
-                      className="cursor-grab active:cursor-grabbing text-neutral-400 hover:text-neutral-700 dark:hover:text-white shrink-0 p-1"
+                      className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-neutral-700 dark:hover:text-white shrink-0 p-1"
                       title="Arrastrar para reordenar"
                     >
                       <GripVertical className="w-4 h-4" />
@@ -333,7 +333,7 @@ function VcardsEditor({
                         value={card.label}
                         onSave={v => patch(card, { label: v })}
                         placeholder="Título de la tarjeta"
-                        className="w-full px-2.5 py-1.5 text-xs font-bold text-neutral-900 dark:text-white bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold text-neutral-900 dark:text-white bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/15 rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
                       />
                     </div>
                   </div>
@@ -344,7 +344,7 @@ function VcardsEditor({
                       value={card.descripcion}
                       onSave={v => patch(card, { descripcion: v })}
                       placeholder="Descripción breve..."
-                      className="w-full px-2.5 py-1.5 text-xs text-neutral-600 dark:text-neutral-300 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
+                      className="w-full px-2.5 py-1.5 text-xs text-neutral-600 dark:text-neutral-300 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/15 rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
                     />
                   </div>
 
@@ -354,7 +354,7 @@ function VcardsEditor({
                       value={card.route}
                       onSave={v => patch(card, { route: v })}
                       placeholder="/ruta"
-                      className="w-full px-2.5 py-1.5 text-xs font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
+                      className="w-full px-2.5 py-1.5 text-xs font-mono text-neutral-700 dark:text-neutral-300 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/15 rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
                     />
                   </div>
 
@@ -363,7 +363,7 @@ function VcardsEditor({
                     <select
                       value={card.emoji}
                       onChange={e => patch(card, { emoji: e.target.value })}
-                      className="w-full px-2 py-1.5 text-xs bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none truncate"
+                      className="w-full px-2 py-1.5 text-xs bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/15 dark:text-white rounded-lg focus:ring-2 focus:ring-accent focus:outline-none truncate"
                       title="Seleccionar ícono"
                     >
                       {DASHBOARD_ICON_OPTIONS.map(opt => (
@@ -424,7 +424,7 @@ function VcardsEditor({
                       onClick={() => handleDelete(card)}
                       disabled={isSaving}
                       title="Eliminar tarjeta"
-                      className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -436,7 +436,7 @@ function VcardsEditor({
                   {/* Fila Superior: Drag, Ícono, Título y Estado */}
                   <div className="flex items-center gap-2.5 justify-between">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div className="cursor-grab active:cursor-grabbing text-neutral-400 p-1">
+                      <div className="cursor-grab active:cursor-grabbing text-neutral-500 p-1">
                         <GripVertical className="w-4 h-4" />
                       </div>
                       <div
@@ -452,7 +452,7 @@ function VcardsEditor({
                           value={card.label}
                           onSave={v => patch(card, { label: v })}
                           placeholder="Título de la tarjeta"
-                          className="w-full px-2.5 py-1 text-xs font-bold text-neutral-900 dark:text-white bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
+                          className="w-full px-2.5 py-1 text-xs font-bold text-neutral-900 dark:text-white bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/15 rounded-lg focus:ring-2 focus:ring-accent focus:outline-none"
                         />
                       </div>
                     </div>
@@ -478,25 +478,25 @@ function VcardsEditor({
                   {/* Campos de Descripción y Ruta */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-0.5 block">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-0.5 block">
                         Descripción
                       </label>
                       <DebouncedInput
                         value={card.descripcion}
                         onSave={v => patch(card, { descripcion: v })}
                         placeholder="Descripción de la tarjeta..."
-                        className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 rounded-lg"
+                        className="w-full px-2.5 py-1.5 text-xs bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/15 rounded-lg"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-0.5 block">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-0.5 block">
                         Ruta / Destino
                       </label>
                       <DebouncedInput
                         value={card.route}
                         onSave={v => patch(card, { route: v })}
                         placeholder="/ruta"
-                        className="w-full px-2.5 py-1.5 text-xs font-mono bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 rounded-lg"
+                        className="w-full px-2.5 py-1.5 text-xs font-mono bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/15 rounded-lg"
                       />
                     </div>
                   </div>
@@ -507,7 +507,7 @@ function VcardsEditor({
                       <select
                         value={card.emoji}
                         onChange={e => patch(card, { emoji: e.target.value })}
-                        className="w-full max-w-[160px] px-2 py-1 text-xs bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-white/15 rounded-lg"
+                        className="w-full max-w-[160px] px-2 py-1 text-xs bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/15 rounded-lg"
                       >
                         {DASHBOARD_ICON_OPTIONS.map(opt => (
                           <option key={opt.key} value={opt.key}>
@@ -537,7 +537,7 @@ function VcardsEditor({
                     <button
                       type="button"
                       onClick={() => handleDelete(card)}
-                      className="p-1.5 text-neutral-400 hover:text-red-600 rounded-lg"
+                      className="p-1.5 text-neutral-500 hover:text-red-600 rounded-lg"
                       title="Eliminar"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -553,7 +553,7 @@ function VcardsEditor({
               <p className="text-sm font-semibold text-neutral-600 dark:text-white/70">
                 No hay tarjetas configuradas
               </p>
-              <p className="text-xs text-neutral-400 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 Crea una nueva tarjeta con el botón superior para comenzar.
               </p>
             </div>
@@ -666,10 +666,10 @@ function WidgetsEditor({
             {zone.length}
           </span>
         </div>
-        <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">{desc}</p>
+        <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">{desc}</p>
       </div>
 
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 divide-y divide-neutral-100 dark:divide-white/5 bg-white dark:bg-neutral-900/90 shadow-sm overflow-hidden min-h-[140px]">
+      <div className="rounded-2xl border border-soft dark:border-white/10 divide-y divide-neutral-100 dark:divide-white/5 bg-surface-card dark:bg-neutral-900/90 shadow-card overflow-hidden min-h-[140px]">
         {zone.map(w => {
           const isSaving = savingKey === w.widget_key;
           const isDragOver = dragOverKey === w.widget_key;
@@ -702,7 +702,7 @@ function WidgetsEditor({
               }`}
             >
               <div
-                className="cursor-grab active:cursor-grabbing text-neutral-400 hover:text-neutral-700 dark:hover:text-white shrink-0 p-1"
+                className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-neutral-700 dark:hover:text-white shrink-0 p-1"
                 title="Arrastrar para reordenar"
               >
                 <GripVertical className="w-4 h-4" />
@@ -712,7 +712,7 @@ function WidgetsEditor({
                 <p className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white truncate">
                   {info.label}
                 </p>
-                <p className="text-[11px] text-neutral-400 dark:text-white/40 truncate">
+                <p className="text-[11px] text-neutral-500 dark:text-white/55 truncate">
                   {info.desc}
                 </p>
               </div>
@@ -766,7 +766,7 @@ function WidgetsEditor({
         })}
 
         {zone.length === 0 && (
-          <div className="p-8 text-center text-neutral-400 dark:text-white/40">
+          <div className="p-8 text-center text-neutral-500 dark:text-white/55">
             <p className="text-xs font-medium">{emptyLabel}</p>
           </div>
         )}
@@ -776,9 +776,9 @@ function WidgetsEditor({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
-        <p className="text-xs text-neutral-400">Cargando widgets del sistema...</p>
+      <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5">
+        <Loader2 className="w-6 h-6 animate-spin text-accent-ink" />
+        <p className="text-xs text-neutral-500">Cargando widgets del sistema...</p>
       </div>
     );
   }
@@ -789,7 +789,7 @@ function WidgetsEditor({
         <h2 className="text-sm font-bold text-neutral-800 dark:text-white px-1">
           Distribución de Widgets del Dashboard
         </h2>
-        <p className="text-xs text-neutral-500 dark:text-white/40 px-1 mt-0.5">
+        <p className="text-xs text-neutral-500 dark:text-white/55 px-1 mt-0.5">
           Distribuye y activa los widgets entre la zona principal de contenido o la barra lateral derecha.
         </p>
       </div>

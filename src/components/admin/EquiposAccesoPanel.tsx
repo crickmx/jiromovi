@@ -85,12 +85,12 @@ export function EquiposAccesoPanel({ modulo, titulo, descripcion }: Props) {
 
       <div className="space-y-3 max-w-xl">
         {grupos.length === 0 && (
-          <div className="text-sm text-neutral-400">No hay equipos configurados. Crea equipos en Trámites &rarr; Equipos.</div>
+          <div className="text-sm text-neutral-500">No hay equipos configurados. Crea equipos en Trámites &rarr; Equipos.</div>
         )}
         {grupos.map(grupo => {
           const tiene = conAcceso.has(grupo.id);
           return (
-            <div key={grupo.id} className="flex items-center justify-between bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 px-5 py-4">
+            <div key={grupo.id} className="flex items-center justify-between bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10 px-5 py-4">
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: grupo.color ?? '#6b7280' }} />
                 <span className="font-medium text-neutral-900 dark:text-white">{grupo.nombre}</span>
@@ -101,7 +101,7 @@ export function EquiposAccesoPanel({ modulo, titulo, descripcion }: Props) {
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
                   tiene
                     ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400'
-                    : 'bg-accent text-white hover:bg-accent-hover'
+                    : 'bg-accent text-accent-foreground hover:bg-accent-hover'
                 }`}
               >
                 {tiene ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

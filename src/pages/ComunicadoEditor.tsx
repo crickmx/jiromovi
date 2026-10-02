@@ -591,7 +591,7 @@ export default function ComunicadoEditor() {
         </div>
 
         {/* Formulario */}
-        <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-4 sm:p-6 md:p-8 space-y-6">
+        <div className="bg-surface-card rounded-2xl border border-soft shadow-ios p-4 sm:p-6 md:p-8 space-y-6">
           {/* Sección IA - Procesar documentos */}
           {!esEdicion && (
             <div className={cn(
@@ -625,9 +625,9 @@ export default function ComunicadoEditor() {
                 <>
                   {/* Upload zone */}
                   <label className="flex flex-col items-center justify-center w-full h-32 border border-neutral-300 border-dashed rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 transition-colors mb-3">
-                    <Upload className="w-8 h-8 text-neutral-400 mb-1" />
+                    <Upload className="w-8 h-8 text-neutral-500 mb-1" />
                     <span className="text-sm text-neutral-600 font-medium">Subir archivos</span>
-                    <span className="text-xs text-neutral-400 mt-0.5">PDF, DOCX, TXT, imagenes</span>
+                    <span className="text-xs text-neutral-500 mt-0.5">PDF, DOCX, TXT, imagenes</span>
                     <input
                       type="file"
                       multiple
@@ -642,18 +642,18 @@ export default function ComunicadoEditor() {
                   {iaDocumentos.length > 0 && (
                     <div className="space-y-2 mb-3">
                       {iaDocumentos.map((doc, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 bg-white rounded-lg border border-neutral-200">
+                        <div key={idx} className="flex items-center justify-between p-2 bg-surface-card rounded-lg border border-soft">
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             <FileText className="w-4 h-4 text-primary-500 flex-shrink-0" />
                             <span className="text-sm text-neutral-700 truncate">{doc.name}</span>
-                            <span className="text-xs text-neutral-400 flex-shrink-0">
+                            <span className="text-xs text-neutral-500 flex-shrink-0">
                               {(doc.size / 1024).toFixed(0)} KB
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => eliminarIaDocumento(idx)}
-                            className="text-neutral-400 hover:text-red-500 p-1"
+                            className="text-neutral-500 hover:text-red-500 p-1"
                             disabled={iaProcesando}
                           >
                             <X className="w-4 h-4" />
@@ -683,7 +683,7 @@ export default function ComunicadoEditor() {
                       value={iaAseguradoraId}
                       onChange={(e) => setIaAseguradoraId(e.target.value)}
                       disabled={iaProcesando}
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-all bg-white"
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-transparent transition-all bg-surface-card"
                     >
                       <option value="">Sin aseguradora (generar sin logo)</option>
                       {aseguradoras.map((aseg) => (
@@ -693,7 +693,7 @@ export default function ComunicadoEditor() {
                       ))}
                     </select>
                     {iaAseguradoraId && (
-                      <div className="flex items-center gap-2 mt-2 p-2 bg-white border border-neutral-200 rounded-lg">
+                      <div className="flex items-center gap-2 mt-2 p-2 bg-surface-card border border-soft rounded-lg">
                         <img
                           src={aseguradoras.find(a => a.id === iaAseguradoraId)?.logo_url}
                           alt=""
@@ -784,7 +784,7 @@ export default function ComunicadoEditor() {
               id="categoria"
               value={categoriaId}
               onChange={(e) => setCategoriaId(e.target.value)}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-base text-sm sm:text-base bg-white"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-base text-sm sm:text-base bg-surface-card"
             >
               {categorias.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -821,9 +821,9 @@ export default function ComunicadoEditor() {
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:border-accent active:border-accent transition-colors bg-neutral-50 hover:bg-neutral-100 btn-touch">
-                <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-neutral-400 mb-2" />
+                <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-neutral-500 mb-2" />
                 <span className="text-sm sm:text-base text-neutral-600 font-medium">Click para subir imagen</span>
-                <span className="text-xs sm:text-sm text-neutral-400 mt-1">JPG, PNG o WEBP</span>
+                <span className="text-xs sm:text-sm text-neutral-500 mt-1">JPG, PNG o WEBP</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -862,7 +862,7 @@ export default function ComunicadoEditor() {
                     className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100"
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <FileText className="w-4 h-4 text-accent-ink flex-shrink-0" />
                       <a
                         href={adj.archivo_url}
                         target="_blank"
@@ -926,7 +926,7 @@ export default function ComunicadoEditor() {
 
           {/* Opciones de Publicación */}
           <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Opciones de Publicación
             </h3>
 
@@ -937,9 +937,9 @@ export default function ComunicadoEditor() {
                     type="radio"
                     checked={publicarAhora}
                     onChange={() => setPublicarAhora(true)}
-                    className="w-4 h-4 text-accent"
+                    className="w-4 h-4 text-accent-ink"
                   />
-                  <span className="text-gray-700">Publicar ahora</span>
+                  <span className="text-neutral-700">Publicar ahora</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -947,22 +947,22 @@ export default function ComunicadoEditor() {
                     type="radio"
                     checked={!publicarAhora}
                     onChange={() => setPublicarAhora(false)}
-                    className="w-4 h-4 text-accent"
+                    className="w-4 h-4 text-accent-ink"
                   />
-                  <span className="text-gray-700">Programar publicación</span>
+                  <span className="text-neutral-700">Programar publicación</span>
                 </label>
               </div>
 
               {!publicarAhora && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
                     Fecha y hora de publicación
                   </label>
                   <input
                     type="datetime-local"
                     value={fechaPublicacion}
                     onChange={(e) => setFechaPublicacion(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                   />
                 </div>
               )}
@@ -978,9 +978,9 @@ export default function ComunicadoEditor() {
                   />
                   <div className="flex items-center gap-2">
                     <Pin className="w-5 h-5 text-amber-600" />
-                    <span className="font-medium text-gray-900">Fijar comunicado</span>
+                    <span className="font-medium text-neutral-900">Fijar comunicado</span>
                   </div>
-                  <span className="text-sm text-gray-600 ml-auto">
+                  <span className="text-sm text-neutral-600 ml-auto">
                     Se mostrará siempre arriba
                   </span>
                 </label>
@@ -990,7 +990,7 @@ export default function ComunicadoEditor() {
 
           {/* Control de Visibilidad */}
           <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
               <Eye className="w-5 h-5" />
               Control de Visibilidad
             </h3>
@@ -999,10 +999,10 @@ export default function ComunicadoEditor() {
             {esGerente && (
               <div className="space-y-4">
                 <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-neutral-700 mb-3">
                     ¿A quién deseas mostrar este comunicado?
                   </label>
-                  <p className="text-sm text-gray-600 mb-3">
+                  <p className="text-sm text-neutral-600 mb-3">
                     Este comunicado será visible para los roles seleccionados de tu oficina.
                     Los Administradores siempre podrán verlo.
                   </p>
@@ -1019,9 +1019,9 @@ export default function ComunicadoEditor() {
                               setRolesSeleccionados(rolesSeleccionados.filter(r => r !== rol));
                             }
                           }}
-                          className="w-4 h-4 text-accent rounded"
+                          className="w-4 h-4 text-accent-ink rounded"
                         />
-                        <span className="text-gray-700">{rol}s de mi oficina</span>
+                        <span className="text-neutral-700">{rol}s de mi oficina</span>
                       </label>
                     ))}
                   </div>
@@ -1038,49 +1038,49 @@ export default function ComunicadoEditor() {
             {esAdmin && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-neutral-700 mb-3">
                     ¿Quién puede ver este comunicado?
                   </label>
                   <div className="space-y-2">
-                    <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                    <label className="flex items-center gap-3 p-3 border border-neutral-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
                       <input
                         type="radio"
                         checked={tipoVisibilidad === 'todos'}
                         onChange={() => setTipoVisibilidad('todos')}
-                        className="w-4 h-4 text-accent"
+                        className="w-4 h-4 text-accent-ink"
                       />
-                      <Users className="w-5 h-5 text-gray-600" />
+                      <Users className="w-5 h-5 text-neutral-600" />
                       <div>
-                        <div className="font-medium text-gray-900">Todos los usuarios</div>
-                        <div className="text-sm text-gray-500">Visible para toda la organización</div>
+                        <div className="font-medium text-neutral-900">Todos los usuarios</div>
+                        <div className="text-sm text-neutral-500">Visible para toda la organización</div>
                       </div>
                     </label>
 
-                    <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                    <label className="flex items-center gap-3 p-3 border border-neutral-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
                       <input
                         type="radio"
                         checked={tipoVisibilidad === 'rol'}
                         onChange={() => setTipoVisibilidad('rol')}
-                        className="w-4 h-4 text-accent"
+                        className="w-4 h-4 text-accent-ink"
                       />
-                      <User className="w-5 h-5 text-gray-600" />
+                      <User className="w-5 h-5 text-neutral-600" />
                       <div>
-                        <div className="font-medium text-gray-900">Por roles</div>
-                        <div className="text-sm text-gray-500">Visible solo para roles específicos</div>
+                        <div className="font-medium text-neutral-900">Por roles</div>
+                        <div className="text-sm text-neutral-500">Visible solo para roles específicos</div>
                       </div>
                     </label>
 
-                    <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                    <label className="flex items-center gap-3 p-3 border border-neutral-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
                       <input
                         type="radio"
                         checked={tipoVisibilidad === 'oficina'}
                         onChange={() => setTipoVisibilidad('oficina')}
-                        className="w-4 h-4 text-accent"
+                        className="w-4 h-4 text-accent-ink"
                       />
-                      <Building2 className="w-5 h-5 text-gray-600" />
+                      <Building2 className="w-5 h-5 text-neutral-600" />
                       <div>
-                        <div className="font-medium text-gray-900">Por oficinas</div>
-                        <div className="text-sm text-gray-500">Visible solo para oficinas específicas</div>
+                        <div className="font-medium text-neutral-900">Por oficinas</div>
+                        <div className="text-sm text-neutral-500">Visible solo para oficinas específicas</div>
                       </div>
                     </label>
                   </div>
@@ -1089,7 +1089,7 @@ export default function ComunicadoEditor() {
                 {/* Selector de roles */}
                 {tipoVisibilidad === 'rol' && (
                   <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label className="block text-sm font-medium text-neutral-700 mb-3">
                       Selecciona los roles que pueden ver este comunicado:
                     </label>
                     <div className="space-y-2">
@@ -1105,9 +1105,9 @@ export default function ComunicadoEditor() {
                                 setRolesSeleccionados(rolesSeleccionados.filter(r => r !== rol));
                               }
                             }}
-                            className="w-4 h-4 text-accent rounded"
+                            className="w-4 h-4 text-accent-ink rounded"
                           />
-                          <span className="text-gray-700">{rol}</span>
+                          <span className="text-neutral-700">{rol}</span>
                         </label>
                       ))}
                     </div>
@@ -1117,7 +1117,7 @@ export default function ComunicadoEditor() {
                 {/* Selector de oficinas */}
                 {tipoVisibilidad === 'oficina' && (
                   <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label className="block text-sm font-medium text-neutral-700 mb-3">
                       Selecciona las oficinas que pueden ver este comunicado:
                     </label>
                     <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -1133,9 +1133,9 @@ export default function ComunicadoEditor() {
                                 setOficinasSeleccionadas(oficinasSeleccionadas.filter(o => o !== oficina.id));
                               }
                             }}
-                            className="w-4 h-4 text-accent rounded"
+                            className="w-4 h-4 text-accent-ink rounded"
                           />
-                          <span className="text-gray-700">{oficina.nombre}</span>
+                          <span className="text-neutral-700">{oficina.nombre}</span>
                         </label>
                       ))}
                     </div>

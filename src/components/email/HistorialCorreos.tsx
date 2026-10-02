@@ -142,14 +142,14 @@ export function HistorialCorreos() {
     <div>
       <div className="mb-6 flex flex-wrap gap-4 items-center">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Estado</label>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">Estado</label>
           <select
             value={filtroEstado}
             onChange={(e) => {
               setFiltroEstado(e.target.value);
               setPage(0);
             }}
-            className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
           >
             <option value="todos">Todos</option>
             <option value="enviado">Enviado</option>
@@ -159,14 +159,14 @@ export function HistorialCorreos() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Tipo de envío</label>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">Tipo de envío</label>
           <select
             value={filtroTipo}
             onChange={(e) => {
               setFiltroTipo(e.target.value);
               setPage(0);
             }}
-            className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
           >
             <option value="todos">Todos</option>
             <option value="manual">Manual</option>
@@ -180,15 +180,15 @@ export function HistorialCorreos() {
           <button
             onClick={() => setPage(Math.max(0, page - 1))}
             disabled={page === 0}
-            className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Anterior
           </button>
-          <span className="text-sm text-slate-600">Página {page + 1}</span>
+          <span className="text-sm text-neutral-600">Página {page + 1}</span>
           <button
             onClick={() => setPage(page + 1)}
             disabled={historial.length < pageSize}
-            className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Siguiente
           </button>
@@ -196,28 +196,28 @@ export function HistorialCorreos() {
       </div>
 
       {historial.length === 0 ? (
-        <div className="text-center py-12 bg-slate-50 rounded-lg">
-          <Mail className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600">No hay correos en el historial</p>
+        <div className="text-center py-12 bg-neutral-50 rounded-lg">
+          <Mail className="w-16 h-16 text-neutral-500 mx-auto mb-4" />
+          <p className="text-neutral-600">No hay correos en el historial</p>
         </div>
       ) : (
         <div className="space-y-4">
           {historial.map((email) => (
-            <div key={email.id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+            <div key={email.id} className="border border-neutral-200 rounded-lg p-4 hover:shadow-md transition">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     {getEstadoIcon(email.estado)}
-                    <h3 className="text-base font-semibold text-slate-900">{email.asunto}</h3>
+                    <h3 className="text-base font-semibold text-neutral-900">{email.asunto}</h3>
                     {getEstadoBadge(email.estado)}
                     {getTipoBadge(email.tipo_envio)}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm text-slate-600">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm text-neutral-600">
                     <div>
                       <strong>Destinatario:</strong> {email.destinatario_email}
                       {email.destinatario && (
-                        <span className="text-slate-500">
+                        <span className="text-neutral-500">
                           {' '}
                           ({email.destinatario.nombre} {email.destinatario.apellidos})
                         </span>
@@ -251,7 +251,7 @@ export function HistorialCorreos() {
 
                 <button
                   onClick={() => handleViewEmail(email)}
-                  className="ml-4 p-2 text-accent hover:bg-primary-50 rounded-lg transition"
+                  className="ml-4 p-2 text-accent-ink hover:bg-primary-50 rounded-lg transition"
                   title="Ver contenido"
                 >
                   <Eye className="w-5 h-5" />
@@ -263,11 +263,11 @@ export function HistorialCorreos() {
       )}
 
       {showPreview && selectedEmail && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-slate-900">Contenido del correo</h2>
-              <button onClick={() => setShowPreview(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-card rounded-2xl shadow-e4 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 sticky top-0 bg-white">
+              <h2 className="text-xl font-bold text-neutral-900">Contenido del correo</h2>
+              <button onClick={() => setShowPreview(false)} className="text-neutral-500 hover:text-slate-600">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -280,7 +280,7 @@ export function HistorialCorreos() {
                   {getTipoBadge(selectedEmail.tipo_envio)}
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-lg space-y-2 text-sm">
+                <div className="p-4 bg-neutral-50 rounded-lg space-y-2 text-sm">
                   <p>
                     <strong>Para:</strong> {selectedEmail.destinatario_email}
                   </p>
@@ -310,11 +310,11 @@ export function HistorialCorreos() {
               </div>
 
               <div className="mb-2">
-                <h3 className="font-semibold text-slate-900 mb-2">Contenido HTML:</h3>
+                <h3 className="font-semibold text-neutral-900 mb-2">Contenido HTML:</h3>
               </div>
 
               <div
-                className="border border-slate-200 rounded-lg p-6 bg-white"
+                className="border border-soft rounded-2xl p-6 bg-surface-card"
                 dangerouslySetInnerHTML={{ __html: selectedEmail.cuerpo_html }}
               />
             </div>

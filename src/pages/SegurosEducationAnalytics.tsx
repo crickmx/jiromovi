@@ -321,11 +321,11 @@ export function SegurosEducationAnalytics() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className="text-base font-bold text-neutral-900 dark:text-white">Metricas de uso</h2>
-            <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">Actividad de la plataforma</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">Actividad de la plataforma</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl px-3 py-2">
-              <Calendar className="w-4 h-4 text-neutral-400" />
+            <div className="flex items-center gap-1.5 bg-surface-card dark:bg-white/[0.04] border border-soft dark:border-white/[0.08] rounded-xl px-3 py-2">
+              <Calendar className="w-4 h-4 text-neutral-500" />
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value as DateRange)}
@@ -343,13 +343,13 @@ export function SegurosEducationAnalytics() {
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="px-3 py-2 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl text-xs text-neutral-700 dark:text-white focus:outline-none"
+                  className="px-3 py-2 bg-surface-card dark:bg-white/[0.04] border border-soft dark:border-white/[0.08] rounded-xl text-xs text-neutral-700 dark:text-white focus:outline-none"
                 />
                 <input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="px-3 py-2 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl text-xs text-neutral-700 dark:text-white focus:outline-none"
+                  className="px-3 py-2 bg-surface-card dark:bg-white/[0.04] border border-soft dark:border-white/[0.08] rounded-xl text-xs text-neutral-700 dark:text-white focus:outline-none"
                 />
               </>
             )}
@@ -376,7 +376,7 @@ export function SegurosEducationAnalytics() {
                 onClick={() => setCurrentTab(tab.id as TabView)}
                 className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
                   currentTab === tab.id
-                    ? 'border-accent text-accent'
+                    ? 'border-accent text-accent-ink'
                     : 'border-transparent text-neutral-600 hover:text-neutral-900'
                 }`}
               >
@@ -392,19 +392,19 @@ export function SegurosEducationAnalytics() {
           <div className="space-y-6">
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-6">
+              <div className="bg-surface-card rounded-2xl shadow-md border border-soft p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-neutral-600">Reproducciones</p>
                     <p className="text-3xl font-bold text-neutral-800 mt-1">{totalReproducciones}</p>
                   </div>
                   <div className="p-3 bg-blue-100 rounded-lg">
-                    <Play className="w-6 h-6 text-accent" />
+                    <Play className="w-6 h-6 text-accent-ink" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-6">
+              <div className="bg-surface-card rounded-2xl shadow-md border border-soft p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-neutral-600">Usuarios Activos</p>
@@ -416,7 +416,7 @@ export function SegurosEducationAnalytics() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-6">
+              <div className="bg-surface-card rounded-2xl shadow-md border border-soft p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-neutral-600">Tiempo Total</p>
@@ -428,7 +428,7 @@ export function SegurosEducationAnalytics() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-6">
+              <div className="bg-surface-card rounded-2xl shadow-md border border-soft p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-neutral-600">Completion Rate</p>
@@ -442,13 +442,13 @@ export function SegurosEducationAnalytics() {
             </div>
 
             {/* Top 10 Lecciones */}
-            <div className="bg-white rounded-xl shadow-md border border-neutral-200 p-6">
+            <div className="bg-surface-card rounded-2xl shadow-md border border-soft p-6">
               <h3 className="text-lg font-semibold text-neutral-800 mb-4">Top 10 Lecciones Más Reproducidas</h3>
               <div className="space-y-3">
                 {leccionesStats.slice(0, 10).map((leccion, index) => (
                   <div key={leccion.lesson_id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg font-bold text-neutral-400 w-6">{index + 1}</span>
+                      <span className="text-lg font-bold text-neutral-500 w-6">{index + 1}</span>
                       <div>
                         <p className="font-medium text-neutral-800">{leccion.titulo}</p>
                         <p className="text-sm text-neutral-600">{leccion.categoria_nombre}</p>
@@ -470,7 +470,7 @@ export function SegurosEducationAnalytics() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-500" />
                 <input
                   type="text"
                   placeholder="Buscar lecciones..."
@@ -488,7 +488,7 @@ export function SegurosEducationAnalytics() {
               </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-md border border-neutral-200 overflow-hidden">
+            <div className="bg-surface-card rounded-xl shadow-md border border-soft overflow-hidden">
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
@@ -530,7 +530,7 @@ export function SegurosEducationAnalytics() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-500" />
                 <input
                   type="text"
                   placeholder="Buscar usuarios..."
@@ -548,7 +548,7 @@ export function SegurosEducationAnalytics() {
               </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-md border border-neutral-200 overflow-hidden">
+            <div className="bg-surface-card rounded-xl shadow-md border border-soft overflow-hidden">
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
@@ -589,7 +589,7 @@ export function SegurosEducationAnalytics() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-500" />
                 <input
                   type="text"
                   placeholder="Buscar clases..."
@@ -607,7 +607,7 @@ export function SegurosEducationAnalytics() {
               </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-md border border-neutral-200 overflow-hidden">
+            <div className="bg-surface-card rounded-xl shadow-md border border-soft overflow-hidden">
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>

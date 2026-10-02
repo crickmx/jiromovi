@@ -302,7 +302,7 @@ export default function ModulosAdmin() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-7 h-7 animate-spin text-accent" />
+        <Loader2 className="w-7 h-7 animate-spin text-accent-ink" />
       </div>
     );
   }
@@ -565,7 +565,7 @@ function BulkTargetEditor({
         )}
       </div>
 
-      {extraNote && <p className="text-xs text-neutral-400 dark:text-neutral-500">{extraNote}</p>}
+      {extraNote && <p className="text-xs text-neutral-500 dark:text-neutral-500">{extraNote}</p>}
 
       {targetOptions.length === 0 ? (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">{emptyTargetsMessage}</p>
@@ -623,7 +623,7 @@ function BulkTargetEditor({
                 </button>
                 <button
                   onClick={() => { setErrorMsg(null); setConfirmOpen(true); }}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors"
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-accent text-accent-foreground hover:bg-accent/90 transition-colors"
                 >
                   Guardar cambios
                 </button>
@@ -701,7 +701,7 @@ function UsuarioBulkTab({ modulesByWorkspace, expandedWorkspaces, toggleWorkspac
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <Loader2 className="w-6 h-6 animate-spin text-accent-ink" />
       </div>
     );
   }
@@ -763,7 +763,7 @@ function BetaUsuarioBulkTab({ modulesByWorkspace, expandedWorkspaces, toggleWork
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
-        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <Loader2 className="w-6 h-6 animate-spin text-accent-ink" />
       </div>
     );
   }
@@ -821,7 +821,7 @@ function MultiSelect({ options, selected, onChange, placeholder }: {
         className={cn(
           'inline-flex items-center justify-between gap-2 min-w-[240px] px-3.5 py-2.5 rounded-xl text-sm font-medium border transition-colors',
           selected.length > 0
-            ? 'bg-accent/10 border-accent/40 text-accent'
+            ? 'bg-accent/10 border-accent/40 text-accent-ink'
             : 'bg-white dark:bg-[#111113] border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-300'
         )}
       >
@@ -830,15 +830,15 @@ function MultiSelect({ options, selected, onChange, placeholder }: {
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1.5 w-80 max-h-96 overflow-hidden flex flex-col rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#16161a] shadow-xl">
+        <div className="absolute z-20 mt-1.5 w-80 max-h-96 overflow-hidden flex flex-col rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-[#16161a] shadow-xl">
           <div className="p-2 border-b border-neutral-100 dark:border-white/[0.06] flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar..."
-                className="w-full pl-7 pr-2 py-1.5 rounded-lg text-sm bg-neutral-100 dark:bg-white/[0.06] text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400 focus:outline-none"
+                className="w-full pl-7 pr-2 py-1.5 rounded-lg text-sm bg-neutral-100 dark:bg-white/[0.06] text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
               />
             </div>
             {selected.length > 0 && (
@@ -864,12 +864,12 @@ function MultiSelect({ options, selected, onChange, placeholder }: {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-neutral-800 dark:text-neutral-100 truncate">{o.label}</p>
-                    {o.sublabel && <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">{o.sublabel}</p>}
+                    {o.sublabel && <p className="text-xs text-neutral-500 dark:text-neutral-500 truncate">{o.sublabel}</p>}
                   </div>
                 </button>
               );
             })}
-            {filtered.length === 0 && <p className="px-3 py-6 text-sm text-center text-neutral-400">Sin resultados.</p>}
+            {filtered.length === 0 && <p className="px-3 py-6 text-sm text-center text-neutral-500">Sin resultados.</p>}
           </div>
         </div>
       )}
@@ -888,9 +888,9 @@ function ConfirmModal({ targetLabels, changes, saving, errorMsg, onCancel, onCon
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4" onClick={onCancel}>
       <div
-        className="w-full max-w-md rounded-2xl bg-white dark:bg-[#16161a] border border-neutral-200 dark:border-white/10 shadow-2xl p-5 space-y-4"
+        className="w-full max-w-md rounded-2xl bg-surface-card dark:bg-[#16161a] border border-soft dark:border-white/10 shadow-e4 p-5 space-y-4 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3">
@@ -914,7 +914,7 @@ function ConfirmModal({ targetLabels, changes, saving, errorMsg, onCancel, onCon
                 'text-xs font-semibold px-2 py-0.5 rounded-lg flex-shrink-0',
                 c.action === 'visible' && 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400',
                 c.action === 'oculto' && 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400',
-                c.action === 'hereda' && 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400',
+                c.action === 'hereda' && 'bg-blue-50 dark:bg-blue-950/30 text-accent-ink dark:text-blue-400',
               )}>
                 {c.action === 'visible' ? 'Visible' : c.action === 'oculto' ? 'Oculto' : 'Hereda'}
               </span>
@@ -940,7 +940,7 @@ function ConfirmModal({ targetLabels, changes, saving, errorMsg, onCancel, onCon
           <button
             onClick={onConfirm}
             disabled={saving}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-60"
           >
             {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {saving ? 'Guardando...' : errorMsg ? 'Reintentar' : 'Confirmar y guardar'}
@@ -967,21 +967,21 @@ interface WorkspaceSectionProps<C> {
 
 function WorkspaceSection<C>({ workspace, modules, expanded, onToggle, columns, columnHeader, renderCell, renderSectionCell }: WorkspaceSectionProps<C>) {
   return (
-    <div className="rounded-2xl border border-neutral-200 dark:border-white/[0.08] bg-white dark:bg-[#111113] overflow-hidden">
+    <div className="rounded-2xl border border-soft dark:border-white/[0.08] bg-surface-card dark:bg-[#111113] overflow-hidden">
       {/* Header */}
       <div className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-colors">
         <button onClick={onToggle} className="flex items-center gap-2 text-left flex-1 min-w-0">
           <span className="text-sm font-semibold text-neutral-800 dark:text-white">{workspace}</span>
-          <span className="text-xs text-neutral-400 dark:text-neutral-500">{modules.length} subsecciones</span>
+          <span className="text-xs text-neutral-500 dark:text-neutral-500">{modules.length} subsecciones</span>
         </button>
         <div className="flex items-center gap-3">
           {renderSectionCell && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-400 dark:text-neutral-500 hidden sm:inline">Toda la sección:</span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-500 hidden sm:inline">Toda la sección:</span>
               {columns.map((col, i) => <span key={i}>{renderSectionCell(col)}</span>)}
             </div>
           )}
-          <button onClick={onToggle} className="text-neutral-400 dark:text-neutral-500">
+          <button onClick={onToggle} className="text-neutral-500 dark:text-neutral-500">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
         </div>
@@ -1006,7 +1006,7 @@ function WorkspaceSection<C>({ workspace, modules, expanded, onToggle, columns, 
                   <td className="px-5 py-3">
                     <div>
                       <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">{mod.label}</p>
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500 font-mono">{mod.key}</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-500 font-mono">{mod.key}</p>
                     </div>
                   </td>
                   {columns.map((col, i) => (
@@ -1038,7 +1038,7 @@ function ToggleCell({ visible, isSaving, saveResult, onToggle, compact }: Toggle
   if (isSaving) {
     return (
       <div className="flex items-center justify-center">
-        <Loader2 className="w-4 h-4 animate-spin text-accent" />
+        <Loader2 className="w-4 h-4 animate-spin text-accent-ink" />
       </div>
     );
   }
@@ -1103,10 +1103,10 @@ function DraftToggle({ value, current, onChange, compact }: DraftToggleProps) {
         className={cn(
           'inline-flex items-center gap-1.5 rounded-xl text-xs font-semibold border transition-all duration-200 hover:scale-105 active:scale-95',
           compact ? 'px-2.5 py-1' : 'px-3 py-1.5',
-          value === null && 'bg-neutral-50 dark:bg-white/[0.04] border-dashed border-neutral-300 dark:border-white/15 text-neutral-400 dark:text-neutral-500',
+          value === null && 'bg-neutral-50 dark:bg-white/[0.04] border-dashed border-neutral-300 dark:border-white/15 text-neutral-500 dark:text-neutral-500',
           value === 'visible' && 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400',
           value === 'oculto' && 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-600 dark:text-red-400',
-          value === 'hereda' && 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/40 text-blue-600 dark:text-blue-400',
+          value === 'hereda' && 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/40 text-accent-ink dark:text-blue-400',
         )}
       >
         {value === null && 'Sin cambios'}
@@ -1115,7 +1115,7 @@ function DraftToggle({ value, current, onChange, compact }: DraftToggleProps) {
         {value === 'hereda' && <><Undo2 className="w-3 h-3" /> Hereda</>}
       </button>
       {currentLabel && !compact && (
-        <span className="text-[10px] text-neutral-400 dark:text-neutral-500">actual: {currentLabel}</span>
+        <span className="text-[11px] text-neutral-500 dark:text-neutral-500">actual: {currentLabel}</span>
       )}
     </div>
   );

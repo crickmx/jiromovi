@@ -220,7 +220,7 @@ export function SeguwalletPerfil() {
         value={profileForm[field]}
         onChange={e => setProfileForm(f => ({ ...f, [field]: e.target.value }))}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none transition-all"
+        className="w-full px-4 py-3 rounded-xl border border-soft bg-surface-card text-sm focus:outline-none transition-all"
         onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20`; }}
         onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }}
       />
@@ -236,7 +236,7 @@ export function SeguwalletPerfil() {
           <Icon className="w-4 h-4" style={{ color: primary }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide">{label}</p>
+          <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">{label}</p>
           <p className="text-sm font-semibold text-neutral-900 mt-0.5 truncate">{value}</p>
         </div>
       </div>
@@ -245,7 +245,7 @@ export function SeguwalletPerfil() {
 
   // ── Profile hero header ────────────────────────────────────────────────
   const ProfileHero = () => (
-    <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm overflow-hidden mb-5">
+    <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-card overflow-hidden mb-5">
       {/* Gradient banner */}
       <div
         className="h-24 relative"
@@ -343,7 +343,7 @@ export function SeguwalletPerfil() {
 
   // ── Tabs bar ───────────────────────────────────────────────────────────
   const TabBar = () => (
-    <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-1.5 mb-5 flex gap-1">
+    <div className="bg-surface-card rounded-2xl border border-neutral-200/50 shadow-card p-1.5 mb-5 flex gap-1">
       {TABS.map(tab => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -367,7 +367,7 @@ export function SeguwalletPerfil() {
 
   // ── TAB: DATOS PERSONALES ──────────────────────────────────────────────
   const TabDatos = () => (
-    <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm overflow-hidden">
+    <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-card overflow-hidden">
       <div className="px-6 pt-5 pb-2 flex items-center justify-between">
         <h3 className="font-bold text-neutral-900">Datos Personales</h3>
         {!editing && (
@@ -403,7 +403,7 @@ export function SeguwalletPerfil() {
 
           {!customer?.phone && !customer?.state && (
             <div className="py-4 text-center">
-              <p className="text-sm text-neutral-400">Completa tu perfil para ver más información.</p>
+              <p className="text-sm text-neutral-500">Completa tu perfil para ver más información.</p>
               <button onClick={() => setEditing(true)} className="text-sm font-semibold mt-1 hover:underline" style={{ color: primary }}>
                 Completar ahora
               </button>
@@ -432,14 +432,14 @@ export function SeguwalletPerfil() {
               <select
                 value={profileForm.state}
                 onChange={e => setProfileForm(f => ({ ...f, state: e.target.value }))}
-                className="w-full appearance-none px-4 py-3 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none pr-10"
+                className="w-full appearance-none px-4 py-3 rounded-xl border border-soft bg-surface-card text-sm focus:outline-none pr-10"
                 onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20`; }}
                 onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }}
               >
                 <option value="">Selecciona tu estado</option>
                 {MEXICAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
             </div>
           </div>
 
@@ -452,7 +452,7 @@ export function SeguwalletPerfil() {
               value={profileForm.birth_date}
               onChange={e => setProfileForm(f => ({ ...f, birth_date: e.target.value }))}
               max={new Date(Date.now() - 18 * 365.25 * 24 * 3600 * 1000).toISOString().split('T')[0]}
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-white text-sm focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-soft bg-surface-card text-sm focus:outline-none"
               onFocus={e => { e.target.style.borderColor = primary; e.target.style.boxShadow = `0 0 0 3px ${primary}20`; }}
               onBlur={e => { e.target.style.borderColor = ''; e.target.style.boxShadow = ''; }}
             />
@@ -481,7 +481,7 @@ export function SeguwalletPerfil() {
             <button
               type="button"
               onClick={() => { setEditing(false); setProfileError(''); }}
-              className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-neutral-200 bg-white text-neutral-700 text-sm font-semibold"
+              className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-soft bg-surface-card text-neutral-700 text-sm font-semibold"
             >
               <X className="w-4 h-4" />
               Cancelar
@@ -502,14 +502,14 @@ export function SeguwalletPerfil() {
 
   // ── TAB: EXPEDIENTE ────────────────────────────────────────────────────
   const TabExpediente = () => (
-    <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm p-6 space-y-4">
+    <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-card p-6 space-y-4">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: primary + '18' }}>
           <FolderOpen className="w-5 h-5" style={{ color: primary }} />
         </div>
         <div>
           <h3 className="font-bold text-neutral-900">Mi Expediente Digital</h3>
-          <p className="text-xs text-neutral-400">Documentos e identificaciones</p>
+          <p className="text-xs text-neutral-500">Documentos e identificaciones</p>
         </div>
       </div>
 
@@ -537,12 +537,12 @@ export function SeguwalletPerfil() {
 
     if (!hasAgent) {
       return (
-        <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm p-8 text-center">
+        <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-card p-8 text-center">
           <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
             <User className="w-8 h-8 text-neutral-300" />
           </div>
           <p className="font-semibold text-neutral-700">Sin agente asignado</p>
-          <p className="text-sm text-neutral-400 mt-1">Contacta a soporte para que te asignen un asesor.</p>
+          <p className="text-sm text-neutral-500 mt-1">Contacta a soporte para que te asignen un asesor.</p>
         </div>
       );
     }
@@ -550,7 +550,7 @@ export function SeguwalletPerfil() {
     return (
       <div className="space-y-4">
         {/* Agent card */}
-        <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm overflow-hidden">
+        <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-card overflow-hidden">
           {/* Banner */}
           <div className="h-16" style={{ background: `linear-gradient(135deg, ${primary} 0%, ${primary}99 100%)` }} />
 
@@ -580,13 +580,13 @@ export function SeguwalletPerfil() {
             <div className="space-y-2.5 mb-5">
               {brand.email && (
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50 border border-neutral-100">
-                  <Mail className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                  <Mail className="w-4 h-4 text-neutral-500 flex-shrink-0" />
                   <span className="text-sm text-neutral-700 truncate">{brand.email}</span>
                 </div>
               )}
               {brand.phone && (
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50 border border-neutral-100">
-                  <Phone className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                  <Phone className="w-4 h-4 text-neutral-500 flex-shrink-0" />
                   <span className="text-sm text-neutral-700">{brand.phone}</span>
                 </div>
               )}
@@ -646,7 +646,7 @@ export function SeguwalletPerfil() {
   const TabSeguridad = () => (
     <div className="space-y-4">
       {/* Access info */}
-      <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm p-6 space-y-0">
+      <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-card p-6 space-y-0">
         <h3 className="font-bold text-neutral-900 mb-4">Información de acceso</h3>
         <InfoRow icon={Mail} label="Correo de acceso" value={customer?.email} />
         <InfoRow icon={Clock} label="Último acceso" value={formatDateTime(customer?.last_login_at)} />
@@ -655,7 +655,7 @@ export function SeguwalletPerfil() {
       </div>
 
       {/* Access method */}
-      <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm p-6">
+      <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-card p-6">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: primary + '18' }}>
             <Smartphone className="w-5 h-5" style={{ color: primary }} />
@@ -670,7 +670,7 @@ export function SeguwalletPerfil() {
       </div>
 
       {/* Security tips */}
-      <div className="bg-white rounded-3xl border border-neutral-200/50 shadow-sm p-6">
+      <div className="bg-surface-card rounded-3xl border border-neutral-200/50 shadow-card p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: primary + '18' }}>
             <Lock className="w-5 h-5" style={{ color: primary }} />

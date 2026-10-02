@@ -427,19 +427,19 @@ export default function MulticotizadorGMM() {
       {activeTab === 'cotizador' && (
         <div className="space-y-6">
           {/* Client Name */}
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] p-5">
             <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Nombre del Cliente</label>
             <input
               type="text"
               value={clientName}
               onChange={e => setClientName(e.target.value)}
               placeholder="Nombre completo del titular o empresa"
-              className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+              className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-neutral-900 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
             />
           </div>
 
           {/* Insureds */}
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] p-5">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-teal-600 dark:text-teal-400" />
@@ -457,7 +457,7 @@ export default function MulticotizadorGMM() {
                     value={person.name}
                     onChange={e => updatePerson(person.id, 'name', e.target.value)}
                     placeholder={`Asegurado ${idx + 1}`}
-                    className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+                    className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm text-neutral-900 dark:text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
                   />
                   <select
                     value={person.relation}
@@ -488,7 +488,7 @@ export default function MulticotizadorGMM() {
                   <button
                     onClick={() => removePerson(person.id)}
                     disabled={people.length <= 1}
-                    className="p-2 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                    className="p-2 rounded-lg text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-30 disabled:pointer-events-none"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -546,7 +546,7 @@ export default function MulticotizadorGMM() {
               </button>
             )}
             {autoSaveStatus === 'saving' && (
-              <span className="flex items-center gap-1.5 text-xs text-neutral-400">
+              <span className="flex items-center gap-1.5 text-xs text-neutral-500">
                 <Loader className="w-3 h-3 animate-spin" /> Guardando...
               </span>
             )}
@@ -568,9 +568,9 @@ export default function MulticotizadorGMM() {
       )}
 
       {activeTab === 'historial' && (
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] overflow-hidden">
           {savedQuotes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-neutral-400 dark:text-neutral-500">
+            <div className="flex flex-col items-center justify-center py-16 text-neutral-500 dark:text-neutral-500">
               <History className="w-10 h-10 mb-3 opacity-40" />
               <p className="text-sm">No hay cotizaciones guardadas</p>
             </div>
@@ -598,7 +598,7 @@ export default function MulticotizadorGMM() {
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {products.map(pid => (
-                              <span key={pid} className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-neutral-100 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300">
+                              <span key={pid} className="inline-flex px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide bg-neutral-100 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300">
                                 {productLabels[pid as string] || pid}
                               </span>
                             ))}

@@ -242,22 +242,22 @@ export default function TareaReportePage() {
   // ── Renders ────────────────────────────────────────────────────────────────
 
   if (fase === 'cargando') return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
-      <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+    <div className="min-h-screen flex items-center justify-center dark:bg-neutral-900">
+      <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
     </div>
   );
 
   if (fase === 'error') return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-neutral-50 dark:bg-neutral-900 p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 dark:bg-neutral-900 p-6">
       <AlertTriangle className="w-8 h-8 text-red-500" />
       <p className="text-neutral-700 dark:text-neutral-300 text-center">{errMsg}</p>
-      <button onClick={() => navigate(-1)} className="text-sm text-blue-600 hover:underline">Volver</button>
+      <button onClick={() => navigate(-1)} className="text-sm text-accent-ink hover:underline">Volver</button>
     </div>
   );
 
   if (fase === 'enviado') return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-neutral-50 dark:bg-neutral-900">
-      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-8 max-w-md w-full text-center space-y-4">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 dark:bg-neutral-900">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card border border-soft dark:border-neutral-700 p-8 max-w-md w-full text-center space-y-4">
         <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto" />
         <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Reporte enviado</h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">Cifrado y guardado correctamente.</p>
@@ -269,14 +269,14 @@ export default function TareaReportePage() {
   );
 
   if (fase === 'instrucciones') return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-neutral-50 dark:bg-neutral-900">
-      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-8 max-w-lg w-full space-y-5">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 dark:bg-neutral-900">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card border border-soft dark:border-neutral-700 p-8 max-w-lg w-full space-y-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
             <ClipboardList className="w-5 h-5 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
-            <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide">Reporte protegido</p>
+            <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Reporte protegido</p>
             <h1 className="text-base font-semibold text-neutral-800 dark:text-neutral-100">{campoLabel}</h1>
           </div>
         </div>
@@ -288,7 +288,7 @@ export default function TareaReportePage() {
         )}
 
         <div>
-          <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-2">Requisitos</p>
+          <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">Requisitos</p>
           <div className="grid grid-cols-3 gap-2 text-center">
             {([
               [String(minWords), 'palabras mín.'],
@@ -313,7 +313,7 @@ export default function TareaReportePage() {
         <button onClick={start} className="w-full py-3 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 active:bg-violet-800 transition-colors">
           {texto ? 'Continuar escribiendo' : 'Comenzar'}
         </button>
-        <button onClick={() => navigate(-1)} className="w-full text-sm text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors">
+        <button onClick={() => navigate(-1)} className="w-full text-sm text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors">
           Cancelar
         </button>
       </div>
@@ -332,7 +332,7 @@ export default function TareaReportePage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-neutral-400">Reporte protegido</p>
+          <p className="text-xs text-neutral-500">Reporte protegido</p>
           <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">{campoLabel}</p>
         </div>
         {offline && (
@@ -388,7 +388,7 @@ export default function TareaReportePage() {
           </button>
         )}
         {!canSubmit && fase !== 'enviando' && (
-          <p className="text-center text-xs text-neutral-400">
+          <p className="text-center text-xs text-neutral-500">
             {wordCount < minWords
               ? `Faltan ${minWords - wordCount} palabras`
               : elapsed < minTime
@@ -397,7 +397,7 @@ export default function TareaReportePage() {
           </p>
         )}
         {RECAPTCHA_SITE_KEY && (
-          <p className="text-center text-[10px] text-neutral-300 dark:text-neutral-600">
+          <p className="text-center text-[11px] text-neutral-300 dark:text-neutral-600">
             Protegido por reCAPTCHA
           </p>
         )}

@@ -144,35 +144,35 @@ export default function InstallBanner() {
       {/* Modal de instrucciones para iOS */}
       {showIOSInstructions && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4 overflow-y-auto"
+          className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4 overflow-y-auto"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowIOSInstructions(false);
             }
           }}
         >
-          <div className="bg-white rounded-t-2xl sm:rounded-xl shadow-xl max-w-md w-full animate-in slide-in-from-bottom-4 sm:zoom-in-95 my-auto">
-            <div className="sticky top-0 bg-white rounded-t-2xl sm:rounded-t-xl border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">
+          <div className="bg-surface-card rounded-t-2xl sm:rounded-xl shadow-e4 max-w-md w-full animate-in slide-in-from-bottom-4 sm:zoom-in-95 my-auto">
+            <div className="sticky top-0 bg-surface-card rounded-t-2xl sm:rounded-t-xl border-b border-soft px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-neutral-900">
                 Instalar en iPhone
               </h3>
               <button
                 onClick={() => setShowIOSInstructions(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-lg"
+                className="text-neutral-500 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-lg"
                 aria-label="Cerrar"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-4 text-sm text-gray-600 max-h-[70vh] overflow-y-auto">
-              <p className="font-medium text-gray-900">
+            <div className="px-6 py-5 space-y-4 text-sm text-neutral-600 max-h-[70vh] overflow-y-auto">
+              <p className="font-medium text-neutral-900">
                 Sigue estos pasos para instalar la app:
               </p>
 
               <ol className="space-y-4">
                 <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent rounded-full flex items-center justify-center text-xs font-semibold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent-ink rounded-full flex items-center justify-center text-xs font-semibold">
                     1
                   </span>
                   <span>
@@ -184,7 +184,7 @@ export default function InstallBanner() {
                   </span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent rounded-full flex items-center justify-center text-xs font-semibold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent-ink rounded-full flex items-center justify-center text-xs font-semibold">
                     2
                   </span>
                   <span>
@@ -192,7 +192,7 @@ export default function InstallBanner() {
                   </span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent rounded-full flex items-center justify-center text-xs font-semibold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent-ink rounded-full flex items-center justify-center text-xs font-semibold">
                     3
                   </span>
                   <span>
@@ -203,7 +203,7 @@ export default function InstallBanner() {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="flex gap-2">
-                  <Info className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                  <Info className="w-4 h-4 text-accent-ink flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-blue-900">
                     La app aparecerá como un ícono en tu pantalla de inicio y podrás usarla sin conexión.
                   </p>
@@ -211,7 +211,7 @@ export default function InstallBanner() {
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-white rounded-b-2xl sm:rounded-b-xl border-t border-gray-100 px-6 py-4">
+            <div className="sticky bottom-0 bg-surface-card rounded-b-2xl sm:rounded-b-xl border-t border-soft px-6 py-4">
               <Button
                 onClick={() => {
                   setShowIOSInstructions(false);
@@ -229,7 +229,7 @@ export default function InstallBanner() {
 
       {/* Banner de instalación */}
       <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-50 animate-in slide-in-from-bottom-5">
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+        <div className="bg-surface-card rounded-2xl shadow-lg border border-soft p-4">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               {shouldShowAndroidAppLink() ? (
@@ -238,18 +238,18 @@ export default function InstallBanner() {
                 </div>
               ) : (
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Download className="w-5 h-5 text-accent" />
+                  <Download className="w-5 h-5 text-accent-ink" />
                 </div>
               )}
             </div>
 
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">
+              <h3 className="text-sm font-semibold text-neutral-900 mb-1">
                 {shouldShowAndroidAppLink()
                   ? 'Descarga nuestra app oficial'
                   : 'Instala nuestra app'}
               </h3>
-              <p className="text-xs text-gray-600 mb-3">
+              <p className="text-xs text-neutral-600 mb-3">
                 {platform.isIOS && platform.isSafari
                   ? 'Accede más rápido y usa la app sin conexión'
                   : getInstallInstructions()}
@@ -289,7 +289,7 @@ export default function InstallBanner() {
 
             <button
               onClick={handleDismiss}
-              className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+              className="flex-shrink-0 text-neutral-500 hover:text-gray-600 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>

@@ -472,17 +472,17 @@ export function MultiOptionQuote({
               </div>
 
               {result?.options[idx] && (
-                <div className="pt-4 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
+                <div className="pt-4 border-t bg-neutral-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
                   <div className="text-center">
-                    <div className="text-xs text-gray-500 mb-1">Total a Pagar</div>
-                    <div className="text-2xl font-bold text-accent">
+                    <div className="text-xs text-neutral-500 mb-1">Total a Pagar</div>
+                    <div className="text-2xl font-bold text-accent-ink">
                       {formatCurrency(result.options[idx].totales.total_pagar)}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-neutral-500 mt-1">
                       Prima Neta: {formatCurrency(result.options[idx].prima_neta_total)}
                     </div>
                     {result.options[idx].tope_coaseguro && (
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-neutral-500 mt-1">
                         Tope Coaseguro: {formatCurrency(result.options[idx].tope_coaseguro)}
                       </div>
                     )}
@@ -541,7 +541,7 @@ export function MultiOptionQuote({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
+                <tr className="border-b bg-neutral-50">
                   <th className="text-left p-3 font-semibold">Concepto</th>
                   {result.options.map((_, idx) => (
                     <th key={idx} className="text-center p-3 font-semibold">
@@ -621,7 +621,7 @@ export function MultiOptionQuote({
 
           <div className="mt-6 p-4 bg-primary-50 rounded-lg">
             <h4 className="font-semibold mb-2 text-sm">Mejor Opción (Precio más bajo)</h4>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-neutral-700">
               {(() => {
                 const minPrice = Math.min(...result.options.map(o => o.totales.total_pagar));
                 const minIdx = result.options.findIndex(o => o.totales.total_pagar === minPrice);

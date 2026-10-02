@@ -300,7 +300,7 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
                         </span>
                       </>
                     )}
-                    <span className="text-xs text-neutral-500 dark:text-white/40">
+                    <span className="text-xs text-neutral-500 dark:text-white/55">
                       {new Date(comentario.fecha_hora).toLocaleString('es-MX', {
                         day: 'numeric',
                         month: 'short',
@@ -312,7 +312,7 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
                   <div
                     className={`px-4 py-3 rounded-2xl whitespace-pre-wrap text-sm ${
                       isOwn
-                        ? 'bg-accent text-white'
+                        ? 'bg-accent text-accent-foreground'
                         : 'bg-neutral-100 dark:bg-white/8 text-neutral-900 dark:text-white'
                     }`}
                   >
@@ -350,7 +350,7 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
           <div className="flex-1 relative">
             {/* Dropdown de menciones */}
             {mencionQuery !== null && filteredMiembros.length > 0 && (
-              <div className="absolute bottom-full mb-1 left-0 w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-xl shadow-lg z-20 overflow-hidden">
+              <div className="absolute bottom-full mb-1 left-0 w-full bg-surface-card dark:bg-neutral-800 border border-soft dark:border-white/10 rounded-xl shadow-lg z-20 overflow-hidden">
                 {filteredMiembros.slice(0, 6).map((m, i) => (
                   <button
                     key={m.id}
@@ -358,7 +358,7 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
                     onMouseDown={(e) => { e.preventDefault(); insertMention(m); }}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors ${i === mencionIndex ? 'bg-neutral-50 dark:bg-white/5' : ''}`}
                   >
-                    <AtSign className="w-3.5 h-3.5 text-accent shrink-0" />
+                    <AtSign className="w-3.5 h-3.5 text-accent-ink shrink-0" />
                     <span className="text-neutral-900 dark:text-white">{m.nombre_completo}</span>
                   </button>
                 ))}
@@ -370,7 +370,7 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
               onChange={handleMensajeChange}
               placeholder={grupoId ? 'Escribe un comentario... (usa @ para mencionar a alguien)' : 'Escribe un comentario...'}
               rows={3}
-              className="w-full px-4 py-3 border border-neutral-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-3 border border-neutral-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
               onKeyDown={(e) => {
                 if (mencionQuery !== null && filteredMiembros.length > 0) {
                   if (e.key === 'ArrowDown') { e.preventDefault(); setMencionIndex(i => Math.min(i + 1, filteredMiembros.length - 1)); return; }
@@ -401,14 +401,14 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
             <button
               type="submit"
               disabled={sending || (!mensaje.trim() && !archivo)}
-              className="p-3 bg-accent hover:bg-accent-hover text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-3 bg-accent hover:bg-accent-hover text-accent-foreground rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               title="Enviar (Ctrl+Enter)"
             >
               <Send className="w-5 h-5" />
             </button>
           </div>
         </div>
-        <p className="text-xs text-neutral-500 dark:text-white/40 mt-2">
+        <p className="text-xs text-neutral-500 dark:text-white/55 mt-2">
           Presiona Ctrl+Enter para enviar{grupoId ? ' · @ para mencionar' : ''}
         </p>
       </form>

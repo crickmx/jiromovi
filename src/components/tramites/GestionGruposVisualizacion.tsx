@@ -756,7 +756,7 @@ export function GestionGruposVisualizacion() {
                       {gruposArea.map(g => {
                         const gac = getAC(g.area_categoria);
                         return (
-                          <div key={g.id} className="border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
+                          <div key={g.id} className="border border-soft rounded-2xl overflow-hidden bg-surface-card shadow-card hover:shadow-card-hover transition-shadow">
                             <div className="px-5 py-4 flex items-start gap-4">
                               <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: g.color + '22' }}>
                                 <span style={{ color: g.color }}><AreaIcon area={g.area_categoria} /></span>
@@ -790,7 +790,7 @@ export function GestionGruposVisualizacion() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 flex-shrink-0">
-                                <button onClick={() => openEdit(g)} className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors" title="Editar">
+                                <button onClick={() => openEdit(g)} className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors" title="Editar">
                                   <Pencil className="w-4 h-4" />
                                 </button>
                                 <button onClick={() => setConfirmDelete(g)} className="p-2 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors" title="Eliminar">
@@ -815,8 +815,8 @@ export function GestionGruposVisualizacion() {
           )}
 
           {confirmDelete && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
+              <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-md p-6 animate-scale-in">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2.5 bg-red-50 rounded-xl"><Trash2 className="w-5 h-5 text-red-600" /></div>
                   <div>
@@ -935,7 +935,7 @@ export function GestionGruposVisualizacion() {
 
           {/* ── TAB: GENERAL ── */}
           {(!selectedGrupo || formTab === 'general') && (
-            <div className="space-y-4 bg-white rounded-2xl border border-neutral-200 p-5">
+            <div className="space-y-4 bg-surface-card rounded-2xl border border-soft p-5">
               {/* Nombre + Color picker (REQ-05) */}
               <div>
                 <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Nombre del equipo *</label>
@@ -950,8 +950,8 @@ export function GestionGruposVisualizacion() {
                       style={{ backgroundColor: formColor }}
                     />
                     {colorPickerOpen && (
-                      <div className="absolute top-full left-0 mt-2 z-30 bg-white border border-neutral-200 rounded-xl shadow-xl p-3 min-w-[176px]">
-                        <p className="text-[10px] text-neutral-400 font-semibold uppercase tracking-wider mb-2">Color del equipo</p>
+                      <div className="absolute top-full left-0 mt-2 z-30 bg-surface-card border border-soft rounded-2xl shadow-xl p-3 min-w-[176px]">
+                        <p className="text-[11px] text-neutral-500 font-semibold uppercase tracking-wider mb-2">Color del equipo</p>
                         <div className="grid grid-cols-6 gap-1.5 mb-3">
                           {TEAM_COLOR_PALETTE.map(c => (
                             <button
@@ -1034,7 +1034,7 @@ export function GestionGruposVisualizacion() {
 
                   {/* Inline area creation */}
                   {formCreatingArea ? (
-                    <div className="flex items-center gap-1.5 border-2 border-neutral-400 rounded-xl px-2.5 py-1.5 bg-white">
+                    <div className="flex items-center gap-1.5 border-2 border-neutral-400 rounded-xl px-2.5 py-1.5 bg-surface-card">
                       <input
                         autoFocus
                         type="text"
@@ -1050,7 +1050,7 @@ export function GestionGruposVisualizacion() {
                       <button type="button" onClick={handleConfirmNewArea} className="text-green-600 hover:text-green-700 flex-shrink-0">
                         <Check className="w-4 h-4" />
                       </button>
-                      <button type="button" onClick={() => { setFormCreatingArea(false); setFormNewAreaName(''); }} className="text-neutral-400 hover:text-neutral-600 flex-shrink-0">
+                      <button type="button" onClick={() => { setFormCreatingArea(false); setFormNewAreaName(''); }} className="text-neutral-500 hover:text-neutral-600 flex-shrink-0">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -1058,14 +1058,14 @@ export function GestionGruposVisualizacion() {
                     <button
                       type="button"
                       onClick={() => setFormCreatingArea(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-neutral-300 text-sm text-neutral-400 hover:border-neutral-400 hover:text-neutral-600 transition-all"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-neutral-300 text-sm text-neutral-500 hover:border-neutral-400 hover:text-neutral-600 transition-all"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       Nueva área
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-neutral-400 mt-1.5">Sin área = comodín para cualquier tipo de trámite.</p>
+                <p className="text-xs text-neutral-500 mt-1.5">Sin área = comodín para cualquier tipo de trámite.</p>
               </div>
 
               {/* All offices toggle */}
@@ -1114,7 +1114,7 @@ export function GestionGruposVisualizacion() {
                   )}
                   <div className="p-3 space-y-2">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
                       <input
                         type="text"
                         placeholder="Buscar oficina..."
@@ -1125,7 +1125,7 @@ export function GestionGruposVisualizacion() {
                     </div>
                     <div className="max-h-48 overflow-y-auto space-y-1">
                       {oficinas.filter(o => !formSelectedOficinas.includes(o.id) && o.nombre.toLowerCase().includes(formOficinaSearch.toLowerCase())).length === 0 ? (
-                        <p className="text-xs text-neutral-400 text-center py-3">
+                        <p className="text-xs text-neutral-500 text-center py-3">
                           {formOficinaSearch ? 'Sin resultados' : formSelectedOficinas.length === oficinas.length ? 'Todas las oficinas asignadas' : 'No hay oficinas disponibles'}
                         </p>
                       ) : (
@@ -1139,10 +1139,10 @@ export function GestionGruposVisualizacion() {
                               className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-neutral-100 hover:bg-neutral-50 text-left transition-colors group"
                             >
                               <div className="flex items-center gap-2">
-                                <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                                <Building2 className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                                 <span className="text-sm text-neutral-800">{o.nombre}</span>
                               </div>
-                              <Plus className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-700 transition-colors" />
+                              <Plus className="w-3.5 h-3.5 text-neutral-500 group-hover:text-neutral-700 transition-colors" />
                             </button>
                           ))
                       )}
@@ -1188,8 +1188,8 @@ export function GestionGruposVisualizacion() {
                   {miembros.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
                       <Users className="w-8 h-8 text-neutral-300" />
-                      <p className="text-sm text-neutral-400 font-medium">Sin miembros en este equipo</p>
-                      <p className="text-xs text-neutral-400">Busca y agrega agentes desde el panel derecho</p>
+                      <p className="text-sm text-neutral-500 font-medium">Sin miembros en este equipo</p>
+                      <p className="text-xs text-neutral-500">Busca y agrega agentes desde el panel derecho</p>
                     </div>
                   ) : (
                     miembros.map(m => {
@@ -1208,7 +1208,7 @@ export function GestionGruposVisualizacion() {
                                   <RolIcon className="w-2.5 h-2.5" />{rc.label}
                                 </button>
                                 {editingRolMiembro === m.usuario_id && (
-                                  <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-1 space-y-0.5 min-w-[130px]">
+                                  <div className="absolute left-0 top-full mt-1 z-20 bg-surface-card border border-soft rounded-xl shadow-lg p-1 space-y-0.5 min-w-[130px]">
                                     {(['director', 'supervisor', 'lider', 'ejecutivo', 'miembro'] as const).map(rol => {
                                       const rci = ROL_CONFIG[rol]; const RCI = rci.icon;
                                       return (
@@ -1243,13 +1243,13 @@ export function GestionGruposVisualizacion() {
                 </div>
                 <div className="p-4 space-y-3">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                     <input type="text" placeholder="Buscar por nombre..." value={searchMiembro} onChange={e => setSearchMiembro(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
                   </div>
                   <div className="max-h-64 overflow-y-auto space-y-1">
                     {miembrosDisponibles.length === 0 ? (
-                      <p className="text-sm text-neutral-400 text-center py-4">{searchMiembro ? 'Sin resultados' : 'Todos ya están asignados'}</p>
+                      <p className="text-sm text-neutral-500 text-center py-4">{searchMiembro ? 'Sin resultados' : 'Todos ya están asignados'}</p>
                     ) : (
                       miembrosDisponibles.map(u => (
                         <div key={u.id} className="border border-neutral-100 rounded-xl overflow-hidden">
@@ -1260,7 +1260,7 @@ export function GestionGruposVisualizacion() {
                             </div>
                             {pendingAdd?.userId === u.id ? (
                               <button onClick={() => setPendingAdd(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors flex-shrink-0">
-                                <X className="w-3.5 h-3.5 text-neutral-400" />
+                                <X className="w-3.5 h-3.5 text-neutral-500" />
                               </button>
                             ) : (
                               <button onClick={() => setPendingAdd({ userId: u.id, rol: 'ejecutivo' })} className="p-1.5 rounded-lg hover:bg-green-100 transition-colors flex-shrink-0">
@@ -1313,14 +1313,14 @@ export function GestionGruposVisualizacion() {
                   ) : grupoOficinas.length === 0 ? (
                     <div className="text-center py-6">
                       <AlertTriangle className="w-8 h-8 mx-auto text-amber-400 mb-2" />
-                      <p className="text-sm text-neutral-400">Sin oficinas asignadas</p>
+                      <p className="text-sm text-neutral-500">Sin oficinas asignadas</p>
                       <p className="text-xs text-amber-600 mt-1">Este equipo no verá ningún trámite</p>
                     </div>
                   ) : (
                     grupoOficinas.map(go => (
                       <div key={go.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
                         <div className="flex items-center gap-2">
-                          <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                          <Building2 className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                           <span className="text-sm font-medium text-neutral-800">{go.oficina_nombre}</span>
                         </div>
                         <button onClick={() => handleRemoverOficina(go.id, go.oficina_id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all">
@@ -1338,18 +1338,18 @@ export function GestionGruposVisualizacion() {
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                       <input type="text" placeholder="Buscar oficina..." value={searchOficina} onChange={e => setSearchOficina(e.target.value)}
                         className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-1">
                       {oficinasDisponibles.length === 0 ? (
-                        <p className="text-sm text-neutral-400 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas las oficinas ya están asignadas'}</p>
+                        <p className="text-sm text-neutral-500 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas las oficinas ya están asignadas'}</p>
                       ) : (
                         oficinasDisponibles.map(o => (
                           <div key={o.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
                             <div className="flex items-center gap-2">
-                              <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                              <Building2 className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                               <span className="text-sm font-medium text-neutral-800">{o.nombre}</span>
                             </div>
                             <button onClick={() => handleAgregarOficina(o.id)} className="p-1.5 rounded-lg hover:bg-teal-100 transition-colors flex-shrink-0">
@@ -1420,7 +1420,7 @@ export function GestionGruposVisualizacion() {
                   </div>
                   <div className="p-4 space-y-2 max-h-52 overflow-y-auto">
                     {reglasFiltradas.length === 0 ? (
-                      <p className="text-sm text-neutral-400 text-center py-6">
+                      <p className="text-sm text-neutral-500 text-center py-6">
                         {filterAsignacionTipo !== 'todos' ? 'Sin resultados para ese filtro.' : 'Sin vendedores asignados. Los trámites llegarán al pool general.'}
                       </p>
                     ) : (
@@ -1428,7 +1428,7 @@ export function GestionGruposVisualizacion() {
                         const ejecutivosDisponibles = miembros.filter(m => ['lider','supervisor','director','ejecutivo'].includes(m.rol_en_equipo));
                         return (
                           <div key={r.id} className="flex items-center gap-2 p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
-                            <User className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                            <User className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="text-sm font-medium text-neutral-800 truncate">{r.usuario_nombre}</span>
@@ -1450,7 +1450,7 @@ export function GestionGruposVisualizacion() {
                                       <option key={m.usuario_id} value={m.usuario_id}>{m.nombre_completo}</option>
                                     ))}
                                   </select>
-                                  {savingEjecutivoReglaId === r.id && <Loader2 className="w-3 h-3 animate-spin text-neutral-400" />}
+                                  {savingEjecutivoReglaId === r.id && <Loader2 className="w-3 h-3 animate-spin text-neutral-500" />}
                                 </div>
                               )}
                             </div>
@@ -1486,7 +1486,7 @@ export function GestionGruposVisualizacion() {
                   <div className="p-4 space-y-3">
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                         <input type="text" placeholder="Buscar vendedor..." value={searchReglaOficina} onChange={e => setSearchReglaOficina(e.target.value)}
                           className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
                       </div>
@@ -1519,7 +1519,7 @@ export function GestionGruposVisualizacion() {
                     )}
                     <div className="max-h-56 overflow-y-auto space-y-1">
                       {disponibles.length === 0 ? (
-                        <p className="text-sm text-neutral-400 text-center py-4">
+                        <p className="text-sm text-neutral-500 text-center py-4">
                           {searchReglaOficina || filterReglaOficinaId ? 'Sin resultados' : 'Todos los usuarios ya están asignados'}
                         </p>
                       ) : (
@@ -1535,7 +1535,7 @@ export function GestionGruposVisualizacion() {
                             />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-neutral-800 truncate">{a.nombre_completo}</p>
-                              <p className="text-[11px] text-neutral-400">{a.rol}{a.oficina_id ? ` Â· ${oficinas.find(o => o.id === a.oficina_id)?.nombre ?? ''}` : ''}</p>
+                              <p className="text-[11px] text-neutral-500">{a.rol}{a.oficina_id ? ` Â· ${oficinas.find(o => o.id === a.oficina_id)?.nombre ?? ''}` : ''}</p>
                             </div>
                           </label>
                         ))
@@ -1558,7 +1558,7 @@ export function GestionGruposVisualizacion() {
               ) : (
                 <>
                   <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 flex items-start gap-2 text-sm text-neutral-700">
-                    <FileText className="w-4 h-4 mt-0.5 flex-shrink-0 text-neutral-400" />
+                    <FileText className="w-4 h-4 mt-0.5 flex-shrink-0 text-neutral-500" />
                     <div>
                       Tipos de trámite del área <strong>{formArea}</strong>.
                       {isAdmin
@@ -1568,12 +1568,12 @@ export function GestionGruposVisualizacion() {
                   </div>
                   {loadingTipos ? (
                     <div className="flex justify-center py-10">
-                      <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />
+                      <Loader2 className="w-5 h-5 animate-spin text-neutral-500" />
                     </div>
                   ) : tiposPorArea.length === 0 ? (
                     <div className="text-center py-10 bg-neutral-50 rounded-2xl border border-neutral-200">
                       <FileText className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
-                      <p className="text-sm text-neutral-400">No hay tipos de trámite configurados para el área {formArea}.</p>
+                      <p className="text-sm text-neutral-500">No hay tipos de trámite configurados para el área {formArea}.</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -1594,7 +1594,7 @@ export function GestionGruposVisualizacion() {
                                 {tipo.label}
                               </span>
                               {!habilitado && (
-                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-neutral-200 text-neutral-500 flex-shrink-0">Desactivado</span>
+                                <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-neutral-200 text-neutral-500 flex-shrink-0">Desactivado</span>
                               )}
                             </div>
                             {isAdmin && (
@@ -1681,8 +1681,8 @@ export function GestionGruposVisualizacion() {
               {miembros.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
                   <Users className="w-8 h-8 text-neutral-300" />
-                  <p className="text-sm text-neutral-400 font-medium">Sin miembros en este equipo</p>
-                  <p className="text-xs text-neutral-400">Busca y agrega agentes desde el panel derecho</p>
+                  <p className="text-sm text-neutral-500 font-medium">Sin miembros en este equipo</p>
+                  <p className="text-xs text-neutral-500">Busca y agrega agentes desde el panel derecho</p>
                 </div>
               ) : (
                 miembros.map(m => {
@@ -1703,7 +1703,7 @@ export function GestionGruposVisualizacion() {
                               {rc.label}
                             </button>
                             {editingRolMiembro === m.usuario_id && (
-                              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-1 space-y-0.5 min-w-[130px]">
+                              <div className="absolute left-0 top-full mt-1 z-20 bg-surface-card border border-soft rounded-xl shadow-lg p-1 space-y-0.5 min-w-[130px]">
                                 {(['director', 'supervisor', 'lider', 'ejecutivo', 'miembro'] as const).map(rol => {
                                   const rci = ROL_CONFIG[rol]; const RCI = rci.icon;
                                   return (
@@ -1737,18 +1737,18 @@ export function GestionGruposVisualizacion() {
             <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
               <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2">
                 <UserPlus className="w-4 h-4" /> Agregar miembros
-                <span className="text-xs font-normal text-neutral-400">(Empleados, Gerentes, Admins)</span>
+                <span className="text-xs font-normal text-neutral-500">(Empleados, Gerentes, Admins)</span>
               </h4>
             </div>
             <div className="p-4 space-y-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                 <input type="text" placeholder="Buscar por nombre..." value={searchMiembro} onChange={e => setSearchMiembro(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
               </div>
               <div className="max-h-72 overflow-y-auto space-y-1">
                 {miembrosDisponibles.length === 0 ? (
-                  <p className="text-sm text-neutral-400 text-center py-4">
+                  <p className="text-sm text-neutral-500 text-center py-4">
                     {searchMiembro ? 'Sin resultados' : 'Todos los usuarios ya están asignados'}
                   </p>
                 ) : (
@@ -1764,7 +1764,7 @@ export function GestionGruposVisualizacion() {
                         </div>
                         {pendingAdd?.userId === u.id ? (
                           <button onClick={() => setPendingAdd(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors flex-shrink-0">
-                            <X className="w-3.5 h-3.5 text-neutral-400" />
+                            <X className="w-3.5 h-3.5 text-neutral-500" />
                           </button>
                         ) : (
                           <button onClick={() => setPendingAdd({ userId: u.id, rol: 'ejecutivo' })} className="p-1.5 rounded-lg hover:bg-green-100 transition-colors flex-shrink-0" title="Agregar al equipo">
@@ -1845,14 +1845,14 @@ export function GestionGruposVisualizacion() {
               ) : grupoOficinas.length === 0 ? (
                 <div className="text-center py-6">
                   <AlertTriangle className="w-8 h-8 mx-auto text-amber-400 mb-2" />
-                  <p className="text-sm text-neutral-400">Sin oficinas asignadas</p>
+                  <p className="text-sm text-neutral-500">Sin oficinas asignadas</p>
                   <p className="text-xs text-amber-600 mt-1">Este equipo no verá ningún trámite</p>
                 </div>
               ) : (
                 grupoOficinas.map(go => (
                   <div key={go.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl group hover:bg-neutral-100 transition-colors">
                     <div className="flex items-center gap-2">
-                      <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                      <Building2 className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                       <span className="text-sm font-medium text-neutral-800">{go.oficina_nombre}</span>
                     </div>
                     <button onClick={() => handleRemoverOficina(go.id, go.oficina_id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all" title="Quitar oficina">
@@ -1871,18 +1871,18 @@ export function GestionGruposVisualizacion() {
               </div>
               <div className="p-4 space-y-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                   <input type="text" placeholder="Buscar oficina..." value={searchOficina} onChange={e => setSearchOficina(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
                 </div>
                 <div className="max-h-72 overflow-y-auto space-y-1">
                   {oficinasDisponibles.length === 0 ? (
-                    <p className="text-sm text-neutral-400 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas las oficinas ya están asignadas'}</p>
+                    <p className="text-sm text-neutral-500 text-center py-4">{searchOficina ? 'Sin resultados' : 'Todas las oficinas ya están asignadas'}</p>
                   ) : (
                     oficinasDisponibles.map(o => (
                       <div key={o.id} className="flex items-center justify-between p-3 border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors">
                         <div className="flex items-center gap-2">
-                          <Building2 className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                          <Building2 className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                           <span className="text-sm font-medium text-neutral-800">{o.nombre}</span>
                         </div>
                         <button onClick={() => handleAgregarOficina(o.id)} className="p-1.5 rounded-lg hover:bg-teal-100 transition-colors flex-shrink-0" title="Asignar oficina">

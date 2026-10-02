@@ -300,8 +300,8 @@ export function EnvioManual() {
             onClick={() => setModoRedaccion(false)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition ${
               !modoRedaccion
-                ? 'bg-accent text-white'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'bg-accent text-accent-foreground'
+                : 'bg-neutral-100 text-neutral-700 hover:bg-slate-200'
             }`}
           >
             <Send className="w-4 h-4" />
@@ -311,8 +311,8 @@ export function EnvioManual() {
             onClick={() => setModoRedaccion(true)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition ${
               modoRedaccion
-                ? 'bg-accent text-white'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'bg-accent text-accent-foreground'
+                : 'bg-neutral-100 text-neutral-700 hover:bg-slate-200'
             }`}
           >
             <Edit className="w-4 h-4" />
@@ -323,7 +323,7 @@ export function EnvioManual() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">
             {(modoRedaccion || isGerente) ? 'Redactar Correo' : '1. Seleccionar Plantilla'}
           </h3>
 
@@ -332,7 +332,7 @@ export function EnvioManual() {
               <select
                 value={selectedPlantilla}
                 onChange={(e) => setSelectedPlantilla(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 mb-4"
               >
                 <option value="">-- Selecciona una plantilla --</option>
                 {plantillas.map((plantilla) => (
@@ -345,7 +345,7 @@ export function EnvioManual() {
               {selectedPlantilla && (
                 <>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
                       Asunto (opcional - deja vacío para usar el de la plantilla)
                     </label>
                     <input
@@ -353,13 +353,13 @@ export function EnvioManual() {
                       value={asuntoPersonalizado}
                       onChange={(e) => setAsuntoPersonalizado(e.target.value)}
                       placeholder={getPlantilla()?.asunto}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                     />
                   </div>
 
                   <button
                     onClick={() => setShowPreview(true)}
-                    className="flex items-center space-x-2 text-accent hover:text-primary-700 font-medium"
+                    className="flex items-center space-x-2 text-accent-ink hover:text-primary-700 font-medium"
                   >
                     <Eye className="w-5 h-5" />
                     <span>Vista previa de la plantilla</span>
@@ -370,31 +370,31 @@ export function EnvioManual() {
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Asunto *</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Asunto *</label>
                 <input
                   type="text"
                   value={asuntoPersonalizado}
                   onChange={(e) => setAsuntoPersonalizado(e.target.value)}
                   placeholder="Asunto del correo"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Cuerpo del mensaje *</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Cuerpo del mensaje *</label>
                 <textarea
                   value={cuerpoPersonalizado}
                   onChange={(e) => setCuerpoPersonalizado(e.target.value)}
                   rows={12}
                   placeholder="Escribe aquí el contenido del correo. Puedes usar HTML básico como <strong>, <em>, <p>, etc."
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 font-mono text-sm"
                 />
               </div>
 
               {cuerpoPersonalizado && (
                 <button
                   onClick={() => setShowPreview(true)}
-                  className="flex items-center space-x-2 text-accent hover:text-primary-700 font-medium"
+                  className="flex items-center space-x-2 text-accent-ink hover:text-primary-700 font-medium"
                 >
                   <Eye className="w-5 h-5" />
                   <span>Vista previa del correo</span>
@@ -406,12 +406,12 @@ export function EnvioManual() {
 
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-900">
+            <h3 className="text-lg font-semibold text-neutral-900">
               {modoRedaccion ? 'Seleccionar Destinatarios' : '2. Seleccionar Destinatarios'}
             </h3>
             <button
               onClick={handleSelectAll}
-              className="flex items-center space-x-2 text-sm text-accent hover:text-primary-700 font-medium"
+              className="flex items-center space-x-2 text-sm text-accent-ink hover:text-primary-700 font-medium"
             >
               <UserCheck className="w-4 h-4" />
               <span>{selectedUsuarios.length === filteredUsuarios.length ? 'Deseleccionar' : 'Seleccionar'} todos</span>
@@ -420,7 +420,7 @@ export function EnvioManual() {
 
           <div className="mb-4 space-y-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 <Filter className="w-4 h-4 inline mr-1" />
                 Buscar por nombre o email
               </label>
@@ -429,13 +429,13 @@ export function EnvioManual() {
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar..."
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
               />
             </div>
 
             {!isGerente && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Filtrar por oficina</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Filtrar por oficina</label>
                 <div className="flex flex-wrap gap-2">
                   {oficinas.map((oficina) => (
                     <button
@@ -443,8 +443,8 @@ export function EnvioManual() {
                       onClick={() => toggleOficina(oficina.id)}
                       className={`px-3 py-1 text-sm rounded-full transition ${
                         filtroOficinas.includes(oficina.id)
-                          ? 'bg-accent text-white'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          ? 'bg-accent text-accent-foreground'
+                          : 'bg-neutral-100 text-neutral-700 hover:bg-slate-200'
                       }`}
                     >
                       {oficina.nombre}
@@ -455,7 +455,7 @@ export function EnvioManual() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Filtrar por rol</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Filtrar por rol</label>
               <div className="flex flex-wrap gap-2">
                 {roles.map((rol) => (
                   <button
@@ -463,8 +463,8 @@ export function EnvioManual() {
                     onClick={() => toggleRol(rol)}
                     className={`px-3 py-1 text-sm rounded-full transition ${
                       filtroRoles.includes(rol)
-                        ? 'bg-accent text-white'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        ? 'bg-accent text-accent-foreground'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-slate-200'
                     }`}
                   >
                     {rol}
@@ -474,9 +474,9 @@ export function EnvioManual() {
             </div>
           </div>
 
-          <div className="border border-slate-300 rounded-lg max-h-96 overflow-y-auto">
+          <div className="border border-neutral-300 rounded-lg max-h-96 overflow-y-auto">
             {filteredUsuarios.length === 0 ? (
-              <div className="p-4 text-center text-slate-500">
+              <div className="p-4 text-center text-neutral-500">
                 No hay usuarios que coincidan con los filtros
               </div>
             ) : (
@@ -485,22 +485,22 @@ export function EnvioManual() {
                 return (
                   <label
                     key={usuario.id}
-                    className="flex items-center space-x-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-200 last:border-b-0"
+                    className="flex items-center space-x-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-neutral-200 last:border-b-0"
                   >
                     <input
                       type="checkbox"
                       checked={selectedUsuarios.includes(usuario.id)}
                       onChange={() => toggleUsuario(usuario.id)}
-                      className="w-4 h-4 text-accent rounded"
+                      className="w-4 h-4 text-accent-ink rounded"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">
+                      <p className="text-sm font-medium text-neutral-900 truncate">
                         {usuario.nombre} {usuario.apellidos}
                       </p>
-                      <div className="flex items-center space-x-2 text-xs text-slate-500">
+                      <div className="flex items-center space-x-2 text-xs text-neutral-500">
                         <span className="truncate">{email}</span>
                         <span>•</span>
-                        <span className="px-1.5 py-0.5 bg-slate-100 rounded">{usuario.rol}</span>
+                        <span className="px-1.5 py-0.5 bg-neutral-100 rounded">{usuario.rol}</span>
                         {!isGerente && (
                           <>
                             <span>•</span>
@@ -515,8 +515,8 @@ export function EnvioManual() {
             )}
           </div>
 
-          <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-            <p className="text-sm text-slate-600">
+          <div className="mt-4 p-3 bg-neutral-50 rounded-lg">
+            <p className="text-sm text-neutral-600">
               <strong>{selectedUsuarios.length}</strong> destinatario(s) seleccionado(s) de{' '}
               <strong>{filteredUsuarios.length}</strong> filtrado(s)
             </p>
@@ -533,7 +533,7 @@ export function EnvioManual() {
             (modoRedaccion && (!asuntoPersonalizado || !cuerpoPersonalizado)) ||
             sending
           }
-          className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-accent-foreground px-6 py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Send className="w-5 h-5" />
           <span>{sending ? 'Enviando...' : 'Enviar Correos'}</span>
@@ -541,25 +541,25 @@ export function EnvioManual() {
       </div>
 
       {showPreview && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-slate-900">Vista Previa</h2>
-              <button onClick={() => setShowPreview(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-card rounded-2xl shadow-e4 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 sticky top-0 bg-white">
+              <h2 className="text-xl font-bold text-neutral-900">Vista Previa</h2>
+              <button onClick={() => setShowPreview(false)} className="text-neutral-500 hover:text-slate-600">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <div className="p-6">
-              <div className="mb-4 p-4 bg-slate-50 rounded-lg">
-                <p className="text-sm text-slate-600">
+              <div className="mb-4 p-4 bg-neutral-50 rounded-lg">
+                <p className="text-sm text-neutral-600">
                   <strong>Asunto:</strong>{' '}
                   {modoRedaccion ? asuntoPersonalizado : asuntoPersonalizado || getPlantilla()?.asunto}
                 </p>
               </div>
 
               <div
-                className="border border-slate-200 rounded-lg p-6 bg-white"
+                className="border border-soft rounded-2xl p-6 bg-surface-card"
                 dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
               />
             </div>

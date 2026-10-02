@@ -84,7 +84,7 @@ function SectionShell({
   children: ReactNode;
 }) {
   return (
-    <div className="bg-white dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div className="bg-surface-card dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-card transition-shadow hover:shadow-card-hover">
       <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-neutral-100 dark:border-white/5">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-neutral-100 dark:bg-white/10 flex items-center justify-center text-neutral-600 dark:text-neutral-300">
@@ -96,7 +96,7 @@ function SectionShell({
         {onMore && (
           <button
             onClick={onMore}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent/80 dark:text-accent-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:underline"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-accent-ink hover:text-accent/80 dark:text-accent-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:underline"
           >
             <span>Ver más</span>
             <ArrowRight className="w-3 h-3" />
@@ -193,7 +193,7 @@ function ModuleVCards({
         <p className="text-sm font-semibold text-neutral-600 dark:text-white/70">
           No hay módulos disponibles en tu vista actual
         </p>
-        <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">
+        <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">
           La visibilidad se gestiona desde Control de Módulos.
         </p>
       </div>
@@ -255,7 +255,7 @@ function ModuleVCards({
 
 function FavoritosGrid({ onNavigate }: { onNavigate: (route: string) => void }) {
   return (
-    <div className="bg-white dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-sm">
+    <div className="bg-surface-card dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-card">
       <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-neutral-100 dark:border-white/5">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -265,7 +265,7 @@ function FavoritosGrid({ onNavigate }: { onNavigate: (route: string) => void }) 
             <h3 className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight leading-none">
               Mis Favoritos
             </h3>
-            <p className="text-[11px] text-neutral-400 dark:text-white/40 mt-0.5">Accesos rápidos y herramientas</p>
+            <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">Accesos rápidos y herramientas</p>
           </div>
         </div>
       </div>
@@ -280,7 +280,7 @@ function FavoritosGrid({ onNavigate }: { onNavigate: (route: string) => void }) 
               onClick={() => onNavigate(fav.route)}
               className="group p-3 rounded-xl border border-neutral-200/80 dark:border-white/10 bg-neutral-50/70 dark:bg-white/5 hover:bg-neutral-100 dark:hover:bg-white/10 active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer min-h-[64px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              <div className="w-7 h-7 rounded-lg bg-neutral-200/60 dark:bg-white/10 flex items-center justify-center text-[#164281] dark:text-sky-300 group-hover:scale-110 transition-transform">
+              <div className="w-7 h-7 rounded-lg bg-neutral-200/60 dark:bg-white/10 flex items-center justify-center text-accent-ink dark:text-sky-300 group-hover:scale-110 transition-transform">
                 <Icon className="w-4 h-4" />
               </div>
               <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200 group-hover:text-neutral-900 dark:group-hover:text-white tracking-tight leading-tight line-clamp-1">
@@ -357,7 +357,7 @@ function JoinBetaCard({ usuario }: { usuario: Usuario }) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-2xl">🚀</span>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider bg-[#FFD166] text-[#5A3300] px-2 py-0.5 rounded-full shadow-sm">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider bg-[#FFD166] text-[#5A3300] px-2 py-0.5 rounded-full shadow-sm">
                 Novedad
               </span>
             </div>
@@ -425,7 +425,7 @@ function AvisosPanel({ onNavigate }: { onNavigate: (route: string) => void }) {
       icon={Bell}
       badge={
         Array.isArray(avisos) && avisos.length > 0 ? (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-300">
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-300">
             {avisos.length}
           </span>
         ) : undefined
@@ -447,7 +447,7 @@ function AvisosPanel({ onNavigate }: { onNavigate: (route: string) => void }) {
       )}
 
       {Array.isArray(avisos) && avisos.length === 0 && (
-        <div className="py-6 text-center text-neutral-400 dark:text-white/40">
+        <div className="py-6 text-center text-neutral-500 dark:text-white/55">
           <p className="text-xs font-medium">Sin avisos recientes</p>
         </div>
       )}
@@ -469,7 +469,7 @@ function AvisosPanel({ onNavigate }: { onNavigate: (route: string) => void }) {
                 <p className="text-xs font-semibold text-neutral-800 dark:text-white/90 truncate group-hover:text-accent transition-colors">
                   {aviso.titulo}
                 </p>
-                <p className="text-[10px] text-neutral-400 dark:text-white/40 mt-0.5">
+                <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">
                   {aviso.fecha_publicacion ? getRelativeTime(aviso.fecha_publicacion) : ''}
                 </p>
               </div>
@@ -557,7 +557,7 @@ export default function Dashboard() {
               <h2 className="text-sm font-bold text-neutral-800 dark:text-white/90 uppercase tracking-wider text-[11px]">
                 Módulos Principales
               </h2>
-              <span className="text-xs text-neutral-400 dark:text-white/40">
+              <span className="text-xs text-neutral-500 dark:text-white/55">
                 {enabledVcards.length} disponible{enabledVcards.length !== 1 ? 's' : ''}
               </span>
             </div>

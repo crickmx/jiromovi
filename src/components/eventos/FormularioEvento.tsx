@@ -101,16 +101,16 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-scale-in">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+        <div className="sticky top-0 bg-surface-card border-b border-soft px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <h2 className="text-2xl font-bold text-neutral-800">
             {evento ? 'Editar Evento' : 'Crear Nuevo Evento'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition"
+            className="p-2 text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -120,7 +120,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
           {/* Información del Evento */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-accent" />
+              <FileText className="w-5 h-5 text-accent-ink" />
               Información del Evento
             </h3>
 
@@ -168,7 +168,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                 Ponente / Instructor *
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
                 <input
                   type="text"
                   value={formData.ponente}
@@ -192,7 +192,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                   Fecha *
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
                   <input
                     type="date"
                     value={formData.fecha}
@@ -213,7 +213,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                   Hora *
                 </label>
                 <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
                   <input
                     type="time"
                     value={formData.hora}
@@ -235,7 +235,7 @@ export function FormularioEvento({ evento, permisosIniciales, onSubmit, onClose 
                 Link de la Sesión *
               </label>
               <div className="relative">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
                 <input
                   type="url"
                   value={formData.link_sesion}

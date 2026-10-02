@@ -109,7 +109,7 @@ export default function DiagnosticoWebhook() {
           <button
             onClick={registerWebhook}
             disabled={registeringWebhook}
-            className="shrink-0 px-4 py-2 text-xs font-medium bg-white border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 disabled:opacity-50 flex items-center gap-1.5"
+            className="shrink-0 px-4 py-2 text-xs font-medium bg-surface-card border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 disabled:opacity-50 flex items-center gap-1.5"
           >
             {registeringWebhook ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Webhook className="w-3.5 h-3.5" />}
             {registeringWebhook ? 'Registrando...' : 'Registrar / Verificar'}
@@ -119,7 +119,7 @@ export default function DiagnosticoWebhook() {
         {/* Stats grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
-            { label: 'Mensajes inbound (DB)', value: msgStats.inbound, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: 'Mensajes inbound (DB)', value: msgStats.inbound, color: 'text-accent-ink', bg: 'bg-blue-50' },
             { label: 'Mensajes outbound (DB)', value: msgStats.outbound, color: 'text-teal-600', bg: 'bg-teal-50' },
             { label: 'Webhooks recibidos', value: logs.length, color: 'text-neutral-700', bg: 'bg-neutral-50' },
             { label: 'Msgs en webhooks', value: totalMsgs, color: 'text-neutral-700', bg: 'bg-neutral-50' },
@@ -127,7 +127,7 @@ export default function DiagnosticoWebhook() {
             { label: 'Errores webhook', value: totalErrors, color: totalErrors > 0 ? 'text-red-600' : 'text-emerald-600', bg: totalErrors > 0 ? 'bg-red-50' : 'bg-emerald-50' },
           ].map(s => (
             <div key={s.label} className={`rounded-xl border border-neutral-100 ${s.bg} p-3`}>
-              <p className="text-[10px] text-neutral-500 mb-1 leading-tight">{s.label}</p>
+              <p className="text-[11px] text-neutral-500 mb-1 leading-tight">{s.label}</p>
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
             </div>
           ))}
@@ -143,16 +143,16 @@ export default function DiagnosticoWebhook() {
               </span>
             </div>
             <p className={`text-2xl font-bold ${noConstraintErrors ? 'text-emerald-600' : 'text-red-600'}`}>{msgStats.constraintErrors}</p>
-            <p className="text-[10px] text-neutral-500 mt-0.5">{noConstraintErrors ? 'Sin errores (constraint OK)' : 'Mensajes bloqueados por constraint'}</p>
+            <p className="text-[11px] text-neutral-500 mt-0.5">{noConstraintErrors ? 'Sin errores (constraint OK)' : 'Mensajes bloqueados por constraint'}</p>
           </div>
 
           <div className="rounded-xl border bg-neutral-50 border-neutral-200 p-3">
             <div className="flex items-center gap-1.5 mb-1">
-              <AlertCircle className="w-4 h-4 text-neutral-400" />
+              <AlertCircle className="w-4 h-4 text-neutral-500" />
               <span className="text-xs font-semibold text-neutral-600">Duplicados ignorados</span>
             </div>
             <p className="text-2xl font-bold text-neutral-600">{msgStats.duplicates}</p>
-            <p className="text-[10px] text-neutral-500 mt-0.5">Ecos ya existentes</p>
+            <p className="text-[11px] text-neutral-500 mt-0.5">Ecos ya existentes</p>
           </div>
 
           <div className={`rounded-xl border p-3 ${msgStats.insertErrors > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
@@ -163,22 +163,22 @@ export default function DiagnosticoWebhook() {
               </span>
             </div>
             <p className={`text-2xl font-bold ${msgStats.insertErrors > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{msgStats.insertErrors}</p>
-            <p className="text-[10px] text-neutral-500 mt-0.5">{msgStats.insertErrors > 0 ? 'Revisa detalle del log' : 'Todas las inserciones OK'}</p>
+            <p className="text-[11px] text-neutral-500 mt-0.5">{msgStats.insertErrors > 0 ? 'Revisa detalle del log' : 'Todas las inserciones OK'}</p>
           </div>
         </div>
 
         {/* Key timestamps */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="bg-white rounded-xl border border-neutral-200 p-3">
-            <p className="text-[10px] text-neutral-400 mb-1 uppercase tracking-wide">Ultimo webhook con mensaje</p>
+          <div className="bg-surface-card rounded-2xl border border-soft p-3">
+            <p className="text-[11px] text-neutral-500 mb-1 uppercase tracking-wide">Ultimo webhook con mensaje</p>
             <p className="font-medium text-neutral-700">{lastInboundLog ? new Date(lastInboundLog.received_at).toLocaleString('es-MX') : '—'}</p>
           </div>
-          <div className="bg-white rounded-xl border border-neutral-200 p-3">
-            <p className="text-[10px] text-neutral-400 mb-1 uppercase tracking-wide">Ultimo inbound insertado</p>
+          <div className="bg-surface-card rounded-2xl border border-soft p-3">
+            <p className="text-[11px] text-neutral-500 mb-1 uppercase tracking-wide">Ultimo inbound insertado</p>
             <p className="font-medium text-neutral-700">{lastInsertedInbound ? new Date(lastInsertedInbound.received_at).toLocaleString('es-MX') : '—'}</p>
           </div>
           <div className={`rounded-xl border p-3 ${lastConstraintError ? 'bg-red-50 border-red-100' : 'bg-white border-neutral-200'}`}>
-            <p className="text-[10px] text-neutral-400 mb-1 uppercase tracking-wide">Ultimo error de constraint</p>
+            <p className="text-[11px] text-neutral-500 mb-1 uppercase tracking-wide">Ultimo error de constraint</p>
             <p className={`font-medium ${lastConstraintError ? 'text-red-600' : 'text-emerald-600'}`}>
               {lastConstraintError ? new Date(lastConstraintError.received_at).toLocaleString('es-MX') : 'Ninguno'}
             </p>
@@ -186,7 +186,7 @@ export default function DiagnosticoWebhook() {
         </div>
 
         {/* Log Table */}
-        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+        <div className="bg-surface-card rounded-xl border border-soft overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
             <h3 className="font-semibold text-neutral-800 text-sm">Eventos de Webhook (ultimos 50)</h3>
             <button
@@ -200,12 +200,12 @@ export default function DiagnosticoWebhook() {
           </div>
 
           {loading ? (
-            <div className="p-8 text-center text-neutral-400 text-sm">Cargando logs...</div>
+            <div className="p-8 text-center text-neutral-500 text-sm">Cargando logs...</div>
           ) : logs.length === 0 ? (
             <div className="p-8 text-center">
               <AlertCircle className="w-10 h-10 text-neutral-300 mx-auto mb-2" />
               <p className="text-neutral-500 text-sm">No hay registros de webhook todavia.</p>
-              <p className="text-neutral-400 text-xs mt-1">Los eventos de Wazzup aparecen aqui cuando se reciben.</p>
+              <p className="text-neutral-500 text-xs mt-1">Los eventos de Wazzup aparecen aqui cuando se reciben.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -252,13 +252,13 @@ export default function DiagnosticoWebhook() {
                             : insertedOk
                             ? <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="w-3 h-3" /> Insertado</span>
                             : hasDuplicate
-                            ? <span className="flex items-center gap-1 text-neutral-400"><AlertCircle className="w-3 h-3" /> Duplicado</span>
-                            : <span className="flex items-center gap-1 text-neutral-400"><CheckCircle2 className="w-3 h-3" /> OK</span>}
+                            ? <span className="flex items-center gap-1 text-neutral-500"><AlertCircle className="w-3 h-3" /> Duplicado</span>
+                            : <span className="flex items-center gap-1 text-neutral-500"><CheckCircle2 className="w-3 h-3" /> OK</span>}
                         </td>
                         <td className="px-4 py-2.5">
                           <button
                             onClick={() => setSelectedLog(selectedLog?.id === log.id ? null : log)}
-                            className="text-accent hover:underline"
+                            className="text-accent-ink hover:underline"
                           >
                             {selectedLog?.id === log.id ? 'Ocultar' : 'Detalle'}
                           </button>
@@ -274,7 +274,7 @@ export default function DiagnosticoWebhook() {
           {selectedLog && (
             <div className="border-t border-neutral-100 p-4 bg-neutral-50">
               <p className="font-medium text-xs text-neutral-700 mb-2">Logs de procesamiento:</p>
-              <pre className="text-xs text-neutral-600 bg-white border border-neutral-200 rounded p-3 overflow-x-auto whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+              <pre className="text-xs text-neutral-600 bg-surface-card border border-soft rounded p-3 overflow-x-auto whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
                 {selectedLog.processing_logs?.join('\n') || '(sin logs)'}
               </pre>
               {selectedLog.error && (

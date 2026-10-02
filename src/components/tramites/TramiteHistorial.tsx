@@ -214,10 +214,10 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
           <div className="space-y-6">
             {historialFiltrado.map((item, index) => (
               <div key={item.id} className="relative flex items-start space-x-4 ml-2">
-                <div className="flex-shrink-0 w-8 h-8 bg-white border-2 border-accent rounded-full flex items-center justify-center z-10">
-                  <Clock className="w-4 h-4 text-accent" />
+                <div className="flex-shrink-0 w-8 h-8 bg-surface-card border-2 border-accent rounded-full flex items-center justify-center z-10">
+                  <Clock className="w-4 h-4 text-accent-ink" />
                 </div>
-                <div className="flex-1 bg-white border border-neutral-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <div className="flex-1 bg-surface-card border border-soft rounded-2xl p-4 hover:shadow-card-hover transition-shadow">
                   <div className="flex items-start justify-between mb-2">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getAccionColor(item.tipo_accion, item.accion)}`}>
                       {item.accion}
@@ -248,7 +248,7 @@ export function TramiteHistorial({ tramiteId }: TramiteHistorialProps) {
                             return (
                               <div key={key} className="space-y-1">
                                 <span className="font-medium capitalize block">{key.replace(/_/g, ' ')}:</span>
-                                <pre className="ml-3 text-xs bg-white p-2 rounded border border-neutral-200 overflow-x-auto">
+                                <pre className="ml-3 text-xs bg-surface-card p-2 rounded border border-soft overflow-x-auto">
                                   {JSON.stringify(value, null, 2)}
                                 </pre>
                               </div>

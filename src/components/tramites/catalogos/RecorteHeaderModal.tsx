@@ -128,7 +128,7 @@ export function RecorteHeaderModal({ file, onCancel, onListo }: Props) {
       </div>
 
       <div className="flex items-center gap-2 mt-3">
-        <Move className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+        <Move className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
         <span className="text-[11px] text-neutral-500 shrink-0">Zoom</span>
         <input
           type="range" min={1} max={ZOOM_MAX} step={0.05} value={zoom}
@@ -136,7 +136,7 @@ export function RecorteHeaderModal({ file, onCancel, onListo }: Props) {
           className="flex-1"
         />
       </div>
-      <p className="text-[10px] text-neutral-400 mt-1">
+      <p className="text-[11px] text-neutral-500 mt-1">
         Arrastra para elegir qué parte se ve. Se guarda a {MEDIDA_SUGERIDA} con el velo oscuro encima.
       </p>
 
@@ -145,7 +145,7 @@ export function RecorteHeaderModal({ file, onCancel, onListo }: Props) {
         <button
           onClick={aplicar}
           disabled={procesando}
-          className="px-3 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="px-3 py-1.5 text-sm font-semibold bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover disabled:opacity-50"
         >
           {procesando ? 'Procesando…' : 'Usar esta imagen'}
         </button>
@@ -160,8 +160,8 @@ function Marco({ children, onCancel }: { children: React.ReactNode; onCancel: ()
   // con transform vuelve a `position: fixed` relativo a ÉL. Sin esto el modal
   // salía encajonado dentro del panel en vez de cubrir la pantalla.
   return createPortal(
-    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={onCancel}>
-      <div className="bg-white rounded-2xl p-4 w-full max-w-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-surface-card rounded-2xl p-4 w-full max-w-lg shadow-e4 animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-neutral-800">Encuadrar la imagen del encabezado</p>
           <button onClick={onCancel} className="p-1 hover:bg-neutral-100 rounded" aria-label="Cerrar">

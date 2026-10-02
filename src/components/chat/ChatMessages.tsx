@@ -450,7 +450,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo, onBack }: ChatMess
                   <div
                     className={`rounded-2xl px-4 py-2 ${
                       isMine
-                        ? 'bg-accent text-white [&_*]:text-white'
+                        ? 'bg-accent text-accent-foreground [&_*]:text-white'
                         : 'bg-white text-neutral-900 border border-neutral-200'
                     }`}
                   >
@@ -497,7 +497,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo, onBack }: ChatMess
                                 onClick={() => handleDownloadFile(message.archivo_url, message.archivo_nombre)}
                                 className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${
                                   isMine
-                                    ? 'bg-accent hover:bg-primary-400 text-white'
+                                    ? 'bg-accent hover:bg-primary-400 text-accent-foreground'
                                     : 'bg-neutral-100 hover:bg-neutral-200'
                                 }`}
                               >
@@ -545,7 +545,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo, onBack }: ChatMess
         {selectedFile && (
           <div className="mb-3 p-3 bg-primary-50 border border-primary-200 rounded-lg flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="text-accent">
+              <div className="text-accent-ink">
                 {getFileIcon(selectedFile.type)}
               </div>
               <div>
@@ -558,7 +558,7 @@ export function ChatMessages({ chat, getChatName, onShowInfo, onBack }: ChatMess
               className="p-1 hover:bg-primary-100 rounded transition-colors"
               title="Remover archivo"
             >
-              <span className="text-accent text-xl leading-none">&times;</span>
+              <span className="text-accent-ink text-xl leading-none">&times;</span>
             </button>
           </div>
         )}
@@ -586,12 +586,12 @@ export function ChatMessages({ chat, getChatName, onShowInfo, onBack }: ChatMess
             placeholder="Escribe un mensaje..."
             rows={1}
             disabled={uploading}
-            className="flex-1 px-4 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50"
+            className="flex-1 px-4 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none disabled:opacity-50"
           />
           <button
             onClick={selectedFile ? handleSendWithFile : handleSend}
             disabled={(!newMessage.trim() && !selectedFile) || uploading}
-            className="p-2 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {uploading ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

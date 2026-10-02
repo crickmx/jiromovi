@@ -154,7 +154,7 @@ export function AsignacionPorTramite() {
   };
 
   if (loading) {
-    return <div className="h-40 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-neutral-400" /></div>;
+    return <div className="h-40 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-neutral-500" /></div>;
   }
 
   const byGrupo = overrides.reduce<Record<string, Override[]>>((acc, o) => {
@@ -175,7 +175,7 @@ export function AsignacionPorTramite() {
           <button
             onClick={handleAgregar}
             disabled={saving || !formAgenteId || !formTipoId || !formGrupoId}
-            className="px-3 py-1 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-semibold rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {saving ? 'Guardando…' : 'Agregar'}
           </button>
@@ -251,17 +251,17 @@ export function AsignacionPorTramite() {
                 <div className="flex items-center gap-3 px-5 py-3 bg-neutral-50 border-b border-neutral-100">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: first.grupo_color }} />
                   <span className="text-sm font-bold text-neutral-800">{first.grupo_nombre}</span>
-                  <span className="ml-auto text-xs text-neutral-400">{overridesGrupo.length} override{overridesGrupo.length !== 1 ? 's' : ''}</span>
+                  <span className="ml-auto text-xs text-neutral-500">{overridesGrupo.length} override{overridesGrupo.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="divide-y divide-neutral-100">
                   {overridesGrupo.map(o => (
                     <div key={o.id} className="group flex items-center gap-3 px-5 py-3">
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-neutral-800">{o.usuario_nombre}</span>
-                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{o.tipo_label}</span>
+                        <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-accent-ink font-medium">{o.tipo_label}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />
+                        <ArrowRight className="w-3.5 h-3.5 text-neutral-500" />
                         <select
                           value={o.ejecutivo_id ?? ''}
                           disabled={savingEjecutivoId === o.id}
@@ -273,7 +273,7 @@ export function AsignacionPorTramite() {
                             <option key={m.id} value={m.id}>{m.nombre_completo}</option>
                           ))}
                         </select>
-                        {savingEjecutivoId === o.id && <Loader2 className="w-3 h-3 animate-spin text-neutral-400" />}
+                        {savingEjecutivoId === o.id && <Loader2 className="w-3 h-3 animate-spin text-neutral-500" />}
                       </div>
                       <button onClick={() => handleQuitar(o.id)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-all flex-shrink-0">
                         <X className="w-4 h-4 text-red-600" />

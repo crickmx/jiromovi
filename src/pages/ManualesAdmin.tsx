@@ -476,12 +476,12 @@ export default function ManualesAdmin() {
 
       {/* Manual Form */}
       {showForm && (
-        <div className="bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+        <div className="bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-neutral-800 dark:text-white">
               {isCreating ? 'Nuevo Manual' : `Editando: ${editingManual?.title}`}
             </h3>
-            <button onClick={cancelEdit} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+            <button onClick={cancelEdit} className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -496,7 +496,7 @@ export default function ManualesAdmin() {
                   const title = e.target.value;
                   setForm(f => ({ ...f, title, slug: isCreating ? generateSlug(title) : f.slug }));
                 }}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>
             <div>
@@ -505,7 +505,7 @@ export default function ManualesAdmin() {
                 type="text"
                 value={form.slug}
                 onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>
             <div className="md:col-span-2">
@@ -514,7 +514,7 @@ export default function ManualesAdmin() {
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 rows={2}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>
             <div>
@@ -523,7 +523,7 @@ export default function ManualesAdmin() {
                 type="text"
                 value={form.category}
                 onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>
             <div>
@@ -531,7 +531,7 @@ export default function ManualesAdmin() {
               <select
                 value={form.status}
                 onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               >
                 <option value="draft">Borrador</option>
                 <option value="active">Activo</option>
@@ -548,14 +548,14 @@ export default function ManualesAdmin() {
             <div className="p-4 border border-dashed border-neutral-300 dark:border-white/20 rounded-xl bg-neutral-50/50 dark:bg-white/3">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${form.html_path ? 'bg-green-100 dark:bg-green-900/30' : 'bg-neutral-100 dark:bg-white/10'}`}>
-                  {form.html_path ? <CheckCircle className="w-5 h-5 text-green-600" /> : <FileText className="w-5 h-5 text-neutral-400" />}
+                  {form.html_path ? <CheckCircle className="w-5 h-5 text-green-600" /> : <FileText className="w-5 h-5 text-neutral-500" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700 dark:text-white/70">Documento HTML</p>
                   {form.html_path ? (
                     <p className="text-xs text-green-600 dark:text-green-400 truncate">{getFileName(form.html_path)}</p>
                   ) : (
-                    <p className="text-xs text-neutral-400 dark:text-white/40">Sube el archivo HTML del manual</p>
+                    <p className="text-xs text-neutral-500 dark:text-white/55">Sube el archivo HTML del manual</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -601,17 +601,17 @@ export default function ManualesAdmin() {
                   {form.cover_image ? (
                     <img src={form.cover_image} alt="Cover" className="w-10 h-10 object-cover rounded-lg" />
                   ) : (
-                    <ImageIcon className="w-5 h-5 text-neutral-400" />
+                    <ImageIcon className="w-5 h-5 text-neutral-500" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700 dark:text-white/70">Imagen de Portada</p>
                   {generandoMiniatura ? (
-                    <p className="text-xs text-accent">Generando miniatura automática del HTML…</p>
+                    <p className="text-xs text-accent-ink">Generando miniatura automática del HTML…</p>
                   ) : form.cover_image ? (
                     <p className="text-xs text-green-600 dark:text-green-400 truncate">{getFileName(form.cover_image)}</p>
                   ) : (
-                    <p className="text-xs text-neutral-400 dark:text-white/40">Se genera sola al subir el HTML, o sube la tuya</p>
+                    <p className="text-xs text-neutral-500 dark:text-white/55">Se genera sola al subir el HTML, o sube la tuya</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -628,7 +628,7 @@ export default function ManualesAdmin() {
                       onClick={generarMiniaturaParaManualExistente}
                       disabled={generandoMiniatura}
                       title="Genera la miniatura a partir del HTML ya subido"
-                      className="px-2 py-1.5 text-xs font-medium text-accent hover:bg-accent/10 rounded-md transition-colors disabled:opacity-50"
+                      className="px-2 py-1.5 text-xs font-medium text-accent-ink hover:bg-accent/10 rounded-md transition-colors disabled:opacity-50"
                     >
                       {generandoMiniatura ? '...' : 'Generar miniatura'}
                     </button>
@@ -669,7 +669,7 @@ export default function ManualesAdmin() {
                 type="number"
                 value={form.total_pages}
                 onChange={e => setForm(f => ({ ...f, total_pages: parseInt(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>
             <div>
@@ -678,7 +678,7 @@ export default function ManualesAdmin() {
                 type="number"
                 value={form.sort_order}
                 onChange={e => setForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>
             <div>
@@ -686,7 +686,7 @@ export default function ManualesAdmin() {
               <select
                 value={form.visibility}
                 onChange={e => setForm(f => ({ ...f, visibility: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               >
                 <option value="all">Todos</option>
                 <option value="admin">Solo Admin</option>
@@ -712,18 +712,18 @@ export default function ManualesAdmin() {
 
       {/* Chapters Manager */}
       {managingChaptersFor && (
-        <div className="bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+        <div className="bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold text-neutral-800 dark:text-white flex items-center gap-2">
                 <List className="w-4 h-4" />
                 Indice de: {managingChaptersFor.title}
               </h3>
-              <p className="text-xs text-neutral-400 dark:text-white/40 mt-0.5">
+              <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">
                 Define los capitulos que apareceran en la barra lateral de navegacion
               </p>
             </div>
-            <button onClick={() => setManagingChaptersFor(null)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+            <button onClick={() => setManagingChaptersFor(null)} className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -738,7 +738,7 @@ export default function ManualesAdmin() {
                 onChange={e => setNewChapterTitle(e.target.value)}
                 placeholder="Ej: Cap 01 - Introduccion"
                 onKeyDown={e => e.key === 'Enter' && addChapter()}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>
             <div className="w-24">
@@ -748,7 +748,7 @@ export default function ManualesAdmin() {
                 value={newChapterPage}
                 onChange={e => setNewChapterPage(parseInt(e.target.value) || 1)}
                 min={1}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-3 py-2 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>
             <button
@@ -763,7 +763,7 @@ export default function ManualesAdmin() {
 
           {/* Chapters list */}
           {chapters.length === 0 ? (
-            <p className="text-sm text-neutral-400 dark:text-white/40 text-center py-6">
+            <p className="text-sm text-neutral-500 dark:text-white/55 text-center py-6">
               No hay capitulos definidos. Agrega el primer capitulo arriba.
             </p>
           ) : (
@@ -774,11 +774,11 @@ export default function ManualesAdmin() {
                   className="flex items-center gap-3 px-3 py-2.5 bg-neutral-50 dark:bg-white/3 rounded-xl group"
                 >
                   <GripVertical className="w-4 h-4 text-neutral-300 dark:text-white/20 flex-shrink-0" />
-                  <span className="w-6 h-6 rounded-md bg-neutral-200 dark:bg-white/10 flex items-center justify-center text-[10px] font-bold text-neutral-500 dark:text-white/40 flex-shrink-0">
+                  <span className="w-6 h-6 rounded-md bg-neutral-200 dark:bg-white/10 flex items-center justify-center text-[11px] font-bold text-neutral-500 dark:text-white/55 flex-shrink-0">
                     {String(index + 1).padStart(2, '0')}
                   </span>
                   <span className="text-sm text-neutral-700 dark:text-white/70 flex-1">{chapter.title}</span>
-                  <span className="text-[11px] text-neutral-400 dark:text-white/30 mr-2">Pag. {chapter.page_number}</span>
+                  <span className="text-[11px] text-neutral-500 dark:text-white/45 mr-2">Pag. {chapter.page_number}</span>
                   <button
                     onClick={() => deleteChapter(chapter.id)}
                     className="p-1 rounded-md text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
@@ -793,11 +793,11 @@ export default function ManualesAdmin() {
       )}
 
       {/* Manuals Table */}
-      <div className="bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl overflow-hidden">
+      <div className="bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-neutral-400">Cargando...</div>
+          <div className="p-8 text-center text-neutral-500">Cargando...</div>
         ) : manuals.length === 0 ? (
-          <div className="p-8 text-center text-neutral-400">No hay manuales registrados</div>
+          <div className="p-8 text-center text-neutral-500">No hay manuales registrados</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -815,24 +815,24 @@ export default function ManualesAdmin() {
               <tbody>
                 {manuals.map(manual => (
                   <tr key={manual.id} className="border-b border-neutral-50 dark:border-white/5 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-white/3 transition-colors">
-                    <td className="px-4 py-3 text-neutral-400">{manual.sort_order}</td>
+                    <td className="px-4 py-3 text-neutral-500">{manual.sort_order}</td>
                     <td className="px-4 py-3">
                       <div>
                         <p className="font-medium text-neutral-800 dark:text-white">{manual.title}</p>
-                        <p className="text-xs text-neutral-400 dark:text-white/40">/{manual.slug}</p>
+                        <p className="text-xs text-neutral-500 dark:text-white/55">/{manual.slug}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-neutral-600 dark:text-white/60 hidden md:table-cell">{manual.category}</td>
                     <td className="px-4 py-3 hidden lg:table-cell">
                       <div className="flex items-center gap-1.5">
                         {manual.html_path && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded text-[10px] font-medium">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-accent-ink dark:text-blue-300 rounded text-[11px] font-medium">
                             <FileText className="w-3 h-3" />
                             HTML
                           </span>
                         )}
                         {manual.cover_image && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 rounded text-[10px] font-medium">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 rounded text-[11px] font-medium">
                             <ImageIcon className="w-3 h-3" />
                             IMG
                           </span>
@@ -842,13 +842,13 @@ export default function ManualesAdmin() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-neutral-400 hidden lg:table-cell">{manual.total_pages || '-'}</td>
+                    <td className="px-4 py-3 text-neutral-500 hidden lg:table-cell">{manual.total_pages || '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                         manual.status === 'active'
                           ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                           : manual.status === 'archived'
-                          ? 'bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-white/40'
+                          ? 'bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-white/55'
                           : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                       }`}>
                         {manual.status === 'active' ? 'Activo' : manual.status === 'archived' ? 'Archivado' : 'Borrador'}
@@ -859,28 +859,28 @@ export default function ManualesAdmin() {
                         <button
                           onClick={() => openChaptersManager(manual)}
                           title="Gestionar indice"
-                          className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          className="p-1.5 rounded-lg text-neutral-500 hover:text-accent-ink hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                         >
                           <List className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => toggleStatus(manual)}
                           title={manual.status === 'active' ? 'Desactivar' : 'Activar'}
-                          className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+                          className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
                         >
                           {manual.status === 'active' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                         <button
                           onClick={() => startEdit(manual)}
                           title="Editar"
-                          className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          className="p-1.5 rounded-lg text-neutral-500 hover:text-accent-ink hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(manual.id)}
                           title="Eliminar"
-                          className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          className="p-1.5 rounded-lg text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

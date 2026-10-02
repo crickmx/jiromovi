@@ -22,13 +22,13 @@ interface BulkImportJob {
 }
 
 const ESTADO_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  parsing: { label: 'Analizando', color: 'text-blue-600 bg-blue-50 border-blue-100', icon: RefreshCw },
+  parsing: { label: 'Analizando', color: 'text-accent-ink bg-blue-50 border-blue-100', icon: RefreshCw },
   pending: { label: 'Pendiente', color: 'text-amber-600 bg-amber-50 border-amber-100', icon: Clock },
-  downloading: { label: 'Descargando', color: 'text-blue-600 bg-blue-50 border-blue-100', icon: Download },
+  downloading: { label: 'Descargando', color: 'text-accent-ink bg-blue-50 border-blue-100', icon: Download },
   indexing: { label: 'Indexando', color: 'text-emerald-600 bg-emerald-50 border-emerald-100', icon: Brain },
   completed: { label: 'Completado', color: 'text-green-700 bg-green-50 border-green-100', icon: CheckCircle },
   error: { label: 'Error', color: 'text-red-600 bg-red-50 border-red-100', icon: AlertCircle },
-  cancelled: { label: 'Cancelado', color: 'text-gray-500 bg-gray-50 border-gray-100', icon: AlertCircle },
+  cancelled: { label: 'Cancelado', color: 'text-neutral-500 bg-neutral-50 border-neutral-100', icon: AlertCircle },
 };
 
 function formatDate(iso: string | null) {
@@ -47,10 +47,10 @@ function StatusBadge({ estado }: { estado: string }) {
   );
 }
 
-function ProgressBar({ value, total, color = 'bg-blue-500' }: { value: number; total: number; color?: string }) {
+function ProgressBar({ value, total, color = 'bg-accent' }: { value: number; total: number; color?: string }) {
   const pct = total > 0 ? Math.min(100, (value / total) * 100) : 0;
   return (
-    <div className="w-full bg-gray-100 rounded-full h-1.5">
+    <div className="w-full bg-neutral-100 rounded-full h-1.5">
       <div className={`${color} h-1.5 rounded-full transition-all`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -82,20 +82,20 @@ function JobRow({ job, onResume }: JobRowProps) {
   }
 
   return (
-    <div className="border border-gray-100 rounded-xl overflow-hidden">
+    <div className="border border-neutral-100 rounded-xl overflow-hidden">
       <div
         className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
         onClick={() => setExpanded(v => !v)}
       >
-        <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-          <FileText className="w-4 h-4 text-slate-600" />
+        <div className="w-9 h-9 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+          <FileText className="w-4 h-4 text-neutral-600" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-gray-900 truncate">{job.titulo}</p>
+            <p className="text-sm font-semibold text-neutral-900 truncate">{job.titulo}</p>
             <StatusBadge estado={job.estado} />
           </div>
-          <p className="text-xs text-gray-500 mt-0.5 truncate">
+          <p className="text-xs text-neutral-500 mt-0.5 truncate">
             {job.archivo_html_nombre || 'sin archivo'} · {formatDate(job.created_at)}
           </p>
         </div>
@@ -105,9 +105,9 @@ function JobRow({ job, onResume }: JobRowProps) {
               <ProgressBar
                 value={job.estado === 'indexing' || job.estado === 'completed' ? indexed : downloaded}
                 total={total}
-                color={job.estado === 'completed' ? 'bg-green-500' : 'bg-blue-500'}
+                color={job.estado === 'completed' ? 'bg-green-500' : 'bg-accent'}
               />
-              <p className="text-xs text-gray-400 mt-0.5 text-right">
+              <p className="text-xs text-neutral-500 mt-0.5 text-right">
                 {job.estado === 'completed' ? indexed : downloaded}/{total}
               </p>
             </div>
@@ -125,41 +125,41 @@ function JobRow({ job, onResume }: JobRowProps) {
               }
             </Button>
           )}
-          {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          {expanded ? <ChevronUp className="w-4 h-4 text-neutral-500" /> : <ChevronDown className="w-4 h-4 text-neutral-500" />}
         </div>
       </div>
 
       {expanded && (
-        <div className="border-t border-gray-50 bg-gray-50 px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="border-t border-neutral-50 bg-neutral-50 px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           {[
-            { label: 'Descargables', value: total, color: 'text-blue-600' },
+            { label: 'Descargables', value: total, color: 'text-accent-ink' },
             { label: 'Descargados', value: downloaded, color: 'text-green-600' },
             { label: 'Indexados', value: indexed, color: 'text-emerald-600' },
             { label: 'Duplicados', value: job.total_duplicados || 0, color: 'text-amber-600' },
             { label: 'Errores', value: job.total_errores || 0, color: 'text-red-500' },
-            { label: 'Total enlaces', value: job.total_links_encontrados || 0, color: 'text-gray-600' },
+            { label: 'Total enlaces', value: job.total_links_encontrados || 0, color: 'text-neutral-600' },
           ].map(({ label, value, color }) => (
             <div key={label}>
-              <p className="text-gray-400">{label}</p>
+              <p className="text-neutral-500">{label}</p>
               <p className={`font-semibold text-sm ${color}`}>{value}</p>
             </div>
           ))}
           {job.carpeta_destino && (
             <div className="col-span-2">
-              <p className="text-gray-400">Carpeta destino</p>
-              <p className="font-medium text-gray-700 truncate">{job.carpeta_destino.nombre}</p>
+              <p className="text-neutral-500">Carpeta destino</p>
+              <p className="font-medium text-neutral-700 truncate">{job.carpeta_destino.nombre}</p>
             </div>
           )}
           {job.iniciador && (
             <div className="col-span-2">
-              <p className="text-gray-400">Iniciado por</p>
-              <p className="font-medium text-gray-700">{job.iniciador.nombre_completo}</p>
+              <p className="text-neutral-500">Iniciado por</p>
+              <p className="font-medium text-neutral-700">{job.iniciador.nombre_completo}</p>
             </div>
           )}
           {job.completed_at && (
             <div className="col-span-2">
-              <p className="text-gray-400">Completado</p>
-              <p className="font-medium text-gray-700">{formatDate(job.completed_at)}</p>
+              <p className="text-neutral-500">Completado</p>
+              <p className="font-medium text-neutral-700">{formatDate(job.completed_at)}</p>
             </div>
           )}
         </div>
@@ -212,12 +212,12 @@ export function PanelImportaciones({ onResumeJob }: Props) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map(i => (
-          <div key={i} className="border border-gray-100 rounded-xl p-4 animate-pulse">
+          <div key={i} className="border border-neutral-100 rounded-xl p-4 animate-pulse">
             <div className="flex gap-3">
-              <div className="w-9 h-9 bg-gray-200 rounded-lg" />
+              <div className="w-9 h-9 bg-neutral-200 rounded-lg" />
               <div className="flex-1">
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2" />
-                <div className="h-3 bg-gray-100 rounded w-1/3" />
+                <div className="h-4 bg-neutral-200 rounded w-1/2 mb-2" />
+                <div className="h-3 bg-neutral-100 rounded w-1/3" />
               </div>
             </div>
           </div>
@@ -229,8 +229,8 @@ export function PanelImportaciones({ onResumeJob }: Props) {
   if (jobs.length === 0) {
     return (
       <div className="text-center py-12">
-        <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">No hay importaciones registradas</p>
+        <FileText className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
+        <p className="text-sm text-neutral-500">No hay importaciones registradas</p>
       </div>
     );
   }
@@ -238,8 +238,8 @@ export function PanelImportaciones({ onResumeJob }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-sm text-gray-500">{jobs.length} importacion{jobs.length !== 1 ? 'es' : ''}</p>
-        <button onClick={loadJobs} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+        <p className="text-sm text-neutral-500">{jobs.length} importacion{jobs.length !== 1 ? 'es' : ''}</p>
+        <button onClick={loadJobs} className="p-1.5 rounded-lg text-neutral-500 hover:text-gray-600 hover:bg-gray-100 transition-colors">
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>

@@ -131,7 +131,7 @@ export default function Store() {
                     {storeAttentionCount > 0 && (
                       <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center">
                         <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" style={{ animationDuration: '2s' }} />
-                        <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                        <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[10.5px] font-bold rounded-full flex items-center justify-center leading-none">
                           {storeAttentionCount > 99 ? '99+' : storeAttentionCount}
                         </span>
                       </span>
@@ -153,7 +153,7 @@ export default function Store() {
                 <ShoppingCart className="w-4 h-4 mr-1.5" />
                 Carrito
                 {cantidadCarrito > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[11px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                     {cantidadCarrito}
                   </span>
                 )}
@@ -205,7 +205,7 @@ export default function Store() {
               onClick={() => setCategoriaSeleccionada('')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                 !categoriaSeleccionada
-                  ? 'bg-accent text-white shadow-sm'
+                  ? 'bg-accent text-accent-foreground shadow-sm'
                   : 'bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/10'
               }`}
             >
@@ -218,7 +218,7 @@ export default function Store() {
                 onClick={() => setCategoriaSeleccionada(categoria.id)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   categoriaSeleccionada === categoria.id
-                    ? 'bg-accent text-white shadow-sm'
+                    ? 'bg-accent text-accent-foreground shadow-sm'
                     : 'bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 hover:bg-neutral-200 dark:hover:bg-white/10'
                 }`}
               >

@@ -263,7 +263,7 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
                   : { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.88)' }
                 }>
                   {msg.loading ? (
-                    <div className="flex items-center gap-2 text-slate-400">
+                    <div className="flex items-center gap-2 text-neutral-500">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span className="text-xs">Pensando...</span>
                     </div>
@@ -295,7 +295,7 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
 
                 {/* Disclaimer */}
                 {!msg.loading && msg.role === 'assistant' && (
-                  <p className="text-[10px] mt-1.5 px-1 leading-relaxed max-w-prose" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  <p className="text-[11px] mt-1.5 px-1 leading-relaxed max-w-prose" style={{ color: 'rgba(255,255,255,0.25)' }}>
                     Información orientativa. Verifica con tu agente o aseguradora antes de tomar decisiones.
                   </p>
                 )}
@@ -339,7 +339,7 @@ export default function ChatInterface({ conversationId, onConversationCreated, o
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[10px] text-center mt-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
+          <p className="text-[11px] text-center mt-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
             Chava Agente puede cometer errores. Verifica la información importante con fuentes oficiales.
           </p>
         </div>
@@ -369,7 +369,7 @@ function MessageContent({ content }: { content: string }) {
         if (line.trimStart().startsWith('•') || line.trimStart().startsWith('-') || line.trimStart().match(/^\d+\./)) {
           return (
             <div key={i} className="flex gap-2 leading-relaxed">
-              <span className="text-slate-400 flex-shrink-0 mt-0.5">•</span>
+              <span className="text-neutral-500 flex-shrink-0 mt-0.5">•</span>
               <span dangerouslySetInnerHTML={{ __html: formatted.replace(/^[\s•\-\d\.]+/, '') }} />
             </div>
           );

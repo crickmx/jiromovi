@@ -118,7 +118,7 @@ export default function MiCRM() {
           <button
             onClick={() => cargarDatos(true)}
             disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-600 dark:text-white/60 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-600 dark:text-white/60 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Actualizar</span>
@@ -130,9 +130,9 @@ export default function MiCRM() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 mt-6">
         <Link
           to="/contactos"
-          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-blue-300 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl hover:border-blue-300 hover:shadow-card-hover transition-all"
         >
-          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition mb-2">
+          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-50 text-accent-ink group-hover:bg-blue-100 transition mb-2">
             <Users className="h-5 w-5" />
           </div>
           <span className="text-xs font-medium text-neutral-700 dark:text-white/70 text-center">Contactos</span>
@@ -140,7 +140,7 @@ export default function MiCRM() {
 
         <Link
           to="/mi-crm/tareas"
-          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-orange-300 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl hover:border-orange-300 hover:shadow-card-hover transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-orange-50 text-orange-600 group-hover:bg-orange-100 transition mb-2">
             <CheckCircle className="h-5 w-5" />
@@ -150,7 +150,7 @@ export default function MiCRM() {
 
         <Link
           to="/contactos?view=kanban"
-          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-teal-300 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl hover:border-teal-300 hover:shadow-card-hover transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600 group-hover:bg-teal-100 transition mb-2">
             <Kanban className="h-5 w-5" />
@@ -160,7 +160,7 @@ export default function MiCRM() {
 
         <Link
           to="/mi-crm/reportes"
-          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-emerald-300 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl hover:border-emerald-300 hover:shadow-card-hover transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition mb-2">
             <BarChart3 className="h-5 w-5" />
@@ -170,7 +170,7 @@ export default function MiCRM() {
 
         <Link
           to="/mi-crm/configuracion"
-          className="group flex flex-col items-center p-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:border-neutral-400 hover:shadow-md transition-all"
+          className="group flex flex-col items-center p-3 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl hover:border-neutral-400 hover:shadow-card-hover transition-all"
         >
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-white/60 group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700 transition mb-2">
             <Settings className="h-5 w-5" />
@@ -250,13 +250,13 @@ export default function MiCRM() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Que hacer hoy - 2/3 */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-xl border border-soft dark:border-neutral-700 overflow-hidden">
             <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-orange-500" />
                 <h2 className="font-semibold text-neutral-900 dark:text-white">Que hacer hoy</h2>
               </div>
-              <Link to="/mi-crm/tareas" className="text-xs text-accent hover:text-accent/80 font-medium">
+              <Link to="/mi-crm/tareas" className="text-xs text-accent-ink hover:text-accent/80 font-medium">
                 Ver todas
               </Link>
             </div>
@@ -270,7 +270,7 @@ export default function MiCRM() {
                       <AlertTriangle className="h-3 w-3 mr-1" />
                       Vencidas
                     </span>
-                    <span className="text-xs text-neutral-400 dark:text-white/40">{tareasVencidas.length} pendientes</span>
+                    <span className="text-xs text-neutral-500 dark:text-white/55">{tareasVencidas.length} pendientes</span>
                   </div>
                   <div className="space-y-2">
                     {tareasVencidas.map((tarea) => (
@@ -295,7 +295,7 @@ export default function MiCRM() {
                       <Clock className="h-3 w-3 mr-1" />
                       Hoy
                     </span>
-                    <span className="text-xs text-neutral-400 dark:text-white/40">{tareasHoy.length} programadas</span>
+                    <span className="text-xs text-neutral-500 dark:text-white/55">{tareasHoy.length} programadas</span>
                   </div>
                   <div className="space-y-2">
                     {tareasHoy.map((tarea) => (
@@ -320,7 +320,7 @@ export default function MiCRM() {
                       <UserX className="h-3 w-3 mr-1" />
                       Sin seguimiento
                     </span>
-                    <span className="text-xs text-neutral-400 dark:text-white/40">{leadsSinSeguimiento.length} leads</span>
+                    <span className="text-xs text-neutral-500 dark:text-white/55">{leadsSinSeguimiento.length} leads</span>
                   </div>
                   <div className="space-y-2">
                     {leadsSinSeguimiento.map((lead) => (
@@ -342,7 +342,7 @@ export default function MiCRM() {
                       <UserPlus className="h-3 w-3 mr-1" />
                       Nuevos
                     </span>
-                    <span className="text-xs text-neutral-400 dark:text-white/40">{leadsNuevos.length} leads recientes</span>
+                    <span className="text-xs text-neutral-500 dark:text-white/55">{leadsNuevos.length} leads recientes</span>
                   </div>
                   <div className="space-y-2">
                     {leadsNuevos.map((lead) => (
@@ -365,7 +365,7 @@ export default function MiCRM() {
                 <div className="py-12 text-center">
                   <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto mb-3" />
                   <p className="text-sm font-medium text-neutral-700 dark:text-white/70">Todo al dia</p>
-                  <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">No tienes pendientes urgentes</p>
+                  <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">No tienes pendientes urgentes</p>
                 </div>
               )}
             </div>
@@ -374,10 +374,10 @@ export default function MiCRM() {
 
         {/* Embudo de Ventas - 1/3 */}
         <div className="space-y-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-neutral-700 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-neutral-900 dark:text-white text-sm">Embudo de Ventas</h2>
-              <Link to="/contactos?view=kanban" className="text-xs text-accent hover:text-accent/80 font-medium">
+              <Link to="/contactos?view=kanban" className="text-xs text-accent-ink hover:text-accent/80 font-medium">
                 Ver kanban
               </Link>
             </div>
@@ -386,7 +386,7 @@ export default function MiCRM() {
                 label="Prospectos"
                 count={funnel?.prospectos || 0}
                 total={stats?.totalContactos || 1}
-                color="bg-blue-500"
+                color="bg-accent"
               />
               <FunnelStage
                 label="Cotizacion"
@@ -423,7 +423,7 @@ export default function MiCRM() {
           </div>
 
           {/* Quick Stats */}
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-neutral-700 p-5">
             <h2 className="font-semibold text-neutral-900 dark:text-white text-sm mb-3">Resumen</h2>
             <div className="space-y-2.5">
               <StatRow icon={<Users className="h-4 w-4 text-blue-500" />} label="Total Contactos" value={stats?.totalContactos || 0} />
@@ -458,7 +458,7 @@ function KPICard({
   urgent?: boolean;
 }) {
   const colors = {
-    blue: { bg: 'bg-blue-50', text: 'text-blue-700', icon: 'bg-blue-100 text-blue-600', border: 'border-blue-100' },
+    blue: { bg: 'bg-blue-50', text: 'text-blue-700', icon: 'bg-blue-100 text-accent-ink', border: 'border-blue-100' },
     green: { bg: 'bg-green-50', text: 'text-green-700', icon: 'bg-green-100 text-green-600', border: 'border-green-100' },
     red: { bg: 'bg-red-50', text: 'text-red-700', icon: 'bg-red-100 text-red-600', border: 'border-red-100' },
     orange: { bg: 'bg-orange-50', text: 'text-orange-700', icon: 'bg-orange-100 text-orange-600', border: 'border-orange-100' },
@@ -482,7 +482,7 @@ function KPICard({
       </div>
       <p className={`text-2xl font-bold ${c.text}`}>{value}</p>
       <p className="text-xs font-medium text-neutral-600 dark:text-white/60 mt-0.5">{label}</p>
-      {subtitle && <p className="text-[10px] text-neutral-400 dark:text-white/40 mt-0.5">{subtitle}</p>}
+      {subtitle && <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">{subtitle}</p>}
       <ChevronRight className="absolute top-3 right-3 h-3.5 w-3.5 text-neutral-300 dark:text-white/20 group-hover:text-neutral-500 dark:group-hover:text-white/50 transition" />
     </button>
   );
@@ -534,7 +534,7 @@ function TaskRow({
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onReschedule(tarea.id); }}
-          className="p-1.5 rounded-md hover:bg-blue-100 text-blue-600 transition"
+          className="p-1.5 rounded-md hover:bg-blue-100 text-accent-ink transition"
           title="Reprogramar a manana"
         >
           <CalendarClock className="h-4 w-4" />
@@ -571,7 +571,7 @@ function LeadRow({
         <p className="text-sm font-medium text-neutral-800 dark:text-white/80 truncate">{lead.nombre_completo}</p>
         <p className="text-xs text-neutral-500 dark:text-white/50">
           {lead.celular || lead.email || 'Sin contacto'}
-          <span className="ml-2 text-neutral-400 dark:text-white/40">{timeSince(lead.fecha_creacion)}</span>
+          <span className="ml-2 text-neutral-500 dark:text-white/55">{timeSince(lead.fecha_creacion)}</span>
         </p>
       </div>
       <ChevronRight className="h-4 w-4 text-neutral-300 dark:text-white/20 group-hover:text-accent transition" />

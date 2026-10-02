@@ -600,7 +600,7 @@ export default function GMMCotizador() {
     return (
       <>
         <div className="flex items-center justify-center h-96">
-          <div className="text-gray-500">Cargando tarifas...</div>
+          <div className="text-neutral-500">Cargando tarifas...</div>
         </div>
       </>
     );
@@ -610,7 +610,7 @@ export default function GMMCotizador() {
     return (
       <>
         <div className="flex items-center justify-center h-96">
-          <div className="text-gray-500">No hay tarifas activas</div>
+          <div className="text-neutral-500">No hay tarifas activas</div>
         </div>
       </>
     );
@@ -672,11 +672,11 @@ export default function GMMCotizador() {
                     <h3 className="text-lg font-semibold mb-4">Parámetros del Plan</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Estado</label>
                       <select
                         value={input.estado}
                         onChange={(e) => setInput({ ...input, estado: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-md"
                       >
                         {tariffTables.factor_estado.map((row) => (
                           <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
@@ -685,11 +685,11 @@ export default function GMMCotizador() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nivel Hospitalario</label>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Nivel Hospitalario</label>
                       <select
                         value={input.nivel_hospitalario}
                         onChange={(e) => setInput({ ...input, nivel_hospitalario: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-md"
                       >
                         {tariffTables.factor_nivel_hospitalario.map((row) => (
                           <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
@@ -698,11 +698,11 @@ export default function GMMCotizador() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Tabulador</label>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Tabulador</label>
                       <select
                         value={input.tabulador}
                         onChange={(e) => setInput({ ...input, tabulador: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-md"
                       >
                         {tariffTables.factor_tabulador.map((row) => (
                           <option key={row.col_0} value={row.col_0}>{row.col_0}</option>
@@ -711,11 +711,11 @@ export default function GMMCotizador() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Suma Asegurada</label>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Suma Asegurada</label>
                       <select
                         value={input.suma_asegurada}
                         onChange={(e) => setInput({ ...input, suma_asegurada: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-md"
                       >
                         {tariffTables.factor_suma_asegurada.map((row) => (
                           <option key={row.col_0} value={row.col_0}>{formatCurrency(row.col_0)}</option>
@@ -724,11 +724,11 @@ export default function GMMCotizador() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Deducible</label>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Deducible</label>
                       <select
                         value={input.deducible}
                         onChange={(e) => setInput({ ...input, deducible: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-md"
                       >
                         {tariffTables.factor_deducible.map((row) => (
                           <option key={row.col_0} value={row.col_0}>{formatCurrency(row.col_0)}</option>
@@ -737,7 +737,7 @@ export default function GMMCotizador() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Coaseguro</label>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">Coaseguro</label>
                       <select
                         value={input.coaseguro}
                         onChange={(e) => {
@@ -749,7 +749,7 @@ export default function GMMCotizador() {
                             tope_coaseguro_seleccionado: rango?.tope_default
                           });
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-md"
                       >
                         {tariffTables.factor_coaseguro.map((row) => (
                           <option key={row.col_0} value={row.col_0}>{formatPercentage(row.col_0)}</option>
@@ -758,13 +758,13 @@ export default function GMMCotizador() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
                         Tope de Coaseguro
                       </label>
                       {(() => {
                         if (!input.coaseguro) {
                           return (
-                            <div className="text-sm text-gray-500 italic py-2">
+                            <div className="text-sm text-neutral-500 italic py-2">
                               Selecciona un coaseguro primero
                             </div>
                           );
@@ -783,7 +783,7 @@ export default function GMMCotizador() {
                         const valorActual = input.tope_coaseguro_seleccionado || rango.tope_default;
 
                         return (
-                          <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm font-medium text-gray-900">
+                          <div className="w-full px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-md text-sm font-medium text-neutral-900">
                             {formatMoneySafe(valorActual)}
                           </div>
                         );
@@ -791,7 +791,7 @@ export default function GMMCotizador() {
                     </div>
 
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Formas de Pago (selecciona una o más)</label>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">Formas de Pago (selecciona una o más)</label>
                       <div className="grid grid-cols-2 gap-3">
                         {tariffTables.forma_pago.map((row) => (
                           <label key={row.col_0} className="flex items-center gap-2 text-sm">
@@ -805,7 +805,7 @@ export default function GMMCotizador() {
                                   setInput({ ...input, formas_pago: input.formas_pago.filter(fp => fp !== row.col_0) });
                                 }
                               }}
-                              className="rounded border-gray-300 text-accent focus:ring-blue-500"
+                              className="rounded border-neutral-300 text-accent-ink focus:ring-accent/40"
                             />
                             <span>{row.col_0}</span>
                           </label>
@@ -826,9 +826,9 @@ export default function GMMCotizador() {
 
                   <div className="space-y-4">
                     {input.insureds.map((insured, idx) => (
-                      <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                      <div key={idx} className="border border-neutral-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
-                          <span className="font-medium text-sm text-gray-700">Asegurado {idx + 1}</span>
+                          <span className="font-medium text-sm text-neutral-700">Asegurado {idx + 1}</span>
                           {input.insureds.length > 1 && (
                             <button
                               onClick={() => handleRemoveInsured(idx)}
@@ -841,29 +841,29 @@ export default function GMMCotizador() {
 
                         <div className="grid grid-cols-12 gap-3">
                           <div className="col-span-6">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Nombre completo*</label>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">Nombre completo*</label>
                             <input
                               type="text"
                               placeholder="Nombre completo"
                               value={insured.nombre}
                               onChange={(e) => handleInsuredChange(idx, 'nombre', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"
                               required
                             />
                           </div>
                           <div className="col-span-3">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Sexo*</label>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">Sexo*</label>
                             <select
                               value={insured.sexo}
                               onChange={(e) => handleInsuredChange(idx, 'sexo', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"
                             >
                               <option value="Hombre">Hombre</option>
                               <option value="Mujer">Mujer</option>
                             </select>
                           </div>
                           <div className="col-span-3">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Edad*</label>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">Edad*</label>
                             <input
                               type="number"
                               placeholder="Edad"
@@ -874,7 +874,7 @@ export default function GMMCotizador() {
                                 const edad = parseInt(e.target.value);
                                 handleInsuredChange(idx, 'edad', !isNaN(edad) && edad > 0 ? edad : undefined as any);
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                              className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"
                               required
                             />
                           </div>
@@ -914,7 +914,7 @@ export default function GMMCotizador() {
                               coberturas: { ...input.coberturas, [key]: e.target.checked },
                             })
                           }
-                          className="rounded border-gray-300 text-accent focus:ring-blue-500 flex-shrink-0"
+                          className="rounded border-neutral-300 text-accent-ink focus:ring-accent/40 flex-shrink-0"
                         />
                         <span className="flex-1">{COVERAGE_LABELS[key] || key}</span>
                         <InfoTooltip content={getCoverageHelpText(key)} />
@@ -944,10 +944,10 @@ export default function GMMCotizador() {
                       <h3 className="text-lg font-semibold mb-4">Resumen General</h3>
                       <div className="space-y-3">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Prima Neta Total</span>
+                          <span className="text-neutral-600">Prima Neta Total</span>
                           <span className="font-medium">${result.prima_neta_total.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-xs text-gray-500">
+                        <div className="flex justify-between text-xs text-neutral-500">
                           <span>Tope Coaseguro</span>
                           <span>{formatMoneySafe(result.tope_coaseguro)}</span>
                         </div>
@@ -956,41 +956,41 @@ export default function GMMCotizador() {
 
                     {result.payment_plans.map((plan, idx) => (
                       <Card key={idx} className="p-6">
-                        <h3 className="text-lg font-semibold mb-4 text-accent">{plan.forma_pago}</h3>
+                        <h3 className="text-lg font-semibold mb-4 text-accent-ink">{plan.forma_pago}</h3>
                         <div className="space-y-3">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Prima Neta</span>
+                            <span className="text-neutral-600">Prima Neta</span>
                             <span className="font-medium">${result.prima_neta_total.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Recargo</span>
+                            <span className="text-neutral-600">Recargo</span>
                             <span className="font-medium">${plan.recargo.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Gastos Expedición</span>
+                            <span className="text-neutral-600">Gastos Expedición</span>
                             <span className="font-medium">${plan.gastos_expedicion.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Subtotal</span>
+                            <span className="text-neutral-600">Subtotal</span>
                             <span className="font-medium">${plan.subtotal.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">IVA</span>
+                            <span className="text-neutral-600">IVA</span>
                             <span className="font-medium">${plan.iva.toFixed(2)}</span>
                           </div>
                           <div className="border-t pt-3 flex justify-between">
                             <span className="font-semibold">TOTAL</span>
-                            <span className="font-bold text-lg text-accent">${plan.total.toFixed(2)}</span>
+                            <span className="font-bold text-lg text-accent-ink">${plan.total.toFixed(2)}</span>
                           </div>
 
                           <div className="border-t pt-3 space-y-2">
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Primer Recibo</span>
+                              <span className="text-neutral-600">Primer Recibo</span>
                               <span className="font-medium">${plan.primer_recibo.toFixed(2)}</span>
                             </div>
                             {plan.num_recibos > 1 && (
                               <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Recibos Subsecuentes ({plan.num_recibos - 1})</span>
+                                <span className="text-neutral-600">Recibos Subsecuentes ({plan.num_recibos - 1})</span>
                                 <span className="font-medium">${plan.recibos_subsecuentes.toFixed(2)}</span>
                               </div>
                             )}
@@ -1018,26 +1018,26 @@ export default function GMMCotizador() {
           <TabsContent value="cotizaciones">
             <Card className="p-6 mb-6">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Buscar por folio, cliente o asegurado..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyUp={() => loadQuotes()}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 w-full border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:border-transparent"
                 />
               </div>
             </Card>
 
             {loadingQuotes ? (
               <Card className="p-12 text-center">
-                <p className="text-gray-500">Cargando cotizaciones...</p>
+                <p className="text-neutral-500">Cargando cotizaciones...</p>
               </Card>
             ) : quotations.length === 0 ? (
               <Card className="p-12 text-center">
-                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 mb-2">No hay cotizaciones guardadas</p>
+                <FileText className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+                <p className="text-neutral-500 mb-2">No hay cotizaciones guardadas</p>
                 <Button onClick={() => setActiveTab('cotizador')}>
                   Crear Primera Cotización
                 </Button>
@@ -1047,44 +1047,44 @@ export default function GMMCotizador() {
                 <div className="hidden md:block">
                   <Card className="overflow-hidden">
                     <table className="w-full">
-                      <thead className="bg-gray-50 border-b">
+                      <thead className="bg-neutral-50 border-b">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Folio
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Cliente / Asegurado
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Fecha
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Total
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
                             Acciones
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-neutral-200">
                         {quotations.map((q) => (
                           <tr key={q.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-accent">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-accent-ink">
                               {q.folio}
                               {q.editada_desde_cotizacion_id && (
-                                <span className="ml-2 text-xs text-gray-400">(Editada)</span>
+                                <span className="ml-2 text-xs text-neutral-500">(Editada)</span>
                               )}
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
+                            <td className="px-6 py-4 text-sm text-neutral-900">
                               <div className="font-medium">{q.asegurado_principal}</div>
                               {q.cliente_nombre && (
-                                <div className="text-gray-500 text-xs">{q.cliente_nombre}</div>
+                                <div className="text-neutral-500 text-xs">{q.cliente_nombre}</div>
                               )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500">
                               {formatDate(q.created_at)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-neutral-900">
                               {formatCurrency(q.total_a_pagar)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -1128,25 +1128,25 @@ export default function GMMCotizador() {
                     <Card key={q.id} className="p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <div className="font-semibold text-accent">{q.folio}</div>
-                          <div className="text-sm text-gray-500">{formatDate(q.created_at)}</div>
+                          <div className="font-semibold text-accent-ink">{q.folio}</div>
+                          <div className="text-sm text-neutral-500">{formatDate(q.created_at)}</div>
                         </div>
                       </div>
 
                       <div className="space-y-2 mb-4">
                         <div className="text-sm">
-                          <span className="font-medium text-gray-700">Asegurado:</span>{' '}
-                          <span className="text-gray-900">{q.asegurado_principal}</span>
+                          <span className="font-medium text-neutral-700">Asegurado:</span>{' '}
+                          <span className="text-neutral-900">{q.asegurado_principal}</span>
                         </div>
                         {q.cliente_nombre && (
                           <div className="text-sm">
-                            <span className="font-medium text-gray-700">Cliente:</span>{' '}
-                            <span className="text-gray-900">{q.cliente_nombre}</span>
+                            <span className="font-medium text-neutral-700">Cliente:</span>{' '}
+                            <span className="text-neutral-900">{q.cliente_nombre}</span>
                           </div>
                         )}
                         <div className="text-sm">
-                          <span className="font-medium text-gray-700">Total:</span>{' '}
-                          <span className="text-gray-900 font-semibold">
+                          <span className="font-medium text-neutral-700">Total:</span>{' '}
+                          <span className="text-neutral-900 font-semibold">
                             {formatCurrency(q.total_a_pagar)}
                           </span>
                         </div>

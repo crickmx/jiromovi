@@ -242,24 +242,24 @@ export default function QuoteFormWizard() {
   if (submitResult?.ok) {
     return (
       <div className="max-w-lg mx-auto mt-12 text-center">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
+        <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-8 shadow-card">
           <div className="w-16 h-16 mx-auto bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
             <Check className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Solicitud enviada correctamente</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Tu solicitud de cotizacion ha sido registrada y sera atendida por el equipo.</p>
-          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 mb-6 space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-gray-500">Folio:</span><span className="font-mono font-semibold text-gray-800 dark:text-gray-200">{submitResult.folio}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Tipo:</span><span className="text-gray-800 dark:text-gray-200">{template.title}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Estatus:</span><span className="text-blue-600 font-medium">Enviado</span></div>
+          <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Solicitud enviada correctamente</h2>
+          <p className="text-sm text-neutral-500 dark:text-gray-400 mb-6">Tu solicitud de cotizacion ha sido registrada y sera atendida por el equipo.</p>
+          <div className="bg-neutral-50 dark:bg-gray-700/50 rounded-xl p-4 mb-6 space-y-2 text-sm">
+            <div className="flex justify-between"><span className="text-neutral-500">Folio:</span><span className="font-mono font-semibold text-neutral-800 dark:text-gray-200">{submitResult.folio}</span></div>
+            <div className="flex justify-between"><span className="text-neutral-500">Tipo:</span><span className="text-neutral-800 dark:text-gray-200">{template.title}</span></div>
+            <div className="flex justify-between"><span className="text-neutral-500">Estatus:</span><span className="text-accent-ink font-medium">Enviado</span></div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             {submitResult.ticketId && (
-              <button onClick={() => navigate(`/tramites/${submitResult.ticketId}`)} className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+              <button onClick={() => navigate(`/tramites/${submitResult.ticketId}`)} className="flex-1 px-4 py-2.5 bg-accent text-accent-foreground text-sm font-medium rounded-lg hover:bg-accent-hover transition-colors">
                 Ver trámite
               </button>
             )}
-            <button onClick={() => navigate('/tramites')} className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+            <button onClick={() => navigate('/tramites')} className="flex-1 px-4 py-2.5 bg-surface-card dark:bg-gray-700 text-neutral-700 dark:text-gray-200 border border-neutral-300 dark:border-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
               Volver a Trámites
             </button>
           </div>
@@ -273,14 +273,14 @@ export default function QuoteFormWizard() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/cotizar/formularios')} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <ArrowLeft className="w-5 h-5 text-neutral-600 dark:text-gray-400" />
         </button>
         <div className="flex-1">
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white">{template.title}</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{template.description}</p>
+          <h1 className="text-lg font-bold text-neutral-900 dark:text-white">{template.title}</h1>
+          <p className="text-xs text-neutral-500 dark:text-gray-400">{template.description}</p>
         </div>
         {lastSaved && (
-          <span className="text-[11px] text-gray-400 flex items-center gap-1">
+          <span className="text-[11px] text-neutral-500 flex items-center gap-1">
             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3 text-emerald-500" />}
             Guardado {lastSaved.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
           </span>
@@ -288,7 +288,7 @@ export default function QuoteFormWizard() {
       </div>
 
       {/* Step Progress */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+      <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-4">
         <div className="flex items-center justify-between overflow-x-auto gap-1">
           {steps.map((step, idx) => {
             const Icon = step.icon;
@@ -303,7 +303,7 @@ export default function QuoteFormWizard() {
                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                     : isCompleted
                     ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 cursor-pointer'
-                    : 'text-gray-400 dark:text-gray-500'
+                    : 'text-neutral-500 dark:text-gray-500'
                 }`}
                 disabled={idx > currentStep}
               >
@@ -313,16 +313,16 @@ export default function QuoteFormWizard() {
             );
           })}
         </div>
-        <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+        <div className="mt-3 w-full bg-neutral-200 dark:bg-gray-700 rounded-full h-1.5">
           <div
-            className="h-1.5 rounded-full bg-blue-600 transition-all duration-500"
+            className="h-1.5 rounded-full bg-accent transition-all duration-500"
             style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
           />
         </div>
       </div>
 
       {/* Step Content */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-6">
         {steps[currentStep].id === 'client' && (
           <QuoteFormStepClient
             formData={formData}
@@ -395,7 +395,7 @@ export default function QuoteFormWizard() {
         <button
           onClick={goPrev}
           disabled={currentStep === 0}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-700 dark:text-gray-200 bg-surface-card dark:bg-gray-700 border border-neutral-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Anterior
         </button>
@@ -404,7 +404,7 @@ export default function QuoteFormWizard() {
           <button
             onClick={saveAsDraft}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Guardar borrador
@@ -413,7 +413,7 @@ export default function QuoteFormWizard() {
           {currentStep < steps.length - 1 ? (
             <button
               onClick={goNext}
-              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-accent-foreground bg-accent rounded-lg hover:bg-accent-hover transition-colors"
             >
               Siguiente <ArrowRight className="w-4 h-4" />
             </button>

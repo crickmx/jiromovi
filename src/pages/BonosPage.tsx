@@ -284,12 +284,12 @@ export default function BonosPage() {
           {diagItems.map((item, i) => (
             <p key={i} className="flex gap-2"><span className="text-red-400 shrink-0">•</span>{item}</p>
           ))}
-          <p className="mt-3 text-xs text-neutral-400">Servidor: <code className="font-mono">{BONOS_URL}</code>{isImpersonating ? ` · Impersonando: ${impersonatedUser?.email_laboral ?? '?'}` : ''}</p>
+          <p className="mt-3 text-xs text-neutral-500">Servidor: <code className="font-mono">{BONOS_URL}</code>{isImpersonating ? ` · Impersonando: ${impersonatedUser?.email_laboral ?? '?'}` : ''}</p>
         </div>
         <div className="flex gap-3">
           <button
             onClick={() => { setError(false); setErrorReason(null); setRetryCount(0); setSsoConfirmed(false); ssoConfirmedRef.current = false; clearSsoCacheStorage(); }}
-            className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+            className="px-4 py-2 bg-neutral-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
           >
             Reintentar
           </button>
@@ -297,7 +297,7 @@ export default function BonosPage() {
             href={BONOS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2 border border-slate-300 dark:border-neutral-600 text-slate-700 dark:text-neutral-300 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors"
+            className="px-4 py-2 border border-neutral-300 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors"
           >
             Abrir en nueva ventana
           </a>
@@ -319,7 +319,7 @@ export default function BonosPage() {
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-1.5 h-1.5 rounded-full bg-blue-700"
+                className="w-1.5 h-1.5 rounded-full bg-accent-hover"
                 style={{ animation: `lo-dot-bounce 1.2s ease-in-out infinite ${i * 0.2}s` }}
               />
             ))}
@@ -354,7 +354,7 @@ export default function BonosPage() {
             onClick={() => { navigateTo(section.path); onSelect?.(); }}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
               isActive
-                ? 'bg-slate-800 text-white'
+                ? 'bg-neutral-800 text-white'
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'
             }`}
           >
@@ -380,7 +380,7 @@ export default function BonosPage() {
               <h2 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Central Produccion</h2>
               <button
                 onClick={() => setMobileNavOpen(false)}
-                className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+                className="p-1 text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -436,7 +436,7 @@ export default function BonosPage() {
                   {[0, 1, 2].map((i) => (
                     <div
                       key={i}
-                      className="w-1.5 h-1.5 rounded-full bg-blue-700"
+                      className="w-1.5 h-1.5 rounded-full bg-accent-hover"
                       style={{ animation: `lo-dot-bounce 1.2s ease-in-out infinite ${i * 0.2}s` }}
                     />
                   ))}

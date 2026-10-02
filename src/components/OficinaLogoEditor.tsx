@@ -90,7 +90,7 @@ export function OficinaLogoEditor({
         <div className="flex items-start gap-4">
           {/* Vista previa del logotipo */}
           <div className="flex-shrink-0">
-            <div className="w-32 h-32 border-2 border-gray-200 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+            <div className="w-32 h-32 border-2 border-soft rounded-lg overflow-hidden bg-surface-card flex items-center justify-center">
               {logoUrl ? (
                 <img
                   src={logoUrl}
@@ -98,7 +98,7 @@ export function OficinaLogoEditor({
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <ImageIcon className="w-12 h-12 text-gray-400" />
+                <ImageIcon className="w-12 h-12 text-neutral-500" />
               )}
             </div>
           </div>
@@ -106,11 +106,11 @@ export function OficinaLogoEditor({
           {/* Controles */}
           <div className="flex-1 space-y-3">
             <div>
-              <p className="text-sm text-gray-600 mb-2">
+              <p className="text-sm text-neutral-600 mb-2">
                 Logo de oficina para usuarios sin logotipo personal.
               </p>
               {affectedUsers > 0 && (
-                <div className="flex items-center gap-2 text-accent text-sm">
+                <div className="flex items-center gap-2 text-accent-ink text-sm">
                   <Users className="w-4 h-4" />
                   <span>
                     {affectedUsers} usuario{affectedUsers !== 1 ? 's' : ''} usarán este logo
@@ -150,7 +150,7 @@ export function OficinaLogoEditor({
               )}
             </div>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-neutral-500">
               Formatos: PNG, JPG, JPEG | Tamaño máx: 5MB | Se redimensionará a 1500x1500px
             </p>
           </div>

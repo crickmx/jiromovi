@@ -89,8 +89,8 @@ export default function ActivarSeguwalletModal({ contacto, onClose, onSuccess }:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm border border-neutral-200 dark:border-neutral-700">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-sm border border-soft dark:border-neutral-700 animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-3">
@@ -104,7 +104,7 @@ export default function ActivarSeguwalletModal({ contacto, onClose, onSuccess }:
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+            className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
           >
             <X className="h-4 w-4" />
           </button>

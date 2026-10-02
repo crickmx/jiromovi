@@ -339,7 +339,7 @@ export function EspacioJiro() {
                           </div>
                         </div>
                         {reserva.notas && (
-                          <div className="mt-3 p-2 bg-white rounded text-xs sm:text-sm text-neutral-700 break-words border border-neutral-200">
+                          <div className="mt-3 p-2 bg-surface-card rounded text-xs sm:text-sm text-neutral-700 break-words border border-soft">
                             <strong className="text-neutral-900">Notas:</strong> {reserva.notas}
                           </div>
                         )}
@@ -380,7 +380,7 @@ export function EspacioJiro() {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-6">
               <h2 className="text-lg sm:text-xl font-semibold text-neutral-900">Áreas Disponibles</h2>
               <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-500" />
                 <Input
                   type="text"
                   placeholder="Buscar área u oficina..."
@@ -394,7 +394,7 @@ export function EspacioJiro() {
             {filteredAreas.length === 0 ? (
               <div className="text-center py-12">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <AlertCircle className="w-8 h-8 text-neutral-400" />
+                  <AlertCircle className="w-8 h-8 text-neutral-500" />
                 </div>
                 <h3 className="text-lg font-semibold text-neutral-900 mb-2">
                   No hay áreas disponibles
@@ -416,10 +416,10 @@ export function EspacioJiro() {
                   return (
                     <div
                       key={area.id}
-                      className="bg-white border border-neutral-200 rounded-lg p-4 hover:shadow-ios hover:border-primary-300 transition-all overflow-hidden group"
+                      className="bg-surface-card border border-soft rounded-2xl p-4 hover:shadow-ios hover:border-primary-300 transition-all overflow-hidden group"
                     >
                       <div className="mb-4 min-w-0">
-                        <div className="flex items-center text-sm font-semibold text-accent mb-2 min-w-0">
+                        <div className="flex items-center text-sm font-semibold text-accent-ink mb-2 min-w-0">
                           <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
                           <span className="flex-1 min-w-0 break-words">{area.oficinas?.nombre}</span>
                         </div>
@@ -431,7 +431,7 @@ export function EspacioJiro() {
                         )}
                         {area.oficinas?.domicilio && (
                           <div className="flex items-start text-sm text-neutral-600 mb-2 min-w-0">
-                            <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-neutral-400" />
+                            <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0 text-neutral-500" />
                             <span className="flex-1 min-w-0 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                               {area.oficinas.domicilio}
                             </span>
@@ -491,7 +491,7 @@ export function EspacioJiro() {
             {(isEmpleadoOrAgente ? misReservas : reservas).length === 0 ? (
               <div className="text-center py-12">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <AlertCircle className="w-8 h-8 text-neutral-400" />
+                  <AlertCircle className="w-8 h-8 text-neutral-500" />
                 </div>
                 <h3 className="text-lg font-semibold text-neutral-900 mb-2">
                   No hay reservas
@@ -629,8 +629,8 @@ export function EspacioJiro() {
         </div>
 
         {showModal && selectedArea && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full my-8 flex flex-col max-h-[90vh]">
+          <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-surface-card rounded-2xl shadow-e4 max-w-md w-full my-8 flex flex-col max-h-[90vh] animate-scale-in">
               <div className="flex-shrink-0 px-6 py-4 border-b border-neutral-200">
                 <h2 className="text-xl font-bold text-neutral-900 break-words">Reservar: {selectedArea.nombre}</h2>
                 <p className="text-sm text-neutral-600 break-words mt-1">{selectedArea.oficinas?.nombre}</p>

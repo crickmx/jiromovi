@@ -139,21 +139,21 @@ export default function SelfCheckConsistencia({ batchId, batchName }: SelfCheckP
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+    <div className="bg-surface-card border border-soft rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary-100 rounded-lg">
-            <FileSearch className="h-5 w-5 text-accent" />
+            <FileSearch className="h-5 w-5 text-accent-ink" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">Verificación de Consistencia</h3>
-            <p className="text-sm text-gray-600">Self-check del proceso de importación</p>
+            <h3 className="font-semibold text-neutral-900">Verificación de Consistencia</h3>
+            <p className="text-sm text-neutral-600">Self-check del proceso de importación</p>
           </div>
         </div>
         <button
           onClick={runSelfCheck}
           disabled={loading}
-          className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition disabled:opacity-50 flex items-center gap-2 min-h-[44px]"
+          className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition disabled:opacity-50 flex items-center gap-2 min-h-[44px]"
         >
           {loading ? (
             <>
@@ -231,34 +231,34 @@ export default function SelfCheckConsistencia({ batchId, batchName }: SelfCheckP
             </div>
           )}
 
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <p className="font-semibold text-gray-900 mb-3">Resumen de Importación:</p>
+          <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+            <p className="font-semibold text-neutral-900 mb-3">Resumen de Importación:</p>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">Total filas:</span>
-                <span className="ml-2 font-semibold text-gray-900">{result.import_stats.total_rows}</span>
+                <span className="text-neutral-600">Total filas:</span>
+                <span className="ml-2 font-semibold text-neutral-900">{result.import_stats.total_rows}</span>
               </div>
               <div>
-                <span className="text-gray-600">Hoja usada:</span>
-                <span className="ml-2 font-semibold text-gray-900">{result.import_stats.sheet_used}</span>
+                <span className="text-neutral-600">Hoja usada:</span>
+                <span className="ml-2 font-semibold text-neutral-900">{result.import_stats.sheet_used}</span>
               </div>
               <div>
-                <span className="text-gray-600">Reconocidos:</span>
+                <span className="text-neutral-600">Reconocidos:</span>
                 <span className="ml-2 font-semibold text-green-700">{result.import_stats.matched}</span>
               </div>
               <div>
-                <span className="text-gray-600">No reconocidos:</span>
+                <span className="text-neutral-600">No reconocidos:</span>
                 <span className="ml-2 font-semibold text-orange-700">{result.import_stats.unmatched}</span>
               </div>
             </div>
 
             <div className="mt-4">
-              <p className="text-sm text-gray-600 font-medium mb-2">Métodos de matching:</p>
+              <p className="text-sm text-neutral-600 font-medium mb-2">Métodos de matching:</p>
               <div className="space-y-1">
                 {Object.entries(result.import_stats.method_counts).map(([method, count]) => (
                   <div key={method} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700 capitalize">{method.replace('_', ' ')}</span>
-                    <span className="font-semibold text-gray-900">{count}</span>
+                    <span className="text-neutral-700 capitalize">{method.replace('_', ' ')}</span>
+                    <span className="font-semibold text-neutral-900">{count}</span>
                   </div>
                 ))}
               </div>

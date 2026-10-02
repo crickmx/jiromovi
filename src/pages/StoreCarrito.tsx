@@ -130,15 +130,15 @@ export default function StoreCarrito() {
         />
 
         {itemsValidos.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10">
-            <Package className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+          <div className="text-center py-12 bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10">
+            <Package className="w-16 h-16 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
               Tu carrito está vacío
             </h3>
             <p className="text-neutral-500 dark:text-white/50 mb-6">Agrega productos para comenzar tu pedido</p>
             <button
               onClick={() => navigate('/store')}
-              className="bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
+              className="bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
             >
               Explorar productos
             </button>
@@ -147,7 +147,7 @@ export default function StoreCarrito() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-3 sm:space-y-4">
               {itemsValidos.map(item => (
-                <div key={item.id} className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-3 sm:p-4">
+                <div key={item.id} className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-3 sm:p-4">
                   <div className="flex gap-3 sm:gap-4">
                     <img
                       src={item.producto!.imagen_url}
@@ -241,7 +241,7 @@ export default function StoreCarrito() {
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-4 sm:p-6 lg:sticky lg:top-4">
+              <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-4 sm:p-6 lg:sticky lg:top-4">
                 <h2 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white mb-4 sm:mb-6">Resumen del Pedido</h2>
 
                 <div className="space-y-4 mb-6">
@@ -253,7 +253,7 @@ export default function StoreCarrito() {
                       value={notasUsuario}
                       onChange={(e) => setNotasUsuario(e.target.value)}
                       placeholder="Instrucciones especiales..."
-                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40 bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                       rows={3}
                     />
                   </div>
@@ -265,7 +265,7 @@ export default function StoreCarrito() {
                     <select
                       value={areaEntrega}
                       onChange={(e) => setAreaEntrega(e.target.value)}
-                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40 bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                     >
                       <option value="">Selecciona una oficina...</option>
                       {oficinas.map((oficina) => (
@@ -282,7 +282,7 @@ export default function StoreCarrito() {
                       value={direccionEntrega}
                       onChange={(e) => setDireccionEntrega(e.target.value)}
                       placeholder="Ingresa tu dirección..."
-                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40 bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                       rows={3}
                     />
                   </div>
@@ -297,7 +297,7 @@ export default function StoreCarrito() {
                   </div>
                   <div className="flex justify-between text-xl font-bold">
                     <span className="text-neutral-900 dark:text-white">Total:</span>
-                    <span className="text-accent">
+                    <span className="text-accent-ink">
                       ${calcularTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
@@ -315,7 +315,7 @@ export default function StoreCarrito() {
                 <button
                   onClick={handleRealizarPedido}
                   disabled={procesando || !areaEntrega.trim()}
-                  className="w-full bg-accent text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-accent-hover transition-colors font-semibold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-accent text-accent-foreground px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-accent-hover transition-colors font-semibold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {procesando ? 'Procesando...' : 'Realizar Pedido'}
                 </button>

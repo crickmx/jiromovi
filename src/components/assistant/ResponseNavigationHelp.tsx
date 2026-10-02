@@ -9,7 +9,7 @@ export function ResponseNavigationHelp({ categories }: ResponseNavigationHelpPro
   return (
     <div className="space-y-3">
       {categories.map((category, index) => (
-        <div key={index} className="p-3 border rounded bg-white">
+        <div key={index} className="p-3 border rounded bg-surface-card">
           <h4 className="font-medium text-sm mb-2">{category.name}</h4>
           <ResponseActionButtons actions={category.actions} />
         </div>

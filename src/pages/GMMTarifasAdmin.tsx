@@ -129,7 +129,7 @@ export default function GMMTarifasAdmin() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Nombre de la versión
               </label>
               <input
@@ -137,12 +137,12 @@ export default function GMMTarifasAdmin() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ej: Tarifas 2024 Q1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Archivo Excel
               </label>
               <div className="flex items-center gap-3">
@@ -153,7 +153,7 @@ export default function GMMTarifasAdmin() {
                   className="flex-1"
                 />
                 {file && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-sm text-neutral-600">
                     <FileSpreadsheet className="w-4 h-4" />
                     {file.name}
                   </div>
@@ -162,7 +162,7 @@ export default function GMMTarifasAdmin() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Notas (opcional)
               </label>
               <textarea
@@ -170,7 +170,7 @@ export default function GMMTarifasAdmin() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Descripción de cambios, vigencia, etc."
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md"
               />
             </div>
 
@@ -195,9 +195,9 @@ export default function GMMTarifasAdmin() {
           <h3 className="text-lg font-semibold mb-4">Versiones de Tarifas</h3>
 
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Cargando...</div>
+            <div className="text-center py-8 text-neutral-500">Cargando...</div>
           ) : packages.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-neutral-500">
               No hay tarifas cargadas
             </div>
           ) : (
@@ -205,16 +205,16 @@ export default function GMMTarifasAdmin() {
               {packages.map((pkg) => (
                 <div
                   key={pkg.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors"
+                  className="border border-neutral-200 rounded-lg p-4 hover:border-primary-300 transition-colors"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-semibold text-gray-900">{pkg.name}</h4>
+                        <h4 className="font-semibold text-neutral-900">{pkg.name}</h4>
                         {getStatusBadge(pkg.status)}
                       </div>
 
-                      <div className="text-sm text-gray-600 space-y-1">
+                      <div className="text-sm text-neutral-600 space-y-1">
                         <div className="flex items-center gap-2">
                           <FileSpreadsheet className="w-4 h-4" />
                           {pkg.source_filename}
@@ -228,7 +228,7 @@ export default function GMMTarifasAdmin() {
                           })}
                         </div>
                         {pkg.notes && (
-                          <div className="text-gray-500 mt-2">{pkg.notes}</div>
+                          <div className="text-neutral-500 mt-2">{pkg.notes}</div>
                         )}
                       </div>
 

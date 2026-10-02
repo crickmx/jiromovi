@@ -83,8 +83,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
     const deCarga = esErrorDeCarga(error);
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-neutral-50">
-        <div className="max-w-md w-full bg-white border border-neutral-200 rounded-2xl p-6 space-y-3 shadow-sm">
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-surface-card border border-soft rounded-2xl p-6 space-y-3 shadow-card">
           <h1 className="text-lg font-bold text-neutral-900">
             {deCarga ? 'No se pudo cargar esta parte de MOVI' : 'Algo salió mal'}
           </h1>
@@ -97,7 +97,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="flex gap-2">
             <button
               onClick={() => { try { sessionStorage.removeItem(CLAVE_RECARGA); } catch { /* sin storage */ } window.location.reload(); }}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-xl text-sm font-semibold"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-foreground rounded-xl text-sm font-semibold"
             >
               Recargar
             </button>
@@ -112,8 +112,8 @@ export class ErrorBoundary extends Component<Props, State> {
           {/* El detalle va visible a propósito: antes no quedaba rastro de nada
               y había que adivinar qué había fallado. */}
           <details className="pt-1">
-            <summary className="text-xs text-neutral-400 cursor-pointer">Ver detalle técnico</summary>
-            <pre className="mt-2 text-[10px] text-neutral-500 bg-neutral-50 border border-neutral-200 rounded-lg p-2 overflow-auto max-h-40 whitespace-pre-wrap">
+            <summary className="text-xs text-neutral-500 cursor-pointer">Ver detalle técnico</summary>
+            <pre className="mt-2 text-[11px] text-neutral-500 bg-neutral-50 border border-neutral-200 rounded-lg p-2 overflow-auto max-h-40 whitespace-pre-wrap">
               {error.name}: {error.message}
             </pre>
           </details>

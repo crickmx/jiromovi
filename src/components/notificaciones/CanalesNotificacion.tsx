@@ -187,7 +187,7 @@ function HtmlEditor({ headerHtml, footerHtml, onChange, onRestoreDefaults }: Htm
                 className="w-full font-mono text-xs border border-[var(--border)] rounded-xl p-3 focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-y bg-neutral-950 text-emerald-400 leading-relaxed"
                 placeholder={`Escribe el HTML del ${section}...`}
               />
-              <div className="absolute bottom-2 right-2 text-[10px] text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded">
+              <div className="absolute bottom-2 right-2 text-[11px] text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded">
                 {currentValue.length} chars
               </div>
             </div>
@@ -570,7 +570,7 @@ function TestPanel({ channel, onClose }: { channel: NotificationChannel; onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
       <div className="bg-[var(--bg-primary)] rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
         <h3 className="text-base font-bold text-[var(--text-primary)]">Probar canal: {channel.name}</h3>
         <div>
@@ -634,7 +634,7 @@ function ChannelCard({
     <div className={`relative rounded-2xl border p-5 transition-all ${channel.is_active ? 'border-[var(--border)] bg-[var(--bg-primary)]' : 'border-[var(--border)] bg-[var(--bg-secondary)] opacity-70'}`}>
       {channel.is_default && (
         <div className="absolute top-3 right-3">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-semibold uppercase tracking-wide">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 text-[11px] font-semibold uppercase tracking-wide">
             <Star className="w-3 h-3" /> Default
           </span>
         </div>
@@ -757,7 +757,7 @@ function ChannelModal({
   const isNew = !('id' in initial) || !initial.id;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
       <div className="bg-[var(--bg-primary)] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[94vh] flex flex-col">
         <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
           <div>
@@ -807,7 +807,7 @@ function ChannelModal({
 
 function ConfirmDeleteModal({ name, onConfirm, onCancel }: { name: string; onConfirm: () => void; onCancel: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm p-4">
       <div className="bg-[var(--bg-primary)] rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">

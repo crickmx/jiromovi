@@ -113,7 +113,7 @@ export default function Comisiones() {
               onClick={() => setFilter(key)}
               className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
                 filter === key
-                  ? 'text-accent border-accent'
+                  ? 'text-accent-ink border-accent'
                   : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
               }`}
             >
@@ -138,18 +138,18 @@ export default function Comisiones() {
             <div
               key={batch.id}
               onClick={() => navigate(`/comisiones/lote/${batch.id}`)}
-              className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5 hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200 cursor-pointer group"
+              className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4 sm:p-5 hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200 cursor-pointer group"
             >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5 mb-2">
-                    <FileSpreadsheet className="w-4 h-4 text-accent flex-shrink-0" />
+                    <FileSpreadsheet className="w-4 h-4 text-accent-ink flex-shrink-0" />
                     <h3 className="text-sm font-bold text-neutral-900 dark:text-white truncate">
                       {batch.name}
                     </h3>
                   </div>
                   {getStatusBadge(batch.status)}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5 text-xs text-neutral-500 dark:text-white/40">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5 text-xs text-neutral-500 dark:text-white/55">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {formatDate(batch.period_start || batch.date_from)} - {formatDate(batch.period_end || batch.date_to)}
@@ -160,7 +160,7 @@ export default function Comisiones() {
                   </div>
                 </div>
 
-                <div className="text-xs text-neutral-400 dark:text-white/30 flex-shrink-0">
+                <div className="text-xs text-neutral-500 dark:text-white/45 flex-shrink-0">
                   {formatDate(batch.created_at)}
                 </div>
               </div>

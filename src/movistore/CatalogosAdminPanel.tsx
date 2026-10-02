@@ -207,8 +207,8 @@ export function CatalogosAdminPanel() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Catálogos</h2>
-          <p className="text-sm text-gray-500 dark:text-white/50 mt-0.5">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Catálogos</h2>
+          <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">
             Agrupaciones de productos para compartir en{' '}
             <a href="https://tienda.movi.digital" target="_blank" rel="noopener" className="underline hover:text-blue-500">
               tienda.movi.digital
@@ -217,7 +217,7 @@ export function CatalogosAdminPanel() {
         </div>
         <button
           onClick={() => abrirModal()}
-          className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
+          className="flex items-center gap-2 bg-accent text-accent-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
         >
           <Plus className="w-4 h-4" />
           Nuevo catálogo
@@ -225,32 +225,32 @@ export function CatalogosAdminPanel() {
       </div>
 
       {cargando ? (
-        <div className="py-12 text-center text-gray-400">Cargando...</div>
+        <div className="py-12 text-center text-neutral-500">Cargando...</div>
       ) : catalogos.length === 0 ? (
-        <div className="py-12 text-center text-gray-400">No hay catálogos. Crea el primero.</div>
+        <div className="py-12 text-center text-neutral-500">No hay catálogos. Crea el primero.</div>
       ) : (
         <div className="space-y-3">
           {catalogos.map(cat => (
             <div
               key={cat.id}
-              className="flex items-center gap-4 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-4"
+              className="flex items-center gap-4 bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-2xl p-4"
             >
               {cat.imagen_portada_url ? (
                 <img
                   src={getImgUrl(cat.imagen_portada_url) ?? ''}
                   alt={cat.nombre}
-                  className="w-14 h-14 rounded-lg object-cover shrink-0 bg-gray-100"
+                  className="w-14 h-14 rounded-lg object-cover shrink-0 bg-neutral-100"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
-                  <ImageIcon className="w-6 h-6 text-gray-300" />
+                <div className="w-14 h-14 rounded-lg bg-neutral-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                  <ImageIcon className="w-6 h-6 text-neutral-300" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-900 dark:text-white truncate">{cat.nombre}</span>
+                  <span className="font-semibold text-neutral-900 dark:text-white truncate">{cat.nombre}</span>
                   {!cat.activo && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-400">Inactivo</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/10 text-neutral-500">Inactivo</span>
                   )}
                 </div>
                 <a
@@ -262,28 +262,28 @@ export function CatalogosAdminPanel() {
                   tienda.movi.digital/catalogo/{cat.slug}
                 </a>
                 {cat.descripcion && (
-                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{cat.descripcion}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{cat.descripcion}</p>
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => toggleActivo(cat)}
                   title={cat.activo ? 'Desactivar' : 'Activar'}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 hover:text-gray-700 dark:hover:text-white transition"
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-neutral-500 hover:text-gray-700 dark:hover:text-white transition"
                 >
                   {cat.activo ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
                 <button
                   onClick={() => abrirModal(cat)}
                   title="Editar"
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 hover:text-gray-700 dark:hover:text-white transition"
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-neutral-500 hover:text-gray-700 dark:hover:text-white transition"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => eliminar(cat)}
                   title="Eliminar"
-                  className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition"
+                  className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-neutral-500 hover:text-red-500 transition"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -295,14 +295,14 @@ export function CatalogosAdminPanel() {
 
       {/* Modal crear/editar */}
       {modalAbierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-e4 animate-scale-in">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-white/10 shrink-0">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-white/10 shrink-0">
+              <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
                 {editando ? 'Editar catálogo' : 'Nuevo catálogo'}
               </h3>
-              <button onClick={cerrarModal} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400 transition">
+              <button onClick={cerrarModal} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-neutral-500 transition">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -311,16 +311,16 @@ export function CatalogosAdminPanel() {
               {/* Nombre y slug */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-white/70 block mb-1">Nombre *</label>
+                  <label className="text-sm font-medium text-neutral-700 dark:text-white/70 block mb-1">Nombre *</label>
                   <input
                     value={form.nombre}
                     onChange={e => handleNombre(e.target.value)}
-                    className="w-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/40"
                     placeholder="Catálogo Verano 2026"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-white/70 block mb-1">
+                  <label className="text-sm font-medium text-neutral-700 dark:text-white/70 block mb-1">
                     Slug (URL)
                     {!slugManual && (
                       <button
@@ -335,35 +335,35 @@ export function CatalogosAdminPanel() {
                   <input
                     value={form.slug}
                     onChange={e => { setSlugManual(true); setForm(f => ({ ...f, slug: e.target.value })); }}
-                    className="w-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                    className="w-full border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/40 font-mono"
                     placeholder="catalogo-verano-2026"
                   />
-                  <p className="text-xs text-gray-400 mt-1">tienda.movi.digital/catalogo/{form.slug || '...'}</p>
+                  <p className="text-xs text-neutral-500 mt-1">tienda.movi.digital/catalogo/{form.slug || '...'}</p>
                 </div>
               </div>
 
               {/* Descripción */}
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-white/70 block mb-1">Descripción</label>
+                <label className="text-sm font-medium text-neutral-700 dark:text-white/70 block mb-1">Descripción</label>
                 <textarea
                   value={form.descripcion}
                   onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
                   rows={2}
-                  className="w-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 rounded-lg px-3 py-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
                   placeholder="Descripción breve del catálogo..."
                 />
               </div>
 
               {/* Imagen portada */}
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-white/70 block mb-2">Imagen de portada</label>
+                <label className="text-sm font-medium text-neutral-700 dark:text-white/70 block mb-2">Imagen de portada</label>
                 <div className="flex items-start gap-3">
                   {form.imagen_portada_url ? (
                     <div className="relative shrink-0">
                       <img
                         src={getImgUrl(form.imagen_portada_url) ?? ''}
                         alt="portada"
-                        className="w-24 h-24 rounded-xl object-cover border border-gray-200 dark:border-white/10"
+                        className="w-24 h-24 rounded-xl object-cover border border-neutral-200 dark:border-white/10"
                       />
                       <button
                         onClick={() => setForm(f => ({ ...f, imagen_portada_url: '' }))}
@@ -373,12 +373,12 @@ export function CatalogosAdminPanel() {
                       </button>
                     </div>
                   ) : (
-                    <div className="w-24 h-24 rounded-xl bg-gray-100 dark:bg-white/5 border-2 border-dashed border-gray-200 dark:border-white/10 flex items-center justify-center shrink-0">
-                      <ImageIcon className="w-8 h-8 text-gray-300" />
+                    <div className="w-24 h-24 rounded-xl bg-neutral-100 dark:bg-white/5 border-2 border-dashed border-neutral-200 dark:border-white/10 flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-8 h-8 text-neutral-300" />
                     </div>
                   )}
                   <div className="flex flex-col gap-2">
-                    <label className="cursor-pointer inline-flex items-center gap-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 text-gray-700 dark:text-white/70 text-sm font-medium px-3 py-2 rounded-lg transition">
+                    <label className="cursor-pointer inline-flex items-center gap-2 bg-neutral-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 text-neutral-700 dark:text-white/70 text-sm font-medium px-3 py-2 rounded-lg transition">
                       {subiendoImg ? 'Subiendo...' : 'Subir imagen'}
                       <input
                         ref={imgInputRef}
@@ -388,7 +388,7 @@ export function CatalogosAdminPanel() {
                         onChange={e => { if (e.target.files?.[0]) subirImagen(e.target.files[0]); }}
                       />
                     </label>
-                    <p className="text-xs text-gray-400">JPG, PNG o WebP recomendado. Mínimo 800×400px.</p>
+                    <p className="text-xs text-neutral-500">JPG, PNG o WebP recomendado. Mínimo 800×400px.</p>
                   </div>
                 </div>
               </div>
@@ -402,7 +402,7 @@ export function CatalogosAdminPanel() {
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.activo ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
-                <span className="text-sm text-gray-700 dark:text-white/70">
+                <span className="text-sm text-neutral-700 dark:text-white/70">
                   {form.activo ? 'Visible en la tienda' : 'Oculto (borrador)'}
                 </span>
               </div>
@@ -410,12 +410,12 @@ export function CatalogosAdminPanel() {
               {/* Selector de productos */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-white/70">
+                  <label className="text-sm font-medium text-neutral-700 dark:text-white/70">
                     Productos ({seleccionados.size} seleccionados)
                   </label>
-                  <span className="text-xs text-gray-400">Los marcados aparecen en este catálogo</span>
+                  <span className="text-xs text-neutral-500">Los marcados aparecen en este catálogo</span>
                 </div>
-                <div className="border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-white/5 max-h-72 overflow-y-auto">
+                <div className="border border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden divide-y divide-neutral-100 dark:divide-white/5 max-h-72 overflow-y-auto">
                   {productosOrdenados.map(p => {
                     const isSelected = seleccionados.has(p.id);
                     const posicion = ordenSeleccionados.indexOf(p.id);
@@ -432,13 +432,13 @@ export function CatalogosAdminPanel() {
                           {isSelected && <Check className="w-3 h-3 text-white" />}
                         </button>
                         {p.imagen_url ? (
-                          <img src={p.imagen_url} alt={p.titulo} className="w-8 h-8 rounded-lg object-cover bg-gray-100 shrink-0" />
+                          <img src={p.imagen_url} alt={p.titulo} className="w-8 h-8 rounded-lg object-cover bg-neutral-100 shrink-0" />
                         ) : (
-                          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0 text-sm">📦</div>
+                          <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-white/10 flex items-center justify-center shrink-0 text-sm">📦</div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{p.titulo}</p>
-                          <p className="text-xs text-gray-400">{fmt(p.precio)}</p>
+                          <p className="text-sm font-medium text-neutral-800 dark:text-white truncate">{p.titulo}</p>
+                          <p className="text-xs text-neutral-500">{fmt(p.precio)}</p>
                         </div>
                         {isSelected && (
                           <div className="flex flex-col gap-0.5 shrink-0">
@@ -446,13 +446,13 @@ export function CatalogosAdminPanel() {
                               type="button"
                               onClick={() => moverProducto(p.id, 'up')}
                               disabled={posicion === 0}
-                              className="text-gray-300 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 text-xs leading-none"
+                              className="text-neutral-300 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 text-xs leading-none"
                             >▲</button>
                             <button
                               type="button"
                               onClick={() => moverProducto(p.id, 'down')}
                               disabled={posicion === ordenSeleccionados.length - 1}
-                              className="text-gray-300 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 text-xs leading-none"
+                              className="text-neutral-300 hover:text-gray-600 dark:hover:text-white disabled:opacity-20 text-xs leading-none"
                             >▼</button>
                           </div>
                         )}
@@ -460,24 +460,24 @@ export function CatalogosAdminPanel() {
                     );
                   })}
                   {productosModal.length === 0 && (
-                    <div className="py-6 text-center text-gray-400 text-sm">No hay productos activos en la tienda.</div>
+                    <div className="py-6 text-center text-neutral-500 text-sm">No hay productos activos en la tienda.</div>
                   )}
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 dark:border-white/10 shrink-0">
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-neutral-100 dark:border-white/10 shrink-0">
               <button
                 onClick={cerrarModal}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 transition"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-neutral-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 transition"
               >
                 Cancelar
               </button>
               <button
                 onClick={guardar}
                 disabled={guardando || !form.nombre.trim() || !form.slug.trim()}
-                className="px-5 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:opacity-90 transition disabled:opacity-50"
+                className="px-5 py-2 rounded-lg text-sm font-semibold bg-accent text-accent-foreground hover:opacity-90 transition disabled:opacity-50"
               >
                 {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear catálogo'}
               </button>

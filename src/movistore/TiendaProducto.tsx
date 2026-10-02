@@ -155,7 +155,7 @@ export function TiendaProducto() {
           <div className="flex items-center gap-2">
             <button
               onClick={compartir}
-              className="p-2 rounded-lg bg-white/10 text-slate-200 hover:text-white hover:bg-white/20 transition-colors text-xs font-medium flex items-center gap-1.5"
+              className="p-2 rounded-lg bg-white/10 text-neutral-200 hover:text-white hover:bg-white/20 transition-colors text-xs font-medium flex items-center gap-1.5"
               title="Compartir producto"
             >
               <Share2 className="w-3.5 h-3.5" />
@@ -169,11 +169,11 @@ export function TiendaProducto() {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex-1 w-full">
         {cargando ? (
           <div className="flex flex-col items-center justify-center py-24">
-            <div className="w-10 h-10 border-[3px] border-surface-200 border-t-[#164281] rounded-full animate-spin mb-4" />
+            <div className="w-10 h-10 border-[3px] border-surface-200 border-t-accent rounded-full animate-spin mb-4" />
             <p className="text-surface-500 text-sm font-medium">Cargando detalles del producto...</p>
           </div>
         ) : !producto ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-surface-200 p-8 max-w-lg mx-auto shadow-sm">
+          <div className="text-center py-20 bg-surface-card rounded-3xl border border-surface-200 p-8 max-w-lg mx-auto shadow-card">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-surface-100 flex items-center justify-center text-surface-400 mb-4">
               <Package className="w-7 h-7" />
             </div>
@@ -183,7 +183,7 @@ export function TiendaProducto() {
             </p>
             <Link
               to="/"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#164281] text-white text-xs font-bold hover:bg-[#1e5fac] transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-accent-foreground text-xs font-bold hover:bg-[#1e5fac] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" /> Ver catálogo completo
             </Link>
@@ -192,7 +192,7 @@ export function TiendaProducto() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
             {/* Gallery / Image Area (Left) */}
             <div className="lg:col-span-6 space-y-4">
-              <div className="aspect-square bg-white rounded-3xl overflow-hidden shadow-sm border border-surface-200/80 relative">
+              <div className="aspect-square bg-surface-card rounded-3xl overflow-hidden shadow-card border border-surface-200/80 relative">
                 <img
                   src={producto.imagen_url || PLACEHOLDER_SVG}
                   alt={producto.titulo}
@@ -216,13 +216,13 @@ export function TiendaProducto() {
               </div>
 
               {/* Guarantees Box */}
-              <div className="bg-white rounded-2xl p-4 border border-surface-200/70 shadow-sm grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-surface-card rounded-2xl p-4 border border-surface-200/70 shadow-card grid grid-cols-2 gap-3 text-xs">
                 <div className="flex items-center gap-2.5 text-surface-700">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>Compra respaldada en MOVI</span>
                 </div>
                 <div className="flex items-center gap-2.5 text-surface-700">
-                  <Truck className="w-4 h-4 text-blue-600 shrink-0" />
+                  <Truck className="w-4 h-4 text-accent-ink shrink-0" />
                   <span>Entrega oficial Grupo Jiro</span>
                 </div>
               </div>
@@ -244,9 +244,9 @@ export function TiendaProducto() {
               </div>
 
               {/* Pricing Display */}
-              <div className="bg-white p-5 rounded-2xl border border-surface-200/80 shadow-sm">
+              <div className="bg-surface-card p-5 rounded-2xl border border-surface-200/80 shadow-card">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-[#164281] leading-none">
+                  <span className="text-3xl sm:text-4xl font-black text-accent-ink leading-none">
                     {fmt(precioEfectivo)}
                   </span>
                   <span className="text-xs font-bold uppercase tracking-wider text-surface-500">
@@ -273,7 +273,7 @@ export function TiendaProducto() {
                       onClick={() => setPlanSeleccionado('mensual')}
                       className={`relative p-4 rounded-2xl border-2 text-left transition-all ${
                         planSeleccionado === 'mensual'
-                          ? 'border-[#164281] bg-blue-50/50 shadow-sm'
+                          ? 'border-accent bg-blue-50/50 shadow-sm'
                           : 'border-surface-200 bg-white hover:border-surface-300'
                       }`}
                     >
@@ -281,7 +281,7 @@ export function TiendaProducto() {
                       <p className="text-2xl font-black text-surface-900 leading-none">$200</p>
                       <p className="text-[11px] text-surface-400 mt-1">MXN / mes</p>
                       {planSeleccionado === 'mensual' && (
-                        <CheckCircle className="absolute top-3 right-3 w-4 h-4 text-[#164281]" />
+                        <CheckCircle className="absolute top-3 right-3 w-4 h-4 text-accent-ink" />
                       )}
                     </button>
 
@@ -295,7 +295,7 @@ export function TiendaProducto() {
                           : 'border-surface-200 bg-white hover:border-surface-300'
                       }`}
                     >
-                      <span className="absolute -top-2.5 left-3 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                      <span className="absolute -top-2.5 left-3 bg-emerald-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
                         Ahorra 17%
                       </span>
                       <p className="text-[11px] font-bold text-surface-500 uppercase tracking-wider mb-1">Anual</p>
@@ -326,7 +326,7 @@ export function TiendaProducto() {
 
               {/* Attributes / Options preview */}
               {!esPremium && atributosConOpciones.length > 0 && (
-                <div className="bg-white p-5 rounded-2xl border border-surface-200/80 shadow-sm space-y-3">
+                <div className="bg-surface-card p-5 rounded-2xl border border-surface-200/80 shadow-card space-y-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-surface-700">
                     Opciones y Variantes Disponibles:
                   </h3>
@@ -360,7 +360,7 @@ export function TiendaProducto() {
 
               {/* Description */}
               {producto.descripcion && (
-                <div className="bg-white p-5 rounded-2xl border border-surface-200/80 shadow-sm">
+                <div className="bg-surface-card p-5 rounded-2xl border border-surface-200/80 shadow-card">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-surface-700 mb-2">
                     Descripción del Producto
                   </h3>
@@ -376,7 +376,7 @@ export function TiendaProducto() {
                   href={comprarUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-2 py-4 px-8 rounded-2xl text-white font-bold text-base bg-[#164281] hover:bg-[#1e5fac] active:scale-[0.99] transition-all shadow-lg shadow-blue-900/30"
+                  className="w-full inline-flex items-center justify-center gap-2 py-4 px-8 rounded-2xl text-accent-foreground font-bold text-base bg-accent hover:bg-[#1e5fac] active:scale-[0.99] transition-all shadow-lg shadow-blue-900/30"
                 >
                   <span>
                     {esServicio
@@ -397,13 +397,13 @@ export function TiendaProducto() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#040c1f] text-slate-400 text-xs py-10 border-t border-white/10 mt-16">
+      <footer className="bg-[#040c1f] text-neutral-500 text-xs py-10 border-t border-white/10 mt-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <img src="/movirecurso_7.png" alt="MOVI" className="h-6 w-auto object-contain" />
             <span className="text-white font-bold text-xs">MOVI Store · Grupo Jiro</span>
           </div>
-          <p className="text-slate-500 text-[11px]">
+          <p className="text-neutral-500 text-[11px]">
             © {new Date().getFullYear()} MOVI Digital. Todos los derechos reservados.
           </p>
         </div>

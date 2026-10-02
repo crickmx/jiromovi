@@ -115,7 +115,7 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
       <button
         onClick={handleCreate}
         disabled={!nombre.trim() || selectedUsuarios.length === 0 || loading}
-        className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
+        className="flex-1 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
       >
         {loading ? 'Creando...' : 'Crear Grupo'}
       </button>
@@ -134,7 +134,7 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             placeholder="Ej: Equipo de Ventas"
-            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
           />
         </div>
 
@@ -147,7 +147,7 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
             onChange={(e) => setDescripcion(e.target.value)}
             placeholder="Descripción opcional del grupo"
             rows={2}
-            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
           />
         </div>
 
@@ -167,7 +167,7 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
                   {u.nombre} {u.apellidos}
                   <button
                     onClick={() => removeSelected(u.id)}
-                    className="text-blue-500 hover:text-blue-700"
+                    className="text-blue-500 hover:text-accent-ink"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -178,13 +178,13 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
 
           {/* Search box */}
           <div className="relative mb-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar por nombre, puesto o rol..."
-              className="w-full pl-9 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full pl-9 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
             />
           </div>
 
@@ -206,7 +206,7 @@ export function NuevoGrupoModal({ isOpen, onClose, onSuccess }: NuevoGrupoModalP
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleUsuario(u.id)}
-                      className="w-4 h-4 accent-blue-600 shrink-0"
+                      className="w-4 h-4 accent-[rgb(var(--movi-accent-rgb))] shrink-0"
                     />
                     <div className="w-8 h-8 rounded-full bg-neutral-200 text-neutral-700 text-xs flex items-center justify-center font-semibold shrink-0">
                       {u.nombre?.[0]}{u.apellidos?.[0]}

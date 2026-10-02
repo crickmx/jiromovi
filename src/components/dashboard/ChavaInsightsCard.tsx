@@ -203,7 +203,7 @@ export function ChavaInsightsCard({ usuario }: Props) {
   ];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10 dark:border-white/8 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="relative overflow-hidden rounded-2xl border border-white/10 dark:border-white/8 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900">
       {/* Ambient glow */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl" />
@@ -220,7 +220,7 @@ export function ChavaInsightsCard({ usuario }: Props) {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-bold text-white">CHAVA OS</span>
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-400/20">
+                <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-400/20">
                   Sistema Operativo Inteligente
                 </span>
               </div>
@@ -265,7 +265,7 @@ export function ChavaInsightsCard({ usuario }: Props) {
                 <span className="hidden sm:inline">{tab.label}</span>
                 {tab.count > 0 && (
                   <span className={cn(
-                    'text-[10px] font-bold px-1 rounded-full',
+                    'text-[11px] font-bold px-1 rounded-full',
                     tab.color === 'amber' && tab.count > 0 ? 'bg-amber-500/30 text-amber-300' : 'bg-white/10 text-white/50'
                   )}>
                     {tab.count}
@@ -351,7 +351,7 @@ export function ChavaInsightsCard({ usuario }: Props) {
         </button>
 
         {/* Disclaimer */}
-        <p className="mt-3 text-[10px] text-white/20 leading-relaxed">
+        <p className="mt-3 text-[11px] text-white/20 leading-relaxed">
           Análisis generado por IA. Confirma los datos antes de tomar decisiones importantes.
         </p>
       </div>
@@ -361,7 +361,7 @@ export function ChavaInsightsCard({ usuario }: Props) {
 
 function ChavaInsightsSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-5 sm:p-6">
+    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 p-5 sm:p-6">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-xl bg-white/8 animate-pulse" />
         <div className="space-y-2">

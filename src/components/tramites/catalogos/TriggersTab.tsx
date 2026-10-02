@@ -334,7 +334,7 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
             Al cambiar al estatus indicado, se crea automáticamente un trámite hijo.
           </p>
         </div>
-        <button onClick={openNew} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+        <button onClick={openNew} className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors text-sm">
           <Plus className="w-3.5 h-3.5" />Nuevo trigger
         </button>
       </div>
@@ -366,7 +366,7 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
           <div className="flex flex-col items-center justify-center py-14 text-center">
             <Zap className="w-8 h-8 text-neutral-200 mb-3" />
             <p className="text-sm font-medium text-neutral-500">Sin triggers configurados</p>
-            <p className="text-xs text-neutral-400 mt-1">Crea el primero con el botón de arriba</p>
+            <p className="text-xs text-neutral-500 mt-1">Crea el primero con el botón de arriba</p>
           </div>
         )}
         {triggers.map(t => (
@@ -435,7 +435,7 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
 
         <div className="divide-y divide-neutral-100">
           {escalaciones.length === 0 && !showEscForm && (
-            <div className="py-8 text-center text-xs text-neutral-400">Sin triggers de escalación</div>
+            <div className="py-8 text-center text-xs text-neutral-500">Sin triggers de escalación</div>
           )}
           {escalaciones.map(e => {
             const destinatarioLabel = e.destinatario === 'ambos' ? 'Supervisor y Director' : e.destinatario === 'supervisor' ? 'Supervisor' : 'Director';
@@ -445,17 +445,17 @@ export function TriggersTab({ tipoId, showToast }: { tipoId: string; showToast: 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-800 truncate">
                     <span className="font-mono text-xs bg-neutral-100 px-1.5 py-0.5 rounded mr-2">{statusLabel}</span>
-                    <ArrowRight className="w-3 h-3 inline text-neutral-400 mr-2" />
+                    <ArrowRight className="w-3 h-3 inline text-neutral-500 mr-2" />
                     Notificar a <strong>{destinatarioLabel}</strong>
                   </p>
                 </div>
                 <button onClick={() => handleToggleEscActivo(e)} className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.activo ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
                   {e.activo ? 'Activo' : 'Inactivo'}
                 </button>
-                <button onClick={() => { setEscEditingId(e.id); setEscForm({ from_status: e.from_status, destinatario: e.destinatario }); setShowEscForm(true); }} className="p-1 text-neutral-400 hover:text-blue-600 transition-colors">
+                <button onClick={() => { setEscEditingId(e.id); setEscForm({ from_status: e.from_status, destinatario: e.destinatario }); setShowEscForm(true); }} className="p-1 text-neutral-500 hover:text-accent-ink transition-colors">
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => handleDeleteEscalacion(e.id)} className="p-1 text-neutral-400 hover:text-red-500 transition-colors">
+                <button onClick={() => handleDeleteEscalacion(e.id)} className="p-1 text-neutral-500 hover:text-red-500 transition-colors">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -479,7 +479,7 @@ interface TriggerFormProps {
 }
 
 function TriggerForm({ form, editingId, allTipos, sourceStatuses, targetStatuses, adjuntoCats, saving, onFormChange, onTargetTipoChange, onToggleAdjunto, onSave, onCancel }: TriggerFormProps) {
-  const inputCls = 'w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm';
+  const inputCls = 'w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none text-sm';
   const labelCls = 'block text-xs font-medium text-neutral-600 mb-1';
   return (
     <div className="m-5 border border-blue-200 bg-blue-50 rounded-xl p-5 space-y-4">
@@ -491,7 +491,7 @@ function TriggerForm({ form, editingId, allTipos, sourceStatuses, targetStatuses
       <div>
         <label className={labelCls}>Estatus padre que dispara el trigger *</label>
         {sourceStatuses.length === 0 ? (
-          <p className="text-xs text-neutral-400 italic">Sin opciones — agrega el campo Estatus en la pestaña Campos.</p>
+          <p className="text-xs text-neutral-500 italic">Sin opciones — agrega el campo Estatus en la pestaña Campos.</p>
         ) : (
           <select value={form.from_status} onChange={e => onFormChange({ from_status: e.target.value })} className={inputCls}>
             <option value="">Seleccionar estatus…</option>
@@ -510,7 +510,7 @@ function TriggerForm({ form, editingId, allTipos, sourceStatuses, targetStatuses
         <div>
           <label className={labelCls}>Estatus inicial del trámite hijo *</label>
           {form.target_tipo_id && targetStatuses.length === 0 ? (
-            <p className="text-xs text-neutral-400 italic mt-2">El tipo hijo no tiene campo Estatus.</p>
+            <p className="text-xs text-neutral-500 italic mt-2">El tipo hijo no tiene campo Estatus.</p>
           ) : (
             <select value={form.initial_status} onChange={e => onFormChange({ initial_status: e.target.value })} className={inputCls} disabled={!form.target_tipo_id}>
               <option value="">Seleccionar estatus…</option>
@@ -528,10 +528,10 @@ function TriggerForm({ form, editingId, allTipos, sourceStatuses, targetStatuses
         </div>
         <div className="flex flex-col justify-end">
           <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" checked={form.requiere_confirmacion} onChange={e => onFormChange({ requiere_confirmacion: e.target.checked })} className="w-4 h-4 rounded text-blue-600" />
+            <input type="checkbox" checked={form.requiere_confirmacion} onChange={e => onFormChange({ requiere_confirmacion: e.target.checked })} className="w-4 h-4 rounded text-accent-ink" />
             <span className="text-xs font-medium text-neutral-700">Requiere confirmación del usuario</span>
           </label>
-          <p className="text-[10px] text-neutral-400 ml-6 mt-0.5">Si está activo, el usuario verá un aviso antes de crear el trámite hijo.</p>
+          <p className="text-[11px] text-neutral-500 ml-6 mt-0.5">Si está activo, el usuario verá un aviso antes de crear el trámite hijo.</p>
         </div>
       </div>
       <div>
@@ -554,18 +554,18 @@ function TriggerForm({ form, editingId, allTipos, sourceStatuses, targetStatuses
               );
             })}
           </div>
-          <p className="text-[10px] text-neutral-400 mt-1">Selecciona las categorías de adjuntos a copiar al hijo. Sin selección = ninguno.</p>
+          <p className="text-[11px] text-neutral-500 mt-1">Selecciona las categorías de adjuntos a copiar al hijo. Sin selección = ninguno.</p>
         </div>
       )}
       <label className="flex items-center gap-2 cursor-pointer select-none">
-        <input type="checkbox" checked={form.activo} onChange={e => onFormChange({ activo: e.target.checked })} className="w-4 h-4 rounded text-blue-600" />
+        <input type="checkbox" checked={form.activo} onChange={e => onFormChange({ activo: e.target.checked })} className="w-4 h-4 rounded text-accent-ink" />
         <span className="text-xs font-medium text-neutral-700">Trigger activo</span>
       </label>
       <div className="flex gap-2 pt-1">
-        <button onClick={onSave} disabled={saving} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50">
+        <button onClick={onSave} disabled={saving} className="flex items-center gap-1.5 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover text-sm disabled:opacity-50">
           <Save className="w-3.5 h-3.5" />{saving ? 'Guardando…' : (editingId ? 'Guardar cambios' : 'Crear trigger')}
         </button>
-        <button onClick={onCancel} className="px-4 py-2 bg-white text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50 text-sm">Cancelar</button>
+        <button onClick={onCancel} className="px-4 py-2 bg-surface-card text-neutral-700 border border-neutral-300 rounded-lg hover:bg-neutral-50 text-sm">Cancelar</button>
       </div>
     </div>
   );
@@ -631,26 +631,26 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
     <div className={!trigger.activo ? 'opacity-60' : ''}>
       {/* Row header */}
       <div className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-50 transition-colors">
-        <button onClick={onToggleExpand} className="shrink-0 text-neutral-400 hover:text-neutral-600">
+        <button onClick={onToggleExpand} className="shrink-0 text-neutral-500 hover:text-neutral-600">
           {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
         <Zap className="w-4 h-4 text-blue-500 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-neutral-800">{trigger.nombre}</span>
-            {!trigger.activo && <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">Inactivo</span>}
+            {!trigger.activo && <span className="text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">Inactivo</span>}
             {autoCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-50 text-accent-ink border border-blue-100">
                 {autoCount} auto
               </span>
             )}
             {manualCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">
                 {manualCount} manual
               </span>
             )}
             {configuredCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-400">
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">
                 {totalCampos - configuredCount} sin config
               </span>
             )}
@@ -659,16 +659,16 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
             <span className="text-[11px] text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded font-mono">{trigger.from_status}</span>
             <ArrowRight className="w-3 h-3 text-neutral-300" />
             <span className="text-[11px] font-medium" style={{ color }}>{trigger.target_tipo?.label ?? trigger.target_tipo_id}</span>
-            <span className="text-[11px] text-neutral-400">({trigger.initial_status})</span>
-            {trigger.requiere_confirmacion && <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">con confirmación</span>}
-            {trigger.folio_mode === 'heredar_incisos' && <span className="text-[10px] text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-mono">folio-A/B/C…</span>}
+            <span className="text-[11px] text-neutral-500">({trigger.initial_status})</span>
+            {trigger.requiere_confirmacion && <span className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">con confirmación</span>}
+            {trigger.folio_mode === 'heredar_incisos' && <span className="text-[11px] text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-mono">folio-A/B/C…</span>}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={onToggleActivo} className={`px-2 py-1 text-[11px] font-medium rounded-lg transition-colors ${trigger.activo ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
             {trigger.activo ? 'Desactivar' : 'Activar'}
           </button>
-          <button onClick={onEdit} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
+          <button onClick={onEdit} className="p-1.5 text-accent-ink hover:bg-blue-50 rounded-lg transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
           <button onClick={onDelete} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
       </div>
@@ -681,9 +681,9 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
             <div>
               <p className="text-xs font-semibold text-neutral-700">
                 Campos del trámite hijo
-                {trigger.target_tipo?.label && <span className="font-normal text-neutral-400 ml-1">— {trigger.target_tipo.label}</span>}
+                {trigger.target_tipo?.label && <span className="font-normal text-neutral-500 ml-1">— {trigger.target_tipo.label}</span>}
               </p>
-              <p className="text-[10px] text-neutral-400 mt-0.5">
+              <p className="text-[11px] text-neutral-500 mt-0.5">
                 Para cada campo del hijo, elige qué copiar del trámite padre.
               </p>
             </div>
@@ -700,9 +700,9 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
           </div>
 
           {initialMappings === null ? (
-            <p className="px-4 py-3 text-xs text-neutral-400">Cargando…</p>
+            <p className="px-4 py-3 text-xs text-neutral-500">Cargando…</p>
           ) : targetCampos.filter(c => c.tipo !== 'estatus').length === 0 ? (
-            <p className="px-4 py-3 text-xs text-neutral-400 italic">
+            <p className="px-4 py-3 text-xs text-neutral-500 italic">
               El tipo hijo no tiene campos configurados aún.
             </p>
           ) : (
@@ -724,7 +724,7 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
 
               {/* Footer: save */}
               <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-50 border-t border-neutral-100">
-                <p className="text-[10px] text-neutral-400">
+                <p className="text-[11px] text-neutral-500">
                   {configuredCount === 0
                     ? 'Sin mapeos — los campos quedarán en blanco al crear el hijo.'
                     : [
@@ -736,7 +736,7 @@ function TriggerRow({ trigger, expanded, sourceCampos, targetCampos, initialMapp
                 <button
                   onClick={() => onSaveMappings(localMappings)}
                   disabled={saving}
-                  className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs disabled:opacity-50"
+                  className="flex items-center gap-1 px-3 py-1 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover text-xs disabled:opacity-50"
                 >
                   <Save className="w-3 h-3" />
                   {saving ? 'Guardando…' : 'Guardar mapeos'}
@@ -785,7 +785,7 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
       <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50/50">
         <div className="w-44 shrink-0">
           <p className="text-xs font-medium truncate text-neutral-700">{campo.label}</p>
-          <p className="text-[10px] text-neutral-400">{campo.tipo}</p>
+          <p className="text-[11px] text-neutral-500">{campo.tipo}</p>
         </div>
         <span className="text-neutral-300 text-xs shrink-0">←</span>
         <span className="text-xs px-2 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700">
@@ -801,7 +801,7 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
       <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50/50">
         <div className="w-44 shrink-0">
           <p className="text-xs font-medium truncate text-neutral-700">{campo.label}</p>
-          <p className="text-[10px] text-neutral-400">{campo.tipo}</p>
+          <p className="text-[11px] text-neutral-500">{campo.tipo}</p>
         </div>
         <span className="text-neutral-300 text-xs shrink-0">←</span>
         <span className="text-xs px-2 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-700">
@@ -827,12 +827,12 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
       <div className={`flex items-start gap-3 px-4 py-2.5 transition-colors ${selectedIds.length > 0 ? 'bg-blue-50/40' : 'hover:bg-neutral-50/50'}`}>
         <div className="w-44 shrink-0 pt-0.5">
           <p className={`text-xs font-medium truncate ${selectedIds.length > 0 ? 'text-blue-700' : 'text-neutral-700'}`}>{campo.label}</p>
-          <p className="text-[10px] text-neutral-400">{campo.tipo}</p>
+          <p className="text-[11px] text-neutral-500">{campo.tipo}</p>
         </div>
         <span className="text-neutral-300 text-xs shrink-0 pt-1">←</span>
         <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
           {grupos.length === 0
-            ? <span className="text-xs text-neutral-400 italic">Sin equipos configurados</span>
+            ? <span className="text-xs text-neutral-500 italic">Sin equipos configurados</span>
             : grupos.map(g => (
               <button
                 key={g.id}
@@ -881,7 +881,7 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
       {/* Target campo label */}
       <div className="w-44 shrink-0">
         <p className={`text-xs font-medium truncate ${isManual ? 'text-amber-700' : hasMapping ? 'text-blue-700' : 'text-neutral-700'}`}>{campo.label}</p>
-        <p className="text-[10px] text-neutral-400">{campo.tipo}</p>
+        <p className="text-[11px] text-neutral-500">{campo.tipo}</p>
       </div>
 
       {/* Arrow */}
@@ -893,7 +893,7 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
           <select
             value={selectDisplayValue}
             onChange={e => handleChange(e.target.value)}
-            className={`flex-1 min-w-0 px-2 py-1.5 border rounded-lg text-xs bg-white focus:ring-1 focus:outline-none transition-colors ${isManual ? 'border-amber-300 focus:ring-amber-400' : hasMapping ? 'border-blue-300 focus:ring-blue-400' : 'border-neutral-200 focus:ring-blue-400'}`}
+            className={`flex-1 min-w-0 px-2 py-1.5 border rounded-lg text-xs bg-surface-card focus:ring-1 focus:outline-none transition-colors ${isManual ? 'border-amber-300 focus:ring-amber-400' : hasMapping ? 'border-blue-300 focus:ring-blue-400' : 'border-neutral-200 focus:ring-blue-400'}`}
           >
             <option value="">— No copiar (dejar vacío)</option>
             <option value="__manual__">Llenar manualmente después</option>
@@ -922,7 +922,7 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
               value={mapping?.valor_fijo ?? ''}
               onChange={e => onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: e.target.value })}
               placeholder="Escribe el valor…"
-              className="w-36 shrink-0 px-2 py-1.5 border border-blue-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-400 focus:outline-none"
+              className="w-36 shrink-0 px-2 py-1.5 border border-blue-300 rounded-lg text-xs focus:ring-1 focus:ring-accent/40 focus:outline-none"
             />
           )}
         </div>
@@ -935,7 +935,7 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
               value={mapping?.valor_fijo ?? ''}
               onChange={e => onSet({ source_campo_id: null, source_sistema_key: null, valor_fijo: e.target.value })}
               placeholder="Ej: El cliente {Nombre} tiene póliza {Número de Póliza}"
-              className="w-full px-2 py-1.5 border border-blue-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-400 focus:outline-none"
+              className="w-full px-2 py-1.5 border border-blue-300 rounded-lg text-xs focus:ring-1 focus:ring-accent/40 focus:outline-none"
             />
             <div className="flex flex-wrap gap-1">
               {sourceCampos.map(c => (
@@ -943,7 +943,7 @@ function CampoMappingRow({ campo, mapping, sourceCampos, grupos, onSet }: CampoM
                   key={c.id}
                   type="button"
                   onClick={() => insertChip(c.label)}
-                  className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200 transition-colors"
+                  className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200 transition-colors"
                 >
                   {`{${c.label}}`}
                 </button>

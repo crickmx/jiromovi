@@ -141,7 +141,7 @@ export default function CRMLeadsSegurosExpress() {
   if (!habilitado) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <ShieldAlert className="mx-auto h-12 w-12 text-neutral-400" />
+        <ShieldAlert className="mx-auto h-12 w-12 text-neutral-500" />
         <h1 className="mt-4 text-xl font-bold text-neutral-900 dark:text-white">
           seguros.express no está habilitado en tu cuenta
         </h1>
@@ -184,7 +184,7 @@ export default function CRMLeadsSegurosExpress() {
               <Hand className="h-4 w-4" /> Posibles leads ({posibles.length})
             </h2>
             {posibles.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-neutral-200 p-6 text-center text-sm text-neutral-400 dark:border-white/10 dark:text-white/40">
+              <p className="rounded-xl border border-dashed border-neutral-200 p-6 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-white/55">
                 No hay leads disponibles en tu zona por ahora.
               </p>
             ) : (
@@ -193,12 +193,12 @@ export default function CRMLeadsSegurosExpress() {
                   const dist = (agLat != null && agLng != null && l.lat != null && l.lng != null)
                     ? Math.round(distanciaKm(agLat, agLng, l.lat, l.lng)) : null;
                   return (
-                    <div key={l.id} className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                    <div key={l.id} className="rounded-2xl border border-soft bg-surface-card p-4 dark:border-white/10 dark:bg-white/[0.03]">
                       <div className="flex items-start justify-between">
                         <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-400">
                           {l.tipo_seguro_interes || 'Seguro'}
                         </span>
-                        <span className="flex items-center gap-1 text-xs text-neutral-400">
+                        <span className="flex items-center gap-1 text-xs text-neutral-500">
                           <Clock className="h-3 w-3" />
                           {new Date(l.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                         </span>
@@ -230,13 +230,13 @@ export default function CRMLeadsSegurosExpress() {
               <UserCheck className="h-4 w-4" /> Leads elegidos ({elegidos.length})
             </h2>
             {elegidos.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-neutral-200 p-6 text-center text-sm text-neutral-400 dark:border-white/10 dark:text-white/40">
+              <p className="rounded-xl border border-dashed border-neutral-200 p-6 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-white/55">
                 Aún no has tomado ningún lead.
               </p>
             ) : (
               <div className="space-y-3">
                 {elegidos.map((l) => (
-                  <div key={l.id} className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                  <div key={l.id} className="rounded-2xl border border-soft bg-surface-card p-4 dark:border-white/10 dark:bg-white/[0.03]">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
@@ -245,7 +245,7 @@ export default function CRMLeadsSegurosExpress() {
                             {l.estado}
                           </span>
                         </div>
-                        <p className="mt-1 text-xs text-neutral-400">{l.tipo_seguro_interes || 'Seguro'}</p>
+                        <p className="mt-1 text-xs text-neutral-500">{l.tipo_seguro_interes || 'Seguro'}</p>
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-neutral-600 dark:text-white/70">
                           <a href={`tel:${l.telefono}`} className="flex items-center gap-1.5 hover:text-sky-600">
                             <Phone className="h-3.5 w-3.5" /> {l.telefono}

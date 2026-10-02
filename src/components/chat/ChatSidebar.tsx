@@ -75,7 +75,7 @@ export function ChatSidebar({ chats, selectedChat, onSelectChat, getChatName, cu
                 </h3>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   {unread > 0 && (
-                    <span className="px-1.5 py-0.5 bg-accent text-white text-[10px] font-bold rounded-full leading-none min-w-[18px] text-center">
+                    <span className="px-1.5 py-0.5 bg-accent text-accent-foreground text-[11px] font-bold rounded-full leading-none min-w-[18px] text-center">
                       {unread > 99 ? '99+' : unread}
                     </span>
                   )}
@@ -104,7 +104,7 @@ export function ChatSidebar({ chats, selectedChat, onSelectChat, getChatName, cu
             {isHovered && !isDeleting && (
               <button
                 onClick={(e) => handleDeleteChat(e, chat.id)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white hover:bg-red-50 text-neutral-400 hover:text-red-600 transition-all shadow-sm border border-neutral-200 z-10"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-surface-card hover:bg-red-50 text-neutral-500 hover:text-red-600 transition-all shadow-card border border-soft z-10"
                 title="Eliminar conversación"
               >
                 <Trash2 className="w-4 h-4" />

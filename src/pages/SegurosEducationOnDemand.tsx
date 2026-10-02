@@ -875,7 +875,7 @@ export function SegurosEducationOnDemand() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className="text-base font-bold text-neutral-900 dark:text-white">Lecciones disponibles</h2>
-            <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">{filteredLessons.length} lección{filteredLessons.length !== 1 ? 'es' : ''}</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">{filteredLessons.length} lección{filteredLessons.length !== 1 ? 'es' : ''}</p>
           </div>
           {isAdmin && (
             <div className="flex gap-2 flex-wrap">
@@ -909,21 +909,21 @@ export function SegurosEducationOnDemand() {
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <input
               type="text"
               placeholder="Buscar lecciones..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#1C37E0]/30 focus:border-[#1C37E0] transition-all"
+              className="w-full pl-9 pr-4 py-2.5 bg-surface-card dark:bg-white/[0.04] border border-soft dark:border-white/[0.08] rounded-xl text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#1C37E0]/30 focus:border-[#1C37E0] transition-all"
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-white/[0.04] border border-neutral-200 dark:border-white/[0.08] rounded-xl text-sm text-neutral-900 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#1C37E0]/30 focus:border-[#1C37E0] transition-all"
+              className="w-full pl-9 pr-4 py-2.5 bg-surface-card dark:bg-white/[0.04] border border-soft dark:border-white/[0.08] rounded-xl text-sm text-neutral-900 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#1C37E0]/30 focus:border-[#1C37E0] transition-all"
             >
               <option value="all">Todas las categorias</option>
               {categories.map((cat) => (
@@ -936,12 +936,12 @@ export function SegurosEducationOnDemand() {
         {/* Lessons Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredLessons.length === 0 ? (
-            <div className="col-span-full bg-white dark:bg-white/[0.03] rounded-2xl border-2 border-dashed border-neutral-200 dark:border-white/10 p-14 text-center">
+            <div className="col-span-full bg-surface-card dark:bg-white/[0.03] rounded-2xl border-2 border-dashed border-soft dark:border-white/10 p-14 text-center">
               <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-4">
-                <Video className="w-6 h-6 text-neutral-400" />
+                <Video className="w-6 h-6 text-neutral-500" />
               </div>
               <h3 className="text-base font-bold text-neutral-700 dark:text-white/70 mb-1">Sin lecciones</h3>
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-neutral-500">
                 {searchTerm || selectedCategory !== 'all'
                   ? 'No se encontraron lecciones con estos filtros'
                   : 'No hay lecciones disponibles en este momento'}
@@ -952,7 +952,7 @@ export function SegurosEducationOnDemand() {
               <div
                 key={lesson.id}
                 onClick={() => handleLessonClick(lesson)}
-                className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/[0.07] overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
+                className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/60 dark:border-white/[0.07] overflow-hidden hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
               >
                 {/* Thumbnail */}
                 <div className="aspect-video bg-neutral-100 dark:bg-white/5 relative overflow-hidden">
@@ -987,7 +987,7 @@ export function SegurosEducationOnDemand() {
 
                   {/* Completed badge */}
                   {lesson.completado && (
-                    <div className="absolute top-2.5 right-2.5 bg-emerald-500 text-white px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1">
+                    <div className="absolute top-2.5 right-2.5 bg-emerald-500 text-white px-2 py-0.5 rounded-lg text-[11px] font-semibold flex items-center gap-1">
                       <Award className="w-3 h-3" />
                       Completado
                     </div>
@@ -999,17 +999,17 @@ export function SegurosEducationOnDemand() {
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
                       {lesson.categorias && lesson.categorias.length > 0 && lesson.categorias.slice(0, 2).map(cat => (
-                        <span key={cat.id} className="px-2 py-0.5 bg-[#1C37E0]/10 text-[#1C37E0] dark:text-blue-400 rounded-md text-[10px] font-semibold">
+                        <span key={cat.id} className="px-2 py-0.5 bg-[#1C37E0]/10 text-[#1C37E0] dark:text-blue-400 rounded-md text-[11px] font-semibold">
                           {cat.nombre}
                         </span>
                       ))}
                       {lesson.duracion && lesson.duracion > 0 ? (
-                        <span className="flex items-center gap-1 text-neutral-500 dark:text-white/40 text-[10px] font-medium">
+                        <span className="flex items-center gap-1 text-neutral-500 dark:text-white/55 text-[11px] font-medium">
                           <Clock className="w-3 h-3" />
                           {formatDuration(lesson.duracion)}
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 px-1.5 py-0.5 rounded-md text-[10px] font-medium">
+                        <span className="flex items-center gap-1 text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 px-1.5 py-0.5 rounded-md text-[11px] font-medium">
                           <Clock className="w-3 h-3" />
                           Sin duración
                         </span>
@@ -1019,14 +1019,14 @@ export function SegurosEducationOnDemand() {
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           onClick={(e) => handleEditLesson(lesson, e)}
-                          className="p-1.5 text-neutral-400 hover:text-[#1C37E0] hover:bg-[#1C37E0]/10 rounded-lg transition-colors"
+                          className="p-1.5 text-neutral-500 hover:text-[#1C37E0] hover:bg-[#1C37E0]/10 rounded-lg transition-colors"
                           title="Editar lección"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={(e) => handleDeleteLesson(lesson, e)}
-                          className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                          className="p-1.5 text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
                           title="Eliminar lección"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1040,7 +1040,7 @@ export function SegurosEducationOnDemand() {
                   </h3>
 
                   {lesson.descripcion && (
-                    <p className="text-xs text-neutral-500 dark:text-white/40 line-clamp-2 mb-2">
+                    <p className="text-xs text-neutral-500 dark:text-white/55 line-clamp-2 mb-2">
                       {lesson.descripcion}
                     </p>
                   )}
@@ -1048,8 +1048,8 @@ export function SegurosEducationOnDemand() {
                   {lesson.progreso > 0 && !lesson.completado && (
                     <div className="mt-2">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-neutral-500 dark:text-white/40">Progreso</span>
-                        <span className="text-[10px] font-semibold text-[#1C37E0]">{Math.floor(lesson.progreso)}%</span>
+                        <span className="text-[11px] text-neutral-500 dark:text-white/55">Progreso</span>
+                        <span className="text-[11px] font-semibold text-[#1C37E0]">{Math.floor(lesson.progreso)}%</span>
                       </div>
                       <div className="h-1 bg-neutral-100 dark:bg-white/10 rounded-full overflow-hidden">
                         <div className="h-full bg-[#1C37E0] rounded-full" style={{ width: `${lesson.progreso}%` }} />
@@ -1077,7 +1077,7 @@ export function SegurosEducationOnDemand() {
                 </h2>
                 <div className="hidden md:flex items-center gap-2 mt-1 flex-wrap">
                   {selectedLesson.categorias && selectedLesson.categorias.length > 0 && selectedLesson.categorias.map(cat => (
-                    <span key={cat.id} className="inline-flex items-center px-2 py-0.5 bg-accent/10 text-accent rounded-ios text-[11px] font-medium">
+                    <span key={cat.id} className="inline-flex items-center px-2 py-0.5 bg-accent/10 text-accent-ink rounded-ios text-[11px] font-medium">
                       {cat.nombre}
                     </span>
                   ))}
@@ -1116,23 +1116,23 @@ export function SegurosEducationOnDemand() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {selectedLesson.completado ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-green/10 text-ios-green rounded-ios text-[10px] sm:text-[12px] font-medium">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-green/10 text-ios-green rounded-ios text-[11px] sm:text-[12px] font-medium">
                         <Award className="w-3 h-3 stroke-[1.5]" />
                         <span className="hidden sm:inline">Completado</span>
                       </span>
                     ) : selectedLesson.progreso > 0 ? (
-                      <span className="text-[10px] sm:text-[12px] text-ios-gray-600">
-                        Progreso: <span className="font-semibold text-accent">{Math.floor(selectedLesson.progreso)}%</span>
+                      <span className="text-[11px] sm:text-[12px] text-ios-gray-600">
+                        Progreso: <span className="font-semibold text-accent-ink">{Math.floor(selectedLesson.progreso)}%</span>
                       </span>
                     ) : (
-                      <span className="text-[10px] sm:text-[12px] text-ios-gray-500">Sin progreso</span>
+                      <span className="text-[11px] sm:text-[12px] text-ios-gray-500">Sin progreso</span>
                     )}
                   </div>
                   <button
                     onClick={() => {
                       closeVideoModal();
                     }}
-                    className="px-3 sm:px-4 py-1 sm:py-1.5 bg-accent text-white rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-accent-dark transition-colors active:scale-95 flex-shrink-0"
+                    className="px-3 sm:px-4 py-1 sm:py-1.5 bg-accent text-accent-foreground rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-accent-dark transition-colors active:scale-95 flex-shrink-0"
                   >
                     Cerrar
                   </button>
@@ -1154,8 +1154,8 @@ export function SegurosEducationOnDemand() {
 
       {/* Upload Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full my-8">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-2xl w-full my-8 animate-scale-in">
             <div className="p-6 border-b border-neutral-200">
               <h2 className="text-xl font-bold text-neutral-800">
                 {editingLesson ? 'Editar Lección' : 'Subir Nueva Lección'}
@@ -1213,7 +1213,7 @@ export function SegurosEducationOnDemand() {
                             });
                           }
                         }}
-                        className="w-4 h-4 text-accent focus:ring-2 focus:ring-accent rounded"
+                        className="w-4 h-4 text-accent-ink focus:ring-2 focus:ring-accent rounded"
                       />
                       <span className="text-sm text-neutral-700">{cat.nombre}</span>
                     </label>
@@ -1231,7 +1231,7 @@ export function SegurosEducationOnDemand() {
                       return cat ? (
                         <span
                           key={catId}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent text-xs rounded-full"
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent-ink text-xs rounded-full"
                         >
                           {cat.nombre}
                         </span>
@@ -1337,7 +1337,7 @@ export function SegurosEducationOnDemand() {
                     id="video-upload"
                   />
                   <label htmlFor="video-upload" className="cursor-pointer">
-                    <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
+                    <Upload className="w-12 h-12 text-neutral-500 mx-auto mb-2" />
                     {videoFile ? (
                       <>
                         <p className="text-sm text-neutral-900 font-medium truncate max-w-md">{videoFile.name}</p>
@@ -1375,7 +1375,7 @@ export function SegurosEducationOnDemand() {
                     id="thumbnail-upload"
                   />
                   <label htmlFor="thumbnail-upload" className="cursor-pointer">
-                    <Upload className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
+                    <Upload className="w-12 h-12 text-neutral-500 mx-auto mb-2" />
                     <p className="text-sm text-neutral-600">
                       {thumbnailFile ? thumbnailFile.name : 'Click para subir imagen (JPG, PNG, WebP)'}
                     </p>
@@ -1423,7 +1423,7 @@ export function SegurosEducationOnDemand() {
                           id="pending-document-upload"
                         />
                         <label htmlFor="pending-document-upload" className="cursor-pointer">
-                          <Upload className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+                          <Upload className="w-8 h-8 text-neutral-500 mx-auto mb-2" />
                           <p className="text-sm text-neutral-600">
                             Click para agregar documento
                           </p>
@@ -1443,7 +1443,7 @@ export function SegurosEducationOnDemand() {
                             className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200 hover:bg-neutral-100 transition-colors"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className="text-accent">
+                              <div className="text-accent-ink">
                                 <FileText className="w-5 h-5" />
                               </div>
                               <div className="flex-1 min-w-0">
@@ -1486,7 +1486,7 @@ export function SegurosEducationOnDemand() {
                           : 'Finalizando...'}
                       </span>
                       {videoFile && (
-                        <span className="text-xs text-accent mt-1">
+                        <span className="text-xs text-accent-ink mt-1">
                           {videoFile.size >= 1024 * 1024 * 1024
                             ? `${(videoFile.size / (1024 * 1024 * 1024)).toFixed(2)} GB`
                             : `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`
@@ -1495,7 +1495,7 @@ export function SegurosEducationOnDemand() {
                         </span>
                       )}
                       {uploadProgress >= 95 && uploadProgress < 100 && pendingDocuments.length > 0 && (
-                        <span className="text-xs text-accent mt-1">
+                        <span className="text-xs text-accent-ink mt-1">
                           Subiendo {pendingDocuments.length} documento{pendingDocuments.length > 1 ? 's' : ''}...
                         </span>
                       )}
@@ -1531,7 +1531,7 @@ export function SegurosEducationOnDemand() {
               <button
                 onClick={handleUploadLesson}
                 disabled={uploading || (!editingLesson && !videoFile) || !formData.titulo || formData.categoria_ids.length === 0}
-                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploading ? (editingLesson ? 'Actualizando...' : 'Subiendo...') : (editingLesson ? 'Actualizar Lección' : 'Subir Lección')}
               </button>
@@ -1542,7 +1542,7 @@ export function SegurosEducationOnDemand() {
 
       {/* Category Management Modal */}
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-ios flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-ios flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-ios-2xl shadow-ios-xl max-w-md w-full animate-scale-in">
             <div className="bg-ios-gray-50 px-6 py-5 border-b border-ios-gray-200/50">
               <h2 className="text-[22px] font-bold text-ios-gray-900">Gestionar Categorías</h2>
@@ -1566,7 +1566,7 @@ export function SegurosEducationOnDemand() {
                   <button
                     onClick={handleCreateCategory}
                     disabled={!newCategoryName.trim()}
-                    className="px-4 py-2.5 bg-accent text-white rounded-ios-lg hover:bg-accent-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[15px] font-medium active:scale-95 shadow-ios"
+                    className="px-4 py-2.5 bg-accent text-accent-foreground rounded-ios-lg hover:bg-accent-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[15px] font-medium active:scale-95 shadow-ios"
                   >
                     Crear
                   </button>

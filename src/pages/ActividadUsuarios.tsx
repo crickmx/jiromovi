@@ -297,7 +297,7 @@ export function ActividadUsuarios() {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Shield className="w-12 h-12 text-neutral-300 dark:text-white/20 mb-3" />
-        <p className="text-neutral-500 dark:text-white/40 text-sm">Acceso restringido a administradores</p>
+        <p className="text-neutral-500 dark:text-white/55 text-sm">Acceso restringido a administradores</p>
       </div>
     );
   }
@@ -350,13 +350,13 @@ export function ActividadUsuarios() {
       {/* Top Users & Modules */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top Users */}
-        <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-4">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-4">
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-emerald-500" />
             Usuarios mas activos (mes)
           </h3>
           {topUsers.length === 0 ? (
-            <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-4">Sin datos aun</p>
+            <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-4">Sin datos aun</p>
           ) : (
             <div className="space-y-1.5">
               {topUsers.map((u, i) => (
@@ -365,10 +365,10 @@ export function ActividadUsuarios() {
                   onClick={() => loadUserDetail(u.user_id)}
                   className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors text-left"
                 >
-                  <span className="text-xs font-bold text-neutral-400 dark:text-white/30 w-5">{i + 1}</span>
+                  <span className="text-xs font-bold text-neutral-500 dark:text-white/45 w-5">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-neutral-900 dark:text-white truncate">{u.nombre}</p>
-                    <p className="text-[10px] text-neutral-400 dark:text-white/30">{u.rol} - {u.oficina}</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-white/45">{u.rol} - {u.oficina}</p>
                   </div>
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{u.total_actions}</span>
                 </button>
@@ -378,13 +378,13 @@ export function ActividadUsuarios() {
         </div>
 
         {/* Top Modules */}
-        <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-4">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-4">
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-sky-500" />
             Modulos mas usados (mes)
           </h3>
           {topModules.length === 0 ? (
-            <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-4">Sin datos aun</p>
+            <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-4">Sin datos aun</p>
           ) : (
             <div className="space-y-2">
               {topModules.map((m) => {
@@ -396,7 +396,7 @@ export function ActividadUsuarios() {
                       <span className="text-xs font-medium text-neutral-700 dark:text-white/70">
                         {MODULE_LABELS[m.module] || m.module}
                       </span>
-                      <span className="text-[10px] text-neutral-400 dark:text-white/30">
+                      <span className="text-[11px] text-neutral-500 dark:text-white/45">
                         {m.total_events} eventos / {m.unique_users} usuarios
                       </span>
                     </div>
@@ -415,19 +415,19 @@ export function ActividadUsuarios() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-4">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Filter className="w-4 h-4 text-neutral-400" />
+          <Filter className="w-4 h-4 text-neutral-500" />
           <span className="text-sm font-semibold text-neutral-900 dark:text-white">Filtros</span>
           {hasActiveFilters && (
-            <button onClick={clearFilters} className="ml-auto text-xs text-accent hover:underline">
+            <button onClick={clearFilters} className="ml-auto text-xs text-accent-ink hover:underline">
               Limpiar filtros
             </button>
           )}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2">
           <div className="relative col-span-2 sm:col-span-1">
-            <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-neutral-400" />
+            <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-neutral-500" />
             <input
               type="text"
               placeholder="Buscar..."
@@ -473,11 +473,11 @@ export function ActividadUsuarios() {
       </div>
 
       {/* Activity Table */}
-      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card overflow-hidden">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card overflow-hidden">
         <div className="px-4 py-3 border-b border-neutral-100 dark:border-white/8 flex items-center justify-between">
           <span className="text-sm font-semibold text-neutral-900 dark:text-white">
             Registro de actividad
-            <span className="ml-2 text-xs font-normal text-neutral-400">({totalLogs.toLocaleString()} eventos)</span>
+            <span className="ml-2 text-xs font-normal text-neutral-500">({totalLogs.toLocaleString()} eventos)</span>
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -487,7 +487,7 @@ export function ActividadUsuarios() {
             >
               <ChevronLeft className="w-4 h-4 text-neutral-600 dark:text-white/50" />
             </button>
-            <span className="text-xs text-neutral-500 dark:text-white/40">
+            <span className="text-xs text-neutral-500 dark:text-white/55">
               {page + 1} / {Math.max(1, totalPages)}
             </span>
             <button
@@ -507,9 +507,9 @@ export function ActividadUsuarios() {
         ) : logs.length === 0 ? (
           <div className="p-12 text-center">
             <Activity className="w-10 h-10 text-neutral-200 dark:text-white/15 mx-auto mb-3" />
-            <p className="text-sm text-neutral-400 dark:text-white/30">No hay actividad registrada</p>
+            <p className="text-sm text-neutral-500 dark:text-white/45">No hay actividad registrada</p>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="mt-2 text-xs text-accent hover:underline">
+              <button onClick={clearFilters} className="mt-2 text-xs text-accent-ink hover:underline">
                 Limpiar filtros
               </button>
             )}
@@ -519,13 +519,13 @@ export function ActividadUsuarios() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-neutral-50 dark:bg-white/3 border-b border-neutral-100 dark:border-white/5">
-                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/40">Fecha</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/40">Usuario</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/40 hidden lg:table-cell">Oficina</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/40">Modulo</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/40">Accion</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/40 hidden md:table-cell">Estado</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/40 w-10"></th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/55">Fecha</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/55">Usuario</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/55 hidden lg:table-cell">Oficina</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/55">Modulo</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/55">Accion</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/55 hidden md:table-cell">Estado</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-neutral-500 dark:text-white/55 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-50 dark:divide-white/3">
@@ -542,22 +542,22 @@ export function ActividadUsuarios() {
                       <td className="px-4 py-2.5">
                         <button
                           onClick={() => loadUserDetail(log.user_id)}
-                          className="text-left hover:text-accent transition-colors"
+                          className="text-left hover:text-accent-ink transition-colors"
                         >
                           <p className="font-medium text-neutral-900 dark:text-white truncate max-w-[140px]">
                             {log.user_name_snapshot}
                           </p>
-                          <p className="text-[10px] text-neutral-400 dark:text-white/30">{log.role_snapshot}</p>
+                          <p className="text-[11px] text-neutral-500 dark:text-white/45">{log.role_snapshot}</p>
                         </button>
                       </td>
                       <td className="px-4 py-2.5 hidden lg:table-cell">
-                        <span className="text-neutral-500 dark:text-white/40 truncate max-w-[100px] block">
+                        <span className="text-neutral-500 dark:text-white/55 truncate max-w-[100px] block">
                           {log.office_name_snapshot || '-'}
                         </span>
                       </td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-1.5">
-                          <ModIcon className="w-3.5 h-3.5 text-neutral-400 dark:text-white/30 flex-shrink-0" />
+                          <ModIcon className="w-3.5 h-3.5 text-neutral-500 dark:text-white/45 flex-shrink-0" />
                           <span className="text-neutral-700 dark:text-white/60">
                             {MODULE_LABELS[log.module] || log.module}
                           </span>
@@ -569,7 +569,7 @@ export function ActividadUsuarios() {
                         </p>
                       </td>
                       <td className="px-4 py-2.5 hidden md:table-cell">
-                        <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-semibold", statusCfg.bg, statusCfg.text)}>
+                        <span className={cn("px-1.5 py-0.5 rounded text-[11px] font-semibold", statusCfg.bg, statusCfg.text)}>
                           {log.status}
                         </span>
                       </td>
@@ -578,7 +578,7 @@ export function ActividadUsuarios() {
                           onClick={() => setSelectedLog(log)}
                           className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors"
                         >
-                          <Eye className="w-3.5 h-3.5 text-neutral-400" />
+                          <Eye className="w-3.5 h-3.5 text-neutral-500" />
                         </button>
                       </td>
                     </tr>
@@ -592,8 +592,8 @@ export function ActividadUsuarios() {
 
       {/* Detail Modal */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-e4 max-w-lg w-full max-h-[80vh] overflow-y-auto p-5 animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Detalle del evento</h3>
               <button onClick={() => setSelectedLog(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10">
@@ -617,8 +617,8 @@ export function ActividadUsuarios() {
               )}
               {Object.keys(selectedLog.details || {}).length > 0 && (
                 <div>
-                  <span className="text-neutral-500 dark:text-white/40 font-medium">Detalles:</span>
-                  <pre className="mt-1 p-2 rounded-lg bg-neutral-50 dark:bg-white/5 text-[10px] overflow-auto max-h-40 text-neutral-600 dark:text-white/50">
+                  <span className="text-neutral-500 dark:text-white/55 font-medium">Detalles:</span>
+                  <pre className="mt-1 p-2 rounded-lg bg-neutral-50 dark:bg-white/5 text-[11px] overflow-auto max-h-40 text-neutral-600 dark:text-white/50">
                     {JSON.stringify(selectedLog.details, null, 2)}
                   </pre>
                 </div>
@@ -630,8 +630,8 @@ export function ActividadUsuarios() {
 
       {/* User Detail Drawer */}
       {showUserDetail && (
-        <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/40 backdrop-blur-sm" onClick={() => setShowUserDetail(false)}>
-          <div className="bg-white dark:bg-neutral-800 w-full max-w-md overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={() => setShowUserDetail(false)}>
+          <div className="bg-surface-card dark:bg-neutral-800 w-full max-w-md overflow-y-auto shadow-e4 animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-white dark:bg-neutral-800 border-b border-neutral-100 dark:border-white/8 px-5 py-4 flex items-center justify-between z-10">
               <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Actividad del usuario</h3>
               <button onClick={() => setShowUserDetail(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10">
@@ -644,16 +644,16 @@ export function ActividadUsuarios() {
                   <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                 </div>
               ) : userDetailLogs.length === 0 ? (
-                <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-10">Sin actividad registrada</p>
+                <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-10">Sin actividad registrada</p>
               ) : (
                 <>
                   {/* User info */}
                   <div className="mb-5 p-3 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-100 dark:border-white/8">
                     <p className="text-sm font-semibold text-neutral-900 dark:text-white">{userDetailLogs[0].user_name_snapshot}</p>
-                    <p className="text-[11px] text-neutral-500 dark:text-white/40 mt-0.5">{userDetailLogs[0].email_snapshot}</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">{userDetailLogs[0].email_snapshot}</p>
                     <div className="flex items-center gap-3 mt-2">
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-accent/10 text-accent font-medium">{userDetailLogs[0].role_snapshot}</span>
-                      <span className="text-[10px] text-neutral-400 dark:text-white/30">{userDetailLogs[0].office_name_snapshot}</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded bg-accent/10 text-accent-ink font-medium">{userDetailLogs[0].role_snapshot}</span>
+                      <span className="text-[11px] text-neutral-500 dark:text-white/45">{userDetailLogs[0].office_name_snapshot}</span>
                     </div>
                   </div>
 
@@ -665,7 +665,7 @@ export function ActividadUsuarios() {
                         <div key={log.id} className="flex gap-3 pb-4">
                           <div className="flex flex-col items-center">
                             <div className="p-1.5 rounded-lg bg-neutral-100 dark:bg-white/8">
-                              <ModIcon className="w-3 h-3 text-neutral-500 dark:text-white/40" />
+                              <ModIcon className="w-3 h-3 text-neutral-500 dark:text-white/55" />
                             </div>
                             {i < userDetailLogs.length - 1 && (
                               <div className="w-px flex-1 bg-neutral-200 dark:bg-white/10 mt-1" />
@@ -673,7 +673,7 @@ export function ActividadUsuarios() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-neutral-900 dark:text-white">{log.summary}</p>
-                            <p className="text-[10px] text-neutral-400 dark:text-white/30 mt-0.5">
+                            <p className="text-[11px] text-neutral-500 dark:text-white/45 mt-0.5">
                               {MODULE_LABELS[log.module] || log.module} - {formatRelativeTime(log.created_at)}
                             </p>
                           </div>
@@ -701,12 +701,12 @@ function KPICard({ icon: Icon, label, value, color }: { icon: typeof Activity; l
     neutral: 'bg-neutral-100 dark:bg-white/8 text-neutral-600 dark:text-white/50',
   };
   return (
-    <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-card p-3">
+    <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-3">
       <div className={cn("inline-flex p-1.5 rounded-lg mb-2", colors[color])}>
         <Icon className="w-3.5 h-3.5" />
       </div>
       <p className="text-lg font-bold text-neutral-900 dark:text-white">{value}</p>
-      <p className="text-[10px] text-neutral-500 dark:text-white/40 font-medium">{label}</p>
+      <p className="text-[11px] text-neutral-500 dark:text-white/55 font-medium">{label}</p>
     </div>
   );
 }
@@ -714,7 +714,7 @@ function KPICard({ icon: Icon, label, value, color }: { icon: typeof Activity; l
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="text-neutral-500 dark:text-white/40 font-medium w-20 flex-shrink-0">{label}</span>
+      <span className="text-neutral-500 dark:text-white/55 font-medium w-20 flex-shrink-0">{label}</span>
       <span className="text-neutral-900 dark:text-white">{value}</span>
     </div>
   );

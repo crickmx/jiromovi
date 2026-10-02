@@ -311,9 +311,9 @@ export default function CatalogosWeb() {
             {insurers.map(insurer => (
               <Card key={insurer.id} className="p-4">
                 <div className="flex items-center gap-4">
-                  <GripVertical className="w-5 h-5 text-gray-400 cursor-move" />
+                  <GripVertical className="w-5 h-5 text-neutral-500 cursor-move" />
 
-                  <div className="w-20 h-12 bg-gray-50 rounded flex items-center justify-center overflow-hidden">
+                  <div className="w-20 h-12 bg-neutral-50 rounded flex items-center justify-center overflow-hidden">
                     {insurer.logo_url ? (
                       <img
                         src={insurer.logo_url}
@@ -321,17 +321,17 @@ export default function CatalogosWeb() {
                         className="max-w-full max-h-full object-contain"
                       />
                     ) : (
-                      <ImageIcon className="w-6 h-6 text-gray-300" />
+                      <ImageIcon className="w-6 h-6 text-neutral-300" />
                     )}
                   </div>
 
                   <div className="flex-1">
                     <h3 className="font-semibold">{insurer.name}</h3>
-                    <p className="text-sm text-gray-500">Orden: {insurer.display_order}</p>
+                    <p className="text-sm text-neutral-500">Orden: {insurer.display_order}</p>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 mr-2">
+                    <span className="text-sm text-neutral-600 mr-2">
                       {insurer.is_active ? 'Activa' : 'Inactiva'}
                     </span>
                     <Switch
@@ -361,7 +361,7 @@ export default function CatalogosWeb() {
             ))}
 
             {insurers.length === 0 && (
-              <Card className="p-12 text-center text-gray-500">
+              <Card className="p-12 text-center text-neutral-500">
                 No hay aseguradoras configuradas. Agrega la primera.
               </Card>
             )}
@@ -383,24 +383,24 @@ export default function CatalogosWeb() {
               return (
                 <Card key={category.id} className="p-4">
                   <div className="flex items-center gap-4">
-                    <GripVertical className="w-5 h-5 text-gray-400 cursor-move" />
+                    <GripVertical className="w-5 h-5 text-neutral-500 cursor-move" />
 
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
                       {IconComponent ? (
-                        <IconComponent className="w-6 h-6 text-accent" />
+                        <IconComponent className="w-6 h-6 text-accent-ink" />
                       ) : (
-                        <ImageIcon className="w-6 h-6 text-gray-400" />
+                        <ImageIcon className="w-6 h-6 text-neutral-500" />
                       )}
                     </div>
 
                     <div className="flex-1">
                       <h3 className="font-semibold">{category.card_title}</h3>
-                      <p className="text-sm text-gray-600">{category.name}</p>
-                      <p className="text-xs text-gray-500 mt-1">{category.card_description}</p>
+                      <p className="text-sm text-neutral-600">{category.name}</p>
+                      <p className="text-xs text-neutral-500 mt-1">{category.card_description}</p>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600 mr-2">
+                      <span className="text-sm text-neutral-600 mr-2">
                         {category.is_active ? 'Activo' : 'Inactivo'}
                       </span>
                       <Switch
@@ -431,7 +431,7 @@ export default function CatalogosWeb() {
             })}
 
             {categories.length === 0 && (
-              <Card className="p-12 text-center text-gray-500">
+              <Card className="p-12 text-center text-neutral-500">
                 No hay ramos configurados. Agrega el primero.
               </Card>
             )}
@@ -487,7 +487,7 @@ export default function CatalogosWeb() {
                 </div>
               )}
               {insurerForm.logo_url && !logoFile && (
-                <div className="mt-2 p-2 border rounded bg-gray-50">
+                <div className="mt-2 p-2 border rounded bg-neutral-50">
                   <img
                     src={insurerForm.logo_url}
                     alt="Preview"
@@ -575,15 +575,15 @@ export default function CatalogosWeb() {
                 onChange={(e) => setCategoryForm(prev => ({ ...prev, lucide_icon: e.target.value }))}
                 placeholder="Ej: Car, Home, Heart"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 Ingresa el nombre del icono de Lucide React. Ejemplos: Car, Home, Heart, Shield, Truck
               </p>
               {categoryForm.lucide_icon && (() => {
                 const IconPreview = (LucideIcons as any)[categoryForm.lucide_icon];
                 return IconPreview ? (
                   <div className="mt-2 p-3 border rounded bg-gradient-to-br from-blue-50 to-blue-100 flex items-center gap-2">
-                    <IconPreview className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-gray-700">Vista previa del icono</span>
+                    <IconPreview className="w-6 h-6 text-accent-ink" />
+                    <span className="text-sm text-neutral-700">Vista previa del icono</span>
                   </div>
                 ) : (
                   <div className="mt-2 p-2 border rounded bg-red-50 text-red-600 text-xs">

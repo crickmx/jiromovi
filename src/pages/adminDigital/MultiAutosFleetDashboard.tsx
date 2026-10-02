@@ -16,20 +16,20 @@ function getInsurerColor(name: string): string {
 
 function BreakdownPanel({ breakdown }: { breakdown: QuoteBreakdown }) {
   return (
-    <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 space-y-2 text-sm">
-      <div className="flex justify-between text-gray-600 dark:text-gray-400">
+    <div className="bg-neutral-50 dark:bg-gray-900/50 rounded-xl p-4 space-y-2 text-sm">
+      <div className="flex justify-between text-neutral-600 dark:text-gray-400">
         <span>Prima Neta</span>
         <span className="font-mono">${breakdown.primaNeta.toLocaleString()}</span>
       </div>
-      <div className="flex justify-between text-gray-600 dark:text-gray-400">
+      <div className="flex justify-between text-neutral-600 dark:text-gray-400">
         <span>Derecho de Poliza</span>
         <span className="font-mono">${breakdown.derechoPoliza.toLocaleString()}</span>
       </div>
-      <div className="flex justify-between text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+      <div className="flex justify-between text-neutral-600 dark:text-gray-400 border-t border-neutral-200 dark:border-gray-700 pt-2">
         <span>Subtotal</span>
         <span className="font-mono">${breakdown.subtotal.toLocaleString()}</span>
       </div>
-      <div className="flex justify-between text-gray-600 dark:text-gray-400">
+      <div className="flex justify-between text-neutral-600 dark:text-gray-400">
         <span>IVA (16%)</span>
         <span className="font-mono">${breakdown.iva.toLocaleString()}</span>
       </div>
@@ -39,17 +39,17 @@ function BreakdownPanel({ breakdown }: { breakdown: QuoteBreakdown }) {
           <span className="font-mono">${breakdown.recargoFraccionamiento.toLocaleString()}</span>
         </div>
       )}
-      <div className="flex justify-between text-gray-900 dark:text-white font-bold border-t border-gray-200 dark:border-gray-700 pt-2">
+      <div className="flex justify-between text-neutral-900 dark:text-white font-bold border-t border-neutral-200 dark:border-gray-700 pt-2">
         <span>Prima Total</span>
         <span className="font-mono">${breakdown.primaTotalConRecargo.toLocaleString()}</span>
       </div>
       {breakdown.primerPago > 0 && breakdown.pagosSubsecuentes > 0 && (
         <>
-          <div className="flex justify-between text-blue-600 dark:text-blue-400 text-xs pt-1">
+          <div className="flex justify-between text-accent-ink dark:text-blue-400 text-xs pt-1">
             <span>Primer pago (incluye Derecho Poliza)</span>
             <span className="font-mono">${breakdown.primerPago.toLocaleString()}</span>
           </div>
-          <div className="flex justify-between text-blue-600 dark:text-blue-400 text-xs">
+          <div className="flex justify-between text-accent-ink dark:text-blue-400 text-xs">
             <span>Pagos subsecuentes</span>
             <span className="font-mono">${breakdown.pagosSubsecuentes.toLocaleString()}</span>
           </div>
@@ -99,10 +99,10 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
             {isFleet ? 'Comparativo Multi-Vehiculo' : 'Resultados de Cotizacion'}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-neutral-500 dark:text-gray-400">
             {results.length} vehiculo{results.length > 1 ? 's' : ''} - {sortedInsurers.length} aseguradoras disponibles - Pago {formaPago}
           </p>
         </div>
@@ -113,7 +113,7 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
               {(discountRate * 100).toFixed(0)}% Descuento por Volumen Aplicado
             </div>
           )}
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-neutral-700 dark:text-gray-300 bg-neutral-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
             Nueva Cotizacion
           </button>
         </div>
@@ -124,7 +124,7 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
         <div className="flex flex-wrap gap-2">
           {results.map((r, i) => (
             <div key={i} className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-1.5">
-              <span className="w-5 h-5 rounded bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+              <span className="w-5 h-5 rounded bg-accent text-accent-foreground text-[11px] font-bold flex items-center justify-center">{i + 1}</span>
               <span className="text-xs font-medium text-blue-900 dark:text-blue-200 truncate max-w-[200px]">{r.vehiculo.descripcionCompleta}</span>
             </div>
           ))}
@@ -144,7 +144,7 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
             <div
               key={insurer}
               className={`bg-white dark:bg-gray-800 rounded-2xl border-2 overflow-hidden transition-all ${
-                isBest ? 'border-emerald-400 shadow-md shadow-emerald-100/50 dark:shadow-emerald-900/20' : 'border-gray-200 dark:border-gray-700'
+                isBest ? 'border-emerald-400 shadow-md shadow-emerald-100/50 dark:shadow-emerald-900/20' : 'border-neutral-200 dark:border-gray-700'
               }`}
             >
               {/* Main row */}
@@ -155,12 +155,12 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-gray-900 dark:text-white">{insurer}</p>
+                    <p className="font-semibold text-neutral-900 dark:text-white">{insurer}</p>
                     {isBest && (
-                      <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">MEJOR PRECIO</span>
+                      <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold px-2 py-0.5 rounded-full">MEJOR PRECIO</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-gray-400 mt-0.5">
                     <span className="flex items-center gap-1"><Shield className="w-3 h-3" />{config?.tipoApi}</span>
                     <span className="flex items-center gap-1"><Receipt className="w-3 h-3" />Derecho: ${config?.derechoPoliza.toLocaleString()}</span>
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{(data.totalResponseMs / Math.max(data.totalVehicles, 1) / 1000).toFixed(1)}s</span>
@@ -168,10 +168,10 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
                 </div>
 
                 <div className="text-right flex-shrink-0">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white font-mono">
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-white font-mono">
                     ${Math.round(data.total).toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-neutral-500 dark:text-gray-400">
                     {isFleet ? 'Total flota' : 'Prima total'} ({formaPago})
                   </p>
                   {savings > 0 && (
@@ -181,20 +181,20 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
                   )}
                 </div>
 
-                <div className="flex-shrink-0 text-gray-400">
+                <div className="flex-shrink-0 text-neutral-500">
                   {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </div>
               </div>
 
               {/* Expanded breakdown */}
               {isExpanded && (
-                <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-4">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Desglose por vehiculo</p>
+                <div className="border-t border-neutral-200 dark:border-gray-700 p-4 space-y-4">
+                  <p className="text-sm font-semibold text-neutral-700 dark:text-gray-300">Desglose por vehiculo</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {data.breakdowns.map((item, i) => (
                       <div key={i} className="space-y-2">
-                        <p className="text-xs font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                          <span className="w-5 h-5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <p className="text-xs font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                          <span className="w-5 h-5 rounded bg-neutral-200 dark:bg-gray-700 text-neutral-700 dark:text-gray-300 text-[11px] font-bold flex items-center justify-center">{i + 1}</span>
                           {item.vehiculo.descripcionCompleta}
                         </p>
                         <BreakdownPanel breakdown={item.breakdown} />
@@ -204,11 +204,11 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
 
                   {/* Coverages */}
                   {data.breakdowns.length > 0 && (
-                    <div className="border-t border-gray-100 dark:border-gray-700 pt-3">
-                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Coberturas incluidas</p>
+                    <div className="border-t border-neutral-100 dark:border-gray-700 pt-3">
+                      <p className="text-xs font-semibold text-neutral-600 dark:text-gray-400 mb-2">Coberturas incluidas</p>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
                         {results[0]?.resultados.find((r) => r.aseguradora === insurer)?.coberturas.map((cob, i) => (
-                          <div key={i} className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300">
+                          <div key={i} className="flex items-center gap-1.5 text-xs text-neutral-700 dark:text-gray-300">
                             <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />
                             <span className="truncate">{cob.nombre}</span>
                           </div>
@@ -217,7 +217,7 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
                     </div>
                   )}
 
-                  <button className="w-full mt-2 py-2.5 text-sm font-medium rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all">
+                  <button className="w-full mt-2 py-2.5 text-sm font-medium rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover transition-all">
                     Seleccionar {insurer}
                   </button>
                 </div>
@@ -229,8 +229,8 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
 
       {/* Unavailable insurers */}
       {Object.entries(insurerTotals).filter((entry) => entry[1].available === 0).length > 0 && (
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+        <div className="bg-neutral-50 dark:bg-gray-800 rounded-xl p-4 border border-neutral-200 dark:border-gray-700">
+          <p className="text-sm font-semibold text-neutral-700 dark:text-gray-300 mb-3 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-500" /> Aseguradoras no disponibles
           </p>
           <div className="space-y-2.5">
@@ -243,23 +243,23 @@ export function MultiAutosFleetDashboard({ results, formaPago, discountRate, onC
               const isEndpoint = error.includes('HTTP 503') || error.includes('Incapsula');
 
               return (
-                <div key={name} className="flex items-start gap-3 bg-white dark:bg-gray-900/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
+                <div key={name} className="flex items-start gap-3 bg-surface-card dark:bg-gray-900/50 rounded-2xl p-3 border border-soft dark:border-gray-700">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: getInsurerColor(name) + '20' }}>
-                    {isDns ? <WifiOff className="w-4 h-4 text-gray-500" /> :
+                    {isDns ? <WifiOff className="w-4 h-4 text-neutral-500" /> :
                      isCredMissing || isCredExpired ? <KeyRound className="w-4 h-4 text-amber-500" /> :
                      isMapping || isEndpoint ? <AlertTriangle className="w-4 h-4 text-orange-500" /> :
                      <X className="w-4 h-4 text-red-500" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">{name}</span>
-                      {isDns && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">DNS</span>}
-                      {isCredMissing && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">SIN CREDENCIALES</span>}
-                      {isCredExpired && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">CREDENCIALES EXPIRADAS</span>}
-                      {isMapping && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">CATALOGO / HOMOLOGACION</span>}
-                      {isEndpoint && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">ENDPOINT BLOQUEADO</span>}
+                      <span className="text-sm font-medium text-neutral-900 dark:text-white">{name}</span>
+                      {isDns && <span className="text-[11px] px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-gray-700 text-neutral-600 dark:text-gray-400">DNS</span>}
+                      {isCredMissing && <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">SIN CREDENCIALES</span>}
+                      {isCredExpired && <span className="text-[11px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">CREDENCIALES EXPIRADAS</span>}
+                      {isMapping && <span className="text-[11px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">CATALOGO / HOMOLOGACION</span>}
+                      {isEndpoint && <span className="text-[11px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">ENDPOINT BLOQUEADO</span>}
                     </div>
-                    {error && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-tight break-all">{error}</p>}
+                    {error && <p className="text-[11px] text-neutral-500 dark:text-gray-400 mt-1 leading-tight break-all">{error}</p>}
                   </div>
                 </div>
               );

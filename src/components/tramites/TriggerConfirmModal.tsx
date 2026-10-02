@@ -40,14 +40,14 @@ export function TriggerConfirmModal({ triggers, existingChildren, fromStatusLabe
     setDecisions(prev => ({ ...prev, [triggerId]: d }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-lg mx-4 overflow-hidden animate-scale-in">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-              <Zap className="w-4 h-4 text-blue-600" />
+              <Zap className="w-4 h-4 text-accent-ink" />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-neutral-900">Acción automática al cambiar estatus</h2>
@@ -58,7 +58,7 @@ export function TriggerConfirmModal({ triggers, existingChildren, fromStatusLabe
             </div>
           </div>
           <button onClick={onCancel} className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors">
-            <X className="w-4 h-4 text-neutral-400" />
+            <X className="w-4 h-4 text-neutral-500" />
           </button>
         </div>
 
@@ -104,8 +104,8 @@ export function TriggerConfirmModal({ triggers, existingChildren, fromStatusLabe
                           onClick={() => setDecision(t.id, 'conservar')}
                           className={`flex items-center gap-1.5 justify-center py-2 px-3 text-xs font-medium rounded-lg border transition-colors ${
                             decision === 'conservar'
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white text-neutral-600 border-neutral-300 hover:border-blue-400 hover:text-blue-600'
+                              ? 'bg-accent text-accent-foreground border-accent'
+                              : 'bg-white text-neutral-600 border-neutral-300 hover:border-blue-400 hover:text-accent-ink'
                           }`}
                         >
                           {decision === 'conservar' && <CheckCircle className="w-3 h-3" />}
@@ -115,8 +115,8 @@ export function TriggerConfirmModal({ triggers, existingChildren, fromStatusLabe
                           onClick={() => setDecision(t.id, 'nuevo')}
                           className={`flex items-center gap-1.5 justify-center py-2 px-3 text-xs font-medium rounded-lg border transition-colors ${
                             decision === 'nuevo'
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white text-neutral-600 border-neutral-300 hover:border-blue-400 hover:text-blue-600'
+                              ? 'bg-accent text-accent-foreground border-accent'
+                              : 'bg-white text-neutral-600 border-neutral-300 hover:border-blue-400 hover:text-accent-ink'
                           }`}
                         >
                           {decision === 'nuevo' && <CheckCircle className="w-3 h-3" />}
@@ -146,7 +146,7 @@ export function TriggerConfirmModal({ triggers, existingChildren, fromStatusLabe
           </button>
           <button
             onClick={() => onConfirm(decisions)}
-            className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors font-semibold"
+            className="px-4 py-2 text-sm text-accent-foreground bg-accent hover:bg-accent-hover rounded-xl transition-colors font-semibold"
           >
             Guardar y continuar
           </button>

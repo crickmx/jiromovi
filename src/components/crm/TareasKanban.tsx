@@ -66,7 +66,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
       case 'Baja':
         return 'bg-green-100 text-green-800 border-green-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-neutral-100 text-neutral-800 border-neutral-200';
     }
   };
 
@@ -80,7 +80,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
       case 'Baja':
         return <Flag className={`${baseClass} text-green-600`} />;
       default:
-        return <Flag className={`${baseClass} text-gray-600`} />;
+        return <Flag className={`${baseClass} text-neutral-600`} />;
     }
   };
 
@@ -180,7 +180,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
               }`}
             >
               {tareasColumna.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
                   <Icon className="h-12 w-12 mb-2 opacity-50" />
                   <p className="text-sm">No hay tareas</p>
                 </div>
@@ -198,7 +198,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
                       onClick={() => onVerDetalle(tarea)}
                       className={`bg-white rounded-lg p-4 shadow-sm border-2 cursor-move hover:shadow-md transition-all ${
                         draggedTask === tarea.id ? 'opacity-50 rotate-2 scale-95' : ''
-                      } ${vencida ? 'border-red-300' : 'border-gray-200 hover:border-primary-300'}`}
+                      } ${vencida ? 'border-red-300' : 'border-neutral-200 hover:border-primary-300'}`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center space-x-2 flex-1 min-w-0">
@@ -207,17 +207,17 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
                             {tarea.prioridad}
                           </span>
                         </div>
-                        <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-md font-medium whitespace-nowrap ml-2">
+                        <span className="text-xs px-2 py-1 bg-neutral-100 text-neutral-700 rounded-md font-medium whitespace-nowrap ml-2">
                           {tarea.tipo_actividad}
                         </span>
                       </div>
 
-                      <p className="text-sm font-medium text-gray-900 mb-3 line-clamp-2">
+                      <p className="text-sm font-medium text-neutral-900 mb-3 line-clamp-2">
                         {tarea.descripcion}
                       </p>
 
                       {tarea.crm_contactos?.nombre_completo && (
-                        <div className="flex items-center space-x-2 mb-3 text-xs text-gray-600">
+                        <div className="flex items-center space-x-2 mb-3 text-xs text-neutral-600">
                           <User className="h-3.5 w-3.5" />
                           <span className="truncate">{tarea.crm_contactos.nombre_completo}</span>
                         </div>
@@ -230,25 +230,25 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
                               <img
                                 src={tarea.responsable.imagen_perfil_url}
                                 alt={`${tarea.responsable.nombre} ${tarea.responsable.apellidos}`}
-                                className="h-6 w-6 rounded-full object-cover border border-gray-200"
+                                className="h-6 w-6 rounded-full object-cover border border-neutral-200"
                               />
                             ) : (
                               <div className="h-6 w-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-semibold border border-purple-200">
                                 {tarea.responsable.nombre.charAt(0)}{tarea.responsable.apellidos.charAt(0)}
                               </div>
                             )}
-                            <span className="text-xs text-gray-700 font-medium">
+                            <span className="text-xs text-neutral-700 font-medium">
                               {tarea.responsable.nombre} {tarea.responsable.apellidos}
                             </span>
                           </div>
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
                         <div className="flex items-center space-x-3">
                           <div className="flex items-center space-x-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                            <span className="text-xs text-gray-600">
+                            <Calendar className="h-3.5 w-3.5 text-neutral-500" />
+                            <span className="text-xs text-neutral-600">
                               {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX', {
                                 day: 'numeric',
                                 month: 'short'
@@ -257,7 +257,7 @@ export default function TareasKanban({ tareas, onUpdateEstatus, onVerDetalle, lo
                           </div>
 
                           {tarea.adjuntos_count && tarea.adjuntos_count > 0 && (
-                            <div className="flex items-center space-x-1 text-gray-500">
+                            <div className="flex items-center space-x-1 text-neutral-500">
                               <Paperclip className="h-3.5 w-3.5" />
                               <span className="text-xs">{tarea.adjuntos_count}</span>
                             </div>

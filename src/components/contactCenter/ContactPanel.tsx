@@ -32,7 +32,7 @@ const STATUS_CONFIG: Record<CCConversation['status'], { label: string; icon: Rea
   open:     { label: 'Abierta',   icon: CheckCircle, color: 'text-emerald-600' },
   pending:  { label: 'Pendiente', icon: Clock,       color: 'text-amber-600' },
   closed:   { label: 'Cerrada',   icon: CheckCircle, color: 'text-neutral-500' },
-  archived: { label: 'Archivada', icon: Archive,     color: 'text-neutral-400' },
+  archived: { label: 'Archivada', icon: Archive,     color: 'text-neutral-500' },
 };
 
 export function ContactPanel({ conversation, onStatusChange }: ContactPanelProps) {
@@ -57,7 +57,7 @@ export function ContactPanel({ conversation, onStatusChange }: ContactPanelProps
     <div className="h-full overflow-y-auto bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700">
       {/* Contact summary */}
       <div className="px-4 py-5 border-b border-neutral-100 dark:border-neutral-800 text-center">
-        <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center text-xl font-bold text-accent mx-auto mb-2">
+        <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center text-xl font-bold text-accent-ink mx-auto mb-2">
           {name.charAt(0).toUpperCase()}
         </div>
         <h3 className="font-semibold text-neutral-800 dark:text-white text-sm mb-1">{name}</h3>
@@ -82,9 +82,9 @@ export function ContactPanel({ conversation, onStatusChange }: ContactPanelProps
                     : 'text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-300'
                 )}
               >
-                <Icon className={cn('w-3.5 h-3.5', conversation.status === s ? cfg.color : 'text-neutral-400')} />
+                <Icon className={cn('w-3.5 h-3.5', conversation.status === s ? cfg.color : 'text-neutral-500')} />
                 {cfg.label}
-                {conversation.status === s && <span className="ml-auto text-[10px] text-neutral-400">Actual</span>}
+                {conversation.status === s && <span className="ml-auto text-[11px] text-neutral-500">Actual</span>}
               </button>
             );
           })}
@@ -96,24 +96,24 @@ export function ContactPanel({ conversation, onStatusChange }: ContactPanelProps
         <div className="space-y-2">
           {conversation.contact_phone && (
             <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
-              <Phone className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+              <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
               <span>{formatPhone(conversation.contact_phone)}</span>
             </div>
           )}
           {conversation.contact_email && (
             <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
-              <Mail className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+              <Mail className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
               <span className="truncate">{conversation.contact_email}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-xs text-neutral-400">
+          <div className="flex items-center gap-2 text-xs text-neutral-500">
             <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
             <span>Canal: {CHANNEL_LABELS[conversation.channel]}</span>
           </div>
           {conversation.tags?.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {conversation.tags.map(tag => (
-                <span key={tag} className="px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 rounded text-[10px]">
+                <span key={tag} className="px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 rounded text-[11px]">
                   <Tag className="w-2.5 h-2.5 inline mr-0.5" />{tag}
                 </span>
               ))}
@@ -129,7 +129,7 @@ export function ContactPanel({ conversation, onStatusChange }: ContactPanelProps
             icon={User}
             label={conversation.crm_contact_id ? 'Ver en CRM' : 'Crear contacto CRM'}
             onClick={conversation.crm_contact_id ? openCRMLink : () => {}}
-            color="text-blue-600"
+            color="text-accent-ink"
           />
           <ActionButton
             icon={ClipboardList}

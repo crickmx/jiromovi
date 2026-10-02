@@ -383,7 +383,7 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
             <ArrowLeft className="w-4 h-4" />
           </button>
         )}
-        <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent flex-shrink-0">
+        <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent-ink flex-shrink-0">
           {name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
@@ -392,13 +392,13 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
             <ChannelBadge channel={conversation.channel} size="sm" />
           </div>
           {conversation.contact_phone && (
-            <p className="text-xs text-neutral-400 dark:text-neutral-500">{conversation.contact_phone}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-500">{conversation.contact_phone}</p>
           )}
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={loadMessages}
-            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-400"
+            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-500"
             title="Actualizar"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -406,12 +406,12 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowMenu(v => !v)}
-              className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-400"
+              className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-500"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
             {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-lg z-10 py-1 text-xs">
+              <div className="absolute right-0 top-full mt-1 w-44 bg-surface-card dark:bg-neutral-800 rounded-xl border border-soft dark:border-neutral-700 shadow-lg z-10 py-1 text-xs">
                 {conversation.status !== 'open' && (
                   <button onClick={() => updateStatus('open')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Marcar abierta
@@ -447,7 +447,7 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <MessageSquare className="w-12 h-12 text-neutral-200 dark:text-neutral-700 mb-3" />
-            <p className="text-sm text-neutral-400 dark:text-neutral-500">Sin mensajes todavia</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-500">Sin mensajes todavia</p>
             <p className="text-xs text-neutral-300 dark:text-neutral-600 mt-1">Los mensajes sincronizados aparecen aqui</p>
           </div>
         ) : (
@@ -459,7 +459,7 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
                 <div key={msg.id}>
                   {showDate && (
                     <div className="flex justify-center my-3">
-                      <span className="px-3 py-1 bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-500 dark:text-neutral-400 text-[10px] rounded-full">
+                      <span className="px-3 py-1 bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-500 dark:text-neutral-400 text-[11px] rounded-full">
                         {new Date(msg.sent_at).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </span>
                     </div>
@@ -483,15 +483,15 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
           {/* Channel selector */}
           {conversation.channel !== 'chat' && (
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] text-neutral-400">Responder por:</span>
+              <span className="text-[11px] text-neutral-500">Responder por:</span>
               {SEND_CHANNEL_OPTIONS.filter(o => o.value === 'wa_movi' || o.value === 'wa_personal').map(opt => (
                 <button
                   key={opt.value}
                   onClick={() => setSendChannel(opt.value)}
                   className={cn(
-                    'flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all',
+                    'flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition-all',
                     sendChannel === opt.value
-                      ? 'bg-accent text-white'
+                      ? 'bg-accent text-accent-foreground'
                       : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700'
                   )}
                 >
@@ -523,10 +523,10 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-neutral-700 dark:text-neutral-200 truncate">{pendingAttachment.file.name}</p>
-                <p className="text-[10px] text-neutral-400">{(pendingAttachment.file.size / 1024).toFixed(0)} KB</p>
-                {pendingAttachment.error && <p className="text-[10px] text-red-500">{pendingAttachment.error}</p>}
+                <p className="text-[11px] text-neutral-500">{(pendingAttachment.file.size / 1024).toFixed(0)} KB</p>
+                {pendingAttachment.error && <p className="text-[11px] text-red-500">{pendingAttachment.error}</p>}
               </div>
-              <button onClick={() => setPendingAttachment(null)} className="p-1 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 flex-shrink-0">
+              <button onClick={() => setPendingAttachment(null)} className="p-1 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 flex-shrink-0">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -534,18 +534,18 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
 
           {/* Toolbar */}
           <div className="flex items-center gap-1 mb-2">
-            <button onClick={() => { setShowEmoji(v => !v); setShowPlantillas(false); setShowForms(false); }} className={cn('p-1.5 rounded-lg transition-colors', showEmoji ? 'bg-accent/10 text-accent' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600')} title="Emojis">
+            <button onClick={() => { setShowEmoji(v => !v); setShowPlantillas(false); setShowForms(false); }} className={cn('p-1.5 rounded-lg transition-colors', showEmoji ? 'bg-accent/10 text-accent-ink' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-600')} title="Emojis">
               <Smile className="w-4 h-4" />
             </button>
-            <button onClick={openPlantillas} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Plantillas">
+            <button onClick={openPlantillas} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Plantillas">
               <FileText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Plantillas</span>
             </button>
-            <button onClick={openCreateTicket} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Crear tramite">
+            <button onClick={openCreateTicket} className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-600 transition-colors text-[11px] font-medium" title="Crear tramite">
               <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tramite</span>
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-600 transition-colors text-[11px] font-medium"
               title="Adjuntar archivo"
             >
               <Paperclip className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Archivo</span>
@@ -554,7 +554,7 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
 
           {/* Emoji picker */}
           {showEmoji && (
-            <div className="absolute bottom-full left-3 mb-1 w-72 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl z-30 p-2">
+            <div className="absolute bottom-full left-3 mb-1 w-72 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-xl shadow-xl z-30 p-2">
               <div className="grid grid-cols-10 gap-0.5 max-h-28 overflow-y-auto">
                 {EMOJIS.map((e, i) => (
                   <button key={i} onClick={() => { setText(prev => prev + e); setShowEmoji(false); }} className="text-lg p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 leading-none">
@@ -574,22 +574,22 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
               onKeyDown={handleKeyDown}
               placeholder="Escribe un mensaje..."
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-accent/40 placeholder:text-neutral-400 max-h-24 overflow-y-auto"
+              className="flex-1 resize-none rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-accent/40 placeholder:text-neutral-500 max-h-24 overflow-y-auto"
               style={{ minHeight: '42px' }}
             />
             <button
               onClick={pendingAttachment ? sendAttachment : sendMessage}
               disabled={(!text.trim() && !pendingAttachment) || sending}
-              className="p-2.5 bg-accent text-white rounded-xl hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+              className="p-2.5 bg-accent text-accent-foreground rounded-xl hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
           <div className="flex items-center justify-between mt-1.5">
-            <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-500">
               Enter para enviar, Shift+Enter para nueva linea
             </p>
-            <p className="text-[10px] text-neutral-400">
+            <p className="text-[11px] text-neutral-500">
               {CHANNEL_LABELS[sendChannel]}
               {text.length > 450 && <span className="ml-2 text-amber-500">{text.length}/550</span>}
             </p>
@@ -597,10 +597,10 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
         </div>
       ) : (
         <div className="flex-shrink-0 bg-neutral-50 dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 py-3 flex items-center justify-between">
-          <span className="text-xs text-neutral-400">Conversacion {conversation.status === 'closed' ? 'cerrada' : 'archivada'}</span>
+          <span className="text-xs text-neutral-500">Conversacion {conversation.status === 'closed' ? 'cerrada' : 'archivada'}</span>
           <button
             onClick={() => updateStatus('open')}
-            className="text-xs text-accent hover:underline font-medium"
+            className="text-xs text-accent-ink hover:underline font-medium"
           >
             Reabrir
           </button>
@@ -612,13 +612,13 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
         <Modal title="Plantillas de mensaje" onClose={() => setShowPlantillas(false)}>
           <input value={tmplSearch} onChange={e => setTmplSearch(e.target.value)} placeholder="Buscar plantilla..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 mb-3 focus:outline-none focus:ring-1 focus:ring-accent/40" />
           {tmplLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
-            : filteredTemplates.length === 0 ? <p className="text-xs text-neutral-400 text-center py-6">Sin plantillas disponibles</p>
+            : filteredTemplates.length === 0 ? <p className="text-xs text-neutral-500 text-center py-6">Sin plantillas disponibles</p>
             : <div className="space-y-2 max-h-80 overflow-y-auto">
                 {filteredTemplates.map(t => (
                   <button key={t.id} onClick={() => applyTemplate(t)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{t.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.category}</span>
+                      <span className="text-[11px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.category}</span>
                     </div>
                     <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">{t.content}</p>
                   </button>
@@ -633,13 +633,13 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
         <Modal title="Formularios de cotizacion" onClose={() => setShowForms(false)}>
           <input value={formSearch} onChange={e => setFormSearch(e.target.value)} placeholder="Buscar formulario..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 mb-3 focus:outline-none focus:ring-1 focus:ring-accent/40" />
           {formLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
-            : filteredForms.length === 0 ? <p className="text-xs text-neutral-400 text-center py-6">Sin formularios</p>
+            : filteredForms.length === 0 ? <p className="text-xs text-neutral-500 text-center py-6">Sin formularios</p>
             : <div className="space-y-2 max-h-80 overflow-y-auto">
                 {filteredForms.map(f => (
                   <button key={f.id} onClick={() => sendFormLink(f)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{f.title}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{f.category}</span>
+                      <span className="text-[11px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{f.category}</span>
                     </div>
                   </button>
                 ))}
@@ -660,7 +660,7 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
           />
           <div className="flex gap-2">
             <button onClick={() => setShowCreateTicket(false)} className="flex-1 px-4 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-600 hover:bg-neutral-50">Cancelar</button>
-            <button onClick={createTicket} disabled={creatingTicket || !ticketInstructions.trim()} className="flex-1 px-4 py-2 text-sm bg-accent text-white rounded-xl hover:bg-accent/90 disabled:opacity-50">
+            <button onClick={createTicket} disabled={creatingTicket || !ticketInstructions.trim()} className="flex-1 px-4 py-2 text-sm bg-accent text-accent-foreground rounded-xl hover:bg-accent/90 disabled:opacity-50">
               {creatingTicket ? 'Creando...' : 'Crear tramite'}
             </button>
           </div>
@@ -672,7 +672,7 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
         <Modal title="Asistentes IA" onClose={() => setShowAssistants(false)}>
           <p className="text-xs text-neutral-500 mb-3">Selecciona un asistente para activar el modo automatico.</p>
           {autoLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
-            : assistants.length === 0 ? <p className="text-xs text-neutral-400 text-center py-6">Sin asistentes configurados</p>
+            : assistants.length === 0 ? <p className="text-xs text-neutral-500 text-center py-6">Sin asistentes configurados</p>
             : <div className="space-y-2 max-h-72 overflow-y-auto">
                 {assistants.map(a => (
                   <button key={a.id} onClick={() => startAutoMode(a.id)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all">
@@ -696,11 +696,11 @@ export function ConversationThread({ conversation, onBack, onStatusChange }: Con
 // ── Reusable modal wrapper ────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md mx-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md mx-4 bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 border border-soft dark:border-neutral-700 overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
           <h3 className="text-sm font-bold text-neutral-800 dark:text-white">{title}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>

@@ -91,7 +91,7 @@ export function NuevoChatModal({ isOpen, onClose, onSuccess }: NuevoChatModalPro
       <button
         onClick={handleCreate}
         disabled={!selectedUsuario || loading}
-        className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
+        className="flex-1 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
       >
         {loading ? 'Creando...' : 'Crear Chat'}
       </button>
@@ -105,7 +105,7 @@ export function NuevoChatModal({ isOpen, onClose, onSuccess }: NuevoChatModalPro
           Buscar usuario
         </label>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
           <input
             ref={inputRef}
             type="text"
@@ -115,12 +115,12 @@ export function NuevoChatModal({ isOpen, onClose, onSuccess }: NuevoChatModalPro
               if (selectedUsuario) setSelectedUsuario(null);
             }}
             placeholder="Nombre, puesto o rol..."
-            className="w-full pl-9 pr-9 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full pl-9 pr-9 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
           />
           {query && (
             <button
               onClick={handleClear}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-600"
             >
               <X className="w-4 h-4" />
             </button>
@@ -130,7 +130,7 @@ export function NuevoChatModal({ isOpen, onClose, onSuccess }: NuevoChatModalPro
         {/* Selected user chip */}
         {selectedUsuario && (
           <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-semibold shrink-0">
+            <div className="w-7 h-7 rounded-full bg-accent text-accent-foreground text-xs flex items-center justify-center font-semibold shrink-0">
               {selectedUsuario.nombre?.[0]}{selectedUsuario.apellidos?.[0]}
             </div>
             <div className="flex-1 min-w-0">
@@ -139,13 +139,13 @@ export function NuevoChatModal({ isOpen, onClose, onSuccess }: NuevoChatModalPro
               </p>
               <p className="text-xs text-neutral-500">{selectedUsuario.puesto || selectedUsuario.rol}</p>
             </div>
-            <Check className="w-4 h-4 text-blue-600 shrink-0" />
+            <Check className="w-4 h-4 text-accent-ink shrink-0" />
           </div>
         )}
 
         {/* Results dropdown */}
         {showDropdown && (
-          <div className="mt-1 border border-neutral-200 rounded-lg shadow-lg bg-white max-h-56 overflow-y-auto z-10">
+          <div className="mt-1 border border-soft rounded-lg shadow-lg bg-surface-card max-h-56 overflow-y-auto z-10">
             {filtered.length === 0 ? (
               <p className="px-4 py-3 text-sm text-neutral-500">Sin resultados</p>
             ) : (
@@ -172,7 +172,7 @@ export function NuevoChatModal({ isOpen, onClose, onSuccess }: NuevoChatModalPro
 
         {/* Empty state when no query and no selection */}
         {!query && !selectedUsuario && (
-          <p className="mt-2 text-xs text-neutral-400">Escribe el nombre para buscar</p>
+          <p className="mt-2 text-xs text-neutral-500">Escribe el nombre para buscar</p>
         )}
       </div>
     </BaseModal>

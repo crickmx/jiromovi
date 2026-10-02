@@ -154,7 +154,7 @@ export function ProgramacionAutomatica() {
 
       <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
         <div className="flex items-start space-x-3">
-          <Calendar className="w-5 h-5 text-accent mt-0.5" />
+          <Calendar className="w-5 h-5 text-accent-ink mt-0.5" />
           <div className="flex-1">
             <h3 className="font-semibold text-primary-900 mb-2">Funcionamiento automático</h3>
             <p className="text-sm text-primary-800 mb-2">
@@ -187,13 +187,13 @@ export function ProgramacionAutomatica() {
             className={`border rounded-lg p-6 ${
               plantilla.envio_automatico
                 ? 'border-green-300 bg-green-50'
-                : 'border-slate-200 bg-white'
+                : 'border-neutral-200 bg-white'
             }`}
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="text-lg font-semibold text-slate-900">{plantilla.nombre}</h3>
+                  <h3 className="text-lg font-semibold text-neutral-900">{plantilla.nombre}</h3>
                   <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
                     {tipoLabels[plantilla.tipo]}
                   </span>
@@ -203,13 +203,13 @@ export function ProgramacionAutomatica() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-slate-600 mb-3">{tipoDescriptions[plantilla.tipo]}</p>
+                <p className="text-sm text-neutral-600 mb-3">{tipoDescriptions[plantilla.tipo]}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="flex items-center space-x-3 p-4 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                <label className="flex items-center space-x-3 p-4 bg-surface-card border border-soft rounded-2xl cursor-pointer hover:bg-slate-50 transition">
                   <input
                     type="checkbox"
                     checked={plantilla.envio_automatico}
@@ -217,14 +217,14 @@ export function ProgramacionAutomatica() {
                     className="w-5 h-5 text-green-600 rounded focus:ring-2 focus:ring-green-500"
                   />
                   <div>
-                    <p className="font-medium text-slate-900">Envío automático</p>
-                    <p className="text-xs text-slate-500">Activar/desactivar envíos automáticos</p>
+                    <p className="font-medium text-neutral-900">Envío automático</p>
+                    <p className="text-xs text-neutral-500">Activar/desactivar envíos automáticos</p>
                   </div>
                 </label>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
                   <Clock className="w-4 h-4 inline mr-1" />
                   Hora de envío
                 </label>
@@ -234,17 +234,17 @@ export function ProgramacionAutomatica() {
                     value={plantilla.hora_envio}
                     onChange={(e) => handleUpdateHora(plantilla.id, e.target.value)}
                     disabled={!plantilla.envio_automatico}
-                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   />
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-neutral-500 mt-1">
                   Los correos se enviarán a esta hora (hora del servidor)
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 p-3 bg-slate-100 rounded-lg">
-              <p className="text-sm text-slate-600">
+            <div className="mt-4 p-3 bg-neutral-100 rounded-lg">
+              <p className="text-sm text-neutral-600">
                 <strong>Asunto actual:</strong> {plantilla.asunto}
               </p>
             </div>
@@ -252,14 +252,14 @@ export function ProgramacionAutomatica() {
         ))}
       </div>
 
-      <div className="mt-8 p-6 bg-slate-50 border border-slate-200 rounded-lg">
-        <h3 className="font-semibold text-slate-900 mb-3">Configuración del servidor</h3>
-        <p className="text-sm text-slate-600 mb-4">
+      <div className="mt-8 p-6 bg-neutral-50 border border-neutral-200 rounded-lg">
+        <h3 className="font-semibold text-neutral-900 mb-3">Configuración del servidor</h3>
+        <p className="text-sm text-neutral-600 mb-4">
           Para que los correos se envíen automáticamente, necesitas configurar un cron job o tarea programada
-          que llame a la función <code className="px-2 py-1 bg-slate-200 rounded">check-scheduled-emails</code>{' '}
+          que llame a la función <code className="px-2 py-1 bg-neutral-200 rounded">check-scheduled-emails</code>{' '}
           diariamente.
         </p>
-        <div className="bg-slate-800 text-slate-100 p-4 rounded-lg font-mono text-sm">
+        <div className="bg-neutral-800 text-neutral-100 p-4 rounded-lg font-mono text-sm">
           <p>URL de la función:</p>
           <p className="text-primary-300 break-all">
             {import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-scheduled-emails

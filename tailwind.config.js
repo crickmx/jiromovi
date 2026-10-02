@@ -196,6 +196,7 @@ export default {
         'rise':       'movi-rise 0.32s cubic-bezier(0.16,1,0.3,1) both',
         'pop':        'movi-pop 0.35s cubic-bezier(0.34,1.36,0.64,1) both',
         'scale-in':   'scale-in 0.22s cubic-bezier(0.16,1,0.3,1) both',
+        'overlay':    'movi-fade 0.18s ease-out both',
       },
       keyframes: {
         'fade-in': {

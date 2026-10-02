@@ -25,7 +25,7 @@ export default function TelefoniaAdmin() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+        <div className="p-2.5 rounded-xl bg-blue-50 text-accent-ink">
           <Phone className="w-6 h-6" />
         </div>
         <div>
@@ -45,7 +45,7 @@ export default function TelefoniaAdmin() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActive
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-accent text-accent-ink'
                     : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
                 }`}
               >
@@ -135,7 +135,7 @@ function ConfigTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
+      <div className="bg-surface-card rounded-2xl border border-soft p-6">
         <h2 className="text-lg font-semibold text-neutral-900 mb-4">Estado de Conexion PBX</h2>
 
         <div className="space-y-3">
@@ -146,7 +146,7 @@ function ConfigTab() {
             </p>
           </div>
           <div className="flex items-center gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-lg">
-            <Activity className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <Activity className="w-4 h-4 text-accent-ink flex-shrink-0" />
             <p className="text-xs text-blue-700">
               Modo actual: <span className="font-semibold">{form.api_mode === 'mock' ? 'Simulado (Mock)' : 'Produccion (Live)'}</span>
             </p>
@@ -161,7 +161,7 @@ function ConfigTab() {
                 type="radio"
                 checked={form.api_mode === 'mock'}
                 onChange={() => setForm(f => ({ ...f, api_mode: 'mock' }))}
-                className="text-blue-600"
+                className="text-accent-ink"
               />
               <span className="text-sm text-neutral-700">Mock (simulado)</span>
             </label>
@@ -170,7 +170,7 @@ function ConfigTab() {
                 type="radio"
                 checked={form.api_mode === 'live'}
                 onChange={() => setForm(f => ({ ...f, api_mode: 'live' }))}
-                className="text-blue-600"
+                className="text-accent-ink"
               />
               <span className="text-sm text-neutral-700">Live (produccion)</span>
             </label>
@@ -190,7 +190,7 @@ function ConfigTab() {
                 type="checkbox"
                 checked={form.auto_sync}
                 onChange={e => setForm(f => ({ ...f, auto_sync: e.target.checked }))}
-                className="rounded text-blue-600"
+                className="rounded text-accent-ink"
               />
               <span className="text-sm text-neutral-700">Activar sync automatico</span>
             </label>
@@ -215,7 +215,7 @@ function ConfigTab() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 flex items-center gap-2"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             Guardar Configuracion
@@ -301,7 +301,7 @@ function OficinasTab() {
         <h2 className="text-lg font-semibold text-neutral-900">Rangos de Extension por Oficina</h2>
         <button
           onClick={() => setShowAdd(true)}
-          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
+          className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Agregar Rango
         </button>
@@ -345,7 +345,7 @@ function OficinasTab() {
           <div className="flex gap-2">
             <button
               onClick={handleAdd}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              className="px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent-hover"
             >
               Guardar
             </button>
@@ -359,7 +359,7 @@ function OficinasTab() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+      <div className="bg-surface-card rounded-xl border border-soft overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 border-b border-neutral-200">
             <tr>
@@ -372,7 +372,7 @@ function OficinasTab() {
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {ranges.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-neutral-400">No hay rangos configurados</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-neutral-500">No hay rangos configurados</td></tr>
             ) : ranges.map(r => (
               <tr key={r.id} className="hover:bg-neutral-50">
                 <td className="px-4 py-3 font-medium text-neutral-900">{r.oficina?.nombre || '—'}</td>
@@ -476,18 +476,18 @@ function ExtensionesTab() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar extension..."
-            className="w-full pl-9 pr-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-accent/40"
           />
         </div>
         <button
           onClick={() => setShowGenerate(true)}
-          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
+          className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Generar Extensiones
         </button>
@@ -524,7 +524,7 @@ function ExtensionesTab() {
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              className="px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent-hover disabled:opacity-50 flex items-center gap-2"
             >
               {generating && <Loader2 className="w-3 h-3 animate-spin" />}
               Generar ({Math.max(0, genForm.hasta - genForm.desde + 1)} ext.)
@@ -539,7 +539,7 @@ function ExtensionesTab() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+      <div className="bg-surface-card rounded-xl border border-soft overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 border-b border-neutral-200">
@@ -554,7 +554,7 @@ function ExtensionesTab() {
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-400">No hay extensiones</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-500">No hay extensiones</td></tr>
               ) : filtered.slice(0, 100).map(ext => (
                 <tr key={ext.id} className="hover:bg-neutral-50">
                   <td className="px-4 py-3 font-mono font-semibold text-neutral-900">{ext.extension}</td>
@@ -570,7 +570,7 @@ function ExtensionesTab() {
                     {ext.estado === 'disponible' && (
                       <button
                         onClick={() => setQuickAssignExt(ext)}
-                        className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 flex items-center gap-1.5"
+                        className="px-2.5 py-1.5 bg-accent text-accent-foreground rounded-lg text-xs font-medium hover:bg-accent-hover flex items-center gap-1.5"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
                         Asignar
@@ -669,7 +669,7 @@ function AsignacionesTab() {
         <h2 className="text-lg font-semibold text-neutral-900">Asignaciones Usuario-Extension</h2>
         <button
           onClick={openAssignModal}
-          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
+          className="px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Asignar Extension
         </button>
@@ -700,7 +700,7 @@ function AsignacionesTab() {
             </select>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleAssign} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+            <button onClick={handleAssign} className="px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-sm hover:bg-accent-hover">
               Asignar
             </button>
             <button onClick={() => setShowAssign(false)} className="px-3 py-1.5 bg-neutral-200 text-neutral-700 rounded-lg text-sm hover:bg-neutral-300">
@@ -710,7 +710,7 @@ function AsignacionesTab() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+      <div className="bg-surface-card rounded-xl border border-soft overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 border-b border-neutral-200">
             <tr>
@@ -724,7 +724,7 @@ function AsignacionesTab() {
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {asignaciones.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-400">No hay asignaciones</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-500">No hay asignaciones</td></tr>
             ) : asignaciones.map(a => (
               <tr key={a.id} className="hover:bg-neutral-50">
                 <td className="px-4 py-3">
@@ -864,13 +864,13 @@ function SyncTab() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
+      <div className="bg-surface-card rounded-2xl border border-soft p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-neutral-900">Sincronizacion Masiva</h2>
           <button
             onClick={handleGeneratePreview}
             disabled={generating}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 flex items-center gap-2"
           >
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpDown className="w-4 h-4" />}
             Generar Preview
@@ -943,10 +943,10 @@ function SyncTab() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-neutral-200 p-6">
+      <div className="bg-surface-card rounded-2xl border border-soft p-6">
         <h2 className="text-lg font-semibold text-neutral-900 mb-4">Historial de Sincronizacion</h2>
         {logs.length === 0 ? (
-          <p className="text-sm text-neutral-400">No hay registros de sincronizacion</p>
+          <p className="text-sm text-neutral-500">No hay registros de sincronizacion</p>
         ) : (
           <div className="space-y-2">
             {logs.map(log => (
@@ -954,7 +954,7 @@ function SyncTab() {
                 <div className={`p-1.5 rounded-lg ${
                   log.estado === 'completado' ? 'bg-green-100 text-green-600' :
                   log.estado === 'error' ? 'bg-red-100 text-red-600' :
-                  log.estado === 'en_proceso' ? 'bg-blue-100 text-blue-600' :
+                  log.estado === 'en_proceso' ? 'bg-blue-100 text-accent-ink' :
                   'bg-neutral-100 text-neutral-500'
                 }`}>
                   {log.estado === 'completado' ? <CheckCircle2 className="w-4 h-4" /> :
@@ -1051,8 +1051,8 @@ function QuickAssignModal({ extension, onClose, onAssigned }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-md mx-4 overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-neutral-900">Asignar Extension {extension.extension}</h3>
@@ -1069,14 +1069,14 @@ function QuickAssignModal({ extension, onClose, onAssigned }: {
           {!selectedUser ? (
             <>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                 <input
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Escribe nombre o email..."
                   autoFocus
-                  className="w-full pl-9 pr-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-9 pr-3 py-2.5 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-accent/40 focus:border-accent"
                 />
               </div>
               <div className="max-h-64 overflow-y-auto space-y-1">
@@ -1086,7 +1086,7 @@ function QuickAssignModal({ extension, onClose, onAssigned }: {
                   </div>
                 )}
                 {!loading && search.trim().length >= 2 && usuarios.length === 0 && (
-                  <p className="text-center text-sm text-neutral-400 py-6">No se encontraron usuarios</p>
+                  <p className="text-center text-sm text-neutral-500 py-6">No se encontraron usuarios</p>
                 )}
                 {!loading && usuarios.map(u => (
                   <button
@@ -1105,7 +1105,7 @@ function QuickAssignModal({ extension, onClose, onAssigned }: {
                   </button>
                 ))}
                 {!loading && search.trim().length < 2 && (
-                  <p className="text-center text-sm text-neutral-400 py-6">Escribe al menos 2 caracteres para buscar</p>
+                  <p className="text-center text-sm text-neutral-500 py-6">Escribe al menos 2 caracteres para buscar</p>
                 )}
               </div>
             </>
@@ -1120,7 +1120,7 @@ function QuickAssignModal({ extension, onClose, onAssigned }: {
                   <div className="text-xs text-neutral-500">{selectedUser.email}</div>
                 </div>
                 <button onClick={() => setSelectedUser(null)} className="p-1.5 hover:bg-blue-100 rounded-lg">
-                  <X className="w-4 h-4 text-blue-600" />
+                  <X className="w-4 h-4 text-accent-ink" />
                 </button>
               </div>
               <div className="space-y-3">
@@ -1131,7 +1131,7 @@ function QuickAssignModal({ extension, onClose, onAssigned }: {
                     value={extraFields.email}
                     onChange={e => setExtraFields(f => ({ ...f, email: e.target.value }))}
                     placeholder="email@empresa.com"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-accent/40"
                   />
                 </div>
                 <div>
@@ -1141,7 +1141,7 @@ function QuickAssignModal({ extension, onClose, onAssigned }: {
                     value={extraFields.celular}
                     onChange={e => setExtraFields(f => ({ ...f, celular: e.target.value }))}
                     placeholder="5512345678"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-accent/40"
                   />
                 </div>
                 <div>
@@ -1151,14 +1151,14 @@ function QuickAssignModal({ extension, onClose, onAssigned }: {
                     value={extraFields.password}
                     onChange={e => setExtraFields(f => ({ ...f, password: e.target.value }))}
                     placeholder="Dejar vacio para auto-generar"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-accent/40"
                   />
                 </div>
               </div>
               <button
                 onClick={handleConfirmAssign}
                 disabled={assigning}
-                className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full px-4 py-2.5 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {assigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                 Asignar y Crear en PBX
@@ -1219,8 +1219,8 @@ function UserProfileModal({ userId, onClose }: { userId: string; onClose: () => 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-md mx-4 overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-neutral-900">Perfil del Usuario</h3>
           <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-lg">
@@ -1241,7 +1241,7 @@ function UserProfileModal({ userId, onClose }: { userId: string; onClose: () => 
                 <div className="font-medium text-neutral-900">{user.nombre} {user.apellido}</div>
                 <div className="text-sm text-neutral-500">{user.oficina?.nombre || 'Sin oficina'}</div>
                 {user.extension_telefonica && (
-                  <div className="text-xs text-blue-600 font-mono mt-0.5">Ext. {user.extension_telefonica}</div>
+                  <div className="text-xs text-accent-ink font-mono mt-0.5">Ext. {user.extension_telefonica}</div>
                 )}
               </div>
             </div>
@@ -1249,11 +1249,11 @@ function UserProfileModal({ userId, onClose }: { userId: string; onClose: () => 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-neutral-600 mb-1">Nombre</label>
-                  <input type="text" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                  <input type="text" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-accent/40" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-600 mb-1">Apellido</label>
-                  <input type="text" value={form.apellido} onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                  <input type="text" value={form.apellido} onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-accent/40" />
                 </div>
               </div>
               <div>
@@ -1262,11 +1262,11 @@ function UserProfileModal({ userId, onClose }: { userId: string; onClose: () => 
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-600 mb-1">Telefono</label>
-                <input type="text" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                <input type="text" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-accent/40" />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Guardar
               </button>
@@ -1276,7 +1276,7 @@ function UserProfileModal({ userId, onClose }: { userId: string; onClose: () => 
             </div>
           </div>
         ) : (
-          <div className="p-6 text-center text-sm text-neutral-400">Usuario no encontrado</div>
+          <div className="p-6 text-center text-sm text-neutral-500">Usuario no encontrado</div>
         )}
       </div>
     </div>

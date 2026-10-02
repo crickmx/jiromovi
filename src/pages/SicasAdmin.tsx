@@ -1105,7 +1105,7 @@ export default function SicasAdmin() {
           <TabsTrigger value="produccion" className="relative">
             Producción
             {totalPolizas > 0 && (
-              <Badge className="ml-1 bg-accent text-white text-xs px-1.5 py-0">
+              <Badge className="ml-1 bg-accent text-accent-foreground text-xs px-1.5 py-0">
                 {totalPolizas}
               </Badge>
             )}
@@ -1370,10 +1370,10 @@ export default function SicasAdmin() {
 
                 <div className="grid grid-cols-2 gap-6 pt-6 border-t">
                   <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <Building className="w-8 h-8 mx-auto mb-2 text-accent" />
+                    <Building className="w-8 h-8 mx-auto mb-2 text-accent-ink" />
                     <div className="text-2xl font-bold text-blue-900">{despachos.length}</div>
                     <div className="text-sm text-blue-700">Despachos en catálogo</div>
-                    <div className="text-xs text-accent mt-1">
+                    <div className="text-xs text-accent-ink mt-1">
                       {despachos.filter(d => d.is_mapped).length} mapeados
                     </div>
                   </div>
@@ -1669,7 +1669,7 @@ export default function SicasAdmin() {
                       <Loader2 className="w-4 h-4 animate-spin" />Cargando solicitudes...
                     </div>
                   ) : pendingRequests.length === 0 ? (
-                    <p className="text-sm text-neutral-400 py-4 text-center">No hay solicitudes pendientes</p>
+                    <p className="text-sm text-neutral-500 py-4 text-center">No hay solicitudes pendientes</p>
                   ) : (
                     <div className="space-y-3">
                       {pendingRequests.map(req => (
@@ -1815,7 +1815,7 @@ export default function SicasAdmin() {
                         <p className="font-medium text-blue-900">
                           {produccionResult.stats?.records_fetched || 0} pólizas obtenidas
                         </p>
-                        <p className="text-xs text-accent mt-1">
+                        <p className="text-xs text-accent-ink mt-1">
                           {produccionResult.metadata?.synced_at ?
                             new Date(produccionResult.metadata.synced_at).toLocaleString('es-MX')
                             : 'N/A'}
@@ -1905,7 +1905,7 @@ export default function SicasAdmin() {
                     <Button
                       onClick={() => handleSyncSoapFull('continue')}
                       disabled={autoSyncing}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      className="w-full bg-accent hover:bg-accent-hover"
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Continuar Sync (pagina {soapFullResult.nextPage || '?'} de {soapFullResult.progress?.totalPages || '?'})
@@ -1914,7 +1914,7 @@ export default function SicasAdmin() {
 
                   {/* Auto-sync progress panel */}
                   {(autoSyncing || autoSyncProgress || autoSyncComplete) && (
-                    <div className="border-2 border-blue-200 rounded-xl overflow-hidden bg-white">
+                    <div className="border-2 border-blue-200 rounded-xl overflow-hidden bg-surface-card">
                       {/* Header */}
                       <div className={`px-4 py-3 flex items-center justify-between ${
                         autoSyncComplete ? 'bg-emerald-50 border-b border-emerald-200' :
@@ -1927,7 +1927,7 @@ export default function SicasAdmin() {
                           ) : autoSyncError ? (
                             <XCircle className="w-5 h-5 text-red-600" />
                           ) : (
-                            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                            <Loader2 className="w-5 h-5 text-accent-ink animate-spin" />
                           )}
                           <span className={`font-semibold text-sm ${
                             autoSyncComplete ? 'text-emerald-900' :
@@ -1993,7 +1993,7 @@ export default function SicasAdmin() {
                         <div className="px-4 pb-2">
                           <div className="grid grid-cols-3 gap-2 text-xs">
                             <div className="bg-blue-50 rounded-lg px-2.5 py-1.5 text-center">
-                              <div className="text-blue-600 font-medium">Documentos</div>
+                              <div className="text-accent-ink font-medium">Documentos</div>
                               <div className="text-blue-900 font-bold">{totalDocuments.toLocaleString()}</div>
                             </div>
                             <div className="bg-emerald-50 rounded-lg px-2.5 py-1.5 text-center">
@@ -2168,7 +2168,7 @@ export default function SicasAdmin() {
                         )}
 
                         {testProduccionResult.diagnostico.codigos_probados && (
-                          <div className="bg-white border border-neutral-200 rounded-lg p-4">
+                          <div className="bg-surface-card border border-soft rounded-2xl p-4">
                             <h5 className="font-semibold text-neutral-900 mb-3">
                               Códigos de Reporte Probados ({testProduccionResult.diagnostico.codigos_probados.length})
                             </h5>
@@ -2186,7 +2186,7 @@ export default function SicasAdmin() {
                                     {code.registros > 0 ? (
                                       <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                                     ) : (
-                                      <XCircle className="w-5 h-5 text-neutral-400 flex-shrink-0" />
+                                      <XCircle className="w-5 h-5 text-neutral-500 flex-shrink-0" />
                                     )}
                                     <div className="min-w-0 flex-1">
                                       <p className="font-medium text-neutral-900 truncate">
@@ -2197,7 +2197,7 @@ export default function SicasAdmin() {
                                   </div>
                                   <div className="text-right ml-4 flex-shrink-0">
                                     <p className={`text-lg font-bold ${
-                                      code.registros > 0 ? 'text-green-600' : 'text-neutral-400'
+                                      code.registros > 0 ? 'text-green-600' : 'text-neutral-500'
                                     }`}>
                                       {code.registros}
                                     </p>
@@ -2236,7 +2236,7 @@ export default function SicasAdmin() {
                             <summary className="cursor-pointer font-medium text-neutral-700 hover:text-neutral-900">
                               Ver muestra de datos del mejor código
                             </summary>
-                            <pre className="text-xs bg-white p-3 rounded border mt-2 overflow-auto max-h-60">
+                            <pre className="text-xs bg-surface-card p-3 rounded border mt-2 overflow-auto max-h-60">
                               {JSON.stringify(testProduccionResult.resultados.mejor_resultado, null, 2)}
                             </pre>
                           </details>
@@ -2249,7 +2249,7 @@ export default function SicasAdmin() {
                 {produccionResult && (
                   <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
                     <h4 className="font-semibold mb-3">Resultado de la Sincronización</h4>
-                    <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
+                    <pre className="text-xs bg-surface-card p-3 rounded border overflow-auto max-h-96">
                       {JSON.stringify(produccionResult, null, 2)}
                     </pre>
                   </div>
@@ -2354,7 +2354,7 @@ export default function SicasAdmin() {
                         </>
                       )}
                     </div>
-                    <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
+                    <pre className="text-xs bg-surface-card p-3 rounded border overflow-auto max-h-96">
                       {JSON.stringify(testComisionesResult, null, 2)}
                     </pre>
                   </div>
@@ -2428,7 +2428,7 @@ export default function SicasAdmin() {
                 {comisionesPendientesResult && (
                   <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
                     <h4 className="font-semibold mb-3">Resultado de la Sincronización</h4>
-                    <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
+                    <pre className="text-xs bg-surface-card p-3 rounded border overflow-auto max-h-96">
                       {JSON.stringify(comisionesPendientesResult, null, 2)}
                     </pre>
                   </div>
@@ -2502,7 +2502,7 @@ export default function SicasAdmin() {
                 {comisionesPagadasResult && (
                   <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
                     <h4 className="font-semibold mb-3">Resultado de la Sincronización</h4>
-                    <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
+                    <pre className="text-xs bg-surface-card p-3 rounded border overflow-auto max-h-96">
                       {JSON.stringify(comisionesPagadasResult, null, 2)}
                     </pre>
                   </div>
@@ -2664,7 +2664,7 @@ export default function SicasAdmin() {
 
                       <div className="p-3 bg-neutral-50 rounded-lg">
                         <div className="text-xs text-neutral-500 mb-1">Registros</div>
-                        <div className="text-lg font-bold text-accent">
+                        <div className="text-lg font-bold text-accent-ink">
                           {diagnosticResult.stats?.totalRows || 0}
                         </div>
                       </div>
@@ -2771,7 +2771,7 @@ export default function SicasAdmin() {
               <CardContent className="space-y-6">
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
+                    <AlertCircle className="w-5 h-5 text-accent-ink mt-0.5 flex-shrink-0" />
                     <div className="space-y-2 text-sm text-blue-900">
                       <p className="font-medium">¿Por qué usar esta herramienta?</p>
                       <p>
@@ -2900,7 +2900,7 @@ export default function SicasAdmin() {
 
                       <div className="p-3 bg-blue-50 rounded-lg">
                         <div className="text-xs text-neutral-500 mb-1">Con Datos</div>
-                        <div className="text-lg font-bold text-accent">
+                        <div className="text-lg font-bold text-accent-ink">
                           {reportCodesResult.summary?.with_data || 0}
                         </div>
                       </div>
@@ -2937,7 +2937,7 @@ export default function SicasAdmin() {
                     {reportCodesResult.results && (
                       <div>
                         <details className="pt-2">
-                          <summary className="text-sm font-medium cursor-pointer hover:text-accent mb-3">
+                          <summary className="text-sm font-medium cursor-pointer hover:text-accent-ink mb-3">
                             Ver Detalle de Todos los Códigos
                           </summary>
                           <div className="space-y-2 mt-3">
@@ -2978,7 +2978,7 @@ export default function SicasAdmin() {
                                   {result.status === 'available' ? (
                                     <CheckCircle className="w-4 h-4 text-green-600" />
                                   ) : (
-                                    <XCircle className="w-4 h-4 text-neutral-400" />
+                                    <XCircle className="w-4 h-4 text-neutral-500" />
                                   )}
                                 </div>
                                 {result.error && (
@@ -3025,7 +3025,7 @@ export default function SicasAdmin() {
 
                       <div className="p-3 bg-blue-50 rounded-lg">
                         <div className="text-xs text-neutral-500 mb-1">Con Datos</div>
-                        <div className="text-lg font-bold text-accent">
+                        <div className="text-lg font-bold text-accent-ink">
                           {timeoutCodesResult.summary?.withData || 0}
                         </div>
                       </div>
@@ -3062,7 +3062,7 @@ export default function SicasAdmin() {
                     {timeoutCodesResult.results && (
                       <div>
                         <details className="pt-2">
-                          <summary className="text-sm font-medium cursor-pointer hover:text-accent mb-3">
+                          <summary className="text-sm font-medium cursor-pointer hover:text-accent-ink mb-3">
                             Ver Detalle de Todos los Códigos Probados
                           </summary>
                           <div className="space-y-2 mt-3">
@@ -3106,7 +3106,7 @@ export default function SicasAdmin() {
                                   {result.status === 'available' ? (
                                     <CheckCircle className="w-4 h-4 text-green-600" />
                                   ) : (
-                                    <XCircle className="w-4 h-4 text-neutral-400" />
+                                    <XCircle className="w-4 h-4 text-neutral-500" />
                                   )}
                                 </div>
                                 {result.message && (
@@ -3231,7 +3231,7 @@ export default function SicasAdmin() {
 
                             {result.response && (
                               <details className="mt-3">
-                                <summary className="text-xs cursor-pointer text-accent hover:text-blue-700">
+                                <summary className="text-xs cursor-pointer text-accent-ink hover:text-accent-ink">
                                   Ver respuesta completa
                                 </summary>
                                 <pre className="mt-2 p-3 bg-white rounded text-xs overflow-x-auto max-h-60">
@@ -3494,7 +3494,7 @@ export default function SicasAdmin() {
                                   ) : result.error ? (
                                     <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                                   ) : (
-                                    <XCircle className="w-5 h-5 text-neutral-400 flex-shrink-0" />
+                                    <XCircle className="w-5 h-5 text-neutral-500 flex-shrink-0" />
                                   )}
                                   <span className="font-medium text-sm">{label}</span>
                                   <Badge className={viable ? 'bg-green-600 text-white' : 'bg-neutral-400 text-white'}>
@@ -3507,9 +3507,9 @@ export default function SicasAdmin() {
                                   )}
                                 </div>
                                 {isExpanded ? (
-                                  <ChevronDown className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                                  <ChevronDown className="w-4 h-4 text-neutral-500 flex-shrink-0" />
                                 ) : (
-                                  <ChevronRight className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                                  <ChevronRight className="w-4 h-4 text-neutral-500 flex-shrink-0" />
                                 )}
                               </button>
 
@@ -3611,18 +3611,18 @@ export default function SicasAdmin() {
                     )}
 
                     {vendorSyncResult.ok && vendorSyncResult.progress && (
-                      <div className="p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
+                      <div className="p-3 bg-neutral-50 dark:bg-gray-800/50 border border-neutral-200 dark:border-gray-700 rounded-lg space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">Progreso</span>
+                          <span className="text-neutral-600 dark:text-gray-400">Progreso</span>
                           <span className="font-mono font-medium">{vendorSyncResult.progress.percent}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div className="w-full bg-neutral-200 dark:bg-gray-700 rounded-full h-2">
                           <div
                             className="bg-amber-500 h-2 rounded-full transition-all"
                             style={{ width: `${vendorSyncResult.progress.percent}%` }}
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                        <div className="grid grid-cols-2 gap-2 text-xs text-neutral-600 dark:text-gray-400">
                           <div>Vendedores: {vendorSyncResult.progress.vendorStart}-{vendorSyncResult.progress.vendorEnd} / {vendorSyncResult.progress.vendorsTotal}</div>
                           <div>Con datos: {vendorSyncResult.progress.vendorsWithData}</div>
                           <div>Docs obtenidos: {vendorSyncResult.stats?.totalFetched || 0}</div>
@@ -3642,15 +3642,15 @@ export default function SicasAdmin() {
                     )}
 
                     {vendorSyncResult.vendorResults && vendorSyncResult.vendorResults.length > 0 && (
-                      <div className="p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Detalle por vendedor (primeros 10)</p>
+                      <div className="p-3 bg-neutral-50 dark:bg-gray-800/50 border border-neutral-200 dark:border-gray-700 rounded-lg">
+                        <p className="text-xs font-medium text-neutral-600 dark:text-gray-400 mb-2">Detalle por vendedor (primeros 10)</p>
                         <div className="space-y-1">
                           {vendorSyncResult.vendorResults.map((v: any, i: number) => (
                             <div key={i} className="flex items-center justify-between text-xs font-mono">
-                              <span className="text-gray-600 dark:text-gray-400 truncate max-w-[200px]" title={v.nombre}>
+                              <span className="text-neutral-600 dark:text-gray-400 truncate max-w-[200px]" title={v.nombre}>
                                 {v.id_sicas} - {v.nombre}
                               </span>
-                              <span className={v.newRecords > 0 ? 'text-green-600 font-medium' : 'text-gray-500'}>
+                              <span className={v.newRecords > 0 ? 'text-green-600 font-medium' : 'text-neutral-500'}>
                                 {v.records} docs {v.newRecords > 0 ? `(${v.newRecords} nuevos)` : ''}
                               </span>
                             </div>

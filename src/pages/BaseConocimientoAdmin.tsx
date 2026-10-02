@@ -314,7 +314,7 @@ export default function BaseConocimientoAdmin() {
     return (
       <>
         <PageHeader title="Base de Conocimiento Admin" description="Solo administradores" />
-        <div className="p-8 text-center text-gray-500">No tienes permisos para acceder a esta sección.</div>
+        <div className="p-8 text-center text-neutral-500">No tienes permisos para acceder a esta sección.</div>
       </>
     );
   }
@@ -351,7 +351,7 @@ export default function BaseConocimientoAdmin() {
       )}
 
       {/* Tabs */}
-      <div className="px-6 border-b border-gray-100 bg-white">
+      <div className="px-6 border-b border-neutral-100 bg-white">
         <div className="flex gap-1">
           {(['documentos', 'anuncios', 'importar'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -360,7 +360,7 @@ export default function BaseConocimientoAdmin() {
               {t === 'anuncios' && <Megaphone className="w-4 h-4" />}
               {t === 'importar' && <CloudDownload className="w-4 h-4" />}
               {t === 'documentos' ? 'Documentos' : t === 'anuncios' ? 'Anuncios' : 'Importar / Descargar'}
-              <span className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
+              <span className="px-1.5 py-0.5 text-xs bg-neutral-100 text-neutral-600 rounded-full">
                 {t === 'documentos' ? docs.length : t === 'anuncios' ? ads.length : (pendingCount ?? '…')}
               </span>
             </button>
@@ -374,27 +374,27 @@ export default function BaseConocimientoAdmin() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                 <Input placeholder="Buscar por título o aseguradora..." value={busqueda} onChange={e => setBusqueda(e.target.value)} className="pl-9" />
               </div>
               <select value={filtroAseg} onChange={e => setFiltroAseg(e.target.value)}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 min-w-[160px]">
+                className="text-sm border border-soft rounded-lg px-3 py-2 bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent/20 min-w-[160px]">
                 <option value="">Todas las aseguradoras</option>
                 {aseguradoras.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-16 text-gray-400">
+              <div className="flex items-center justify-center py-16 text-neutral-500">
                 <RefreshCw className="w-5 h-5 animate-spin mr-2" />Cargando...
               </div>
             ) : (
-              <div className="bg-white rounded-xl border overflow-hidden">
+              <div className="bg-surface-card rounded-xl border overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+                  <thead className="bg-neutral-50 border-b">
                     <tr>
                       {['Documento', 'Aseguradora', 'Ramo', 'Formato', 'Estado', 'Acciones'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -403,15 +403,15 @@ export default function BaseConocimientoAdmin() {
                       <tr key={doc.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-4 py-3 max-w-[280px]">
                           <div className="flex items-start gap-2">
-                            <FileText className="w-4 h-4 text-gray-300 flex-shrink-0 mt-0.5" />
+                            <FileText className="w-4 h-4 text-neutral-300 flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="font-medium text-gray-900 leading-snug line-clamp-2">{doc.titulo}</p>
-                              {doc.categoria && <p className="text-xs text-gray-400 mt-0.5">{doc.categoria}</p>}
+                              <p className="font-medium text-neutral-900 leading-snug line-clamp-2">{doc.titulo}</p>
+                              {doc.categoria && <p className="text-xs text-neutral-500 mt-0.5">{doc.categoria}</p>}
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-gray-700 font-medium">{doc.aseguradora || '—'}</span>
+                          <span className="text-neutral-700 font-medium">{doc.aseguradora || '—'}</span>
                         </td>
                         <td className="px-4 py-3">
                           <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">{doc.ramo || '—'}</span>
@@ -420,7 +420,7 @@ export default function BaseConocimientoAdmin() {
                           <span className={`px-1.5 py-0.5 rounded text-xs font-medium uppercase ${
                             doc.formato === 'pdf' ? 'bg-red-50 text-red-600' :
                             doc.formato === 'xlsx' ? 'bg-emerald-50 text-emerald-700' :
-                            'bg-gray-100 text-gray-600'
+                            'bg-neutral-100 text-neutral-600'
                           }`}>{doc.formato || '—'}</span>
                         </td>
                         <td className="px-4 py-3">
@@ -429,7 +429,7 @@ export default function BaseConocimientoAdmin() {
                               <div onClick={() => toggleDocActivo(doc)} className="cursor-pointer">
                                 <ToggleBtn value={doc.activo} onChange={() => toggleDocActivo(doc)} />
                               </div>
-                              <span className="text-xs text-gray-500">{doc.activo ? 'Activo' : 'Inactivo'}</span>
+                              <span className="text-xs text-neutral-500">{doc.activo ? 'Activo' : 'Inactivo'}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <button onClick={() => toggleFeatured(doc)}
@@ -444,16 +444,16 @@ export default function BaseConocimientoAdmin() {
                           <div className="flex items-center gap-1">
                             {doc.url_original && (
                               <a href={doc.url_original} target="_blank" rel="noopener noreferrer"
-                                className="p-1.5 text-gray-400 hover:text-accent rounded hover:bg-blue-50 transition-colors" title="Ver documento">
+                                className="p-1.5 text-neutral-500 hover:text-accent-ink rounded hover:bg-blue-50 transition-colors" title="Ver documento">
                                 <Download className="w-3.5 h-3.5" />
                               </a>
                             )}
                             <button onClick={() => openEditDoc(doc)}
-                              className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50 transition-colors" title="Editar">
+                              className="p-1.5 text-neutral-500 hover:text-accent-ink rounded hover:bg-blue-50 transition-colors" title="Editar">
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => deleteDoc(doc.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors" title="Eliminar">
+                              className="p-1.5 text-neutral-500 hover:text-red-600 rounded hover:bg-red-50 transition-colors" title="Eliminar">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -462,7 +462,7 @@ export default function BaseConocimientoAdmin() {
                     ))}
                     {docsFiltrados.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
+                        <td colSpan={6} className="px-4 py-12 text-center text-neutral-500">
                           No se encontraron documentos
                         </td>
                       </tr>
@@ -478,7 +478,7 @@ export default function BaseConocimientoAdmin() {
         {tab === 'anuncios' && (
           <div className="space-y-4">
             {ads.length === 0 && !loading ? (
-              <div className="text-center py-16 text-gray-400">
+              <div className="text-center py-16 text-neutral-500">
                 <Megaphone className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p>No hay anuncios configurados</p>
                 <Button onClick={openNewAd} className="mt-4">
@@ -488,7 +488,7 @@ export default function BaseConocimientoAdmin() {
             ) : (
               <div className="grid gap-4">
                 {ads.map(ad => (
-                  <div key={ad.id} className="bg-white rounded-xl border overflow-hidden">
+                  <div key={ad.id} className="bg-surface-card rounded-xl border overflow-hidden">
                     {/* Preview */}
                     <div className="relative p-6 flex items-center gap-5" style={{ backgroundColor: ad.color_fondo }}>
                       <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-10" style={{ backgroundColor: ad.color_texto }} />
@@ -506,20 +506,20 @@ export default function BaseConocimientoAdmin() {
                       )}
                     </div>
                     {/* Controls */}
-                    <div className="px-4 py-3 flex items-center justify-between border-t border-gray-100">
+                    <div className="px-4 py-3 flex items-center justify-between border-t border-neutral-100">
                       <div className="flex items-center gap-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ad.activo ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
                           {ad.activo ? 'Activo' : 'Inactivo'}
                         </span>
-                        <span className="text-xs text-gray-400">Orden: {ad.orden}</span>
+                        <span className="text-xs text-neutral-500">Orden: {ad.orden}</span>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => openEditAd(ad)}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50">
+                          className="p-1.5 text-neutral-500 hover:text-accent-ink rounded hover:bg-blue-50">
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button onClick={() => deleteAd(ad.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50">
+                          className="p-1.5 text-neutral-500 hover:text-red-600 rounded hover:bg-red-50">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -535,49 +535,49 @@ export default function BaseConocimientoAdmin() {
           <div className="space-y-6 max-w-3xl">
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl border p-4">
+              <div className="bg-surface-card rounded-2xl border p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-blue-600" />
+                    <FileText className="w-5 h-5 text-accent-ink" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{docs.length}</p>
-                    <p className="text-xs text-gray-500">Total documentos</p>
+                    <p className="text-2xl font-bold text-neutral-900">{docs.length}</p>
+                    <p className="text-xs text-neutral-500">Total documentos</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-white rounded-xl border p-4">
+              <div className="bg-surface-card rounded-2xl border p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{docs.filter(d => d.storage_path).length}</p>
-                    <p className="text-xs text-gray-500">Descargados a Storage</p>
+                    <p className="text-2xl font-bold text-neutral-900">{docs.filter(d => d.storage_path).length}</p>
+                    <p className="text-xs text-neutral-500">Descargados a Storage</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-white rounded-xl border p-4">
+              <div className="bg-surface-card rounded-2xl border p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
                     <CloudDownload className="w-5 h-5 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{pendingCount ?? '…'}</p>
-                    <p className="text-xs text-gray-500">Pendientes de descarga</p>
+                    <p className="text-2xl font-bold text-neutral-900">{pendingCount ?? '…'}</p>
+                    <p className="text-xs text-neutral-500">Pendientes de descarga</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Download control panel */}
-            <div className="bg-white rounded-xl border p-6 space-y-4">
+            <div className="bg-surface-card rounded-2xl border p-6 space-y-4">
               <div>
-                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <CloudDownload className="w-5 h-5 text-accent" />
+                <h3 className="font-semibold text-neutral-900 flex items-center gap-2">
+                  <CloudDownload className="w-5 h-5 text-accent-ink" />
                   Descarga masiva desde URLs originales
                 </h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-neutral-500 mt-1">
                   Descarga documentos desde sus URLs originales y los almacena en Supabase Storage.
                   Ejecuta en lotes de {downloadLimit} documentos para evitar timeouts.
                 </p>
@@ -585,9 +585,9 @@ export default function BaseConocimientoAdmin() {
 
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Filtrar por aseguradora (opcional)</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Filtrar por aseguradora (opcional)</label>
                   <select value={downloadAseg} onChange={e => setDownloadAseg(e.target.value)}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
+                    className="w-full text-sm border border-soft rounded-lg px-3 py-2 bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent/20">
                     <option value="">Todas las aseguradoras</option>
                     {[...new Set(docs.map(d => d.aseguradora).filter(Boolean))].map(a => (
                       <option key={a} value={a!}>{a}</option>
@@ -595,11 +595,11 @@ export default function BaseConocimientoAdmin() {
                   </select>
                 </div>
                 <div className="text-center min-w-[80px]">
-                  <p className="text-xs text-gray-500 mb-1">Offset actual</p>
+                  <p className="text-xs text-neutral-500 mb-1">Offset actual</p>
                   <div className="flex items-center gap-1">
                     <input type="number" value={downloadOffset} onChange={e => setDownloadOffset(Math.max(0, +e.target.value))}
-                      className="w-16 text-sm text-center border border-gray-200 rounded-lg px-2 py-2 focus:outline-none" min={0} />
-                    <button onClick={() => setDownloadOffset(0)} className="text-xs text-gray-400 hover:text-gray-600 px-1">Reset</button>
+                      className="w-16 text-sm text-center border border-neutral-200 rounded-lg px-2 py-2 focus:outline-none" min={0} />
+                    <button onClick={() => setDownloadOffset(0)} className="text-xs text-neutral-500 hover:text-gray-600 px-1">Reset</button>
                   </div>
                 </div>
               </div>
@@ -622,7 +622,7 @@ export default function BaseConocimientoAdmin() {
                 )}
               </div>
 
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-neutral-500">
                 Tip: Ejecuta varios lotes haciendo clic repetidamente. El offset avanza automáticamente.
                 Para reiniciar, presiona "Reset" en el offset.
               </p>
@@ -630,9 +630,9 @@ export default function BaseConocimientoAdmin() {
 
             {/* Results */}
             {downloadSummary && (
-              <div className="bg-white rounded-xl border overflow-hidden">
-                <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-gray-700">Resultado del lote</h4>
+              <div className="bg-surface-card rounded-xl border overflow-hidden">
+                <div className="px-4 py-3 border-b bg-neutral-50 flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-neutral-700">Resultado del lote</h4>
                   <div className="flex gap-3 text-xs">
                     <span className="text-emerald-600 font-medium">{downloadSummary.downloaded} descargados</span>
                     <span className="text-amber-600 font-medium">{downloadSummary.skipped} omitidos</span>
@@ -641,13 +641,13 @@ export default function BaseConocimientoAdmin() {
                 </div>
                 {'docs' in downloadSummary ? (
                   <div className="p-4">
-                    <p className="text-sm text-gray-500 mb-3">Vista previa — documentos pendientes:</p>
+                    <p className="text-sm text-neutral-500 mb-3">Vista previa — documentos pendientes:</p>
                     <div className="space-y-1">
                       {(downloadSummary as any).docs?.map((d: any) => (
-                        <div key={d.id} className="flex items-center gap-2 text-sm py-1 border-b border-gray-50 last:border-0">
-                          <Globe className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
-                          <span className="font-medium text-gray-700 flex-1 truncate">{d.titulo}</span>
-                          <span className="text-xs text-gray-400">{d.aseguradora}</span>
+                        <div key={d.id} className="flex items-center gap-2 text-sm py-1 border-b border-neutral-50 last:border-0">
+                          <Globe className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />
+                          <span className="font-medium text-neutral-700 flex-1 truncate">{d.titulo}</span>
+                          <span className="text-xs text-neutral-500">{d.aseguradora}</span>
                         </div>
                       ))}
                     </div>
@@ -659,8 +659,8 @@ export default function BaseConocimientoAdmin() {
                         {r.status === 'downloaded' && <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
                         {r.status === 'error' && <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />}
                         {r.status === 'skipped' && <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />}
-                        <span className="text-sm text-gray-700 flex-1 truncate">{r.titulo}</span>
-                        {r.storage_path && <span className="text-xs text-gray-400 truncate max-w-[200px]">{r.storage_path}</span>}
+                        <span className="text-sm text-neutral-700 flex-1 truncate">{r.titulo}</span>
+                        {r.storage_path && <span className="text-xs text-neutral-500 truncate max-w-[200px]">{r.storage_path}</span>}
                         {r.error && <span className="text-xs text-red-400 truncate max-w-[200px]">{r.error}</span>}
                       </div>
                     ))}
@@ -670,9 +670,9 @@ export default function BaseConocimientoAdmin() {
             )}
 
             {/* Knowledge base summary */}
-            <div className="bg-white rounded-xl border p-5">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-gray-400" />
+            <div className="bg-surface-card rounded-2xl border p-5">
+              <h4 className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-neutral-500" />
                 Estado de Chava IA
               </h4>
               <ChavaKnowledgeStats />
@@ -681,37 +681,37 @@ export default function BaseConocimientoAdmin() {
         )}
       </div>
       {showDocModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl w-full max-w-2xl my-8 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4 overflow-y-auto">
+          <div className="bg-surface-card rounded-2xl w-full max-w-2xl my-8 shadow-e4 animate-scale-in">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-bold text-gray-900">{editDoc ? 'Editar documento' : 'Nuevo documento'}</h2>
+              <h2 className="text-lg font-bold text-neutral-900">{editDoc ? 'Editar documento' : 'Nuevo documento'}</h2>
               <button onClick={() => setShowDocModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-neutral-500" />
               </button>
             </div>
 
             <div className="p-6 space-y-4">
               {/* Título */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Título *</label>
                 <Input value={docForm.titulo} onChange={e => setDocForm(p => ({ ...p, titulo: e.target.value }))}
                   placeholder="Ej: GNP Autos - Manual de Coberturas 2026" />
               </div>
 
               {/* Descripción */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Descripción</label>
                 <textarea value={docForm.descripcion || ''}
                   onChange={e => setDocForm(p => ({ ...p, descripcion: e.target.value }))}
                   rows={2}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                  className="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
                   placeholder="Breve descripción del contenido del documento..." />
               </div>
 
               {/* Row: Aseguradora + Ramo */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Aseguradora</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Aseguradora</label>
                   <Input value={docForm.aseguradora || ''} onChange={e => setDocForm(p => ({ ...p, aseguradora: e.target.value }))}
                     placeholder="GNP, AXA, CHUBB..." list="aseg-list" />
                   <datalist id="aseg-list">
@@ -721,9 +721,9 @@ export default function BaseConocimientoAdmin() {
                   </datalist>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ramo</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Ramo</label>
                   <select value={docForm.ramo || ''} onChange={e => setDocForm(p => ({ ...p, ramo: e.target.value }))}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
+                    className="w-full text-sm border border-soft rounded-lg px-3 py-2 bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent/20">
                     <option value="">Seleccionar...</option>
                     {RAMOS.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
@@ -733,17 +733,17 @@ export default function BaseConocimientoAdmin() {
               {/* Row: Categoría + Formato */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Categoría</label>
                   <select value={docForm.categoria || ''} onChange={e => setDocForm(p => ({ ...p, categoria: e.target.value }))}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
+                    className="w-full text-sm border border-soft rounded-lg px-3 py-2 bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent/20">
                     <option value="">Seleccionar...</option>
                     {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Formato</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Formato</label>
                   <select value={docForm.formato || 'pdf'} onChange={e => setDocForm(p => ({ ...p, formato: e.target.value }))}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20">
+                    className="w-full text-sm border border-soft rounded-lg px-3 py-2 bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent/20">
                     {FORMATOS.map(f => <option key={f} value={f}>{f.toUpperCase()}</option>)}
                   </select>
                 </div>
@@ -751,14 +751,14 @@ export default function BaseConocimientoAdmin() {
 
               {/* URL original */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL del documento</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">URL del documento</label>
                 <Input value={docForm.url_original || ''} onChange={e => setDocForm(p => ({ ...p, url_original: e.target.value }))}
                   placeholder="https://..." />
               </div>
 
               {/* Tags */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Etiquetas</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Etiquetas</label>
                 <div className="flex gap-2 mb-2">
                   <Input value={tagInput} onChange={e => setTagInput(e.target.value)}
                     onKeyDown={e => {
@@ -781,7 +781,7 @@ export default function BaseConocimientoAdmin() {
                 {docForm.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {docForm.tags.map(tag => (
-                      <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent text-xs rounded-full">
+                      <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent-ink text-xs rounded-full">
                         <Tag className="w-2.5 h-2.5" />{tag}
                         <button onClick={() => setDocForm(p => ({ ...p, tags: p.tags.filter(t => t !== tag) }))}>
                           <X className="w-3 h-3" />
@@ -793,19 +793,19 @@ export default function BaseConocimientoAdmin() {
               </div>
 
               {/* Toggles */}
-              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-neutral-100">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Activo</span>
+                  <span className="text-sm text-neutral-600">Activo</span>
                   <ToggleBtn value={docForm.activo} onChange={v => setDocForm(p => ({ ...p, activo: v }))} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 flex items-center gap-1">
+                  <span className="text-sm text-neutral-600 flex items-center gap-1">
                     <Star className="w-3.5 h-3.5 text-amber-500" />Destacado
                   </span>
                   <ToggleBtn value={docForm.is_featured} onChange={v => setDocForm(p => ({ ...p, is_featured: v }))} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 flex items-center gap-1">
+                  <span className="text-sm text-neutral-600 flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-blue-500" />Reciente
                   </span>
                   <ToggleBtn value={docForm.is_recent} onChange={v => setDocForm(p => ({ ...p, is_recent: v }))} />
@@ -813,7 +813,7 @@ export default function BaseConocimientoAdmin() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t rounded-b-2xl">
+            <div className="flex justify-end gap-3 px-6 py-4 bg-neutral-50 border-t rounded-b-2xl">
               <Button variant="outline" onClick={() => setShowDocModal(false)}>Cancelar</Button>
               <Button onClick={saveDoc} disabled={saving}>
                 {saving ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Guardando...</> : <><Save className="w-4 h-4 mr-2" />Guardar</>}
@@ -825,12 +825,12 @@ export default function BaseConocimientoAdmin() {
 
       {/* ── Ad Modal ─────────────────────────────────────────────────────────────── */}
       {showAdModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+          <div className="bg-surface-card rounded-2xl w-full max-w-lg shadow-e4 animate-scale-in">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-bold text-gray-900">{editAd ? 'Editar anuncio' : 'Nuevo anuncio'}</h2>
+              <h2 className="text-lg font-bold text-neutral-900">{editAd ? 'Editar anuncio' : 'Nuevo anuncio'}</h2>
               <button onClick={() => setShowAdModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-neutral-500" />
               </button>
             </div>
 
@@ -853,54 +853,54 @@ export default function BaseConocimientoAdmin() {
 
             <div className="px-6 pb-4 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Título *</label>
                 <Input value={adForm.titulo} onChange={e => setAdForm(p => ({ ...p, titulo: e.target.value }))} placeholder="Título del anuncio" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Subtítulo</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Subtítulo</label>
                 <Input value={adForm.subtitulo || ''} onChange={e => setAdForm(p => ({ ...p, subtitulo: e.target.value }))} placeholder="Descripción breve..." />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Texto del CTA</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Texto del CTA</label>
                   <Input value={adForm.cta_texto} onChange={e => setAdForm(p => ({ ...p, cta_texto: e.target.value }))} placeholder="Ver más" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">URL del CTA</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">URL del CTA</label>
                   <Input value={adForm.cta_url || ''} onChange={e => setAdForm(p => ({ ...p, cta_url: e.target.value }))} placeholder="/centro-digital" />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Color fondo</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Color fondo</label>
                   <div className="flex items-center gap-2">
                     <input type="color" value={adForm.color_fondo} onChange={e => setAdForm(p => ({ ...p, color_fondo: e.target.value }))}
-                      className="w-9 h-9 rounded cursor-pointer border border-gray-200" />
+                      className="w-9 h-9 rounded cursor-pointer border border-neutral-200" />
                     <Input value={adForm.color_fondo} onChange={e => setAdForm(p => ({ ...p, color_fondo: e.target.value }))}
                       className="text-xs font-mono" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Color texto</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Color texto</label>
                   <div className="flex items-center gap-2">
                     <input type="color" value={adForm.color_texto} onChange={e => setAdForm(p => ({ ...p, color_texto: e.target.value }))}
-                      className="w-9 h-9 rounded cursor-pointer border border-gray-200" />
+                      className="w-9 h-9 rounded cursor-pointer border border-neutral-200" />
                     <Input value={adForm.color_texto} onChange={e => setAdForm(p => ({ ...p, color_texto: e.target.value }))}
                       className="text-xs font-mono" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Orden</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Orden</label>
                   <Input type="number" value={adForm.orden} onChange={e => setAdForm(p => ({ ...p, orden: +e.target.value }))} min={1} />
                 </div>
               </div>
               <div className="flex items-center justify-between pt-2">
-                <span className="text-sm text-gray-600">Activo</span>
+                <span className="text-sm text-neutral-600">Activo</span>
                 <ToggleBtn value={adForm.activo} onChange={v => setAdForm(p => ({ ...p, activo: v }))} />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t rounded-b-2xl">
+            <div className="flex justify-end gap-3 px-6 py-4 bg-neutral-50 border-t rounded-b-2xl">
               <Button variant="outline" onClick={() => setShowAdModal(false)}>Cancelar</Button>
               <Button onClick={saveAd} disabled={saving}>
                 {saving ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Guardando...</> : <><Save className="w-4 h-4 mr-2" />Guardar</>}
@@ -933,21 +933,21 @@ function ChavaKnowledgeStats() {
     load();
   }, []);
 
-  if (!stats) return <div className="text-sm text-gray-400">Cargando...</div>;
+  if (!stats) return <div className="text-sm text-neutral-500">Cargando...</div>;
 
   return (
     <div className="grid grid-cols-3 gap-4 text-center">
       <div>
-        <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-        <p className="text-xs text-gray-500 mt-0.5">Documentos indexados</p>
+        <p className="text-2xl font-bold text-neutral-900">{stats.total}</p>
+        <p className="text-xs text-neutral-500 mt-0.5">Documentos indexados</p>
       </div>
       <div>
         <p className="text-2xl font-bold text-emerald-600">{stats.indexados}</p>
-        <p className="text-xs text-gray-500 mt-0.5">Estado "ready"</p>
+        <p className="text-xs text-neutral-500 mt-0.5">Estado "ready"</p>
       </div>
       <div>
-        <p className="text-2xl font-bold text-blue-600">{stats.fragmentos}</p>
-        <p className="text-xs text-gray-500 mt-0.5">Fragmentos de texto</p>
+        <p className="text-2xl font-bold text-accent-ink">{stats.fragmentos}</p>
+        <p className="text-xs text-neutral-500 mt-0.5">Fragmentos de texto</p>
       </div>
     </div>
   );

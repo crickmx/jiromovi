@@ -159,7 +159,7 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
             </div>
 
             <Alert className="bg-blue-50 border-blue-200">
-              <AlertCircle className="w-4 h-4 text-blue-600" />
+              <AlertCircle className="w-4 h-4 text-accent-ink" />
               <div className="text-sm text-blue-800">
                 <strong>Importante:</strong> La oficina debe existir previamente. Los emails deben ser únicos. Los agentes deben cubrir al menos una opción de cada categoría activa de trámites.
               </div>

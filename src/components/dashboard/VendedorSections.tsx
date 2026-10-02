@@ -112,7 +112,7 @@ function ProduccionPanel() {
                   }}
                 />
               </div>
-              <p className="text-right text-[11px] text-neutral-400 dark:text-white/35 mt-1">
+              <p className="text-right text-[11px] text-neutral-500 dark:text-white/50 mt-1">
                 {content.produccion.meta_pct}% alcanzado
               </p>
             </div>
@@ -120,7 +120,7 @@ function ProduccionPanel() {
 
           {(content.renovaciones ?? []).length > 0 && (
             <div>
-              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2 flex items-center gap-1">
+              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/50 mb-2 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3" /> Próximas renovaciones
               </p>
               <div>
@@ -133,11 +133,11 @@ function ProduccionPanel() {
                       <p className="text-[11px] font-medium text-neutral-800 dark:text-white/80 truncate">
                         {r.asegurado || '—'}
                       </p>
-                      <p className="text-[11px] text-neutral-400 dark:text-white/35">
+                      <p className="text-[11px] text-neutral-500 dark:text-white/50">
                         {r.ramo} · {r.compania}
                       </p>
                     </div>
-                    <span className="text-[11px] text-neutral-400 dark:text-white/40 ml-2 shrink-0">
+                    <span className="text-[11px] text-neutral-500 dark:text-white/55 ml-2 shrink-0">
                       {new Date(r.fecha_fin).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
@@ -147,7 +147,7 @@ function ProduccionPanel() {
           )}
         </>
       ) : (
-        <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-6">Sin datos de producción</p>
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin datos de producción</p>
       )}
     </Panel>
   );
@@ -213,7 +213,7 @@ function MetasPanel() {
                         ? 'text-emerald-600 dark:text-emerald-400'
                         : s.status === 'active'
                         ? 'text-sky-600 dark:text-sky-400 font-bold'
-                        : 'text-neutral-400',
+                        : 'text-neutral-500',
                     )}
                   >
                     {s.status === 'done' ? '✓ ' : s.status === 'active' ? '● ' : '○ '}
@@ -227,7 +227,7 @@ function MetasPanel() {
           {!c.maximo && c.siguiente ? (
             <>
               <div className="bg-sky-50 dark:bg-sky-950/20 border-l-[3px] border-sky-500 rounded-r-xl p-2.5">
-                <p className="text-[11px] text-neutral-500 dark:text-white/40">Falta para {c.siguiente}</p>
+                <p className="text-[11px] text-neutral-500 dark:text-white/55">Falta para {c.siguiente}</p>
                 <p className="text-base font-extrabold text-sky-600 dark:text-sky-400">{money(c.falta)}</p>
               </div>
               <div>
@@ -251,7 +251,7 @@ function MetasPanel() {
           ) : null}
         </>
       ) : (
-        <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-6">Sin datos de convención</p>
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin datos de convención</p>
       )}
 
       {/* Beach convention banner */}
@@ -306,13 +306,13 @@ function CampanaPanel() {
         <>
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-white/35">
+              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-white/50">
                 Campaña
               </p>
               <p className="text-sm font-extrabold text-neutral-900 dark:text-white mt-0.5 truncate">
                 🏆 {cd.nombre}
               </p>
-              <p className="text-[11px] text-neutral-400 dark:text-white/35 mt-0.5">
+              <p className="text-[11px] text-neutral-500 dark:text-white/50 mt-0.5">
                 {cd.total_participantes} participantes
               </p>
             </div>
@@ -333,9 +333,9 @@ function CampanaPanel() {
                 <div key={`${gr.entity_name}-${gr.rank}`}>
                   {gr.prev && (
                     <div className="flex items-center gap-2 px-2 py-1.5 opacity-40">
-                      <div className="w-7 text-center text-[11px] text-neutral-400">#{gr.prev.rank}</div>
+                      <div className="w-7 text-center text-[11px] text-neutral-500">#{gr.prev.rank}</div>
                       <p className="flex-1 text-[11px] text-neutral-500 truncate">{gr.prev.entity_name}</p>
-                      <p className="text-[11px] text-neutral-400">{money(gr.prev.prima_ponderada)}</p>
+                      <p className="text-[11px] text-neutral-500">{money(gr.prev.prima_ponderada)}</p>
                     </div>
                   )}
                   <div
@@ -387,22 +387,22 @@ function CampanaPanel() {
                   </div>
                   {gr.next && (
                     <div className="flex items-center gap-2 px-2 py-1.5 opacity-40">
-                      <div className="w-7 text-center text-[11px] text-neutral-400">#{gr.next.rank}</div>
+                      <div className="w-7 text-center text-[11px] text-neutral-500">#{gr.next.rank}</div>
                       <p className="flex-1 text-[11px] text-neutral-500 truncate">{gr.next.entity_name}</p>
-                      <p className="text-[11px] text-neutral-400">{money(gr.next.prima_ponderada)}</p>
+                      <p className="text-[11px] text-neutral-500">{money(gr.next.prima_ponderada)}</p>
                     </div>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-4">
+            <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-4">
               Sin participación en esta campaña
             </p>
           )}
         </>
       ) : (
-        <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-6">Sin campañas activas</p>
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin campañas activas</p>
       )}
     </Panel>
   );
@@ -479,9 +479,9 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold text-neutral-900 dark:text-white">Nuevo Trámite</p>
-          <p className="text-[11px] text-neutral-400 dark:text-white/35">Crear solicitud</p>
+          <p className="text-[11px] text-neutral-500 dark:text-white/50">Crear solicitud</p>
         </div>
-        <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-white/30 shrink-0" />
+        <ArrowRight className="w-4 h-4 text-neutral-500 dark:text-white/45 shrink-0" />
       </button>
 
       <button
@@ -493,16 +493,16 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold text-neutral-900 dark:text-white">Mis Trámites</p>
-          <p className="text-[11px] text-neutral-400 dark:text-white/35">Ver activos e historial</p>
+          <p className="text-[11px] text-neutral-500 dark:text-white/50">Ver activos e historial</p>
         </div>
-        <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-white/30 shrink-0" />
+        <ArrowRight className="w-4 h-4 text-neutral-500 dark:text-white/45 shrink-0" />
       </button>
 
       {loading ? (
         <><Sk className="h-9" /><Sk className="h-9 mt-1" /><Sk className="h-9 mt-1" /></>
       ) : tramites.length > 0 ? (
         <div>
-          <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2">
+          <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/50 mb-2">
             Trámites activos
           </p>
           <div>
@@ -516,7 +516,7 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
                   <p className="text-[12px] font-semibold text-neutral-800 dark:text-white">
                     {t.folio}
                   </p>
-                  <p className="text-[11px] text-neutral-400 dark:text-white/35 truncate">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate">
                     {(t.ticket_tipos as { label: string } | null)?.label ?? t.tipo_tramite}
                   </p>
                 </div>
@@ -526,7 +526,7 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
           </div>
         </div>
       ) : (
-        <p className="text-xs text-neutral-400 dark:text-white/35 text-center py-4">
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-4">
           Sin trámites activos
         </p>
       )}
@@ -540,7 +540,7 @@ export function VendedorSections({ usuario }: { usuario: Usuario }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full border-2 border-neutral-200 dark:border-white/15 bg-white dark:bg-white/5 grid place-items-center text-base">
+        <div className="w-9 h-9 rounded-full border-2 border-soft dark:border-white/15 bg-surface-card dark:bg-white/5 grid place-items-center text-base">
           👤
         </div>
         <div>

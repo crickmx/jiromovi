@@ -129,7 +129,7 @@ export function AgenteDashboard() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-card border border-neutral-200 dark:border-white/8 p-8">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl shadow-card border border-soft dark:border-white/8 p-8">
         <div className="flex justify-center">
           <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
@@ -181,19 +181,19 @@ export function AgenteDashboard() {
       {/* Interactive status groups */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-3">
-          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-card border border-neutral-200 dark:border-white/8 p-5">
+          <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl shadow-card border border-soft dark:border-white/8 p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 uppercase tracking-wide flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-neutral-400 dark:text-white/30" />
+                <BarChart3 className="w-4 h-4 text-neutral-500 dark:text-white/45" />
                 Mis tramites por estatus
               </h3>
-              <span className="text-xs text-neutral-500 dark:text-white/40">
+              <span className="text-xs text-neutral-500 dark:text-white/55">
                 Haz clic para ver detalles
               </span>
             </div>
 
             {data.estatusGroups.length === 0 && !data.cerradosGroup ? (
-              <p className="text-sm text-neutral-500 dark:text-white/40 py-4 text-center">Sin tramites</p>
+              <p className="text-sm text-neutral-500 dark:text-white/55 py-4 text-center">Sin tramites</p>
             ) : (
               <div className="space-y-2">
                 {allGroups.map(group => {
@@ -207,7 +207,7 @@ export function AgenteDashboard() {
                         onClick={() => toggleStatus(group.id)}
                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors text-left group"
                       >
-                        <span className="text-neutral-400 dark:text-white/30 transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
+                        <span className="text-neutral-500 dark:text-white/45 transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
                           <ChevronDown className="w-4 h-4" />
                         </span>
                         <span
@@ -243,7 +243,7 @@ export function AgenteDashboard() {
                           </div>
                           {group.tickets.length > 20 && (
                             <div className="px-4 py-2 text-center">
-                              <span className="text-xs text-neutral-500 dark:text-white/40">
+                              <span className="text-xs text-neutral-500 dark:text-white/55">
                                 Mostrando 20 de {group.tickets.length} tramites
                               </span>
                             </div>
@@ -260,9 +260,9 @@ export function AgenteDashboard() {
 
         {/* Priority & quick stats */}
         <div className="space-y-4">
-          <div className="bg-white dark:bg-neutral-800/50 rounded-2xl shadow-card border border-neutral-200 dark:border-white/8 p-5">
+          <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl shadow-card border border-soft dark:border-white/8 p-5">
             <h3 className="text-sm font-semibold text-neutral-700 dark:text-white/70 uppercase tracking-wide mb-3 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-neutral-400 dark:text-white/30" />
+              <FileText className="w-4 h-4 text-neutral-500 dark:text-white/45" />
               Por tipo
             </h3>
             <div className="space-y-3">
@@ -298,7 +298,7 @@ export function AgenteDashboard() {
               )}
               <div className="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-white/8">
                 <span className="text-sm font-semibold text-neutral-800 dark:text-white/80">Total</span>
-                <span className="text-sm font-bold text-accent">{data.totalTramites}</span>
+                <span className="text-sm font-bold text-accent-ink">{data.totalTramites}</span>
               </div>
             </div>
           </div>
@@ -325,22 +325,22 @@ function TicketRow({ ticket, onNavigate }: { ticket: TicketRecord; onNavigate: (
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-bold text-accent">{ticket.folio}</span>
-          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${getPrioridadStyle(ticket.prioridad)}`}>
+          <span className="text-sm font-bold text-accent-ink">{ticket.folio}</span>
+          <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${getPrioridadStyle(ticket.prioridad)}`}>
             {ticket.prioridad}
           </span>
           {(() => {
             const area = getTipoTramiteArea(ticket.tipo_tramite);
             const ac = AREA_CONFIG[area];
             return (
-              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ac.bg} ${ac.color}`}>
+              <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${ac.bg} ${ac.color}`}>
                 {TIPO_LABELS(ticket.tipo_tramite)}
               </span>
             );
           })()}
         </div>
         <p className="text-sm text-neutral-700 dark:text-white/70 truncate">{ticket.instrucciones}</p>
-        <div className="flex items-center gap-3 mt-1 text-xs text-neutral-500 dark:text-white/40">
+        <div className="flex items-center gap-3 mt-1 text-xs text-neutral-500 dark:text-white/55">
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
             {new Date(ticket.fecha_creacion).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -379,7 +379,7 @@ function KpiCard({
   subtitleColor?: string;
 }) {
   const styles = {
-    blue: { bg: 'from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-900/10', icon: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30', border: 'border-blue-200/60 dark:border-blue-800/30' },
+    blue: { bg: 'from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-900/10', icon: 'text-accent-ink bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30', border: 'border-blue-200/60 dark:border-blue-800/30' },
     green: { bg: 'from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-900/10', icon: 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30', border: 'border-green-200/60 dark:border-green-800/30' },
     teal: { bg: 'from-teal-50 to-teal-100/50 dark:from-teal-900/20 dark:to-teal-900/10', icon: 'text-teal-600 bg-teal-100 dark:text-teal-400 dark:bg-teal-900/30', border: 'border-teal-200/60 dark:border-teal-800/30' },
     amber: { bg: 'from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-900/10', icon: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30', border: 'border-amber-200/60 dark:border-amber-800/30' },

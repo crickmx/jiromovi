@@ -80,7 +80,7 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
         <div className="flex items-start gap-4">
           {/* Vista previa del logotipo efectivo */}
           <div className="flex-shrink-0">
-            <div className="w-32 h-32 border-2 border-gray-200 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+            <div className="w-32 h-32 border-2 border-soft rounded-lg overflow-hidden bg-surface-card flex items-center justify-center">
               {effectiveLogoUrl ? (
                 <img
                   src={effectiveLogoUrl}
@@ -88,10 +88,10 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <ImageIcon className="w-12 h-12 text-gray-400" />
+                <ImageIcon className="w-12 h-12 text-neutral-500" />
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
+            <p className="text-xs text-neutral-500 mt-2 text-center">
               {logoUrl ? 'Tu logo' : 'Logo efectivo'}
             </p>
           </div>
@@ -99,10 +99,10 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
           {/* Controles */}
           <div className="flex-1 space-y-3">
             <div>
-              <p className="text-sm text-gray-600 mb-2">
+              <p className="text-sm text-neutral-600 mb-2">
                 Sube tu logotipo personal. Se usará en PDFs y materiales de marketing.
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-neutral-500">
                 <strong>Jerarquía:</strong> Mi Logotipo → Logo de Oficina → Logo JIRO
               </p>
             </div>
@@ -138,7 +138,7 @@ export function MiLogotipoEditor({ userId, currentLogoUrl, onLogoChange }: MiLog
               )}
             </div>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-neutral-500">
               Formatos: PNG, JPG, JPEG | Tamaño máx: 5MB | Se redimensionará a 1500x1500px
             </p>
           </div>

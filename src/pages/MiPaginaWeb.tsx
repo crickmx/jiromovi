@@ -318,7 +318,7 @@ export default function MiPaginaWeb() {
         <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-12rem)]">
           <Card className="p-4">
             <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-blue-600" />
+              <Globe className="w-4 h-4 text-accent-ink" />
               Tu Pagina Web
             </h2>
 
@@ -357,21 +357,21 @@ export default function MiPaginaWeb() {
 
           <Card className="p-4">
             <h2 className="text-base font-semibold mb-1">Mostrar mis calendarios</h2>
-            <p className="text-xs text-gray-500 mb-3">Elige qué tipos de cita aparecerán en tu página pública.</p>
+            <p className="text-xs text-neutral-500 mb-3">Elige qué tipos de cita aparecerán en tu página pública.</p>
             <div className="space-y-2">
               {calendarOptions.map(item => (
                 <label key={item.id} className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-gray-50">
                   <input type="checkbox" checked={visibleCalendarIds.includes(item.id)} onChange={() => toggleCalendarBlock(item.id)} />
-                  <span className="text-sm"><strong>{item.name}</strong><span className="block text-xs text-gray-500">{item.calendar_name}</span></span>
+                  <span className="text-sm"><strong>{item.name}</strong><span className="block text-xs text-neutral-500">{item.calendar_name}</span></span>
                 </label>
               ))}
-              {!calendarOptions.length && <p className="text-sm text-gray-500">Primero crea un tipo de cita en el módulo Agenda.</p>}
+              {!calendarOptions.length && <p className="text-sm text-neutral-500">Primero crea un tipo de cita en el módulo Agenda.</p>}
             </div>
           </Card>
 
           <Card className="p-4 bg-blue-50 border-blue-200">
             <div className="flex items-start gap-2">
-              <Palette className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <Palette className="w-4 h-4 text-accent-ink flex-shrink-0 mt-0.5" />
               <p className="text-sm text-blue-800">
                 Tus <strong>colores</strong> y tu texto <strong>“Sobre mí”</strong> ahora se editan en{' '}
                 <a href="/mercadotecnia/mi-marca" className="font-semibold underline hover:text-blue-900">Mi Marca</a>. Los cambios se reflejan aquí en la vista previa.
@@ -408,14 +408,14 @@ export default function MiPaginaWeb() {
 
           <Card className="p-4">
             <h2 className="text-base font-semibold mb-1">Ramos que Ofreces</h2>
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-xs text-neutral-500 mb-3">
               Todos los ramos se muestran en tu pagina. Marca con estrella los destacados (3-6 recomendado).
             </p>
 
             <div className="space-y-3 max-h-72 overflow-y-auto">
               {Object.entries(groupedTemplates).map(([category, items]) => (
                 <div key={category}>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 sticky top-0 bg-white py-1">
+                  <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5 sticky top-0 bg-white py-1">
                     {category}
                   </p>
                   <div className="space-y-1">
@@ -428,7 +428,7 @@ export default function MiPaginaWeb() {
                           className={`flex items-center gap-2 p-2 rounded border transition-colors ${
                             isFeatured
                               ? 'border-amber-300 bg-amber-50'
-                              : 'border-gray-200 hover:bg-gray-50'
+                              : 'border-neutral-200 hover:bg-gray-50'
                           }`}
                         >
                           <button
@@ -437,7 +437,7 @@ export default function MiPaginaWeb() {
                             className={`flex-shrink-0 p-1 rounded transition-colors ${
                               isFeatured
                                 ? 'text-amber-500 hover:text-amber-600'
-                                : 'text-gray-300 hover:text-amber-400'
+                                : 'text-neutral-300 hover:text-amber-400'
                             }`}
                             title={isFeatured ? 'Quitar de destacados' : 'Marcar como destacado'}
                           >
@@ -453,7 +453,7 @@ export default function MiPaginaWeb() {
                           <span className="text-sm font-medium flex-1 truncate">{template.title}</span>
 
                           {isFeatured && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-200 text-amber-800 flex-shrink-0">
+                            <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-amber-200 text-amber-800 flex-shrink-0">
                               Destacado
                             </span>
                           )}
@@ -467,7 +467,7 @@ export default function MiPaginaWeb() {
 
             {featuredOrder.length > 0 && (
               <div className="mt-3 pt-3 border-t">
-                <p className="text-xs font-medium text-gray-700 mb-2">
+                <p className="text-xs font-medium text-neutral-700 mb-2">
                   Orden de destacados ({featuredOrder.length}):
                 </p>
                 <div className="space-y-1">
@@ -477,16 +477,16 @@ export default function MiPaginaWeb() {
                     const IconComponent = (LucideIcons as any)[template.icon];
                     return (
                       <div key={templateId} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-amber-50 border border-amber-200">
-                        <GripVertical className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                        <GripVertical className="w-3 h-3 text-neutral-500 flex-shrink-0" />
                         <span className="w-4 text-center font-bold text-amber-700">{idx + 1}</span>
-                        {IconComponent && <IconComponent className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />}
+                        {IconComponent && <IconComponent className="w-3.5 h-3.5 text-neutral-600 flex-shrink-0" />}
                         <span className="flex-1 truncate font-medium">{template.title}</span>
                         <div className="flex gap-0.5">
                           <button
                             type="button"
                             onClick={() => moveFeaturedUp(templateId)}
                             disabled={idx === 0}
-                            className="px-1 py-0.5 text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                            className="px-1 py-0.5 text-neutral-500 hover:text-gray-700 disabled:opacity-30"
                           >
                             &#8593;
                           </button>
@@ -494,7 +494,7 @@ export default function MiPaginaWeb() {
                             type="button"
                             onClick={() => moveFeaturedDown(templateId)}
                             disabled={idx === featuredOrder.length - 1}
-                            className="px-1 py-0.5 text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                            className="px-1 py-0.5 text-neutral-500 hover:text-gray-700 disabled:opacity-30"
                           >
                             &#8595;
                           </button>
@@ -531,11 +531,11 @@ export default function MiPaginaWeb() {
           <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-semibold">Vista Previa</h2>
-              <span className="text-xs text-gray-500">En vivo</span>
+              <span className="text-xs text-neutral-500">En vivo</span>
             </div>
 
-            <div className="border rounded-lg overflow-hidden bg-white">
-              <div className="bg-gray-100 px-3 py-2 text-xs text-gray-600 flex items-center gap-2">
+            <div className="border rounded-lg overflow-hidden bg-surface-card">
+              <div className="bg-neutral-100 px-3 py-2 text-xs text-neutral-600 flex items-center gap-2">
                 <div className="flex gap-1">
                   <div className="w-2 h-2 rounded-full bg-red-400"></div>
                   <div className="w-2 h-2 rounded-full bg-yellow-400"></div>

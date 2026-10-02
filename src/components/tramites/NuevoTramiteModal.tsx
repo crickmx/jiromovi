@@ -1092,7 +1092,7 @@ export function NuevoTramiteModal({
         <label className="block text-[13px] font-semibold text-neutral-600 mb-0.5">
           {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
         </label>
-        {campo.ayuda && <p className="text-[11px] leading-4 text-neutral-400 mb-0.5">{campo.ayuda}</p>}
+        {campo.ayuda && <p className="text-[11px] leading-4 text-neutral-500 mb-0.5">{campo.ayuda}</p>}
 
         {campo.tipo === 'texto_corto' && (
           <input
@@ -1141,7 +1141,7 @@ export function NuevoTramiteModal({
               type="checkbox"
               checked={!!val}
               onChange={e => set(e.target.checked)}
-              className="w-4 h-4 text-blue-600 rounded"
+              className="w-4 h-4 text-accent-ink rounded"
             />
             <span className="text-sm text-neutral-700">Sí</span>
           </label>
@@ -1179,7 +1179,7 @@ export function NuevoTramiteModal({
                 }
               }
             }}
-            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-surface-card"
           >
             <option value="">Selecciona ramo...</option>
             {catalogoRamos.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
@@ -1230,17 +1230,17 @@ export function NuevoTramiteModal({
               ref={el => { asegRefs.current[campo.id] = el; }}
             >
               <div
-                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[42px] flex items-center justify-between gap-2 bg-white hover:border-neutral-400 focus-within:ring-2 focus-within:ring-accent"
+                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[42px] flex items-center justify-between gap-2 bg-surface-card hover:border-neutral-400 focus-within:ring-2 focus-within:ring-accent"
                 onClick={() => setUi({ open: !ui.open })}
               >
                 {seleccionadas.length === 0
-                  ? <span className="text-neutral-400">{ramoCampo && !ramoVal ? 'Selecciona primero un ramo (opcional)...' : 'Selecciona aseguradoras...'}</span>
+                  ? <span className="text-neutral-500">{ramoCampo && !ramoVal ? 'Selecciona primero un ramo (opcional)...' : 'Selecciona aseguradoras...'}</span>
                   : <span className="text-neutral-900">{seleccionadas.join(', ')}</span>
                 }
-                <ChevronDown className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${ui.open ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${ui.open ? 'rotate-180' : ''}`} />
               </div>
               {ui.open && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-300 rounded-xl shadow-lg max-h-64 overflow-auto">
+                <div className="absolute z-10 w-full mt-1 bg-surface-card border border-neutral-300 rounded-xl shadow-lg max-h-64 overflow-auto">
                   <div className="p-2 border-b border-neutral-200 sticky top-0 bg-white">
                     <input
                       type="text"
@@ -1253,7 +1253,7 @@ export function NuevoTramiteModal({
                   </div>
                   <div className="p-1">
                     {preferentes.length > 0 && (
-                      <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider px-1.5 pt-1">Preferentes</p>
+                      <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wider px-1.5 pt-1">Preferentes</p>
                     )}
                     {preferentes.map(c => (
                       <label key={c.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
@@ -1270,7 +1270,7 @@ export function NuevoTramiteModal({
                       <button
                         type="button"
                         onClick={() => setUi({ verMas: true })}
-                        className="w-full text-left px-1.5 py-1.5 text-xs text-accent hover:underline"
+                        className="w-full text-left px-1.5 py-1.5 text-xs text-accent-ink hover:underline"
                       >
                         + Mostrar {resto.length} más
                       </button>
@@ -1287,7 +1287,7 @@ export function NuevoTramiteModal({
                       </label>
                     ))}
                     {companiasDisponibles.length === 0 && (
-                      <p className="text-xs text-neutral-400 p-2">Sin aseguradoras para el ramo seleccionado</p>
+                      <p className="text-xs text-neutral-500 p-2">Sin aseguradoras para el ramo seleccionado</p>
                     )}
                   </div>
                 </div>
@@ -1330,7 +1330,7 @@ export function NuevoTramiteModal({
                 maxLength={5}
                 className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               />
-              {cpState.loading && <p className="text-xs text-neutral-400">Buscando colonias...</p>}
+              {cpState.loading && <p className="text-xs text-neutral-500">Buscando colonias...</p>}
 
               {/* El catálogo no siempre está completo: colonias nuevas o CPs que aún
                   no aparecen. En vez de dejar al usuario atorado, se permite
@@ -1355,7 +1355,7 @@ export function NuevoTramiteModal({
                       aplicarExtraccion(campo, nuevoVal);
                     }
                   }}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-surface-card"
                 >
                   <option value="">Selecciona colonia...</option>
                   {cpState.colonias.map(c => <option key={c.colonia} value={c.colonia}>{c.colonia}</option>)}
@@ -1382,7 +1382,7 @@ export function NuevoTramiteModal({
                       aplicarExtraccion(campo, nuevoVal);
                     }}
                     placeholder="Colonia (escríbela)"
-                    className="w-full px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                    className="w-full px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-surface-card"
                   />
                   {cpState.colonias.length === 0 && (
                     <div className="grid grid-cols-2 gap-2">
@@ -1395,7 +1395,7 @@ export function NuevoTramiteModal({
                           aplicarExtraccion(campo, nuevoVal);
                         }}
                         placeholder="Municipio"
-                        className="px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                        className="px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-surface-card"
                       />
                       <input
                         type="text"
@@ -1406,7 +1406,7 @@ export function NuevoTramiteModal({
                           aplicarExtraccion(campo, nuevoVal);
                         }}
                         placeholder="Estado"
-                        className="px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                        className="px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-surface-card"
                       />
                     </div>
                   )}
@@ -1529,7 +1529,7 @@ export function NuevoTramiteModal({
               )}
 
               {a.valido && !a.esGenerico && a.fecha && (
-                <p className="text-[11px] text-neutral-400">
+                <p className="text-[11px] text-neutral-500">
                   Persona {a.tipoPersona === 'fisica' ? 'física' : 'moral'} ·{' '}
                   {a.tipoPersona === 'fisica' ? 'Nacimiento' : 'Constitución'}: {a.fecha.split('-').reverse().join('/')}
                 </p>
@@ -1564,7 +1564,7 @@ export function NuevoTramiteModal({
                 </p>
               )}
               {a.valido && (
-                <p className="text-[11px] text-neutral-400">
+                <p className="text-[11px] text-neutral-500">
                   {a.sexo === 'H' ? 'Hombre' : 'Mujer'} · Nacimiento: {a.fecha?.split('-').reverse().join('/')} · {a.entidadNombre}
                 </p>
               )}
@@ -1582,12 +1582,12 @@ export function NuevoTramiteModal({
               step="0.01"
               className="w-full px-4 py-2.5 pr-8 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 pointer-events-none">%</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">%</span>
           </div>
         )}
 
         {campo.tipo === 'reporte_protegido' && (
-          <div className="rounded-xl border border-neutral-200 px-4 py-3 bg-neutral-50 text-sm text-neutral-400">
+          <div className="rounded-xl border border-neutral-200 px-4 py-3 bg-neutral-50 text-sm text-neutral-500">
             Se completará al trabajar la tarea
           </div>
         )}
@@ -1605,7 +1605,7 @@ export function NuevoTramiteModal({
                 <select
                   value={adjuntoCategoriasIds[campo.id] || ''}
                   onChange={e => setAdjuntoCategoriasIds(prev => ({ ...prev, [campo.id]: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-white"
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-surface-card"
                 >
                   <option value="">Categoría del archivo (opcional)</option>
                   {adjuntoCategorias.map(cat => (
@@ -1615,7 +1615,7 @@ export function NuevoTramiteModal({
               )}
               {files.length < maxFiles && (
                 <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors">
-                  <Upload className="w-4 h-4 text-neutral-400" />
+                  <Upload className="w-4 h-4 text-neutral-500" />
                   <span className="text-sm text-neutral-500">
                     {files.length > 0 ? 'Agregar otro archivo' : 'Haz clic para adjuntar'}
                   </span>
@@ -1637,9 +1637,9 @@ export function NuevoTramiteModal({
               )}
               {files.map((f, i) => (
                 <div key={i} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
-                  <FileText className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <FileText className="w-4 h-4 text-neutral-500 shrink-0" />
                   <span className="text-sm flex-1 truncate">{f.name}</span>
-                  <span className="text-xs text-neutral-400 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                  <span className="text-xs text-neutral-500 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
                   <button type="button"
                     onClick={() => setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: files.filter((_, j) => j !== i) }))}
                     className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
@@ -1648,7 +1648,7 @@ export function NuevoTramiteModal({
                 </div>
               ))}
               {maxFiles > 1 && (
-                <p className="text-xs text-neutral-400">{files.length}/{maxFiles} archivos · máx {maxMb} MB c/u</p>
+                <p className="text-xs text-neutral-500">{files.length}/{maxFiles} archivos · máx {maxMb} MB c/u</p>
               )}
             </div>
           );
@@ -1661,7 +1661,7 @@ export function NuevoTramiteModal({
   const renderCampoSistema = (campo: CampoDinamico) => {
     const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
     const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700 flex items-center gap-2';
-    const lock = <span className="text-[10px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">AUTO</span>;
+    const lock = <span className="text-[11px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">AUTO</span>;
 
     const lockLabel = (texto: string) => (
       <label className="flex items-center gap-1 text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
@@ -1694,7 +1694,7 @@ export function NuevoTramiteModal({
       <div key={campo.id}>
         {lockLabel(campo.label)}
         <div className={violet}>{lock}{usuario?.nombre_completo || usuario?.nombre || 'Usuario actual'}</div>
-        <p className="text-[11px] text-neutral-400 mt-1">Quién está registrando este trámite en el sistema.</p>
+        <p className="text-[11px] text-neutral-500 mt-1">Quién está registrando este trámite en el sistema.</p>
       </div>
     );
 
@@ -1714,7 +1714,7 @@ export function NuevoTramiteModal({
               <Lock className="w-3 h-3" />{campo.label}
             </label>
             <div className={violet}>{lock}{usuario?.nombre_completo || usuario?.nombre || 'Tu cuenta'}</div>
-            <p className="text-[11px] text-neutral-400 mt-1">Solicitante — este trámite va a tu nombre.</p>
+            <p className="text-[11px] text-neutral-500 mt-1">Solicitante — este trámite va a tu nombre.</p>
           </div>
         );
       }
@@ -1733,7 +1733,7 @@ export function NuevoTramiteModal({
           <label className="flex items-center gap-1 text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
             <Lock className="w-3 h-3" />{campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
           </label>
-          <p className="text-[11px] text-neutral-400 mb-1.5">Solicitante — para quién es este trámite.</p>
+          <p className="text-[11px] text-neutral-500 mb-1.5">Solicitante — para quién es este trámite.</p>
           <SearchableSelect
             value={val}
             onChange={userId => {
@@ -1752,7 +1752,7 @@ export function NuevoTramiteModal({
             placeholder="Selecciona el solicitante..."
           />
           {val && vendedorLigado && (
-            <p className="text-[11px] text-neutral-400 mt-1.5">
+            <p className="text-[11px] text-neutral-500 mt-1.5">
               Vendedor SICAS: {vendedorLigado.nombre}
             </p>
           )}
@@ -1785,8 +1785,8 @@ export function NuevoTramiteModal({
           {lockLabel(campo.label)}
           <div className={violet}>
             {val
-              ? <><span className="text-[10px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">CAT</span>{val}</>
-              : <span className="text-neutral-400 italic text-sm">Auto-completa al seleccionar agente</span>
+              ? <><span className="text-[11px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">CAT</span>{val}</>
+              : <span className="text-neutral-500 italic text-sm">Auto-completa al seleccionar agente</span>
             }
           </div>
         </div>
@@ -1813,7 +1813,7 @@ export function NuevoTramiteModal({
               <p className="text-sm text-neutral-500">Se define al elegir el solicitante y el tipo de trámite.</p>
             )}
             {previewAsignacion?.estado === 'cargando' && (
-              <p className="text-sm text-neutral-400">Calculando asignación…</p>
+              <p className="text-sm text-neutral-500">Calculando asignación…</p>
             )}
             {previewAsignacion?.estado === 'listo' && previewAsignacion.responsable && (
               <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800">
@@ -1832,7 +1832,7 @@ export function NuevoTramiteModal({
                 <span>No hay regla de asignación para este solicitante y tipo de trámite. Se avisará a un Administrador para que lo asigne.</span>
               </div>
             )}
-            <p className="text-[11px] text-neutral-400 mt-2">Lo definen las reglas de asignación. Se puede reasignar después desde el trámite.</p>
+            <p className="text-[11px] text-neutral-500 mt-2">Lo definen las reglas de asignación. Se puede reasignar después desde el trámite.</p>
           </div>
         </div>
       );
@@ -1925,7 +1925,7 @@ export function NuevoTramiteModal({
           <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-accent transition-all">
             <input type="file" multiple onChange={handleFileChange} className="hidden" id="file-upload" />
             <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center justify-center">
-              <Upload className="w-10 h-10 text-neutral-400 mb-2" />
+              <Upload className="w-10 h-10 text-neutral-500 mb-2" />
               <p className="text-sm text-neutral-600 mb-1">Haz clic para seleccionar archivos</p>
               <p className="text-xs text-neutral-500">PDF, imágenes, documentos (máx. 20 archivos)</p>
             </label>
@@ -1935,7 +1935,7 @@ export function NuevoTramiteModal({
               {archivos.map((archivo, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <FileText className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                    <FileText className="w-4 h-4 text-neutral-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-neutral-900 truncate">{archivo.name}</p>
                       <p className="text-xs text-neutral-500">{(archivo.size / 1024).toFixed(2)} KB</p>
@@ -2627,7 +2627,7 @@ export function NuevoTramiteModal({
             type="button"
             onClick={() => { clearDraft(DRAFT_KEY); setDraftRestored(false); onClose(); }}
             disabled={loading}
-            className="px-6 py-2.5 text-neutral-700 bg-white border border-neutral-300 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50"
+            className="px-6 py-2.5 text-neutral-700 bg-surface-card border border-neutral-300 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -2635,7 +2635,7 @@ export function NuevoTramiteModal({
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="px-6 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? (
               <>
@@ -2776,7 +2776,7 @@ export function NuevoTramiteModal({
                   ))}
                 </select>
                 {ceRamoNombre && (
-                  <p className="text-xs text-blue-600 mt-1">Ramo: {ceRamoNombre}</p>
+                  <p className="text-xs text-accent-ink mt-1">Ramo: {ceRamoNombre}</p>
                 )}
               </div>
             </div>
@@ -2788,17 +2788,17 @@ export function NuevoTramiteModal({
                 Aseguradoras * (seleccione una o más)
               </label>
               <div
-                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[42px] flex items-center justify-between gap-2 bg-white hover:border-neutral-400 focus-within:ring-2 focus-within:ring-accent"
+                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[42px] flex items-center justify-between gap-2 bg-surface-card hover:border-neutral-400 focus-within:ring-2 focus-within:ring-accent"
                 onClick={() => setCeShowInsurerDropdown(!ceShowInsurerDropdown)}
               >
                 {ceSelectedInsurers.length === 0
-                  ? <span className="text-neutral-400">Seleccione aseguradoras...</span>
+                  ? <span className="text-neutral-500">Seleccione aseguradoras...</span>
                   : <span className="text-neutral-900">{ceSelectedInsurers.join(', ')}</span>
                 }
-                <ChevronDown className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${ceShowInsurerDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${ceShowInsurerDropdown ? 'rotate-180' : ''}`} />
               </div>
               {ceShowInsurerDropdown && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-300 rounded-xl shadow-lg max-h-48 overflow-auto">
+                <div className="absolute z-10 w-full mt-1 bg-surface-card border border-neutral-300 rounded-xl shadow-lg max-h-48 overflow-auto">
                   <div className="p-2 border-b border-neutral-200">
                     <input
                       type="text"
@@ -2839,7 +2839,7 @@ export function NuevoTramiteModal({
                         </label>
                       ))}
                     {ceCompaniasDisponibles.length === 0 && (
-                      <p className="text-xs text-neutral-400 p-2">
+                      <p className="text-xs text-neutral-500 p-2">
                         {ceRamoId ? 'No hay aseguradoras para el ramo seleccionado' : 'Sin datos en catálogo'}
                       </p>
                     )}
@@ -2857,7 +2857,7 @@ export function NuevoTramiteModal({
                 </label>
                 <div className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-600">
                   {new Date().toLocaleString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  <span className="ml-2 text-xs text-neutral-400">(se registra al guardar)</span>
+                  <span className="ml-2 text-xs text-neutral-500">(se registra al guardar)</span>
                 </div>
               </div>
             </div>
@@ -3114,7 +3114,7 @@ export function NuevoTramiteModal({
               <button
                 type="button"
                 onClick={addPolizaFile}
-                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-accent hover:text-accent-ink transition-all flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Añadir otro documento
@@ -3228,7 +3228,7 @@ export function NuevoTramiteModal({
               <button
                 type="button"
                 onClick={addComisionPendiente}
-                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-accent hover:text-accent-ink transition-all flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Añadir otra comisión pendiente
@@ -3263,7 +3263,7 @@ export function NuevoTramiteModal({
             return envolver(
               <div key={campo.id + '-ro'} className="relative pointer-events-none select-none opacity-60">
                 {rendered}
-                <div className="absolute top-1 right-1 flex items-center gap-1 text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md border border-neutral-200">
+                <div className="absolute top-1 right-1 flex items-center gap-1 text-[11px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md border border-neutral-200">
                   <Lock className="w-2.5 h-2.5" />
                   Solo lectura
                 </div>
@@ -3313,7 +3313,7 @@ export function NuevoTramiteModal({
                   disabled={!desbloqueada}
                   className={`w-full flex items-center gap-2 px-4 py-2 text-left ${desbloqueada ? 'cursor-pointer hover:bg-neutral-50' : 'cursor-default'}`}
                 >
-                  {!desbloqueada ? <Lock className="w-4 h-4 text-neutral-300 shrink-0" /> : <Layers className="w-4 h-4 text-accent shrink-0" />}
+                  {!desbloqueada ? <Lock className="w-4 h-4 text-neutral-300 shrink-0" /> : <Layers className="w-4 h-4 text-accent-ink shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <p className={`text-[15px] font-bold ${desbloqueada ? 'text-neutral-900' : 'text-neutral-400'}`}>
                       {seccion.opcional && !expandida && desbloqueada ? '+ ' : ''}{seccion.nombre}{seccion.opcional ? ' (opcional)' : ''}
@@ -3325,14 +3325,14 @@ export function NuevoTramiteModal({
                     </p>
                     {desbloqueada ? (
                       seccion.descripcion && (!seccion.opcional || expandida) && (
-                        <p className="text-xs text-neutral-400 mt-0.5">{seccion.descripcion}</p>
+                        <p className="text-xs text-neutral-500 mt-0.5">{seccion.descripcion}</p>
                       )
                     ) : (
-                      <p className="text-xs text-neutral-400 mt-0.5">{motivoSeccionBloqueada(seccion, secciones, camposDinamicos)}</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">{motivoSeccionBloqueada(seccion, secciones, camposDinamicos)}</p>
                     )}
                   </div>
                   {desbloqueada && (
-                    <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform shrink-0 ${expandida ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform shrink-0 ${expandida ? 'rotate-180' : ''}`} />
                   )}
                 </button>
                 {mostrarCampos && (
@@ -3346,7 +3346,7 @@ export function NuevoTramiteModal({
         })()}
 
         {isEmpleadoOAgente && (
-          <p className="text-xs text-neutral-400 text-center pt-2">El área y equipo se asignan automáticamente según tu perfil.</p>
+          <p className="text-xs text-neutral-500 text-center pt-2">El área y equipo se asignan automáticamente según tu perfil.</p>
         )}
       </div>
     </BaseModal>

@@ -157,15 +157,17 @@ export function DesktopSidebar({
         <aside
           aria-label="Menú lateral inteligente"
           className={cn(
-            'flex flex-col h-full bg-surface-card/95 backdrop-blur-sm dark:bg-[#111114] border-r border-soft shadow-[8px_0_24px_-18px_rgba(28,25,23,0.18)] transition-all duration-200 ease-out',
+            'relative flex flex-col h-full font-display bg-surface-card dark:bg-[#111114] border-r border-soft shadow-[8px_0_24px_-18px_rgba(28,25,23,0.18)] transition-all duration-200 ease-out',
             isExpanded
               ? 'w-[264px] shadow-[6px_0_24px_rgba(0,0,0,0.08)] dark:shadow-[6px_0_28px_rgba(0,0,0,0.45)]'
               : 'w-[72px] shadow-2xs',
             !isPinned && isExpanded ? 'absolute top-0 left-0 bottom-0' : 'relative'
           )}
         >
+          {/* Velo de marca muy sutil (decorativo) */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(120%_100%_at_0%_0%,rgb(var(--movi-accent-rgb)/0.08),transparent_70%)]" />
           {/* ── TOP: Logo Oficial + Botón Pin / Fijar ── */}
-          <div className="h-[56px] px-3.5 flex items-center justify-between border-b border-neutral-100 dark:border-white/[0.06] shrink-0">
+          <div className="relative h-[60px] px-3.5 flex items-center justify-between border-b border-soft shrink-0">
             {isExpanded ? (
               <>
                 {/* Logo MOVI Expandido */}
@@ -174,16 +176,21 @@ export function DesktopSidebar({
                   className="flex items-center gap-2.5 py-1 px-1 rounded-xl hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
                   title="Ir al Dashboard"
                 >
-                  <img
-                    src="/movirecurso_7.png"
-                    alt="MOVI"
-                    className="h-6 w-6 object-contain dark:brightness-0 dark:invert group-hover:scale-105 transition-transform"
-                  />
+<span
+                    className="grid place-items-center w-9 h-9 rounded-xl shadow-accent group-hover:scale-105 transition-transform"
+                    style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-text-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
+                  >
+                    <img
+                      src="/movirecurso_7.png"
+                      alt="MOVI"
+                      className="h-5 w-5 object-contain brightness-0 invert"
+                    />
+                  </span>
                   <div className="flex flex-col text-left">
-                    <span className="font-extrabold text-[13px] tracking-tight text-neutral-900 dark:text-white leading-tight">
+                    <span className="font-display font-semibold text-[14px] tracking-[-0.01em] text-neutral-900 dark:text-white leading-tight">
                       MOVI Digital
                     </span>
-                    <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500">
+                    <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
                       Plataforma de gestión
                     </span>
                   </div>
@@ -218,11 +225,16 @@ export function DesktopSidebar({
                   className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
                   title="MOVI Digital"
                 >
-                  <img
-                    src="/movirecurso_7.png"
-                    alt="MOVI"
-                    className="h-6 w-6 object-contain dark:brightness-0 dark:invert group-hover:scale-105 transition-transform"
-                  />
+<span
+                    className="grid place-items-center w-9 h-9 rounded-xl shadow-accent group-hover:scale-105 transition-transform"
+                    style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-text-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
+                  >
+                    <img
+                      src="/movirecurso_7.png"
+                      alt="MOVI"
+                      className="h-5 w-5 object-contain brightness-0 invert"
+                    />
+                  </span>
                 </button>
               </div>
             )}

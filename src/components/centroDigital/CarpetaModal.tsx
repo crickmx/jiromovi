@@ -110,18 +110,18 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Folder className="w-5 h-5 text-accent" />
+              <Folder className="w-5 h-5 text-accent-ink" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-neutral-900">
                 {carpeta ? 'Editar carpeta' : 'Nueva carpeta'}
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-neutral-500">
                 {carpeta
                   ? 'Modifica los datos de la carpeta'
                   : 'Crea una nueva carpeta para organizar documentos'}
@@ -130,7 +130,7 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-neutral-500 hover:text-gray-600 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -169,7 +169,7 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                 onChange={(e) =>
                   setFormData({ ...formData, descripcion: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                 rows={3}
                 placeholder="Descripción opcional de la carpeta"
               />
@@ -177,7 +177,7 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="font-medium text-gray-900 mb-4">
+            <h3 className="font-medium text-neutral-900 mb-4">
               Visibilidad por oficinas
             </h3>
 
@@ -189,11 +189,11 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                     setFormData({ ...formData, todas_oficinas: !!checked })
                   }
                 />
-                <span className="text-sm text-gray-700">Todas las oficinas</span>
+                <span className="text-sm text-neutral-700">Todas las oficinas</span>
               </label>
 
               {!formData.todas_oficinas && (
-                <div className="ml-8 space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                <div className="ml-8 space-y-2 max-h-48 overflow-y-auto border border-neutral-200 rounded-lg p-3">
                   {oficinas.map((oficina) => (
                     <label
                       key={oficina.id}
@@ -205,7 +205,7 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                         )}
                         onCheckedChange={() => toggleOficina(oficina.id)}
                       />
-                      <span className="text-sm text-gray-700">
+                      <span className="text-sm text-neutral-700">
                         {oficina.nombre}
                       </span>
                     </label>
@@ -216,7 +216,7 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="font-medium text-gray-900 mb-4">Visibilidad por roles</h3>
+            <h3 className="font-medium text-neutral-900 mb-4">Visibilidad por roles</h3>
 
             <div className="space-y-3">
               <label className="flex items-center gap-3 cursor-pointer">
@@ -226,7 +226,7 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                     setFormData({ ...formData, todos_roles: !!checked })
                   }
                 />
-                <span className="text-sm text-gray-700">Todos los roles</span>
+                <span className="text-sm text-neutral-700">Todos los roles</span>
               </label>
 
               {!formData.todos_roles && (
@@ -240,7 +240,7 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                         checked={formData.roles_seleccionados.includes(rol)}
                         onCheckedChange={() => toggleRol(rol)}
                       />
-                      <span className="text-sm text-gray-700">{rol}</span>
+                      <span className="text-sm text-neutral-700">{rol}</span>
                     </label>
                   ))}
                 </div>
@@ -249,11 +249,11 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="font-medium text-gray-900 mb-1 flex items-center gap-2">
+            <h3 className="font-medium text-neutral-900 mb-1 flex items-center gap-2">
               <Brain className="w-4 h-4 text-teal-600" />
               Inteligencia Artificial
             </h3>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-neutral-500 mb-4">
               Configura cómo Chava AI interactúa con los documentos de esta carpeta.
             </p>
 
@@ -266,11 +266,11 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                   }
                 />
                 <div className="flex-1">
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-neutral-700 group-hover:text-gray-900 flex items-center gap-1.5">
                     <Brain className="w-3.5 h-3.5 text-teal-500" />
                     Disponible en Chava AI
                   </span>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-neutral-500 mt-0.5">
                     Los documentos de esta carpeta estarán disponibles como fuente de conocimiento para responder consultas.
                   </p>
                 </div>
@@ -286,11 +286,11 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                       }
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-neutral-700 group-hover:text-gray-900 flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-blue-500" />
                         Disponible para usuarios externos
                       </span>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-neutral-500 mt-0.5">
                         Usuarios de Seguwallet y visitantes de la web publica podran consultar este conocimiento.
                       </p>
                     </div>
@@ -304,18 +304,18 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                       }
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-neutral-700 group-hover:text-gray-900 flex items-center gap-1.5">
                         <Zap className="w-3.5 h-3.5 text-amber-500" />
                         Indexacion automatica
                       </span>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-neutral-500 mt-0.5">
                         Los documentos nuevos se procesaran e indexaran automaticamente para Chava AI.
                       </p>
                     </div>
                   </label>
 
                   <div className="ml-6">
-                    <Label className="text-sm font-medium text-gray-700 flex items-center gap-1.5 mb-2">
+                    <Label className="text-sm font-medium text-neutral-700 flex items-center gap-1.5 mb-2">
                       <Star className="w-3.5 h-3.5 text-yellow-500" />
                       Prioridad de conocimiento
                     </Label>
@@ -328,17 +328,17 @@ export function CarpetaModal({ carpeta, onClose, onSuccess }: CarpetaModalProps)
                           className={`w-8 h-8 rounded-md flex items-center justify-center text-sm font-medium transition-all ${
                             formData.knowledge_priority >= level
                               ? 'bg-teal-100 text-teal-700 border-2 border-teal-300'
-                              : 'bg-gray-100 text-gray-400 border border-gray-200 hover:bg-gray-200'
+                              : 'bg-neutral-100 text-neutral-500 border border-neutral-200 hover:bg-gray-200'
                           }`}
                         >
                           {level}
                         </button>
                       ))}
-                      <span className="text-xs text-gray-500 ml-2">
+                      <span className="text-xs text-neutral-500 ml-2">
                         {formData.knowledge_priority <= 2 ? 'Baja' : formData.knowledge_priority <= 3 ? 'Media' : 'Alta'}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       Prioridad mas alta = mayor relevancia en resultados de busqueda de Chava AI.
                     </p>
                   </div>

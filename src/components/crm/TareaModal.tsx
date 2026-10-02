@@ -260,13 +260,13 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-8">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-2xl w-full my-8 animate-scale-in">
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-neutral-900">
             {tarea ? 'Editar Tarea' : 'Nueva Tarea'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-neutral-500 hover:text-gray-600">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -274,13 +274,13 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Tipo de Actividad *
               </label>
               <select
                 value={formData.tipo_actividad}
                 onChange={(e) => setFormData({ ...formData, tipo_actividad: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 required
               >
                 <option value="Llamada">Llamada</option>
@@ -291,14 +291,14 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1 flex items-center gap-1">
                 <Flag className="h-4 w-4" />
                 Prioridad *
               </label>
               <select
                 value={formData.prioridad}
                 onChange={(e) => setFormData({ ...formData, prioridad: e.target.value as PrioridadTarea })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 required
               >
                 <option value="Alta">Alta</option>
@@ -309,11 +309,11 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Estatus *</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Estatus *</label>
             <select
               value={formData.estatus}
               onChange={(e) => setFormData({ ...formData, estatus: e.target.value as EstatusTarea })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               required
             >
               <option value="Pendiente">Pendiente</option>
@@ -323,33 +323,33 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            <label className="block text-sm font-medium text-neutral-700 mb-1 flex items-center gap-1">
               <User className="h-4 w-4" />
               {formData.board_id ? 'Usuario Relacionado' : 'Contacto Relacionado'}
             </label>
             {formData.board_id && (
-              <p className="text-xs text-gray-500 mb-2">
+              <p className="text-xs text-neutral-500 mb-2">
                 En tableros compartidos puedes vincular a cualquier usuario de la plataforma
               </p>
             )}
             {contactoSeleccionado ? (
               <div className="flex items-center justify-between p-3 bg-primary-50 border border-primary-200 rounded-lg">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold">
+                  <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-semibold">
                     {contactoSeleccionado.nombre_completo.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900 text-sm">
+                    <p className="font-medium text-neutral-900 text-sm">
                       {contactoSeleccionado.nombre_completo}
                     </p>
-                    <p className="text-xs text-gray-600">{contactoSeleccionado.celular}</p>
+                    <p className="text-xs text-neutral-600">{contactoSeleccionado.celular}</p>
                   </div>
                 </div>
                 {!contactoId && (
                   <button
                     type="button"
                     onClick={limpiarContacto}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-neutral-500 hover:text-gray-600"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -358,14 +358,14 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
             ) : usuarioSeleccionado ? (
               <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
+                  <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-semibold">
                     {usuarioSeleccionado.nombre.charAt(0).toUpperCase()}{usuarioSeleccionado.apellidos.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900 text-sm">
+                    <p className="font-medium text-neutral-900 text-sm">
                       {usuarioSeleccionado.nombre} {usuarioSeleccionado.apellidos}
                     </p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-neutral-600">
                       {usuarioSeleccionado.rol} {usuarioSeleccionado.oficina_nombre ? `• ${usuarioSeleccionado.oficina_nombre}` : ''}
                     </p>
                   </div>
@@ -373,7 +373,7 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                 <button
                   type="button"
                   onClick={limpiarContacto}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-neutral-500 hover:text-gray-600"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -381,7 +381,7 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
             ) : (
               <div className="relative">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
                   <input
                     type="text"
                     value={busquedaContacto}
@@ -391,15 +391,15 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                     }}
                     onFocus={() => setMostrarListaContactos(true)}
                     placeholder={formData.board_id ? "Buscar usuario (opcional)..." : "Buscar contacto (opcional)..."}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full pl-9 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
 
                 {mostrarListaContactos && busquedaContacto && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 mt-1 w-full bg-surface-card border border-neutral-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {formData.board_id ? (
                       usuariosFiltrados.length === 0 ? (
-                        <div className="p-3 text-center text-sm text-gray-500">
+                        <div className="p-3 text-center text-sm text-neutral-500">
                           No se encontraron usuarios
                         </div>
                       ) : (
@@ -408,16 +408,16 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                             key={usuario.id}
                             type="button"
                             onClick={() => seleccionarContacto(usuario.id)}
-                            className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                            className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 border-b border-neutral-100 last:border-b-0"
                           >
-                            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-xs">
+                            <div className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-semibold text-xs">
                               {usuario.nombre.charAt(0).toUpperCase()}{usuario.apellidos.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 text-left">
-                              <p className="font-medium text-gray-900 text-sm">
+                              <p className="font-medium text-neutral-900 text-sm">
                                 {usuario.nombre} {usuario.apellidos}
                               </p>
-                              <p className="text-xs text-gray-600">
+                              <p className="text-xs text-neutral-600">
                                 {usuario.rol} {usuario.oficina_nombre ? `• ${usuario.oficina_nombre}` : ''}
                               </p>
                             </div>
@@ -426,7 +426,7 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                       )
                     ) : (
                       contactosFiltrados.length === 0 ? (
-                        <div className="p-3 text-center text-sm text-gray-500">
+                        <div className="p-3 text-center text-sm text-neutral-500">
                           No se encontraron contactos
                         </div>
                       ) : (
@@ -435,16 +435,16 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                             key={contacto.id}
                             type="button"
                             onClick={() => seleccionarContacto(contacto.id)}
-                            className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                            className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 border-b border-neutral-100 last:border-b-0"
                           >
                             <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-semibold text-xs">
                               {contacto.nombre_completo.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 text-left">
-                              <p className="font-medium text-gray-900 text-sm">
+                              <p className="font-medium text-neutral-900 text-sm">
                                 {contacto.nombre_completo}
                               </p>
-                              <p className="text-xs text-gray-600">{contacto.celular}</p>
+                              <p className="text-xs text-neutral-600">{contacto.celular}</p>
                             </div>
                           </button>
                         ))
@@ -458,14 +458,14 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
 
           {formData.board_id && miembrosTablero.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1 flex items-center gap-1">
                 <UserCircle className="h-4 w-4" />
                 Responsable
               </label>
               <select
                 value={formData.asignado_a}
                 onChange={(e) => setFormData({ ...formData, asignado_a: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">Sin asignar</option>
                 {miembrosTablero.map((miembro) => (
@@ -474,18 +474,18 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 Solo los miembros de este tablero compartido pueden ser asignados
               </p>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Descripción *</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Descripción *</label>
             <textarea
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               rows={4}
               required
               placeholder="Describe la tarea a realizar..."
@@ -493,20 +493,20 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Fecha y Hora de Vencimiento *
             </label>
             <input
               type="datetime-local"
               value={formData.fecha_vencimiento}
               onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
               <Paperclip className="h-4 w-4" />
               Documentos Adjuntos {tarea ? `(${adjuntos.length}/5)` : ''}
             </label>
@@ -518,15 +518,15 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                     {adjuntos.map((adjunto) => (
                       <div
                         key={adjunto.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-neutral-50 border border-neutral-200 rounded-lg"
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                          <FileText className="h-5 w-5 text-neutral-500 flex-shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-neutral-900 truncate">
                               {adjunto.nombre_archivo}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-neutral-500">
                               {formatFileSize(adjunto.tamano_bytes)}
                             </p>
                           </div>
@@ -535,7 +535,7 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                           <button
                             type="button"
                             onClick={() => handleDescargarAdjunto(adjunto)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                            className="p-1.5 text-accent-ink hover:bg-blue-50 rounded"
                             title="Descargar"
                           >
                             <Download className="h-4 w-4" />
@@ -567,16 +567,16 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
                       htmlFor="file-upload"
                       className={`flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
                         subiendoAdjunto
-                          ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                          : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                          ? 'border-neutral-200 bg-neutral-50 cursor-not-allowed'
+                          : 'border-neutral-300 hover:border-purple-400 hover:bg-purple-50'
                       }`}
                     >
-                      <Upload className="h-5 w-5 text-gray-400" />
-                      <span className="text-sm text-gray-600">
+                      <Upload className="h-5 w-5 text-neutral-500" />
+                      <span className="text-sm text-neutral-600">
                         {subiendoAdjunto ? 'Subiendo archivo...' : 'Subir documento (máx. 50MB)'}
                       </span>
                     </label>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       Cualquier formato de archivo permitido
                     </p>
                   </div>
@@ -591,7 +591,7 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
             ) : (
               <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="h-5 w-5 text-accent-ink" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                   </svg>
                 </div>
@@ -625,7 +625,7 @@ export default function TareaModal({ contactoId, tarea, boardId, initialFechaVen
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-gray-50"
                 disabled={loading}
               >
                 Cancelar

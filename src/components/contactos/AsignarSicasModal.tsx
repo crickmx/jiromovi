@@ -132,8 +132,8 @@ export default function AsignarSicasModal({ contacto, onClose, onSave }: Asignar
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-lg max-h-[90vh] flex flex-col animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-3">
@@ -147,7 +147,7 @@ export default function AsignarSicasModal({ contacto, onClose, onSave }: Asignar
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+            className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
           >
             <X className="h-4 w-4" />
           </button>
@@ -191,7 +191,7 @@ export default function AsignarSicasModal({ contacto, onClose, onSave }: Asignar
               <div className="text-center py-10">
                 <Database className="h-9 w-9 text-neutral-200 dark:text-neutral-700 mx-auto mb-3" />
                 <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Sin clientes asignados</p>
-                <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">
+                <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">
                   Usa la pestana "Buscar y agregar" para asignar clientes SICAS a este usuario.
                 </p>
                 <button
@@ -216,7 +216,7 @@ export default function AsignarSicasModal({ contacto, onClose, onSave }: Asignar
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{a.sicas_client_name}</p>
                         {a.sicas_client_rfc && (
-                          <p className="text-xs text-neutral-400 dark:text-white/40">{a.sicas_client_rfc}</p>
+                          <p className="text-xs text-neutral-500 dark:text-white/55">{a.sicas_client_rfc}</p>
                         )}
                       </div>
                     </div>
@@ -239,13 +239,13 @@ export default function AsignarSicasModal({ contacto, onClose, onSave }: Asignar
           {tab === 'buscar' && (
             <div className="space-y-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Buscar por nombre o RFC..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 text-sm border border-neutral-200 dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                  className="w-full pl-9 pr-4 py-2.5 text-sm border border-soft dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
                   autoFocus
                 />
               </div>
@@ -256,7 +256,7 @@ export default function AsignarSicasModal({ contacto, onClose, onSave }: Asignar
                 </div>
               ) : available.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-neutral-400 dark:text-white/40">
+                  <p className="text-sm text-neutral-500 dark:text-white/55">
                     {search ? 'Sin resultados para esa busqueda.' : 'Escribe para buscar clientes.'}
                   </p>
                 </div>
@@ -281,15 +281,15 @@ export default function AsignarSicasModal({ contacto, onClose, onSave }: Asignar
                             {client.client_name}
                           </p>
                           {client.rfc && (
-                            <p className="text-xs text-neutral-400 dark:text-white/40">{client.rfc}</p>
+                            <p className="text-xs text-neutral-500 dark:text-white/55">{client.rfc}</p>
                           )}
                           {client.poliza_count !== undefined && (
-                            <p className="text-xs text-neutral-400 dark:text-white/40">{client.poliza_count} poliza{client.poliza_count !== 1 ? 's' : ''}</p>
+                            <p className="text-xs text-neutral-500 dark:text-white/55">{client.poliza_count} poliza{client.poliza_count !== 1 ? 's' : ''}</p>
                           )}
                         </div>
                         <div className="flex-shrink-0 ml-3">
                           {busy
-                            ? <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                            ? <Loader2 className="h-4 w-4 animate-spin text-neutral-500" />
                             : assigned_
                               ? <CheckCircle className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
                               : <div className="w-4 h-4 rounded-full border-2 border-neutral-200 dark:border-neutral-600" />}

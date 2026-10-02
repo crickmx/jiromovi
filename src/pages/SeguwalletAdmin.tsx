@@ -760,7 +760,7 @@ export function SeguwalletAdmin() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">Seguwallet</h1>
-            <p className="text-xs text-neutral-500 dark:text-white/40">
+            <p className="text-xs text-neutral-500 dark:text-white/55">
               {isAgent ? 'Mis clientes Seguwallet' : 'Administracion de clientes'}
             </p>
           </div>
@@ -769,7 +769,7 @@ export function SeguwalletAdmin() {
           {isAdmin && activeTab === 'terms' && (
             <button
               onClick={() => { setTermForm({ title: 'Términos y Condiciones', version: '', content: '' }); setTermError(''); setActiveModal('terms_create'); }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-neutral-700 dark:text-white/70 text-sm font-semibold hover:bg-neutral-50 transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-neutral-700 dark:text-white/70 text-sm font-semibold hover:bg-neutral-50 transition-all"
             >
               <Plus className="w-4 h-4" />
               Nueva versión
@@ -807,7 +807,7 @@ export function SeguwalletAdmin() {
                 "px-4 py-2 rounded-xl text-sm font-semibold transition-all",
                 activeTab === tab
                   ? "bg-white dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm"
-                  : "text-neutral-500 dark:text-white/40 hover:text-neutral-700"
+                  : "text-neutral-500 dark:text-white/55 hover:text-neutral-700"
               )}
             >
               {tab === 'customers' ? 'Clientes' : tab === 'insurers' ? 'Aseguradoras' : 'Términos'}
@@ -825,9 +825,9 @@ export function SeguwalletAdmin() {
           { value: customers.filter(c => !c.profile_completed).length, label: 'Perfil incompleto', color: 'text-amber-600' },
           { value: customers.filter(c => !c.last_login_at).length, label: 'Nunca ingresaron', color: 'text-neutral-500' },
         ].map(stat => (
-          <div key={stat.label} className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-4">
+          <div key={stat.label} className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-4">
             <p className={cn("text-2xl font-bold", stat.color)}>{stat.value}</p>
-            <p className="text-xs text-neutral-500 dark:text-white/40">{stat.label}</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -835,14 +835,14 @@ export function SeguwalletAdmin() {
       {/* Search + Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, correo, agente u oficina..." className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-white dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, correo, agente u oficina..." className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-surface-card dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all" />
         </div>
         {isAdmin && officeOptions.length > 0 && (
           <select
             value={filterOffice}
             onChange={e => setFilterOffice(e.target.value)}
-            className="px-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-white dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/70"
+            className="px-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-surface-card dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/70"
           >
             <option value="all">Todas las oficinas</option>
             {officeOptions.map(o => <option key={o} value={o}>{o}</option>)}
@@ -851,7 +851,7 @@ export function SeguwalletAdmin() {
         <select
           value={filterSicas}
           onChange={e => setFilterSicas(e.target.value as typeof filterSicas)}
-          className="px-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-white dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/70"
+          className="px-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-surface-card dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/70"
         >
           <option value="all">Todos (SICAS)</option>
           <option value="vinculado">Con SICAS</option>
@@ -861,25 +861,25 @@ export function SeguwalletAdmin() {
 
       {/* Table */}
       {filteredCustomers.length === 0 ? (
-        <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-12 text-center">
+        <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-12 text-center">
           <Users className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
           <p className="text-sm text-neutral-500">No hay clientes Seguwallet</p>
-          <p className="text-xs text-neutral-400 mt-1">Crea tu primer cliente para comenzar</p>
+          <p className="text-xs text-neutral-500 mt-1">Crea tu primer cliente para comenzar</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] overflow-hidden">
+        <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-100 dark:border-white/[0.06]">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Cliente</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden md:table-cell">Agente</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden lg:table-cell">Oficina</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden sm:table-cell">SICAS</th>
-                  <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden lg:table-cell">Perfil</th>
-                  <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden lg:table-cell">Términos</th>
-                  <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Estatus</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Acciones</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55">Cliente</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55 hidden md:table-cell">Agente</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55 hidden lg:table-cell">Oficina</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55 hidden sm:table-cell">SICAS</th>
+                  <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55 hidden lg:table-cell">Perfil</th>
+                  <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55 hidden lg:table-cell">Términos</th>
+                  <th className="text-center px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55">Estatus</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -889,7 +889,7 @@ export function SeguwalletAdmin() {
                     <tr key={c.id} className="border-b border-neutral-50 dark:border-white/[0.03] hover:bg-neutral-50/50 dark:hover:bg-white/[0.02] transition-colors">
                       <td className="px-5 py-3">
                         <p className="font-semibold text-neutral-900 dark:text-white">{toTitleCase(c.full_name)}</p>
-                        <p className="text-xs text-neutral-500 dark:text-white/40">{c.email}</p>
+                        <p className="text-xs text-neutral-500 dark:text-white/55">{c.email}</p>
                       </td>
                       <td className="px-5 py-3 hidden md:table-cell">
                         <p className="text-xs text-neutral-600 dark:text-white/50">{toTitleCase(c.agent_name || '')}</p>
@@ -897,7 +897,7 @@ export function SeguwalletAdmin() {
                       <td className="px-5 py-3 hidden lg:table-cell">
                         {c.office_name ? (
                           <span className="inline-flex items-center gap-1 text-xs text-neutral-600 dark:text-white/50">
-                            <Building2 className="w-3 h-3 text-neutral-400" />
+                            <Building2 className="w-3 h-3 text-neutral-500" />
                             {c.office_name}
                           </span>
                         ) : (
@@ -908,15 +908,15 @@ export function SeguwalletAdmin() {
                         <button onClick={() => openSicas(c)} className="group text-left">
                           {(c.sicas_clients_count || 0) > 0 ? (
                             <div>
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#1C37E0]/10 text-[#1C37E0] text-[10px] font-bold">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#1C37E0]/10 text-[#1C37E0] text-[11px] font-bold">
                                 {c.sicas_clients_count} vinculado{(c.sicas_clients_count || 0) !== 1 ? 's' : ''}
                               </span>
                               {c.sicas_primary_name && (
-                                <p className="text-[10px] text-neutral-500 dark:text-white/40 mt-0.5 truncate max-w-[120px]">{c.sicas_primary_name}</p>
+                                <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5 truncate max-w-[120px]">{c.sicas_primary_name}</p>
                               )}
                             </div>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30 text-[10px] font-medium">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-white/45 text-[11px] font-medium">
                               Sin vínculo
                             </span>
                           )}
@@ -931,31 +931,31 @@ export function SeguwalletAdmin() {
                       <td className="px-5 py-3 text-center hidden lg:table-cell">
                         {c.terms_accepted
                           ? <span title={`v${c.terms_version_accepted}`}><CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" /></span>
-                          : <span title="Términos pendientes"><Clock className="w-4 h-4 text-neutral-400 mx-auto" /></span>
+                          : <span title="Términos pendientes"><Clock className="w-4 h-4 text-neutral-500 mx-auto" /></span>
                         }
                       </td>
                       <td className="px-5 py-3 text-center">
-                        <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-bold border", badge.class)}>{badge.label}</span>
+                        <span className={cn("px-2 py-0.5 rounded-lg text-[11px] font-bold border", badge.class)}>{badge.label}</span>
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => window.open(`/seguwallet/dashboard?preview=${c.id}`, '_blank')} className="p-1.5 rounded-lg text-neutral-400 hover:text-[#1C37E0] hover:bg-blue-50 transition-colors" title="Vista previa"><Eye className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => window.open(`/seguwallet/dashboard?preview=${c.id}`, '_blank')} className="p-1.5 rounded-lg text-neutral-500 hover:text-[#1C37E0] hover:bg-blue-50 transition-colors" title="Vista previa"><Eye className="w-3.5 h-3.5" /></button>
                           {isAdmin && (
                             <button
                               onClick={async () => {
                                 const ok = await startImpersonation({ platform: 'seguwallet', customerId: c.id });
                                 if (ok) window.location.href = '/seguwallet/dashboard';
                               }}
-                              className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                              className="p-1.5 rounded-lg text-neutral-500 hover:text-amber-600 hover:bg-amber-50 transition-colors"
                               title="Ver como este cliente"
                             >
                               <User className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => openSicas(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Asignar SICAS"><UserPlus className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => openReset(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-teal-600 hover:bg-teal-50 transition-colors" title="Cambiar contrasena"><RotateCcw className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => openPolizasExternas(c)} className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Ver polizas externas"><FileStack className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-neutral-500 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => openSicas(c)} className="p-1.5 rounded-lg text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Asignar SICAS"><UserPlus className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => openReset(c)} className="p-1.5 rounded-lg text-neutral-500 hover:text-teal-600 hover:bg-teal-50 transition-colors" title="Cambiar contrasena"><RotateCcw className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => openPolizasExternas(c)} className="p-1.5 rounded-lg text-neutral-500 hover:text-accent-ink hover:bg-blue-50 transition-colors" title="Ver polizas externas"><FileStack className="w-3.5 h-3.5" /></button>
                         </div>
                       </td>
                     </tr>
@@ -975,14 +975,14 @@ export function SeguwalletAdmin() {
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-              <input type="text" value={insurerSearch} onChange={e => setInsurerSearch(e.target.value)} placeholder="Buscar aseguradora..." className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-white dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+              <input type="text" value={insurerSearch} onChange={e => setInsurerSearch(e.target.value)} placeholder="Buscar aseguradora..." className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200/60 dark:border-white/10 bg-surface-card dark:bg-white/[0.03] text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all" />
             </div>
             <div className="flex gap-1 p-1 bg-neutral-100 dark:bg-white/[0.04] rounded-2xl h-fit">
               {(['all', 'active', 'inactive'] as const).map(f => (
                 <button key={f} onClick={() => setInsurerFilter(f)}
                   className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold transition-all",
-                    insurerFilter === f ? "bg-white dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm" : "text-neutral-500 dark:text-white/40")}>
+                    insurerFilter === f ? "bg-white dark:bg-white/10 text-neutral-900 dark:text-white shadow-sm" : "text-neutral-500 dark:text-white/55")}>
                   {f === 'all' ? 'Todas' : f === 'active' ? 'Activas' : 'Inactivas'}
                 </button>
               ))}
@@ -999,22 +999,22 @@ export function SeguwalletAdmin() {
               return matchSearch && matchFilter;
             });
             return filtered.length === 0 ? (
-              <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-12 text-center">
+              <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-12 text-center">
                 <Building2 className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
                 <p className="text-sm text-neutral-500">No hay aseguradoras{insurerSearch ? ` para "${insurerSearch}"` : ''}</p>
               </div>
             ) : (
-              <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] overflow-hidden">
+              <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-neutral-100 dark:border-white/[0.06]">
-                        <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Aseguradora</th>
-                        <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden sm:table-cell">Tel. Siniestros</th>
-                        <th className="text-center px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden md:table-cell">Directorio</th>
-                        <th className="text-center px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40 hidden md:table-cell">Siniestros</th>
-                        <th className="text-center px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Estatus</th>
-                        <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/40">Acciones</th>
+                        <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55">Aseguradora</th>
+                        <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55 hidden sm:table-cell">Tel. Siniestros</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55 hidden md:table-cell">Directorio</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55 hidden md:table-cell">Siniestros</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55">Estatus</th>
+                        <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-white/55">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1022,14 +1022,14 @@ export function SeguwalletAdmin() {
                         <tr key={ins.id} className="border-b border-neutral-50 dark:border-white/[0.03] hover:bg-neutral-50/50 dark:hover:bg-white/[0.02] transition-colors">
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl overflow-hidden border border-neutral-100 bg-white flex-shrink-0 shadow-sm">
+                              <div className="w-10 h-10 rounded-xl overflow-hidden border border-soft bg-surface-card flex-shrink-0 shadow-card">
                                 {(() => {
                                   const logoUrl = getInsurerLogoUrl(ins);
                                   return logoUrl ? (
                                     <img src={logoUrl} alt={ins.name} className="w-full h-full object-contain p-0.5" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-neutral-100">
-                                      <span className="text-xs font-bold text-neutral-400">{ins.name.slice(0, 2).toUpperCase()}</span>
+                                      <span className="text-xs font-bold text-neutral-500">{ins.name.slice(0, 2).toUpperCase()}</span>
                                     </div>
                                   );
                                 })()}
@@ -1037,11 +1037,11 @@ export function SeguwalletAdmin() {
                               <div>
                                 <p className="font-semibold text-neutral-900 dark:text-white text-sm">{ins.name}</p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                  <p className="text-xs text-neutral-400">Orden: {ins.display_order}</p>
+                                  <p className="text-xs text-neutral-500">Orden: {ins.display_order}</p>
                                   {ins.logo_local_path ? (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">local</span>
+                                    <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">local</span>
                                   ) : (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-neutral-100 text-neutral-400 border border-neutral-200">externo</span>
+                                    <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold bg-neutral-100 text-neutral-500 border border-neutral-200">externo</span>
                                   )}
                                 </div>
                               </div>
@@ -1061,18 +1061,18 @@ export function SeguwalletAdmin() {
                               : <X className="w-4 h-4 text-neutral-300 mx-auto" />}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-bold border",
+                            <span className={cn("px-2 py-0.5 rounded-lg text-[11px] font-bold border",
                               ins.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-neutral-100 text-neutral-500 border-neutral-200")}>
                               {ins.is_active ? 'Activa' : 'Inactiva'}
                             </span>
                           </td>
                           <td className="px-5 py-3">
                             <div className="flex items-center justify-end gap-1">
-                              <button onClick={() => openEditInsurer(ins)} className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => handleToggleInsurerActive(ins)} className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title={ins.is_active ? 'Desactivar' : 'Activar'}>
+                              <button onClick={() => openEditInsurer(ins)} className="p-1.5 rounded-lg text-neutral-500 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="Editar"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleToggleInsurerActive(ins)} className="p-1.5 rounded-lg text-neutral-500 hover:text-accent-ink hover:bg-blue-50 transition-colors" title={ins.is_active ? 'Desactivar' : 'Activar'}>
                                 {ins.is_active ? <ToggleRight className="w-4 h-4 text-emerald-500" /> : <ToggleLeft className="w-4 h-4" />}
                               </button>
-                              <button onClick={() => handleDeleteInsurer(ins)} disabled={deletingInsurerId === ins.id} className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Eliminar">
+                              <button onClick={() => handleDeleteInsurer(ins)} disabled={deletingInsurerId === ins.id} className="p-1.5 rounded-lg text-neutral-500 hover:text-red-600 hover:bg-red-50 transition-colors" title="Eliminar">
                                 {deletingInsurerId === ins.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                               </button>
                             </div>
@@ -1094,30 +1094,30 @@ export function SeguwalletAdmin() {
           {termsLoading ? (
             <div className="flex justify-center py-10"><div className="w-8 h-8 border-[3px] border-blue-200 border-t-[#1C37E0] rounded-full animate-spin" /></div>
           ) : terms.length === 0 ? (
-            <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-12 text-center">
+            <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-12 text-center">
               <FileText className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
               <p className="text-sm text-neutral-500">No hay versiones de términos</p>
-              <p className="text-xs text-neutral-400 mt-1">Crea la primera versión para activarla</p>
+              <p className="text-xs text-neutral-500 mt-1">Crea la primera versión para activarla</p>
             </div>
           ) : (
-            <div className="bg-white dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] divide-y divide-neutral-100 dark:divide-white/[0.04]">
+            <div className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] divide-y divide-neutral-100 dark:divide-white/[0.04]">
               {terms.map(term => (
                 <div key={term.id} className="px-5 py-4 flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-neutral-900 dark:text-white text-sm">{term.title}</p>
                       {term.is_active && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ACTIVO</span>
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ACTIVO</span>
                       )}
                     </div>
-                    <p className="text-xs text-neutral-400 mt-0.5">
+                    <p className="text-xs text-neutral-500 mt-0.5">
                       Versión {term.version} · {term.published_at ? `Publicado ${new Date(term.published_at).toLocaleDateString('es-MX')}` : 'No publicado'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => { setSelectedTerm(term); setActiveModal('terms_view'); }}
-                      className="p-1.5 rounded-lg text-neutral-400 hover:text-[#1C37E0] hover:bg-blue-50 transition-colors"
+                      className="p-1.5 rounded-lg text-neutral-500 hover:text-[#1C37E0] hover:bg-blue-50 transition-colors"
                       title="Ver contenido"
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -1147,7 +1147,7 @@ export function SeguwalletAdmin() {
           <form onSubmit={handleSaveInsurer} className="space-y-5">
             {/* Datos generales */}
             <div>
-              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Datos Generales</p>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-3">Datos Generales</p>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <F label="Nombre *"><input type="text" value={insurerForm.name} onChange={e => setInsurerForm(p => ({ ...p, name: e.target.value }))} placeholder="Ej. Qualitas" className={inp} /></F>
@@ -1175,11 +1175,11 @@ export function SeguwalletAdmin() {
                     </div>
                     <div className="min-w-0 flex-1">
                       {logoLocalPath ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
                           <CheckCircle2 className="w-3 h-3" /> Logo local guardado
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold border border-amber-200">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 text-amber-600 text-[11px] font-bold border border-amber-200">
                           <AlertCircle className="w-3 h-3" /> Sin logo local
                         </span>
                       )}
@@ -1208,11 +1208,11 @@ export function SeguwalletAdmin() {
                           Importar
                         </button>
                       </div>
-                      <p className="text-[10px] text-neutral-400">Pega la URL del logo externo y pulsa Importar para guardarlo localmente.</p>
+                      <p className="text-[11px] text-neutral-500">Pega la URL del logo externo y pulsa Importar para guardarlo localmente.</p>
                     </div>
                   )}
                   {insurerModalMode === 'create' && (
-                    <p className="text-[10px] text-neutral-400 mb-2">Guarda la aseguradora primero, luego podras subir o importar el logo local.</p>
+                    <p className="text-[11px] text-neutral-500 mb-2">Guarda la aseguradora primero, luego podras subir o importar el logo local.</p>
                   )}
 
                   <F label="URL logotipo externo (referencia)">
@@ -1234,7 +1234,7 @@ export function SeguwalletAdmin() {
 
             {/* Telefonos */}
             <div>
-              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Telefonos y WhatsApp</p>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-3">Telefonos y WhatsApp</p>
               <div className="grid grid-cols-2 gap-3">
                 <F label="Tel. Atencion a Clientes"><input type="tel" value={insurerForm.customer_service_phone || ''} onChange={e => setInsurerForm(p => ({ ...p, customer_service_phone: e.target.value }))} placeholder="8001234567" className={inp} /></F>
                 <F label="Tel. Pago de Poliza"><input type="tel" value={insurerForm.payment_phone || ''} onChange={e => setInsurerForm(p => ({ ...p, payment_phone: e.target.value }))} placeholder="8001234567" className={inp} /></F>
@@ -1246,7 +1246,7 @@ export function SeguwalletAdmin() {
 
             {/* Links */}
             <div>
-              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Links</p>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-3">Links</p>
               <div className="space-y-3">
                 <F label="Link de pago en linea"><input type="url" value={insurerForm.payment_url || ''} onChange={e => setInsurerForm(p => ({ ...p, payment_url: e.target.value }))} placeholder="https://..." className={inp} /></F>
                 <div className="grid grid-cols-2 gap-3">
@@ -1259,7 +1259,7 @@ export function SeguwalletAdmin() {
 
             {/* Siniestros */}
             <div>
-              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Siniestros</p>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-3">Siniestros</p>
               <F label="Instrucciones para reportar siniestro">
                 <textarea value={insurerForm.claims_instructions || ''} onChange={e => setInsurerForm(p => ({ ...p, claims_instructions: e.target.value }))} rows={3} placeholder="Ej. Llama al 800 y ten a la mano tu numero de poliza y ubicacion." className={`${inp} resize-none`} />
               </F>
@@ -1267,7 +1267,7 @@ export function SeguwalletAdmin() {
 
             {/* Visibilidad */}
             <div>
-              <p className="text-xs font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-3">Visibilidad</p>
+              <p className="text-xs font-bold text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-3">Visibilidad</p>
               <div className="space-y-2">
                 {[
                   { key: 'is_active' as const, label: 'Aseguradora activa' },
@@ -1347,14 +1347,14 @@ export function SeguwalletAdmin() {
             </div>
             <div>
               <p className="font-semibold text-sm text-neutral-900 dark:text-white">{toTitleCase(selectedCustomer.full_name)}</p>
-              <p className="text-xs text-neutral-400 mt-0.5">{selectedCustomer.email}</p>
+              <p className="text-xs text-neutral-500 mt-0.5">{selectedCustomer.email}</p>
               <div className="flex items-center gap-2 mt-1">
                 {selectedCustomer.profile_completed
-                  ? <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><CheckCircle2 className="w-3 h-3" /> Perfil completo</span>
-                  : <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600"><AlertCircle className="w-3 h-3" /> Perfil incompleto</span>
+                  ? <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600"><CheckCircle2 className="w-3 h-3" /> Perfil completo</span>
+                  : <span className="flex items-center gap-1 text-[11px] font-bold text-amber-600"><AlertCircle className="w-3 h-3" /> Perfil incompleto</span>
                 }
                 {selectedCustomer.terms_accepted && (
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><Check className="w-3 h-3" /> Términos v{selectedCustomer.terms_version_accepted}</span>
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600"><Check className="w-3 h-3" /> Términos v{selectedCustomer.terms_version_accepted}</span>
                 )}
               </div>
             </div>
@@ -1363,7 +1363,7 @@ export function SeguwalletAdmin() {
           <form onSubmit={handleSaveEdit} className="space-y-4">
             {/* Datos personales */}
             <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-3">Datos personales</p>
+              <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-3">Datos personales</p>
               <div className="space-y-3">
                 <F label="Nombre completo *">
                   <input type="text" value={editForm.full_name} onChange={e => setEditForm(p => ({ ...p, full_name: e.target.value }))} className={inp} />
@@ -1395,17 +1395,17 @@ export function SeguwalletAdmin() {
 
             {/* Contacto */}
             <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-3">Contacto</p>
+              <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-3">Contacto</p>
               <div className="grid grid-cols-2 gap-3">
                 <F label="Telefono">
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500 pointer-events-none" />
                     <input type="tel" value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} placeholder="55 1234 5678" className={`${inp} pl-9`} />
                   </div>
                 </F>
                 <F label="WhatsApp">
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500 pointer-events-none" />
                     <input type="tel" value={editForm.whatsapp} onChange={e => setEditForm(p => ({ ...p, whatsapp: e.target.value }))} placeholder="55 1234 5678" className={`${inp} pl-9`} />
                   </div>
                 </F>
@@ -1414,7 +1414,7 @@ export function SeguwalletAdmin() {
 
             {/* Cuenta */}
             <div>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-3">Cuenta</p>
+              <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-3">Cuenta</p>
               <div className="grid grid-cols-2 gap-3">
                 <F label="Estatus">
                   <select value={editForm.status} onChange={e => setEditForm(p => ({ ...p, status: e.target.value as EditFormData['status'] }))} className={inp}>
@@ -1463,14 +1463,14 @@ export function SeguwalletAdmin() {
           <div className="relative mb-4">
             {sicasLoading
               ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#1C37E0] animate-spin" />
-              : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+              : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
             }
-            <input type="text" value={sicasSearch} onChange={e => handleSicasSearchChange(e.target.value)} placeholder="Buscar cliente SICAS..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+            <input type="text" value={sicasSearch} onChange={e => handleSicasSearchChange(e.target.value)} placeholder="Buscar cliente SICAS..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-accent" />
           </div>
           {sicasLoading && availableSicas.length === 0 ? (
             <div className="flex items-center justify-center py-8"><div className="w-6 h-6 border-2 border-blue-200 border-t-[#1C37E0] rounded-full animate-spin" /></div>
           ) : filteredSicas.length === 0 ? (
-            <div className="text-center py-8 text-sm text-neutral-400">
+            <div className="text-center py-8 text-sm text-neutral-500">
               {availableSicas.length === 0
                 ? 'Este agente no tiene clientes SICAS. Verifica que el agente este mapeado en SICAS.'
                 : 'No se encontraron resultados.'}
@@ -1486,7 +1486,7 @@ export function SeguwalletAdmin() {
                         : "bg-white border-neutral-200/60 hover:border-blue-200 hover:bg-blue-50/30 dark:bg-white/[0.02] dark:border-white/10")}>
                     <div>
                       <p className={cn("text-sm font-semibold", assigned ? "text-[#1C37E0]" : "text-neutral-900 dark:text-white")}>{toTitleCase(client.client_name)}</p>
-                      {client.rfc && <p className="text-xs text-neutral-400 mt-0.5">{client.rfc}</p>}
+                      {client.rfc && <p className="text-xs text-neutral-500 mt-0.5">{client.rfc}</p>}
                     </div>
                     <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-all", assigned ? "bg-[#1C37E0]" : "border-2 border-neutral-200 dark:border-white/20")}>
                       {assigned && <Check className="w-3.5 h-3.5 text-white" />}
@@ -1534,7 +1534,7 @@ export function SeguwalletAdmin() {
         <ModalWrap title={`${selectedTerm.title} — v${selectedTerm.version}`} onClose={closeModal} wide>
           <div className="text-xs text-neutral-500 mb-3">
             {selectedTerm.published_at ? `Publicado el ${new Date(selectedTerm.published_at).toLocaleDateString('es-MX')}` : 'Sin publicar'}
-            {selectedTerm.is_active && <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ACTIVO</span>}
+            {selectedTerm.is_active && <span className="ml-2 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ACTIVO</span>}
           </div>
           <div className="bg-neutral-50 dark:bg-white/[0.03] rounded-2xl p-4 max-h-80 overflow-y-auto text-sm text-neutral-700 dark:text-white/70 leading-relaxed whitespace-pre-wrap border border-neutral-100 dark:border-white/[0.06]">
             {selectedTerm.content}
@@ -1681,17 +1681,17 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="relative bg-surface-card dark:bg-neutral-900 rounded-3xl shadow-e4 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
 
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-neutral-100 dark:border-white/[0.06]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-              <FileStack className="w-5 h-5 text-blue-600" />
+              <FileStack className="w-5 h-5 text-accent-ink" />
             </div>
             <div>
               <h2 className="text-base font-bold text-neutral-900 dark:text-white">Polizas externas</h2>
-              <p className="text-xs text-neutral-500 dark:text-white/40 mt-0.5">
+              <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">
                 {toTitleCase(customer.full_name)}
                 {customer.email && <span className="ml-1">· {customer.email}</span>}
                 {customer.phone && <span className="ml-1">· {customer.phone}</span>}
@@ -1704,7 +1704,7 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
                 {policies.length} poliza{policies.length !== 1 ? 's' : ''}
               </span>
             )}
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/[0.06] text-neutral-400 transition-colors">
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/[0.06] text-neutral-500 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1721,8 +1721,8 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
               <div className="w-16 h-16 rounded-2xl bg-neutral-50 dark:bg-white/[0.03] border border-neutral-100 dark:border-white/[0.06] flex items-center justify-center mb-4">
                 <FileStack className="w-8 h-8 text-neutral-300" />
               </div>
-              <p className="text-sm font-semibold text-neutral-500 dark:text-white/40">Sin polizas externas</p>
-              <p className="text-xs text-neutral-400 dark:text-white/30 mt-1 max-w-xs">
+              <p className="text-sm font-semibold text-neutral-500 dark:text-white/55">Sin polizas externas</p>
+              <p className="text-xs text-neutral-500 dark:text-white/45 mt-1 max-w-xs">
                 Este cliente aun no ha cargado polizas externas en Seguwallet.
               </p>
             </div>
@@ -1731,7 +1731,7 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
               const ramoColor = RAMO_COLORS[p.ramo || ''] || '#6b7280';
               const docs = p.documents || [];
               return (
-                <div key={p.id} className="rounded-2xl border border-neutral-200/70 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div key={p.id} className="rounded-2xl border border-neutral-200/70 dark:border-white/[0.06] bg-surface-card dark:bg-white/[0.02] overflow-hidden shadow-card hover:shadow-card-hover transition-shadow">
                   {/* Policy header row */}
                   <div className="flex items-start gap-4 px-5 pt-4 pb-3">
                     {/* Ramo color tag */}
@@ -1745,15 +1745,15 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
                           {p.insurer_name || 'Aseguradora no indicada'}
                         </p>
                         {p.ramo && (
-                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border" style={{ backgroundColor: ramoColor + '15', color: ramoColor, borderColor: ramoColor + '40' }}>
+                          <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold border" style={{ backgroundColor: ramoColor + '15', color: ramoColor, borderColor: ramoColor + '40' }}>
                             {p.ramo}{p.subramo ? ` · ${p.subramo}` : ''}
                           </span>
                         )}
-                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${statusBadge(p.status)}`}>
+                        <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border ${statusBadge(p.status)}`}>
                           {statusLabel(p.status)}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-white/40">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-white/55">
                         {p.policy_number && (
                           <span className="flex items-center gap-1"><Hash className="w-3 h-3" />{p.policy_number}</span>
                         )}
@@ -1767,20 +1767,20 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
                         )}
                       </div>
                       {(p.contractor_name || p.insured_name) && (
-                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-xs text-neutral-400 dark:text-white/30">
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-xs text-neutral-500 dark:text-white/45">
                           {p.contractor_name && <span>Contratante: {p.contractor_name}</span>}
                           {p.insured_name && <span>Asegurado: {p.insured_name}</span>}
                         </div>
                       )}
                       {p.notes && (
-                        <p className="mt-1.5 text-xs text-neutral-500 dark:text-white/40 italic leading-relaxed">{p.notes}</p>
+                        <p className="mt-1.5 text-xs text-neutral-500 dark:text-white/55 italic leading-relaxed">{p.notes}</p>
                       )}
                     </div>
                     {/* Actions */}
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
                         onClick={() => copyPolicy(p)}
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                        className="p-1.5 rounded-lg text-neutral-500 hover:text-accent-ink hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
                         title="Copiar datos"
                       >
                         {copiedId === p.id ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -1791,14 +1791,14 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
                   {/* Documents */}
                   {docs.length > 0 && (
                     <div className="px-5 pb-4 pt-1 space-y-1.5">
-                      <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider mb-2">
+                      <p className="text-[11px] font-bold text-neutral-500 dark:text-white/45 uppercase tracking-wider mb-2">
                         Documentos adjuntos ({docs.length})
                       </p>
                       {docs.map(doc => (
                         <div key={doc.id} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-white/[0.03] border border-neutral-100 dark:border-white/[0.04]">
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-neutral-700 dark:text-white/70 truncate">{doc.document_name || doc.document_type}</p>
-                            <p className="text-[10px] text-neutral-400 dark:text-white/30">
+                            <p className="text-[11px] text-neutral-500 dark:text-white/45">
                               {doc.document_type}{doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : ''}
                             </p>
                           </div>
@@ -1808,7 +1808,7 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
                                 href={getSignedDocUrl(doc.file_path)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                                className="p-1.5 rounded-lg text-neutral-500 hover:text-accent-ink hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
                                 title="Ver archivo"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
@@ -1816,7 +1816,7 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
                               <a
                                 href={getSignedDocUrl(doc.file_path)}
                                 download
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+                                className="p-1.5 rounded-lg text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
                                 title="Descargar"
                               >
                                 <Download className="w-3.5 h-3.5" />
@@ -1830,7 +1830,7 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
 
                   {/* Footer: uploaded date */}
                   <div className="px-5 pb-3 flex items-center justify-between">
-                    <p className="text-[10px] text-neutral-300 dark:text-white/20">
+                    <p className="text-[11px] text-neutral-300 dark:text-white/20">
                       Cargada el {new Date(p.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
@@ -1852,7 +1852,7 @@ function PolizasExternasModal({ customer, policies, loading, onClose }: {
 }
 
 // Shared UI helpers
-const inp = "w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 dark:text-white transition-all";
+const inp = "w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-accent dark:text-white transition-all";
 const pri = "px-4 py-2.5 rounded-xl bg-[#1C37E0] text-white text-sm font-semibold hover:bg-[#1630C8] transition-all disabled:opacity-50";
 const sec = "px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-white/60 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors";
 
@@ -1860,10 +1860,10 @@ function ModalWrap({ title, onClose, children, wide }: { title: string; onClose:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className={cn("relative bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl border border-neutral-200/60 dark:border-white/10 w-full p-6 max-h-[90vh] overflow-y-auto", wide ? "max-w-2xl" : "max-w-lg")}>
+      <div className={cn("relative bg-surface-card dark:bg-neutral-900 rounded-3xl shadow-2xl border border-neutral-200/60 dark:border-white/10 w-full p-6 max-h-[90vh] overflow-y-auto", wide ? "max-w-2xl" : "max-w-lg")}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold text-neutral-900 dark:text-white">{title}</h2>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500"><X className="w-4 h-4" /></button>
         </div>
         {children}
       </div>

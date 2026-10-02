@@ -174,11 +174,11 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-neutral-900">
               {contacto ? 'Editar Contacto' : 'Nuevo Contacto'}
             </h2>
             {hasSW && (
@@ -188,7 +188,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
               </span>
             )}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-neutral-500 hover:text-gray-600">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -196,13 +196,13 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Tipo de Contacto *
               </label>
               <select
                 value={formData.tipo_contacto}
                 onChange={(e) => setFormData({ ...formData, tipo_contacto: e.target.value as any })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                 required
               >
                 <option value="Persona">Persona</option>
@@ -211,11 +211,11 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estatus *</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Estatus *</label>
               <select
                 value={formData.estatus}
                 onChange={(e) => setFormData({ ...formData, estatus: e.target.value as any })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                 required
               >
                 <option value="Prospecto">Prospecto</option>
@@ -225,54 +225,54 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Nombre Completo *
             </label>
             <input
               type="text"
               value={formData.nombre_completo}
               onChange={(e) => setFormData({ ...formData, nombre_completo: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
               required
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Celular *</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Celular *</label>
               <input
                 type="tel"
                 value={formData.celular}
                 onChange={(e) => setFormData({ ...formData, celular: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
               />
             </div>
           </div>
 
           {formData.tipo_contacto === 'Persona' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Fecha de Nacimiento
               </label>
               <input
                 type="date"
                 value={formData.fecha_nacimiento}
                 onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                 max={new Date().toISOString().split('T')[0]}
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 Se generara un recordatorio automatico en tu calendario el dia del cumpleanos
               </p>
             </div>
@@ -280,7 +280,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
 
           {formData.tipo_contacto === 'Persona' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Genero</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Genero</label>
               <div className="grid grid-cols-2 gap-2">
                 {GENDER_OPTIONS.map((opt) => (
                   <button
@@ -295,7 +295,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
                     className={`px-3 py-2 rounded-lg border text-sm font-medium text-left transition ${
                       formData.genero === opt.value
                         ? 'bg-blue-50 border-blue-400 text-blue-700'
-                        : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                        : 'bg-white border-neutral-300 text-neutral-700 hover:border-gray-400'
                     }`}
                   >
                     {opt.label}
@@ -307,40 +307,40 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Estado</label>
               <div className="relative">
                 <select
                   value={formData.estado}
                   onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                  className="w-full appearance-none px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 pr-9"
+                  className="w-full appearance-none px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 pr-9"
                 >
                   <option value="">Seleccionar...</option>
                   {MEXICAN_STATES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 pointer-events-none" />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Municipio / Alcaldia</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Municipio / Alcaldia</label>
               <input
                 type="text"
                 value={formData.municipio}
                 onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
                 placeholder="Ej. Monterrey"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fuente de Origen</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Fuente de Origen</label>
             <select
               value={formData.fuente_origen}
               onChange={(e) => setFormData({ ...formData, fuente_origen: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
             >
               <option value="">Seleccionar...</option>
               {fuentes.map((f) => (
@@ -352,7 +352,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Etiquetas de Segmentacion
             </label>
             <div className="flex flex-wrap gap-2">
@@ -363,8 +363,8 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
                   onClick={() => toggleEtiqueta(etiqueta.nombre)}
                   className={`px-3 py-1 rounded-full text-sm font-medium transition ${
                     formData.etiquetas_segmentacion.includes(etiqueta.nombre)
-                      ? 'bg-accent text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-accent text-accent-foreground'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-gray-200'
                   }`}
                 >
                   {etiqueta.nombre}
@@ -375,11 +375,11 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
 
           {camposPersonalizados.length > 0 && (
             <div className="pt-4 border-t">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Campos Personalizados</h3>
+              <h3 className="text-sm font-medium text-neutral-700 mb-3">Campos Personalizados</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {camposPersonalizados.map((campo) => (
                   <div key={campo.id}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
                       {campo.etiqueta} {campo.requerido && '*'}
                     </label>
                     {campo.tipo_campo === 'Texto' && (
@@ -396,7 +396,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
                           })
                         }
                         required={campo.requerido}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                       />
                     )}
                     {campo.tipo_campo === 'Número' && (
@@ -413,7 +413,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
                           })
                         }
                         required={campo.requerido}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                       />
                     )}
                     {campo.tipo_campo === 'Fecha' && (
@@ -430,7 +430,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
                           })
                         }
                         required={campo.requerido}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                       />
                     )}
                     {campo.tipo_campo === 'Selector' && (
@@ -446,7 +446,7 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
                           })
                         }
                         required={campo.requerido}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                       >
                         <option value="">Seleccionar...</option>
                         {campo.opciones_selector.map((opcion) => (
@@ -472,14 +472,14 @@ export default function ContactoModal({ contacto, seguwalletCustomerId, onClose,
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-gray-50"
               disabled={loading}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50"
+              className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover disabled:opacity-50"
               disabled={loading}
             >
               {loading ? 'Guardando...' : 'Guardar'}

@@ -40,10 +40,10 @@ export default function TabComparador() {
   return (
     <div className="space-y-5">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-1">
           Comparador de Aseguradoras
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-neutral-500 dark:text-gray-400">
           Selecciona hasta 4 aseguradoras para comparar planes, coberturas y beneficios lado a lado
         </p>
       </div>
@@ -57,18 +57,18 @@ export default function TabComparador() {
           return (
             <div
               key={id}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-teal-200 dark:border-teal-800 shadow-sm"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-card dark:bg-gray-800 border border-teal-200 dark:border-teal-800 shadow-card"
             >
-              <div className="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 flex items-center justify-center overflow-hidden">
+              <div className="w-7 h-7 rounded-lg bg-surface-card dark:bg-gray-700 border border-soft dark:border-gray-600 flex items-center justify-center overflow-hidden">
                 {logo ? (
                   <img src={logo} alt={ins.name} className="w-5 h-5 object-contain" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white text-[9px] font-bold rounded-lg" style={{ backgroundColor: ins.color }}>
+                  <div className="w-full h-full flex items-center justify-center text-white text-[10.5px] font-bold rounded-lg" style={{ backgroundColor: ins.color }}>
                     {ins.shortName.slice(0, 2)}
                   </div>
                 )}
               </div>
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{ins.shortName}</span>
+              <span className="text-sm font-medium text-neutral-800 dark:text-gray-200">{ins.shortName}</span>
               <button
                 onClick={() => removeInsurer(id)}
                 className="p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -81,18 +81,18 @@ export default function TabComparador() {
 
         {selectedIds.length < 4 && availableInsurers.length > 0 && (
           <div className="relative group">
-            <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-teal-400 hover:text-teal-600 dark:hover:border-teal-600 dark:hover:text-teal-400 transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-dashed border-neutral-300 dark:border-gray-600 text-neutral-500 dark:text-gray-400 hover:border-teal-400 hover:text-teal-600 dark:hover:border-teal-600 dark:hover:text-teal-400 transition-colors">
               <Plus className="w-4 h-4" />
               <span className="text-sm">Agregar</span>
             </button>
-            <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 hidden group-hover:block min-w-[180px]">
+            <div className="absolute top-full left-0 mt-1 bg-surface-card dark:bg-gray-800 border border-soft dark:border-gray-700 rounded-lg shadow-lg z-20 hidden group-hover:block min-w-[180px]">
               {availableInsurers.map(ins => (
                 <button
                   key={ins.id}
                   onClick={() => addInsurer(ins.id)}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors flex items-center gap-2 first:rounded-t-lg last:rounded-b-lg"
+                  className="w-full text-left px-3 py-2 text-sm text-neutral-700 dark:text-gray-300 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors flex items-center gap-2 first:rounded-t-lg last:rounded-b-lg"
                 >
-                  <div className="w-5 h-5 rounded bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 flex items-center justify-center overflow-hidden">
+                  <div className="w-5 h-5 rounded bg-surface-card dark:bg-gray-700 border border-soft dark:border-gray-600 flex items-center justify-center overflow-hidden">
                     {INSURER_LOGOS[ins.id] ? (
                       <img src={INSURER_LOGOS[ins.id]} alt="" className="w-4 h-4 object-contain" />
                     ) : (
@@ -108,27 +108,27 @@ export default function TabComparador() {
       </div>
 
       {selectedInsurers.length < 2 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-          <Shield className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
-          <p className="text-gray-500 dark:text-gray-400 font-medium">
+        <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border-2 border-dashed border-neutral-200 dark:border-gray-700">
+          <Shield className="w-12 h-12 text-neutral-300 dark:text-gray-600 mb-3" />
+          <p className="text-neutral-500 dark:text-gray-400 font-medium">
             Selecciona al menos 2 aseguradoras para comparar
           </p>
         </div>
       ) : (
         <>
           {/* General comparison */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
+          <div className="rounded-xl border border-soft dark:border-gray-700 bg-surface-card dark:bg-gray-800 overflow-hidden shadow-card">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[160px] sticky left-0 bg-gray-50 dark:bg-gray-750 z-10">
+                  <tr className="bg-neutral-50 dark:bg-gray-750 border-b border-neutral-200 dark:border-gray-700">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 dark:text-gray-400 uppercase tracking-wider min-w-[160px] sticky left-0 bg-neutral-50 dark:bg-gray-750 z-10">
                       Caracteristica
                     </th>
                     {selectedInsurers.map(ins => (
                       <th key={ins.id} className="text-center px-4 py-3 min-w-[140px]">
                         <div className="flex flex-col items-center gap-1.5">
-                          <div className="w-10 h-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 flex items-center justify-center overflow-hidden">
+                          <div className="w-10 h-10 rounded-lg bg-surface-card dark:bg-gray-700 border border-soft dark:border-gray-600 flex items-center justify-center overflow-hidden">
                             {INSURER_LOGOS[ins.id] ? (
                               <img src={INSURER_LOGOS[ins.id]} alt={ins.name} className="w-7 h-7 object-contain" />
                             ) : (
@@ -137,7 +137,7 @@ export default function TabComparador() {
                               </div>
                             )}
                           </div>
-                          <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ins.shortName}</span>
+                          <span className="text-xs font-semibold text-neutral-800 dark:text-gray-200">{ins.shortName}</span>
                         </div>
                       </th>
                     ))}
@@ -167,9 +167,9 @@ export default function TabComparador() {
           </div>
 
           {/* Coverage comparison */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+          <div className="rounded-xl border border-soft dark:border-gray-700 bg-surface-card dark:bg-gray-800 overflow-hidden shadow-card">
+            <div className="px-4 py-3 border-b border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-750">
+              <h3 className="text-sm font-semibold text-neutral-800 dark:text-gray-200 flex items-center gap-2">
                 <Shield className="w-4 h-4 text-teal-500" />
                 Comparativa de Coberturas
               </h3>
@@ -177,13 +177,13 @@ export default function TabComparador() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-700">
-                    <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[200px] sticky left-0 bg-white dark:bg-gray-800 z-10">
+                  <tr className="border-b border-neutral-100 dark:border-gray-700">
+                    <th className="text-left px-4 py-2.5 text-xs font-medium text-neutral-500 dark:text-gray-400 min-w-[200px] sticky left-0 bg-white dark:bg-gray-800 z-10">
                       Cobertura
                     </th>
                     {selectedInsurers.map(ins => (
                       <th key={ins.id} className="text-center px-3 py-2.5 min-w-[100px]">
-                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{ins.shortName}</span>
+                        <span className="text-xs font-semibold text-neutral-700 dark:text-gray-300">{ins.shortName}</span>
                       </th>
                     ))}
                   </tr>
@@ -195,13 +195,13 @@ export default function TabComparador() {
                     return (
                       <Fragment key={cat}>
                         <tr className="bg-gray-50/50 dark:bg-gray-750/50">
-                          <td colSpan={1 + selectedInsurers.length} className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 sticky left-0 bg-gray-50/50 dark:bg-gray-750/50 z-10">
+                          <td colSpan={1 + selectedInsurers.length} className="px-4 py-2 text-xs font-semibold text-neutral-600 dark:text-gray-400 sticky left-0 bg-gray-50/50 dark:bg-gray-750/50 z-10">
                             {catLabel.label}
                           </td>
                         </tr>
                         {catCoverages.map(cov => (
-                          <tr key={cov.id} className="border-b border-gray-50 dark:border-gray-750 hover:bg-gray-50/30 dark:hover:bg-gray-750/30 transition-colors">
-                            <td className="px-4 py-2 text-xs text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800 z-10">
+                          <tr key={cov.id} className="border-b border-neutral-50 dark:border-gray-750 hover:bg-gray-50/30 dark:hover:bg-gray-750/30 transition-colors">
+                            <td className="px-4 py-2 text-xs text-neutral-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800 z-10">
                               {cov.name}
                             </td>
                             {selectedInsurers.map(ins => {
@@ -210,11 +210,11 @@ export default function TabComparador() {
                               return (
                                 <td key={ins.id} className="px-3 py-2 text-center">
                                   {status === 'no' ? (
-                                    <X className="w-4 h-4 text-gray-300 dark:text-gray-600 mx-auto" />
+                                    <X className="w-4 h-4 text-neutral-300 dark:text-gray-600 mx-auto" />
                                   ) : status === 'base' ? (
                                     <Check className="w-4 h-4 text-emerald-500 mx-auto" />
                                   ) : (
-                                    <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-medium ${getGmmStatusColor(status)}`}>
+                                    <span className={`inline-block text-[11px] px-1.5 py-0.5 rounded font-medium ${getGmmStatusColor(status)}`}>
                                       {getGmmStatusLabel(status)}
                                     </span>
                                   )}
@@ -243,13 +243,13 @@ export default function TabComparador() {
               <div className="grid gap-4 p-4" style={{ gridTemplateColumns: `repeat(${selectedInsurers.length}, 1fr)` }}>
                 {selectedInsurers.map(ins => (
                   <div key={ins.id} className="space-y-2">
-                    <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">{ins.shortName}</h4>
+                    <h4 className="text-xs font-semibold text-neutral-800 dark:text-gray-200">{ins.shortName}</h4>
                     {ins.fidelidad ? (
                       <>
                         <span className="text-xs font-medium text-amber-700 dark:text-amber-300 block">{ins.fidelidad.nombre}</span>
                         <ul className="space-y-1">
                           {ins.fidelidad.beneficios.map((b, i) => (
-                            <li key={i} className="flex items-start gap-1.5 text-[11px] text-gray-600 dark:text-gray-400">
+                            <li key={i} className="flex items-start gap-1.5 text-[11px] text-neutral-600 dark:text-gray-400">
                               <Check className="w-3 h-3 text-amber-500 flex-shrink-0 mt-0.5" />
                               <span>{b}</span>
                             </li>
@@ -257,7 +257,7 @@ export default function TabComparador() {
                         </ul>
                       </>
                     ) : (
-                      <span className="text-xs text-gray-400 dark:text-gray-500 italic">Sin programa de fidelidad</span>
+                      <span className="text-xs text-neutral-500 dark:text-gray-500 italic">Sin programa de fidelidad</span>
                     )}
                   </div>
                 ))}
@@ -273,15 +273,15 @@ export default function TabComparador() {
 function ComparisonRow({ label, values, highlight }: { label: string; values: string[]; highlight?: boolean }) {
   return (
     <tr className={`${highlight ? 'bg-teal-50/30 dark:bg-teal-900/5' : ''} hover:bg-gray-50/50 dark:hover:bg-gray-750/50 transition-colors`}>
-      <td className="px-4 py-2.5 text-xs font-medium text-gray-600 dark:text-gray-400 sticky left-0 bg-white dark:bg-gray-800 z-10">
+      <td className="px-4 py-2.5 text-xs font-medium text-neutral-600 dark:text-gray-400 sticky left-0 bg-white dark:bg-gray-800 z-10">
         {label}
       </td>
       {values.map((val, i) => (
-        <td key={i} className="px-4 py-2.5 text-center text-xs text-gray-800 dark:text-gray-200">
+        <td key={i} className="px-4 py-2.5 text-center text-xs text-neutral-800 dark:text-gray-200">
           {val === 'Si' ? (
             <Check className="w-4 h-4 text-emerald-500 mx-auto" />
           ) : val === 'No' ? (
-            <X className="w-4 h-4 text-gray-300 dark:text-gray-600 mx-auto" />
+            <X className="w-4 h-4 text-neutral-300 dark:text-gray-600 mx-auto" />
           ) : (
             <span className="font-medium">{val}</span>
           )}

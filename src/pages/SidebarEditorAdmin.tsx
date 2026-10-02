@@ -10,7 +10,7 @@ import { getEntryKey, WORKSPACES, type NavEntry, type ResolvedNavEntry, type Wor
 const BADGE_COLOR_OPTIONS: { key: string; label: string; cls: string }[] = [
   { key: 'amber', label: 'Ámbar', cls: 'bg-amber-500' },
   { key: 'green', label: 'Verde', cls: 'bg-green-500' },
-  { key: 'blue', label: 'Azul', cls: 'bg-blue-500' },
+  { key: 'blue', label: 'Azul', cls: 'bg-accent' },
   { key: 'red', label: 'Rojo', cls: 'bg-red-500' },
   { key: 'purple', label: 'Morado', cls: 'bg-purple-500' },
 ];
@@ -48,7 +48,7 @@ function BadgeTextInput({ value, onSave, disabled }: { value: string; onSave: (v
       placeholder="Sin badge"
       maxLength={10}
       disabled={disabled}
-      className="shrink-0 w-28 px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+      className="shrink-0 w-28 px-2.5 py-1.5 text-xs border border-neutral-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none"
     />
   );
 }
@@ -75,7 +75,7 @@ function ColorDots({ value, onChange, disabled }: { value: string; onChange: (c:
 function SavingSlot({ saving }: { saving: boolean }) {
   return (
     <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-      {saving && <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />}
+      {saving && <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />}
     </div>
   );
 }
@@ -177,7 +177,7 @@ function IconosEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
       </div>
     );
   }
@@ -185,7 +185,7 @@ function IconosEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m:
   return (
     <div>
       <h2 className="text-sm font-semibold text-neutral-700 dark:text-white/80 mb-2 px-1">Barra de íconos</h2>
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 divide-y divide-neutral-100 dark:divide-white/5 bg-white dark:bg-white/3">
+      <div className="rounded-2xl border border-soft dark:border-white/10 divide-y divide-neutral-100 dark:divide-white/5 bg-surface-card dark:bg-white/3">
         {resolved.map((row, idx) => {
           const Icon = entryIcon(row.entry);
           const entryKey = getEntryKey(row.entry);
@@ -401,7 +401,7 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
       </div>
     );
   }
@@ -419,9 +419,9 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
         </select>
       </div>
 
-      <p className="text-xs text-neutral-400 mb-3 px-1">Arrastra un item o separador para reordenarlo, o suéltalo sobre un grupo para moverlo ahí.</p>
+      <p className="text-xs text-neutral-500 mb-3 px-1">Arrastra un item o separador para reordenarlo, o suéltalo sobre un grupo para moverlo ahí.</p>
 
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/3 overflow-hidden">
+      <div className="rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/3 overflow-hidden">
         {grupos.map(({ grupo, items }) => (
           <div key={grupo?.id ?? '_sin_grupo'}>
             {grupo ? (
@@ -439,7 +439,7 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
                   {grupo.colapsado_default ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   {grupo.nombre}
                 </button>
-                <span className="text-[10px] text-neutral-400">({items.filter(i => i.kind === 'item').length})</span>
+                <span className="text-[11px] text-neutral-500">({items.filter(i => i.kind === 'item').length})</span>
                 <button
                   onClick={() => crearSeparador(grupo.id)}
                   className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-neutral-200 dark:border-white/15 text-neutral-500 dark:text-white/60 hover:border-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors"
@@ -461,7 +461,7 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
                 onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverKey('g-null'); }}
                 onDragLeave={() => setDragOverKey(prev => (prev === 'g-null' ? null : prev))}
                 onDrop={(e) => { e.preventDefault(); dropOnGrupo(null); }}
-                className={`flex items-center gap-2 px-4 py-1.5 text-[10px] text-neutral-400 ${dragOverKey === 'g-null' ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
+                className={`flex items-center gap-2 px-4 py-1.5 text-[11px] text-neutral-500 ${dragOverKey === 'g-null' ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
               >
                 <span className="flex-1">Sin grupo — suelta aquí para sacar un item de su grupo</span>
                 <button
@@ -496,7 +496,7 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
                       <GripVertical className="w-4 h-4" />
                     </div>
                     <div className="flex-1 border-t-2 border-dashed border-neutral-300 dark:border-white/20" />
-                    <span className="text-[10px] text-neutral-400 shrink-0">Separador</span>
+                    <span className="text-[11px] text-neutral-500 shrink-0">Separador</span>
                     <button
                       onClick={() => eliminarSeparador(entry.id)}
                       disabled={isSaving}
@@ -525,7 +525,7 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
                   <div className="cursor-grab text-neutral-300 hover:text-neutral-500 shrink-0">
                     <GripVertical className="w-4 h-4" />
                   </div>
-                  <Icon className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <Icon className="w-4 h-4 text-neutral-500 shrink-0" />
                   <p className="text-sm text-neutral-700 dark:text-white/80 flex-1 min-w-0 truncate">{item.label}</p>
                   <BadgeTextInput value={badge?.texto ?? ''} onSave={(v) => persistItem(item.path, { badge_texto: v || null })} disabled={isSaving} />
                   <ColorDots value={badge?.color ?? 'amber'} onChange={(c) => persistItem(item.path, { badge_color: c })} disabled={isSaving} />
@@ -543,12 +543,12 @@ function ItemsEditor({ usuarioId, onToast }: { usuarioId?: string; onToast: (m: 
           value={nuevoGrupoNombre}
           onChange={(e) => setNuevoGrupoNombre(e.target.value)}
           placeholder="Nombre del grupo nuevo…"
-          className="flex-1 px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="flex-1 px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 dark:bg-transparent dark:text-white rounded-xl focus:ring-2 focus:ring-accent/40 focus:outline-none"
         />
         <button
           onClick={crearGrupo}
           disabled={!nuevoGrupoNombre.trim()}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
         >
           <Plus className="w-4 h-4" />
           Nuevo grupo

@@ -239,8 +239,8 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-white/8">
           <div>
@@ -259,11 +259,11 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
                 </span>
               )}
               {diseno.publicidad_plantillas?.ramo && (
-                <span className="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded-md">
+                <span className="text-xs px-2 py-0.5 bg-accent/10 text-accent-ink rounded-md">
                   {diseno.publicidad_plantillas.ramo}
                 </span>
               )}
-              <span className="text-xs text-neutral-400 dark:text-white/30">
+              <span className="text-xs text-neutral-500 dark:text-white/45">
                 {new Date(diseno.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
             </div>
@@ -295,7 +295,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
             <div className="p-5 flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-accent" />
+                  <Sparkles className="w-4 h-4 text-accent-ink" />
                   Texto generado por Chava AI
                 </h3>
                 {diseno.ai_copy_editado_manual && (
@@ -337,7 +337,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
                       </pre>
                       <button
                         onClick={handleCopyToClipboard}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-lg shadow-sm hover:bg-neutral-50 dark:hover:bg-white/10"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-white/10 rounded-lg shadow-card hover:bg-neutral-50 dark:hover:bg-white/10"
                         title="Copiar texto"
                       >
                         {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-neutral-500 dark:text-white/50" />}
@@ -346,7 +346,7 @@ export function DesignDetailModal({ isOpen, onClose, diseno, onUpdate }: DesignD
                   )}
 
                   {diseno.ai_copy_version > 0 && !editing && (
-                    <p className="text-xs text-neutral-400 dark:text-white/25">
+                    <p className="text-xs text-neutral-500 dark:text-white/25">
                       v{diseno.ai_copy_version} — generado {diseno.ai_copy_generated_at
                         ? new Date(diseno.ai_copy_generated_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
                         : ''}

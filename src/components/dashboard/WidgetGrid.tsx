@@ -107,9 +107,9 @@ function ContextMenu({
     <div
       ref={ref}
       style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 9999 }}
-      className="w-52 bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-white/10 py-1.5 overflow-hidden"
+      className="w-52 bg-surface-card dark:bg-neutral-900 rounded-xl shadow-2xl border border-soft dark:border-white/10 py-1.5 overflow-hidden"
     >
-      <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-white/30">
+      <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-white/45">
         {def?.label || 'Widget'}
       </p>
       <div className="h-px bg-neutral-100 dark:bg-white/8 mx-2 mb-1" />
@@ -119,7 +119,7 @@ function ContextMenu({
           onClick={() => { onCycleWidth(state.widgetId); onClose(); }}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 dark:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
         >
-          <Maximize2 className="w-3.5 h-3.5 text-neutral-400 dark:text-white/30" />
+          <Maximize2 className="w-3.5 h-3.5 text-neutral-500 dark:text-white/45" />
           Tamaño: <span className="font-medium text-neutral-900 dark:text-white">{widthLabel}</span>
         </button>
       )}
@@ -128,7 +128,7 @@ function ContextMenu({
         onClick={() => { onDuplicate(state.widgetId); onClose(); }}
         className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 dark:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
       >
-        <Copy className="w-3.5 h-3.5 text-neutral-400 dark:text-white/30" />
+        <Copy className="w-3.5 h-3.5 text-neutral-500 dark:text-white/45" />
         Configurar
       </button>
 
@@ -307,7 +307,7 @@ export function WidgetGrid({ usuario }: Props) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {editMode && hiddenCount > 0 && (
-            <span className="text-xs text-neutral-400 dark:text-white/30">
+            <span className="text-xs text-neutral-500 dark:text-white/45">
               {hiddenCount} widget{hiddenCount > 1 ? 's' : ''} oculto{hiddenCount > 1 ? 's' : ''}
             </span>
           )}
@@ -317,7 +317,7 @@ export function WidgetGrid({ usuario }: Props) {
             <>
               <button
                 onClick={() => setShowPicker(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors border border-blue-200 dark:border-blue-500/20"
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-accent-ink dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors border border-blue-200 dark:border-blue-500/20"
               >
                 <Plus className="w-3.5 h-3.5" /> Agregar
               </button>
@@ -347,7 +347,7 @@ export function WidgetGrid({ usuario }: Props) {
 
       {/* Edit mode hint */}
       {editMode && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-500/8 border border-blue-100 dark:border-blue-500/15 text-xs text-blue-600 dark:text-blue-400">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-500/8 border border-blue-100 dark:border-blue-500/15 text-xs text-accent-ink dark:text-blue-400">
           <GripVertical className="w-3.5 h-3.5 flex-shrink-0" />
           Arrastra los widgets para reordenarlos. Usa el menú <MoreHorizontal className="w-3 h-3 mx-0.5 inline" /> para más opciones.
         </div>
@@ -381,7 +381,7 @@ export function WidgetGrid({ usuario }: Props) {
               {/* Drag handle — edit mode only */}
               {editMode && (
                 <div className="absolute top-2 left-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white dark:bg-neutral-800 shadow-sm border border-neutral-200 dark:border-white/10 text-neutral-400 dark:text-white/30">
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-surface-card dark:bg-neutral-800 shadow-card border border-soft dark:border-white/10 text-neutral-500 dark:text-white/45">
                     <GripVertical className="w-3 h-3" />
                   </div>
                 </div>
@@ -394,7 +394,7 @@ export function WidgetGrid({ usuario }: Props) {
                     e.stopPropagation();
                     setContextMenu({ widgetId: config.widget_id, x: e.clientX, y: e.clientY });
                   }}
-                  className="flex items-center justify-center w-7 h-7 rounded-lg bg-white dark:bg-neutral-800 shadow-sm border border-neutral-200 dark:border-white/10 text-neutral-400 dark:text-white/40 hover:text-neutral-600 dark:hover:text-white/70 transition-colors"
+                  className="flex items-center justify-center w-7 h-7 rounded-lg bg-surface-card dark:bg-neutral-800 shadow-card border border-soft dark:border-white/10 text-neutral-500 dark:text-white/55 hover:text-neutral-600 dark:hover:text-white/70 transition-colors"
                   title="Opciones del widget"
                 >
                   <MoreHorizontal className="w-3.5 h-3.5" />
@@ -415,7 +415,7 @@ export function WidgetGrid({ usuario }: Props) {
       {/* Hidden widgets panel in edit mode */}
       {editMode && hiddenCount > 0 && (
         <div className="rounded-xl border border-dashed border-neutral-200 dark:border-white/10 p-4">
-          <p className="text-xs font-medium text-neutral-400 dark:text-white/30 mb-3">Widgets ocultos</p>
+          <p className="text-xs font-medium text-neutral-500 dark:text-white/45 mb-3">Widgets ocultos</p>
           <div className="flex flex-wrap gap-2">
             {configs
               .filter(c => !c.visible && c.widget_id !== 'chava_insights' && c.widget_id !== 'accesos_rapidos')
@@ -425,7 +425,7 @@ export function WidgetGrid({ usuario }: Props) {
                   <button
                     key={c.widget_id}
                     onClick={() => toggleVisible(c.widget_id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/4 text-xs font-medium text-neutral-600 dark:text-white/50 hover:border-neutral-300 dark:hover:border-white/20 hover:text-neutral-800 dark:hover:text-white/80 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/4 text-xs font-medium text-neutral-600 dark:text-white/50 hover:border-neutral-300 dark:hover:border-white/20 hover:text-neutral-800 dark:hover:text-white/80 transition-colors"
                   >
                     <Eye className="w-3 h-3" />
                     {def?.label || c.widget_id}
@@ -495,13 +495,13 @@ function WidgetPicker({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden border border-neutral-200 dark:border-white/10">
+      <div className="relative bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden border border-soft dark:border-white/10 animate-scale-in">
         <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-white/8">
           <div>
             <h3 className="font-semibold text-neutral-900 dark:text-white text-sm">Widgets disponibles</h3>
-            <p className="text-xs text-neutral-400 mt-0.5">Agrega o quita secciones de tu dashboard</p>
+            <p className="text-xs text-neutral-500 mt-0.5">Agrega o quita secciones de tu dashboard</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500 dark:text-white/40">
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500 dark:text-white/55">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -512,7 +512,7 @@ function WidgetPicker({
             if (items.length === 0) return null;
             return (
               <div key={cat}>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-white/30 mb-2 px-1">{catLabels[cat]}</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-white/45 mb-2 px-1">{catLabels[cat]}</p>
                 <div className="space-y-1.5">
                   {items.map(def => {
                     const status = getStatus(def);
@@ -530,7 +530,7 @@ function WidgetPicker({
                       >
                         <div>
                           <p className={cn('text-xs font-semibold', isActive ? 'text-blue-700 dark:text-blue-300' : 'text-neutral-700 dark:text-white/80')}>{def.label}</p>
-                          <p className="text-[11px] text-neutral-400 dark:text-white/35 mt-0.5">{def.description}</p>
+                          <p className="text-[11px] text-neutral-500 dark:text-white/50 mt-0.5">{def.description}</p>
                         </div>
                         {isActive
                           ? <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />

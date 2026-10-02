@@ -84,15 +84,15 @@ export default function ReasignarUsuarioModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4 z-50">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] sm:rounded-2xl shadow-e4 w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-scale-in">
+        <div className="sticky top-0 bg-white border-b border-neutral-200 px-4 sm:px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-lg sm:text-xl font-bold text-neutral-900">
             Reasignar documentos
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="text-neutral-500 hover:text-gray-600 transition p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <X className="h-6 w-6" />
           </button>
@@ -101,13 +101,13 @@ export default function ReasignarUsuarioModal({
         <div className="p-4 sm:p-6">
           <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
             <div className="flex items-start gap-3">
-              <User className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+              <User className="h-5 w-5 text-accent-ink flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-primary-900">Usuario actual</p>
                 <p className="text-sm text-primary-800 mt-1">{group.user_name}</p>
                 <p className="text-xs text-primary-700 mt-0.5">{group.user_email}</p>
                 <div className="flex items-center gap-2 mt-2">
-                  <FileText className="h-4 w-4 text-accent flex-shrink-0" />
+                  <FileText className="h-4 w-4 text-accent-ink flex-shrink-0" />
                   <span className="text-sm font-medium text-primary-900">
                     {group.document_count} documentos asignados
                   </span>
@@ -118,14 +118,14 @@ export default function ReasignarUsuarioModal({
 
           {group.vendor_names_detected && group.vendor_names_detected.length > 0 && (
             <div className="mb-6">
-              <p className="text-sm font-medium text-gray-700 mb-2">
+              <p className="text-sm font-medium text-neutral-700 mb-2">
                 Nombres de vendedores detectados:
               </p>
               <div className="flex flex-wrap gap-2">
                 {group.vendor_names_detected.map((name, idx) => (
                   <span
                     key={idx}
-                    className="px-3 py-1 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-800"
+                    className="px-3 py-1 bg-neutral-100 border border-neutral-300 rounded-lg text-sm text-neutral-800"
                   >
                     {name}
                   </span>
@@ -136,7 +136,7 @@ export default function ReasignarUsuarioModal({
 
           {group.vendor_emails_detected && group.vendor_emails_detected.length > 0 && (
             <div className="mb-6">
-              <p className="text-sm font-medium text-gray-700 mb-2">
+              <p className="text-sm font-medium text-neutral-700 mb-2">
                 Emails de vendedores detectados:
               </p>
               <div className="flex flex-wrap gap-2">
@@ -154,34 +154,34 @@ export default function ReasignarUsuarioModal({
           )}
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Buscar nuevo usuario
             </label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar por nombre o email..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-accent"
+                className="w-full pl-10 pr-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-accent/40 focus:border-accent"
               />
             </div>
           </div>
 
           <div className="mb-6">
-            <p className="text-sm font-medium text-gray-700 mb-3">
+            <p className="text-sm font-medium text-neutral-700 mb-3">
               Selecciona el nuevo usuario
             </p>
-            <div className="border border-gray-200 rounded-xl max-h-64 overflow-y-auto">
+            <div className="border border-neutral-200 rounded-xl max-h-64 overflow-y-auto">
               {searching ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                 </div>
               ) : users.length === 0 ? (
                 <div className="text-center py-8 px-4">
-                  <User className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500">
+                  <User className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                  <p className="text-sm text-neutral-500">
                     {searchQuery ? 'No se encontraron usuarios' : 'Escribe para buscar usuarios'}
                   </p>
                 </div>
@@ -195,12 +195,12 @@ export default function ReasignarUsuarioModal({
                         selectedUser?.id === user.id ? 'bg-primary-50 border-l-4 border-accent' : ''
                       }`}
                     >
-                      <User className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                      <User className="h-5 w-5 text-neutral-500 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-neutral-900 truncate">
                           {user.nombre_completo}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        <p className="text-xs text-neutral-500 truncate">{user.email}</p>
                       </div>
                       {selectedUser?.id === user.id && (
                         <div className="flex-shrink-0 h-5 w-5 bg-accent rounded-full flex items-center justify-center">
@@ -222,13 +222,13 @@ export default function ReasignarUsuarioModal({
                 type="checkbox"
                 checked={saveMapping}
                 onChange={(e) => setSaveMapping(e.target.checked)}
-                className="mt-1 h-4 w-4 text-accent rounded border-gray-300 focus:ring-blue-500"
+                className="mt-1 h-4 w-4 text-accent-ink rounded border-neutral-300 focus:ring-accent/40"
               />
               <div className="flex-1">
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-neutral-900">
                   Guardar mapeo para futuras importaciones
                 </span>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-neutral-600 mt-1">
                   Los nombres y emails de estos vendedores se asociarán automáticamente con el nuevo usuario en futuras importaciones
                 </p>
               </div>
@@ -251,14 +251,14 @@ export default function ReasignarUsuarioModal({
             <button
               onClick={onClose}
               disabled={loading}
-              className="w-full sm:w-auto px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition disabled:opacity-50 font-semibold min-h-[44px]"
+              className="w-full sm:w-auto px-4 py-3 bg-neutral-200 text-neutral-700 rounded-xl hover:bg-gray-300 transition disabled:opacity-50 font-semibold min-h-[44px]"
             >
               Cancelar
             </button>
             <button
               onClick={handleSubmit}
               disabled={!selectedUser || loading}
-              className="w-full sm:w-auto px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold min-h-[44px]"
+              className="w-full sm:w-auto px-6 py-3 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold min-h-[44px]"
             >
               {loading ? (
                 <>

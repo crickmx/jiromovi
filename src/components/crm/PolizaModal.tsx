@@ -93,13 +93,13 @@ export default function PolizaModal({ contactoId, poliza, onClose, onSave }: Pro
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-neutral-900">
             {poliza ? 'Editar Póliza' : 'Nueva Póliza'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-neutral-500 hover:text-gray-600">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -107,24 +107,24 @@ export default function PolizaModal({ contactoId, poliza, onClose, onSave }: Pro
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Número de Póliza *
               </label>
               <input
                 type="text"
                 value={formData.numero_poliza}
                 onChange={(e) => setFormData({ ...formData, numero_poliza: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Ramo *</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Tipo de Ramo *</label>
               <select
                 value={formData.tipo_ramo}
                 onChange={(e) => setFormData({ ...formData, tipo_ramo: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                 required
               >
                 <option value="">Seleccionar...</option>
@@ -138,75 +138,75 @@ export default function PolizaModal({ contactoId, poliza, onClose, onSave }: Pro
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Compañía Aseguradora *
             </label>
             <input
               type="text"
               value={formData.compania_aseguradora}
               onChange={(e) => setFormData({ ...formData, compania_aseguradora: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
               required
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Fecha de Emisión *
               </label>
               <input
                 type="date"
                 value={formData.fecha_emision}
                 onChange={(e) => setFormData({ ...formData, fecha_emision: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Fecha de Vencimiento *
               </label>
               <input
                 type="date"
                 value={formData.fecha_vencimiento}
                 onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Prima Total *</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Prima Total *</label>
             <input
               type="number"
               step="0.01"
               value={formData.prima_total}
               onChange={(e) => setFormData({ ...formData, prima_total: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
               placeholder="0.00"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Observaciones</label>
             <textarea
               value={formData.observaciones}
               onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40"
               rows={3}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Archivo PDF</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Archivo PDF</label>
             <div className="mt-1 flex items-center gap-3">
               <label className="flex-1 cursor-pointer">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-accent transition">
-                  <div className="flex items-center justify-center gap-2 text-gray-600">
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-4 hover:border-accent transition">
+                  <div className="flex items-center justify-center gap-2 text-neutral-600">
                     <Upload className="h-5 w-5" />
                     <span className="text-sm">
                       {archivo ? archivo.name : 'Seleccionar archivo PDF (opcional)'}
@@ -222,16 +222,16 @@ export default function PolizaModal({ contactoId, poliza, onClose, onSave }: Pro
               </label>
             </div>
             {poliza?.archivo_url && !archivo && (
-              <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+              <div className="mt-2 p-3 bg-neutral-50 rounded-lg">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-700 truncate flex-1">
+                  <p className="text-sm text-neutral-700 truncate flex-1">
                     {poliza.archivo_url.split('/').pop()}
                   </p>
                   <div className="flex items-center gap-2 ml-3">
                     <button
                       type="button"
                       onClick={() => abrirArchivoCRM(poliza.archivo_url!)}
-                      className="text-accent hover:text-primary-800 p-1.5 hover:bg-primary-50 rounded transition"
+                      className="text-accent-ink hover:text-primary-800 p-1.5 hover:bg-primary-50 rounded transition"
                       title="Abrir en nueva pestaña"
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -254,7 +254,7 @@ export default function PolizaModal({ contactoId, poliza, onClose, onSave }: Pro
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-gray-50"
               disabled={loading}
             >
               Cancelar

@@ -55,7 +55,7 @@ export default function CertificadoCedulaA() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando certificado...</p>
@@ -66,12 +66,12 @@ export default function CertificadoCedulaA() {
 
   if (!certificado) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-neutral-600 mb-4">No se encontró el certificado</p>
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
-            className="text-accent hover:text-primary-700"
+            className="text-accent-ink hover:text-primary-700"
           >
             Volver al curso
           </button>
@@ -96,7 +96,7 @@ export default function CertificadoCedulaA() {
 
           <div className="border-t border-b border-neutral-200 py-8 my-8">
             <p className="text-center text-lg text-neutral-600 mb-4">Se certifica que</p>
-            <h2 className="text-center text-3xl md:text-4xl font-bold text-accent mb-4">
+            <h2 className="text-center text-3xl md:text-4xl font-bold text-accent-ink mb-4">
               {usuario?.nombre_completo || 'Usuario'}
             </h2>
             <p className="text-center text-lg text-neutral-600 mb-6">
@@ -119,7 +119,7 @@ export default function CertificadoCedulaA() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="flex items-center gap-3 bg-neutral-50 rounded-ios-lg p-4">
-              <Calendar className="w-5 h-5 text-accent flex-shrink-0" />
+              <Calendar className="w-5 h-5 text-accent-ink flex-shrink-0" />
               <div>
                 <div className="text-sm text-neutral-600">Fecha de Emisión</div>
                 <div className="font-semibold text-neutral-900">
@@ -129,7 +129,7 @@ export default function CertificadoCedulaA() {
             </div>
 
             <div className="flex items-center gap-3 bg-neutral-50 rounded-ios-lg p-4">
-              <Hash className="w-5 h-5 text-accent flex-shrink-0" />
+              <Hash className="w-5 h-5 text-accent-ink flex-shrink-0" />
               <div>
                 <div className="text-sm text-neutral-600">Código de Verificación</div>
                 <div className="font-mono font-semibold text-neutral-900">
@@ -153,7 +153,7 @@ export default function CertificadoCedulaA() {
         <div className="flex flex-wrap gap-4 justify-center">
           <button
             onClick={compartir}
-            className="flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-ios-lg hover:bg-accent-hover active:scale-[0.98] transition-all font-medium"
+            className="flex items-center gap-2 px-6 py-3 bg-accent text-accent-foreground rounded-ios-lg hover:bg-accent-hover active:scale-[0.98] transition-all font-medium"
           >
             <Share2 className="w-5 h-5" />
             <span>Compartir</span>

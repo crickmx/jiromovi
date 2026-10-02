@@ -237,8 +237,8 @@ export default function ComisionesPrepararLote() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
+      <div className="min-h-screen dark:bg-neutral-900 flex items-center justify-center p-6">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Acceso Denegado
@@ -259,7 +259,7 @@ export default function ComisionesPrepararLote() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center">
+      <div className="min-h-screen dark:bg-neutral-900 flex items-center justify-center">
         <LoadingState text="Cargando sesión..." />
       </div>
     );
@@ -267,8 +267,8 @@ export default function ComisionesPrepararLote() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
+      <div className="min-h-screen dark:bg-neutral-900 flex items-center justify-center p-6">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Sesión no encontrada
@@ -297,7 +297,7 @@ export default function ComisionesPrepararLote() {
         backLabel="Volver"
       />
 
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-6">
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start space-x-3">
@@ -414,7 +414,7 @@ export default function ComisionesPrepararLote() {
               {pendingGroups.map(group => (
                 <div
                   key={group.vendor_key}
-                  className="bg-white dark:bg-neutral-800/50 border border-orange-200 dark:border-orange-200/30 rounded-xl p-4"
+                  className="bg-surface-card dark:bg-neutral-800/50 border border-orange-200 dark:border-orange-200/30 rounded-2xl p-4"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">

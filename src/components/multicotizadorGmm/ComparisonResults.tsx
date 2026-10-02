@@ -56,7 +56,7 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
                   }`}
                 >
                   {isCheapest && (
-                    <div className="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full bg-teal-500 text-white text-[10px] font-bold uppercase tracking-wide">
+                    <div className="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full bg-teal-500 text-white text-[11px] font-bold uppercase tracking-wide">
                       Mejor Precio
                     </div>
                   )}
@@ -103,7 +103,7 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
 
       {/* Detailed comparison table */}
       {validOptions.length > 0 && (
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] overflow-hidden">
           <div className="px-5 py-4 border-b border-neutral-100 dark:border-white/[0.06]">
             <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">Comparativa por Forma de Pago</h4>
           </div>
@@ -118,7 +118,7 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
                         <img src={PRODUCT_LOGOS[opt.product_id]} alt="" className="w-4 h-4 object-contain" />
                         {opt.option_label}
                       </div>
-                      <div className="font-normal text-[10px] opacity-70">{PRODUCT_LABELS[opt.product_id]}</div>
+                      <div className="font-normal text-[11px] opacity-70">{PRODUCT_LABELS[opt.product_id]}</div>
                     </th>
                   ))}
                 </tr>
@@ -131,7 +131,7 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
                     <tr key={fp} className={`border-b border-neutral-50 dark:border-white/[0.03] ${fp === selectedFormaPago ? 'bg-teal-50/30 dark:bg-teal-900/5' : ''}`}>
                       <td className="px-5 py-3 text-neutral-700 dark:text-neutral-300 font-medium">
                         {fp}
-                        <span className="text-neutral-400 dark:text-neutral-500 text-xs ml-1.5">
+                        <span className="text-neutral-500 dark:text-neutral-500 text-xs ml-1.5">
                           ({PAYMENT_FACTORS[fp].num_recibos === 1 ? '1 pago' : `${PAYMENT_FACTORS[fp].num_recibos} pagos`})
                         </span>
                       </td>
@@ -158,7 +158,7 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
 
       {/* Per-person breakdown */}
       {validOptions.length > 0 && (
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] overflow-hidden">
           <div className="px-5 py-4 border-b border-neutral-100 dark:border-white/[0.06]">
             <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">Desglose por Asegurado</h4>
           </div>
@@ -219,7 +219,7 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
 
       {/* Payment details for selected forma */}
       {validOptions.length > 0 && (
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-white/[0.06] overflow-hidden">
+        <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] overflow-hidden">
           <div className="px-5 py-4 border-b border-neutral-100 dark:border-white/[0.06]">
             <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">
               Detalle de Pago - {selectedFormaPago}
@@ -233,7 +233,7 @@ export function ComparisonResults({ results, selectedFormaPago }: ComparisonResu
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PRODUCT_COLORS[opt.product_id] }} />
                     <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{opt.option_label}</span>
-                    <span className="text-[10px] text-neutral-400">({PRODUCT_LABELS[opt.product_id]})</span>
+                    <span className="text-[11px] text-neutral-500">({PRODUCT_LABELS[opt.product_id]})</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-neutral-500 dark:text-neutral-400">Primer pago</span>

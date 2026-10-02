@@ -167,7 +167,7 @@ export function ClaraReviewTab({
           const file = e.dataTransfer.files[0];
           if (file) processFile(file);
         }}
-        className="bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all cursor-pointer p-10 text-center"
+        className="bg-surface-card dark:bg-gray-800 rounded-xl border-2 border-dashed border-neutral-300 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all cursor-pointer p-10 text-center"
       >
         <input
           ref={fileInputRef}
@@ -176,9 +176,9 @@ export function ClaraReviewTab({
           className="hidden"
           onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
         />
-        <Upload className="w-10 h-10 mx-auto text-gray-400 mb-3" />
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Sube el CSV exportado de Clara</p>
-        <p className="text-xs text-gray-500 mt-1">Arrastra el archivo o haz clic para explorar</p>
+        <Upload className="w-10 h-10 mx-auto text-neutral-500 mb-3" />
+        <p className="text-sm font-medium text-neutral-700 dark:text-gray-300">Sube el CSV exportado de Clara</p>
+        <p className="text-xs text-neutral-500 mt-1">Arrastra el archivo o haz clic para explorar</p>
         {fileName && (
           <div className="mt-3 inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-medium px-3 py-1.5 rounded-full">
             <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -192,7 +192,7 @@ export function ClaraReviewTab({
           {/* Period banner */}
           {periodInfo && (
             <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-              <Calendar className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <Calendar className="w-5 h-5 text-accent-ink flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">Periodo detectado: {periodInfo.label}</p>
                 <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
@@ -204,7 +204,7 @@ export function ClaraReviewTab({
 
           {/* Duplicate warning */}
           {checkingDups ? (
-            <div className="text-xs text-gray-500 flex items-center gap-2">
+            <div className="text-xs text-neutral-500 flex items-center gap-2">
               <Info className="w-4 h-4 animate-pulse" />
               Verificando duplicados en la base de datos...
             </div>
@@ -229,45 +229,45 @@ export function ClaraReviewTab({
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Total Cargadas</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{transactions.length}</p>
+            <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-3 text-center">
+              <p className="text-xs text-neutral-500 dark:text-gray-400">Total Cargadas</p>
+              <p className="text-xl font-bold text-neutral-900 dark:text-white">{transactions.length}</p>
               {duplicateCount > 0 && (
-                <p className="text-[10px] text-gray-400">{newCount} nuevas / {duplicateCount} dup.</p>
+                <p className="text-[11px] text-neutral-500">{newCount} nuevas / {duplicateCount} dup.</p>
               )}
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 p-3 text-center">
+            <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-emerald-200 dark:border-emerald-800 p-3 text-center">
               <p className="text-xs text-emerald-600">Exactas</p>
               <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{exactCount}</p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-3 text-center">
-              <p className="text-xs text-blue-600">Aproximadas</p>
+            <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-blue-200 dark:border-blue-800 p-3 text-center">
+              <p className="text-xs text-accent-ink">Aproximadas</p>
               <p className="text-xl font-bold text-blue-700 dark:text-blue-400">{fuzzyCount}</p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-amber-200 dark:border-amber-800 p-3 text-center">
+            <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-amber-200 dark:border-amber-800 p-3 text-center">
               <p className="text-xs text-amber-600">Pendientes</p>
               <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{pendingCount}</p>
             </div>
           </div>
 
           {/* Editor Table */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Transacciones para Revision</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <div className="bg-surface-card dark:bg-gray-800 rounded-xl border border-soft dark:border-gray-700 overflow-hidden shadow-card">
+            <div className="px-5 py-4 border-b border-neutral-100 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Transacciones para Revision</h3>
+              <p className="text-xs text-neutral-500 dark:text-gray-400 mt-0.5">
                 Asigna Centro de Costo, Concepto y Detalles a cada transaccion.
               </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-700/50">
-                    <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Fecha / Proveedor</th>
-                    <th className="px-3 py-2.5 text-right font-semibold text-gray-600 dark:text-gray-300">Monto MXN</th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Coincidencia</th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Centro de Costo</th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Concepto</th>
-                    <th className="px-3 py-2.5 text-left font-semibold text-gray-600 dark:text-gray-300">Detalles</th>
+                  <tr className="bg-neutral-50 dark:bg-gray-700/50">
+                    <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">Fecha / Proveedor</th>
+                    <th className="px-3 py-2.5 text-right font-semibold text-neutral-600 dark:text-gray-300">Monto MXN</th>
+                    <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">Coincidencia</th>
+                    <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">Centro de Costo</th>
+                    <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">Concepto</th>
+                    <th className="px-3 py-2.5 text-left font-semibold text-neutral-600 dark:text-gray-300">Detalles</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -280,15 +280,15 @@ export function ClaraReviewTab({
                     return (
                       <tr key={t.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
                         <td className="px-3 py-2">
-                          <div className="text-[10px] text-gray-400">{t.date.substring(0, 10)}</div>
-                          <div className="font-medium text-gray-900 dark:text-white truncate max-w-[180px]">{t.original_vendor}</div>
-                          <div className="text-[10px] text-gray-400 truncate">Norm: {t.normalized_vendor}</div>
+                          <div className="text-[11px] text-neutral-500">{t.date.substring(0, 10)}</div>
+                          <div className="font-medium text-neutral-900 dark:text-white truncate max-w-[180px]">{t.original_vendor}</div>
+                          <div className="text-[11px] text-neutral-500 truncate">Norm: {t.normalized_vendor}</div>
                         </td>
-                        <td className="px-3 py-2 text-right font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                        <td className="px-3 py-2 text-right font-semibold text-neutral-900 dark:text-white whitespace-nowrap">
                           $ {t.amount_mxn.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="px-3 py-2">
-                          <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full border ${badgeCls}`}>
+                          <span className={`inline-block text-[11px] font-medium px-2 py-0.5 rounded-full border ${badgeCls}`}>
                             {t.match_type}
                           </span>
                         </td>
@@ -296,7 +296,7 @@ export function ClaraReviewTab({
                           <select
                             value={t.cost_center}
                             onChange={(e) => onUpdateRow(t.id, 'cost_center', e.target.value)}
-                            className="text-xs border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 w-full max-w-[160px] focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700 dark:text-white"
+                            className="text-xs border border-neutral-300 dark:border-gray-600 rounded-lg px-2 py-1 w-full max-w-[160px] focus:outline-none focus:ring-1 focus:ring-accent/40 bg-neutral-50 dark:bg-gray-700 dark:text-white"
                           >
                             {costCenters.map((cc) => (
                               <option key={cc} value={cc}>{cc}</option>
@@ -307,7 +307,7 @@ export function ClaraReviewTab({
                           <select
                             value={t.simple_concept}
                             onChange={(e) => onUpdateRow(t.id, 'simple_concept', e.target.value)}
-                            className="text-xs border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 w-full max-w-[160px] focus:outline-none focus:ring-1 focus:ring-teal-500 bg-gray-50 dark:bg-gray-700 dark:text-white"
+                            className="text-xs border border-neutral-300 dark:border-gray-600 rounded-lg px-2 py-1 w-full max-w-[160px] focus:outline-none focus:ring-1 focus:ring-teal-500 bg-neutral-50 dark:bg-gray-700 dark:text-white"
                           >
                             {simpleConcepts.map((c) => (
                               <option key={c} value={c}>{c}</option>
@@ -320,7 +320,7 @@ export function ClaraReviewTab({
                             value={t.description}
                             onChange={(e) => onUpdateRow(t.id, 'description', e.target.value)}
                             placeholder="Detalles..."
-                            className="text-xs border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent hover:bg-gray-50 focus:bg-white dark:focus:bg-gray-700 rounded-sm px-1 py-1 w-full min-w-[140px] transition dark:text-white"
+                            className="text-xs border-b border-transparent hover:border-gray-300 focus:border-accent focus:outline-none bg-transparent hover:bg-gray-50 focus:bg-white dark:focus:bg-gray-700 rounded-sm px-1 py-1 w-full min-w-[140px] transition dark:text-white"
                           />
                         </td>
                       </tr>
@@ -334,7 +334,7 @@ export function ClaraReviewTab({
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-3">
             {duplicateCount > 0 && newCount === 0 ? (
-              <p className="text-xs text-gray-500 italic">
+              <p className="text-xs text-neutral-500 italic">
                 Todas las transacciones ya existen. No hay nada nuevo que guardar.
               </p>
             ) : (
@@ -349,13 +349,13 @@ export function ClaraReviewTab({
                 </button>
                 <button
                   onClick={handleExportExcel}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-700 dark:text-gray-300 border border-neutral-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
                   Exportar Excel
                 </button>
                 {newCount > 0 && (
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-neutral-500">
                     {newCount} transacciones nuevas seran guardadas.
                     {duplicateCount > 0 && ` ${duplicateCount} duplicadas seran omitidas.`}
                   </span>

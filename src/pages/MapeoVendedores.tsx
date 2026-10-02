@@ -164,16 +164,16 @@ export default function MapeoVendedores() {
           />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
+            <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-neutral-600 dark:text-white/60">Total Mapeos</p>
                   <p className="text-2xl font-bold text-neutral-900 dark:text-white">{mapeos.length}</p>
                 </div>
-                <Link2 className="h-8 w-8 text-accent" />
+                <Link2 className="h-8 w-8 text-accent-ink" />
               </div>
             </div>
-            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
+            <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-neutral-600 dark:text-white/60">Por Email</p>
@@ -181,10 +181,10 @@ export default function MapeoVendedores() {
                     {mapeos.filter((m) => m.source_type === 'email').length}
                   </p>
                 </div>
-                <Mail className="h-8 w-8 text-accent" />
+                <Mail className="h-8 w-8 text-accent-ink" />
               </div>
             </div>
-            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
+            <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-neutral-600 dark:text-white/60">Por Nombre</p>
@@ -199,7 +199,7 @@ export default function MapeoVendedores() {
 
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400 dark:text-white/40" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500 dark:text-white/55" />
               <input
                 type="text"
                 value={busqueda}
@@ -223,8 +223,8 @@ export default function MapeoVendedores() {
         {loading ? (
           <LoadingState text="Cargando mapeos..." />
         ) : mapeosFiltrados.length === 0 ? (
-          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center">
-            <Link2 className="h-12 w-12 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+          <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center">
+            <Link2 className="h-12 w-12 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">No hay mapeos</h3>
             <p className="text-neutral-600 dark:text-white/60 mb-4">
               {busqueda
@@ -233,7 +233,7 @@ export default function MapeoVendedores() {
             </p>
           </div>
         ) : (
-          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
+          <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
             <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
               <thead className="bg-neutral-50 dark:bg-white/5">
                 <tr>
@@ -454,7 +454,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
           </div>
         ) : (
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-xs">
+            <div className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-semibold text-xs">
               {mapeo.usuarios?.nombre_completo.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -497,7 +497,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
                     ? 'bg-green-600 text-white scale-105'
                     : tieneCambios
                     ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg hover:shadow-xl scale-105 animate-pulse'
-                    : 'bg-neutral-200 dark:bg-white/10 text-neutral-500 dark:text-white/40 cursor-not-allowed scale-100'
+                    : 'bg-neutral-200 dark:bg-white/10 text-neutral-500 dark:text-white/55 cursor-not-allowed scale-100'
                 } disabled:opacity-50`}
                 title={!tieneCambios ? 'No hay cambios para guardar' : 'GUARDAR CAMBIOS'}
               >
@@ -531,7 +531,7 @@ function MapeoRow({ mapeo, usuarios, onUpdate, userId, onMarkUnsaved, onMarkSave
             <>
               <button
                 onClick={() => setEditando(true)}
-                className="p-2 rounded-lg text-accent hover:bg-primary-100 transition-colors"
+                className="p-2 rounded-lg text-accent-ink hover:bg-primary-100 transition-colors"
                 title="Editar mapeo"
               >
                 <Edit2 className="h-5 w-5" />
@@ -592,11 +592,11 @@ function NuevoMapeoModal({ usuarios, onClose, onSuccess, userId }: NuevoMapeoMod
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-xl max-w-lg w-full">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-[var(--radius-xl)] border border-neutral-200/60 dark:border-white/8 shadow-e4 max-w-lg w-full animate-scale-in">
         <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-white/10">
           <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Nuevo Mapeo de Vendedor</h2>
-          <button onClick={onClose} className="text-neutral-400 dark:text-white/40 hover:text-neutral-600 dark:hover:text-white/60">
+          <button onClick={onClose} className="text-neutral-500 dark:text-white/55 hover:text-neutral-600 dark:hover:text-white/60">
             <X className="h-6 w-6" />
           </button>
         </div>

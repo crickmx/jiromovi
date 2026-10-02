@@ -142,28 +142,28 @@ export default function InstallAppButton({
       <>
         {/* Modal de instrucciones para iOS */}
         {showIOSInstructions && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-in zoom-in-95">
+          <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full p-6 animate-in zoom-in-95">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-neutral-900">
                   Instalar en iPhone
                 </h3>
                 <button
                   onClick={() => setShowIOSInstructions(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-neutral-500 hover:text-gray-600 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="space-y-4 text-sm text-gray-600">
-                <p className="font-medium text-gray-900">
+              <div className="space-y-4 text-sm text-neutral-600">
+                <p className="font-medium text-neutral-900">
                   Sigue estos pasos para instalar la app:
                 </p>
 
                 <ol className="space-y-3">
                   <li className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent rounded-full flex items-center justify-center text-xs font-semibold">
+                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent-ink rounded-full flex items-center justify-center text-xs font-semibold">
                       1
                     </span>
                     <span>
@@ -175,7 +175,7 @@ export default function InstallAppButton({
                     </span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent rounded-full flex items-center justify-center text-xs font-semibold">
+                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent-ink rounded-full flex items-center justify-center text-xs font-semibold">
                       2
                     </span>
                     <span>
@@ -183,7 +183,7 @@ export default function InstallAppButton({
                     </span>
                   </li>
                   <li className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent rounded-full flex items-center justify-center text-xs font-semibold">
+                    <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-accent-ink rounded-full flex items-center justify-center text-xs font-semibold">
                       3
                     </span>
                     <span>
@@ -194,7 +194,7 @@ export default function InstallAppButton({
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
                   <div className="flex gap-2">
-                    <Info className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                    <Info className="w-4 h-4 text-accent-ink flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-blue-900">
                       La app aparecerá como un ícono en tu pantalla de inicio y podrás usarla sin conexión.
                     </p>

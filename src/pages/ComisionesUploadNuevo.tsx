@@ -154,8 +154,8 @@ export default function ComisionesUploadNuevo() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-card p-12 text-center max-w-md">
+      <div className="min-h-screen dark:bg-neutral-900 flex items-center justify-center p-6">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 shadow-card p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Acceso Denegado
@@ -165,7 +165,7 @@ export default function ComisionesUploadNuevo() {
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors font-semibold"
+            className="px-6 py-3 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-colors font-semibold"
           >
             Volver al Dashboard
           </button>
@@ -184,7 +184,7 @@ export default function ComisionesUploadNuevo() {
         backLabel="Regresar"
       />
 
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-6">
 
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
           <h3 className="font-semibold text-primary-900 mb-2">
@@ -229,7 +229,7 @@ export default function ComisionesUploadNuevo() {
                     onChange={handleFileSelect}
                     className="hidden"
                   />
-                  <Upload className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+                  <Upload className="w-16 h-16 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
                     Haz clic para seleccionar un archivo
                   </h3>
@@ -263,7 +263,7 @@ export default function ComisionesUploadNuevo() {
                   <button
                     onClick={handleUpload}
                     disabled={uploading}
-                    className="flex items-center space-x-2 px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                    className="flex items-center space-x-2 px-6 py-3 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                   >
                     {uploading ? (
                       <>
@@ -295,7 +295,7 @@ export default function ComisionesUploadNuevo() {
                   </p>
 
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <div className="bg-surface-card rounded-2xl p-4 border border-green-200">
                       <div className="text-3xl font-bold text-green-700 mb-1">
                         {session.total_items}
                       </div>
@@ -304,9 +304,9 @@ export default function ComisionesUploadNuevo() {
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <div className="bg-surface-card rounded-2xl p-4 border border-green-200">
                       <div className="flex items-center space-x-2 mb-1">
-                        <Users className="w-5 h-5 text-accent" />
+                        <Users className="w-5 h-5 text-accent-ink" />
                         <div className="text-3xl font-bold text-primary-700">
                           {session.recognized_count}
                         </div>
@@ -316,7 +316,7 @@ export default function ComisionesUploadNuevo() {
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-lg p-4 border border-orange-200">
+                    <div className="bg-surface-card rounded-2xl p-4 border border-orange-200">
                       <div className="flex items-center space-x-2 mb-1">
                         <UserX className="w-5 h-5 text-orange-600" />
                         <div className="text-3xl font-bold text-orange-700">
@@ -363,7 +363,7 @@ export default function ComisionesUploadNuevo() {
 
               <button
                 onClick={handlePrepararLote}
-                className="flex items-center space-x-2 px-6 py-3 bg-accent text-white rounded-xl hover:bg-accent-hover transition-all duration-200 font-semibold"
+                className="flex items-center space-x-2 px-6 py-3 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-all duration-200 font-semibold"
               >
                 <span>Preparar Lote</span>
                 <ArrowLeft className="w-5 h-5 rotate-180" />

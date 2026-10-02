@@ -79,7 +79,7 @@ export function ReportarSiniestroModal({ onClose }: Props) {
         {/* Search */}
         <div className="px-6 py-3 border-b border-neutral-100">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <input
               type="text"
               value={search}
@@ -123,10 +123,10 @@ function InsurerClaimsCard({ ins }: { ins: SeguwalletInsurer }) {
   const logoSrc = getInsurerLogoUrl(ins);
 
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden hover:border-red-200 hover:shadow-md transition-all">
+    <div className="rounded-2xl border border-soft bg-surface-card overflow-hidden hover:border-red-200 hover:shadow-card-hover transition-all">
       {/* Top row */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-        <div className="w-10 h-10 rounded-xl overflow-hidden border border-neutral-100 bg-white flex-shrink-0 shadow-sm">
+        <div className="w-10 h-10 rounded-xl overflow-hidden border border-soft bg-surface-card flex-shrink-0 shadow-card">
           {logoSrc && !logoError ? (
             <img src={logoSrc} alt={ins.name} className="w-full h-full object-contain p-0.5" onError={() => setLogoError(true)} />
           ) : (

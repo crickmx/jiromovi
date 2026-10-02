@@ -63,7 +63,7 @@ export default function CRMBoardCalendarView({ tareas, boardId, onRefresh, loadi
           <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
             <X className="w-4 h-4 rotate-45 opacity-60" />
           </button>
-          <span className="font-semibold text-gray-800 min-w-[140px] text-center">
+          <span className="font-semibold text-neutral-800 min-w-[140px] text-center">
             {MONTHS[currentMonth]} {currentYear}
           </span>
           <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
@@ -71,11 +71,11 @@ export default function CRMBoardCalendarView({ tareas, boardId, onRefresh, loadi
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-400" />
+          <Filter className="w-4 h-4 text-neutral-500" />
           <select
             value={filterPriority}
             onChange={e => setFilterPriority(e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="text-sm border border-soft rounded-lg px-2 py-1.5 bg-surface-card text-neutral-700 focus:outline-none focus:ring-2 focus:ring-accent/40"
           >
             <option value="all">Todas las prioridades</option>
             <option value="alta">Alta</option>
@@ -87,10 +87,10 @@ export default function CRMBoardCalendarView({ tareas, boardId, onRefresh, loadi
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
       ) : tasksInMonth.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+        <div className="flex flex-col items-center justify-center py-16 text-neutral-500">
           <Calendar className="w-12 h-12 mb-3 opacity-40" />
           <p className="font-medium">Sin tareas en {MONTHS[currentMonth]}</p>
           <p className="text-sm mt-1">Cambia el mes o el filtro para ver más tareas</p>
@@ -104,16 +104,16 @@ export default function CRMBoardCalendarView({ tareas, boardId, onRefresh, loadi
               <div
                 key={tarea.id}
                 onClick={() => setSelectedTarea(tarea)}
-                className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 cursor-pointer transition-colors group"
+                className="flex items-center gap-3 p-3 border border-soft rounded-2xl bg-surface-card hover:bg-gray-50 cursor-pointer transition-colors group"
               >
                 <div className="flex-shrink-0 w-10 text-center">
-                  <p className="text-lg font-bold text-gray-800 leading-none">{due.getDate()}</p>
-                  <p className="text-xs text-gray-400">{MONTHS[due.getMonth()].slice(0,3)}</p>
+                  <p className="text-lg font-bold text-neutral-800 leading-none">{due.getDate()}</p>
+                  <p className="text-xs text-neutral-500">{MONTHS[due.getMonth()].slice(0,3)}</p>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-800 text-sm truncate">{tarea.titulo}</p>
+                  <p className="font-medium text-neutral-800 text-sm truncate">{tarea.titulo}</p>
                   {tarea.descripcion && (
-                    <p className="text-xs text-gray-400 truncate mt-0.5">{tarea.descripcion}</p>
+                    <p className="text-xs text-neutral-500 truncate mt-0.5">{tarea.descripcion}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -148,14 +148,14 @@ export default function CRMBoardCalendarView({ tareas, boardId, onRefresh, loadi
 
       {/* Delete confirm */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl">
-            <h3 className="font-semibold text-gray-900 mb-2">Eliminar tarea</h3>
-            <p className="text-sm text-gray-500 mb-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay">
+          <div className="bg-surface-card rounded-2xl p-6 max-w-sm w-full mx-4 shadow-e4 animate-scale-in">
+            <h3 className="font-semibold text-neutral-900 mb-2">Eliminar tarea</h3>
+            <p className="text-sm text-neutral-500 mb-5">
               ¿Seguro que quieres eliminar <strong>"{confirmDelete.nombre}"</strong>? Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmDelete(null)} className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors">
+              <button onClick={() => setConfirmDelete(null)} className="px-4 py-2 rounded-lg text-sm text-neutral-600 hover:bg-gray-100 transition-colors">
                 Cancelar
               </button>
               <button onClick={handleDelete} className="px-4 py-2 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center gap-1.5">

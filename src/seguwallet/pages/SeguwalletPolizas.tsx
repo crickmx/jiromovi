@@ -52,7 +52,7 @@ function InsurerLogo({ name, size = 36 }: { name: string; size?: number }) {
   }
   return (
     <div
-      className="rounded-xl bg-white border border-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center shadow-sm"
+      className="rounded-xl bg-surface-card border border-soft overflow-hidden flex-shrink-0 flex items-center justify-center shadow-card"
       style={{ width: size, height: size }}
     >
       <img src={logo} alt={name} className="w-full h-full object-contain p-1.5" onError={() => setErr(true)} />
@@ -261,14 +261,14 @@ function DocTypeIcon({ ext }: { ext: string }) {
   if (['xls', 'xlsx'].includes(e)) return <FileCheck className="w-4 h-4 text-emerald-500" />;
   if (['doc', 'docx'].includes(e)) return <BookOpen className="w-4 h-4 text-blue-500" />;
   if (['jpg', 'jpeg', 'png', 'webp'].includes(e)) return <Award className="w-4 h-4 text-orange-400" />;
-  return <FileText className="w-4 h-4 text-neutral-400" />;
+  return <FileText className="w-4 h-4 text-neutral-500" />;
 }
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
     <div className="flex flex-col gap-0.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">{label}</p>
       <p className="text-sm font-semibold text-neutral-900 leading-tight">{value}</p>
     </div>
   );
@@ -288,7 +288,7 @@ function SectionCard({ title, icon: Icon, children, collapsible = false }: {
           <Icon className="w-3.5 h-3.5 text-neutral-500" />
           <p className="text-xs font-bold text-neutral-700 uppercase tracking-wide">{title}</p>
         </div>
-        {collapsible && (open ? <ChevronUp className="w-3.5 h-3.5 text-neutral-400" /> : <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />)}
+        {collapsible && (open ? <ChevronUp className="w-3.5 h-3.5 text-neutral-500" /> : <ChevronDown className="w-3.5 h-3.5 text-neutral-500" />)}
       </button>
       {open && <div className="px-4 pb-4 grid grid-cols-2 gap-x-4 gap-y-3">{children}</div>}
     </div>
@@ -313,12 +313,12 @@ function PolicyTimeline({ desde, hasta, emision }: { desde: string; hasta: strin
           const isLast = idx === items.length - 1;
           return (
             <div key={item.label} className="flex items-start gap-3">
-              <div className={cn('w-[30px] h-[30px] rounded-full border-2 flex items-center justify-center flex-shrink-0 relative z-10 bg-white',
+              <div className={cn('w-[30px] h-[30px] rounded-full border-2 flex items-center justify-center flex-shrink-0 relative z-10 bg-surface-card',
                 isPast && !isLast ? 'border-emerald-400' : isLast ? 'border-neutral-300' : 'border-neutral-300')}>
-                <item.icon className={cn('w-3 h-3', isPast && !isLast ? 'text-emerald-500' : 'text-neutral-400')} />
+                <item.icon className={cn('w-3 h-3', isPast && !isLast ? 'text-emerald-500' : 'text-neutral-500')} />
               </div>
               <div className="pt-0.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{item.label}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">{item.label}</p>
                 <p className="text-sm font-bold text-neutral-900">{fmt(item.date)}</p>
               </div>
             </div>
@@ -400,7 +400,7 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-neutral-900 text-base">{policy.poliza || 'Sin numero'}</p>
-                <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1', st.badgeCls)}>
+                <span className={cn('px-2 py-0.5 rounded-lg text-[11px] font-bold border flex items-center gap-1', st.badgeCls)}>
                   <span className={cn('w-1.5 h-1.5 rounded-full', st.dot)} />{st.label}
                 </span>
               </div>
@@ -411,7 +411,7 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all flex-shrink-0">
+          <button onClick={onClose} className="p-2 rounded-xl text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-all flex-shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -515,10 +515,10 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
                 <div className="flex items-center gap-2">
                   <Download className="w-3.5 h-3.5 text-neutral-500" />
                   <p className="text-xs font-bold text-neutral-700 uppercase tracking-wide">Documentos</p>
-                  {!filesLoading && filesFetched && <span className="text-[10px] text-neutral-400">({files.length})</span>}
+                  {!filesLoading && filesFetched && <span className="text-[11px] text-neutral-500">({files.length})</span>}
                 </div>
                 {filesFetched && (
-                  <button onClick={fetchFiles} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200 transition-all">
+                  <button onClick={fetchFiles} className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200 transition-all">
                     <RefreshCw className={cn('w-3.5 h-3.5', filesLoading && 'animate-spin')} />
                   </button>
                 )}
@@ -530,7 +530,7 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
                   <div className="py-8 text-center">
                     <FileText className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
                     <p className="text-xs font-semibold text-neutral-500">Sin documentos disponibles</p>
-                    <p className="text-[11px] text-neutral-400 mt-0.5">Los documentos apareceran cuando esten disponibles en el Centro Digital</p>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">Los documentos apareceran cuando esten disponibles en el Centro Digital</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -538,19 +538,19 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
                       <div key={folder}>
                         {Object.keys(fileGroups).length > 1 && (
                           <div className="flex items-center gap-1.5 mb-1.5">
-                            <Folder className="w-3 h-3 text-neutral-400" />
-                            <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">{folder}</p>
+                            <Folder className="w-3 h-3 text-neutral-500" />
+                            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">{folder}</p>
                           </div>
                         )}
                         <div className="space-y-1.5">
                           {folderFiles.map(file => (
-                            <div key={file.id} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-neutral-100 hover:border-neutral-200 transition-all">
+                            <div key={file.id} className="flex items-center gap-3 p-3 rounded-2xl bg-surface-card border border-soft hover:border-neutral-200 transition-all">
                               <div className="p-2 rounded-lg bg-neutral-50 border border-neutral-100 flex-shrink-0"><DocTypeIcon ext={file.extension} /></div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs font-semibold text-neutral-900 truncate">{file.nombre_archivo}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                  {file.tipo_archivo && <span className="text-[10px] text-neutral-400 uppercase">{file.tipo_archivo}</span>}
-                                  {file.tamanio_legible && <span className="text-[10px] text-neutral-300">{file.tamanio_legible}</span>}
+                                  {file.tipo_archivo && <span className="text-[11px] text-neutral-500 uppercase">{file.tipo_archivo}</span>}
+                                  {file.tamanio_legible && <span className="text-[11px] text-neutral-300">{file.tamanio_legible}</span>}
                                 </div>
                               </div>
                               <button onClick={() => handleDownload(file)} disabled={downloading === file.id}
@@ -569,7 +569,7 @@ function SicasPolicyDetail({ policy, onClose, primary }: {
               </div>
             </div>
 
-            {policy.id_docto && <p className="text-center text-[10px] text-neutral-300 font-mono">Ref. SICAS: {policy.id_docto}</p>}
+            {policy.id_docto && <p className="text-center text-[11px] text-neutral-300 font-mono">Ref. SICAS: {policy.id_docto}</p>}
           </>}
 
           </div>
@@ -682,7 +682,7 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-neutral-900 text-base">{policy.insurer_name}</p>
-                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-orange-50 text-orange-600 border-orange-200">Externa</span>
+                <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold border bg-orange-50 text-orange-600 border-orange-200">Externa</span>
               </div>
               <p className="text-xs text-neutral-500 mt-0.5">
                 {policy.policy_number}
@@ -692,8 +692,8 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={onEdit} className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all"><Edit3 className="w-4 h-4" /></button>
-            <button onClick={onClose} className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all"><X className="w-5 h-5" /></button>
+            <button onClick={onEdit} className="p-2 rounded-xl text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-all"><Edit3 className="w-4 h-4" /></button>
+            <button onClick={onClose} className="p-2 rounded-xl text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-all"><X className="w-5 h-5" /></button>
           </div>
         </div>
 
@@ -753,7 +753,7 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
             {/* Notas */}
             {policy.notes && (
               <div className="bg-neutral-50 rounded-2xl border border-neutral-100 p-4">
-                <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide mb-2">Notas</p>
+                <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wide mb-2">Notas</p>
                 <p className="text-sm text-neutral-700 whitespace-pre-line">{policy.notes}</p>
               </div>
             )}
@@ -775,7 +775,7 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
                 <div className="flex items-center gap-2">
                   <Download className="w-3.5 h-3.5 text-neutral-500" />
                   <p className="text-xs font-bold text-neutral-700 uppercase tracking-wide">Documentos</p>
-                  {!docsLoading && <span className="text-[10px] text-neutral-400">({docs.length})</span>}
+                  {!docsLoading && <span className="text-[11px] text-neutral-500">({docs.length})</span>}
                 </div>
               </div>
 
@@ -784,7 +784,7 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
                 <select
                   value={uploadDocType}
                   onChange={e => setUploadDocType(e.target.value)}
-                  className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-neutral-200 bg-white text-xs focus:outline-none"
+                  className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-soft bg-surface-card text-xs focus:outline-none"
                 >
                   {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -815,20 +815,20 @@ function ExternalPolicyDetail({ policy, onClose, primary, onEdit, onDelete }: {
                   <div className="py-6 text-center">
                     <FileText className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
                     <p className="text-xs font-semibold text-neutral-500">Sin documentos</p>
-                    <p className="text-[11px] text-neutral-400 mt-0.5">Sube la póliza, recibos u otros documentos</p>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">Sube la póliza, recibos u otros documentos</p>
                   </div>
                 ) : (
                   <div className="space-y-1.5">
                     {docs.map(doc => {
                       const ext = doc.document_name?.split('.').pop() || '';
                       return (
-                        <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-neutral-100 hover:border-neutral-200 transition-all">
+                        <div key={doc.id} className="flex items-center gap-3 p-3 rounded-2xl bg-surface-card border border-soft hover:border-neutral-200 transition-all">
                           <div className="p-2 rounded-lg bg-neutral-50 border border-neutral-100 flex-shrink-0"><DocTypeIcon ext={ext} /></div>
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-semibold text-neutral-900 truncate">{doc.document_name || doc.document_type}</p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[10px] text-neutral-400">{doc.document_type}</span>
-                              {doc.file_size && <span className="text-[10px] text-neutral-300">{Math.round(doc.file_size / 1024)} KB</span>}
+                              <span className="text-[11px] text-neutral-500">{doc.document_type}</span>
+                              {doc.file_size && <span className="text-[11px] text-neutral-300">{Math.round(doc.file_size / 1024)} KB</span>}
                             </div>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -876,7 +876,7 @@ const EMPTY_SIMPLE: SimpleForm = { insurer_name: '', subramo: '', notes: '' };
 
 function wizardInputCls(err?: string) {
   return cn(
-    'w-full px-3.5 py-3 rounded-2xl border text-sm focus:outline-none transition-all bg-white',
+    'w-full px-3.5 py-3 rounded-2xl border text-sm focus:outline-none transition-all bg-surface-card',
     err ? 'border-red-300 bg-red-50/30 focus:border-red-400' : 'border-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100'
   );
 }
@@ -1017,7 +1017,7 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-neutral-100">
           <div className="flex items-center gap-3">
             {logoPreview && (
-              <div className="w-9 h-9 rounded-xl bg-white border border-neutral-100 shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-surface-card border border-soft shadow-card flex items-center justify-center overflow-hidden flex-shrink-0">
                 <img src={logoPreview} alt="" crossOrigin="anonymous" className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               </div>
             )}
@@ -1025,10 +1025,10 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
               <h2 className="font-bold text-neutral-900 text-base leading-tight">
                 {isEdit ? 'Editar póliza' : 'Agregar póliza externa'}
               </h2>
-              <p className="text-xs text-neutral-400 mt-0.5">Tu bóveda personal de seguros</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Tu bóveda personal de seguros</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all">
+          <button onClick={onClose} className="p-2 rounded-xl text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-all">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -1081,7 +1081,7 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
             >
               <Upload className="w-6 h-6 text-neutral-300 mx-auto mb-1.5" />
               <p className="text-xs font-medium text-neutral-500">Arrastra o toca para subir</p>
-              <p className="text-[11px] text-neutral-400 mt-0.5">PDF, JPG, PNG, WEBP · máx. 20 MB</p>
+              <p className="text-[11px] text-neutral-500 mt-0.5">PDF, JPG, PNG, WEBP · máx. 20 MB</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1095,10 +1095,10 @@ function ExternalPolicyWizard({ onClose, onSaved, primary, customerId, agentUser
               <div className="space-y-1.5 mt-2">
                 {files.map((f, idx) => (
                   <div key={idx} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-neutral-50 border border-neutral-100">
-                    <FileText className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                    <FileText className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                     <span className="text-xs font-medium text-neutral-700 truncate flex-1">{f.name}</span>
-                    <span className="text-[10px] text-neutral-400 flex-shrink-0">{Math.round(f.size / 1024)} KB</span>
-                    <button onClick={() => removeFile(idx)} className="p-0.5 text-neutral-400 hover:text-red-500 transition-colors flex-shrink-0">
+                    <span className="text-[11px] text-neutral-500 flex-shrink-0">{Math.round(f.size / 1024)} KB</span>
+                    <button onClick={() => removeFile(idx)} className="p-0.5 text-neutral-500 hover:text-red-500 transition-colors flex-shrink-0">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1169,11 +1169,11 @@ function SicasPolicyCard({ policy, primary, onClick }: { policy: Policy; primary
       <div className="flex items-start justify-between gap-2">
         <InsurerLogo name={policy.aseguradora_nombre || policy.compania || ''} size={40} />
         <div className="flex flex-col items-end gap-1">
-          <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 leading-none flex-shrink-0', st.badgeCls)}>
+          <span className={cn('px-2 py-0.5 rounded-lg text-[11px] font-bold border flex items-center gap-1 leading-none flex-shrink-0', st.badgeCls)}>
             <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', st.dot)} />{st.label}
           </span>
           {isRenewable && (
-            <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-lg leading-none">
+            <span className="flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-lg leading-none">
               <RefreshCw className="w-2.5 h-2.5" />
               {days}d
             </span>
@@ -1189,12 +1189,12 @@ function SicasPolicyCard({ policy, primary, onClick }: { policy: Policy; primary
 
       {/* Bottom: date + renewal cta */}
       <div className="flex items-center justify-between mt-auto">
-        <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+        <span className="text-[11px] text-neutral-500 flex items-center gap-1">
           <Calendar className="w-3 h-3 flex-shrink-0" />
           {fmt(policy.vigencia_hasta)}
         </span>
         {isRenewable && (
-          <span className="text-[10px] font-bold text-amber-700 flex items-center gap-1">
+          <span className="text-[11px] font-bold text-amber-700 flex items-center gap-1">
             <Clock className="w-3 h-3" />
             Por renovar
           </span>
@@ -1210,12 +1210,12 @@ function ExternalPolicyCard({ policy, primary, onClick }: { policy: ExternalPoli
   return (
     <button
       onClick={onClick}
-      className="w-full bg-white rounded-2xl border border-orange-100 shadow-sm p-4 hover:shadow-lg transition-all duration-200 text-left group hover:border-orange-200 hover:-translate-y-0.5 flex flex-col gap-3"
+      className="w-full bg-surface-card rounded-2xl border border-orange-100 shadow-card p-4 hover:shadow-lg transition-all duration-200 text-left group hover:border-orange-200 hover:-translate-y-0.5 flex flex-col gap-3"
     >
       {/* Top: logo + externa badge */}
       <div className="flex items-start justify-between gap-2">
         <InsurerLogo name={policy.insurer_name || ''} size={40} />
-        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border bg-orange-50 text-orange-600 border-orange-200 leading-none">Externa</span>
+        <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold border bg-orange-50 text-orange-600 border-orange-200 leading-none">Externa</span>
       </div>
 
       {/* Insurer name + subramo */}
@@ -1227,13 +1227,13 @@ function ExternalPolicyCard({ policy, primary, onClick }: { policy: ExternalPoli
       {/* Bottom: date */}
       <div className="flex items-center justify-between mt-auto">
         {policy.end_date ? (
-          <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+          <span className="text-[11px] text-neutral-500 flex items-center gap-1">
             <Calendar className="w-3 h-3 flex-shrink-0" />
             {fmt(policy.end_date)}
           </span>
         ) : <span />}
         {isExpiringSoon && (
-          <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">{days}d</span>
+          <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">{days}d</span>
         )}
       </div>
     </button>
@@ -1317,8 +1317,8 @@ export function SeguwalletPolizas() {
     return (
       <div className="space-y-5">
         <div><div className="h-7 w-40 bg-neutral-200 rounded-xl animate-pulse mb-2" /><div className="h-4 w-64 bg-neutral-100 rounded-lg animate-pulse" /></div>
-        <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-4"><div className="h-10 bg-neutral-100 rounded-xl animate-pulse" /></div>
-        {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-5 h-24 animate-pulse" />)}
+        <div className="bg-surface-card rounded-2xl border border-neutral-200/50 shadow-card p-4"><div className="h-10 bg-neutral-100 rounded-xl animate-pulse" /></div>
+        {[1,2,3].map(i => <div key={i} className="bg-surface-card rounded-2xl border border-neutral-200/50 shadow-card p-5 h-24 animate-pulse" />)}
       </div>
     );
   }
@@ -1384,7 +1384,7 @@ export function SeguwalletPolizas() {
                 )}
               >
                 <p className={cn('text-2xl font-bold', statusFilter === 'all' ? 'text-white' : 'text-neutral-900')}>{policies.length}</p>
-                <p className={cn('text-[10px] font-medium mt-0.5', statusFilter === 'all' ? 'text-neutral-300' : 'text-neutral-400')}>Total</p>
+                <p className={cn('text-[11px] font-medium mt-0.5', statusFilter === 'all' ? 'text-neutral-300' : 'text-neutral-500')}>Total</p>
               </button>
 
               {/* Vigentes */}
@@ -1398,7 +1398,7 @@ export function SeguwalletPolizas() {
                 )}
               >
                 <p className={cn('text-2xl font-bold', statusFilter === 'vigente' ? 'text-white' : 'text-emerald-600')}>{vigentesCount}</p>
-                <p className={cn('text-[10px] font-medium mt-0.5', statusFilter === 'vigente' ? 'text-emerald-100' : 'text-neutral-400')}>Vigentes</p>
+                <p className={cn('text-[11px] font-medium mt-0.5', statusFilter === 'vigente' ? 'text-emerald-100' : 'text-neutral-500')}>Vigentes</p>
               </button>
 
               {/* Por renovar */}
@@ -1415,14 +1415,14 @@ export function SeguwalletPolizas() {
                   <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-amber-500 border-2 border-white" />
                 )}
                 <p className={cn('text-2xl font-bold', statusFilter === 'por_renovar' ? 'text-white' : 'text-amber-600')}>{porRenovarCount}</p>
-                <p className={cn('text-[10px] font-medium mt-0.5', statusFilter === 'por_renovar' ? 'text-amber-100' : 'text-neutral-400')}>Por renovar</p>
+                <p className={cn('text-[11px] font-medium mt-0.5', statusFilter === 'por_renovar' ? 'text-amber-100' : 'text-neutral-500')}>Por renovar</p>
               </button>
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-4 space-y-3">
+          <div className="bg-surface-card rounded-2xl border border-neutral-200/50 shadow-card p-4 space-y-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
               <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar por número, aseguradora..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50/50 text-sm focus:outline-none transition-all" />
             </div>
@@ -1443,10 +1443,10 @@ export function SeguwalletPolizas() {
           </div>
 
           {filtered.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-12 text-center">
+            <div className="bg-surface-card rounded-2xl border border-neutral-200/50 shadow-card p-12 text-center">
               <Shield className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
               <p className="text-sm font-semibold text-neutral-500">{policies.length === 0 ? 'No tienes pólizas asignadas' : 'Sin resultados'}</p>
-              <p className="text-xs text-neutral-400 mt-1">{policies.length === 0 ? 'Contacta a tu agente para más información' : 'Prueba con otros filtros'}</p>
+              <p className="text-xs text-neutral-500 mt-1">{policies.length === 0 ? 'Contacta a tu agente para más información' : 'Prueba con otros filtros'}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -1471,14 +1471,14 @@ export function SeguwalletPolizas() {
           </div>
 
           {extLoading ? (
-            <div className="space-y-2.5">{[1,2].map(i => <div key={i} className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-5 h-24 animate-pulse" />)}</div>
+            <div className="space-y-2.5">{[1,2].map(i => <div key={i} className="bg-surface-card rounded-2xl border border-neutral-200/50 shadow-card p-5 h-24 animate-pulse" />)}</div>
           ) : extPolicies.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-12 text-center">
+            <div className="bg-surface-card rounded-2xl border border-neutral-200/50 shadow-card p-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-8 h-8 text-orange-300" />
               </div>
               <p className="text-sm font-semibold text-neutral-600">Sin pólizas externas</p>
-              <p className="text-xs text-neutral-400 mt-1 mb-4">Agrega pólizas de cualquier aseguradora como tu bóveda personal de seguros</p>
+              <p className="text-xs text-neutral-500 mt-1 mb-4">Agrega pólizas de cualquier aseguradora como tu bóveda personal de seguros</p>
               <button
                 onClick={() => { setEditingExt(undefined); setShowWizard(true); }}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"

@@ -158,7 +158,7 @@ export function ContactoAutocomplete({
       />
 
       {showSuggestions && filteredContactos.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-surface-card border border-neutral-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
           {filteredContactos.map((contacto, index) => (
             <div
               key={contacto.id}
@@ -170,18 +170,18 @@ export function ContactoAutocomplete({
               }`}
             >
               <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4 text-accent" />
+                <User className="w-4 h-4 text-accent-ink" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-slate-900 truncate">
+                <div className="font-semibold text-neutral-900 truncate">
                   {getContactoDisplay(contacto)}
                 </div>
-                <div className="flex items-center text-sm text-slate-600">
+                <div className="flex items-center text-sm text-neutral-600">
                   <Mail className="w-3 h-3 mr-1" />
                   <span className="truncate">{contacto.email}</span>
                 </div>
                 {contacto.empresa && (
-                  <div className="text-xs text-slate-500 truncate">
+                  <div className="text-xs text-neutral-500 truncate">
                     {contacto.empresa}
                   </div>
                 )}

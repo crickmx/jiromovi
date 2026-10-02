@@ -15,18 +15,18 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
             {campo.label}
             {campo.requerido && <span className="text-red-500 ml-1">*</span>}
           </label>
-          {campo.ayuda && <p className="text-xs text-neutral-400">{campo.ayuda}</p>}
+          {campo.ayuda && <p className="text-xs text-neutral-500">{campo.ayuda}</p>}
 
           {/* badge sistema */}
           {campo.is_sistema && (
-            <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200">
+            <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200">
               🔒 Sistema
             </span>
           )}
 
           {/* badge de campo condicional */}
           {campo.config?.condicion_activa && campo.config?.campo_fuente && (
-            <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5 inline-flex items-center gap-1">
+            <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5 inline-flex items-center gap-1">
               <span>⚡</span>
               <span>
                 Visible si: {campo.config.campo_fuente}{' '}
@@ -40,68 +40,68 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
           {/* ── renders por tipo ── */}
           {campo.tipo === 'texto_corto' && (
             <input disabled type="text" placeholder="Texto corto..."
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed" />
           )}
           {campo.tipo === 'texto_largo' && (
             <textarea disabled placeholder="Texto largo..." rows={3}
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 resize-none cursor-not-allowed" />
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 resize-none cursor-not-allowed" />
           )}
           {campo.tipo === 'email' && (
             <input disabled type="email" placeholder="ejemplo@correo.com"
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed" />
           )}
           {campo.tipo === 'telefono' && (
             <div className="flex items-center gap-2">
               {campo.config?.formato === 'internacional' && (
-                <span className="px-3 py-2 bg-neutral-100 border border-neutral-200 rounded-lg text-sm text-neutral-400 shrink-0">+52</span>
+                <span className="px-3 py-2 bg-neutral-100 border border-neutral-200 rounded-lg text-sm text-neutral-500 shrink-0">+52</span>
               )}
               <input disabled type="tel"
                 placeholder={campo.config?.formato === 'internacional' ? '55 1234 5678' : '(55) 1234-5678'}
-                className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+                className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed" />
             </div>
           )}
           {campo.tipo === 'rfc' && (
             <input disabled type="text"
               placeholder={campo.config?.tipo_persona === 'moral' ? 'AAAA000000AAA' : 'AAAA000000AAAAA'}
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed font-mono uppercase tracking-widest" />
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed font-mono uppercase tracking-widest" />
           )}
           {campo.tipo === 'curp' && (
             <input disabled type="text" placeholder="AAAA000000AAAAAA00"
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed font-mono uppercase tracking-widest" />
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed font-mono uppercase tracking-widest" />
           )}
           {campo.tipo === 'numerico' && (
             <div className="relative">
               {campo.config?.formato === 'moneda' && (
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">$</span>
               )}
               <input disabled type="number" placeholder="0"
-                className={`w-full py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed ${campo.config?.formato === 'moneda' ? 'pl-7 pr-3' : 'px-3'}`} />
+                className={`w-full py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed ${campo.config?.formato === 'moneda' ? 'pl-7 pr-3' : 'px-3'}`} />
             </div>
           )}
           {campo.tipo === 'porcentaje' && (
             <div className="relative w-36">
               <input disabled type="number" placeholder="0"
-                className="w-full px-3 py-2 pr-8 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm font-medium">%</span>
+                className="w-full px-3 py-2 pr-8 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-medium">%</span>
             </div>
           )}
           {campo.tipo === 'vehiculo' && (
             <div className="space-y-1.5 opacity-60">
               {['Marca…', 'Modelo…', 'Versión…'].map(p => (
-                <select key={p} disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
+                <select key={p} disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed">
                   <option>{p}</option>
                 </select>
               ))}
-              <p className="text-[10px] text-neutral-400">Catálogo AMIS · el año se captura aparte</p>
+              <p className="text-[11px] text-neutral-500">Catálogo AMIS · el año se captura aparte</p>
             </div>
           )}
           {campo.tipo === 'codigo_postal' && (
             <input disabled type="text" placeholder="00000"
-              className="w-28 px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed font-mono" />
+              className="w-28 px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed font-mono" />
           )}
           {campo.tipo === 'fecha' && (
             <input disabled type="date"
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed" />
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed" />
           )}
           {campo.tipo === 'booleano' && (
             <label className="flex items-center gap-2 cursor-not-allowed opacity-60">
@@ -110,12 +110,12 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
             </label>
           )}
           {campo.tipo === 'adjunto' && (
-            <div className="w-full py-5 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 text-center text-xs text-neutral-400">
+            <div className="w-full py-5 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 text-center text-xs text-neutral-500">
               Arrastra archivos o haz clic para adjuntar
             </div>
           )}
           {(campo.tipo === 'estatus' || campo.tipo === 'dropdown') && (
-            <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
+            <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed">
               <option>Selecciona una opción...</option>
               {(campo.config?.opciones || []).map((opt: { label: string; slug: string }) => (
                 <option key={opt.slug}>{opt.label}</option>
@@ -133,12 +133,12 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
             </div>
           )}
           {campo.tipo === 'aseguradora' && (
-            <div className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
+            <div className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed">
               Selecciona una o más aseguradoras (filtradas por ramo)...
             </div>
           )}
           {campo.tipo === 'ramo' && (
-            <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-400 cursor-not-allowed">
+            <select disabled className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-500 cursor-not-allowed">
               <option>Selecciona ramo...</option>
             </select>
           )}
@@ -170,14 +170,14 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
             <div className="flex items-center gap-2">
               <input disabled type="datetime-local"
                 className="flex-1 px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-400 cursor-not-allowed" />
-              <span className="text-[10px] text-violet-400 shrink-0">Autofill</span>
+              <span className="text-[11px] text-violet-400 shrink-0">Autofill</span>
             </div>
           )}
           {campo.tipo === 'fecha_finalizacion' && (
             <div className="flex items-center gap-2">
               <input disabled type="datetime-local"
                 className="flex-1 px-3 py-2 border border-violet-200 rounded-lg bg-violet-50 text-sm text-violet-400 cursor-not-allowed" />
-              <span className="text-[10px] text-violet-400 shrink-0">Al cerrar</span>
+              <span className="text-[11px] text-violet-400 shrink-0">Al cerrar</span>
             </div>
           )}
           {campo.tipo === 'creado_por' && (
@@ -190,8 +190,8 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
   );
 
   return (
-    <div className="space-y-4 border border-neutral-200 rounded-xl p-4 bg-white">
-      <p className="text-[11px] text-neutral-400 text-center uppercase tracking-wider mb-2">Vista previa — solo lectura</p>
+    <div className="space-y-4 border border-soft rounded-2xl p-4 bg-surface-card">
+      <p className="text-[11px] text-neutral-500 text-center uppercase tracking-wider mb-2">Vista previa — solo lectura</p>
       {grupos.map((grupo, i) => (
         <div
           key={grupo.seccion?.id ?? `sin-seccion-${i}`}
@@ -205,14 +205,14 @@ export function FormPreview({ campos, secciones = [] }: { campos: TipoCampo[]; s
               <h4 className="text-sm font-semibold text-neutral-800">
                 {grupo.seccion.nombre}
                 {grupo.seccion.opcional && (
-                  <span className="ml-2 text-[10px] font-normal text-neutral-400 uppercase tracking-wide">Opcional</span>
+                  <span className="ml-2 text-[11px] font-normal text-neutral-500 uppercase tracking-wide">Opcional</span>
                 )}
               </h4>
               {grupo.seccion.descripcion && (
-                <p className="text-xs text-neutral-400 mt-0.5">{grupo.seccion.descripcion}</p>
+                <p className="text-xs text-neutral-500 mt-0.5">{grupo.seccion.descripcion}</p>
               )}
               {(grupo.seccion.condicion_campo_id || grupo.seccion.depende_de_seccion_id) && (
-                <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5 inline-flex items-center gap-1 mt-1">
+                <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-1.5 py-0.5 inline-flex items-center gap-1 mt-1">
                   <span>⚡</span>
                   <span>{grupo.seccion.condicion_campo_id ? 'Condicionada a un campo' : 'Se desbloquea al completar otra sección'}</span>
                 </p>

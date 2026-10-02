@@ -51,7 +51,7 @@ const ramoColors: Record<string, string> = {
 export function LatestEmissionsCard({ data, loading, onViewMore, onClickItem }: Props) {
   if (loading) {
     return (
-      <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 animate-pulse">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 animate-pulse">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-white/8" />
           <div className="h-4 w-36 bg-neutral-100 dark:bg-white/8 rounded" />
@@ -68,7 +68,7 @@ export function LatestEmissionsCard({ data, loading, onViewMore, onClickItem }: 
   const emissions = data || [];
 
   return (
-    <div className="bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 h-full flex flex-col">
+    <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-card p-5 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
@@ -77,7 +77,7 @@ export function LatestEmissionsCard({ data, loading, onViewMore, onClickItem }: 
           </div>
           <div>
             <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Ultimas Emisiones</h3>
-            <p className="text-[11px] text-neutral-400 dark:text-white/30">Documentos recientes</p>
+            <p className="text-[11px] text-neutral-500 dark:text-white/45">Documentos recientes</p>
           </div>
         </div>
       </div>
@@ -87,7 +87,7 @@ export function LatestEmissionsCard({ data, loading, onViewMore, onClickItem }: 
         {emissions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Inbox className="w-8 h-8 text-neutral-200 dark:text-white/15 mb-2" />
-            <p className="text-sm text-neutral-400 dark:text-white/30">Sin emisiones recientes</p>
+            <p className="text-sm text-neutral-500 dark:text-white/45">Sin emisiones recientes</p>
           </div>
         ) : (
           emissions.map((emission) => {
@@ -99,7 +99,7 @@ export function LatestEmissionsCard({ data, loading, onViewMore, onClickItem }: 
                 className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-neutral-100 dark:border-white/5 hover:bg-neutral-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all duration-150 text-left group"
               >
                 {/* Ramo badge */}
-                <div className={cn("flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold", ramoColor)}>
+                <div className={cn("flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold", ramoColor)}>
                   {emission.ramo === 'Vehiculos' ? 'AU' : emission.ramo === 'Daños' ? 'DA' : emission.ramo === 'Vida' ? 'VI' : 'AE'}
                 </div>
 
@@ -108,7 +108,7 @@ export function LatestEmissionsCard({ data, loading, onViewMore, onClickItem }: 
                   <p className="text-xs font-semibold text-neutral-900 dark:text-white truncate">
                     {emission.cliente}
                   </p>
-                  <p className="text-[10px] text-neutral-500 dark:text-white/40 truncate mt-0.5">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/55 truncate mt-0.5">
                     {emission.poliza} - {emission.compania.split(' ')[0]}
                   </p>
                 </div>
@@ -118,7 +118,7 @@ export function LatestEmissionsCard({ data, loading, onViewMore, onClickItem }: 
                   <p className="text-xs font-bold text-neutral-900 dark:text-white">
                     {formatPrima(emission.prima_neta)}
                   </p>
-                  <p className="text-[10px] text-neutral-400 dark:text-white/25 mt-0.5">
+                  <p className="text-[11px] text-neutral-500 dark:text-white/25 mt-0.5">
                     {formatRelativeDate(emission.fecha_captura)}
                   </p>
                 </div>

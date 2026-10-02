@@ -77,7 +77,7 @@ export default function ConfigJornada() {
           </div>
         ) : (
           <div className="max-w-lg space-y-6">
-            <div className="bg-white rounded-2xl border border-neutral-200 p-6 space-y-5">
+            <div className="bg-surface-card rounded-2xl border border-soft p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                   Hora de inicio de jornada
@@ -86,7 +86,7 @@ export default function ConfigJornada() {
                   type="time"
                   value={horaInicio}
                   onChange={e => setHoraInicio(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-accent/40 focus:outline-none"
                 />
               </div>
 
@@ -98,14 +98,14 @@ export default function ConfigJornada() {
                   type="time"
                   value={horaFin}
                   onChange={e => setHoraFin(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-accent/40 focus:outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                   Horas productivas por día
-                  <span className="ml-2 text-xs text-neutral-400 font-normal">(tiempo neto de trabajo, sin descansos)</span>
+                  <span className="ml-2 text-xs text-neutral-500 font-normal">(tiempo neto de trabajo, sin descansos)</span>
                 </label>
                 <input
                   type="number"
@@ -113,9 +113,9 @@ export default function ConfigJornada() {
                   max={24}
                   value={horasProducivas}
                   onChange={e => setHorasProductivas(Math.max(1, Math.min(24, Number(e.target.value))))}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-accent/40 focus:outline-none"
                 />
-                <p className="mt-1 text-xs text-neutral-400">
+                <p className="mt-1 text-xs text-neutral-500">
                   Ejemplo: jornada 9:00–18:00 con 1 h de comida = 8 horas productivas
                 </p>
               </div>
@@ -124,7 +124,7 @@ export default function ConfigJornada() {
             <button
               onClick={guardar}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:bg-accent-hover disabled:opacity-60 transition-colors"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Guardando…' : 'Guardar configuración'}

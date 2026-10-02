@@ -237,7 +237,7 @@ export default function ModuloViewer() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando módulo...</p>
@@ -248,12 +248,12 @@ export default function ModuloViewer() {
 
   if (!modulo || !leccionActual) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-neutral-600">No se encontró el módulo</p>
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
-            className="mt-4 text-accent hover:text-primary-700"
+            className="mt-4 text-accent-ink hover:text-primary-700"
           >
             Volver al curso
           </button>
@@ -270,7 +270,7 @@ export default function ModuloViewer() {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex">
       {sidebarAbierto && (
         <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-20 lg:hidden"
           onClick={() => setSidebarAbierto(false)}
         />
       )}
@@ -327,8 +327,8 @@ export default function ModuloViewer() {
                     ) : (
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-medium ${
                         esActual
-                          ? 'border-accent text-accent'
-                          : 'border-neutral-300 text-neutral-400'
+                          ? 'border-accent text-accent-ink'
+                          : 'border-neutral-300 text-neutral-500'
                       }`}>
                         {index + 1}
                       </div>
@@ -433,7 +433,7 @@ export default function ModuloViewer() {
       </div>
 
       {modalExamenListo && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-ios-xl w-full max-w-lg p-6 sm:p-8 shadow-ios-xl animate-scale-in">
             <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-ios-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               <Award className="w-8 h-8 text-white" />
@@ -450,7 +450,7 @@ export default function ModuloViewer() {
 
             <div className="bg-primary-50 rounded-ios-lg p-4 mb-6">
               <div className="flex items-start gap-3">
-                <FileText className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                <FileText className="w-5 h-5 text-accent-ink flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h4 className="font-semibold text-primary-900 mb-1">Examen del Módulo</h4>
                   <p className="text-sm text-primary-700">

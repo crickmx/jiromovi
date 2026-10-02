@@ -20,12 +20,12 @@ function nivelBadge(nivel: string): { emoji: string; cls: string } {
 
 function StepperStep({ step }: { step: ConvencionStep }) {
   const barColor = step.status === 'done' ? 'bg-emerald-500' : step.status === 'active' ? 'bg-sky-600' : 'bg-neutral-200 dark:bg-white/10';
-  const textColor = step.status === 'done' ? 'text-emerald-600' : step.status === 'active' ? 'text-sky-600 font-bold' : 'text-neutral-400';
+  const textColor = step.status === 'done' ? 'text-emerald-600' : step.status === 'active' ? 'text-sky-600 font-bold' : 'text-neutral-500';
   const icon = step.status === 'done' ? '✓' : step.status === 'active' ? '●' : '○';
   return (
     <div className="flex-1 min-w-[60px] text-center">
       <div className={cn('h-1.5 rounded-full mb-1', barColor)} />
-      <p className={cn('text-[10px] truncate', textColor)}>{icon} {step.name}</p>
+      <p className={cn('text-[11px] truncate', textColor)}>{icon} {step.name}</p>
     </div>
   );
 }
@@ -46,11 +46,11 @@ function MiConvencionCard() {
     : { txt: `${nivelBadge(c.nivel).emoji} ${c.nivel}`, cls: nivelBadge(c.nivel).cls };
 
   return (
-    <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 overflow-hidden">
+    <div className="rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-neutral-900 overflow-hidden">
       <div className="p-4 pb-2">
         <div className="flex items-start justify-between mb-3 gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">Mi Convención</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Mi Convención</p>
             <p className={cn('text-lg font-extrabold mt-0.5', tituloColor)}>{titulo}</p>
             {c.prima_acum > 0 && (
               <p className="text-[11px] text-neutral-500 mt-1">
@@ -85,7 +85,7 @@ function MiConvencionCard() {
               <div className="h-1.5 rounded-full bg-sky-100 dark:bg-sky-950/30 overflow-hidden">
                 <div className="h-full rounded-full bg-gradient-to-r from-sky-600 to-sky-400" style={{ width: `${c.pct}%` }} />
               </div>
-              <p className="text-right text-[10px] font-semibold text-sky-700 mt-1">{Math.round(c.pct)}% hacia {c.siguiente}</p>
+              <p className="text-right text-[11px] font-semibold text-sky-700 mt-1">{Math.round(c.pct)}% hacia {c.siguiente}</p>
             </div>
             <p className="mt-2 text-[12px] text-neutral-500 italic">{c.msg}</p>
           </>
@@ -99,7 +99,7 @@ function MiConvencionCard() {
         <div className="absolute bottom-0 left-0 right-0 h-[50px] flex items-center justify-between px-4 pb-1.5">
           <span className="text-2xl leading-none">🌴</span>
           <div className="text-center leading-tight">
-            <p className="text-[9px] font-semibold uppercase tracking-widest text-white/75">¡tu próximo destino!</p>
+            <p className="text-[10.5px] font-semibold uppercase tracking-widest text-white/75">¡tu próximo destino!</p>
             <p className="text-[13px] font-extrabold uppercase tracking-wide text-white">
               Convención {new Date().getFullYear()}
             </p>
@@ -120,10 +120,10 @@ function ConvencionEquipoCard() {
   if (!ce) return null;
 
   return (
-    <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 p-4">
+    <div className="rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-neutral-900 p-4">
       <div className="flex items-start justify-between mb-3 gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">Convención del Equipo</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Convención del Equipo</p>
           <p className="text-base font-bold text-[#1B3A6B] dark:text-white mt-0.5">
             {ce.en_convencion.length > 0 ? (
               <>{ce.en_convencion.length} <span className="font-normal text-sm text-neutral-500">de {ce.total_vendedores} vendedores</span></>
@@ -140,7 +140,7 @@ function ConvencionEquipoCard() {
             const esMaximo = !v.sig_conv;
             return (
               <div key={v.entity} className="flex items-center gap-2 py-2">
-                <span className={cn('shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap', badge.cls)}>
+                <span className={cn('shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap', badge.cls)}>
                   {badge.emoji} {v.nivel_conv}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -148,7 +148,7 @@ function ConvencionEquipoCard() {
                   {esMaximo ? (
                     <p className="text-[11px] font-semibold text-emerald-600">🏆 Nivel máximo</p>
                   ) : (
-                    <p className="text-[11px] text-neutral-400">
+                    <p className="text-[11px] text-neutral-500">
                       Falta <span className="text-indigo-500 font-semibold">{money(v.falta_conv)}</span> → {v.sig_conv}
                     </p>
                   )}
@@ -158,7 +158,7 @@ function ConvencionEquipoCard() {
                     <div className="h-1 rounded-full bg-indigo-100 dark:bg-indigo-950/30 overflow-hidden">
                       <div className="h-full rounded-full bg-indigo-500" style={{ width: `${v.pct_conv}%` }} />
                     </div>
-                    <p className="text-[9px] text-indigo-500 text-right mt-0.5">{Math.round(v.pct_conv)}%</p>
+                    <p className="text-[10.5px] text-indigo-500 text-right mt-0.5">{Math.round(v.pct_conv)}%</p>
                   </div>
                 )}
               </div>
@@ -168,24 +168,24 @@ function ConvencionEquipoCard() {
       ) : (
         <div className="text-center py-4">
           <Award className="w-7 h-7 text-neutral-200 mx-auto" />
-          <p className="text-sm text-neutral-400 mt-2">Los vendedores que lleguen a convención aparecerán aquí</p>
+          <p className="text-sm text-neutral-500 mt-2">Los vendedores que lleguen a convención aparecerán aquí</p>
         </div>
       )}
 
       {ce.cerca.length > 0 && (
         <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-white/5">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400 mb-2 flex items-center gap-1">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-500 mb-2 flex items-center gap-1">
             <Zap className="w-3 h-3 text-amber-500" /> Cerca de Alcanzar Convención ({ce.cerca.length})
           </p>
           <div className="space-y-1.5">
             {ce.cerca.map(v => (
               <div key={v.entity} className="flex items-center gap-2">
-                <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 whitespace-nowrap">
+                <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 whitespace-nowrap">
                   ⚡ Por llegar
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-semibold text-neutral-700 dark:text-neutral-300 truncate" title={v.entity}>{v.entity}</p>
-                  <p className="text-[10px] text-neutral-400">
+                  <p className="text-[11px] text-neutral-500">
                     Falta <span className="text-amber-600 font-semibold">{money(v.falta_conv)}</span> → {v.sig_conv}
                   </p>
                 </div>
@@ -193,7 +193,7 @@ function ConvencionEquipoCard() {
                   <div className="h-1 rounded-full bg-amber-100 overflow-hidden">
                     <div className="h-full rounded-full bg-amber-500" style={{ width: `${v.pct_conv}%` }} />
                   </div>
-                  <p className="text-[9px] text-amber-600 text-right mt-0.5">{Math.round(v.pct_conv)}%</p>
+                  <p className="text-[10.5px] text-amber-600 text-right mt-0.5">{Math.round(v.pct_conv)}%</p>
                 </div>
               </div>
             ))}
@@ -211,7 +211,7 @@ export function ConvencionCard() {
 
   if (data === 'loading') {
     return (
-      <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 p-4">
+      <div className="rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-neutral-900 p-4">
         <Sk className="h-5 w-32 mb-4" />
         <Sk className="h-16" />
       </div>

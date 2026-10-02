@@ -57,32 +57,32 @@ export function ClaraSidebar({ costCenters, simpleConcepts, onRefresh }: Props) 
   return (
     <div className="space-y-6">
       {/* Cost Centers */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+      <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-4 shadow-card">
         <div className="flex items-center gap-2 mb-3">
-          <Building2 className="w-4 h-4 text-blue-600" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Centros de Costo</h3>
+          <Building2 className="w-4 h-4 text-accent-ink" />
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Centros de Costo</h3>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Areas que asumen el gasto.</p>
+        <p className="text-xs text-neutral-500 dark:text-gray-400 mb-3">Areas que asumen el gasto.</p>
         <div className="flex gap-2 mb-3">
           <input
             value={newCC}
             onChange={(e) => setNewCC(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddCC()}
             placeholder="Ej: Dir. General"
-            className="flex-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-white"
+            className="flex-1 text-xs border border-neutral-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-accent/40 focus:outline-none bg-surface-card dark:bg-gray-700 dark:text-white"
           />
           <button
             onClick={handleAddCC}
             disabled={loadingCC || !newCC.trim()}
-            className="p-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="p-1.5 rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50 transition-colors"
           >
             {loadingCC ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           </button>
         </div>
-        <hr className="border-gray-100 dark:border-gray-700 mb-2" />
+        <hr className="border-neutral-100 dark:border-gray-700 mb-2" />
         <ul className="space-y-1 max-h-40 overflow-y-auto">
           {costCenters.map((cc) => (
-            <li key={cc} className="flex items-center justify-between group text-xs text-gray-700 dark:text-gray-300 py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+            <li key={cc} className="flex items-center justify-between group text-xs text-neutral-700 dark:text-gray-300 py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
               <span className="truncate">{cc}</span>
               <button
                 onClick={() => handleDeleteCC(cc)}
@@ -93,25 +93,25 @@ export function ClaraSidebar({ costCenters, simpleConcepts, onRefresh }: Props) 
             </li>
           ))}
           {costCenters.length === 0 && (
-            <li className="text-xs text-gray-400 italic py-1">Sin centros de costo</li>
+            <li className="text-xs text-neutral-500 italic py-1">Sin centros de costo</li>
           )}
         </ul>
       </div>
 
       {/* Simple Concepts */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+      <div className="bg-surface-card dark:bg-gray-800 rounded-2xl border border-soft dark:border-gray-700 p-4 shadow-card">
         <div className="flex items-center gap-2 mb-3">
           <Tags className="w-4 h-4 text-teal-600" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Conceptos Simples</h3>
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Conceptos Simples</h3>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Categorias de tipo de servicio.</p>
+        <p className="text-xs text-neutral-500 dark:text-gray-400 mb-3">Categorias de tipo de servicio.</p>
         <div className="flex gap-2 mb-3">
           <input
             value={newConcept}
             onChange={(e) => setNewConcept(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddConcept()}
             placeholder="Ej: Papeleria"
-            className="flex-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white dark:bg-gray-700 dark:text-white"
+            className="flex-1 text-xs border border-neutral-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-teal-500 focus:outline-none bg-surface-card dark:bg-gray-700 dark:text-white"
           />
           <button
             onClick={handleAddConcept}
@@ -121,10 +121,10 @@ export function ClaraSidebar({ costCenters, simpleConcepts, onRefresh }: Props) 
             {loadingConcept ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           </button>
         </div>
-        <hr className="border-gray-100 dark:border-gray-700 mb-2" />
+        <hr className="border-neutral-100 dark:border-gray-700 mb-2" />
         <ul className="space-y-1 max-h-40 overflow-y-auto">
           {simpleConcepts.map((c) => (
-            <li key={c} className="flex items-center justify-between group text-xs text-gray-700 dark:text-gray-300 py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+            <li key={c} className="flex items-center justify-between group text-xs text-neutral-700 dark:text-gray-300 py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
               <span className="truncate">{c}</span>
               <button
                 onClick={() => handleDeleteConcept(c)}
@@ -135,7 +135,7 @@ export function ClaraSidebar({ costCenters, simpleConcepts, onRefresh }: Props) 
             </li>
           ))}
           {simpleConcepts.length === 0 && (
-            <li className="text-xs text-gray-400 italic py-1">Sin conceptos</li>
+            <li className="text-xs text-neutral-500 italic py-1">Sin conceptos</li>
           )}
         </ul>
       </div>

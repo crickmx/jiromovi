@@ -153,15 +153,15 @@ export default function CommissionBugTest() {
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+    <div className="bg-surface-card border border-soft rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-purple-100 rounded-lg">
             <FileSearch className="h-5 w-5 text-purple-600" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">Test Anti-Regresión: Comisión Base</h3>
-            <p className="text-sm text-gray-600">Verifica que commission_bruta no sea igual a prima_neta</p>
+            <h3 className="font-semibold text-neutral-900">Test Anti-Regresión: Comisión Base</h3>
+            <p className="text-sm text-neutral-600">Verifica que commission_bruta no sea igual a prima_neta</p>
           </div>
         </div>
         <button
@@ -248,27 +248,27 @@ export default function CommissionBugTest() {
             </div>
           )}
 
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <p className="font-semibold text-gray-900 mb-3">Estadísticas:</p>
+          <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+            <p className="font-semibold text-neutral-900 mb-3">Estadísticas:</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">Total verificados:</span>
-                <span className="ml-2 font-semibold text-gray-900">{result.totalChecked}</span>
+                <span className="text-neutral-600">Total verificados:</span>
+                <span className="ml-2 font-semibold text-neutral-900">{result.totalChecked}</span>
               </div>
               <div>
-                <span className="text-gray-600">Sospechosos:</span>
+                <span className="text-neutral-600">Sospechosos:</span>
                 <span className="ml-2 font-semibold text-orange-700">{result.suspiciousCount}</span>
               </div>
               <div>
-                <span className="text-gray-600">Con error:</span>
+                <span className="text-neutral-600">Con error:</span>
                 <span className="ml-2 font-semibold text-red-700">{result.errorCount}</span>
               </div>
               <div>
-                <span className="text-gray-600">Sin base:</span>
+                <span className="text-neutral-600">Sin base:</span>
                 <span className="ml-2 font-semibold text-yellow-700">{result.missingBaseCount}</span>
               </div>
               <div>
-                <span className="text-gray-600">Sin reglas:</span>
+                <span className="text-neutral-600">Sin reglas:</span>
                 <span className="ml-2 font-semibold text-yellow-700">{result.missingRulesCount}</span>
               </div>
             </div>

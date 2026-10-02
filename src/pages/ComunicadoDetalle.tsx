@@ -82,9 +82,9 @@ export default function ComunicadoDetalle() {
     return (
       <>
         <Container size="lg">
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-8 sm:p-12 text-center">
+          <div className="bg-surface-card rounded-2xl border border-soft shadow-ios p-8 sm:p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-              <FileText className="w-8 h-8 text-neutral-400" />
+              <FileText className="w-8 h-8 text-neutral-500" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-2">
               Acceso Denegado
@@ -105,9 +105,9 @@ export default function ComunicadoDetalle() {
     return (
       <>
         <Container size="lg">
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-ios p-8 sm:p-12 text-center">
+          <div className="bg-surface-card rounded-2xl border border-soft shadow-ios p-8 sm:p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-              <FileText className="w-8 h-8 text-neutral-400" />
+              <FileText className="w-8 h-8 text-neutral-500" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-2">
               Comunicado no encontrado
@@ -161,7 +161,7 @@ export default function ComunicadoDetalle() {
         {/* Artículo */}
         <article
           className={cn(
-            "bg-white rounded-xl border shadow-ios overflow-hidden",
+            "bg-surface-card rounded-xl border shadow-ios overflow-hidden",
             esDeGerente
               ? "border-l-4 border-l-primary-500 border-t-neutral-200 border-r-neutral-200 border-b-neutral-200"
               : "border-neutral-200"
@@ -250,7 +250,7 @@ export default function ComunicadoDetalle() {
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
+                          <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-accent-ink" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-neutral-900 text-sm sm:text-base truncate">
@@ -263,7 +263,7 @@ export default function ComunicadoDetalle() {
                           )}
                         </div>
                       </div>
-                      <Download className="w-5 h-5 text-neutral-400 group-hover:text-accent transition-colors flex-shrink-0 ml-2" />
+                      <Download className="w-5 h-5 text-neutral-500 group-hover:text-accent transition-colors flex-shrink-0 ml-2" />
                     </a>
                   ))}
                 </div>

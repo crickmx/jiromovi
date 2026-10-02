@@ -207,7 +207,7 @@ export default function Comunicados() {
                       id="categoria"
                       value={categoriaSeleccionada}
                       onChange={(e) => setCategoriaSeleccionada(e.target.value)}
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-base text-sm bg-white"
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-base text-sm bg-surface-card"
                     >
                       <option value="">Todas las categorías</option>
                       {categorias.map((cat) => (
@@ -269,7 +269,7 @@ export default function Comunicados() {
             <Section variant="card">
               <div className="text-center py-12">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <FileText className="w-8 h-8 text-neutral-400" />
+                  <FileText className="w-8 h-8 text-neutral-500" />
                 </div>
                 <h3 className="text-lg font-semibold text-neutral-900 mb-2">
                   No hay comunicados
@@ -297,7 +297,7 @@ export default function Comunicados() {
                     <article
                       key={comunicado.id}
                       className={cn(
-                        "bg-white rounded-lg border shadow-ios overflow-hidden",
+                        "bg-surface-card rounded-lg border shadow-ios overflow-hidden",
                         "transition-all duration-200 hover:shadow-ios-md cursor-pointer group",
                         "flex flex-col h-full",
                         esDeGerente
@@ -359,7 +359,7 @@ export default function Comunicados() {
                             <Calendar className="w-3 h-3" />
                             {new Date(comunicado.fecha_publicacion || comunicado.fecha_creacion).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
                           </span>
-                          <span className="text-accent group-hover:text-primary-700 font-medium text-sm flex items-center gap-1 transition-colors">
+                          <span className="text-accent-ink group-hover:text-primary-700 font-medium text-sm flex items-center gap-1 transition-colors">
                             Leer más
                             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                           </span>

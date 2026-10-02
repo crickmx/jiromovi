@@ -301,8 +301,8 @@ export function PanelLider({ onClose }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8 overflow-hidden flex flex-col border border-neutral-200/60 max-h-[90vh]">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-2xl my-8 overflow-hidden flex flex-col border border-neutral-200/60 max-h-[90vh] animate-scale-in">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
@@ -315,7 +315,7 @@ export function PanelLider({ onClose }: Props) {
               <p className="text-xs text-neutral-500 mt-0.5">Gestiona los miembros y reglas de tu equipo</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-neutral-600 transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-500 hover:text-neutral-600 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -324,7 +324,7 @@ export function PanelLider({ onClose }: Props) {
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
             </div>
           ) : equipos.length === 0 ? (
             <div className="text-center py-16">
@@ -362,10 +362,10 @@ export function PanelLider({ onClose }: Props) {
                   <div className="flex-1 min-w-0">
                     <span className="font-semibold text-sm text-neutral-800">{selectedEquipo.nombre}</span>
                     {selectedEquipo.area_categoria && (
-                      <span className="ml-2 text-xs text-neutral-400">{selectedEquipo.area_categoria}</span>
+                      <span className="ml-2 text-xs text-neutral-500">{selectedEquipo.area_categoria}</span>
                     )}
                   </div>
-                  <span className="text-xs text-neutral-400">{selectedEquipo.member_count} miembro{selectedEquipo.member_count !== 1 ? 's' : ''}</span>
+                  <span className="text-xs text-neutral-500">{selectedEquipo.member_count} miembro{selectedEquipo.member_count !== 1 ? 's' : ''}</span>
                 </div>
               )}
 
@@ -400,7 +400,7 @@ export function PanelLider({ onClose }: Props) {
               {tab === 'miembros' && (
                 <div className="space-y-3">
                   {loadingMiembros ? (
-                    <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>
+                    <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-neutral-500" /></div>
                   ) : (
                     <>
                       {/* Current members list */}
@@ -418,9 +418,9 @@ export function PanelLider({ onClose }: Props) {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium text-neutral-800 truncate">{m.nombre_completo}</span>
-                                  {isSelf && <span className="text-[10px] text-neutral-400 font-medium">(tú)</span>}
+                                  {isSelf && <span className="text-[11px] text-neutral-500 font-medium">(tú)</span>}
                                 </div>
-                                {m.oficina_nombre && <p className="text-xs text-neutral-400 truncate">{m.oficina_nombre}</p>}
+                                {m.oficina_nombre && <p className="text-xs text-neutral-500 truncate">{m.oficina_nombre}</p>}
                               </div>
                               {/* Rol badge / dropdown */}
                               <div className="relative flex-shrink-0" ref={rolDropOpen === m.usuario_id ? rolDropRef : undefined}>
@@ -434,7 +434,7 @@ export function PanelLider({ onClose }: Props) {
                                   {!(isSelf && m.rol_en_equipo === 'lider') && <ChevronDown className="w-3 h-3 opacity-60" />}
                                 </button>
                                 {rolDropOpen === m.usuario_id && (
-                                  <div className="absolute right-0 top-full mt-1 z-30 bg-white border border-neutral-200 rounded-xl shadow-lg py-1 min-w-[130px]">
+                                  <div className="absolute right-0 top-full mt-1 z-30 bg-surface-card border border-soft rounded-xl shadow-lg py-1 min-w-[130px]">
                                     {(Object.keys(ROL_CONFIG) as Array<keyof typeof ROL_CONFIG>).map(r => {
                                       const cfg = ROL_CONFIG[r];
                                       return (
@@ -473,7 +473,7 @@ export function PanelLider({ onClose }: Props) {
                         <div className="border border-neutral-200 rounded-xl p-4 space-y-3 bg-neutral-50">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-semibold text-neutral-700">Agregar miembro</p>
-                            <button onClick={() => { setShowAddPanel(false); setSearchAdd(''); }} className="p-1 hover:bg-neutral-200 rounded-lg text-neutral-400 transition-colors">
+                            <button onClick={() => { setShowAddPanel(false); setSearchAdd(''); }} className="p-1 hover:bg-neutral-200 rounded-lg text-neutral-500 transition-colors">
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -494,20 +494,20 @@ export function PanelLider({ onClose }: Props) {
                           </div>
                           {/* Search */}
                           <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
                             <input
                               autoFocus
                               type="text"
                               value={searchAdd}
                               onChange={e => setSearchAdd(e.target.value)}
                               placeholder="Buscar usuario..."
-                              className="w-full pl-8 pr-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 outline-none bg-white"
+                              className="w-full pl-8 pr-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-neutral-900 focus:border-neutral-900 outline-none bg-surface-card"
                             />
                           </div>
                           {searchAdd && (
-                            <div className="border border-neutral-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto bg-white">
+                            <div className="border border-soft rounded-lg overflow-hidden max-h-48 overflow-y-auto bg-surface-card">
                               {disponibles.length === 0 ? (
-                                <p className="text-xs text-neutral-400 px-3 py-2">Sin resultados</p>
+                                <p className="text-xs text-neutral-500 px-3 py-2">Sin resultados</p>
                               ) : (
                                 disponibles.slice(0, 20).map(u => (
                                   <button
@@ -517,11 +517,11 @@ export function PanelLider({ onClose }: Props) {
                                     className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-neutral-50 transition-colors text-left border-b border-neutral-50 last:border-0"
                                   >
                                     {addingUser === u.id
-                                      ? <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-400 flex-shrink-0" />
-                                      : <Plus className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                                      ? <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-500 flex-shrink-0" />
+                                      : <Plus className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                                     }
                                     <span className="flex-1 truncate font-medium text-neutral-800">{u.nombre_completo}</span>
-                                    <span className="text-xs text-neutral-400 flex-shrink-0">{u.rol}</span>
+                                    <span className="text-xs text-neutral-500 flex-shrink-0">{u.rol}</span>
                                   </button>
                                 ))
                               )}
@@ -544,13 +544,13 @@ export function PanelLider({ onClose }: Props) {
               {/* ── REGLAS TAB ── */}
               {tab === 'reglas' && (
                 <div className="space-y-3">
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-neutral-500">
                     Define qué ejecutivo recibe cada agente cuando llega un trámite nuevo.
                     Sin regla → el trámite va al pool del equipo.
                   </p>
 
                   {loadingReglas ? (
-                    <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>
+                    <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-neutral-500" /></div>
                   ) : (
                     <>
                       {/* Existing rules */}
@@ -558,7 +558,7 @@ export function PanelLider({ onClose }: Props) {
                         {reglas.length === 0 && (
                           <div className="text-center py-6 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
                             <Shuffle className="w-8 h-8 mx-auto text-neutral-300 mb-1.5" />
-                            <p className="text-xs text-neutral-400">No hay reglas configuradas. Todos los trámites irán al pool.</p>
+                            <p className="text-xs text-neutral-500">No hay reglas configuradas. Todos los trámites irán al pool.</p>
                           </div>
                         )}
                         {reglas.map(r => (
@@ -566,7 +566,7 @@ export function PanelLider({ onClose }: Props) {
                             <div className="flex-1 min-w-0">
                               <span className="text-sm font-medium text-neutral-800">{r.usuario_nombre}</span>
                               {r.area && (
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{r.area}</span>
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-50 text-accent-ink font-medium">{r.area}</span>
                               )}
                             </div>
                             <ArrowRight className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />
@@ -575,14 +575,14 @@ export function PanelLider({ onClose }: Props) {
                               value={r.ejecutivo_id ?? ''}
                               onChange={e => handleCambiarEjecutivo(r.id, e.target.value || null)}
                               disabled={savingEjecutivo === r.id}
-                              className="text-sm border border-neutral-200 rounded-lg px-2 py-1 text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-white max-w-[160px] truncate"
+                              className="text-sm border border-soft rounded-lg px-2 py-1 text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-surface-card max-w-[160px] truncate"
                             >
                               <option value="">Pool del equipo</option>
                               {ejecutivosEquipo.map(e => (
                                 <option key={e.usuario_id} value={e.usuario_id}>{e.nombre_completo}</option>
                               ))}
                             </select>
-                            {savingEjecutivo === r.id && <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-400 flex-shrink-0" />}
+                            {savingEjecutivo === r.id && <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-500 flex-shrink-0" />}
                             <button
                               onClick={() => handleRemoveRegla(r.id)}
                               disabled={removingRegla === r.id}
@@ -599,25 +599,25 @@ export function PanelLider({ onClose }: Props) {
                         <div className="border border-neutral-200 rounded-xl p-4 space-y-3 bg-neutral-50">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-semibold text-neutral-700">Nueva regla</p>
-                            <button onClick={() => { setShowAddRegla(false); setSearchAgente(''); setAddingReglaUserId(''); setAddingReglaEjecutivoId(''); }} className="p-1 hover:bg-neutral-200 rounded-lg text-neutral-400">
+                            <button onClick={() => { setShowAddRegla(false); setSearchAgente(''); setAddingReglaUserId(''); setAddingReglaEjecutivoId(''); }} className="p-1 hover:bg-neutral-200 rounded-lg text-neutral-500">
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-neutral-600 mb-1">Agente</label>
                             <div className="relative">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
                               <input
                                 autoFocus
                                 type="text"
                                 value={searchAgente}
                                 onChange={e => setSearchAgente(e.target.value)}
                                 placeholder="Buscar agente..."
-                                className="w-full pl-8 pr-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-neutral-900 outline-none bg-white"
+                                className="w-full pl-8 pr-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-neutral-900 outline-none bg-surface-card"
                               />
                             </div>
                             {searchAgente && (
-                              <div className="mt-1 border border-neutral-200 rounded-lg overflow-hidden max-h-36 overflow-y-auto bg-white">
+                              <div className="mt-1 border border-soft rounded-lg overflow-hidden max-h-36 overflow-y-auto bg-surface-card">
                                 {agentesDisponiblesRegla.slice(0, 15).map(u => (
                                   <button
                                     key={u.id}
@@ -636,7 +636,7 @@ export function PanelLider({ onClose }: Props) {
                             <select
                               value={addingReglaEjecutivoId}
                               onChange={e => setAddingReglaEjecutivoId(e.target.value)}
-                              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-neutral-900 outline-none bg-white"
+                              className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-neutral-900 outline-none bg-surface-card"
                             >
                               <option value="">Pool del equipo</option>
                               {ejecutivosEquipo.map(e => (

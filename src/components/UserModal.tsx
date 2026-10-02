@@ -712,7 +712,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
       <button
         type="button"
         onClick={() => { localStorage.removeItem(DRAFT_KEY); onClose(); }}
-        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
+        className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
       >
         Cancelar
       </button>
@@ -724,18 +724,18 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60 ${
             accessSent
               ? 'bg-green-100 text-green-700 border border-green-200'
-              : 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200'
+              : 'bg-neutral-100 text-neutral-700 border border-neutral-200 hover:bg-slate-200'
           }`}
           title="Enviar código de acceso al correo y WhatsApp del usuario"
         >
-          {accessSent ? <><CheckCircle className="w-4 h-4" /> Acceso enviado</> : sendingAccess ? <><span className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-500 rounded-full animate-spin" /> Enviando...</> : <><Send className="w-4 h-4" /> Enviar acceso</>}
+          {accessSent ? <><CheckCircle className="w-4 h-4" /> Acceso enviado</> : sendingAccess ? <><span className="w-4 h-4 border-2 border-slate-400/30 border-t-neutral-500 rounded-full animate-spin" /> Enviando...</> : <><Send className="w-4 h-4" /> Enviar acceso</>}
         </button>
       )}
       <button
         type="submit"
         form="user-form"
         disabled={loading}
-        className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50"
+        className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover transition disabled:opacity-50"
       >
         {loading ? 'Guardando...' : user ? 'Actualizar Usuario' : 'Crear Usuario'}
       </button>
@@ -749,13 +749,13 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
       title={
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-            <User className="w-5 h-5 text-accent" />
+            <User className="w-5 h-5 text-accent-ink" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-neutral-900">
               {user ? 'Editar Usuario' : 'Nuevo Usuario'}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-neutral-500">
               {user ? 'Actualiza la información del usuario' : 'Completa los datos del nuevo usuario'}
             </p>
           </div>
@@ -772,7 +772,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
       )}
 
       {/* Tabs Navigation */}
-      <div className="border-b border-slate-200 mb-6">
+      <div className="border-b border-neutral-200 mb-6">
         <nav className="-mb-px flex gap-2 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -785,8 +785,8 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                   flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap
                   ${
                     activeTab === tab.id
-                      ? 'border-accent text-accent'
-                      : 'border-transparent text-slate-600 hover:text-slate-800 hover:border-slate-300'
+                      ? 'border-accent text-accent-ink'
+                      : 'border-transparent text-neutral-600 hover:text-slate-800 hover:border-slate-300'
                   }
                 `}
               >
@@ -805,20 +805,20 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             {/* Enlazar usuario SICAS */}
             {canLinkSicas && (
               <div className="bg-gradient-to-br from-indigo-50 to-primary-50 border-2 border-indigo-200 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-slate-900 mb-1 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-neutral-900 mb-1 flex items-center gap-2">
                   <Link2 className="w-4 h-4 text-indigo-600" />
                   Enlazar usuario SICAS
                 </h3>
-                <p className="text-xs text-slate-600 mb-3">
+                <p className="text-xs text-neutral-600 mb-3">
                   Busca al vendedor en el catálogo SICAS para autollenar nombre, apellidos, oficina, rol y slug, y dejar el usuario enlazado.
                 </p>
 
                 {sicasLink ? (
-                  <div className="bg-white rounded-lg border border-indigo-200 p-3">
+                  <div className="bg-surface-card rounded-2xl border border-indigo-200 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{sicasLink.vend_nombre}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-sm font-semibold text-neutral-900 truncate">{sicasLink.vend_nombre}</p>
+                        <p className="text-xs text-neutral-500 mt-0.5">
                           ID SICAS: <span className="font-mono">{sicasLink.vend_id}</span>
                           {sicasLink.desp_nombre ? <> · Despacho: {sicasLink.desp_nombre}</> : null}
                         </p>
@@ -841,24 +841,24 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                 ) : (
                   <div className="relative">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
                       <input
                         type="text"
                         value={sicasSearch}
                         onChange={(e) => { setSicasSearch(e.target.value); setSicasOpen(true); }}
                         onFocus={() => setSicasOpen(true)}
                         placeholder="Buscar por nombre o ID SICAS..."
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-indigo-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        className="w-full pl-9 pr-3 py-2 text-sm border border-indigo-200 rounded-lg bg-surface-card focus:outline-none focus:ring-2 focus:ring-indigo-400"
                       />
                     </div>
                     {sicasOpen && (
-                      <div className="absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
+                      <div className="absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-surface-card border border-soft rounded-lg shadow-lg">
                         {sicasSearching ? (
-                          <div className="flex items-center gap-2 px-3 py-3 text-sm text-slate-500">
+                          <div className="flex items-center gap-2 px-3 py-3 text-sm text-neutral-500">
                             <Loader2 className="w-4 h-4 animate-spin" /> Buscando...
                           </div>
                         ) : sicasResults.length === 0 ? (
-                          <p className="px-3 py-3 text-sm text-slate-400">
+                          <p className="px-3 py-3 text-sm text-neutral-500">
                             {sicasSearch ? 'Sin resultados' : 'Escribe para buscar un vendedor SICAS'}
                           </p>
                         ) : (
@@ -867,16 +867,16 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                               key={v.id}
                               type="button"
                               onClick={() => handleSelectSicasVendor(v)}
-                              className="w-full text-left px-3 py-2 hover:bg-indigo-50 transition border-b border-slate-100 last:border-b-0"
+                              className="w-full text-left px-3 py-2 hover:bg-indigo-50 transition border-b border-neutral-100 last:border-b-0"
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm font-medium text-slate-900 truncate">{v.vend_nombre}</span>
-                                <span className="text-[10px] font-mono text-slate-400 shrink-0">{v.vend_id}</span>
+                                <span className="text-sm font-medium text-neutral-900 truncate">{v.vend_nombre}</span>
+                                <span className="text-[11px] font-mono text-neutral-500 shrink-0">{v.vend_id}</span>
                               </div>
                               <div className="flex items-center gap-2 mt-0.5">
-                                {v.desp_nombre && <span className="text-xs text-slate-500">{v.desp_nombre}</span>}
+                                {v.desp_nombre && <span className="text-xs text-neutral-500">{v.desp_nombre}</span>}
                                 {v.movi_user_id && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Ya vinculado</span>
+                                  <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Ya vinculado</span>
                                 )}
                               </div>
                             </button>
@@ -891,37 +891,37 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
 
             {/* Información Básica */}
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <User className="w-4 h-4 text-slate-600" />
+              <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                <User className="w-4 h-4 text-neutral-600" />
                 Información Básica
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Nombre *</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">Nombre *</label>
                   <input
                     type="text"
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     required
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     placeholder="Ej: Juan"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Apellidos *</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">Apellidos *</label>
                   <input
                     type="text"
                     value={formData.apellidos}
                     onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
                     required
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     placeholder="Ej: Pérez García"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Rol *</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">Rol *</label>
                   <select
                     value={formData.rol_id || catalogoRoles.find((r) => r.nombre === formData.rol)?.id || ''}
                     onChange={(e) => {
@@ -930,7 +930,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                     }}
                     required
                     disabled={lockRoleToAgente || (!isAdmin && !isGerente)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
                     {catalogoRoles.length === 0 && <option value="">{formData.rol}</option>}
                     {catalogoRoles
@@ -947,33 +947,33 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                       ))}
                   </select>
                   {lockRoleToAgente ? (
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       Este agente se crea con rol Agente.
                     </p>
                   ) : isGerente && !isAdmin ? (
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       Puedes asignar roles con base Empleado o Agente.
                     </p>
                   ) : (
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       Los roles se administran en Configuración → Roles.
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Puesto</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">Puesto</label>
                   <input
                     type="text"
                     value={formData.puesto}
                     onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     placeholder="Ej: Gerente de Ventas"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
+                  <label className="block text-xs font-medium text-neutral-700 mb-1 flex items-center gap-1">
                     <Building2 className="w-3 h-3" />
                     Oficina *
                   </label>
@@ -982,7 +982,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                     onChange={(e) => setFormData({ ...formData, oficina_id: e.target.value })}
                     disabled={isGerente}
                     required
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
                     <option value="">Seleccionar oficina</option>
                     {oficinas.map((oficina) => (
@@ -992,39 +992,39 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                     ))}
                   </select>
                   {isGerente && (
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       Solo puedes asignar usuarios a tu oficina
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
                     Fecha de Nacimiento
                   </label>
                   <input
                     type="date"
                     value={formData.fecha_nacimiento}
                     onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">
                     Fecha de Ingreso
                   </label>
                   <input
                     type="date"
                     value={formData.fecha_ingreso}
                     onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
 
                 {isAdmin && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                    <label className="block text-xs font-medium text-neutral-700 mb-1">
                       Slug para Página Web
                     </label>
                     <input
@@ -1032,11 +1032,11 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                       value={formData.web_slug}
                       onChange={(e) => setFormData({ ...formData, web_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                       placeholder="ejemplo: juanperez"
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     />
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       {formData.web_slug ? (
-                        <>URL: <span className="font-mono text-accent">agentedeseguros.website/{formData.web_slug}</span></>
+                        <>URL: <span className="font-mono text-accent-ink">agentedeseguros.website/{formData.web_slug}</span></>
                       ) : (
                         'Solo letras minúsculas, números y guiones'
                       )}
@@ -1049,16 +1049,16 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             {/* Permisos Adicionales - Solo para Gerentes y solo si el usuario actual es Admin */}
             {isAdmin && formData.rol === 'Gerente' && (
               <div className="bg-gradient-to-br from-blue-50 to-primary-50 border-2 border-blue-200 rounded-xl p-6">
-                <h3 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-accent" />
+                <h3 className="text-sm font-semibold text-neutral-900 mb-2 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-accent-ink" />
                   Permisos Adicionales (Nivel Administrador por Módulo)
                 </h3>
-                <p className="text-xs text-slate-600 mb-4">
+                <p className="text-xs text-neutral-600 mb-4">
                   Al activar un módulo, este Gerente tendrá permisos de Administrador únicamente dentro de dicho módulo, sin convertirse en administrador global.
                 </p>
 
                 {modulosSistema.length === 0 ? (
-                  <p className="text-sm text-slate-500 italic">Cargando módulos...</p>
+                  <p className="text-sm text-neutral-500 italic">Cargando módulos...</p>
                 ) : (
                   <div className="space-y-4">
                     {/* Agrupar por categoría */}
@@ -1066,8 +1066,8 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                       const modulosCategoria = modulosSistema.filter(m => (m.categoria || 'Otros') === categoria);
 
                       return (
-                        <div key={categoria} className="bg-white rounded-lg p-4 border border-slate-200">
-                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
+                        <div key={categoria} className="bg-surface-card rounded-2xl p-4 border border-soft">
+                          <h4 className="text-xs font-bold text-neutral-700 uppercase tracking-wide mb-3">
                             {categoria}
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1080,14 +1080,14 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                                   type="checkbox"
                                   checked={permisosAdicionales.includes(modulo.id)}
                                   onChange={() => togglePermisoModulo(modulo.id)}
-                                  className="mt-1 h-4 w-4 text-accent border-slate-300 rounded focus:ring-2 focus:ring-accent"
+                                  className="mt-1 h-4 w-4 text-accent-ink border-neutral-300 rounded focus:ring-2 focus:ring-accent"
                                 />
                                 <div className="flex-1">
-                                  <div className="text-sm font-medium text-slate-900">
+                                  <div className="text-sm font-medium text-neutral-900">
                                     {modulo.nombre}
                                   </div>
                                   {modulo.descripcion && (
-                                    <div className="text-xs text-slate-500 mt-0.5">
+                                    <div className="text-xs text-neutral-500 mt-0.5">
                                       {modulo.descripcion}
                                     </div>
                                   )}
@@ -1114,13 +1114,13 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         {/* Tab: Contacto */}
         {activeTab === 'contact' && (
           <div className="space-y-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-slate-600" />
+            <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-neutral-600" />
               Información de Contacto
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Email Laboral *
                 </label>
                 <input
@@ -1128,29 +1128,29 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                   value={formData.email_laboral}
                   onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
                   required
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="usuario@empresa.com"
                 />
                 {!user && (
-                  <p className="text-xs text-slate-500 mt-1">Se usará como usuario de acceso</p>
+                  <p className="text-xs text-neutral-500 mt-1">Se usará como usuario de acceso</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Email Personal
                 </label>
                 <input
                   type="email"
                   value={formData.email_personal}
                   onChange={(e) => setFormData({ ...formData, email_personal: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="usuario@gmail.com"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Celular Laboral *
                 </label>
                 <input
@@ -1158,33 +1158,33 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                   value={formData.celular_laboral}
                   onChange={(e) => setFormData({ ...formData, celular_laboral: e.target.value })}
                   required
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="+52 55 1234 5678"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Celular Personal
                 </label>
                 <input
                   type="tel"
                   value={formData.celular_personal}
                   onChange={(e) => setFormData({ ...formData, celular_personal: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="+52 55 8765 4321"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Extensión Telefónica
                 </label>
                 <input
                   type="text"
                   value={formData.extension_telefonica}
                   onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="Ej: 1234"
                 />
               </div>
@@ -1246,7 +1246,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             {/* Plan MKT Premium - Solo para Agentes */}
             {formData.rol === 'Agente' && (
               <div className="bg-gradient-to-br from-purple-50 to-primary-50 border-2 border-purple-200 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
                   <Palette className="w-4 h-4 text-purple-600" />
                   Plan MKT Premium
                 </h3>
@@ -1256,13 +1256,13 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                     id="plan_mkt_premium"
                     checked={formData.plan_mkt_premium}
                     onChange={(e) => setFormData({ ...formData, plan_mkt_premium: e.target.checked })}
-                    className="mt-1 h-4 w-4 text-accent border-slate-300 rounded focus:ring-2 focus:ring-accent"
+                    className="mt-1 h-4 w-4 text-accent-ink border-neutral-300 rounded focus:ring-2 focus:ring-accent"
                   />
                   <div className="flex-1">
-                    <label htmlFor="plan_mkt_premium" className="text-sm font-medium text-slate-900 cursor-pointer">
+                    <label htmlFor="plan_mkt_premium" className="text-sm font-medium text-neutral-900 cursor-pointer">
                       Habilitar Plan de MKT Premium
                     </label>
-                    <p className="text-xs text-slate-600 mt-1">
+                    <p className="text-xs text-neutral-600 mt-1">
                       Permite al agente acceder a la funcionalidad completa de Personalizar Publicidad (edición de diseños con logo y texto personalizado)
                     </p>
                   </div>
@@ -1272,7 +1272,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
 
             {/* seguros.express — habilitación + ubicación (admin) */}
             <div className="bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-sky-600" />
                 seguros.express
               </h3>
@@ -1282,19 +1282,19 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                   id="seguros_express_habilitado"
                   checked={formData.seguros_express_habilitado}
                   onChange={(e) => setFormData({ ...formData, seguros_express_habilitado: e.target.checked })}
-                  className="mt-1 h-4 w-4 text-accent border-slate-300 rounded focus:ring-2 focus:ring-accent"
+                  className="mt-1 h-4 w-4 text-accent-ink border-neutral-300 rounded focus:ring-2 focus:ring-accent"
                 />
                 <div className="flex-1">
-                  <label htmlFor="seguros_express_habilitado" className="text-sm font-medium text-slate-900 cursor-pointer">
+                  <label htmlFor="seguros_express_habilitado" className="text-sm font-medium text-neutral-900 cursor-pointer">
                     Habilitar recepción de leads de seguros.express
                   </label>
-                  <p className="text-xs text-slate-600 mt-1">
+                  <p className="text-xs text-neutral-600 mt-1">
                     El agente entrará al matching por cercanía y recibirá avisos de leads dentro de su radio.
                   </p>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-2">
+                <label className="block text-xs font-medium text-neutral-700 mb-2">
                   Ubicación del agente (para el matching por distancia)
                 </label>
                 <UbicacionPicker value={ubic} onChange={setUbic} />
@@ -1303,12 +1303,12 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
 
             {/* Vacaciones */}
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-slate-600" />
+              <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-neutral-600" />
                 Gestión de Vacaciones
               </h3>
               <div className="max-w-md">
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Días de Vacaciones Disponibles
                 </label>
                 <input
@@ -1321,16 +1321,16 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                     const clampedValue = Math.max(0, Math.min(50, value));
                     setFormData({ ...formData, dias_vacaciones_disponibles: clampedValue });
                   }}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-neutral-500 mt-1">
                   Rango permitido: 0 - 50 días
                 </p>
               </div>
             </div>
 
             {puedeAsignarEquiposTramite && (
-              <div className="bg-white border border-slate-200 rounded-xl p-4">
+              <div className="bg-surface-card border border-soft rounded-2xl p-4">
                 <AgentTramiteTeamsSection
                   userId={user?.id}
                   selectedIds={tramiteTeamIds}
@@ -1343,13 +1343,13 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             {/* Equipos Asignados - Solo para Administradores */}
             {isAdmin && (
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <Laptop className="w-4 h-4 text-slate-600" />
+                <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                  <Laptop className="w-4 h-4 text-neutral-600" />
                   Equipos Asignados
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
+                    <label className="block text-xs font-medium text-neutral-700 mb-1 flex items-center gap-1">
                       <Laptop className="w-3 h-3" />
                       Equipo de Cómputo
                     </label>
@@ -1358,15 +1358,15 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                       value={formData.equipo_computo}
                       onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
                       placeholder="Ej: Dell Latitude 5420"
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     />
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       Modelo y detalles del equipo de cómputo asignado
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
+                    <label className="block text-xs font-medium text-neutral-700 mb-1 flex items-center gap-1">
                       <Smartphone className="w-3 h-3" />
                       Equipo Celular
                     </label>
@@ -1375,9 +1375,9 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                       value={formData.equipo_celular}
                       onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
                       placeholder="Ej: iPhone 13 Pro"
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     />
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       Modelo y detalles del equipo celular asignado
                     </p>
                   </div>
@@ -1388,8 +1388,8 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             {/* Expediente - Solo si el usuario ya existe */}
             {user && (
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-600" />
+                <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-neutral-600" />
                   Expediente de Documentos
                 </h3>
                 <ExpedienteSection usuarioId={user.id} canEdit={true} />

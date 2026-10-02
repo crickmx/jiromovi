@@ -196,36 +196,36 @@ export function DirectorioJiro() {
           icon={Users}
         />
 
-        <div className="bg-white dark:bg-white/3 rounded-xl shadow-sm border border-neutral-200 dark:border-white/10 p-4">
+        <div className="bg-surface-card dark:bg-white/3 rounded-2xl shadow-card border border-soft dark:border-white/10 p-4">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-white/40 pointer-events-none" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500 dark:text-white/55 pointer-events-none" />
             <input
               type="text"
               placeholder="Buscar por nombre, puesto u oficina..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-10 py-3 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-white/40 transition-all"
+              className="w-full pl-12 pr-10 py-3 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-white/40 transition-all"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-white/60"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-600 dark:hover:text-white/60"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
-          <p className="mt-2 text-sm text-neutral-500 dark:text-white/40">
+          <p className="mt-2 text-sm text-neutral-500 dark:text-white/55">
             {filtrados.length} colaborador{filtrados.length !== 1 ? 'es' : ''}
             {searchTerm && ` para "${searchTerm}"`}
           </p>
         </div>
 
         {filtrados.length === 0 ? (
-          <div className="bg-white dark:bg-white/3 rounded-xl border border-neutral-200 dark:border-white/10 p-16 text-center">
+          <div className="bg-surface-card dark:bg-white/3 rounded-xl border border-soft dark:border-white/10 p-16 text-center">
             <Search className="w-14 h-14 mx-auto text-neutral-300 dark:text-white/20 mb-4" />
             <p className="text-neutral-600 dark:text-white/60 text-lg font-medium">Sin resultados</p>
-            <p className="text-neutral-400 dark:text-white/40 text-sm mt-1">
+            <p className="text-neutral-500 dark:text-white/55 text-sm mt-1">
               Intenta con otro nombre, puesto u oficina
             </p>
           </div>
@@ -234,7 +234,7 @@ export function DirectorioJiro() {
             {grupos.map((grupo) => (
               <div
                 key={grupo.nombre}
-                className="bg-white dark:bg-white/3 rounded-xl shadow-sm border border-neutral-200 dark:border-white/10 overflow-hidden"
+                className="bg-surface-card dark:bg-white/3 rounded-xl shadow-card border border-soft dark:border-white/10 overflow-hidden"
               >
                 <button
                   onClick={() => toggleOficina(grupo.nombre)}
@@ -242,22 +242,22 @@ export function DirectorioJiro() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Building2 className="w-4 h-4 text-accent" />
+                      <Building2 className="w-4 h-4 text-accent-ink" />
                     </div>
                     <div className="text-left">
                       <h2 className="font-semibold text-neutral-900 dark:text-white text-base">
                         {grupo.nombre}
                       </h2>
-                      <p className="text-xs text-neutral-500 dark:text-white/40">
+                      <p className="text-xs text-neutral-500 dark:text-white/55">
                         {grupo.empleados.length} colaborador
                         {grupo.empleados.length !== 1 ? 'es' : ''}
                       </p>
                     </div>
                   </div>
                   {collapsedOficinas.has(grupo.nombre) ? (
-                    <ChevronDown className="w-5 h-5 text-neutral-400 dark:text-white/40" />
+                    <ChevronDown className="w-5 h-5 text-neutral-500 dark:text-white/55" />
                   ) : (
-                    <ChevronUp className="w-5 h-5 text-neutral-400 dark:text-white/40" />
+                    <ChevronUp className="w-5 h-5 text-neutral-500 dark:text-white/55" />
                   )}
                 </button>
 
@@ -288,15 +288,15 @@ export function DirectorioJiro() {
                               {emp.nombre_completo}
                             </p>
                             <div className="flex items-center gap-1 mt-0.5">
-                              <Briefcase className="w-3 h-3 text-neutral-400 dark:text-white/40 flex-shrink-0" />
+                              <Briefcase className="w-3 h-3 text-neutral-500 dark:text-white/55 flex-shrink-0" />
                               <p className="text-xs text-neutral-500 dark:text-white/50 truncate">
                                 {emp.puesto}
                               </p>
                             </div>
                             {emp.celular_laboral && (
                               <div className="flex items-center gap-1 mt-0.5">
-                                <Phone className="w-3 h-3 text-neutral-400 dark:text-white/40 flex-shrink-0" />
-                                <p className="text-xs text-neutral-400 dark:text-white/40 truncate">
+                                <Phone className="w-3 h-3 text-neutral-500 dark:text-white/55 flex-shrink-0" />
+                                <p className="text-xs text-neutral-500 dark:text-white/55 truncate">
                                   {emp.celular_laboral}
                                 </p>
                               </div>
@@ -315,12 +315,12 @@ export function DirectorioJiro() {
 
       {selectedEmpleado && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedEmpleado(null);
           }}
         >
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-sm max-h-[90vh] overflow-y-auto animate-scale-in">
             <div className="relative bg-accent rounded-t-2xl p-6 text-center">
               <button
                 onClick={() => setSelectedEmpleado(null)}
@@ -361,9 +361,9 @@ export function DirectorioJiro() {
 
             <div className="p-4 space-y-3">
               <div className="flex items-start gap-3 p-3 bg-neutral-50 dark:bg-white/5 rounded-xl">
-                <MapPin className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                <MapPin className="w-5 h-5 text-accent-ink flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-white/40 font-medium mb-0.5">
+                  <p className="text-xs text-neutral-500 dark:text-white/55 font-medium mb-0.5">
                     Oficina
                   </p>
                   <p className="text-sm font-medium text-neutral-900 dark:text-white">
@@ -447,9 +447,9 @@ export function DirectorioJiro() {
 
               {(selectedEmpleado.celular_laboral || selectedEmpleado.celular_personal) && (
                 <div className="flex items-center gap-3 px-3 py-2.5 bg-neutral-50 dark:bg-white/5 rounded-xl">
-                  <Phone className="w-4 h-4 text-neutral-400 dark:text-white/40 flex-shrink-0" />
+                  <Phone className="w-4 h-4 text-neutral-500 dark:text-white/55 flex-shrink-0" />
                   <div>
-                    <p className="text-xs text-neutral-500 dark:text-white/40 font-medium">
+                    <p className="text-xs text-neutral-500 dark:text-white/55 font-medium">
                       Teléfono
                     </p>
                     <p className="text-sm text-neutral-900 dark:text-white">

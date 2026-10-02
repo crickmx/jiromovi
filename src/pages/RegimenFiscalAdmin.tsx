@@ -133,7 +133,7 @@ export default function RegimenFiscalAdmin() {
   const getStateIcon = (estado: string) => {
     if (estado === 'activo') return <CheckCircle2 className="w-4 h-4 text-emerald-600" />;
     if (estado === 'borrador') return <Clock className="w-4 h-4 text-amber-500" />;
-    return <XCircle className="w-4 h-4 text-neutral-400" />;
+    return <XCircle className="w-4 h-4 text-neutral-500" />;
   };
 
   return (
@@ -210,7 +210,7 @@ export default function RegimenFiscalAdmin() {
             const activeRule = regimenRules.find(r => r.estado === 'activo');
 
             return (
-              <div key={regimen} className="rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900 overflow-hidden">
+              <div key={regimen} className="rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-neutral-900 overflow-hidden">
                 {/* Régimen header */}
                 <div className={`px-5 py-4 border-b border-neutral-200 dark:border-white/10`}>
                   <div className="flex items-center gap-2.5">
@@ -267,7 +267,7 @@ export default function RegimenFiscalAdmin() {
                                 <span className="font-mono text-sm font-semibold text-neutral-800 dark:text-white/80">
                                   {rule.version}
                                 </span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.color}`}>
+                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${badge.color}`}>
                                   {badge.label}
                                 </span>
                               </div>
@@ -281,7 +281,7 @@ export default function RegimenFiscalAdmin() {
                                 </span>
                               </div>
                               {rule.notas && (
-                                <p className="text-xs text-neutral-400 mt-1 truncate">{rule.notas}</p>
+                                <p className="text-xs text-neutral-500 mt-1 truncate">{rule.notas}</p>
                               )}
                             </div>
 
@@ -332,7 +332,7 @@ export default function RegimenFiscalAdmin() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 text-neutral-400 hover:text-neutral-600"
+                                className="h-7 w-7 p-0 text-neutral-500 hover:text-neutral-600"
                                 onClick={() => navigate(`/comisiones/regimen-fiscal/${rule.id}`)}
                               >
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -405,8 +405,8 @@ export default function RegimenFiscalAdmin() {
 
       {/* Duplicate Modal */}
       {duplicateModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-md p-6 space-y-4 animate-scale-in">
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Duplicar versión</h3>
             <p className="text-sm text-neutral-500">
               Se creará una copia de la versión <span className="font-mono font-semibold">{duplicateModal.rule.version}</span> de {REGIMEN_LABELS[duplicateModal.rule.regimen_codigo]} como borrador.
@@ -442,8 +442,8 @@ export default function RegimenFiscalAdmin() {
 
       {/* New Rule Modal */}
       {newRuleModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-md p-6 space-y-4 animate-scale-in">
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Nueva versión de reglas</h3>
             <div className="space-y-3">
               <div>

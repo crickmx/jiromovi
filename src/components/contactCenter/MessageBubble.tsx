@@ -82,7 +82,7 @@ function MediaContent({ message, isOutbound = false }: { message: CCMessage; isO
         <FileText className="w-5 h-5 opacity-70 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium truncate">{media_filename || 'Documento'}</p>
-          {media_mime_type && <p className="text-[10px] opacity-60">{media_mime_type}</p>}
+          {media_mime_type && <p className="text-[11px] opacity-60">{media_mime_type}</p>}
         </div>
         {media_url && (
           <a href={media_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
@@ -136,20 +136,20 @@ export function MessageBubble({ message, senderName, showSender = false }: Messa
     <div className={cn('flex mb-1.5 group', isOutbound ? 'justify-end' : 'justify-start')}>
       <div className={cn('max-w-[75%] space-y-0.5', isOutbound ? 'items-end' : 'items-start')}>
         {showSender && senderName && !isOutbound && (
-          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1 mb-0.5">{senderName}</p>
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-500 ml-1 mb-0.5">{senderName}</p>
         )}
         <div
           className={cn(
             'rounded-2xl px-3 py-2 text-sm shadow-sm',
             isOutbound
               ? 'bg-accent rounded-tr-sm'
-              : 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 border border-neutral-100 dark:border-neutral-700 rounded-tl-sm'
+              : 'bg-surface-card dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 border border-soft dark:border-neutral-700 rounded-tl-sm'
           )}
           style={isOutbound ? { color: 'rgb(var(--movi-accent-foreground-rgb))' } : undefined}
         >
           <MediaContent message={message} isOutbound={isOutbound} />
         </div>
-        <p className={cn('text-[10px] text-neutral-400 dark:text-neutral-500 px-1', isOutbound ? 'text-right' : 'text-left')}>
+        <p className={cn('text-[11px] text-neutral-500 dark:text-neutral-500 px-1', isOutbound ? 'text-right' : 'text-left')}>
           {new Date(message.sent_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })}
           {isOutbound && message.status === 'read' && ' ✓✓'}
           {isOutbound && message.status === 'delivered' && ' ✓✓'}

@@ -114,7 +114,7 @@ export default function AutomatizacionIA() {
         icon={Bot}
       />
 
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 overflow-x-auto">
+      <div className="flex gap-1 bg-neutral-100 dark:bg-slate-800 rounded-lg p-1 overflow-x-auto">
         {[
           { key: 'dashboard' as Tab, label: 'Dashboard', icon: Activity },
           { key: 'robots' as Tab, label: 'Robots', icon: Bot },
@@ -128,8 +128,8 @@ export default function AutomatizacionIA() {
             onClick={() => setTab(key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
               tab === key
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-white dark:bg-slate-700 text-neutral-900 dark:text-white shadow-sm'
+                : 'text-neutral-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Icon className="w-4 h-4" />
@@ -256,7 +256,7 @@ function DashboardIA() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
       </div>
     );
   }
@@ -288,7 +288,7 @@ function DashboardIA() {
       {/* Manual Triggers */}
       <Section title="Ejecución manual">
         <div className="space-y-3">
-          <p className="text-xs text-slate-500">Ejecuta los procesos de forma manual para sincronización o pruebas.</p>
+          <p className="text-xs text-neutral-500">Ejecuta los procesos de forma manual para sincronización o pruebas.</p>
           <div className="flex flex-wrap gap-3">
             <Button
               variant="outline"
@@ -332,7 +332,7 @@ function DashboardIA() {
       {/* Recent Activity */}
       <Section title="Actividad reciente">
         {recentActivity.length === 0 ? (
-          <p className="text-sm text-slate-500 py-8 text-center">No hay actividad registrada aún.</p>
+          <p className="text-sm text-neutral-500 py-8 text-center">No hay actividad registrada aún.</p>
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {recentActivity.map(item => (
@@ -340,15 +340,15 @@ function DashboardIA() {
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                   item.estado === 'exito' ? 'bg-emerald-500' :
                   item.estado === 'error' ? 'bg-red-500' :
-                  item.estado === 'simulado' ? 'bg-amber-500' : 'bg-slate-400'
+                  item.estado === 'simulado' ? 'bg-amber-500' : 'bg-neutral-400'
                 }`} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{item.accion}</p>
-                  <p className="text-xs text-slate-500 truncate">
+                  <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{item.accion}</p>
+                  <p className="text-xs text-neutral-500 truncate">
                     {item.ia_robots?.nombre || 'Sin robot'}
                   </p>
                 </div>
-                <span className="text-xs text-slate-400 whitespace-nowrap">
+                <span className="text-xs text-neutral-500 whitespace-nowrap">
                   {new Date(item.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -371,12 +371,12 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
     sky: 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400',
   };
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+    <div className="bg-surface-card dark:bg-slate-800 rounded-2xl border border-soft dark:border-slate-700 p-4">
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${colorClasses[color]}`}>
         <Icon className="w-4 h-4" />
       </div>
-      <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
-      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+      <p className="text-xs text-neutral-500">{label}</p>
     </div>
   );
 }
@@ -495,7 +495,7 @@ function BoletinesPanel() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+      <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-neutral-500" /></div>
     );
   }
 
@@ -509,8 +509,8 @@ function BoletinesPanel() {
               <Newspaper className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white">Robot de Boletines de Aseguradoras</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+              <h3 className="font-semibold text-neutral-900 dark:text-white">Robot de Boletines de Aseguradoras</h3>
+              <p className="text-sm text-neutral-600 dark:text-slate-400 mt-0.5">
                 Identifica comunicados de aseguradoras, genera articulos y crea borradores de publicacion automaticamente
               </p>
             </div>
@@ -551,20 +551,20 @@ function BoletinesPanel() {
       {/* Pending bulletins */}
       {pendientes.length > 0 && (
         <Section title={`Boletines pendientes de procesar (${pendientes.length})`}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="bg-surface-card dark:bg-slate-800 rounded-xl border border-soft dark:border-slate-700 divide-y divide-neutral-100 dark:divide-slate-700">
             {pendientes.map(item => (
               <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                 <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
                   <Mail className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="font-medium text-sm text-neutral-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
                     De: {item.remitente} — {new Date(item.fecha_correo).toLocaleDateString('es-MX')}
                     {item.coincidencia_pct > 0 && <span className="ml-2 text-teal-600">({item.coincidencia_pct}% match)</span>}
                   </p>
                   {item.cuerpo_texto && (
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-1">{item.cuerpo_texto.substring(0, 150)}</p>
+                    <p className="text-xs text-neutral-500 mt-1 line-clamp-1">{item.cuerpo_texto.substring(0, 150)}</p>
                   )}
                 </div>
                 <Button
@@ -589,15 +589,15 @@ function BoletinesPanel() {
       {/* Processed bulletins */}
       <Section title={`Comunicados generados (${procesados.length})`}>
         {procesados.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-              <FileText className="w-7 h-7 text-slate-400" />
+          <div className="text-center py-12 bg-surface-card dark:bg-slate-800 rounded-xl border border-soft dark:border-slate-700">
+            <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-neutral-100 dark:bg-slate-700 flex items-center justify-center">
+              <FileText className="w-7 h-7 text-neutral-500" />
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400">No hay comunicados generados aun.</p>
-            <p className="text-xs text-slate-400 mt-1">Los boletines procesados aparecerán aqui con enlace al borrador.</p>
+            <p className="text-sm text-neutral-600 dark:text-slate-400">No hay comunicados generados aun.</p>
+            <p className="text-xs text-neutral-500 mt-1">Los boletines procesados aparecerán aqui con enlace al borrador.</p>
           </div>
         ) : (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="bg-surface-card dark:bg-slate-800 rounded-xl border border-soft dark:border-slate-700 divide-y divide-neutral-100 dark:divide-slate-700">
             {procesados.map(item => {
               const res = item.resultado as { titulo?: string; comunicado_id?: string; generated_at?: string } | null;
               return (
@@ -606,8 +606,8 @@ function BoletinesPanel() {
                     <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{res?.titulo || item.asunto}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="font-medium text-sm text-neutral-900 dark:text-white truncate">{res?.titulo || item.asunto}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">
                       De: {item.remitente} — Procesado: {res?.generated_at ? new Date(res.generated_at).toLocaleDateString('es-MX') : ''}
                     </p>
                   </div>
@@ -618,7 +618,7 @@ function BoletinesPanel() {
                     {item.comunicado_borrador_id && (
                       <button
                         onClick={() => navigate(`/comunicados/editor/${item.comunicado_borrador_id}`)}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
+                        className="flex items-center gap-1 text-xs text-accent-ink hover:text-accent-ink dark:text-blue-400 hover:underline"
                       >
                         <ExternalLink className="w-3.5 h-3.5" /> Editar
                       </button>
@@ -634,11 +634,11 @@ function BoletinesPanel() {
       {/* No bulletins at all */}
       {pendientes.length === 0 && procesados.length === 0 && (
         <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-            <Newspaper className="w-8 h-8 text-slate-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-neutral-100 dark:bg-slate-700 flex items-center justify-center">
+            <Newspaper className="w-8 h-8 text-neutral-500" />
           </div>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Sin boletines clasificados</h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
+          <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-1">Sin boletines clasificados</h3>
+          <p className="text-sm text-neutral-500 max-w-md mx-auto">
             Cuando se detecten emails de aseguradoras con comunicados o circulares, aparecerán aqui para ser procesados automaticamente en borradores de publicacion.
           </p>
         </div>
@@ -699,7 +699,7 @@ function RobotsPanel() {
   }
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
+    return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-neutral-500" /></div>;
   }
 
   if (loadError) {
@@ -716,7 +716,7 @@ function RobotsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">{robots.length} robots configurados</p>
+        <p className="text-sm text-neutral-500">{robots.length} robots configurados</p>
         <Button onClick={() => { setEditingRobot(null); setShowForm(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Nuevo robot
         </Button>
@@ -732,16 +732,16 @@ function RobotsPanel() {
 
       <div className="grid gap-3">
         {robots.map(robot => (
-          <div key={robot.id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div key={robot.id} className="bg-surface-card dark:bg-slate-800 rounded-xl border border-soft dark:border-slate-700">
             <div className="p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-white">{robot.nombre}</h3>
+                    <h3 className="font-semibold text-neutral-900 dark:text-white">{robot.nombre}</h3>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       robot.estado === 'activo' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
                       robot.estado === 'pausado' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                      'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                      'bg-neutral-100 text-neutral-600 dark:bg-slate-700 dark:text-slate-400'
                     }`}>
                       {robot.estado}
                     </span>
@@ -752,19 +752,19 @@ function RobotsPanel() {
                       {robot.modo}
                     </span>
                     {robot.es_predefinido && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-500 dark:bg-slate-700 dark:text-slate-400">
                         predefinido
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-slate-500 line-clamp-2">{robot.descripcion}</p>
+                  <p className="text-sm text-neutral-500 line-clamp-2">{robot.descripcion}</p>
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    {robot.canal_correo && <span className="flex items-center gap-1 text-xs text-slate-400"><Mail className="w-3 h-3" />Email</span>}
-                    {robot.canal_whatsapp && <span className="flex items-center gap-1 text-xs text-slate-400"><MessageSquare className="w-3 h-3" />WhatsApp</span>}
-                    {robot.canal_notificacion && <span className="flex items-center gap-1 text-xs text-slate-400"><Bell className="w-3 h-3" />Notificación</span>}
-                    <span className="text-xs text-slate-400">Prioridad: {robot.prioridad}</span>
+                    {robot.canal_correo && <span className="flex items-center gap-1 text-xs text-neutral-500"><Mail className="w-3 h-3" />Email</span>}
+                    {robot.canal_whatsapp && <span className="flex items-center gap-1 text-xs text-neutral-500"><MessageSquare className="w-3 h-3" />WhatsApp</span>}
+                    {robot.canal_notificacion && <span className="flex items-center gap-1 text-xs text-neutral-500"><Bell className="w-3 h-3" />Notificación</span>}
+                    <span className="text-xs text-neutral-500">Prioridad: {robot.prioridad}</span>
                     {robot.palabras_clave && robot.palabras_clave.length > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-slate-400">
+                      <span className="flex items-center gap-1 text-xs text-neutral-500">
                         <Tag className="w-3 h-3" />{robot.palabras_clave.length} palabras clave
                       </span>
                     )}
@@ -773,28 +773,28 @@ function RobotsPanel() {
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={() => toggleEstado(robot)}
-                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-neutral-500"
                     title={robot.estado === 'activo' ? 'Pausar' : 'Activar'}
                   >
                     {robot.estado === 'activo' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   </button>
                   <button
                     onClick={() => { setEditingRobot(robot); setShowForm(true); }}
-                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-neutral-500"
                     title="Editar"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => duplicateRobot(robot)}
-                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-neutral-500"
                     title="Duplicar"
                   >
                     <Copy className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setExpandedRobot(expandedRobot === robot.id ? null : robot.id)}
-                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-neutral-500"
                     title="Plantillas"
                   >
                     {expandedRobot === robot.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -810,7 +810,7 @@ function RobotsPanel() {
               </div>
             </div>
             {expandedRobot === robot.id && (
-              <div className="border-t border-slate-100 dark:border-slate-700 px-5 pb-5 pt-4">
+              <div className="border-t border-neutral-100 dark:border-slate-700 px-5 pb-5 pt-4">
                 <PlantillasPanel robotId={robot.id} />
               </div>
             )}
@@ -869,19 +869,19 @@ function PlantillasPanel({ robotId }: { robotId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Plantillas del robot</p>
+        <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Plantillas del robot</p>
         <button
           onClick={() => { setEditingPlantilla(null); setShowForm(true); }}
-          className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+          className="flex items-center gap-1 text-xs text-accent-ink hover:underline"
         >
           <Plus className="w-3.5 h-3.5" /> Nueva plantilla
         </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-slate-400" /></div>
+        <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-neutral-500" /></div>
       ) : plantillas.length === 0 && !showForm ? (
-        <p className="text-xs text-slate-400 py-4 text-center">No hay plantillas configuradas para este robot.</p>
+        <p className="text-xs text-neutral-500 py-4 text-center">No hay plantillas configuradas para este robot.</p>
       ) : null}
 
       {showForm && (
@@ -900,22 +900,22 @@ function PlantillasPanel({ robotId }: { robotId: string }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{p.nombre}</p>
+                    <p className="text-sm font-medium text-neutral-900 dark:text-white">{p.nombre}</p>
                     <span className="px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                       {canalLabel[p.canal] || p.canal}
                     </span>
-                    <span className="px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    <span className="px-1.5 py-0.5 rounded text-xs bg-neutral-100 text-neutral-600 dark:bg-slate-700 dark:text-slate-300">
                       {tipoLabel[p.tipo] || p.tipo}
                     </span>
                   </div>
-                  {p.asunto && <p className="text-xs text-slate-500 mt-0.5">Asunto: {p.asunto}</p>}
-                  <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{p.cuerpo}</p>
+                  {p.asunto && <p className="text-xs text-neutral-500 mt-0.5">Asunto: {p.asunto}</p>}
+                  <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">{p.cuerpo}</p>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => togglePlantilla(p)} className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-400" title={p.activo ? 'Desactivar' : 'Activar'}>
+                  <button onClick={() => togglePlantilla(p)} className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600 text-neutral-500" title={p.activo ? 'Desactivar' : 'Activar'}>
                     {p.activo ? <ToggleRight className="w-4 h-4 text-emerald-500" /> : <ToggleLeft className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => { setEditingPlantilla(p); setShowForm(true); }} className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-400" title="Editar">
+                  <button onClick={() => { setEditingPlantilla(p); setShowForm(true); }} className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600 text-neutral-500" title="Editar">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button onClick={() => deletePlantilla(p.id)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400" title="Eliminar">
@@ -969,7 +969,7 @@ function PlantillaForm({ robotId, plantilla, onSave, onCancel }: {
         </div>
         <div>
           <Label className="text-xs">Canal</Label>
-          <select className="w-full h-8 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs" value={form.canal} onChange={e => setForm(f => ({ ...f, canal: e.target.value }))}>
+          <select className="w-full h-8 rounded-md border border-soft dark:border-slate-700 bg-surface-card dark:bg-slate-900 px-2 text-xs" value={form.canal} onChange={e => setForm(f => ({ ...f, canal: e.target.value }))}>
             <option value="correo">Correo</option>
             <option value="whatsapp">WhatsApp</option>
             <option value="notificacion">Notificación interna</option>
@@ -977,7 +977,7 @@ function PlantillaForm({ robotId, plantilla, onSave, onCancel }: {
         </div>
         <div>
           <Label className="text-xs">Tipo</Label>
-          <select className="w-full h-8 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-xs" value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
+          <select className="w-full h-8 rounded-md border border-soft dark:border-slate-700 bg-surface-card dark:bg-slate-900 px-2 text-xs" value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
             <option value="respuesta_automatica">Respuesta automática</option>
             <option value="notificacion_interna">Notificación interna</option>
             <option value="comunicado">Comunicado</option>
@@ -994,7 +994,7 @@ function PlantillaForm({ robotId, plantilla, onSave, onCancel }: {
       <div>
         <Label className="text-xs">Cuerpo / Mensaje</Label>
         <textarea
-          className="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs min-h-[80px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-md border border-soft dark:border-slate-700 bg-surface-card dark:bg-slate-900 px-2 py-1.5 text-xs min-h-[80px] focus:outline-none focus:ring-1 focus:ring-accent/40"
           value={form.cuerpo}
           onChange={e => setForm(f => ({ ...f, cuerpo: e.target.value }))}
           placeholder="Contenido de la plantilla. Usa {{variable}} para datos dinámicos."
@@ -1004,12 +1004,12 @@ function PlantillaForm({ robotId, plantilla, onSave, onCancel }: {
         <button
           onClick={handleSave}
           disabled={saving || !form.nombre.trim() || !form.cuerpo.trim()}
-          className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+          className="px-3 py-1.5 rounded-md bg-accent text-accent-foreground text-xs font-medium hover:bg-accent-hover disabled:opacity-50 flex items-center gap-1"
         >
           {saving && <Loader2 className="w-3 h-3 animate-spin" />}
           {plantilla ? 'Guardar' : 'Crear'}
         </button>
-        <button onClick={onCancel} className="px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-xs">
+        <button onClick={onCancel} className="px-3 py-1.5 rounded-md border border-neutral-200 dark:border-slate-700 text-xs">
           Cancelar
         </button>
       </div>
@@ -1056,8 +1056,8 @@ function RobotForm({ robot, onSave, onCancel }: { robot: Robot | null; onSave: (
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-      <h3 className="font-semibold text-slate-900 dark:text-white">{robot ? 'Editar robot' : 'Nuevo robot'}</h3>
+    <div className="bg-surface-card dark:bg-slate-800 rounded-2xl border border-soft dark:border-slate-700 p-6 space-y-4">
+      <h3 className="font-semibold text-neutral-900 dark:text-white">{robot ? 'Editar robot' : 'Nuevo robot'}</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -1078,7 +1078,7 @@ function RobotForm({ robot, onSave, onCancel }: { robot: Robot | null; onSave: (
       <div>
         <Label>Prompt del sistema (instrucciones para la IA)</Label>
         <textarea
-          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-soft dark:border-slate-700 bg-surface-card dark:bg-slate-900 px-3 py-2 text-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-accent/40"
           value={form.prompt_sistema}
           onChange={e => setForm(f => ({ ...f, prompt_sistema: e.target.value }))}
           placeholder="Instrucciones detalladas para que la IA clasifique correos..."
@@ -1092,13 +1092,13 @@ function RobotForm({ robot, onSave, onCancel }: { robot: Robot | null; onSave: (
           onChange={e => setForm(f => ({ ...f, palabras_clave_str: e.target.value }))}
           placeholder="siniestro, reclamación, póliza vencida, renovación..."
         />
-        <p className="text-xs text-slate-400 mt-1">Se usan como respaldo cuando la IA no está disponible (clasificación por coincidencia de palabras).</p>
+        <p className="text-xs text-neutral-500 mt-1">Se usan como respaldo cuando la IA no está disponible (clasificación por coincidencia de palabras).</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <Label>Estado</Label>
-          <select className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm" value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))}>
+          <select className="w-full rounded-lg border border-soft dark:border-slate-700 bg-surface-card dark:bg-slate-900 px-3 py-2 text-sm" value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))}>
             <option value="borrador">Borrador</option>
             <option value="activo">Activo</option>
             <option value="pausado">Pausado</option>
@@ -1106,7 +1106,7 @@ function RobotForm({ robot, onSave, onCancel }: { robot: Robot | null; onSave: (
         </div>
         <div>
           <Label>Modo</Label>
-          <select className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm" value={form.modo} onChange={e => setForm(f => ({ ...f, modo: e.target.value }))}>
+          <select className="w-full rounded-lg border border-soft dark:border-slate-700 bg-surface-card dark:bg-slate-900 px-3 py-2 text-sm" value={form.modo} onChange={e => setForm(f => ({ ...f, modo: e.target.value }))}>
             <option value="simulacion">Simulación</option>
             <option value="produccion">Producción</option>
           </select>
@@ -1118,15 +1118,15 @@ function RobotForm({ robot, onSave, onCancel }: { robot: Robot | null; onSave: (
         <div className="flex flex-wrap gap-4 mt-1">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" checked={form.canal_correo} onChange={e => setForm(f => ({ ...f, canal_correo: e.target.checked }))} className="rounded" />
-            <Mail className="w-4 h-4 text-slate-500" /> Correo
+            <Mail className="w-4 h-4 text-neutral-500" /> Correo
           </label>
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" checked={form.canal_whatsapp} onChange={e => setForm(f => ({ ...f, canal_whatsapp: e.target.checked }))} className="rounded" />
-            <MessageSquare className="w-4 h-4 text-slate-500" /> WhatsApp
+            <MessageSquare className="w-4 h-4 text-neutral-500" /> WhatsApp
           </label>
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" checked={form.canal_notificacion} onChange={e => setForm(f => ({ ...f, canal_notificacion: e.target.checked }))} className="rounded" />
-            <Bell className="w-4 h-4 text-slate-500" /> Notificación interna
+            <Bell className="w-4 h-4 text-neutral-500" /> Notificación interna
           </label>
         </div>
       </div>
@@ -1300,7 +1300,7 @@ function BandejaPanel() {
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <select
-          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
+          className="rounded-lg border border-soft dark:border-slate-700 bg-surface-card dark:bg-slate-900 px-3 py-2 text-sm"
           value={filtroEstado}
           onChange={e => setFiltroEstado(e.target.value)}
         >
@@ -1315,7 +1315,7 @@ function BandejaPanel() {
         <Button variant="outline" onClick={loadBandeja} className="gap-2">
           <RefreshCw className="w-4 h-4" /> Actualizar
         </Button>
-        <span className="text-xs text-slate-400">{items.length} correos</span>
+        <span className="text-xs text-neutral-500">{items.length} correos</span>
       </div>
 
       {/* Action toolbar when items are selected */}
@@ -1329,7 +1329,7 @@ function BandejaPanel() {
           {/* Assign robot dropdown */}
           <div className="flex items-center gap-2">
             <select
-              className="rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium"
+              className="rounded-lg border border-blue-200 dark:border-blue-700 bg-surface-card dark:bg-slate-900 px-3 py-1.5 text-xs font-medium"
               defaultValue=""
               onChange={e => {
                 if (e.target.value) handleAsignarRobot(e.target.value);
@@ -1399,24 +1399,24 @@ function BandejaPanel() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-neutral-500" /></div>
       ) : items.length === 0 ? (
         <div className="text-center py-16">
-          <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">No hay correos en la bandeja IA.</p>
-          <p className="text-xs text-slate-400 mt-1">Los correos aparecerán aqui cuando se configure y active el monitoreo.</p>
+          <Mail className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
+          <p className="text-neutral-500">No hay correos en la bandeja IA.</p>
+          <p className="text-xs text-neutral-500 mt-1">Los correos aparecerán aqui cuando se configure y active el monitoreo.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="bg-surface-card dark:bg-slate-800 rounded-xl border border-soft dark:border-slate-700 divide-y divide-neutral-100 dark:divide-slate-700">
           {/* Select all header */}
-          <div className="px-4 py-2.5 flex items-center gap-3 bg-slate-50 dark:bg-slate-800/80">
+          <div className="px-4 py-2.5 flex items-center gap-3 bg-neutral-50 dark:bg-slate-800/80">
             <input
               type="checkbox"
               checked={selectedIds.size === items.length && items.length > 0}
               onChange={toggleSelectAll}
-              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+              className="w-4 h-4 rounded border-neutral-300 dark:border-slate-600 text-accent-ink focus:ring-accent/40"
             />
-            <span className="text-xs text-slate-500">Seleccionar todos</span>
+            <span className="text-xs text-neutral-500">Seleccionar todos</span>
           </div>
           {items.map(item => (
             <div key={item.id} className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
@@ -1425,29 +1425,29 @@ function BandejaPanel() {
                   type="checkbox"
                   checked={selectedIds.has(item.id)}
                   onChange={() => toggleSelect(item.id)}
-                  className="w-4 h-4 mt-0.5 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                  className="w-4 h-4 mt-0.5 rounded border-neutral-300 dark:border-slate-600 text-accent-ink focus:ring-accent/40 flex-shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="font-medium text-sm text-neutral-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
                     De: {item.remitente}
-                    {item.cuentaEmail && <span className="text-slate-400"> — Cuenta: {item.cuentaEmail}</span>}
+                    {item.cuentaEmail && <span className="text-neutral-500"> — Cuenta: {item.cuentaEmail}</span>}
                   </p>
                   {item.ia_robots?.nombre && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    <p className="text-xs text-accent-ink dark:text-blue-400 mt-1">
                       Robot: {item.ia_robots.nombre}
                       {item.coincidencia_pct > 0 && ` (${item.coincidencia_pct}% coincidencia)`}
                     </p>
                   )}
                   {item.razon_clasificacion && (
-                    <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{item.razon_clasificacion}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{item.razon_clasificacion}</p>
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${estadoColors[item.estado_procesamiento] || 'bg-slate-100 text-slate-600'}`}>
                     {item.estado_procesamiento}
                   </span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-neutral-500">
                     {item.fecha_correo ? new Date(item.fecha_correo).toLocaleDateString('es-MX') : ''}
                   </span>
                   <div className="flex items-center gap-2">
@@ -1462,7 +1462,7 @@ function BandejaPanel() {
                     {item.cuerpo_texto && (
                       <button
                         onClick={() => setPreviewItem(item)}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                        className="flex items-center gap-1 text-xs text-accent-ink hover:underline"
                       >
                         <Eye className="w-3 h-3" /> Ver
                       </button>
@@ -1494,33 +1494,33 @@ function EmailPreviewModal({ item, onClose }: { item: BandejaItem; onClose: () =
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay"
       onClick={e => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-        <div className="flex items-start justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+      <div className="bg-surface-card dark:bg-slate-800 rounded-2xl shadow-e4 w-full max-w-2xl max-h-[80vh] flex flex-col animate-scale-in">
+        <div className="flex items-start justify-between p-5 border-b border-neutral-100 dark:border-slate-700">
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-slate-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</h3>
-            <p className="text-xs text-slate-500 mt-0.5">De: {item.remitente}</p>
+            <h3 className="font-semibold text-neutral-900 dark:text-white truncate">{item.asunto || '(Sin asunto)'}</h3>
+            <p className="text-xs text-neutral-500 mt-0.5">De: {item.remitente}</p>
             {item.ia_robots?.nombre && (
-              <p className="text-xs text-blue-600 dark:text-blue-400">Robot: {item.ia_robots.nombre}</p>
+              <p className="text-xs text-accent-ink dark:text-blue-400">Robot: {item.ia_robots.nombre}</p>
             )}
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 flex-shrink-0 ml-2">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-neutral-500 flex-shrink-0 ml-2">
             <X className="w-4 h-4" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-5">
-          <pre className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+          <pre className="text-xs text-neutral-700 dark:text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
             {item.cuerpo_texto || '(Sin contenido)'}
           </pre>
         </div>
-        <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 dark:border-slate-700">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-neutral-100 dark:border-slate-700">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">Estado: {item.estado_procesamiento}</span>
-            {item.carpeta_destino && <span className="text-xs text-slate-400">Carpeta: {item.carpeta_destino}</span>}
+            <span className="text-xs text-neutral-500">Estado: {item.estado_procesamiento}</span>
+            {item.carpeta_destino && <span className="text-xs text-neutral-500">Carpeta: {item.carpeta_destino}</span>}
           </div>
-          <button onClick={onClose} className="text-xs text-slate-500 hover:underline">Cerrar</button>
+          <button onClick={onClose} className="text-xs text-neutral-500 hover:underline">Cerrar</button>
         </div>
       </div>
     </div>
@@ -1567,22 +1567,22 @@ function BitacoraPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">{items.length} registros</p>
+        <p className="text-sm text-neutral-500">{items.length} registros</p>
         <Button variant="outline" onClick={loadBitacora} className="gap-2">
           <RefreshCw className="w-4 h-4" /> Actualizar
         </Button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-neutral-500" /></div>
       ) : items.length === 0 ? (
         <div className="text-center py-16">
-          <ScrollText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">La bitácora está vacía.</p>
-          <p className="text-xs text-slate-400 mt-1">Aquí se registrará cada acción ejecutada por los robots.</p>
+          <ScrollText className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
+          <p className="text-neutral-500">La bitácora está vacía.</p>
+          <p className="text-xs text-neutral-500 mt-1">Aquí se registrará cada acción ejecutada por los robots.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+        <div className="bg-surface-card dark:bg-slate-800 rounded-xl border border-soft dark:border-slate-700 divide-y divide-neutral-100 dark:divide-slate-700">
           {items.map(item => (
             <div key={item.id} className="p-4">
               <div className="flex items-start justify-between gap-3">
@@ -1591,38 +1591,38 @@ function BitacoraPanel() {
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                       item.estado === 'exito' ? 'bg-emerald-500' :
                       item.estado === 'error' ? 'bg-red-500' :
-                      item.estado === 'simulado' ? 'bg-amber-500' : 'bg-slate-400'
+                      item.estado === 'simulado' ? 'bg-amber-500' : 'bg-neutral-400'
                     }`} />
-                    <p className="font-medium text-sm text-slate-900 dark:text-white">{item.accion}</p>
+                    <p className="font-medium text-sm text-neutral-900 dark:text-white">{item.accion}</p>
                   </div>
                   {item.ia_robots?.nombre && (
-                    <p className="text-xs text-slate-500 mt-0.5">Robot: {item.ia_robots.nombre}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">Robot: {item.ia_robots.nombre}</p>
                   )}
                   {item.error_mensaje && (
                     <p className="text-xs text-red-500 mt-0.5">{item.error_mensaje}</p>
                   )}
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                    {item.correos_enviados > 0 && <span className="text-xs text-slate-400">Correos: {item.correos_enviados}</span>}
-                    {item.whatsapps_enviados > 0 && <span className="text-xs text-slate-400">WA: {item.whatsapps_enviados}</span>}
-                    {item.tareas_creadas > 0 && <span className="text-xs text-slate-400">Tareas: {item.tareas_creadas}</span>}
-                    {item.comunicados_creados > 0 && <span className="text-xs text-slate-400">Comunicados: {item.comunicados_creados}</span>}
-                    {item.sicas_consultado && <span className="text-xs text-slate-400">SICAS: {item.sicas_estado || 'ok'}</span>}
+                    {item.correos_enviados > 0 && <span className="text-xs text-neutral-500">Correos: {item.correos_enviados}</span>}
+                    {item.whatsapps_enviados > 0 && <span className="text-xs text-neutral-500">WA: {item.whatsapps_enviados}</span>}
+                    {item.tareas_creadas > 0 && <span className="text-xs text-neutral-500">Tareas: {item.tareas_creadas}</span>}
+                    {item.comunicados_creados > 0 && <span className="text-xs text-neutral-500">Comunicados: {item.comunicados_creados}</span>}
+                    {item.sicas_consultado && <span className="text-xs text-neutral-500">SICAS: {item.sicas_estado || 'ok'}</span>}
                     {item.detalle && (
                       <button
                         onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                        className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                        className="text-xs text-accent-ink hover:underline flex items-center gap-1"
                       >
                         <Eye className="w-3 h-3" /> Detalle
                       </button>
                     )}
                   </div>
                   {expandedId === item.id && item.detalle && (
-                    <pre className="mt-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 rounded p-2 overflow-x-auto max-h-32 font-mono">
+                    <pre className="mt-2 text-xs text-neutral-600 dark:text-slate-400 bg-neutral-50 dark:bg-slate-900 rounded p-2 overflow-x-auto max-h-32 font-mono">
                       {JSON.stringify(item.detalle, null, 2)}
                     </pre>
                   )}
                 </div>
-                <span className="text-xs text-slate-400 whitespace-nowrap">
+                <span className="text-xs text-neutral-500 whitespace-nowrap">
                   {new Date(item.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -1669,7 +1669,7 @@ function CuentasPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">{cuentas.length} cuentas configuradas</p>
+        <p className="text-sm text-neutral-500">{cuentas.length} cuentas configuradas</p>
         <Button onClick={() => { setEditingCuenta(null); setShowForm(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Agregar cuenta
         </Button>
@@ -1684,32 +1684,32 @@ function CuentasPanel() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-neutral-500" /></div>
       ) : cuentas.length === 0 ? (
         <div className="text-center py-16">
-          <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">No hay cuentas de correo configuradas.</p>
-          <p className="text-xs text-slate-400 mt-1">Agrega una cuenta de correo IONOS para comenzar el monitoreo automático.</p>
+          <Mail className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
+          <p className="text-neutral-500">No hay cuentas de correo configuradas.</p>
+          <p className="text-xs text-neutral-500 mt-1">Agrega una cuenta de correo IONOS para comenzar el monitoreo automático.</p>
         </div>
       ) : (
         <div className="grid gap-3">
           {cuentas.map(cuenta => (
-            <div key={cuenta.id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+            <div key={cuenta.id} className="bg-surface-card dark:bg-slate-800 rounded-2xl border border-soft dark:border-slate-700 p-5">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Mail className="w-4 h-4 text-slate-400" />
-                    <h3 className="font-semibold text-slate-900 dark:text-white">{cuenta.nombre}</h3>
+                    <Mail className="w-4 h-4 text-neutral-500" />
+                    <h3 className="font-semibold text-neutral-900 dark:text-white">{cuenta.nombre}</h3>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       cuenta.estado === 'activo' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
                       cuenta.estado === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                      'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                      'bg-neutral-100 text-neutral-600 dark:bg-slate-700 dark:text-slate-400'
                     }`}>
                       {cuenta.estado}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-500 mt-0.5">{cuenta.email}</p>
-                  <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-400 flex-wrap">
+                  <p className="text-sm text-neutral-500 mt-0.5">{cuenta.email}</p>
+                  <div className="flex items-center gap-4 mt-1.5 text-xs text-neutral-500 flex-wrap">
                     {cuenta.imap_host && (
                       <span className="flex items-center gap-1">
                         <Server className="w-3 h-3" />
@@ -1728,10 +1728,10 @@ function CuentasPanel() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => toggleCuenta(cuenta)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500" title={cuenta.estado === 'activo' ? 'Desactivar' : 'Activar'}>
+                  <button onClick={() => toggleCuenta(cuenta)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-neutral-500" title={cuenta.estado === 'activo' ? 'Desactivar' : 'Activar'}>
                     {cuenta.estado === 'activo' ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className="w-5 h-5" />}
                   </button>
-                  <button onClick={() => { setEditingCuenta(cuenta); setShowForm(true); }} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500" title="Editar">
+                  <button onClick={() => { setEditingCuenta(cuenta); setShowForm(true); }} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-neutral-500" title="Editar">
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button onClick={() => deleteCuenta(cuenta.id)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500" title="Eliminar">
@@ -1838,8 +1838,8 @@ function CuentaForm({ cuenta, onSave, onCancel }: { cuenta: CuentaCorreo | null;
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 space-y-4">
-      <h3 className="font-semibold text-slate-900 dark:text-white">{cuenta ? 'Editar cuenta' : 'Nueva cuenta de correo'}</h3>
+    <div className="bg-surface-card dark:bg-slate-800 rounded-2xl border border-soft dark:border-slate-700 p-6 space-y-4">
+      <h3 className="font-semibold text-neutral-900 dark:text-white">{cuenta ? 'Editar cuenta' : 'Nueva cuenta de correo'}</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -1853,12 +1853,12 @@ function CuentaForm({ cuenta, onSave, onCancel }: { cuenta: CuentaCorreo | null;
       </div>
 
       <div>
-        <Label>Contraseña {cuenta && <span className="text-xs text-slate-400">(dejar vacío para no cambiar)</span>}</Label>
+        <Label>Contraseña {cuenta && <span className="text-xs text-neutral-500">(dejar vacío para no cambiar)</span>}</Label>
         <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Contraseña de acceso" />
       </div>
 
-      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+      <div className="border border-neutral-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+        <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide flex items-center gap-1.5">
           <Server className="w-3.5 h-3.5" /> Configuración del servidor
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

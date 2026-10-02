@@ -74,16 +74,16 @@ export default function CompartirTableroModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 w-full max-w-2xl max-h-[80vh] overflow-hidden animate-scale-in">
         <div className="flex items-center justify-between p-6 border-b">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Compartir Tablero</h3>
-            <p className="text-sm text-gray-600 mt-1">{boardName}</p>
+            <h3 className="text-lg font-semibold text-neutral-900">Compartir Tablero</h3>
+            <p className="text-sm text-neutral-600 mt-1">{boardName}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
+            className="text-neutral-500 hover:text-gray-600 transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -91,20 +91,20 @@ export default function CompartirTableroModal({
 
         <div className="p-6">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Buscar usuario para invitar
             </label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar por nombre o email..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
+                className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-neutral-500 mt-1">
               Solo se pueden invitar usuarios con rol Empleado, Gerente o Administrador
             </p>
           </div>
@@ -125,7 +125,7 @@ export default function CompartirTableroModal({
 
             {!loading && searchQuery.length >= 2 && usuarios.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-sm text-gray-500">No se encontraron usuarios</p>
+                <p className="text-sm text-neutral-500">No se encontraron usuarios</p>
               </div>
             )}
 
@@ -133,17 +133,17 @@ export default function CompartirTableroModal({
               usuarios.map((usuario) => (
                 <div
                   key={usuario.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                  className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-gray-100 transition"
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="h-10 w-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold">
+                    <div className="h-10 w-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-semibold">
                       {usuario.nombre_completo.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-neutral-900">
                         {usuario.nombre_completo}
                       </p>
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-neutral-600">
                         {usuario.oficina_nombre} • {usuario.rol}
                       </p>
                     </div>
@@ -152,7 +152,7 @@ export default function CompartirTableroModal({
                   <div className="flex items-center space-x-2">
                     <select
                       id={`role-${usuario.id}`}
-                      className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-accent focus:border-accent"
+                      className="text-sm border border-neutral-300 rounded px-2 py-1 focus:ring-2 focus:ring-accent focus:border-accent"
                       defaultValue="viewer"
                     >
                       <option value="viewer">Viewer</option>
@@ -168,7 +168,7 @@ export default function CompartirTableroModal({
                         handleInvitar(usuario.id, role);
                       }}
                       disabled={inviting}
-                      className="px-3 py-1 bg-accent text-white rounded hover:bg-accent/90 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center"
+                      className="px-3 py-1 bg-accent text-accent-foreground rounded hover:bg-accent/90 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center"
                     >
                       <UserPlus className="h-4 w-4 mr-1" />
                       Invitar

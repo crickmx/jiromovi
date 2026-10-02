@@ -716,7 +716,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
   if (deliveryResult?.success) {
     return (
       <div className="max-w-md mx-auto">
-        <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-6 text-center space-y-3">
+        <div className="bg-surface-card dark:bg-neutral-800/80 rounded-2xl border border-soft dark:border-white/10 p-6 text-center space-y-3">
           <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
@@ -760,8 +760,8 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
       {/* Row 1: PDF + Vendor side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Cover File */}
-        <div className="bg-white dark:bg-neutral-800/80 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
-          <p className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-2">Caratula PDF</p>
+        <div className="bg-surface-card dark:bg-neutral-800/80 rounded-2xl border border-soft dark:border-white/10 p-4">
+          <p className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-2">Caratula PDF</p>
 
           {!coverFile ? (
             <div
@@ -783,7 +783,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
               <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-neutral-800 dark:text-white truncate">{coverFile.name}</p>
-                <p className="text-[10px] text-neutral-400">{(coverFile.size / 1024).toFixed(0)} KB</p>
+                <p className="text-[11px] text-neutral-500">{(coverFile.size / 1024).toFixed(0)} KB</p>
               </div>
               {isExtracting && <Loader2 className="w-3.5 h-3.5 text-sky-500 animate-spin" />}
               {extractionSuccess && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
@@ -792,7 +792,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
                 onClick={() => { setCoverFile(null); setExtractedData(null); setExtractionError(null); setExtractionSuccess(false); }}
                 className="p-0.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded"
               >
-                <X className="w-3.5 h-3.5 text-neutral-400" />
+                <X className="w-3.5 h-3.5 text-neutral-500" />
               </button>
             </div>
           )}
@@ -800,17 +800,17 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
           <input ref={coverInputRef} type="file" accept=".pdf" onChange={handleCoverSelect} className="hidden" />
 
           {extractionError && (
-            <p className="mt-2 text-[10px] text-amber-600 dark:text-amber-400">
+            <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">
               {extractionError}. Continua manualmente.
             </p>
           )}
 
           {extractedData && extractionSuccess && (
             <div className="mt-3 space-y-1">
-              <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                 <CheckCircle2 className="w-2.5 h-2.5" /> Datos extraidos
               </p>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
                 {extractedData.numeroPoliza && <DataField label="Poliza" value={extractedData.numeroPoliza} />}
                 {extractedData.nombreCliente && <DataField label="Asegurado" value={extractedData.nombreCliente} />}
                 {extractedData.descripcionVehiculo && <DataField label="Vehiculo" value={extractedData.descripcionVehiculo} />}
@@ -823,13 +823,13 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
         </div>
 
         {/* Vendor Selection */}
-        <div className="bg-white dark:bg-neutral-800/80 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
-          <p className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-2">Asignar a usuario</p>
+        <div className="bg-surface-card dark:bg-neutral-800/80 rounded-2xl border border-soft dark:border-white/10 p-4">
+          <p className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-2">Asignar a usuario</p>
 
           {vendorsLoading ? (
             <div className="flex items-center gap-2 py-6 justify-center">
-              <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
-              <span className="text-xs text-neutral-500 dark:text-white/40">Cargando...</span>
+              <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />
+              <span className="text-xs text-neutral-500 dark:text-white/55">Cargando...</span>
             </div>
           ) : (
             <VendorSearchCombobox
@@ -842,12 +842,12 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
 
           {selectedVendor && (
             <div className="mt-2 p-2 bg-sky-50 dark:bg-sky-900/10 rounded-lg flex items-center gap-2">
-              <div className="w-7 h-7 bg-sky-100 dark:bg-sky-800/40 rounded-full flex items-center justify-center text-[10px] font-bold text-sky-700 dark:text-sky-300">
+              <div className="w-7 h-7 bg-sky-100 dark:bg-sky-800/40 rounded-full flex items-center justify-center text-[11px] font-bold text-sky-700 dark:text-sky-300">
                 {selectedVendor.nombre.charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-sky-800 dark:text-sky-300 truncate">{selectedVendor.nombre}</p>
-                <p className="text-[10px] text-sky-600/70 dark:text-sky-400/60 truncate">
+                <p className="text-[11px] text-sky-600/70 dark:text-sky-400/60 truncate">
                   {[selectedVendor.clave, selectedVendor.despachoName].filter(Boolean).join(' - ')}
                 </p>
               </div>
@@ -857,13 +857,13 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
           {/* Additional Files inline */}
           <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-white/5">
             <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[10px] text-neutral-500 dark:text-white/40">
+              <p className="text-[11px] text-neutral-500 dark:text-white/55">
                 Documentos extra ({additionalFiles.length}/10)
               </p>
               {additionalFiles.length < 10 && (
                 <button
                   onClick={() => additionalInputRef.current?.click()}
-                  className="text-[10px] font-medium text-sky-600 dark:text-sky-400 hover:text-sky-700"
+                  className="text-[11px] font-medium text-sky-600 dark:text-sky-400 hover:text-sky-700"
                 >
                   + Agregar
                 </button>
@@ -873,10 +873,10 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
             {additionalFiles.length > 0 && (
               <div className="space-y-1">
                 {additionalFiles.map((af) => (
-                  <div key={af.id} className="flex items-center gap-1.5 text-[10px]">
-                    <FileText className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                  <div key={af.id} className="flex items-center gap-1.5 text-[11px]">
+                    <FileText className="w-3 h-3 text-neutral-500 flex-shrink-0" />
                     <span className="text-neutral-600 dark:text-white/60 truncate flex-1">{af.name}</span>
-                    <button onClick={() => removeAdditionalFile(af.id)} className="text-neutral-400 hover:text-red-500">
+                    <button onClick={() => removeAdditionalFile(af.id)} className="text-neutral-500 hover:text-red-500">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -889,16 +889,16 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
 
       {/* Row 2: Ticket selection + Deliver (appears after vendor is selected) */}
       {selectedVendor && (
-        <div className="bg-white dark:bg-neutral-800/80 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+        <div className="bg-surface-card dark:bg-neutral-800/80 rounded-2xl border border-soft dark:border-white/10 p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-neutral-500 dark:text-white/40 uppercase tracking-wider">Tramite destino</p>
+            <p className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wider">Tramite destino</p>
             <div className="flex gap-1">
               <button
                 onClick={() => { setTicketAction('existing'); setSelectedExistingTicket(null); }}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   ticketAction === 'existing'
                     ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300'
-                    : 'text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5'
+                    : 'text-neutral-500 dark:text-white/55 hover:bg-neutral-100 dark:hover:bg-white/5'
                 }`}
               >
                 Existente
@@ -908,7 +908,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   ticketAction === 'new'
                     ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300'
-                    : 'text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5'
+                    : 'text-neutral-500 dark:text-white/55 hover:bg-neutral-100 dark:hover:bg-white/5'
                 }`}
               >
                 + Nuevo
@@ -926,19 +926,19 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
             <div className="space-y-2">
               {existingTickets.length > 3 && (
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-400" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-500" />
                   <input
                     type="text"
                     value={ticketSearchTerm}
                     onChange={(e) => setTicketSearchTerm(e.target.value)}
                     placeholder="Filtrar tramites..."
-                    className="w-full pl-7 pr-3 py-1.5 text-[11px] bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg outline-none focus:border-sky-300 dark:focus:border-sky-500/40 text-neutral-800 dark:text-white placeholder:text-neutral-400"
+                    className="w-full pl-7 pr-3 py-1.5 text-[11px] bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg outline-none focus:border-sky-300 dark:focus:border-sky-500/40 text-neutral-800 dark:text-white placeholder:text-neutral-500"
                   />
                 </div>
               )}
 
               {(usuario?.rol === 'Administrador' || usuario?.rol === 'Gerente') && (
-                <label className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-white/40 cursor-pointer">
+                <label className="flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-white/55 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={showClosedTickets}
@@ -951,8 +951,8 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
 
               {ticketsLoading ? (
                 <div className="flex items-center gap-2 py-4 justify-center">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-400" />
-                  <span className="text-[10px] text-neutral-500 dark:text-white/40">Cargando...</span>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-500" />
+                  <span className="text-[11px] text-neutral-500 dark:text-white/55">Cargando...</span>
                 </div>
               ) : (
                 <TicketList
@@ -967,7 +967,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
           )}
 
           {!ticketAction && (
-            <p className="text-[10px] text-amber-600 dark:text-amber-400">
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">
               Elige si agregar a un tramite existente o crear uno nuevo.
             </p>
           )}
@@ -975,7 +975,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
       )}
 
       {/* Row 3: Deliver button */}
-      <div className="bg-white dark:bg-neutral-800/80 rounded-xl border border-neutral-200 dark:border-white/10 p-4">
+      <div className="bg-surface-card dark:bg-neutral-800/80 rounded-2xl border border-soft dark:border-white/10 p-4">
         {deliveryResult && !deliveryResult.success && (
           <div className="mb-3 p-2.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/20 rounded-lg">
             <p className="text-xs text-red-700 dark:text-red-400">{deliveryResult.emailError}</p>
@@ -987,7 +987,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
             <StatusDot ok={!!coverFile} />
             <StatusDot ok={!!selectedVendor} />
             <StatusDot ok={ticketActionValid} />
-            <span className="text-[10px] text-neutral-400 dark:text-white/30">
+            <span className="text-[11px] text-neutral-500 dark:text-white/45">
               {!coverFile ? 'Falta caratula' :
                !selectedVendor ? 'Falta usuario' :
                !ticketActionValid ? 'Falta tramite' :
@@ -1001,7 +1001,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               canDeliver
                 ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-lg shadow-sky-600/20'
-                : 'bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-white/30 cursor-not-allowed'
+                : 'bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-white/45 cursor-not-allowed'
             }`}
           >
             {isDelivering ? (
@@ -1027,7 +1027,7 @@ function NuevaEntregaTab({ usuario }: { usuario: any }) {
 // ========================
 
 const SICAS_STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  not_started: { label: 'Sin iniciar', color: 'bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-white/40', icon: Clock },
+  not_started: { label: 'Sin iniciar', color: 'bg-neutral-100 dark:bg-white/5 text-neutral-500 dark:text-white/55', icon: Clock },
   datos_incompletos: { label: 'Datos incompletos', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300', icon: ShieldAlert },
   error_cifrado: { label: 'Error cifrado', color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400', icon: AlertCircle },
   pending_fields: { label: 'Pendiente', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400', icon: Clock },
@@ -1496,24 +1496,24 @@ function HistorialTab({ usuario }: { usuario: any }) {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 p-4">
+      <div className="bg-surface-card dark:bg-neutral-800/80 rounded-2xl border border-soft dark:border-white/10 p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="text-[10px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1 block">Buscar</label>
+            <label className="text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1 block">Buscar</label>
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Vendedor, poliza, asegurado, folio..."
-                className="w-full pl-8 pr-3 py-2 text-xs bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg outline-none focus:border-sky-300 dark:focus:border-sky-500/40 text-neutral-800 dark:text-white placeholder:text-neutral-400"
+                className="w-full pl-8 pr-3 py-2 text-xs bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg outline-none focus:border-sky-300 dark:focus:border-sky-500/40 text-neutral-800 dark:text-white placeholder:text-neutral-500"
               />
             </div>
           </div>
 
           <div className="w-[130px]">
-            <label className="text-[10px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1 block">Desde</label>
+            <label className="text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1 block">Desde</label>
             <input
               type="date"
               value={dateFrom}
@@ -1523,7 +1523,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
           </div>
 
           <div className="w-[130px]">
-            <label className="text-[10px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1 block">Hasta</label>
+            <label className="text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1 block">Hasta</label>
             <input
               type="date"
               value={dateTo}
@@ -1533,7 +1533,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
           </div>
 
           <div className="w-[130px]">
-            <label className="text-[10px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1 block">Estado</label>
+            <label className="text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1 block">Estado</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -1577,19 +1577,19 @@ function HistorialTab({ usuario }: { usuario: any }) {
             </p>
           </div>
           <button onClick={() => setRegisterResult(null)} className="p-0.5 hover:bg-black/5 dark:hover:bg-white/10 rounded">
-            <X className="w-3.5 h-3.5 text-neutral-400" />
+            <X className="w-3.5 h-3.5 text-neutral-500" />
           </button>
         </div>
       )}
 
       {/* Table */}
-      <div className="bg-white dark:bg-neutral-800/80 rounded-2xl border border-neutral-200 dark:border-white/10 overflow-hidden">
+      <div className="bg-surface-card dark:bg-neutral-800/80 rounded-2xl border border-soft dark:border-white/10 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />
+            <Loader2 className="w-5 h-5 animate-spin text-neutral-500" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-neutral-400 dark:text-white/30">
+          <div className="flex flex-col items-center justify-center py-16 text-neutral-500 dark:text-white/45">
             <FileText className="w-10 h-10 mb-2" />
             <p className="text-sm">Sin entregas registradas</p>
           </div>
@@ -1628,16 +1628,16 @@ function HistorialTab({ usuario }: { usuario: any }) {
                     <tr key={r.id} className="border-b border-neutral-50 dark:border-white/5 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors">
                       <td className="px-3 py-2.5 whitespace-nowrap">
                         <p className="text-neutral-800 dark:text-white">{new Date(r.created_at).toLocaleDateString('es-MX')}</p>
-                        <p className="text-[10px] text-neutral-400">{new Date(r.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-[11px] text-neutral-500">{new Date(r.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</p>
                       </td>
                       <td className="px-3 py-2.5">
                         <p className="font-medium text-neutral-800 dark:text-white truncate max-w-[140px]">{r.vendor_sicas_name}</p>
-                        {r.vendor_sicas_key && <p className="text-[10px] text-neutral-400">{r.vendor_sicas_key}</p>}
+                        {r.vendor_sicas_key && <p className="text-[11px] text-neutral-500">{r.vendor_sicas_key}</p>}
                       </td>
                       <td className="px-3 py-2.5">
                         <span className="text-neutral-700 dark:text-white/70">{r.manual_policy_number || r.policy_number || '-'}</span>
                         {r.manual_policy_number && r.policy_number && r.manual_policy_number !== r.policy_number && (
-                          <p className="text-[9px] text-neutral-400 dark:text-white/30 line-through">{r.policy_number}</p>
+                          <p className="text-[10.5px] text-neutral-500 dark:text-white/45 line-through">{r.policy_number}</p>
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-neutral-700 dark:text-white/70 truncate max-w-[120px]">{r.insured_name || '-'}</td>
@@ -1648,7 +1648,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                             {r.ticket_folio}
                           </a>
                         ) : (
-                          <span className="text-neutral-400">-</span>
+                          <span className="text-neutral-500">-</span>
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-center">
@@ -1672,20 +1672,20 @@ function HistorialTab({ usuario }: { usuario: any }) {
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <div className="flex flex-col items-center gap-0.5">
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${statusConfig.color}`}>
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-medium ${statusConfig.color}`}>
                             <StatusIcon className={`w-2.5 h-2.5 ${(sicasStatus === 'validating' || sicasStatus === 'registering' || sicasStatus === 'uploading_files') ? 'animate-spin' : ''}`} />
                             {statusConfig.label}
                           </span>
                           {r.sicas_document_id && (
-                            <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono">ID: {r.sicas_document_id}</span>
+                            <span className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-mono">ID: {r.sicas_document_id}</span>
                           )}
                           {!r.sicas_document_id && ['partial_success', 'document_not_created', 'error', 'sicas_rejected', 'client_creation_failed', 'validation_failed', 'manual_review_required'].includes(r.sicas_registration_status || '') && (
-                            <span className="text-[9px] text-amber-600 dark:text-amber-400">
+                            <span className="text-[10.5px] text-amber-600 dark:text-amber-400">
                               Pendiente: ejecutar HWCAPTURE
                             </span>
                           )}
                           {r.sicas_error_message && r.sicas_registration_status !== 'partial_success' && r.sicas_registration_status !== 'document_not_created' && (
-                            <span className="text-[9px] text-red-500 dark:text-red-400 max-w-[140px] truncate" title={r.sicas_error_message}>
+                            <span className="text-[10.5px] text-red-500 dark:text-red-400 max-w-[140px] truncate" title={r.sicas_error_message}>
                               {r.sicas_error_message}
                             </span>
                           )}
@@ -1694,7 +1694,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                       {canRegisterSicas && (
                         <td className="px-3 py-2.5 text-center">
                           {isCurrentlyRegistering || resolving === r.id ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] text-sky-600 dark:text-sky-400">
+                            <span className="inline-flex items-center gap-1 text-[11px] text-sky-600 dark:text-sky-400">
                               <Loader2 className="w-3 h-3 animate-spin" /> Registrando en SICAS...
                             </span>
                           ) : r.sicas_registration_status === 'unverified' && r.sicas_registered_at ? (
@@ -1703,7 +1703,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                               <button
                                 onClick={() => handleRetryLookup(r)}
                                 disabled={resolving === r.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-md transition-colors disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-md transition-colors disabled:opacity-50"
                                 title="Buscar el documento en SICAS (HWCAPTURE ya fue ejecutado)"
                               >
                                 <Search className="w-3 h-3" />
@@ -1713,7 +1713,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                                 <button
                                   onClick={() => handleRegisterDocument(r)}
                                   disabled={resolving === r.id}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-colors disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded transition-colors disabled:opacity-50"
                                   title="Re-registrar documento en SICAS si la busqueda no encuentra nada"
                                 >
                                   <Zap className="w-2.5 h-2.5" />
@@ -1722,7 +1722,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                                 <button
                                   onClick={() => { setManualCaptureModal(r); setManualDocId(''); }}
                                   disabled={resolving === r.id}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/30 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 rounded transition-colors disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/30 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 rounded transition-colors disabled:opacity-50"
                                   title="Capturar manualmente el IDDocto de SICAS"
                                 >
                                   <Edit3 className="w-2.5 h-2.5" />
@@ -1730,7 +1730,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                                 </button>
                                 <button
                                   onClick={() => setDiagnosticModal(r)}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
                                 >
                                   <Eye className="w-2.5 h-2.5" />
                                   Diag
@@ -1741,14 +1741,14 @@ function HistorialTab({ usuario }: { usuario: any }) {
                             /* FLOW A: Document NOT yet registered in SICAS - needs HWCAPTURE */
                             getMissingFieldsForRegistration(r).length > 0 ? (
                             <div className="flex flex-col items-center gap-1">
-                              <span className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-md">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-md">
                                 <ShieldAlert className="w-3 h-3" />
                                 Datos incompletos
                               </span>
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => setCompletarDatosRecord(r)}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-medium text-accent-ink dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                                   title={`Faltan: ${getMissingFieldsForRegistration(r).join(', ')}`}
                                 >
                                   <Edit3 className="w-2.5 h-2.5" />
@@ -1756,7 +1756,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                                 </button>
                                 <button
                                   onClick={() => setDiagnosticModal(r)}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
                                 >
                                   <Eye className="w-2.5 h-2.5" />
                                   Diag
@@ -1768,7 +1768,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                               <button
                                 onClick={() => handleRegisterDocument(r)}
                                 disabled={resolving === r.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-md transition-colors disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-md transition-colors disabled:opacity-50"
                                 title="Registrar documento en SICAS via HWCAPTURE (el documento NO existe aun en SICAS)"
                               >
                                 <Zap className="w-3 h-3" />
@@ -1777,7 +1777,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => setDiagnosticModal(r)}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700/30 rounded transition-colors"
                                   title="Ver diagnostico de registro HWCAPTURE"
                                 >
                                   <Eye className="w-2.5 h-2.5" />
@@ -1786,7 +1786,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                                 <button
                                   onClick={() => { setManualCaptureModal(r); setManualDocId(''); }}
                                   disabled={resolving === r.id}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/30 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 rounded transition-colors disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-medium text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/30 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 rounded transition-colors disabled:opacity-50"
                                   title="Capturar manualmente el IDDocto de SICAS"
                                 >
                                   <Edit3 className="w-2.5 h-2.5" />
@@ -1799,7 +1799,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                             <div className="flex flex-col items-center gap-1">
                               <button
                                 disabled
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-md opacity-70 cursor-not-allowed"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-md opacity-70 cursor-not-allowed"
                                 title={`Faltan datos: ${getMissingFieldsForRegistration(r).join(', ')}`}
                               >
                                 <ShieldAlert className="w-3 h-3" />
@@ -1807,7 +1807,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                               </button>
                               <button
                                 onClick={() => setCompletarDatosRecord(r)}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-medium text-accent-ink dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                                 title="Completar datos faltantes para poder registrar en SICAS"
                               >
                                 <Edit3 className="w-2.5 h-2.5" />
@@ -1819,7 +1819,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                               <button
                                 onClick={() => handleResolveSicas(r)}
                                 disabled={resolving === r.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-md transition-colors disabled:opacity-50"
                                 title="Registrar poliza en SICAS automaticamente"
                               >
                                 <Zap className="w-3 h-3" />
@@ -1827,7 +1827,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
                               </button>
                             </div>
                           ) : (
-                            <span className="text-[10px] text-neutral-400 dark:text-white/30" title={!r.policy_number && !r.manual_policy_number ? 'Sin numero de poliza' : 'No disponible'}>
+                            <span className="text-[11px] text-neutral-500 dark:text-white/45" title={!r.policy_number && !r.manual_policy_number ? 'Sin numero de poliza' : 'No disponible'}>
                               {!r.policy_number && !r.manual_policy_number ? 'Sin poliza' : '-'}
                             </span>
                           )}
@@ -1891,7 +1891,7 @@ function HistorialTab({ usuario }: { usuario: any }) {
       {manualCaptureModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setManualCaptureModal(null)} />
-          <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+          <div className="relative bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-e4 max-w-sm w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-start gap-3">
               <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-xl">
                 <Edit3 className="w-5 h-5 text-sky-600 dark:text-sky-400" />
@@ -1911,10 +1911,10 @@ function HistorialTab({ usuario }: { usuario: any }) {
                 value={manualDocId}
                 onChange={(e) => setManualDocId(e.target.value)}
                 placeholder="Ej: 123456"
-                className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="w-full px-3 py-2 rounded-lg border border-soft dark:border-neutral-600 bg-surface-card dark:bg-neutral-700 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 autoFocus
               />
-              <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-500">
                 Poliza: {manualCaptureModal.manual_policy_number || manualCaptureModal.policy_number || 'N/A'}
               </p>
             </div>
@@ -2120,7 +2120,7 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-4 animate-in fade-in zoom-in-95">
+      <div className="relative bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-e4 max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-4 animate-in fade-in zoom-in-95">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-neutral-900 dark:text-white">Diagnostico SICAS</h3>
           <button onClick={onClose} className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg">
@@ -2131,7 +2131,7 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
         <div className="space-y-3">
           {/* Connectivity checks */}
           <div className="space-y-1">
-            <p className="text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">Conectividad Edge Functions</p>
+            <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">Conectividad Edge Functions</p>
             <div className="grid grid-cols-3 gap-2">
               {([
                 { key: 'edge_function' as const, label: 'Edge Function', error: connectivityStatus.edge_error },
@@ -2142,35 +2142,35 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                 const colors = st === 'ok' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                   : st === 'error' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
                   : st === 'skipped' ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-600'
-                  : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800';
+                  : 'bg-blue-50 dark:bg-blue-900/20 text-accent-ink dark:text-blue-400 border-blue-200 dark:border-blue-800';
                 return (
                   <div key={key} className={`border rounded-lg px-2 py-1.5 text-center ${colors}`} title={error || ''}>
-                    <div className="text-[9px] font-medium">{label}</div>
-                    <div className="text-[10px] font-bold">
+                    <div className="text-[10.5px] font-medium">{label}</div>
+                    <div className="text-[11px] font-bold">
                       {st === 'pending' ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : st === 'ok' ? 'OK' : st === 'skipped' ? '-' : 'Error'}
                     </div>
                     {connectivityStatus.version && key === 'edge_function' && st === 'ok' && (
-                      <div className="text-[8px] opacity-70">v{connectivityStatus.version}</div>
+                      <div className="text-[10px] opacity-70">v{connectivityStatus.version}</div>
                     )}
                   </div>
                 );
               })}
             </div>
             {connectivityStatus.edge_function === 'error' && (
-              <p className="text-[9px] text-red-600 dark:text-red-400">{connectivityStatus.edge_error}</p>
+              <p className="text-[10.5px] text-red-600 dark:text-red-400">{connectivityStatus.edge_error}</p>
             )}
             {connectivityStatus.imports === 'error' && (
-              <p className="text-[9px] text-red-600 dark:text-red-400">Modulos: {connectivityStatus.imports_error}</p>
+              <p className="text-[10.5px] text-red-600 dark:text-red-400">Modulos: {connectivityStatus.imports_error}</p>
             )}
             {connectivityStatus.sicas_soap === 'error' && (
-              <p className="text-[9px] text-red-600 dark:text-red-400">SICAS: {connectivityStatus.sicas_error}</p>
+              <p className="text-[10.5px] text-red-600 dark:text-red-400">SICAS: {connectivityStatus.sicas_error}</p>
             )}
           </div>
 
           {/* Auto-resolve status indicator */}
           {autoResolveStatus === 'loading' && (
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <Loader2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 text-accent-ink dark:text-blue-400 animate-spin" />
               <span className="text-[11px] text-blue-700 dark:text-blue-300 font-medium">Buscando datos automaticamente...</span>
             </div>
           )}
@@ -2194,15 +2194,15 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
             const allPresent = missingFields.length === 0;
             return (
               <div className="space-y-2">
-                <p className="text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">Etapa 0: Validacion de datos</p>
+                <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">Etapa 0: Validacion de datos</p>
                 <div className={`border rounded-lg p-3 space-y-2 ${allPresent ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-neutral-500">Estado:</span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${allPresent ? 'text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30' : 'text-red-700 bg-red-100 dark:bg-red-900/30'}`}>
+                    <span className="text-[10.5px] text-neutral-500">Estado:</span>
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${allPresent ? 'text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30' : 'text-red-700 bg-red-100 dark:bg-red-900/30'}`}>
                       {allPresent ? 'Datos completos para HWCAPTURE' : `Faltan ${missingFields.length} campo(s)`}
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 gap-1 text-[10px]">
+                  <div className="grid grid-cols-1 gap-1 text-[11px]">
                     {resolveDetails ? (
                       Object.entries(resolveDetails).filter(([k]) => ['policy_number', 'insured_name', 'premium', 'start_date', 'end_date', 'sicas_client_id', 'sicas_vendor_id'].includes(k)).map(([key, detail]) => {
                         const fieldLabels: Record<string, string> = { policy_number: 'Poliza', insured_name: 'Asegurado', premium: 'Prima', start_date: 'Fecha inicio', end_date: 'Fecha fin', sicas_client_id: 'IDCli', sicas_vendor_id: 'IDVend' };
@@ -2214,8 +2214,8 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                               <span className={`font-mono ${detail.value != null ? 'text-neutral-800 dark:text-white' : 'text-red-500 italic'}`}>
                                 {detail.value != null ? String(detail.value) : 'N/A'}
                               </span>
-                              <span className="text-[9px] text-neutral-400 ml-1">({detail.source})</span>
-                              {detail.confidence && <span className={`text-[8px] ml-1 px-1 py-0.5 rounded ${detail.confidence === 'high' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : detail.confidence === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400'}`}>{detail.confidence}</span>}
+                              <span className="text-[10.5px] text-neutral-500 ml-1">({detail.source})</span>
+                              {detail.confidence && <span className={`text-[10px] ml-1 px-1 py-0.5 rounded ${detail.confidence === 'high' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : detail.confidence === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400'}`}>{detail.confidence}</span>}
                             </div>
                           </div>
                         );
@@ -2229,14 +2229,14 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                             <span className={`font-mono ${d.value ? 'text-neutral-800 dark:text-white' : 'text-red-500 italic'}`}>
                               {d.value || 'N/A'}
                             </span>
-                            <span className="text-[9px] text-neutral-400 ml-1">({d.source})</span>
+                            <span className="text-[10.5px] text-neutral-500 ml-1">({d.source})</span>
                           </div>
                         </div>
                       ))
                     )}
                   </div>
                   {!allPresent && (
-                    <p className="text-[9px] text-red-600 dark:text-red-400 font-medium pt-1 border-t border-red-100 dark:border-red-800">
+                    <p className="text-[10.5px] text-red-600 dark:text-red-400 font-medium pt-1 border-t border-red-100 dark:border-red-800">
                       HWCAPTURE no se puede ejecutar porque faltan datos obligatorios. Use "Resolver datos" para completar.
                     </p>
                   )}
@@ -2261,23 +2261,23 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
             const info = contactLabels[contactStatus || ''] || contactLabels['not_attempted'];
             return (
               <div className="space-y-2">
-                <p className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Etapa 1: Contacto / Cliente</p>
+                <p className="text-[11px] font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Etapa 1: Contacto / Cliente</p>
                 <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg p-3 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[9px] text-neutral-500">Estado:</span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${info.color}`}>{info.label}</span>
+                    <span className="text-[10.5px] text-neutral-500">Estado:</span>
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${info.color}`}>{info.label}</span>
                     {clientId && clientId !== '0' && (
-                      <span className="text-[10px] font-mono font-bold text-teal-700 dark:text-teal-300">IDCli: {clientId}</span>
+                      <span className="text-[11px] font-mono font-bold text-teal-700 dark:text-teal-300">IDCli: {clientId}</span>
                     )}
                   </div>
                   {clientName && (
-                    <div className="text-[10px] text-neutral-600 dark:text-neutral-400"><span className="text-neutral-500">Nombre:</span> {clientName}</div>
+                    <div className="text-[11px] text-neutral-600 dark:text-neutral-400"><span className="text-neutral-500">Nombre:</span> {clientName}</div>
                   )}
                   {clientMethod && (
-                    <div className="text-[10px] text-neutral-600 dark:text-neutral-400"><span className="text-neutral-500">Metodo:</span> <span className="font-mono">{clientMethod}</span></div>
+                    <div className="text-[11px] text-neutral-600 dark:text-neutral-400"><span className="text-neutral-500">Metodo:</span> <span className="font-mono">{clientMethod}</span></div>
                   )}
                   {contactStatus === 'creation_failed' && (record as any).sicas_error_message && (record as any).sicas_error_step === 'create_client_if_needed' && (
-                    <div className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1 mt-1">{(record as any).sicas_error_message}</div>
+                    <div className="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1 mt-1">{(record as any).sicas_error_message}</div>
                   )}
                 </div>
               </div>
@@ -2286,28 +2286,28 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
 
           {/* === STAGE 2: REGISTRATION DIAGNOSTIC SECTION === */}
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Etapa 2: Registro de documento / HWCAPTURE</p>
+            <p className="text-[11px] font-semibold text-accent-ink dark:text-blue-400 uppercase tracking-wider">Etapa 2: Registro de documento / HWCAPTURE</p>
             {regDiag ? (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 space-y-2">
                 {/* Stage status badge */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[9px] text-neutral-500">Estado:</span>
+                  <span className="text-[10.5px] text-neutral-500">Estado:</span>
                   {(() => {
                     const status = regDiag.document_stage_status || 'sent_to_sicas';
                     const info = stageStatusLabels[status] || stageStatusLabels['sent_to_sicas'];
-                    return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${info.color}`}>{info.label}</span>;
+                    return <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${info.color}`}>{info.label}</span>;
                   })()}
                   {regDiag.detected_id_docto && (
-                    <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300">IDDocto: {regDiag.detected_id_docto}</span>
+                    <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-300">IDDocto: {regDiag.detected_id_docto}</span>
                   )}
                 </div>
 
                 {regDiag.error_message && (
-                  <div className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1">{regDiag.error_message}</div>
+                  <div className="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1">{regDiag.error_message}</div>
                 )}
 
                 {/* SOAP method info */}
-                <div className="grid grid-cols-3 gap-1 text-[10px]">
+                <div className="grid grid-cols-3 gap-1 text-[11px]">
                   <div><span className="text-neutral-500">Method:</span> <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{regDiag.method || regDiag.key_process ? 'ProcesarWS' : 'N/A'}</span></div>
                   <div><span className="text-neutral-500">KeyProcess:</span> <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{regDiag.key_process || regDiag.keyProcess || 'DATA'}</span></div>
                   <div><span className="text-neutral-500">KeyCode:</span> <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{regDiag.key_code || regDiag.keyCode || 'HWCAPTURE'}</span></div>
@@ -2315,7 +2315,7 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                   <div><span className="text-neutral-500">TypeFormat:</span> <span className="font-mono font-medium text-blue-700 dark:text-blue-300">{regDiag.type_format || regDiag.typeFormat || 'XML'}</span></div>
                   <div><span className="text-neutral-500">Encriptacion:</span> <span className={`font-mono font-medium ${(regDiag.encryption_used ?? regDiag.encryptionUsed) ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{regDiag.encryption_method || regDiag.encryptionMethod || 'N/A'}</span></div>
                 </div>
-                <div className="grid grid-cols-2 gap-1 text-[10px]">
+                <div className="grid grid-cols-2 gap-1 text-[11px]">
                   {(regDiag.iv_used || regDiag.ivUsed) && <div><span className="text-neutral-500">IV:</span> <span className="font-mono text-blue-700 dark:text-blue-300">{regDiag.iv_used || regDiag.ivUsed}</span></div>}
                   {(regDiag.encrypted_data_xml_length || regDiag.dataXmlEncryptedLength) && <div><span className="text-neutral-500">DataXML enc. length:</span> <span className="font-mono text-blue-700 dark:text-blue-300">{regDiag.encrypted_data_xml_length || regDiag.dataXmlEncryptedLength}</span></div>}
                 </div>
@@ -2323,8 +2323,8 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                 {/* Payload fields */}
                 {regDiag.payload_fields && Object.keys(regDiag.payload_fields).length > 0 && (
                   <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
-                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">Campos del payload ({Object.keys(regDiag.payload_fields).length})</p>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                    <p className="text-[10.5px] font-semibold text-neutral-500 mb-1">Campos del payload ({Object.keys(regDiag.payload_fields).length})</p>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
                       {Object.entries(regDiag.payload_fields).map(([key, val]) => (
                         <div key={key} className="font-mono truncate">
                           <span className="text-neutral-500">{key}:</span>{' '}
@@ -2338,10 +2338,10 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                 {/* Missing fields */}
                 {regDiag.missing_fields && regDiag.missing_fields.length > 0 && (
                   <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
-                    <p className="text-[9px] font-semibold text-red-500 mb-1">Campos faltantes o vacios ({regDiag.missing_fields.length})</p>
+                    <p className="text-[10.5px] font-semibold text-red-500 mb-1">Campos faltantes o vacios ({regDiag.missing_fields.length})</p>
                     <div className="flex flex-wrap gap-1">
                       {regDiag.missing_fields.map((f) => (
-                        <span key={f} className="text-[9px] font-mono bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">{f}</span>
+                        <span key={f} className="text-[10.5px] font-mono bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">{f}</span>
                       ))}
                     </div>
                   </div>
@@ -2350,12 +2350,12 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                 {/* Field mapping */}
                 {(regDiag.field_mapping || regDiag.fieldMapping) && Object.keys(regDiag.field_mapping || regDiag.fieldMapping || {}).length > 0 && (
                   <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
-                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">Mapeo de campos (interno - SICAS)</p>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                    <p className="text-[10.5px] font-semibold text-neutral-500 mb-1">Mapeo de campos (interno - SICAS)</p>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
                       {Object.entries(regDiag.field_mapping || regDiag.fieldMapping || {}).map(([from, to]) => (
                         <div key={from} className="font-mono">
                           <span className="text-neutral-500">{from}</span>
-                          <span className="text-neutral-400 mx-1">-&gt;</span>
+                          <span className="text-neutral-500 mx-1">-&gt;</span>
                           <span className="text-blue-700 dark:text-blue-300">{to}</span>
                         </div>
                       ))}
@@ -2366,8 +2366,8 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                 {/* Parsed response */}
                 {regDiag.parsed_response && (
                   <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
-                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">Respuesta parseada</p>
-                    <div className="grid grid-cols-2 gap-1 text-[10px]">
+                    <p className="text-[10.5px] font-semibold text-neutral-500 mb-1">Respuesta parseada</p>
+                    <div className="grid grid-cols-2 gap-1 text-[11px]">
                       <div><span className="text-neutral-500">RESPONSENBR:</span> <span className={`font-mono font-bold ${regDiag.parsed_response.response_nbr === 1 ? 'text-emerald-600' : 'text-red-600'}`}>{regDiag.parsed_response.response_nbr ?? 'null'}</span></div>
                       <div><span className="text-neutral-500">RESPONSETXT:</span> <span className="font-mono text-neutral-700 dark:text-neutral-300">{regDiag.parsed_response.response_txt || 'vacio'}</span></div>
                       <div><span className="text-neutral-500">hasSuccess:</span> <span className={`font-mono ${regDiag.parsed_response.has_success ? 'text-emerald-600' : 'text-neutral-400'}`}>{String(regDiag.parsed_response.has_success)}</span></div>
@@ -2379,24 +2379,24 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                 {/* DataXML plain */}
                 {(regDiag.plain_data_xml || regDiag.dataXmlPlain) && (
                   <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
-                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">DataXML enviado (plain)</p>
-                    <pre className="text-[9px] font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900/50 rounded p-2 overflow-x-auto max-h-28 whitespace-pre-wrap break-all">{regDiag.plain_data_xml || regDiag.dataXmlPlain}</pre>
+                    <p className="text-[10.5px] font-semibold text-neutral-500 mb-1">DataXML enviado (plain)</p>
+                    <pre className="text-[10.5px] font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900/50 rounded p-2 overflow-x-auto max-h-28 whitespace-pre-wrap break-all">{regDiag.plain_data_xml || regDiag.dataXmlPlain}</pre>
                   </div>
                 )}
 
                 {/* SOAP Request redacted */}
                 {regDiag.soap_request_redacted && (
                   <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
-                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">SOAP Request (redactado)</p>
-                    <pre className="text-[9px] font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900/50 rounded p-2 overflow-x-auto max-h-28 whitespace-pre-wrap break-all">{regDiag.soap_request_redacted.substring(0, 1500)}</pre>
+                    <p className="text-[10.5px] font-semibold text-neutral-500 mb-1">SOAP Request (redactado)</p>
+                    <pre className="text-[10.5px] font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900/50 rounded p-2 overflow-x-auto max-h-28 whitespace-pre-wrap break-all">{regDiag.soap_request_redacted.substring(0, 1500)}</pre>
                   </div>
                 )}
 
                 {/* SOAP Response */}
                 {(regDiag.soap_response || regDiag.soapResponsePreview) && (
                   <div className="pt-2 border-t border-blue-100 dark:border-blue-800">
-                    <p className="text-[9px] font-semibold text-neutral-500 mb-1">Respuesta SOAP</p>
-                    <pre className="text-[9px] font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900/50 rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap break-all">{(regDiag.soap_response || regDiag.soapResponsePreview || '').substring(0, 2000)}</pre>
+                    <p className="text-[10.5px] font-semibold text-neutral-500 mb-1">Respuesta SOAP</p>
+                    <pre className="text-[10.5px] font-mono text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900/50 rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap break-all">{(regDiag.soap_response || regDiag.soapResponsePreview || '').substring(0, 2000)}</pre>
                   </div>
                 )}
               </div>
@@ -2409,7 +2409,7 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                 <p className="text-[11px] text-amber-600 dark:text-amber-400">
                   El registro HWCAPTURE no ha sido ejecutado. El documento no existe todavia en SICAS.
                 </p>
-                <div className="text-[10px] text-neutral-600 dark:text-neutral-300 space-y-1 pt-1 border-t border-amber-100 dark:border-amber-800">
+                <div className="text-[11px] text-neutral-600 dark:text-neutral-300 space-y-1 pt-1 border-t border-amber-100 dark:border-amber-800">
                   <p><strong>Estado:</strong> No se ha enviado HWCAPTURE</p>
                   <p><strong>IDDocto SICAS:</strong> {record.sicas_document_id || 'No existe'}</p>
                   <p><strong>Registro SICAS:</strong> {record.sicas_registered_at ? new Date(record.sicas_registered_at).toLocaleString('es-MX') : 'Nunca'}</p>
@@ -2419,9 +2419,9 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
 
                 {record.sicas_error_message && (
                   <div className="pt-2 border-t border-amber-100 dark:border-amber-800">
-                    <p className="text-[9px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Errores anteriores (intentos previos)</p>
-                    <p className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-1.5 font-mono break-all">{record.sicas_error_message}</p>
-                    <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-1 italic">Este error corresponde a un intento anterior. HWCAPTURE no ha sido ejecutado exitosamente.</p>
+                    <p className="text-[10.5px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Errores anteriores (intentos previos)</p>
+                    <p className="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-1.5 font-mono break-all">{record.sicas_error_message}</p>
+                    <p className="text-[10.5px] text-neutral-500 dark:text-neutral-500 mt-1 italic">Este error corresponde a un intento anterior. HWCAPTURE no ha sido ejecutado exitosamente.</p>
                   </div>
                 )}
 
@@ -2430,18 +2430,18 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                   if (missingFields.length > 0) {
                     return (
                       <div className="pt-2 border-t border-amber-100 dark:border-amber-800">
-                        <p className="text-[9px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-1">Datos obligatorios faltantes</p>
-                        <ul className="text-[10px] text-red-600 dark:text-red-400 list-disc pl-3 space-y-0.5">
+                        <p className="text-[10.5px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-1">Datos obligatorios faltantes</p>
+                        <ul className="text-[11px] text-red-600 dark:text-red-400 list-disc pl-3 space-y-0.5">
                           {missingFields.map(f => <li key={f}>{f}</li>)}
                         </ul>
-                        <p className="text-[9px] text-amber-700 dark:text-amber-300 font-medium mt-1">Complete estos datos antes de intentar el registro.</p>
+                        <p className="text-[10.5px] text-amber-700 dark:text-amber-300 font-medium mt-1">Complete estos datos antes de intentar el registro.</p>
                       </div>
                     );
                   }
                   return null;
                 })()}
 
-                <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium pt-1">
+                <p className="text-[11px] text-amber-700 dark:text-amber-300 font-medium pt-1">
                   {getMissingFieldsForRegistration(record).length > 0
                     ? 'Accion recomendada: Complete los datos faltantes y luego use "Registrar en SICAS".'
                     : 'Accion recomendada: Usa el boton "Registrar en SICAS" para ejecutar HWCAPTURE y crear el documento.'}
@@ -2452,7 +2452,7 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
 
           {/* === SEARCH CONTEXT SECTION === */}
           <div className="bg-neutral-50 dark:bg-neutral-700/30 rounded-lg p-3 space-y-1">
-            <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Datos de busqueda</p>
+            <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Datos de busqueda</p>
             {searchContext ? (
               <div className="grid grid-cols-2 gap-1 text-xs">
                 {Object.entries(searchContext).map(([key, val]) => val ? (
@@ -2463,7 +2463,7 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                 ) : null)}
               </div>
             ) : (
-              <div className="text-xs text-neutral-400">
+              <div className="text-xs text-neutral-500">
                 <p>Poliza: {record.manual_policy_number || record.policy_number || 'N/A'}</p>
                 <p>Asegurado: {record.insured_name || 'N/A'}</p>
                 <p>Intentos: {(record as any).sicas_document_lookup_attempts || 0}</p>
@@ -2475,16 +2475,16 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
           {/* === SEARCH STRATEGIES SECTION === */}
           {diagnostics && diagnostics.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Estrategias de busqueda ejecutadas</p>
+              <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Estrategias de busqueda ejecutadas</p>
               {diagnostics.map((d, i) => (
                 <div key={i} className={`rounded-lg border p-2.5 text-xs ${d.best_match_score >= 80 ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10' : d.best_match_score >= 60 ? 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10' : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-700/20'}`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium text-neutral-800 dark:text-white">{d.strategy}</span>
                     {d.duration_ms !== undefined && (
-                      <span className="text-[9px] text-neutral-400">{d.duration_ms}ms</span>
+                      <span className="text-[10.5px] text-neutral-500">{d.duration_ms}ms</span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-neutral-600 dark:text-neutral-300">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-neutral-600 dark:text-neutral-300">
                     <span>Resultados: <strong>{d.results_count}</strong></span>
                     <span>Mejor score: <strong className={d.best_match_score >= 80 ? 'text-emerald-600' : d.best_match_score >= 60 ? 'text-amber-600' : ''}>{d.best_match_score}</strong></span>
                     {d.matched_id_docto && <span>IDDocto: <strong>{d.matched_id_docto}</strong></span>}
@@ -2492,7 +2492,7 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
                   </div>
                   {d.request_summary && Object.keys(d.request_summary).length > 0 && (
                     <div className="mt-1 pt-1 border-t border-neutral-100 dark:border-neutral-600">
-                      <p className="text-[9px] text-neutral-400">
+                      <p className="text-[10.5px] text-neutral-500">
                         {Object.entries(d.request_summary).map(([k, v]) => `${k}=${v}`).join(' | ')}
                       </p>
                     </div>
@@ -2511,16 +2511,16 @@ function DiagnosticModal({ record: initialRecord, onClose }: { record: DeliveryR
           {/* === MULTIPLE MATCHES SECTION === */}
           {multipleMatches && multipleMatches.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Posibles coincidencias (score &lt; 80)</p>
+              <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Posibles coincidencias (score &lt; 80)</p>
               <div className="space-y-1">
                 {multipleMatches.map((m, i) => (
                   <div key={i} className="flex items-center justify-between rounded border border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-900/10 px-2 py-1.5 text-xs">
                     <div>
                       <span className="font-medium text-neutral-800 dark:text-white">ID: {m.id_docto}</span>
                       <span className="text-neutral-500 ml-2">{m.documento}</span>
-                      {m.cliente && <span className="text-neutral-400 ml-2 text-[10px]">{m.cliente.substring(0, 25)}</span>}
+                      {m.cliente && <span className="text-neutral-500 ml-2 text-[11px]">{m.cliente.substring(0, 25)}</span>}
                     </div>
-                    <span className="text-amber-600 dark:text-amber-400 font-semibold text-[10px]">Score: {m.score}</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px]">Score: {m.score}</span>
                   </div>
                 ))}
               </div>
@@ -2567,7 +2567,7 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onCancel} />
-      <div className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+      <div className="relative bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-e4 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-xl">
             <UploadCloud className="w-5 h-5 text-sky-600 dark:text-sky-400" />
@@ -2584,7 +2584,7 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
           {editingPolicyNumber ? (
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-medium text-neutral-500 dark:text-white/40 w-20">No. Poliza:</span>
+                <span className="text-[11px] font-medium text-neutral-500 dark:text-white/55 w-20">No. Poliza:</span>
                 <input
                   type="text"
                   value={policyNumberInput}
@@ -2598,18 +2598,18 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
                 <button
                   onClick={handleSavePolicyNumber}
                   disabled={!policyNumberInput.trim() || !!folioWarning}
-                  className="px-2 py-1 text-[10px] font-medium text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 rounded disabled:opacity-40"
+                  className="px-2 py-1 text-[11px] font-medium text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 rounded disabled:opacity-40"
                 >
                   Guardar
                 </button>
               </div>
               {folioWarning && (
-                <p className="text-[10px] text-amber-600 dark:text-amber-400 pl-[84px] flex items-center gap-1">
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 pl-[84px] flex items-center gap-1">
                   <AlertCircle className="w-3 h-3 flex-shrink-0" />
                   {folioWarning}
                 </p>
               )}
-              <p className="text-[9px] text-neutral-400 dark:text-white/30 pl-[84px]">
+              <p className="text-[10.5px] text-neutral-500 dark:text-white/45 pl-[84px]">
                 Ingresa el numero de poliza de la aseguradora (NO el folio MOVI como RA-2026-xxxx).
               </p>
             </div>
@@ -2619,7 +2619,7 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
               {onUpdatePolicyNumber && (
                 <button
                   onClick={() => setEditingPolicyNumber(true)}
-                  className="ml-auto text-[10px] text-sky-600 dark:text-sky-400 hover:underline"
+                  className="ml-auto text-[11px] text-sky-600 dark:text-sky-400 hover:underline"
                 >
                   Editar
                 </button>
@@ -2641,7 +2641,7 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
 
         {record.sicas_error_message && (
           <div className="p-2.5 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-500/20 rounded-lg">
-            <p className="text-[10px] text-red-700 dark:text-red-400">
+            <p className="text-[11px] text-red-700 dark:text-red-400">
               <AlertCircle className="w-3 h-3 inline mr-1" />
               Error previo: {record.sicas_error_message}
             </p>
@@ -2650,7 +2650,7 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
 
         {record.sicas_duplicate_detected && (
           <div className="p-2.5 bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-500/20 rounded-lg">
-            <p className="text-[10px] text-orange-700 dark:text-orange-400">
+            <p className="text-[11px] text-orange-700 dark:text-orange-400">
               <Ban className="w-3 h-3 inline mr-1" />
               Se detecto un posible duplicado anteriormente (IDDocto: {record.sicas_duplicate_document_id}).
             </p>
@@ -2680,7 +2680,7 @@ function SicasConfirmModal({ record, onConfirm, onCancel, onUpdatePolicyNumber }
 function SummaryRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-[10px] text-neutral-500 dark:text-white/40">{label}</span>
+      <span className="text-[11px] text-neutral-500 dark:text-white/55">{label}</span>
       <span className={`text-[11px] font-medium ${highlight ? 'text-amber-700 dark:text-amber-400' : 'text-neutral-800 dark:text-white/80'} max-w-[200px] truncate text-right`}>
         {value}
       </span>
@@ -2695,7 +2695,7 @@ function SummaryRow({ label, value, highlight }: { label: string; value: string;
 function DataField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="text-neutral-400 dark:text-white/30">{label}: </span>
+      <span className="text-neutral-500 dark:text-white/45">{label}: </span>
       <span className="text-neutral-700 dark:text-white/80 font-medium">{value}</span>
     </div>
   );
@@ -2732,7 +2732,7 @@ function TicketList({ tickets, searchTerm, showClosed, selectedId, onSelect }: {
   if (filtered.length === 0) {
     return (
       <div className="py-4 text-center">
-        <p className="text-[10px] text-neutral-400 dark:text-white/30">
+        <p className="text-[11px] text-neutral-500 dark:text-white/45">
           {tickets.length === 0 ? 'Este vendedor no tiene tramites registrados.' : 'No se encontraron tramites con ese criterio.'}
         </p>
       </div>
@@ -2761,21 +2761,21 @@ function TicketList({ tickets, searchTerm, showClosed, selectedId, onSelect }: {
                   <span className="text-[11px] font-bold text-neutral-800 dark:text-white">{t.folio}</span>
                   <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-medium ${
                     isClosed
-                      ? 'bg-neutral-100 dark:bg-white/10 text-neutral-500 dark:text-white/40'
+                      ? 'bg-neutral-100 dark:bg-white/10 text-neutral-500 dark:text-white/55'
                       : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
                   }`}>
                     {t.estatus_nombre || 'Sin estado'}
                   </span>
                 </div>
                 {t.poliza && (
-                  <p className="text-[10px] text-neutral-600 dark:text-white/60 mt-0.5 truncate">Poliza: {t.poliza}</p>
+                  <p className="text-[11px] text-neutral-600 dark:text-white/60 mt-0.5 truncate">Poliza: {t.poliza}</p>
                 )}
                 {t.insurance_type_nombre && (
-                  <p className="text-[10px] text-neutral-500 dark:text-white/40 truncate">{t.insurance_type_nombre}</p>
+                  <p className="text-[11px] text-neutral-500 dark:text-white/55 truncate">{t.insurance_type_nombre}</p>
                 )}
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-[9px] text-neutral-400 dark:text-white/30">
+                <p className="text-[10.5px] text-neutral-500 dark:text-white/45">
                   {new Date(t.updated_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
                 </p>
               </div>

@@ -136,14 +136,14 @@ export function TramitesWidget() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-accent" />
+            <ClipboardList className="w-5 h-5 text-accent-ink" />
             <CardTitle>Mis Trámites Activos</CardTitle>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate('/tramites')}
-            className="text-accent hover:text-accent"
+            className="text-accent-ink hover:text-accent-ink"
           >
             Ver todos
           </Button>
@@ -175,13 +175,13 @@ export function TramitesWidget() {
                         <span className="font-medium truncate">{tramite.solicitante.nombre_completo}</span>
                         {tramite.solicitante.oficina && (
                           <>
-                            <span className="text-neutral-400">|</span>
+                            <span className="text-neutral-500">|</span>
                             <span className="truncate">{tramite.solicitante.oficina.nombre}</span>
                           </>
                         )}
                       </div>
                     )}
-                    <span className="text-sm font-bold text-accent flex-shrink-0">
+                    <span className="text-sm font-bold text-accent-ink flex-shrink-0">
                       {tramite.folio}
                     </span>
                   </div>

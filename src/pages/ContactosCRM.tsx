@@ -145,7 +145,7 @@ export default function ContactosCRM() {
         actions={
           <button
             onClick={() => setShowContactoModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent/90 transition text-sm font-medium shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition text-sm font-medium shadow-sm"
           >
             <UserPlus className="h-4 w-4" />
             Nuevo Contacto
@@ -157,11 +157,11 @@ export default function ContactosCRM() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Total', value: stats.total, Icon: Users, color: 'text-neutral-600 dark:text-white/70', bg: 'bg-neutral-50 dark:bg-neutral-800' },
-          { label: 'Prospectos', value: stats.prospectos, Icon: Clock, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+          { label: 'Prospectos', value: stats.prospectos, Icon: Clock, color: 'text-accent-ink dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
           { label: 'Clientes', value: stats.clientes, Icon: CheckCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
           { label: 'Con Seguwallet', value: stats.conSW, Icon: Wallet, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-900/20' },
         ].map(({ label, value, Icon, color, bg }) => (
-          <div key={label} className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 flex items-center gap-3">
+          <div key={label} className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-neutral-700 p-4 flex items-center gap-3">
             <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center flex-shrink-0`}>
               <Icon className={`h-4.5 w-4.5 ${color}`} />
             </div>
@@ -174,16 +174,16 @@ export default function ContactosCRM() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 mb-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-neutral-700 p-3 mb-4">
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 pointer-events-none" />
             <input
               type="text"
               placeholder="Buscar por nombre, teléfono o email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-soft dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
             />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -191,25 +191,25 @@ export default function ContactosCRM() {
               <select
                 value={filterEstatus}
                 onChange={(e) => setFilterEstatus(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                className="appearance-none pl-3 pr-7 py-2 text-sm border border-soft dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
               >
                 {ESTATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500 pointer-events-none" />
             </div>
             <div className="relative">
               <select
                 value={filterSeguwallet}
                 onChange={(e) => setFilterSeguwallet(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                className="appearance-none pl-3 pr-7 py-2 text-sm border border-soft dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
               >
                 {SW_FILTER_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500 pointer-events-none" />
             </div>
             {(filterEstatus || filterSeguwallet || search) && (
               <button
@@ -246,13 +246,13 @@ export default function ContactosCRM() {
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
         </div>
       ) : contactos.length === 0 ? (
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 py-16 text-center">
+        <div className="bg-surface-card dark:bg-neutral-900 rounded-xl border border-soft dark:border-neutral-700 py-16 text-center">
           <Users className="h-10 w-10 text-neutral-300 dark:text-white/20 mx-auto mb-3" />
           <p className="text-sm font-medium text-neutral-600 dark:text-white/70">No se encontraron contactos</p>
-          <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">Ajusta los filtros o agrega un nuevo contacto</p>
+          <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">Ajusta los filtros o agrega un nuevo contacto</p>
           <button
             onClick={() => setShowContactoModal(true)}
-            className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-accent bg-accent/10 rounded-lg hover:bg-accent/15 transition"
+            className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-accent-ink bg-accent/10 rounded-lg hover:bg-accent/15 transition"
           >
             <Plus className="h-4 w-4" />
             Agregar Contacto
@@ -332,8 +332,8 @@ export default function ContactosCRM() {
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+          <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-sm p-6 animate-scale-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
@@ -377,7 +377,7 @@ export default function ContactosCRM() {
 function SeguwalletBadge({ status }: { status: string | null }) {
   if (!status) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-white/40">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-white/55">
         <WifiOff className="h-2.5 w-2.5" />
         Sin SW
       </span>
@@ -385,7 +385,7 @@ function SeguwalletBadge({ status }: { status: string | null }) {
   }
   if (status === 'active') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
         <Wifi className="h-2.5 w-2.5" />
         Seguwallet
       </span>
@@ -393,14 +393,14 @@ function SeguwalletBadge({ status }: { status: string | null }) {
   }
   if (status === 'blocked') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
         <Ban className="h-2.5 w-2.5" />
         Bloqueado
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
       <Clock className="h-2.5 w-2.5" />
       SW Inactivo
     </span>
@@ -425,7 +425,7 @@ function TableView({
   onImpersonate: (c: UnifiedContacto) => void;
 }) {
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+    <div className="bg-surface-card dark:bg-neutral-900 rounded-xl border border-soft dark:border-neutral-700 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -468,7 +468,7 @@ function TableView({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${getEstatusStyle(c.estatus)}`}>
+                  <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full ${getEstatusStyle(c.estatus)}`}>
                     {c.estatus}
                   </span>
                 </td>
@@ -481,32 +481,32 @@ function TableView({
                       {c.sicas_count} cliente{c.sicas_count !== 1 ? 's' : ''}
                     </span>
                   ) : (
-                    <span className="text-xs text-neutral-400 dark:text-white/30">—</span>
+                    <span className="text-xs text-neutral-500 dark:text-white/45">—</span>
                   )}
                 </td>
                 {isAdmin && (
                   <td className="px-4 py-3 hidden xl:table-cell">
                     <div className="space-y-1 min-w-[150px]">
                       <span className="text-xs font-medium text-neutral-700 dark:text-white/70 flex items-center gap-1.5">
-                        <User className="h-3 w-3 text-neutral-400" />
+                        <User className="h-3 w-3 text-neutral-500" />
                         {c.agente_nombre || 'Sin agente'}
                       </span>
                       <span className="text-[11px] text-neutral-500 dark:text-white/45 flex items-center gap-1.5">
-                        <Building2 className="h-3 w-3 text-neutral-400" />
+                        <Building2 className="h-3 w-3 text-neutral-500" />
                         {c.oficina_nombre || 'Sin oficina'}
                       </span>
                     </div>
                   </td>
                 )}
                 <td className="px-4 py-3 hidden lg:table-cell">
-                  <span className="text-xs text-neutral-400 dark:text-white/40">{timeSince(c.fecha_creacion)}</span>
+                  <span className="text-xs text-neutral-500 dark:text-white/55">{timeSince(c.fecha_creacion)}</span>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
                     {c.source === 'crm' && (
                       <button
                         onClick={() => onView(c)}
-                        className="p-1.5 rounded-md text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                        className="p-1.5 rounded-md text-neutral-500 hover:text-accent-ink hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
                         title="Ver perfil completo"
                       >
                         <Eye className="h-4 w-4" />
@@ -515,7 +515,7 @@ function TableView({
                     {c.source === 'crm' && (
                       <button
                         onClick={() => onEdit(c)}
-                        className="p-1.5 rounded-md text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                        className="p-1.5 rounded-md text-neutral-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
                         title="Editar contacto"
                       >
                         <Pencil className="h-4 w-4" />
@@ -524,7 +524,7 @@ function TableView({
                     {!c.seguwallet_customer_id && c.source === 'crm' && (
                       <button
                         onClick={() => onActivarSW(c)}
-                        className="p-1.5 rounded-md text-neutral-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
+                        className="p-1.5 rounded-md text-neutral-500 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
                         title="Activar Seguwallet"
                       >
                         <Wallet className="h-4 w-4" />
@@ -533,7 +533,7 @@ function TableView({
                     {c.seguwallet_customer_id && (
                       <button
                         onClick={() => onAsignarSicas(c)}
-                        className="p-1.5 rounded-md text-neutral-400 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition"
+                        className="p-1.5 rounded-md text-neutral-500 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition"
                         title="Gestionar clientes SICAS"
                       >
                         <Database className="h-4 w-4" />
@@ -542,7 +542,7 @@ function TableView({
                     {isAdmin && c.seguwallet_customer_id && (
                       <button
                         onClick={() => onImpersonate(c)}
-                        className="p-1.5 rounded-md text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
+                        className="p-1.5 rounded-md text-neutral-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition"
                         title="Ver como este cliente en Seguwallet"
                       >
                         <User className="h-4 w-4" />
@@ -551,7 +551,7 @@ function TableView({
                     {c.source === 'crm' && (
                       <button
                         onClick={() => onDelete(c)}
-                        className="p-1.5 rounded-md text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                        className="p-1.5 rounded-md text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                         title="Eliminar contacto"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -590,7 +590,7 @@ function CardsView({
       {contactos.map((c) => (
         <div
           key={`${c.source}-${c.id}`}
-          className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 hover:border-accent/40 hover:shadow-sm transition group"
+          className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-neutral-700 p-4 hover:border-accent/40 hover:shadow-sm transition group"
         >
           <div
             className="flex items-start justify-between mb-3 cursor-pointer"
@@ -600,7 +600,7 @@ function CardsView({
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{c.nombre_completo}</p>
               <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5">{c.tipo_contacto}</p>
             </div>
-            <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full flex-shrink-0 ml-2 ${getEstatusStyle(c.estatus)}`}>
+            <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full flex-shrink-0 ml-2 ${getEstatusStyle(c.estatus)}`}>
               {c.estatus}
             </span>
           </div>
@@ -608,13 +608,13 @@ function CardsView({
           <div className="space-y-1.5 mb-3">
             {c.celular && (
               <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-white/60">
-                <Phone className="h-3 w-3 text-neutral-400 flex-shrink-0" />
+                <Phone className="h-3 w-3 text-neutral-500 flex-shrink-0" />
                 <span>{c.celular}</span>
               </div>
             )}
             {c.email && (
               <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-white/60">
-                <Mail className="h-3 w-3 text-neutral-400 flex-shrink-0" />
+                <Mail className="h-3 w-3 text-neutral-500 flex-shrink-0" />
                 <span className="truncate">{c.email}</span>
               </div>
             )}
@@ -623,7 +623,7 @@ function CardsView({
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <SeguwalletBadge status={c.seguwallet_status} />
             {c.sicas_count > 0 && (
-              <span className="text-[10px] text-neutral-500 dark:text-white/40">
+              <span className="text-[11px] text-neutral-500 dark:text-white/55">
                 {c.sicas_count} SICAS
               </span>
             )}
@@ -632,27 +632,27 @@ function CardsView({
           {isAdmin && (
             <div className="mb-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/60 px-3 py-2 space-y-1">
               <div className="flex items-center gap-2 text-xs text-neutral-700 dark:text-white/70">
-                <User className="h-3 w-3 text-neutral-400" />
-                <span className="text-neutral-400 dark:text-white/40">Agente</span>
+                <User className="h-3 w-3 text-neutral-500" />
+                <span className="text-neutral-500 dark:text-white/55">Agente</span>
                 <span className="font-medium truncate">{c.agente_nombre || 'Sin agente'}</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-white/60">
-                <Building2 className="h-3 w-3 text-neutral-400" />
-                <span className="text-neutral-400 dark:text-white/40">Oficina</span>
+                <Building2 className="h-3 w-3 text-neutral-500" />
+                <span className="text-neutral-500 dark:text-white/55">Oficina</span>
                 <span className="truncate">{c.oficina_nombre || 'Sin oficina'}</span>
               </div>
             </div>
           )}
 
           <div className="flex items-center justify-between pt-3 border-t border-neutral-100 dark:border-neutral-800">
-            <span className="text-[10px] text-neutral-400 dark:text-white/40">
+            <span className="text-[11px] text-neutral-500 dark:text-white/55">
               {c.fuente_origen || 'Sin fuente'} · {timeSince(c.fecha_creacion)}
             </span>
             <div className="flex items-center gap-1">
               {c.source === 'crm' && (
                 <button
                   onClick={() => onView(c)}
-                  className="p-1 rounded text-neutral-400 hover:text-blue-600 transition"
+                  className="p-1 rounded text-neutral-500 hover:text-accent-ink transition"
                   title="Ver perfil completo"
                 >
                   <Eye className="h-3.5 w-3.5" />
@@ -661,7 +661,7 @@ function CardsView({
               {c.source === 'crm' && (
                 <button
                   onClick={() => onEdit(c)}
-                  className="p-1 rounded text-neutral-400 hover:text-amber-600 transition"
+                  className="p-1 rounded text-neutral-500 hover:text-amber-600 transition"
                   title="Editar contacto"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -670,7 +670,7 @@ function CardsView({
               {!c.seguwallet_customer_id && c.source === 'crm' && (
                 <button
                   onClick={() => onActivarSW(c)}
-                  className="p-1 rounded text-neutral-400 hover:text-teal-600 transition"
+                  className="p-1 rounded text-neutral-500 hover:text-teal-600 transition"
                   title="Activar Seguwallet"
                 >
                   <Wallet className="h-3.5 w-3.5" />
@@ -679,7 +679,7 @@ function CardsView({
               {c.seguwallet_customer_id && (
                 <button
                   onClick={() => onAsignarSicas(c)}
-                  className="p-1 rounded text-neutral-400 hover:text-cyan-600 transition"
+                  className="p-1 rounded text-neutral-500 hover:text-cyan-600 transition"
                   title="Gestionar clientes SICAS"
                 >
                   <Database className="h-3.5 w-3.5" />
@@ -688,7 +688,7 @@ function CardsView({
               {isAdmin && c.seguwallet_customer_id && (
                 <button
                   onClick={() => onImpersonate(c)}
-                  className="p-1 rounded text-neutral-400 hover:text-amber-600 transition"
+                  className="p-1 rounded text-neutral-500 hover:text-amber-600 transition"
                   title="Ver como este cliente"
                 >
                   <User className="h-3.5 w-3.5" />
@@ -697,7 +697,7 @@ function CardsView({
               {c.source === 'crm' && (
                 <button
                   onClick={() => onDelete(c)}
-                  className="p-1 rounded text-neutral-400 hover:text-red-600 transition"
+                  className="p-1 rounded text-neutral-500 hover:text-red-600 transition"
                   title="Eliminar contacto"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

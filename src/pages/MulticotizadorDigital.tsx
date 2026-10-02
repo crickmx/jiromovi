@@ -30,7 +30,7 @@ export default function MulticotizadorDigital() {
           actions={
             <button
               onClick={openInNewTab}
-              className="inline-flex items-center px-4 py-2 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors text-sm font-medium"
+              className="inline-flex items-center px-4 py-2 bg-surface-card dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded-lg shadow-card border border-soft dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors text-sm font-medium"
               title="Abrir en nueva pestaña"
             >
               <ExternalLink className="w-4 h-4 mr-2" />
@@ -65,7 +65,7 @@ export default function MulticotizadorDigital() {
             </p>
             <button
               onClick={openInNewTab}
-              className="inline-flex items-center px-6 py-3 bg-accent text-white font-medium rounded-lg hover:bg-accent-hover transition-colors"
+              className="inline-flex items-center px-6 py-3 bg-accent text-accent-foreground font-medium rounded-lg hover:bg-accent-hover transition-colors"
             >
               <ExternalLink className="w-5 h-5 mr-2" />
               Abrir en Nueva Pestaña

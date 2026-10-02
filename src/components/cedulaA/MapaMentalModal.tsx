@@ -37,12 +37,12 @@ export default function MapaMentalModal({ moduloId, onClose }: Props) {
   const reducirZoom = () => setZoom(prev => Math.max(prev - 0.1, 0.5));
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 animate-fade-in">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 animate-fade-in">
       <div className="bg-white rounded-ios-xl w-full max-w-6xl max-h-[90vh] sm:max-h-[85vh] flex flex-col shadow-ios-xl animate-scale-in">
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-neutral-200">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-100 rounded-ios flex items-center justify-center flex-shrink-0">
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-accent-ink" />
             </div>
             <div className="min-w-0">
               <h2 className="text-lg sm:text-xl font-bold text-neutral-900 truncate">Mapas Mentales</h2>
@@ -78,7 +78,7 @@ export default function MapaMentalModal({ moduloId, onClose }: Props) {
                     onClick={() => setMapaSeleccionado(mapa)}
                     className={`px-3 sm:px-4 py-2 rounded-ios-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
                       mapaSeleccionado?.id === mapa.id
-                        ? 'bg-accent text-white'
+                        ? 'bg-accent text-accent-foreground'
                         : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                     }`}
                   >

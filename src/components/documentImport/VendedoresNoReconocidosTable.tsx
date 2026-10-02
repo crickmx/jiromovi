@@ -38,10 +38,10 @@ export default function VendedoresNoReconocidosTable({
             <AlertCircle className="h-6 w-6 text-green-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-neutral-900">
               Todos los vendedores fueron reconocidos
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-neutral-600">
               No hay vendedores pendientes de asignar
             </p>
           </div>
@@ -53,16 +53,16 @@ export default function VendedoresNoReconocidosTable({
   return (
     <>
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-neutral-200">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-100 rounded-lg">
               <AlertCircle className="h-6 w-6 text-orange-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-neutral-900">
                 Vendedores no reconocidos
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-neutral-600">
                 {groups.length} {groups.length === 1 ? 'vendedor requiere' : 'vendedores requieren'} asignación manual
               </p>
             </div>
@@ -71,24 +71,24 @@ export default function VendedoresNoReconocidosTable({
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Tipo
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Vendedor detectado
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   # Documentos
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Información adicional
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Ejemplos
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
@@ -100,29 +100,29 @@ export default function VendedoresNoReconocidosTable({
                     <div className="flex items-center gap-2">
                       {group.type === 'name' ? (
                         <>
-                          <User className="h-5 w-5 text-accent" />
-                          <span className="text-sm font-medium text-gray-900">Nombre</span>
+                          <User className="h-5 w-5 text-accent-ink" />
+                          <span className="text-sm font-medium text-neutral-900">Nombre</span>
                         </>
                       ) : group.type === 'email' ? (
                         <>
                           <Mail className="h-5 w-5 text-green-600" />
-                          <span className="text-sm font-medium text-gray-900">Email</span>
+                          <span className="text-sm font-medium text-neutral-900">Email</span>
                         </>
                       ) : (
                         <>
-                          <HelpCircle className="h-5 w-5 text-gray-400" />
-                          <span className="text-sm font-medium text-gray-500">Desconocido</span>
+                          <HelpCircle className="h-5 w-5 text-neutral-500" />
+                          <span className="text-sm font-medium text-neutral-500">Desconocido</span>
                         </>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-neutral-900">
                         {getVendorGroupLabel(group)}
                       </p>
                       {group.display_value !== getVendorGroupLabel(group) && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-neutral-500">
                           Normalizado: {group.display_value}
                         </p>
                       )}
@@ -130,8 +130,8 @@ export default function VendedoresNoReconocidosTable({
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm font-semibold text-gray-900">
+                      <FileText className="h-4 w-4 text-neutral-500" />
+                      <span className="text-sm font-semibold text-neutral-900">
                         {group.document_count}
                       </span>
                     </div>
@@ -139,7 +139,7 @@ export default function VendedoresNoReconocidosTable({
                   <td className="px-6 py-4">
                     {group.type === 'name' && group.emails_detected && group.emails_detected.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        <span className="text-xs text-gray-500 mr-1">Emails:</span>
+                        <span className="text-xs text-neutral-500 mr-1">Emails:</span>
                         {group.emails_detected.slice(0, 2).map((email, idx) => (
                           <span
                             key={idx}
@@ -150,18 +150,18 @@ export default function VendedoresNoReconocidosTable({
                           </span>
                         ))}
                         {group.emails_detected.length > 2 && (
-                          <span className="px-2 py-1 text-xs text-gray-500">
+                          <span className="px-2 py-1 text-xs text-neutral-500">
                             +{group.emails_detected.length - 2}
                           </span>
                         )}
                       </div>
                     ) : group.type === 'email' && group.vendor_name_raw ? (
                       <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500">Nombre:</span>
-                        <span className="text-xs text-gray-700">{group.vendor_name_raw}</span>
+                        <span className="text-xs text-neutral-500">Nombre:</span>
+                        <span className="text-xs text-neutral-700">{group.vendor_name_raw}</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400">-</span>
+                      <span className="text-xs text-neutral-500">-</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
@@ -169,13 +169,13 @@ export default function VendedoresNoReconocidosTable({
                       {group.sample_documents.slice(0, 2).map((doc, idx) => (
                         <span
                           key={idx}
-                          className="px-2 py-1 bg-gray-100 border border-gray-200 rounded text-xs text-gray-700"
+                          className="px-2 py-1 bg-neutral-100 border border-neutral-200 rounded text-xs text-neutral-700"
                         >
                           {doc}
                         </span>
                       ))}
                       {group.sample_documents.length > 2 && (
-                        <span className="px-2 py-1 text-xs text-gray-500">
+                        <span className="px-2 py-1 text-xs text-neutral-500">
                           +{group.sample_documents.length - 2}
                         </span>
                       )}
@@ -184,7 +184,7 @@ export default function VendedoresNoReconocidosTable({
                   <td className="px-6 py-4">
                     <button
                       onClick={() => handleOpenModal(group)}
-                      className="flex items-center gap-2 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition"
+                      className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground text-sm font-medium rounded-lg hover:bg-accent-hover transition"
                     >
                       <UserPlus className="h-4 w-4" />
                       Asignar

@@ -193,14 +193,14 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-6">
+    <div className="bg-surface-card rounded-2xl border border-soft p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <File className="w-6 h-6 text-slate-700" />
-          <h3 className="text-lg font-semibold text-slate-900">Documentos</h3>
+          <File className="w-6 h-6 text-neutral-700" />
+          <h3 className="text-lg font-semibold text-neutral-900">Documentos</h3>
         </div>
         {canEdit && (
-          <label className="flex items-center space-x-2 bg-accent text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-accent-hover transition">
+          <label className="flex items-center space-x-2 bg-accent text-accent-foreground px-4 py-2 rounded-lg cursor-pointer hover:bg-accent-hover transition">
             <Upload className="w-4 h-4" />
             <span>{uploading ? 'Subiendo...' : 'Subir Documento'}</span>
             <input
@@ -216,15 +216,15 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
 
       {documentos.length === 0 ? (
         <div className="text-center py-8">
-          <File className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">No hay documentos cargados</p>
+          <File className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
+          <p className="text-neutral-500">No hay documentos cargados</p>
         </div>
       ) : (
         <div className="space-y-3">
           {documentos.map((doc) => (
             <div
               key={doc.id}
-              className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition"
+              className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg hover:bg-slate-100 transition"
             >
               {editingDoc === doc.id ? (
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -233,26 +233,26 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="Nombre del archivo"
-                    className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:border-transparent"
                   />
                   <input
                     type="text"
                     value={editType}
                     onChange={(e) => setEditType(e.target.value)}
                     placeholder="Tipo de documento (opcional)"
-                    className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:border-transparent"
                   />
                 </div>
               ) : (
                 <div className="flex items-center space-x-3 flex-1">
                   <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                    <File className="w-5 h-5 text-accent" />
+                    <File className="w-5 h-5 text-accent-ink" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-900 truncate">{doc.nombre_archivo}</p>
-                    <div className="flex items-center space-x-3 text-xs text-slate-500">
+                    <p className="font-medium text-neutral-900 truncate">{doc.nombre_archivo}</p>
+                    <div className="flex items-center space-x-3 text-xs text-neutral-500">
                       {doc.tipo_documento && (
-                        <span className="bg-slate-200 px-2 py-0.5 rounded">{doc.tipo_documento}</span>
+                        <span className="bg-neutral-200 px-2 py-0.5 rounded">{doc.tipo_documento}</span>
                       )}
                       <span>{formatFileSize(doc.tamano_bytes)}</span>
                       <span>{formatDate(doc.created_at)}</span>
@@ -273,7 +273,7 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition"
+                      className="p-2 text-neutral-600 hover:bg-slate-200 rounded-lg transition"
                       title="Cancelar"
                     >
                       <X className="w-4 h-4" />
@@ -283,7 +283,7 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
                   <>
                     <button
                       onClick={() => handleDownload(doc.url_archivo, doc.nombre_archivo)}
-                      className="p-2 text-accent hover:bg-primary-50 rounded-lg transition"
+                      className="p-2 text-accent-ink hover:bg-primary-50 rounded-lg transition"
                       title="Descargar"
                     >
                       <Download className="w-4 h-4" />
@@ -292,7 +292,7 @@ export function DocumentsSection({ usuarioId, canEdit = false }: DocumentsSectio
                       <>
                         <button
                           onClick={() => startEdit(doc)}
-                          className="p-2 text-slate-600 hover:bg-slate-200 rounded-lg transition"
+                          className="p-2 text-neutral-600 hover:bg-slate-200 rounded-lg transition"
                           title="Editar"
                         >
                           <Edit2 className="w-4 h-4" />

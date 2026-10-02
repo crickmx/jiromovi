@@ -107,13 +107,13 @@ export default function CumpleanosContactos() {
     } else if (dias <= 30) {
       return { text: `${dias} días`, color: 'bg-primary-100 text-primary-800 border-primary-200' };
     } else {
-      return { text: `${dias} días`, color: 'bg-gray-100 text-gray-800 border-gray-200' };
+      return { text: `${dias} días`, color: 'bg-neutral-100 text-neutral-800 border-neutral-200' };
     }
   };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-surface-card rounded-2xl shadow-card border border-soft p-6">
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
         </div>
@@ -122,21 +122,21 @@ export default function CumpleanosContactos() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="p-6 border-b border-gray-200">
+    <div className="bg-surface-card rounded-lg shadow-card border border-soft overflow-hidden">
+      <div className="p-6 border-b border-neutral-200">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div className="bg-pink-100 p-2 rounded-lg">
               <Cake className="h-6 w-6 text-pink-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Cumpleaños de Contactos</h2>
-              <p className="text-sm text-gray-500">Próximos cumpleaños en tu CRM</p>
+              <h2 className="text-lg font-semibold text-neutral-900">Cumpleaños de Contactos</h2>
+              <p className="text-sm text-neutral-500">Próximos cumpleaños en tu CRM</p>
             </div>
           </div>
           <button
             onClick={() => navigate('/contactos')}
-            className="text-accent hover:text-primary-700 text-sm font-medium flex items-center gap-1"
+            className="text-accent-ink hover:text-primary-700 text-sm font-medium flex items-center gap-1"
           >
             Ver todos
             <ChevronRight className="h-4 w-4" />
@@ -149,7 +149,7 @@ export default function CumpleanosContactos() {
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
               periodo === 'semana'
                 ? 'bg-pink-100 text-pink-800 border border-pink-200'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-neutral-100 text-neutral-700 hover:bg-gray-200'
             }`}
           >
             Esta semana
@@ -159,7 +159,7 @@ export default function CumpleanosContactos() {
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
               periodo === 'mes'
                 ? 'bg-pink-100 text-pink-800 border border-pink-200'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-neutral-100 text-neutral-700 hover:bg-gray-200'
             }`}
           >
             Este mes
@@ -169,7 +169,7 @@ export default function CumpleanosContactos() {
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
               periodo === 'trimestre'
                 ? 'bg-pink-100 text-pink-800 border border-pink-200'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-neutral-100 text-neutral-700 hover:bg-gray-200'
             }`}
           >
             Próximos 3 meses
@@ -180,9 +180,9 @@ export default function CumpleanosContactos() {
       <div className="divide-y divide-gray-100">
         {contactos.length === 0 ? (
           <div className="p-8 text-center">
-            <Cake className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 mb-1">No hay cumpleaños próximos</p>
-            <p className="text-sm text-gray-400">
+            <Cake className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+            <p className="text-neutral-500 mb-1">No hay cumpleaños próximos</p>
+            <p className="text-sm text-neutral-500">
               {periodo === 'semana'
                 ? 'en los próximos 7 días'
                 : periodo === 'mes'
@@ -203,7 +203,7 @@ export default function CumpleanosContactos() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-2">
-                      <h3 className="text-sm font-semibold text-gray-900 truncate">
+                      <h3 className="text-sm font-semibold text-neutral-900 truncate">
                         {contacto.nombre_completo}
                       </h3>
                       <span
@@ -213,23 +213,23 @@ export default function CumpleanosContactos() {
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-4 text-xs text-gray-600 mb-2">
+                    <div className="flex items-center space-x-4 text-xs text-neutral-600 mb-2">
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-3.5 w-3.5" />
                         <span>{formatFecha(contacto.fecha_nacimiento)}</span>
                       </div>
-                      <span className="text-gray-400">•</span>
+                      <span className="text-neutral-500">•</span>
                       <span className="font-medium">{contacto.edad} años</span>
                     </div>
 
-                    <div className="flex items-center space-x-3 text-xs text-gray-500">
+                    <div className="flex items-center space-x-3 text-xs text-neutral-500">
                       <div className="flex items-center space-x-1">
                         <Phone className="h-3 w-3" />
                         <span>{contacto.celular}</span>
                       </div>
                       {contacto.email && (
                         <>
-                          <span className="text-gray-300">|</span>
+                          <span className="text-neutral-300">|</span>
                           <div className="flex items-center space-x-1 truncate">
                             <Mail className="h-3 w-3 flex-shrink-0" />
                             <span className="truncate">{contacto.email}</span>
@@ -240,7 +240,7 @@ export default function CumpleanosContactos() {
                   </div>
 
                   <div className="ml-3 flex-shrink-0">
-                    <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-gray-600 transition" />
+                    <ChevronRight className="h-5 w-5 text-neutral-500 group-hover:text-gray-600 transition" />
                   </div>
                 </div>
               </div>
@@ -250,8 +250,8 @@ export default function CumpleanosContactos() {
       </div>
 
       {contactos.length > 0 && (
-        <div className="p-4 bg-gray-50 border-t border-gray-200 text-center">
-          <p className="text-xs text-gray-500">
+        <div className="p-4 bg-neutral-50 border-t border-neutral-200 text-center">
+          <p className="text-xs text-neutral-500">
             Mostrando {contactos.length} cumpleaños{' '}
             {periodo === 'semana'
               ? 'en los próximos 7 días'

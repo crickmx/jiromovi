@@ -278,7 +278,7 @@ ${construirSeccionReporte(r)}`;
               onClick={handleDescargarDigestDiario}
               disabled={descargandoDigest}
               title="El más reciente generado automáticamente una vez al día"
-              className="px-4 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-xl text-sm font-semibold hover:bg-neutral-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-surface-card border border-neutral-300 text-neutral-700 rounded-xl text-sm font-semibold hover:bg-neutral-50 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {descargandoDigest ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarClock className="w-4 h-4" />}
               Reporte diario automático
@@ -295,7 +295,7 @@ ${construirSeccionReporte(r)}`;
         }
       />
 
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-3">
+      <div className="bg-surface-card rounded-2xl border border-soft p-5 space-y-3">
         <div>
           <p className="text-sm font-semibold text-neutral-900">Copiar un solo reporte</p>
           <p className="text-xs text-neutral-500">Elige un trámite y copia solo su información para pegarla en Claude u otra IA.</p>
@@ -304,7 +304,7 @@ ${construirSeccionReporte(r)}`;
           <select
             value={reporteSeleccionadoId}
             onChange={(e) => setReporteSeleccionadoId(e.target.value)}
-            className="flex-1 px-3 py-2 border border-neutral-300 rounded-xl text-sm bg-white"
+            className="flex-1 px-3 py-2 border border-neutral-300 rounded-xl text-sm bg-surface-card"
           >
             <option value="">Selecciona un trámite…</option>
             {reportes.map(r => (
@@ -324,7 +324,7 @@ ${construirSeccionReporte(r)}`;
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-4">
+      <div className="bg-surface-card rounded-2xl border border-soft p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-neutral-900">Botón flotante activo</p>
@@ -349,7 +349,7 @@ ${construirSeccionReporte(r)}`;
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-4">
+      <div className="bg-surface-card rounded-2xl border border-soft p-5 space-y-4">
         <div>
           <p className="text-sm font-semibold text-neutral-900 mb-1">Trámite que se crea al reportar</p>
           <select
@@ -360,7 +360,7 @@ ${construirSeccionReporte(r)}`;
             <option value="">Selecciona un tipo de trámite…</option>
             {tipos.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
-          <p className="text-xs text-neutral-400 mt-2">
+          <p className="text-xs text-neutral-500 mt-2">
             La asignación a equipo (¿quién atiende los reportes?) se configura como cualquier otro tipo de trámite, desde Admin › Trámites → Equipos habilitados / Asignación por Trámites, para el tipo elegido aquí.
           </p>
         </div>
@@ -399,7 +399,7 @@ ${construirSeccionReporte(r)}`;
               Área, Equipo, Asignar a, Creado Por, Fechas y Estatus se autollenan solos. Configura aquí solo los campos propios de este tipo (ej. "Descripción", "Navegador").
             </p>
             {camposTipo.length === 0 ? (
-              <p className="text-xs text-neutral-400">Este tipo no tiene campos propios que mapear.</p>
+              <p className="text-xs text-neutral-500">Este tipo no tiene campos propios que mapear.</p>
             ) : (
               <>
                 {camposTipo.map(campo => {
@@ -414,7 +414,7 @@ ${construirSeccionReporte(r)}`;
                             ...prev,
                             [campo.id]: { fuente: e.target.value as 'vacio' | 'template', valor_template: prev[campo.id]?.valor_template ?? '' },
                           }))}
-                          className="px-2.5 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white text-neutral-900 shrink-0"
+                          className="px-2.5 py-1.5 text-xs border border-soft rounded-lg bg-surface-card text-neutral-900 shrink-0"
                         >
                           <option value="vacio">No autollenar</option>
                           <option value="template">Plantilla de texto</option>
@@ -427,7 +427,7 @@ ${construirSeccionReporte(r)}`;
                             value={m.valor_template}
                             onChange={e => setMapeoCampos(prev => ({ ...prev, [campo.id]: { fuente: 'template', valor_template: e.target.value } }))}
                             placeholder="Ej: {{descripcion}} — ocurrió en {{url}}"
-                            className="w-full px-2.5 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white text-neutral-900"
+                            className="w-full px-2.5 py-1.5 text-xs border border-soft rounded-lg bg-surface-card text-neutral-900"
                           />
                           <div className="flex flex-wrap gap-1">
                             {PLACEHOLDERS_BUG_REPORT.map(p => (
@@ -439,7 +439,7 @@ ${construirSeccionReporte(r)}`;
                                   ...prev,
                                   [campo.id]: { fuente: 'template', valor_template: `${prev[campo.id]?.valor_template ?? ''}${p.key}` },
                                 }))}
-                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                                className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
                               >
                                 {p.key}
                               </button>
@@ -464,7 +464,7 @@ ${construirSeccionReporte(r)}`;
         )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+      <div className="bg-surface-card rounded-2xl border border-soft overflow-hidden">
         <div className="px-5 py-4 border-b border-neutral-100">
           <p className="text-sm font-semibold text-neutral-900">Reportes recibidos ({reportes.length})</p>
         </div>
@@ -490,7 +490,7 @@ ${construirSeccionReporte(r)}`;
                   <td className="px-5 py-3 text-neutral-600">{r.grupo_nombre || 'Sin asignar'}</td>
                   <td className="px-5 py-3 text-neutral-600">{r.custom_estatus_label || '—'}</td>
                   <td className="px-5 py-3 text-neutral-500">{new Date(r.created_at).toLocaleDateString('es-MX')}</td>
-                  <td className="px-5 py-3"><ExternalLink className="w-4 h-4 text-neutral-400" /></td>
+                  <td className="px-5 py-3"><ExternalLink className="w-4 h-4 text-neutral-500" /></td>
                 </tr>
               ))}
             </tbody>

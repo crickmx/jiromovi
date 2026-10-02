@@ -151,7 +151,7 @@ export function MoviMeet() {
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center space-x-2 bg-accent text-white px-4 py-2 rounded-lg font-semibold hover:bg-accent-hover transition"
+              className="flex items-center space-x-2 bg-accent text-accent-foreground px-4 py-2 rounded-lg font-semibold hover:bg-accent-hover transition"
             >
               <Plus className="w-4 h-4" />
               <span>Nueva Reunión</span>
@@ -160,17 +160,17 @@ export function MoviMeet() {
         }
       />
 
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-accent">Mis Reuniones</h2>
+          <h2 className="text-2xl font-bold text-accent-ink">Mis Reuniones</h2>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 dark:text-white/40 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 dark:text-white/55 w-5 h-5" />
             <input
               type="text"
               placeholder="Buscar reunión..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+              className="pl-10 pr-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-surface-card dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
           </div>
         </div>
@@ -184,7 +184,7 @@ export function MoviMeet() {
             {!searchTerm && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="mt-4 text-accent hover:text-accent-hover font-medium"
+                className="mt-4 text-accent-ink hover:text-accent-hover font-medium"
               >
                 Crear tu primera reunión →
               </button>
@@ -226,7 +226,7 @@ export function MoviMeet() {
                     </code>
                     <button
                       onClick={() => handleCopyLink(meeting.code)}
-                      className="p-2 text-neutral-600 dark:text-white/60 hover:text-accent hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition"
+                      className="p-2 text-neutral-600 dark:text-white/60 hover:text-accent-ink hover:bg-neutral-100 dark:hover:bg-white/5 rounded transition"
                       title="Copiar enlace"
                     >
                       {copiedCode === meeting.code ? (
@@ -240,7 +240,7 @@ export function MoviMeet() {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleJoinMeeting(meeting.code)}
-                      className="flex items-center space-x-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent-hover transition font-medium"
+                      className="flex items-center space-x-2 bg-accent text-accent-foreground px-4 py-2 rounded-lg hover:bg-accent-hover transition font-medium"
                     >
                       <ExternalLink className="w-4 h-4" />
                       <span>Unirse</span>
@@ -263,8 +263,8 @@ export function MoviMeet() {
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-e4 max-w-md w-full my-8 flex flex-col max-h-[85vh] animate-scale-in">
             <div className="flex-shrink-0 border-b border-neutral-200 dark:border-white/8 px-6 py-4">
               <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Nueva Reunión</h2>
             </div>
@@ -279,7 +279,7 @@ export function MoviMeet() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-surface-card dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                   placeholder="Ej: Reunión de equipo"
                 />
               </div>
@@ -293,7 +293,7 @@ export function MoviMeet() {
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-surface-card dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                 />
               </div>
 
@@ -306,7 +306,7 @@ export function MoviMeet() {
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-surface-card dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                 />
               </div>
               </form>
@@ -329,7 +329,7 @@ export function MoviMeet() {
                   type="submit"
                   form="create-meeting-form"
                   disabled={creating}
-                  className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Creando...' : 'Crear Reunión'}
                 </button>
@@ -340,8 +340,8 @@ export function MoviMeet() {
       )}
 
       {showExpressModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-xl max-w-md w-full my-8 flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-e4 max-w-md w-full my-8 flex flex-col max-h-[85vh] animate-scale-in">
             <div className="flex-shrink-0 border-b border-neutral-200 dark:border-white/8 px-6 py-4">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-yellow-100 dark:bg-yellow-500/15 rounded-lg">
@@ -364,7 +364,7 @@ export function MoviMeet() {
                   value={expressTitle}
                   onChange={(e) => setExpressTitle(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+                  className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg bg-surface-card dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                   placeholder="Ej: Reunión rápida de equipo"
                 />
               </div>

@@ -184,7 +184,7 @@ export function EventosPremiumPanel() {
               value={nombre}
               onChange={e => setNombre(e.target.value)}
               placeholder="Ej: Se renueva la fecha de pago"
-              className="w-full px-3 py-2 border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-sm text-neutral-900 dark:text-white"
+              className="w-full px-3 py-2 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-white/5 text-sm text-neutral-900 dark:text-white"
             />
           </div>
 
@@ -201,7 +201,7 @@ export function EventosPremiumPanel() {
                   />
                   <span className="min-w-0">
                     <span className="block text-sm text-neutral-800 dark:text-white/80">{d.label}</span>
-                    <span className="block text-xs text-neutral-500 dark:text-white/40">{d.ayuda}</span>
+                    <span className="block text-xs text-neutral-500 dark:text-white/55">{d.ayuda}</span>
                   </span>
                 </label>
               ))}
@@ -211,7 +211,7 @@ export function EventosPremiumPanel() {
           {disparador === 'cambio_campo' && (
             <div>
               <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-1">
-                Datos a vigilar <span className="text-neutral-400 font-normal">(basta que cambie uno)</span>
+                Datos a vigilar <span className="text-neutral-500 font-normal">(basta que cambie uno)</span>
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {CAMPOS_VIGILABLES.map(c => {
@@ -252,25 +252,25 @@ export function EventosPremiumPanel() {
 
       <div className="rounded-2xl border border-neutral-200 dark:border-white/10 divide-y divide-neutral-100 dark:divide-white/5 overflow-hidden">
         {eventos.length === 0 && (
-          <div className="px-4 py-6 text-sm text-neutral-400 text-center">No hay eventos configurados.</div>
+          <div className="px-4 py-6 text-sm text-neutral-500 text-center">No hay eventos configurados.</div>
         )}
         {eventos.map(e => (
           <div key={e.id} className={`px-4 py-3 flex items-center gap-3 ${e.activo ? '' : 'opacity-50'}`}>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{e.nombre}</p>
-              <p className="text-xs text-neutral-500 dark:text-white/40">{descripcion(e)}</p>
+              <p className="text-xs text-neutral-500 dark:text-white/55">{descripcion(e)}</p>
             </div>
             <button
               onClick={() => alternarActivo(e)}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 ${
                 e.activo
                   ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
-                  : 'bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-white/40'
+                  : 'bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-white/55'
               }`}
             >
               {e.activo ? 'Activo' : 'Inactivo'}
             </button>
-            <button onClick={() => abrirEditar(e)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-400 hover:text-neutral-700 shrink-0" title="Editar">
+            <button onClick={() => abrirEditar(e)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-500 hover:text-neutral-700 shrink-0" title="Editar">
               <Pencil className="w-4 h-4" />
             </button>
             <button onClick={() => eliminar(e)} className="p-1.5 rounded-lg hover:bg-red-50 text-neutral-300 hover:text-red-500 shrink-0" title="Eliminar">

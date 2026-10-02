@@ -90,9 +90,9 @@ export default function Polizas() {
             const days = daysUntil(p.end_date);
             return (
               <button key={p.id} onClick={() => navigate(`/seguwallet/polizas/${p.id}`)}
-                className="w-full bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all text-left flex items-center gap-4">
+                className="w-full bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5 hover:shadow-card-hover hover:-translate-y-0.5 transition-all text-left flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <FileText className="w-6 h-6 text-accent-ink dark:text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -100,13 +100,13 @@ export default function Polizas() {
                     <Badge variant={st.variant}>{st.label}</Badge>
                   </div>
                   <p className="text-sm text-neutral-500 dark:text-white/50">{p.ramo}{p.subramo ? ` · ${p.subramo}` : ''}</p>
-                  <p className="text-xs text-neutral-400 dark:text-white/30 mt-1 font-mono">{p.policy_number}</p>
+                  <p className="text-xs text-neutral-500 dark:text-white/45 mt-1 font-mono">{p.policy_number}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-bold text-neutral-800 dark:text-white">{formatMXN(p.total_premium)}</p>
-                  <p className="text-xs text-neutral-400 dark:text-white/30 mt-0.5">{p.payment_frequency || 'Anual'}</p>
+                  <p className="text-xs text-neutral-500 dark:text-white/45 mt-0.5">{p.payment_frequency || 'Anual'}</p>
                   <div className={`flex items-center gap-1 mt-1.5 justify-end text-xs font-medium ${
-                    days < 0 ? 'text-red-500 dark:text-red-400' : days < 30 ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-400 dark:text-white/30'
+                    days < 0 ? 'text-red-500 dark:text-red-400' : days < 30 ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-500 dark:text-white/45'
                   }`}>
                     <Calendar className="w-3 h-3" />
                     {days < 0 ? 'Vencida' : days === 0 ? 'Vence hoy' : `${days}d restantes`}

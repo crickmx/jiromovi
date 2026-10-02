@@ -27,8 +27,8 @@ export function ParticipantsList({
 }: ParticipantsListProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-slate-200">
-        <h3 className="font-semibold text-slate-800">
+      <div className="p-4 border-b border-neutral-200">
+        <h3 className="font-semibold text-neutral-800">
           Participantes ({participants.length})
         </h3>
       </div>
@@ -37,13 +37,13 @@ export function ParticipantsList({
         {participants.map((participant) => (
           <div
             key={participant.id}
-            className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition"
+            className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-slate-100 transition"
           >
             <div className="flex items-center space-x-3 flex-1 min-w-0">
-              <UserCircle className="w-8 h-8 text-slate-600 flex-shrink-0" />
+              <UserCircle className="w-8 h-8 text-neutral-600 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2">
-                  <p className="font-medium text-slate-800 truncate">
+                  <p className="font-medium text-neutral-800 truncate">
                     {participant.name}
                     {participant.id === currentUserId && ' (Tú)'}
                   </p>
@@ -51,7 +51,7 @@ export function ParticipantsList({
                     <Crown className="w-4 h-4 text-purple-600 flex-shrink-0" />
                   )}
                   {participant.isCohost && participant.role !== 'host' && (
-                    <Crown className="w-4 h-4 text-accent flex-shrink-0" />
+                    <Crown className="w-4 h-4 text-accent-ink flex-shrink-0" />
                   )}
                   {participant.isScreenSharing && (
                     <Monitor className="w-4 h-4 text-green-600 flex-shrink-0" />
@@ -78,8 +78,8 @@ export function ParticipantsList({
                   onClick={() => onToggleCohost?.(participant.id, participant.isCohost)}
                   className={`p-2 rounded-lg transition ${
                     participant.isCohost
-                      ? 'text-accent hover:bg-primary-50'
-                      : 'text-slate-600 hover:bg-slate-200'
+                      ? 'text-accent-ink hover:bg-primary-50'
+                      : 'text-neutral-600 hover:bg-slate-200'
                   }`}
                   title={participant.isCohost ? 'Quitar co-anfitrión' : 'Hacer co-anfitrión'}
                 >

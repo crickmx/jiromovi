@@ -45,7 +45,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-surface-card rounded-2xl shadow-card border border-soft p-6">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
         </div>
@@ -76,18 +76,18 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-surface-card rounded-lg shadow-card border border-soft">
+        <div className="p-6 border-b border-neutral-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
                 <AlertTriangle className="h-5 w-5 text-orange-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-neutral-900">
                   Vendedores No Reconocidos
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-neutral-600">
                   {vendedores.length} vendedor{vendedores.length !== 1 ? 'es' : ''} requiere
                   {vendedores.length !== 1 ? 'n' : ''} asignación manual
                 </p>
@@ -95,12 +95,12 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
             </div>
             <div className="flex items-center space-x-6">
               <div className="text-right">
-                <p className="text-sm text-gray-600">Total Pólizas</p>
-                <p className="text-xl font-bold text-gray-900">{totalPolizas}</p>
+                <p className="text-sm text-neutral-600">Total Pólizas</p>
+                <p className="text-xl font-bold text-neutral-900">{totalPolizas}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-600">Total Comisión</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-sm text-neutral-600">Total Comisión</p>
+                <p className="text-xl font-bold text-neutral-900">
                   ${totalComision.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                 </p>
               </div>
@@ -120,20 +120,20 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                           ? 'bg-primary-100'
                           : vendor.vendor_type === 'name'
                           ? 'bg-purple-100'
-                          : 'bg-gray-100'
+                          : 'bg-neutral-100'
                       }`}
                     >
                       {vendor.vendor_type === 'email' ? (
-                        <Mail className="h-5 w-5 text-accent" />
+                        <Mail className="h-5 w-5 text-accent-ink" />
                       ) : vendor.vendor_type === 'name' ? (
                         <User className="h-5 w-5 text-purple-600" />
                       ) : (
-                        <AlertTriangle className="h-5 w-5 text-gray-600" />
+                        <AlertTriangle className="h-5 w-5 text-neutral-600" />
                       )}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <h4 className="font-semibold text-gray-900">
+                        <h4 className="font-semibold text-neutral-900">
                           {vendor.vendor_email || vendor.vendor_name || 'Sin información'}
                         </h4>
                         <span
@@ -142,7 +142,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                               ? 'bg-primary-100 text-primary-800'
                               : vendor.vendor_type === 'name'
                               ? 'bg-purple-100 text-purple-800'
-                              : 'bg-gray-100 text-gray-800'
+                              : 'bg-neutral-100 text-neutral-800'
                           }`}
                         >
                           {vendor.vendor_type === 'email'
@@ -153,7 +153,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                         </span>
                       </div>
                       {vendor.vendor_email && vendor.vendor_name && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-neutral-600 mt-1">
                           Nombre: {vendor.vendor_name}
                         </p>
                       )}
@@ -162,17 +162,17 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
 
                   <div className="grid grid-cols-3 gap-4 mb-4">
                     <div className="flex items-center space-x-2">
-                      <FileText className="h-4 w-4 text-gray-400" />
+                      <FileText className="h-4 w-4 text-neutral-500" />
                       <div>
-                        <p className="text-xs text-gray-600">Pólizas</p>
-                        <p className="font-semibold text-gray-900">{vendor.polizas_count}</p>
+                        <p className="text-xs text-neutral-600">Pólizas</p>
+                        <p className="font-semibold text-neutral-900">{vendor.polizas_count}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <TrendingUp className="h-4 w-4 text-gray-400" />
+                      <TrendingUp className="h-4 w-4 text-neutral-500" />
                       <div>
-                        <p className="text-xs text-gray-600">Comisión Total</p>
-                        <p className="font-semibold text-gray-900">
+                        <p className="text-xs text-neutral-600">Comisión Total</p>
+                        <p className="font-semibold text-neutral-900">
                           ${Number(vendor.total_commission).toLocaleString('es-MX', {
                             minimumFractionDigits: 2,
                           })}
@@ -180,10 +180,10 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <TrendingUp className="h-4 w-4 text-gray-400" />
+                      <TrendingUp className="h-4 w-4 text-neutral-500" />
                       <div>
-                        <p className="text-xs text-gray-600">Comisión Promedio</p>
-                        <p className="font-semibold text-gray-900">
+                        <p className="text-xs text-neutral-600">Comisión Promedio</p>
+                        <p className="font-semibold text-neutral-900">
                           $
                           {(Number(vendor.total_commission) / vendor.polizas_count).toLocaleString(
                             'es-MX',
@@ -195,7 +195,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                   </div>
 
                   <details className="group">
-                    <summary className="cursor-pointer text-sm text-accent hover:text-primary-700 font-medium flex items-center space-x-1">
+                    <summary className="cursor-pointer text-sm text-accent-ink hover:text-primary-700 font-medium flex items-center space-x-1">
                       <span>Ver ejemplos de pólizas ({vendor.polizas_count})</span>
                       <svg
                         className="h-4 w-4 transition-transform group-open:rotate-180"
@@ -213,21 +213,21 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                     </summary>
                     <div className="mt-3 overflow-x-auto">
                       <table className="min-w-full text-sm">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-neutral-50">
                           <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700">
                               Póliza
                             </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700">
                               Ramo
                             </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700">
                               Aseguradora
                             </th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">
+                            <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700">
                               Prima Base
                             </th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">
+                            <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700">
                               Comisión
                             </th>
                           </tr>
@@ -249,7 +249,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
                         </tbody>
                       </table>
                       {vendor.polizas_count > 5 && (
-                        <p className="text-xs text-gray-500 mt-2 text-center">
+                        <p className="text-xs text-neutral-500 mt-2 text-center">
                           ... y {vendor.polizas_count - 5} póliza
                           {vendor.polizas_count - 5 !== 1 ? 's' : ''} más
                         </p>
@@ -260,7 +260,7 @@ export default function VendedoresNoReconocidos({ batchId, onVendorAssigned }: P
 
                 <button
                   onClick={() => handleAsignar(vendor)}
-                  className="ml-6 flex items-center space-x-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
+                  className="ml-6 flex items-center space-x-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors"
                 >
                   <UserPlus className="h-4 w-4" />
                   <span>Asignar Usuario MOVI</span>

@@ -357,7 +357,7 @@ export default function GamificacionAdmin() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent" />
       </div>
     );
   }
@@ -393,7 +393,7 @@ export default function GamificacionAdmin() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-2">
-            <Users className="w-5 h-5 text-blue-600" />
+            <Users className="w-5 h-5 text-accent-ink" />
             <p className="text-sm text-neutral-500 dark:text-white/50">Total Agentes</p>
           </div>
           <p className="text-3xl font-bold">{estadisticas?.total_agentes || 0}</p>
@@ -472,7 +472,7 @@ export default function GamificacionAdmin() {
                             className={cn(
                               'font-bold',
                               entry.posicion === 1 && 'text-yellow-500',
-                              entry.posicion === 2 && 'text-neutral-400',
+                              entry.posicion === 2 && 'text-neutral-500',
                               entry.posicion === 3 && 'text-orange-600'
                             )}
                           >

@@ -135,13 +135,13 @@ export default function RolModal({ rol, onClose, onSaved }: Props) {
   });
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-card dark:bg-neutral-800 rounded-[var(--radius-xl)] shadow-e4 max-w-lg w-full max-h-[90vh] flex flex-col animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-white/10">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">
             {esEdicion ? 'Editar rol' : 'Nuevo rol'}
           </h2>
-          <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-white/70 transition-colors">
+          <button onClick={onClose} className="text-neutral-500 hover:text-neutral-600 dark:hover:text-white/70 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -154,7 +154,7 @@ export default function RolModal({ rol, onClose, onSaved }: Props) {
           )}
 
           <div>
-            <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">Nombre del rol</label>
+            <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1.5">Nombre del rol</label>
             <input
               type="text"
               value={nombre}
@@ -165,7 +165,7 @@ export default function RolModal({ rol, onClose, onSaved }: Props) {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">Descripción</label>
+            <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1.5">Descripción</label>
             <input
               type="text"
               value={descripcion}
@@ -176,7 +176,7 @@ export default function RolModal({ rol, onClose, onSaved }: Props) {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">Color</label>
+            <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1.5">Color</label>
             <div className="flex items-center gap-2 flex-wrap">
               {PRESET_COLORS.map((c) => (
                 <button
@@ -193,7 +193,7 @@ export default function RolModal({ rol, onClose, onSaved }: Props) {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1.5">
               Comportamiento base (hereda permisos de)
             </label>
             <select
@@ -205,7 +205,7 @@ export default function RolModal({ rol, onClose, onSaved }: Props) {
                 <option key={b} value={b}>{ROL_BASE_LABEL[b]}</option>
               ))}
             </select>
-            <p className="text-xs text-neutral-500 dark:text-white/40 mt-1.5 flex gap-1.5">
+            <p className="text-xs text-neutral-500 dark:text-white/55 mt-1.5 flex gap-1.5">
               <Info className="w-3.5 h-3.5 flex-none mt-0.5" />
               El rol se comporta como esta base en toda la plataforma. Afínalo abajo con los permisos de módulos.
             </p>
@@ -218,7 +218,7 @@ export default function RolModal({ rol, onClose, onSaved }: Props) {
               onClick={() => setPermsExpanded((v) => !v)}
               className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-neutral-800 dark:text-white/80"
             >
-              <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-accent" /> Permisos de módulos</span>
+              <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-accent-ink" /> Permisos de módulos</span>
               <ChevronDown className={`w-4 h-4 transition-transform ${permsExpanded ? 'rotate-180' : ''}`} />
             </button>
 
@@ -230,7 +230,7 @@ export default function RolModal({ rol, onClose, onSaved }: Props) {
                   </p>
                 ) : (
                   <>
-                    <p className="text-xs text-neutral-500 dark:text-white/40 mb-3">
+                    <p className="text-xs text-neutral-500 dark:text-white/55 mb-3">
                       Por defecto cada módulo <b>hereda</b> de la base. Cámbialo solo donde quieras forzar mostrar u ocultar para este rol.
                     </p>
                     <div className="space-y-2">
@@ -287,7 +287,7 @@ export default function RolModal({ rol, onClose, onSaved }: Props) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 inline-flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 inline-flex items-center gap-2"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {saving ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Crear rol'}

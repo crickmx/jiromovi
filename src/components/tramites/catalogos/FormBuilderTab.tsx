@@ -172,7 +172,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
         ) : (
           <>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-neutral-400 uppercase tracking-wider">
+              <p className="text-xs text-neutral-500 uppercase tracking-wider">
                 {draggableCampos.length} campo{draggableCampos.length !== 1 ? 's' : ''} en el formulario
                 {!showPreview && draggableCampos.length > 0 && ' · arrastra para reordenar'}
               </p>
@@ -180,7 +180,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                 <button
                   onClick={() => { setShowPreview(!showPreview); closeCampoEditor(); setShowAddField(false); }}
                   className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg transition-colors ${
-                    showPreview ? 'bg-blue-100 text-blue-600' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+                    showPreview ? 'bg-blue-100 text-accent-ink' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
                   }`}
                 >
                   <Eye className="w-3.5 h-3.5" />
@@ -221,33 +221,33 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               <GripVertical className="w-4 h-4" />
                             </div>
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-mono ${
-                              isSistema ? 'bg-violet-50 text-violet-600' : 'bg-blue-50 text-blue-600'
+                              isSistema ? 'bg-violet-50 text-violet-600' : 'bg-blue-50 text-accent-ink'
                             }`}>
                               {isSistema ? (meta?.icon ?? 'S') : (CAMPO_TIPOS.find(t => t.tipo === campo.tipo)?.icon ?? '?')}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-neutral-800 truncate">{campo.label}</p>
-                              <p className="text-[10px] text-neutral-400 font-mono">{isSistema ? (campo.sistema_key ?? campo.tipo) : campo.key}</p>
+                              <p className="text-[11px] text-neutral-500 font-mono">{isSistema ? (campo.sistema_key ?? campo.tipo) : campo.key}</p>
                             </div>
                             {campo.requerido && (
-                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 shrink-0" title="Campo requerido">
+                              <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 shrink-0" title="Campo requerido">
                                 req
                               </span>
                             )}
                             {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
-                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
+                              <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
                                 <Lock className="w-2.5 h-2.5" />
                                 {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
                               </span>
                             )}
                             {isSistema && (
-                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
+                              <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
                                 {meta?.badge ?? 'Sistema'}
                               </span>
                             )}
                             <button
                               onClick={() => editingCampo?.id === campo.id ? closeCampoEditor() : startEditCampo(campo)}
-                              className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-400 hover:text-neutral-700"
+                              className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500 hover:text-neutral-700"
                               title="Configurar campo"
                               aria-label="Configurar campo"
                             >
@@ -289,7 +289,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         </div>
                       ))}
                       {lista.length === 0 && (
-                        <p className="text-[11px] text-neutral-400 italic py-1">Sin campos — arrastra uno aquí</p>
+                        <p className="text-[11px] text-neutral-500 italic py-1">Sin campos — arrastra uno aquí</p>
                       )}
                     </div>
                   );
@@ -314,16 +314,16 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           >
                             <div className="flex items-center gap-2 mb-2">
                               <div className="flex flex-col shrink-0">
-                                <button onClick={() => handleMoveSeccion(seccion, 'arriba')} disabled={i === 0 || esHeader} className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Subir">
+                                <button onClick={() => handleMoveSeccion(seccion, 'arriba')} disabled={i === 0 || esHeader} className="p-0.5 text-neutral-500 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Subir">
                                   <ChevronUp className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => handleMoveSeccion(seccion, 'abajo')} disabled={i === secciones.length - 1 || esHeader} className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Bajar">
+                                <button onClick={() => handleMoveSeccion(seccion, 'abajo')} disabled={i === secciones.length - 1 || esHeader} className="p-0.5 text-neutral-500 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Bajar">
                                   <ChevronDown className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                               <button
                                 onClick={() => toggleColapsada(seccion.id)}
-                                className="p-0.5 text-neutral-400 hover:text-neutral-700 shrink-0"
+                                className="p-0.5 text-neutral-500 hover:text-neutral-700 shrink-0"
                                 title={colapsada ? 'Expandir sección' : 'Colapsar sección'}
                                 aria-label={colapsada ? 'Expandir sección' : 'Colapsar sección'}
                               >
@@ -335,14 +335,14 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                                   {seccion.nombre}
                                   {esSistema && <Lock className="w-3 h-3 text-violet-400 shrink-0" />}
                                 </p>
-                                <p className="text-[10px] text-neutral-400">
+                                <p className="text-[11px] text-neutral-500">
                                   {suyos.length} campo{suyos.length !== 1 ? 's' : ''}
                                   {seccion.opcional && ' · Opcional'}
                                   {dependeDe && ` · Depende de "${dependeDe.nombre}"`}
                                   {seccion.condicion_campo_id && ` · Condicionada a "${campos.find(c => c.id === seccion.condicion_campo_id)?.label ?? '—'}"`}
                                 </p>
                               </div>
-                              <button onClick={() => { setEditingSeccion(secciones.find(s2 => s2.id === seccion.id) ?? seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-white rounded-lg text-neutral-400 hover:text-neutral-700" title="Configurar sección" aria-label="Configurar sección">
+                              <button onClick={() => { setEditingSeccion(secciones.find(s2 => s2.id === seccion.id) ?? seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-white rounded-lg text-neutral-500 hover:text-neutral-700" title="Configurar sección" aria-label="Configurar sección">
                                 <Settings className="w-3.5 h-3.5" />
                               </button>
                               {!esSistema && (
@@ -386,8 +386,8 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   return (
                     <div className="space-y-3">
                       {draggableCampos.length === 0 && (
-                        <div className="text-center py-8 text-neutral-400 border-2 border-dashed border-neutral-200 rounded-xl">
-                          <p className="text-sm text-neutral-400">Sin campos en el formulario</p>
+                        <div className="text-center py-8 text-neutral-500 border-2 border-dashed border-neutral-200 rounded-xl">
+                          <p className="text-sm text-neutral-500">Sin campos en el formulario</p>
                           <p className="text-xs mt-1">Agrega campos desde el panel derecho</p>
                         </div>
                       )}
@@ -398,8 +398,8 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                       {lockedCampos.length > 0 && (
                         <div className="mb-4">
                           <div className="flex items-center gap-1.5 mb-2">
-                            <Lock className="w-3 h-3 text-neutral-400" />
-                            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                            <Lock className="w-3 h-3 text-neutral-500" />
+                            <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
                               Campos del sistema — siempre presentes, no configurables
                             </p>
                           </div>
@@ -408,22 +408,22 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               const meta = SISTEMA_TIPO_META[campo.tipo as CampoTipo];
                               const isEditing = editingCampo?.id === campo.id;
                               return (
-                                <div key={campo.id} className={`flex items-center gap-2 border rounded-lg p-2 bg-white transition-colors ${isEditing ? 'border-violet-400 ring-1 ring-violet-200' : 'border-neutral-200'}`}>
+                                <div key={campo.id} className={`flex items-center gap-2 border rounded-lg p-2 bg-surface-card transition-colors ${isEditing ? 'border-violet-400 ring-1 ring-violet-200' : 'border-neutral-200'}`}>
                                   <div className="p-1 text-neutral-200"><Lock className="w-3.5 h-3.5" /></div>
                                   <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-violet-50 text-violet-600 font-mono">
                                     {meta?.icon ?? '?'}
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-neutral-700 truncate">{campo.label}</p>
-                                    <p className="text-[10px] text-neutral-400">{meta?.desc ?? campo.tipo}</p>
+                                    <p className="text-[11px] text-neutral-500">{meta?.desc ?? campo.tipo}</p>
                                   </div>
                                   {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
-                                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
+                                    <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
                                       <Lock className="w-2.5 h-2.5" />
                                       {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
                                     </span>
                                   )}
-                                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
+                                  <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
                                     {meta?.badge ?? 'AUTO'}
                                   </span>
                                   <button
@@ -443,7 +443,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
 
                       {(sinSeccion.length > 0 || secciones.length === 0) && (
                         <div className="border border-neutral-200 rounded-xl p-2.5">
-                          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Sin sección</p>
+                          <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-2">Sin sección</p>
                           {contenedor(null, sinSeccion)}
                         </div>
                       )}
@@ -463,7 +463,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
 
                 <button
                   onClick={() => { setAddTargetSeccion(null); setShowAddField(!showAddField); closeCampoEditor(); }}
-                  className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-xl py-2.5 text-sm text-neutral-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                  className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-xl py-2.5 text-sm text-neutral-500 hover:border-blue-400 hover:text-accent-ink transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   Agregar campo
@@ -495,7 +495,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                     value={seccionForm.nombre}
                     onChange={(e) => setSeccionForm({ ...seccionForm, nombre: e.target.value })}
                     placeholder="Ej: Datos de la póliza"
-                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none"
                   />
                 </div>
                 {editingSeccion?.sistema_key !== 'header' && (
@@ -513,12 +513,12 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         <button
                           type="button"
                           onClick={() => setSeccionForm({ ...seccionForm, color: null })}
-                          className="text-[11px] text-neutral-400 hover:text-neutral-600 underline"
+                          className="text-[11px] text-neutral-500 hover:text-neutral-600 underline"
                         >
                           Quitar color
                         </button>
                       )}
-                      <span className="text-[10px] text-neutral-400">Tiñe el borde y le da un fondo sutil</span>
+                      <span className="text-[11px] text-neutral-500">Tiñe el borde y le da un fondo sutil</span>
                     </div>
                   </div>
                 )}
@@ -529,7 +529,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                     setSeccionForm({ ...seccionForm, fondo: { ...fondo, ...patch } });
                   const vista = estiloHeader(fondo, null);
                   return (
-                    <div className="space-y-2 border border-neutral-200 rounded-lg p-2.5 bg-white">
+                    <div className="space-y-2 border border-soft rounded-lg p-2.5 bg-surface-card">
                       <label className="block text-xs font-medium text-neutral-600">Fondo del encabezado</label>
 
                       {/* Vista previa con el mismo helper que usa el trámite real,
@@ -541,7 +541,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         </div>
                       </div>
 
-                      <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[10px] font-medium">
+                      <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[11px] font-medium">
                         {(['color', 'degradado', 'imagen'] as const).map((t, i) => (
                           <button
                             key={t}
@@ -560,7 +560,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             <>
                               <input type="color" value={fondo.color2 ?? '#111827'} onChange={(e) => setFondo({ color2: e.target.value })} className="h-7 w-10 rounded border border-neutral-300 cursor-pointer" title="Color final" />
                               <input type="range" min={0} max={360} step={15} value={fondo.angulo ?? 135} onChange={(e) => setFondo({ angulo: Number(e.target.value) })} className="flex-1" title="Ángulo" />
-                              <span className="text-[10px] text-neutral-400 w-8 text-right">{fondo.angulo ?? 135}°</span>
+                              <span className="text-[11px] text-neutral-500 w-8 text-right">{fondo.angulo ?? 135}°</span>
                             </>
                           )}
                         </div>
@@ -580,11 +580,11 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             }}
                             className="w-full text-[11px] file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-blue-50 file:text-blue-600 file:text-[11px]"
                           />
-                          <p className="text-[10px] text-neutral-400">
+                          <p className="text-[11px] text-neutral-500">
                             Medida recomendada: <strong>{MEDIDA_SUGERIDA}</strong> (franja ancha, 4:1). Si la imagen
                             es más grande o tiene otra proporción, se encuadra y se comprime sola al subirla.
                           </p>
-                          <p className="text-[10px] text-neutral-400">
+                          <p className="text-[11px] text-neutral-500">
                             Se aplica un velo oscuro encima para que el título y el folio siempre se lean.
                           </p>
                           {imagenPorRecortar && (
@@ -614,7 +614,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                     value={seccionForm.descripcion}
                     onChange={(e) => setSeccionForm({ ...seccionForm, descripcion: e.target.value })}
                     rows={2}
-                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none resize-none"
                   />
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -659,7 +659,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         .filter(s => s.id !== editingSeccion?.id && s.depende_de_seccion_id !== editingSeccion?.id)
                         .map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
                     </select>
-                    <p className="text-[10px] text-neutral-400 mt-1">Se atenúa hasta que se completen los campos requeridos de la sección elegida.</p>
+                    <p className="text-[11px] text-neutral-500 mt-1">Se atenúa hasta que se completen los campos requeridos de la sección elegida.</p>
                   </div>
                 )}
 
@@ -696,7 +696,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           <select
                             value={seccionForm.condicion_valor}
                             onChange={(e) => setSeccionForm({ ...seccionForm, condicion_valor: e.target.value })}
-                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg bg-white"
+                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg bg-surface-card"
                           >
                             <option value="">Selecciona opción…</option>
                             {fuenteOpciones.map(opt => (
@@ -713,7 +713,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           />
                         )
                       )}
-                      <p className="text-[10px] text-neutral-400">La sección se atenúa hasta que la respuesta cumpla esta condición.</p>
+                      <p className="text-[11px] text-neutral-500">La sección se atenúa hasta que la respuesta cumpla esta condición.</p>
                     </div>
                   );
                 })()}
@@ -721,7 +721,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                 <button
                   onClick={() => handleSaveSeccion(seccionForm)}
                   disabled={!seccionForm.nombre.trim()}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
                 >
                   <Save className="w-3.5 h-3.5" />
                   Guardar sección
@@ -740,7 +740,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
               </div>
               {/* Dónde va a caer el campo nuevo — el menú se puede abrir desde el botón
                   general o desde el pie de una sección, y no se distinguirían. */}
-              <p className="text-[10px] text-neutral-400 mb-3 flex items-center gap-1">
+              <p className="text-[11px] text-neutral-500 mb-3 flex items-center gap-1">
                 <Layers className="w-3 h-3 shrink-0" />
                 {addTargetSeccion
                   ? `Se agregará a "${secciones.find(s => s.id === addTargetSeccion)?.nombre ?? '—'}"`
@@ -750,7 +750,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                 {/* Campos sistema configurables disponibles (no agregados aún) */}
                 {availableSistemaKeys.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-1 px-0.5">Sistema</p>
+                    <p className="text-[11px] font-bold text-violet-400 uppercase tracking-wider mb-1 px-0.5">Sistema</p>
                     <div className="space-y-1">
                       {availableSistemaKeys.map(sk => {
                         const meta = SISTEMA_TIPO_META[sk as CampoTipo];
@@ -766,7 +766,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             </div>
                             <div>
                               <p className="text-sm font-medium text-violet-800">{defaults?.label ?? sk}</p>
-                              <p className="text-[10px] text-violet-500 leading-tight">{meta?.desc}</p>
+                              <p className="text-[11px] text-violet-500 leading-tight">{meta?.desc}</p>
                             </div>
                           </button>
                         );
@@ -782,20 +782,20 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   }, {})
                 ).map(([grupo, tipos]) => (
                   <div key={grupo}>
-                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1 px-0.5">{grupo}</p>
+                    <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-1 px-0.5">{grupo}</p>
                     <div className="space-y-1">
                       {tipos.map(({ tipo, label, icon, desc }) => (
                         <button
                           key={tipo}
                           onClick={() => handleAddCampo(tipo, addTargetSeccion)}
-                          className="w-full flex items-center gap-2.5 p-2 bg-white border border-neutral-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
+                          className="w-full flex items-center gap-2.5 p-2 bg-surface-card border border-soft rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
                         >
-                          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-xs font-bold text-blue-600 shrink-0 font-mono">
+                          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-xs font-bold text-accent-ink shrink-0 font-mono">
                             {icon}
                           </div>
                           <div>
                             <p className="text-sm font-medium text-neutral-800">{label}</p>
-                            <p className="text-[10px] text-neutral-400 leading-tight">{desc}</p>
+                            <p className="text-[11px] text-neutral-500 leading-tight">{desc}</p>
                           </div>
                         </button>
                       ))}
@@ -841,7 +841,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             <Lock className="w-3 h-3 shrink-0" />
                             {seccionDelCampo!.nombre}
                           </div>
-                          <p className="text-[10px] text-neutral-400 mt-1">
+                          <p className="text-[11px] text-neutral-500 mt-1">
                             Este campo pertenece a una sección del sistema. Puedes reordenarlo dentro de ella, pero no sacarlo.
                           </p>
                         </>
@@ -869,7 +869,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         type="text"
                         value={editCampoLabel}
                         onChange={(e) => setEditCampoLabel(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none"
                       />
                     </div>
 
@@ -881,7 +881,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           value={editCampoAyuda}
                           onChange={(e) => setEditCampoAyuda(e.target.value)}
                           placeholder="Ej: incluye prefijo 52"
-                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none"
                         />
                       </div>
                     )}
@@ -910,7 +910,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           <option value="Media">Media</option>
                           <option value="Alta">Alta</option>
                         </select>
-                        <p className="text-[10px] text-neutral-400 mt-1">Con esta prioridad se abre el formulario; quien lo llena puede cambiarla.</p>
+                        <p className="text-[11px] text-neutral-500 mt-1">Con esta prioridad se abre el formulario; quien lo llena puede cambiarla.</p>
                       </div>
                     )}
                   </>
@@ -1045,12 +1045,12 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               list[i] = { ...list[i], categoria_id: e.target.value };
                               setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
                             }}
-                            className="flex-1 min-w-0 px-2 py-1 text-xs border border-neutral-300 rounded bg-white"
+                            className="flex-1 min-w-0 px-2 py-1 text-xs border border-neutral-300 rounded bg-surface-card"
                           >
                             <option value="">— Elegir —</option>
                             {adjuntoCategorias.map(cat => <option key={cat.id} value={cat.id}>{cat.nombre}</option>)}
                           </select>
-                          <label className="flex items-center gap-1 text-[10px] text-neutral-600 cursor-pointer shrink-0" title="Obligatorio antes de avanzar estatus">
+                          <label className="flex items-center gap-1 text-[11px] text-neutral-600 cursor-pointer shrink-0" title="Obligatorio antes de avanzar estatus">
                             <input
                               type="checkbox"
                               checked={tc.requerido}
@@ -1063,7 +1063,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             />
                             Req.
                           </label>
-                          <label className="flex items-center gap-1 text-[10px] text-neutral-600 cursor-pointer shrink-0" title="Dispara extracción de datos del PDF">
+                          <label className="flex items-center gap-1 text-[11px] text-neutral-600 cursor-pointer shrink-0" title="Dispara extracción de datos del PDF">
                             <input
                               type="checkbox"
                               checked={tc.dispara_extraccion}
@@ -1081,7 +1081,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               const list = (editCampoConfig.tipos_config || []).filter((_: any, j: number) => j !== i);
                               setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
                             }}
-                            className="p-0.5 hover:bg-red-50 rounded text-neutral-400 hover:text-red-500 shrink-0"
+                            className="p-0.5 hover:bg-red-50 rounded text-neutral-500 hover:text-red-500 shrink-0"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -1092,12 +1092,12 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           const list = [...(editCampoConfig.tipos_config || []), { categoria_id: '', requerido: false, dispara_extraccion: false }];
                           setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
                         }}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 mt-0.5"
+                        className="flex items-center gap-1 text-xs text-accent-ink hover:text-accent-ink mt-0.5"
                       >
                         <Plus className="w-3 h-3" />
                         Agregar tipo
                       </button>
-                      <p className="text-[10px] text-neutral-400 mt-1.5">
+                      <p className="text-[11px] text-neutral-500 mt-1.5">
                         <span className="font-medium">Req.</span> = obligatorio antes de avanzar estatus ·{' '}
                         <span className="font-medium">PDF</span> = dispara extracción de datos
                       </p>
@@ -1113,7 +1113,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         type="text"
                         value={editCampoLabel}
                         onChange={(e) => setEditCampoLabel(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none"
                       />
                     </div>
                     <div>
@@ -1128,7 +1128,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             <button
                               onClick={() => moverOpcionEstatus(i, -1)}
                               disabled={i === 0}
-                              className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                              className="p-0.5 text-neutral-500 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
                               title="Subir" aria-label="Subir opción"
                             >
                               <ChevronUp className="w-3 h-3" />
@@ -1136,7 +1136,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             <button
                               onClick={() => moverOpcionEstatus(i, 1)}
                               disabled={i === (editCampoConfig.opciones || []).length - 1}
-                              className="p-0.5 text-neutral-400 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                              className="p-0.5 text-neutral-500 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
                               title="Bajar" aria-label="Bajar opción"
                             >
                               <ChevronDown className="w-3 h-3" />
@@ -1150,19 +1150,19 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                               opts[i] = { ...opts[i], label: e.target.value, slug: slugify(e.target.value) || opts[i].slug };
                               setEditCampoConfig({ ...editCampoConfig, opciones: opts });
                             }}
-                            className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                            className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-accent/40 focus:outline-none"
                           />
                           <button
                             onClick={() => {
                               const opts = (editCampoConfig.opciones || []).filter((_: any, j: number) => j !== i);
                               setEditCampoConfig({ ...editCampoConfig, opciones: opts });
                             }}
-                            className="p-1 hover:bg-red-50 rounded text-neutral-400 hover:text-red-500 shrink-0"
+                            className="p-1 hover:bg-red-50 rounded text-neutral-500 hover:text-red-500 shrink-0"
                           >
                             <X className="w-3 h-3" />
                           </button>
                         </div>
-                        <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[10px] font-medium">
+                        <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[11px] font-medium">
                           <button
                             onClick={() => {
                               const opts = [...(editCampoConfig.opciones || [])];
@@ -1195,13 +1195,13 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         const opts = [...(editCampoConfig.opciones || []), { label: 'Nueva opción', slug: 'nueva_opcion', clasificacion: null }];
                         setEditCampoConfig({ ...editCampoConfig, opciones: opts });
                       }}
-                      className="mt-1 w-full text-xs py-1 border border-dashed border-neutral-300 rounded-lg hover:border-blue-400 hover:text-blue-600 text-neutral-500 transition-colors"
+                      className="mt-1 w-full text-xs py-1 border border-dashed border-neutral-300 rounded-lg hover:border-blue-400 hover:text-accent-ink text-neutral-500 transition-colors"
                     >+ Agregar opción</button>
                     </div>
                     {onGoToTriggers && (
                       <button
                         onClick={onGoToTriggers}
-                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-accent-ink border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                       >
                         <Zap className="w-3.5 h-3.5" />
                         Configurar triggers de estatus
@@ -1253,14 +1253,14 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             opts[i] = { label: e.target.value, slug: slugify(e.target.value) || opts[i].slug };
                             setEditCampoConfig({ ...editCampoConfig, opciones: opts });
                           }}
-                          className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                          className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-accent/40 focus:outline-none"
                         />
                         <button
                           onClick={() => {
                             const opts = (editCampoConfig.opciones || []).filter((_: any, j: number) => j !== i);
                             setEditCampoConfig({ ...editCampoConfig, opciones: opts });
                           }}
-                          className="p-1 hover:bg-red-50 rounded text-neutral-400 hover:text-red-500"
+                          className="p-1 hover:bg-red-50 rounded text-neutral-500 hover:text-red-500"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1271,7 +1271,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         const opts = [...(editCampoConfig.opciones || []), { label: 'Nueva opción', slug: 'nueva_opcion' }];
                         setEditCampoConfig({ ...editCampoConfig, opciones: opts });
                       }}
-                      className="mt-1 w-full text-xs py-1 border border-dashed border-neutral-300 rounded-lg hover:border-blue-400 hover:text-blue-600 text-neutral-500 transition-colors"
+                      className="mt-1 w-full text-xs py-1 border border-dashed border-neutral-300 rounded-lg hover:border-blue-400 hover:text-accent-ink text-neutral-500 transition-colors"
                     >+ Agregar opción</button>
                   </div>
                 )}
@@ -1320,19 +1320,19 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   const mapeo = (editCampoConfig.mapeo_extraccion ?? {}) as Record<string, string>;
                   const destinos = campos.filter(c => c.id !== editingCampo.id && !c.is_sistema);
                   return (
-                    <div className="border border-neutral-200 rounded-lg p-2.5 bg-white space-y-2">
+                    <div className="border border-soft rounded-lg p-2.5 bg-surface-card space-y-2">
                       <label className="block text-xs font-medium text-neutral-600">
                         Al capturar el {editingCampo.tipo === 'rfc' ? 'RFC' : editingCampo.tipo === 'curp' ? 'CURP' : 'código postal'}, llenar
                       </label>
                       {destinos.length === 0 ? (
-                        <p className="text-[10px] text-neutral-400 italic">
+                        <p className="text-[11px] text-neutral-500 italic">
                           Agrega otros campos al formulario para poder mapearlos.
                         </p>
                       ) : (
                         extraibles.map(d => (
                           <div key={d.clave} className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-neutral-500 w-28 shrink-0 leading-tight">{d.label}</span>
-                            <span className="text-neutral-300 text-[10px]">→</span>
+                            <span className="text-[11px] text-neutral-500 w-28 shrink-0 leading-tight">{d.label}</span>
+                            <span className="text-neutral-300 text-[11px]">→</span>
                             <select
                               value={mapeo[d.clave] ?? ''}
                               onChange={(e) => {
@@ -1341,7 +1341,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                                 else delete siguiente[d.clave];
                                 setEditCampoConfig({ ...editCampoConfig, mapeo_extraccion: siguiente });
                               }}
-                              className="flex-1 min-w-0 px-2 py-1 text-[11px] border border-neutral-300 rounded-lg bg-white"
+                              className="flex-1 min-w-0 px-2 py-1 text-[11px] border border-neutral-300 rounded-lg bg-surface-card"
                             >
                               <option value="">— No llenar nada</option>
                               {destinos.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
@@ -1349,7 +1349,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                           </div>
                         ))
                       )}
-                      <p className="text-[10px] text-neutral-400">
+                      <p className="text-[11px] text-neutral-500">
                         Se llenan solos al escribir, y solo si el campo destino está vacío.
                       </p>
                     </div>
@@ -1423,7 +1423,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                         value={editCampoConfig.score_minimo ?? 0.7}
                         onChange={e => setEditCampoConfig({ ...editCampoConfig, score_minimo: Number(e.target.value) })}
                         className="w-full px-2 py-1.5 text-xs border border-neutral-300 rounded-lg" />
-                      <p className="text-xs text-neutral-400 mt-0.5">Score de originalidad. 0.7 = 70% original requerido.</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">Score de originalidad. 0.7 = 70% original requerido.</p>
                     </div>
                   </div>
                 )}
@@ -1480,7 +1480,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                             <select
                               value={editCampoConfig.condicion_valor || ''}
                               onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_valor: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg bg-white"
+                              className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg bg-surface-card"
                             >
                               <option value="">Selecciona opción...</option>
                               {fuenteOpciones.map(opt => (
@@ -1502,7 +1502,7 @@ export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
                   </div>
                 )}
 
-                <p className="flex items-center justify-center gap-1.5 text-[11px] text-neutral-400 pt-1">
+                <p className="flex items-center justify-center gap-1.5 text-[11px] text-neutral-500 pt-1">
                   <Save className="w-3 h-3" />
                   {savingCampo ? 'Guardando...' : 'Los cambios se guardan automáticamente'}
                 </p>

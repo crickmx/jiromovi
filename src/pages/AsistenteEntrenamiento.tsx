@@ -109,7 +109,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
       onClick={() => onChange(!checked)}
       className={cn(
         'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none',
-        checked ? 'bg-blue-600' : 'bg-neutral-200 dark:bg-white/20',
+        checked ? 'bg-accent' : 'bg-neutral-200 dark:bg-white/20',
         disabled && 'opacity-50 cursor-not-allowed',
       )}
     >
@@ -123,7 +123,7 @@ function ToggleRow({ label, sub, checked, onChange }: { label: string; sub?: str
     <div className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-white/5 last:border-0">
       <div>
         <p className="text-sm font-medium text-neutral-800 dark:text-white/90">{label}</p>
-        {sub && <p className="text-xs text-neutral-400 dark:text-white/40 mt-0.5">{sub}</p>}
+        {sub && <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">{sub}</p>}
       </div>
       <Toggle checked={checked} onChange={onChange} />
     </div>
@@ -168,10 +168,10 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
   return (
     <div className="space-y-6">
       {/* Master switch */}
-      <div className="bg-white rounded-2xl border border-neutral-100 dark:border-white/5 shadow-sm overflow-hidden">
+      <div className="bg-surface-card rounded-2xl border border-soft dark:border-white/5 shadow-card overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-50 dark:border-white/5 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
-            <Settings className="w-4 h-4 text-blue-600" />
+            <Settings className="w-4 h-4 text-accent-ink" />
           </div>
           <h2 className="font-semibold text-neutral-900 dark:text-white text-sm">Configuracion General</h2>
         </div>
@@ -187,7 +187,7 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
       </div>
 
       {/* Mode & thresholds */}
-      <div className="bg-white rounded-2xl border border-neutral-100 dark:border-white/5 shadow-sm overflow-hidden">
+      <div className="bg-surface-card rounded-2xl border border-soft dark:border-white/5 shadow-card overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-50 dark:border-white/5 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
             <Zap className="w-4 h-4 text-amber-600" />
@@ -204,7 +204,7 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
                   onClick={() => set('mode', m)}
                   className={cn(
                     'py-2.5 px-3 rounded-xl border text-xs font-medium transition-all',
-                    settings.mode === m ? 'bg-blue-600 border-blue-600 text-white' : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-white/60 hover:border-blue-300',
+                    settings.mode === m ? 'bg-accent border-accent text-accent-foreground' : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-white/60 hover:border-blue-300',
                   )}
                 >
                   {m === 'suggestions_only' ? 'Solo sugerencias' : m === 'automatic' ? 'Automatico' : 'Mixto'}
@@ -225,7 +225,7 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
                     type="range" min={0} max={1} step={0.01}
                     value={settings[key]}
                     onChange={e => set(key, parseFloat(e.target.value))}
-                    className="flex-1 accent-blue-600"
+                    className="flex-1 accent-[rgb(var(--movi-accent-rgb))]"
                   />
                   <span className={cn('text-sm font-semibold w-10 text-right', color)}>
                     {Math.round((settings[key] as number) * 100)}%
@@ -240,14 +240,14 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
               type="number" min={1} max={120}
               value={settings.human_pause_minutes}
               onChange={e => set('human_pause_minutes', parseInt(e.target.value) || 20)}
-              className="w-32 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="w-32 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
           </div>
         </div>
       </div>
 
       {/* Signature */}
-      <div className="bg-white rounded-2xl border border-neutral-100 dark:border-white/5 shadow-sm overflow-hidden">
+      <div className="bg-surface-card rounded-2xl border border-soft dark:border-white/5 shadow-card overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-50 dark:border-white/5 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center">
             <MessageSquare className="w-4 h-4 text-neutral-500 dark:text-white/50" />
@@ -262,24 +262,24 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
               <input
                 value={settings.ai_message_signature_text}
                 onChange={e => set('ai_message_signature_text', e.target.value)}
-                className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
                 placeholder="- 🤖 MOVI IA"
               />
-              <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">Se agrega al final de cada mensaje automatico visible para el contacto.</p>
+              <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">Se agrega al final de cada mensaje automatico visible para el contacto.</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Response Templates */}
-      <div className="bg-white rounded-2xl border border-neutral-100 dark:border-white/5 shadow-sm overflow-hidden">
+      <div className="bg-surface-card rounded-2xl border border-soft dark:border-white/5 shadow-card overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-50 dark:border-white/5 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center">
             <Send className="w-4 h-4 text-teal-600" />
           </div>
           <div>
             <h2 className="font-semibold text-neutral-900 dark:text-white text-sm">Mensajes Base</h2>
-            <p className="text-xs text-neutral-400 dark:text-white/40">Mensajes que MOVI IA envia automaticamente al contacto.</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55">Mensajes que MOVI IA envia automaticamente al contacto.</p>
           </div>
         </div>
         <div className="p-6 space-y-5">
@@ -289,10 +289,10 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
               rows={3}
               value={settings.response_first_message}
               onChange={e => set('response_first_message', e.target.value)}
-              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none"
               placeholder="Hola, puedo ayudarte de dos formas..."
             />
-            <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">Se envia cuando MOVI IA activa un asistente automatico.</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">Se envia cuando MOVI IA activa un asistente automatico.</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Mensaje al detener bot (contacto pide humano)</label>
@@ -300,10 +300,10 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
               rows={2}
               value={settings.response_stop_message}
               onChange={e => set('response_stop_message', e.target.value)}
-              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none"
               placeholder="Claro, {{nombre_responsable}} te atenderá..."
             />
-            <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">Variables: <code className="text-xs bg-neutral-100 dark:bg-white/10 px-1 rounded">{'{{nombre_responsable}}'}</code></p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">Variables: <code className="text-xs bg-neutral-100 dark:bg-white/10 px-1 rounded">{'{{nombre_responsable}}'}</code></p>
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Mensaje al enviar link de formulario</label>
@@ -311,10 +311,10 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
               rows={3}
               value={settings.response_form_sent_message}
               onChange={e => set('response_form_sent_message', e.target.value)}
-              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none"
               placeholder="Perfecto, puedes llenar el formulario aquí..."
             />
-            <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">Variables: <code className="text-xs bg-neutral-100 dark:bg-white/10 px-1 rounded">{'{{link_formulario}}'}</code> <code className="text-xs bg-neutral-100 dark:bg-white/10 px-1 rounded">{'{{nombre_responsable}}'}</code></p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">Variables: <code className="text-xs bg-neutral-100 dark:bg-white/10 px-1 rounded">{'{{link_formulario}}'}</code> <code className="text-xs bg-neutral-100 dark:bg-white/10 px-1 rounded">{'{{nombre_responsable}}'}</code></p>
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Mensaje cuando la opcion no es clara</label>
@@ -322,7 +322,7 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
               rows={2}
               value={settings.response_option_unclear}
               onChange={e => set('response_option_unclear', e.target.value)}
-              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none"
               placeholder="¿Prefieres llenar el formulario o responder por aquí?"
             />
           </div>
@@ -333,7 +333,7 @@ function TabConfig({ settings, setSettings, onSave, saving }: {
         <button
           onClick={onSave}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-2.5 bg-accent text-accent-foreground text-sm font-medium rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Guardar configuracion
@@ -408,7 +408,7 @@ function IntentDetail({ intent, onClose, onRefresh }: { intent: Intent; onClose:
         <div className="px-6 py-4 border-b border-neutral-100 dark:border-white/5 flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-neutral-900 dark:text-white">{intent.name}</h3>
-            <p className="text-xs text-neutral-400 dark:text-white/40 font-mono mt-0.5">{intent.intent_key}</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 font-mono mt-0.5">{intent.intent_key}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 dark:bg-white/10 transition-colors">
             <X className="w-4 h-4 text-neutral-500 dark:text-white/50" />
@@ -421,7 +421,7 @@ function IntentDetail({ intent, onClose, onRefresh }: { intent: Intent; onClose:
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-700 dark:text-white/70">Activacion automatica permitida</p>
-                <p className="text-xs text-neutral-400 dark:text-white/40 mt-0.5">Permite que MOVI IA active esta intencion sin confirmacion</p>
+                <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">Permite que MOVI IA active esta intencion sin confirmacion</p>
               </div>
               <Toggle checked={intent.auto_activation_allowed} onChange={v => toggleStatus('auto_activation_allowed', v)} />
             </div>
@@ -434,25 +434,25 @@ function IntentDetail({ intent, onClose, onRefresh }: { intent: Intent; onClose:
               defaultValue={intent.linked_form_slug ?? ''}
               onBlur={e => toggleStatus('linked_form_slug', e.target.value || null)}
               placeholder="Ej: auto-individual"
-              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
-            <p className="text-xs text-neutral-400 dark:text-white/40 mt-1">Slug del formulario de cotizacion/tramite que se activa para esta intencion.</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 mt-1">Slug del formulario de cotizacion/tramite que se activa para esta intencion.</p>
           </div>
 
           {/* Phrases */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-neutral-700 dark:text-white/70">Frases de entrenamiento</h4>
-              <span className="text-xs text-neutral-400 dark:text-white/40">{phrases.filter(p => p.status === 'active').length} activas</span>
+              <span className="text-xs text-neutral-500 dark:text-white/55">{phrases.filter(p => p.status === 'active').length} activas</span>
             </div>
             {loading ? (
-              <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-neutral-300 dark:text-white/30" /></div>
+              <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-neutral-300 dark:text-white/45" /></div>
             ) : (
               <div className="space-y-2 mb-3">
-                {phrases.length === 0 && <p className="text-xs text-neutral-400 dark:text-white/40 italic">Sin frases registradas.</p>}
+                {phrases.length === 0 && <p className="text-xs text-neutral-500 dark:text-white/55 italic">Sin frases registradas.</p>}
                 {phrases.map(p => (
                   <div key={p.id} className="flex items-center gap-2 group">
-                    <span className={cn('flex-1 text-sm px-3 py-1.5 rounded-lg', p.status === 'active' ? 'bg-blue-50 text-blue-800' : 'bg-neutral-100 dark:bg-white/10 text-neutral-400 dark:text-white/40 line-through')}>
+                    <span className={cn('flex-1 text-sm px-3 py-1.5 rounded-lg', p.status === 'active' ? 'bg-blue-50 text-blue-800' : 'bg-neutral-100 dark:bg-white/10 text-neutral-500 dark:text-white/55 line-through')}>
                       {p.phrase}
                     </span>
                     <button onClick={() => removePhrase(p.id)} className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 text-red-400 transition-all">
@@ -468,12 +468,12 @@ function IntentDetail({ intent, onClose, onRefresh }: { intent: Intent; onClose:
                 onChange={e => setNewPhrase(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addPhrase()}
                 placeholder="Nueva frase..."
-                className="flex-1 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="flex-1 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
               <button
                 onClick={addPhrase}
                 disabled={saving || !newPhrase.trim()}
-                className="px-3 py-2 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700 transition-colors disabled:opacity-40"
+                className="px-3 py-2 bg-accent text-accent-foreground rounded-xl text-sm hover:bg-accent-hover transition-colors disabled:opacity-40"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               </button>
@@ -484,15 +484,15 @@ function IntentDetail({ intent, onClose, onRefresh }: { intent: Intent; onClose:
           <div>
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-neutral-700 dark:text-white/70">Palabras clave</h4>
-              <span className="text-xs text-neutral-400 dark:text-white/40">{keywords.length} registradas</span>
+              <span className="text-xs text-neutral-500 dark:text-white/55">{keywords.length} registradas</span>
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
-              {keywords.length === 0 && <p className="text-xs text-neutral-400 dark:text-white/40 italic">Sin palabras clave.</p>}
+              {keywords.length === 0 && <p className="text-xs text-neutral-500 dark:text-white/55 italic">Sin palabras clave.</p>}
               {keywords.map(k => (
                 <span key={k.id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 rounded-full text-xs font-medium group">
                   {k.keyword}
                   <button onClick={() => removeKeyword(k.id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <X className="w-3 h-3 text-neutral-400 dark:text-white/40 hover:text-red-500" />
+                    <X className="w-3 h-3 text-neutral-500 dark:text-white/55 hover:text-red-500" />
                   </button>
                 </span>
               ))}
@@ -503,7 +503,7 @@ function IntentDetail({ intent, onClose, onRefresh }: { intent: Intent; onClose:
                 onChange={e => setNewKeyword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addKeyword()}
                 placeholder="Nueva palabra clave..."
-                className="flex-1 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="flex-1 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
               <button
                 onClick={addKeyword}
@@ -576,10 +576,10 @@ function TabIntents() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-white/40" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar intencion..." className="w-full pl-9 pr-4 py-2 border border-neutral-200 dark:border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 dark:text-white/55" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar intencion..." className="w-full pl-9 pr-4 py-2 border border-neutral-200 dark:border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/30" />
         </div>
-        <button onClick={() => setShowAdd(v => !v)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
+        <button onClick={() => setShowAdd(v => !v)} className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground text-sm font-medium rounded-xl hover:bg-accent-hover transition-colors">
           <Plus className="w-4 h-4" /> Nueva
         </button>
       </div>
@@ -590,20 +590,20 @@ function TabIntents() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Nombre</label>
-              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: Cotizacion Auto" className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300" />
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: Cotizacion Auto" className="w-full border border-soft dark:border-white/10 rounded-xl px-3 py-2 text-sm bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent/30" />
             </div>
             <div>
               <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Clave unica</label>
-              <input value={newKey} onChange={e => setNewKey(e.target.value)} placeholder="cotizacion_auto" className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm bg-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-300" />
+              <input value={newKey} onChange={e => setNewKey(e.target.value)} placeholder="cotizacion_auto" className="w-full border border-soft dark:border-white/10 rounded-xl px-3 py-2 text-sm bg-surface-card font-mono focus:outline-none focus:ring-2 focus:ring-accent/30" />
             </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Descripcion (opcional)</label>
-            <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Cuando el contacto quiere..." className="w-full border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-300" />
+            <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Cuando el contacto quiere..." className="w-full border border-soft dark:border-white/10 rounded-xl px-3 py-2 text-sm bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent/30" />
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:bg-white/10 rounded-xl transition-colors">Cancelar</button>
-            <button onClick={handleAdd} disabled={saving || !newName.trim() || !newKey.trim()} className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700 disabled:opacity-40 flex items-center gap-1.5">
+            <button onClick={handleAdd} disabled={saving || !newName.trim() || !newKey.trim()} className="px-4 py-1.5 bg-accent text-accent-foreground text-sm rounded-xl hover:bg-accent-hover disabled:opacity-40 flex items-center gap-1.5">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Guardar
             </button>
           </div>
@@ -611,13 +611,13 @@ function TabIntents() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/30" /></div>
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/45" /></div>
       ) : (
         <div className="space-y-2">
           {filtered.map(intent => (
             <div
               key={intent.id}
-              className="bg-white border border-neutral-100 dark:border-white/5 rounded-2xl px-4 py-3 flex items-center gap-3 hover:border-blue-200 transition-colors group"
+              className="bg-surface-card border border-soft dark:border-white/5 rounded-2xl px-4 py-3 flex items-center gap-3 hover:border-blue-200 transition-colors group"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -634,27 +634,27 @@ function TabIntents() {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-neutral-400 dark:text-white/40 mt-0.5 font-mono">{intent.intent_key}</p>
+                <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5 font-mono">{intent.intent_key}</p>
                 {intent.description && <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5 truncate">{intent.description}</p>}
               </div>
               <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => handleToggleStatus(intent)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-neutral-100 dark:bg-white/10 transition-colors text-neutral-400 dark:text-white/40"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-neutral-100 dark:bg-white/10 transition-colors text-neutral-500 dark:text-white/55"
                   title={intent.status === 'active' ? 'Desactivar' : 'Activar'}
                 >
                   {intent.status === 'active' ? <ToggleRight className="w-4 h-4 text-emerald-500" /> : <ToggleLeft className="w-4 h-4" />}
                 </button>
                 <button
                   onClick={() => setSelected(intent)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50 transition-colors text-neutral-400 dark:text-white/40 hover:text-blue-600"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50 transition-colors text-neutral-500 dark:text-white/55 hover:text-accent-ink"
                   title="Editar frases y palabras clave"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDelete(intent.id)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-neutral-400 dark:text-white/40 hover:text-red-500"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-neutral-500 dark:text-white/55 hover:text-red-500"
                   title="Eliminar"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -663,7 +663,7 @@ function TabIntents() {
             </div>
           ))}
           {filtered.length === 0 && (
-            <div className="text-center py-12 text-neutral-400 dark:text-white/40">
+            <div className="text-center py-12 text-neutral-500 dark:text-white/55">
               <Brain className="w-10 h-10 mx-auto mb-2 opacity-30" />
               <p className="text-sm">Sin intenciones{search ? ' que coincidan' : ' registradas'}.</p>
             </div>
@@ -811,18 +811,18 @@ function TabSimulator({ settings }: { settings: GlobalSettings }) {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="bg-white rounded-2xl border border-neutral-100 dark:border-white/5 shadow-sm overflow-hidden">
+      <div className="bg-surface-card rounded-2xl border border-soft dark:border-white/5 shadow-card overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-50 dark:border-white/5 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
             <FlaskConical className="w-4 h-4 text-violet-600" />
           </div>
           <div>
             <h2 className="font-semibold text-neutral-900 dark:text-white text-sm">Simulador de entrenamiento</h2>
-            <p className="text-xs text-neutral-400 dark:text-white/40">Prueba como MOVI IA reaccionaria a un mensaje</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55">Prueba como MOVI IA reaccionaria a un mensaje</p>
           </div>
         </div>
         <div className="p-6 space-y-4">
-          {loading && <p className="text-xs text-neutral-400 dark:text-white/40">Cargando datos de entrenamiento...</p>}
+          {loading && <p className="text-xs text-neutral-500 dark:text-white/55">Cargando datos de entrenamiento...</p>}
           <div>
             <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1.5">Mensaje de prueba</label>
             <div className="flex gap-2">
@@ -831,12 +831,12 @@ function TabSimulator({ settings }: { settings: GlobalSettings }) {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSimulate()}
                 placeholder='Escribe un mensaje, ej: "quiero cotizar mi auto"'
-                className="flex-1 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="flex-1 border border-neutral-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
               <button
                 onClick={handleSimulate}
                 disabled={loading || !input.trim()}
-                className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-40 flex items-center gap-2"
+                className="px-4 py-2.5 bg-accent text-accent-foreground text-sm font-medium rounded-xl hover:bg-accent-hover disabled:opacity-40 flex items-center gap-2"
               >
                 <Send className="w-4 h-4" /> Simular
               </button>
@@ -845,10 +845,10 @@ function TabSimulator({ settings }: { settings: GlobalSettings }) {
 
           {/* Quick test phrases */}
           <div>
-            <p className="text-xs text-neutral-400 dark:text-white/40 mb-2">Frases rapidas:</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 mb-2">Frases rapidas:</p>
             <div className="flex flex-wrap gap-1.5">
               {['quiero cotizar mi auto', 'necesito seguro medico', 'quiero asegurar mi negocio', 'hola buenos dias', 'no quiero bot'].map(s => (
-                <button key={s} onClick={() => setInput(s)} className="px-2.5 py-1 bg-neutral-100 dark:bg-white/10 hover:bg-blue-50 hover:text-blue-700 text-neutral-600 dark:text-white/60 rounded-full text-xs transition-colors">
+                <button key={s} onClick={() => setInput(s)} className="px-2.5 py-1 bg-neutral-100 dark:bg-white/10 hover:bg-blue-50 hover:text-accent-ink text-neutral-600 dark:text-white/60 rounded-full text-xs transition-colors">
                   {s}
                 </button>
               ))}
@@ -858,7 +858,7 @@ function TabSimulator({ settings }: { settings: GlobalSettings }) {
       </div>
 
       {result && (
-        <div className="bg-white rounded-2xl border border-neutral-100 dark:border-white/5 shadow-sm overflow-hidden">
+        <div className="bg-surface-card rounded-2xl border border-soft dark:border-white/5 shadow-card overflow-hidden">
           <div className="px-6 py-4 border-b border-neutral-50 dark:border-white/5">
             <h3 className="font-semibold text-neutral-900 dark:text-white text-sm">Resultado del analisis</h3>
           </div>
@@ -870,28 +870,28 @@ function TabSimulator({ settings }: { settings: GlobalSettings }) {
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-xs text-neutral-400 dark:text-white/40 mb-1">Intencion detectada</p>
+                <p className="text-xs text-neutral-500 dark:text-white/55 mb-1">Intencion detectada</p>
                 <p className="font-mono text-neutral-800 dark:text-white/90">{result.intent ?? '—'}</p>
               </div>
               <div>
-                <p className="text-xs text-neutral-400 dark:text-white/40 mb-1">Confianza</p>
+                <p className="text-xs text-neutral-500 dark:text-white/55 mb-1">Confianza</p>
                 <ConfidenceBar value={result.confidence} />
               </div>
               {result.matched_form_slug && (
                 <div>
-                  <p className="text-xs text-neutral-400 dark:text-white/40 mb-1">Formulario</p>
+                  <p className="text-xs text-neutral-500 dark:text-white/55 mb-1">Formulario</p>
                   <p className="font-mono text-neutral-700 dark:text-white/70">{result.matched_form_slug}</p>
                 </div>
               )}
               <div className={result.matched_form_slug ? '' : 'col-span-2'}>
-                <p className="text-xs text-neutral-400 dark:text-white/40 mb-1">Razon</p>
+                <p className="text-xs text-neutral-500 dark:text-white/55 mb-1">Razon</p>
                 <p className="text-neutral-700 dark:text-white/70">{result.reason}</p>
               </div>
             </div>
 
             {result.requires_internal_confirmation && result.suggested_actions && (
               <div>
-                <p className="text-xs text-neutral-400 dark:text-white/40 mb-2">Sugerencias que se mostrarian internamente:</p>
+                <p className="text-xs text-neutral-500 dark:text-white/55 mb-2">Sugerencias que se mostrarian internamente:</p>
                 <div className="flex flex-wrap gap-2">
                   {result.suggested_actions.map((a, i) => (
                     <span key={i} className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs font-medium">
@@ -965,50 +965,50 @@ function TabLogs() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={cn('px-3 py-1.5 rounded-xl text-xs font-medium transition-colors', filter === f ? 'bg-blue-600 text-white' : 'bg-white border border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-white/60 hover:border-blue-300')}
+            className={cn('px-3 py-1.5 rounded-xl text-xs font-medium transition-colors', filter === f ? 'bg-accent text-accent-foreground' : 'bg-white border border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-white/60 hover:border-blue-300')}
           >
             {f === 'all' ? 'Todos' : f === 'unreviewed' ? 'Sin revisar' : f === 'correct' ? 'Correctos' : 'Incorrectos'}
           </button>
         ))}
-        <button onClick={load} className="ml-auto w-8 h-8 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-white/40">
+        <button onClick={load} className="ml-auto w-8 h-8 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-white/55">
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/30" /></div>
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/45" /></div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-neutral-400 dark:text-white/40">
+        <div className="text-center py-12 text-neutral-500 dark:text-white/55">
           <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
           <p className="text-sm">Sin registros de analisis.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map(log => (
-            <div key={log.id} className="bg-white border border-neutral-100 dark:border-white/5 rounded-2xl p-4 space-y-3 hover:border-neutral-200 dark:border-white/10 transition-colors">
+            <div key={log.id} className="bg-surface-card border border-soft dark:border-white/5 rounded-2xl p-4 space-y-3 hover:border-neutral-200 dark:border-white/10 transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-neutral-800 dark:text-white/90 font-medium truncate">"{log.message_text}"</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     {log.detected_intent && (
-                      <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{log.detected_intent}</span>
+                      <span className="text-xs font-mono text-accent-ink bg-blue-50 px-1.5 py-0.5 rounded">{log.detected_intent}</span>
                     )}
                     {log.confidence !== null && (
                       <span className={cn('text-xs font-medium', (log.confidence ?? 0) >= 0.85 ? 'text-emerald-600' : (log.confidence ?? 0) >= 0.55 ? 'text-amber-600' : 'text-red-500')}>
                         {Math.round((log.confidence ?? 0) * 100)}% confianza
                       </span>
                     )}
-                    {log.action_taken && <span className="text-xs text-neutral-400 dark:text-white/40">{log.action_taken}</span>}
-                    {log.agent_name && <span className="text-xs text-neutral-400 dark:text-white/40">• {log.agent_name}</span>}
+                    {log.action_taken && <span className="text-xs text-neutral-500 dark:text-white/55">{log.action_taken}</span>}
+                    {log.agent_name && <span className="text-xs text-neutral-500 dark:text-white/55">• {log.agent_name}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {log.was_correct === null ? (
                     <>
-                      <button onClick={() => markCorrect(log.id, true)} title="Marcar como correcto" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-50 text-neutral-300 dark:text-white/30 hover:text-emerald-600 transition-colors">
+                      <button onClick={() => markCorrect(log.id, true)} title="Marcar como correcto" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-50 text-neutral-300 dark:text-white/45 hover:text-emerald-600 transition-colors">
                         <CheckCircle2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => markCorrect(log.id, false)} title="Marcar como incorrecto" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-neutral-300 dark:text-white/30 hover:text-red-500 transition-colors">
+                      <button onClick={() => markCorrect(log.id, false)} title="Marcar como incorrecto" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-neutral-300 dark:text-white/45 hover:text-red-500 transition-colors">
                         <XCircle className="w-4 h-4" />
                       </button>
                     </>
@@ -1019,8 +1019,8 @@ function TabLogs() {
                   )}
                 </div>
               </div>
-              {log.reason && <p className="text-xs text-neutral-400 dark:text-white/40 italic">{log.reason}</p>}
-              <p className="text-xs text-neutral-300 dark:text-white/30">{new Date(log.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</p>
+              {log.reason && <p className="text-xs text-neutral-500 dark:text-white/55 italic">{log.reason}</p>}
+              <p className="text-xs text-neutral-300 dark:text-white/45">{new Date(log.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</p>
             </div>
           ))}
         </div>
@@ -1074,7 +1074,7 @@ export default function AsistenteEntrenamiento() {
   }
 
   if (checkingRole) {
-    return <div className="flex items-center justify-center min-h-screen"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/30" /></div>;
+    return <div className="flex items-center justify-center min-h-screen"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/45" /></div>;
   }
 
   if (!isAdmin) {
@@ -1087,7 +1087,7 @@ export default function AsistenteEntrenamiento() {
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Acceso restringido</h2>
           <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">Solo administradores pueden acceder a este modulo.</p>
         </div>
-        <Link to="/configuracion" className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+        <Link to="/configuracion" className="flex items-center gap-2 text-sm text-accent-ink hover:underline">
           <ArrowLeft className="w-4 h-4" /> Volver
         </Link>
       </div>
@@ -1102,7 +1102,7 @@ export default function AsistenteEntrenamiento() {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+    <div className="min-h-screen dark:bg-neutral-950">
       {/* Header */}
       <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-white/10 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-4">
@@ -1137,7 +1137,7 @@ export default function AsistenteEntrenamiento() {
                 onClick={() => setTab(t.key)}
                 className={cn(
                   'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
-                  tab === t.key ? 'border-accent text-accent' : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70',
+                  tab === t.key ? 'border-accent text-accent-ink' : 'border-transparent text-neutral-500 dark:text-white/50 hover:text-neutral-700 dark:hover:text-white/70',
                 )}
               >
                 {t.icon}{t.label}
@@ -1150,7 +1150,7 @@ export default function AsistenteEntrenamiento() {
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {loadingSettings && tab === 'config' ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/30" /></div>
+          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/45" /></div>
         ) : (
           <>
             {tab === 'config' && <TabConfig settings={settings} setSettings={setSettings} onSave={handleSaveSettings} saving={saving} />}

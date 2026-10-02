@@ -239,7 +239,7 @@ export default function SicasDiagnostico() {
       case 'error':
         return <XCircle className="w-5 h-5 text-red-600" />;
       case 'running':
-        return <Loader2 className="w-5 h-5 text-accent animate-spin" />;
+        return <Loader2 className="w-5 h-5 text-accent-ink animate-spin" />;
       default:
         return <div className="w-5 h-5 rounded-full border-2 border-neutral-300" />;
     }
@@ -256,7 +256,7 @@ export default function SicasDiagnostico() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-6">
+    <div className="min-h-screen dark:bg-neutral-950 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <PageHeader
           title="Diagnóstico SICAS"
@@ -327,7 +327,7 @@ export default function SicasDiagnostico() {
                     )}
                     {step.details && (
                       <details className="text-sm">
-                        <summary className="cursor-pointer text-accent hover:text-blue-700">
+                        <summary className="cursor-pointer text-accent-ink hover:text-accent-ink">
                           Ver detalles
                         </summary>
                         <pre className="mt-2 p-3 bg-neutral-100 rounded-lg overflow-x-auto text-xs">
@@ -394,13 +394,13 @@ export default function SicasDiagnostico() {
                   <Copy className="w-4 h-4" />
                   Copiar
                 </Button>
-                <pre className="p-4 bg-white border border-red-300 rounded-lg overflow-x-auto text-xs">
+                <pre className="p-4 bg-surface-card border border-red-300 rounded-2xl overflow-x-auto text-xs">
                   {JSON.stringify(lastError, null, 2)}
                 </pre>
               </div>
 
               {/* Recommendations */}
-              <div className="p-4 bg-white border border-red-300 rounded-lg">
+              <div className="p-4 bg-surface-card border border-red-300 rounded-2xl">
                 <h4 className="font-semibold text-red-900 mb-2">Posibles Soluciones:</h4>
                 <ul className="space-y-2 text-sm text-red-800">
                   {lastError.stage === 'CONFIG' && (

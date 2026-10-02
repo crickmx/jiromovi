@@ -206,11 +206,11 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
   }
 
   return (
-    <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
+    <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-slate-900">Expediente</h3>
+        <h3 className="text-lg font-semibold text-neutral-900">Expediente</h3>
         {canEdit && (
-          <label className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg cursor-pointer transition">
+          <label className="flex items-center space-x-2 bg-accent hover:bg-accent-hover text-accent-foreground px-4 py-2 rounded-lg cursor-pointer transition">
             <Upload className="w-4 h-4" />
             <span>{uploading ? 'Subiendo...' : 'Subir Archivo'}</span>
             <input
@@ -224,7 +224,7 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
       </div>
 
       {files.length === 0 ? (
-        <div className="text-center py-8 text-slate-500">
+        <div className="text-center py-8 text-neutral-500">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>No hay archivos en el expediente</p>
         </div>
@@ -233,18 +233,18 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
           {files.map((file) => (
             <div
               key={file.id}
-              className="bg-white rounded-lg p-4 border border-slate-200 hover:border-slate-300 transition"
+              className="bg-surface-card rounded-2xl p-4 border border-soft hover:border-slate-300 transition"
             >
               {editingId === file.id ? (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Tipo de Documento
                     </label>
                     <select
                       value={editData.tipo_documento}
                       onChange={(e) => setEditData({ ...editData, tipo_documento: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                     >
                       {TIPOS_DOCUMENTO.map((tipo) => (
                         <option key={tipo} value={tipo}>
@@ -254,7 +254,7 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Descripción
                     </label>
                     <textarea
@@ -262,20 +262,20 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
                       onChange={(e) => setEditData({ ...editData, descripcion: e.target.value })}
                       placeholder="Descripción del archivo"
                       rows={2}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40"
                     />
                   </div>
                   <div className="flex justify-end space-x-2">
                     <button
                       onClick={cancelEdit}
-                      className="flex items-center space-x-1 px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                      className="flex items-center space-x-1 px-3 py-1.5 text-neutral-600 hover:bg-slate-100 rounded-lg transition"
                     >
                       <X className="w-4 h-4" />
                       <span className="text-sm">Cancelar</span>
                     </button>
                     <button
                       onClick={() => saveEdit(file.id)}
-                      className="flex items-center space-x-1 bg-accent hover:bg-accent-hover text-white px-3 py-1.5 rounded-lg transition"
+                      className="flex items-center space-x-1 bg-accent hover:bg-accent-hover text-accent-foreground px-3 py-1.5 rounded-lg transition"
                     >
                       <Check className="w-4 h-4" />
                       <span className="text-sm">Guardar</span>
@@ -285,10 +285,10 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
               ) : (
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3 flex-1">
-                    <FileText className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
+                    <FileText className="w-5 h-5 text-accent-ink mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
-                        <h4 className="font-medium text-slate-900 truncate">
+                        <h4 className="font-medium text-neutral-900 truncate">
                           {file.nombre_archivo}
                         </h4>
                         <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full flex-shrink-0">
@@ -296,9 +296,9 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
                         </span>
                       </div>
                       {file.descripcion && (
-                        <p className="text-sm text-slate-600 mb-1">{file.descripcion}</p>
+                        <p className="text-sm text-neutral-600 mb-1">{file.descripcion}</p>
                       )}
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-neutral-500">
                         {formatFileSize(file.size_bytes)} • {new Date(file.created_at).toLocaleDateString('es-MX')}
                       </p>
                     </div>
@@ -306,7 +306,7 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
                   <div className="flex items-center space-x-2 ml-3 flex-shrink-0">
                     <button
                       onClick={() => handleDownload(file.archivo_url, file.nombre_archivo)}
-                      className="p-2 text-slate-600 hover:text-accent hover:bg-primary-50 rounded-lg transition"
+                      className="p-2 text-neutral-600 hover:text-accent-ink hover:bg-primary-50 rounded-lg transition"
                       title="Descargar"
                     >
                       <Download className="w-4 h-4" />
@@ -315,14 +315,14 @@ export function ExpedienteSection({ usuarioId, canEdit }: ExpedienteSectionProps
                       <>
                         <button
                           onClick={() => startEdit(file)}
-                          className="p-2 text-slate-600 hover:text-accent hover:bg-primary-50 rounded-lg transition"
+                          className="p-2 text-neutral-600 hover:text-accent-ink hover:bg-primary-50 rounded-lg transition"
                           title="Editar"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(file.id, file.archivo_path)}
-                          className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          className="p-2 text-neutral-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                           title="Eliminar"
                         >
                           <Trash2 className="w-4 h-4" />

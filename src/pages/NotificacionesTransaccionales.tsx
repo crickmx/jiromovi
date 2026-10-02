@@ -87,7 +87,7 @@ export function NotificacionesTransaccionales() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
+          <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Enviados</p>
@@ -97,7 +97,7 @@ export function NotificacionesTransaccionales() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
+          <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Fallidos</p>
@@ -107,7 +107,7 @@ export function NotificacionesTransaccionales() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
+          <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Pendientes</p>
@@ -117,19 +117,19 @@ export function NotificacionesTransaccionales() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
+          <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">Tipos Activos</p>
-                <p className="text-2xl font-bold text-accent">{loading ? '—' : stats.tipos_activos}</p>
+                <p className="text-2xl font-bold text-accent-ink">{loading ? '—' : stats.tipos_activos}</p>
               </div>
-              <Send className="w-10 h-10 text-accent opacity-20" />
+              <Send className="w-10 h-10 text-accent-ink opacity-20" />
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8">
+        <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8">
           <div className="border-b border-neutral-200 dark:border-white/8">
             <div className="flex overflow-x-auto items-center justify-between pr-4">
               <div className="flex">
@@ -139,7 +139,7 @@ export function NotificacionesTransaccionales() {
                     onClick={() => setActiveTab(id)}
                     className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                       activeTab === id
-                        ? 'text-accent border-b-2 border-accent'
+                        ? 'text-accent-ink border-b-2 border-accent'
                         : 'text-neutral-600 dark:text-white/50 hover:text-neutral-800 dark:hover:text-white/70'
                     }`}
                   >

@@ -96,7 +96,7 @@ export function CustomFields({ usuarioId, editable = false }: CustomFieldsProps)
             onChange={(e) => handleChange(campo.id, e.target.value)}
             disabled={!isEditable}
             required={campo.requerido}
-            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-slate-50 disabled:text-slate-500"
           />
         );
       case 'date':
@@ -107,7 +107,7 @@ export function CustomFields({ usuarioId, editable = false }: CustomFieldsProps)
             onChange={(e) => handleChange(campo.id, e.target.value)}
             disabled={!isEditable}
             required={campo.requerido}
-            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-slate-50 disabled:text-slate-500"
           />
         );
       default:
@@ -118,7 +118,7 @@ export function CustomFields({ usuarioId, editable = false }: CustomFieldsProps)
             onChange={(e) => handleChange(campo.id, e.target.value)}
             disabled={!isEditable}
             required={campo.requerido}
-            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:bg-slate-50 disabled:text-slate-500"
           />
         );
     }
@@ -128,7 +128,7 @@ export function CustomFields({ usuarioId, editable = false }: CustomFieldsProps)
     <>
       {campos.map((campo) => (
         <div key={campo.id}>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 mb-2">
             {campo.etiqueta}
             {campo.requerido && <span className="text-red-500 ml-1">*</span>}
           </label>

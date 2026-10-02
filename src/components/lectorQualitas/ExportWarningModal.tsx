@@ -12,8 +12,8 @@ export default function ExportWarningModal({
   onClose,
 }: ExportWarningModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-sm overflow-hidden animate-scale-in">
         <div className="px-6 py-5 text-center space-y-4">
           <div className="mx-auto w-12 h-12 flex items-center justify-center bg-amber-100 dark:bg-amber-900/30 rounded-full">
             <AlertTriangle className="w-6 h-6 text-amber-500" />

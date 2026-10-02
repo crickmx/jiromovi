@@ -119,15 +119,15 @@ export default function ChatGPTTest() {
           )}
 
           {respuesta && (
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="font-medium text-gray-900 mb-2">Respuesta de ChatGPT:</p>
-              <div className="text-gray-700 whitespace-pre-wrap">{respuesta}</div>
+            <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-lg">
+              <p className="font-medium text-neutral-900 mb-2">Respuesta de ChatGPT:</p>
+              <div className="text-neutral-700 whitespace-pre-wrap">{respuesta}</div>
             </div>
           )}
 
-          <div className="text-sm text-gray-500 space-y-1">
+          <div className="text-sm text-neutral-500 space-y-1">
             <p><strong>Nota:</strong> Esta es una página de prueba para verificar la conexión con ChatGPT.</p>
-            <p>Requiere que la variable de entorno <code className="bg-gray-100 px-1 rounded">OPENAI_API_KEY</code> esté configurada en Supabase.</p>
+            <p>Requiere que la variable de entorno <code className="bg-neutral-100 px-1 rounded">OPENAI_API_KEY</code> esté configurada en Supabase.</p>
           </div>
         </CardContent>
       </Card>

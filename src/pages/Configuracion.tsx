@@ -271,7 +271,7 @@ export function Configuracion() {
               onClick={() => setActiveTab(key)}
               className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
                 activeTab === key
-                  ? 'text-accent border-accent'
+                  ? 'text-accent-ink border-accent'
                   : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
               }`}
             >
@@ -281,7 +281,7 @@ export function Configuracion() {
         </div>
       </PageHeader>
 
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5 sm:p-8">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5 sm:p-8">
           {message && (
             <div
               className={`mb-6 px-4 py-3 rounded-lg text-sm ${
@@ -318,7 +318,7 @@ export function Configuracion() {
                           className="px-4 py-3 text-center text-xs font-semibold text-neutral-600 dark:text-white/60 uppercase tracking-wider"
                         >
                           <div>{rol}</div>
-                          <div className="text-[10px] font-normal text-neutral-400 dark:text-white/30 mt-1">
+                          <div className="text-[11px] font-normal text-neutral-500 dark:text-white/45 mt-1">
                             <span className="inline-block mr-3">V = Visible</span>
                             <span className="inline-block">E = Editable</span>
                           </div>
@@ -344,7 +344,7 @@ export function Configuracion() {
                                     type="checkbox"
                                     checked={permiso.visible}
                                     onChange={() => toggleVisible(rol, campo.key)}
-                                    className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30 cursor-pointer"
+                                    className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/30 cursor-pointer"
                                   />
                                   <span className="text-xs text-neutral-500 dark:text-white/50">V</span>
                                 </label>
@@ -394,7 +394,7 @@ export function Configuracion() {
               {camposPersonalizados.length === 0 ? (
                 <div className="text-center py-12 bg-neutral-50 dark:bg-white/3 rounded-lg">
                   <p className="text-neutral-600 dark:text-white/60">No hay campos personalizados creados</p>
-                  <p className="text-sm text-neutral-500 dark:text-white/40 mt-2">
+                  <p className="text-sm text-neutral-500 dark:text-white/55 mt-2">
                     Haz clic en "Agregar Campo" para crear uno nuevo
                   </p>
                 </div>
@@ -424,7 +424,7 @@ export function Configuracion() {
                             >
                               {campo.activo ? 'Activo' : 'Inactivo'}
                             </span>
-                            <span className="px-2 py-0.5 text-[10px] font-semibold bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-full">
+                            <span className="px-2 py-0.5 text-[11px] font-semibold bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-full">
                               {campo.tipo}
                             </span>
                           </div>
@@ -437,7 +437,7 @@ export function Configuracion() {
                                 onChange={(e) =>
                                   handleUpdateField(campo.id, { visible: e.target.checked })
                                 }
-                                className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
+                                className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/30"
                               />
                               <span className="text-xs text-neutral-700 dark:text-white/60">Visible</span>
                             </label>
@@ -448,7 +448,7 @@ export function Configuracion() {
                                 onChange={(e) =>
                                   handleUpdateField(campo.id, { editable: e.target.checked })
                                 }
-                                className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
+                                className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/30"
                               />
                               <span className="text-xs text-neutral-700 dark:text-white/60">Editable</span>
                             </label>
@@ -459,7 +459,7 @@ export function Configuracion() {
                                 onChange={(e) =>
                                   handleUpdateField(campo.id, { requerido: e.target.checked })
                                 }
-                                className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
+                                className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/30"
                               />
                               <span className="text-xs text-neutral-700 dark:text-white/60">Requerido</span>
                             </label>
@@ -483,13 +483,13 @@ export function Configuracion() {
       </div>
 
       {showNewFieldModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-xl max-w-md w-full">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full animate-scale-in">
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 dark:border-white/10">
               <h2 className="text-base font-bold text-neutral-900 dark:text-white">Nuevo Campo Personalizado</h2>
               <button
                 onClick={() => setShowNewFieldModal(false)}
-                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-white/70 transition-colors"
+                className="text-neutral-500 hover:text-neutral-600 dark:hover:text-white/70 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -497,7 +497,7 @@ export function Configuracion() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1.5">
                   Nombre del Campo
                 </label>
                 <input
@@ -510,7 +510,7 @@ export function Configuracion() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1.5">
                   Tipo de Dato
                 </label>
                 <select
@@ -536,7 +536,7 @@ export function Configuracion() {
                     type="checkbox"
                     checked={newField.visible}
                     onChange={(e) => setNewField({ ...newField, visible: e.target.checked })}
-                    className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
+                    className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/30"
                   />
                   <span className="text-sm text-neutral-700 dark:text-white/70">Visible para usuarios</span>
                 </label>
@@ -545,7 +545,7 @@ export function Configuracion() {
                     type="checkbox"
                     checked={newField.editable}
                     onChange={(e) => setNewField({ ...newField, editable: e.target.checked })}
-                    className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
+                    className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/30"
                   />
                   <span className="text-sm text-neutral-700 dark:text-white/70">Editable por usuarios</span>
                 </label>
@@ -554,7 +554,7 @@ export function Configuracion() {
                     type="checkbox"
                     checked={newField.requerido}
                     onChange={(e) => setNewField({ ...newField, requerido: e.target.checked })}
-                    className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-accent/30"
+                    className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/30"
                   />
                   <span className="text-sm text-neutral-700 dark:text-white/70">Campo requerido</span>
                 </label>

@@ -58,7 +58,7 @@ export default function ConfiguracionHub() {
                 className={cn(
                   "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
                   isActive
-                    ? "border-accent text-accent"
+                    ? "border-accent text-accent-ink"
                     : "border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:border-neutral-300"
                 )}
               >

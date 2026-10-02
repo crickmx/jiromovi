@@ -318,7 +318,7 @@ export default function StoreAdmin() {
             onClick={() => setVistaActual('productos')}
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               vistaActual === 'productos'
-                ? 'bg-accent text-white'
+                ? 'bg-accent text-accent-foreground'
                 : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
             }`}
           >
@@ -330,7 +330,7 @@ export default function StoreAdmin() {
             onClick={() => setVistaActual('categorias')}
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               vistaActual === 'categorias'
-                ? 'bg-accent text-white'
+                ? 'bg-accent text-accent-foreground'
                 : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
             }`}
           >
@@ -343,7 +343,7 @@ export default function StoreAdmin() {
               onClick={() => setVistaActual('equipos')}
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 vistaActual === 'equipos'
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-foreground'
                   : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
               }`}
             >
@@ -356,7 +356,7 @@ export default function StoreAdmin() {
             onClick={() => setVistaActual('triggers')}
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               vistaActual === 'triggers'
-                ? 'bg-accent text-white'
+                ? 'bg-accent text-accent-foreground'
                 : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
             }`}
           >
@@ -368,7 +368,7 @@ export default function StoreAdmin() {
             onClick={() => setVistaActual('logos')}
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               vistaActual === 'logos'
-                ? 'bg-accent text-white'
+                ? 'bg-accent text-accent-foreground'
                 : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
             }`}
           >
@@ -380,7 +380,7 @@ export default function StoreAdmin() {
             onClick={() => setVistaActual('catalogos')}
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               vistaActual === 'catalogos'
-                ? 'bg-accent text-white'
+                ? 'bg-accent text-accent-foreground'
                 : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
             }`}
           >
@@ -401,7 +401,7 @@ export default function StoreAdmin() {
                   <Download className="w-4 h-4" />
                   {exportando ? 'Exportando...' : 'Descargar Excel'}
                 </button>
-                <label className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm cursor-pointer">
+                <label className="flex items-center gap-2 bg-accent text-accent-foreground px-4 py-2.5 rounded-lg hover:bg-accent-hover transition-colors font-medium text-sm cursor-pointer">
                   <Upload className="w-4 h-4" />
                   {importando ? 'Importando...' : 'Cargar Excel'}
                   <input
@@ -423,7 +423,7 @@ export default function StoreAdmin() {
                 )}
                 <button
                   onClick={handleCrearProducto}
-                  className="flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
+                  className="flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
                 >
                   <Plus className="w-5 h-5" />
                   Nuevo Producto
@@ -432,14 +432,14 @@ export default function StoreAdmin() {
             </div>
 
             {resultadoImport && (
-              <div className="mb-6 p-4 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5">
+              <div className="mb-6 p-4 rounded-2xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5">
                 <h4 className="text-sm font-semibold text-neutral-800 dark:text-white/80 mb-3 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-green-600" />
                   Resultado de importacion
                 </h4>
                 <div className="flex items-center gap-6 text-sm mb-2">
                   <span className="text-green-600 font-medium">{resultadoImport.creados} creados</span>
-                  <span className="text-blue-600 font-medium">{resultadoImport.actualizados} actualizados</span>
+                  <span className="text-accent-ink font-medium">{resultadoImport.actualizados} actualizados</span>
                   {resultadoImport.errores.length > 0 && (
                     <span className="text-red-600 font-medium">{resultadoImport.errores.length} errores</span>
                   )}
@@ -463,7 +463,7 @@ export default function StoreAdmin() {
               </div>
             )}
 
-            <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
+            <div className="bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
                   <thead className="bg-neutral-50 dark:bg-white/5">
@@ -516,12 +516,12 @@ export default function StoreAdmin() {
                           <div className="text-sm font-medium text-neutral-900 dark:text-white">{producto.titulo}</div>
                           <div className="text-sm text-neutral-500 dark:text-white/50 line-clamp-1">{producto.descripcion}</div>
                           {producto.tipo_item === 'servicio' && (
-                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">
+                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[11px] font-semibold rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">
                               <Wrench className="w-3 h-3" /> Servicio
                             </span>
                           )}
                           {producto.tipo_item === 'producto' && producto.disponibilidad === 'por_pedido' && (
-                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-[11px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
                               Por pedido
                             </span>
                           )}
@@ -550,7 +550,7 @@ export default function StoreAdmin() {
                           ) : (
                             <button
                               onClick={() => setInlineEdit({ id: producto.id, campo: 'precio', valor: String(producto.precio) })}
-                              className="text-sm font-semibold text-neutral-900 dark:text-white hover:text-accent transition-colors group flex items-center gap-1"
+                              className="text-sm font-semibold text-neutral-900 dark:text-white hover:text-accent-ink transition-colors group flex items-center gap-1"
                               title="Clic para editar precio"
                             >
                               ${producto.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
@@ -567,7 +567,7 @@ export default function StoreAdmin() {
                               {((producto.precio - producto.costo_base) / producto.precio * 100).toFixed(0)}%
                             </span>
                           ) : (
-                            <span className="text-xs text-neutral-400 dark:text-white/40">--</span>
+                            <span className="text-xs text-neutral-500 dark:text-white/55">--</span>
                           )}
                         </td>
                         <td className="px-6 py-4">
@@ -622,7 +622,7 @@ export default function StoreAdmin() {
                             {(membresiaProducto[producto.id] ?? []).map(cid => {
                               const cat = todosCatalogos.find(c => c.id === cid);
                               return cat ? (
-                                <span key={cid} className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+                                <span key={cid} className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
                                   {cat.nombre}
                                 </span>
                               ) : null;
@@ -630,7 +630,7 @@ export default function StoreAdmin() {
                             {todosCatalogos.length > 0 && (
                               <button
                                 onClick={() => setPopoverCatalogos(popoverCatalogos === producto.id ? null : producto.id)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full border border-neutral-200 dark:border-white/10 text-neutral-500 dark:text-white/50 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full border border-neutral-200 dark:border-white/10 text-neutral-500 dark:text-white/50 hover:border-blue-400 hover:text-accent-ink transition-colors"
                                 title="Asignar catálogos"
                               >
                                 <BookOpen className="w-3 h-3" />
@@ -639,8 +639,8 @@ export default function StoreAdmin() {
                             )}
                           </div>
                           {popoverCatalogos === producto.id && (
-                            <div className="absolute z-50 left-0 mt-1 w-52 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-xl shadow-lg p-2">
-                              <p className="text-[10px] font-semibold text-neutral-400 dark:text-white/40 uppercase px-2 pb-1">Catálogos</p>
+                            <div className="absolute z-50 left-0 mt-1 w-52 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-white/10 rounded-xl shadow-lg p-2">
+                              <p className="text-[11px] font-semibold text-neutral-500 dark:text-white/55 uppercase px-2 pb-1">Catálogos</p>
                               {todosCatalogos.map(cat => {
                                 const pertenece = (membresiaProducto[producto.id] ?? []).includes(cat.id);
                                 return (
@@ -657,7 +657,7 @@ export default function StoreAdmin() {
                               })}
                               <button
                                 onClick={() => setPopoverCatalogos(null)}
-                                className="w-full mt-1 text-xs text-neutral-400 hover:text-neutral-600 py-1"
+                                className="w-full mt-1 text-xs text-neutral-500 hover:text-neutral-600 py-1"
                               >
                                 Cerrar
                               </button>
@@ -668,7 +668,7 @@ export default function StoreAdmin() {
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleEditarProducto(producto)}
-                              className="text-accent hover:text-primary-800 transition-colors"
+                              className="text-accent-ink hover:text-primary-800 transition-colors"
                               title="Editar"
                             >
                               <Edit className="w-5 h-5" />
@@ -694,7 +694,7 @@ export default function StoreAdmin() {
             <div className="flex justify-end mb-6">
               <button
                 onClick={handleCrearCategoria}
-                className="flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
+                className="flex items-center gap-2 bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium shadow-sm"
               >
                 <Plus className="w-5 h-5" />
                 Nueva Categoría
@@ -703,7 +703,7 @@ export default function StoreAdmin() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {categorias.map(categoria => (
-                <div key={categoria.id} className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+                <div key={categoria.id} className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-1">{categoria.nombre}</h3>
@@ -727,7 +727,7 @@ export default function StoreAdmin() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleEditarCategoria(categoria)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-primary-50 text-accent px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors font-medium"
+                      className="flex-1 flex items-center justify-center gap-2 bg-primary-50 text-accent-ink px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors font-medium"
                     >
                       <Edit className="w-4 h-4" />
                       Editar
@@ -1076,7 +1076,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
             type="text"
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
-            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
             placeholder="Nombre del producto"
           />
         </div>
@@ -1088,7 +1088,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
           <textarea
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
             rows={3}
             placeholder="Descripcion detallada del producto"
           />
@@ -1105,7 +1105,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
               min="0"
               value={precio}
               onChange={(e) => setPrecio(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
               placeholder="0.00"
             />
           </div>
@@ -1120,7 +1120,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
               min="0"
               value={costoBase}
               onChange={(e) => setCostoBase(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
               placeholder="0.00"
             />
           </div>
@@ -1138,7 +1138,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
                 setTipoItem(val);
                 if (val === 'servicio') setDisponibilidad('por_pedido');
               }}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
             >
               <option value="producto">Producto</option>
               <option value="servicio">Servicio</option>
@@ -1153,7 +1153,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
               value={disponibilidad}
               onChange={(e) => setDisponibilidad(e.target.value as Disponibilidad)}
               disabled={tipoItem === 'servicio'}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40 disabled:opacity-50"
             >
               <option value="por_existencia">Por existencia (stock)</option>
               <option value="por_pedido">Por pedido (siempre disponible)</option>
@@ -1172,7 +1172,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
                 min="0"
                 value={stock}
                 onChange={(e) => setStock(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
                 placeholder="0"
               />
             </div>
@@ -1186,7 +1186,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
                 min="0"
                 value={stockUmbral}
                 onChange={(e) => setStockUmbral(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
                 placeholder="5"
               />
             </div>
@@ -1211,7 +1211,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
           <select
             value={categoriaId}
             onChange={(e) => setCategoriaId(e.target.value)}
-            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
           >
             <option value="">Selecciona una categoria</option>
             {categorias.filter(c => c.activo).map(categoria => (
@@ -1230,7 +1230,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
             type="file"
             accept="image/*"
             onChange={handleImagenChange}
-            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
           />
           {imagenUrl && (
             <div className="mt-3">
@@ -1258,8 +1258,8 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
                   <li key={c.id} className="flex items-center justify-between bg-neutral-50 dark:bg-white/5 rounded-lg px-3 py-2">
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-neutral-800 dark:text-white/80">{c.concepto}</span>
-                      <span className="text-xs text-neutral-400 dark:text-white/40 ml-2">({TIPO_GASTO_OPTIONS.find(t => t.value === c.tipo)?.label || c.tipo})</span>
-                      {c.descripcion && <p className="text-xs text-neutral-400 dark:text-white/40 truncate">{c.descripcion}</p>}
+                      <span className="text-xs text-neutral-500 dark:text-white/55 ml-2">({TIPO_GASTO_OPTIONS.find(t => t.value === c.tipo)?.label || c.tipo})</span>
+                      {c.descripcion && <p className="text-xs text-neutral-500 dark:text-white/55 truncate">{c.descripcion}</p>}
                     </div>
                     <div className="flex items-center gap-2 ml-2">
                       <span className="text-sm font-semibold text-neutral-700 dark:text-white/70">${c.monto.toFixed(2)}</span>
@@ -1308,7 +1308,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
                 <button
                   onClick={addCostoExtra}
                   disabled={!newCostoConcepto || !newCostoMonto}
-                  className="w-full px-2 py-1.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-40"
+                  className="w-full px-2 py-1.5 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-40"
                 >
                   <Plus className="w-4 h-4 mx-auto" />
                 </button>
@@ -1360,12 +1360,12 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {(attr.opciones || []).map(opt => (
-                        <span key={opt.id} className="inline-flex items-center gap-1 bg-white dark:bg-white/10 border border-neutral-200 dark:border-white/15 rounded-full px-2.5 py-1 text-xs font-medium text-neutral-700 dark:text-white/70">
+                        <span key={opt.id} className="inline-flex items-center gap-1 bg-surface-card dark:bg-white/10 border border-soft dark:border-white/15 rounded-full px-2.5 py-1 text-xs font-medium text-neutral-700 dark:text-white/70">
                           {opt.valor}
                           {opt.precio != null && (
-                            <span className="text-accent font-semibold ml-0.5">${opt.precio.toLocaleString('es-MX', { minimumFractionDigits: 0 })}</span>
+                            <span className="text-accent-ink font-semibold ml-0.5">${opt.precio.toLocaleString('es-MX', { minimumFractionDigits: 0 })}</span>
                           )}
-                          <button onClick={() => removeOpcion(attr.id, opt.id)} className="text-neutral-400 hover:text-red-500 ml-0.5">
+                          <button onClick={() => removeOpcion(attr.id, opt.id)} className="text-neutral-500 hover:text-red-500 ml-0.5">
                             <X className="w-3 h-3" />
                           </button>
                         </span>
@@ -1392,7 +1392,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
                       <button
                         onClick={() => addOpcion(attr.id)}
                         disabled={!(newOpcionValues[attr.id] || '').trim()}
-                        className="px-2.5 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover disabled:opacity-40"
+                        className="px-2.5 py-1.5 bg-accent text-accent-foreground rounded-lg text-xs font-medium hover:bg-accent-hover disabled:opacity-40"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -1414,7 +1414,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
               <button
                 onClick={addAtributo}
                 disabled={!newAtributoNombre.trim()}
-                className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-40 flex items-center gap-1"
+                className="px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-40 flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" />
                 Agregar
@@ -1426,12 +1426,12 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
         {/* Vinculación con funciones del sistema */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-neutral-700 dark:text-white/70">
-            Vinculación con el sistema <span className="text-neutral-400 font-normal">(opcional)</span>
+            Vinculación con el sistema <span className="text-neutral-500 font-normal">(opcional)</span>
           </label>
           <select
             value={tipo}
             onChange={e => setTipo(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+            className="w-full px-3 py-2 text-sm border border-soft dark:border-white/15 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <option value="">Sin vinculación (producto normal)</option>
             <option value="marketing_premium_mensual">Marketing Premium — Plan Mensual ($200/mes)</option>
@@ -1452,7 +1452,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
               id="permite_personalizacion"
               checked={permitePersonalizacion}
               onChange={e => setPermitePersonalizacion(e.target.checked)}
-              className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
+              className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/40"
             />
             <label htmlFor="permite_personalizacion" className="text-sm font-medium text-neutral-700 dark:text-white/70">
               Permite personalización (el agente escribe qué quiere)
@@ -1468,7 +1468,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
                 value={personalizacionLabel}
                 onChange={e => setPersonalizacionLabel(e.target.value)}
                 placeholder="Personalización"
-                className="w-full px-3 py-2 text-sm border border-neutral-200 dark:border-white/15 rounded-lg bg-white dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full px-3 py-2 text-sm border border-soft dark:border-white/15 rounded-lg bg-surface-card dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
               />
               <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mt-3 mb-1">
                 Imagen para el editor visual (logo/texto) — obligatoria para habilitar la opción
@@ -1492,7 +1492,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
             id="activo"
             checked={activo}
             onChange={(e) => setActivo(e.target.checked)}
-            className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
+            className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/40"
           />
           <label htmlFor="activo" className="text-sm font-medium text-neutral-700 dark:text-white/70">
             Producto activo (visible en el catalogo)
@@ -1503,7 +1503,7 @@ function ProductoModal({ producto, categorias, nextOrden, onClose, onGuardar }: 
           <button
             onClick={handleGuardar}
             disabled={guardando}
-            className="flex-1 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50"
+            className="flex-1 bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50"
           >
             {guardando ? 'Guardando...' : producto ? 'Actualizar' : 'Crear'}
           </button>
@@ -1578,7 +1578,7 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
             type="text"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
             placeholder="Nombre de la categoría"
           />
         </div>
@@ -1590,7 +1590,7 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
           <textarea
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-accent/40"
             rows={3}
             placeholder="Descripción de la categoría"
           />
@@ -1602,7 +1602,7 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
             id="activo-cat"
             checked={activo}
             onChange={(e) => setActivo(e.target.checked)}
-            className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-blue-500"
+            className="w-4 h-4 text-accent-ink rounded focus:ring-2 focus:ring-accent/40"
           />
           <label htmlFor="activo-cat" className="text-sm font-medium text-neutral-700 dark:text-white/70">
             Categoría activa
@@ -1613,7 +1613,7 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
           <button
             onClick={handleGuardar}
             disabled={guardando}
-            className="flex-1 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50"
+            className="flex-1 bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium disabled:opacity-50"
           >
             {guardando ? 'Guardando...' : categoria ? 'Actualizar' : 'Crear'}
           </button>

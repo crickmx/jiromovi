@@ -118,7 +118,7 @@ export default function SicasTestCatalogs() {
   const getStatusIcon = (status: TestResult['status']) => {
     switch (status) {
       case 'testing':
-        return <Loader2 className="h-5 w-5 animate-spin text-accent" />;
+        return <Loader2 className="h-5 w-5 animate-spin text-accent-ink" />;
       case 'available':
         return <CheckCircle2 className="h-5 w-5 text-green-500" />;
       case 'not_available':
@@ -126,7 +126,7 @@ export default function SicasTestCatalogs() {
       case 'error':
         return <XCircle className="h-5 w-5 text-red-500" />;
       default:
-        return <div className="h-5 w-5 rounded-full border-2 border-gray-300" />;
+        return <div className="h-5 w-5 rounded-full border-2 border-neutral-300" />;
     }
   };
 
@@ -151,20 +151,20 @@ export default function SicasTestCatalogs() {
   const totalTested = availableCount + notAvailableCount + errorCount;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-gray-900 dark:to-gray-800 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">
             SICAS - Prueba de Catálogos
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-neutral-600 dark:text-gray-400">
             Prueba de disponibilidad de catálogos prioritarios
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card className="p-4">
-            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Probados</div>
+            <div className="text-sm text-neutral-600 dark:text-gray-400 mb-1">Total Probados</div>
             <div className="text-2xl font-bold">{totalTested} / {PRIORITY_CATALOGS.length}</div>
           </Card>
           <Card className="p-4">
@@ -208,16 +208,16 @@ export default function SicasTestCatalogs() {
             {results.map(result => (
               <div
                 key={result.catalog_id}
-                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-gray-800 rounded-lg"
               >
                 <div className="flex items-center gap-4 flex-1">
                   {getStatusIcon(result.status)}
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium text-neutral-900 dark:text-white">
                       {result.catalog_id}. {result.catalog_name}
                     </div>
                     {result.error && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <div className="text-sm text-neutral-600 dark:text-gray-400 mt-1">
                         {result.error}
                       </div>
                     )}
@@ -230,7 +230,7 @@ export default function SicasTestCatalogs() {
                     </Badge>
                   )}
                   {result.duration !== undefined && (
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-neutral-500">
                       {(result.duration / 1000).toFixed(2)}s
                     </span>
                   )}
@@ -253,7 +253,7 @@ export default function SicasTestCatalogs() {
 
         <Card className="p-6 mt-6">
           <h3 className="font-semibold mb-3">Notas:</h3>
-          <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+          <ul className="text-sm text-neutral-600 dark:text-gray-400 space-y-2">
             <li>• Los catálogos marcados como "No Disponibles" requieren permisos especiales en SICAS</li>
             <li>• Algunos catálogos solo están disponibles para despachos específicos</li>
             <li>• La conexión a SICAS está funcionando correctamente</li>

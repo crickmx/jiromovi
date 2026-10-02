@@ -388,7 +388,7 @@ export default function LectorQualitas() {
         {isProcessing ? (
           <div className="flex flex-col items-center gap-3">
             <div className="p-4 bg-accent/10 rounded-2xl">
-              <Loader2 className="w-8 h-8 text-accent animate-spin" />
+              <Loader2 className="w-8 h-8 text-accent-ink animate-spin" />
             </div>
             <div>
               <p className="text-base font-semibold text-neutral-800 dark:text-white">
@@ -402,7 +402,7 @@ export default function LectorQualitas() {
         ) : (
           <div className="flex flex-col items-center gap-3">
             <div className="p-4 bg-neutral-100 dark:bg-white/8 rounded-2xl">
-              <FileUp className="w-8 h-8 text-neutral-400 dark:text-white/40" />
+              <FileUp className="w-8 h-8 text-neutral-500 dark:text-white/55" />
             </div>
             <div>
               <p className="text-base font-semibold text-neutral-800 dark:text-white">
@@ -415,7 +415,7 @@ export default function LectorQualitas() {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
-              className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+              className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl text-sm font-medium transition-colors shadow-sm"
             >
               <Upload className="w-4 h-4" />
               Seleccionar Archivos
@@ -490,7 +490,7 @@ export default function LectorQualitas() {
           )}
           {vendorsLoading && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-50 dark:bg-white/5 rounded-lg">
-              <Loader2 className="w-3.5 h-3.5 text-neutral-400 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 text-neutral-500 animate-spin" />
               <span className="text-xs text-neutral-500 dark:text-white/50">Cargando vendedores...</span>
             </div>
           )}
@@ -499,7 +499,7 @@ export default function LectorQualitas() {
 
       {/* Results Table */}
       {results.length > 0 && (
-        <div className="bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-2xl overflow-hidden shadow-card">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -531,12 +531,12 @@ export default function LectorQualitas() {
                     </td>
                     <td className="px-3 py-2.5">
                       {result.mensaje ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full text-[10px] font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full text-[11px] font-medium">
                           <AlertCircle className="w-3 h-3" />
                           Error
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-[10px] font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-[11px] font-medium">
                           <CheckCircle2 className="w-3 h-3" />
                           OK
                         </span>
@@ -552,7 +552,7 @@ export default function LectorQualitas() {
                           placeholder="Asignar vendedor..."
                         />
                       ) : (
-                        <span className="text-xs text-neutral-400 dark:text-white/30 italic">N/A</span>
+                        <span className="text-xs text-neutral-500 dark:text-white/45 italic">N/A</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 min-w-[140px]">
@@ -560,24 +560,24 @@ export default function LectorQualitas() {
                         <div>
                           {result.sicasVendor.despachoName && (
                             <p className="text-[11px] font-medium text-neutral-700 dark:text-white/80 truncate flex items-center gap-1">
-                              <Building className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                              <Building className="w-3 h-3 text-neutral-500 flex-shrink-0" />
                               {result.sicasVendor.despachoName}
                             </p>
                           )}
                           {result.sicasVendor.gerenciaName && (
-                            <p className="text-[10px] text-neutral-500 dark:text-white/50 truncate mt-0.5">
+                            <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate mt-0.5">
                               {result.sicasVendor.gerenciaName}
                             </p>
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-neutral-400 dark:text-white/30">-</span>
+                        <span className="text-xs text-neutral-500 dark:text-white/45">-</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5">
                       <button
                         onClick={() => setSelectedData(result)}
-                        className="inline-flex items-center gap-1 text-accent hover:text-accent/80 text-xs font-medium transition-colors"
+                        className="inline-flex items-center gap-1 text-accent-ink hover:text-accent/80 text-xs font-medium transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         Ver
@@ -664,18 +664,18 @@ function PolizaDetailModal({ data, onClose }: { data: ExtractedPolizaData; onClo
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden"
+        className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-scale-in"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-white/10">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-accent/10 rounded-xl">
-              <Car className="w-5 h-5 text-accent" />
+              <Car className="w-5 h-5 text-accent-ink" />
             </div>
             <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
               Detalles de la Poliza
@@ -705,7 +705,7 @@ function PolizaDetailModal({ data, onClose }: { data: ExtractedPolizaData; onClo
                   {label}
                 </dt>
                 <dd className="flex-1 text-sm text-neutral-800 dark:text-white font-medium break-words">
-                  {value || <span className="text-neutral-400 dark:text-white/30 italic font-normal">No encontrado</span>}
+                  {value || <span className="text-neutral-500 dark:text-white/45 italic font-normal">No encontrado</span>}
                 </dd>
               </div>
             ))}
@@ -716,7 +716,7 @@ function PolizaDetailModal({ data, onClose }: { data: ExtractedPolizaData; onClo
             <>
               <div className="flex items-center gap-2 pt-2">
                 <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Building className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <Building className="w-4 h-4 text-accent-ink dark:text-blue-400" />
                 </div>
                 <h3 className="text-sm font-bold text-neutral-800 dark:text-white">
                   Informacion SICAS
@@ -729,7 +729,7 @@ function PolizaDetailModal({ data, onClose }: { data: ExtractedPolizaData; onClo
                       {label}
                     </dt>
                     <dd className="flex-1 text-sm text-neutral-800 dark:text-white font-medium break-words">
-                      {value || <span className="text-neutral-400 dark:text-white/30 italic font-normal">-</span>}
+                      {value || <span className="text-neutral-500 dark:text-white/45 italic font-normal">-</span>}
                     </dd>
                   </div>
                 ))}

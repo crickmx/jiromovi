@@ -105,8 +105,8 @@ interface Props {
 // ── Status icon ───────────────────────────────────────────────────────────────
 function StatusIcon({ status, outbound }: { status: string; outbound?: boolean }) {
   if (status === 'read') return <CheckCheck className={cn('w-3.5 h-3.5', outbound ? 'text-blue-300' : 'text-blue-500')} />;
-  if (status === 'delivered') return <CheckCheck className="w-3.5 h-3.5 text-neutral-400" />;
-  if (status === 'sent') return <Check className="w-3.5 h-3.5 text-neutral-400" />;
+  if (status === 'delivered') return <CheckCheck className="w-3.5 h-3.5 text-neutral-500" />;
+  if (status === 'sent') return <Check className="w-3.5 h-3.5 text-neutral-500" />;
   if (status === 'failed') return <AlertCircle className="w-3.5 h-3.5 text-red-400" />;
   return <Clock className="w-3.5 h-3.5 text-neutral-300" />;
 }
@@ -128,7 +128,7 @@ function RichMessageBubble({
   const metadata = (raw?.metadata as Record<string, any>) || {};
 
   const textColor = isOut ? 'text-white' : 'text-neutral-800 dark:text-white/80';
-  const dimColor = isOut ? 'text-white/60' : 'text-neutral-400';
+  const dimColor = isOut ? 'text-white/60' : 'text-neutral-500';
   const innerBg = isOut ? 'bg-emerald-700/50' : 'bg-neutral-50 dark:bg-neutral-700/50';
 
   return (
@@ -145,13 +145,13 @@ function RichMessageBubble({
             />
           ) : mediaDownloadStatus === 'pending' || mediaDownloadStatus === 'downloading' ? (
             <div className="w-48 h-32 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
-              <ImageIcon className="w-6 h-6 text-neutral-400 animate-pulse" />
-              <span className="text-[10px] text-neutral-400">Descargando...</span>
+              <ImageIcon className="w-6 h-6 text-neutral-500 animate-pulse" />
+              <span className="text-[11px] text-neutral-500">Descargando...</span>
             </div>
           ) : (
             <div className="w-48 h-24 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
-              <ImageIcon className="w-5 h-5 text-neutral-400" />
-              <span className="text-[10px] text-neutral-400">Imagen no disponible</span>
+              <ImageIcon className="w-5 h-5 text-neutral-500" />
+              <span className="text-[11px] text-neutral-500">Imagen no disponible</span>
             </div>
           )}
           {(msg.body || mediaCaption) && <p className={cn('text-sm mt-1', textColor)}>{msg.body || mediaCaption}</p>}
@@ -166,7 +166,7 @@ function RichMessageBubble({
           ) : (
             <div className="w-28 h-28 rounded-xl bg-neutral-50 dark:bg-neutral-700/50 flex flex-col items-center justify-center">
               <span className="text-3xl">🏷</span>
-              <span className="text-[10px] text-neutral-400 mt-1">Sticker</span>
+              <span className="text-[11px] text-neutral-500 mt-1">Sticker</span>
             </div>
           )}
         </div>
@@ -179,8 +179,8 @@ function RichMessageBubble({
             <video src={msg.mediaUrl} controls className="rounded-xl max-w-full max-h-52" poster={msg.mediaThumbnail || undefined} />
           ) : (
             <div className="w-48 h-32 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
-              <FileText className="w-6 h-6 text-neutral-400" />
-              <span className="text-[10px] text-neutral-400">{mediaDownloadStatus === 'failed' ? 'Video no disponible' : 'Descargando...'}</span>
+              <FileText className="w-6 h-6 text-neutral-500" />
+              <span className="text-[11px] text-neutral-500">{mediaDownloadStatus === 'failed' ? 'Video no disponible' : 'Descargando...'}</span>
             </div>
           )}
           {(msg.body || mediaCaption) && <p className={cn('text-sm mt-1', textColor)}>{msg.body || mediaCaption}</p>}
@@ -195,7 +195,7 @@ function RichMessageBubble({
           ) : (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-700/50">
               <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-600 flex items-center justify-center">
-                <Paperclip className="w-4 h-4 text-neutral-400" />
+                <Paperclip className="w-4 h-4 text-neutral-500" />
               </div>
               <span className="text-[11px] text-neutral-500">
                 {type === 'voice_note' ? 'Nota de voz' : 'Audio'}
@@ -211,11 +211,11 @@ function RichMessageBubble({
         <div className="mb-1">
           <div className={cn('flex items-center gap-2.5 p-2.5 rounded-xl', innerBg)}>
             <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <FileText className="w-4 h-4 text-accent-ink dark:text-blue-400" />
             </div>
             <div className="flex-1 min-w-0">
               <p className={cn('text-xs font-medium truncate', textColor)}>{msg.mediaFilename || 'Documento'}</p>
-              <p className={cn('text-[10px]', dimColor)}>
+              <p className={cn('text-[11px]', dimColor)}>
                 {msg.raw && (msg.raw as any).media_file_size
                   ? `${((msg.raw as any).media_file_size / 1024).toFixed(0)} KB`
                   : msg.mediaMime || 'Archivo'}
@@ -241,7 +241,7 @@ function RichMessageBubble({
               </div>
               <div className="flex-1 min-w-0">
                 <p className={cn('text-xs font-medium', textColor)}>{String(metadata.name ?? msg.locationLabel ?? 'Ubicacion')}</p>
-                {metadata.address != null && <p className={cn('text-[10px] truncate', dimColor)}>{String(metadata.address)}</p>}
+                {metadata.address != null && <p className={cn('text-[11px] truncate', dimColor)}>{String(metadata.address)}</p>}
               </div>
             </div>
             {(msg.locationLat || metadata.latitude) && (
@@ -266,7 +266,7 @@ function RichMessageBubble({
             </div>
             <div className="flex-1 min-w-0">
               <p className={cn('text-xs font-medium', textColor)}>{(metadata.displayName as string) || msg.body || 'Contacto'}</p>
-              {metadata.phone && <p className={cn('text-[10px]', dimColor)}>{metadata.phone as string}</p>}
+              {metadata.phone && <p className={cn('text-[11px]', dimColor)}>{metadata.phone as string}</p>}
             </div>
           </div>
         </div>
@@ -284,12 +284,12 @@ function RichMessageBubble({
 
       {/* Footer: time + status + retry */}
       <div className={cn('flex items-center gap-1.5 mt-1', isOut ? 'justify-end' : 'justify-start')}>
-        <span className={cn('text-[10px]', isOut ? 'text-white/60' : 'text-neutral-400 dark:text-white/30')}>
+        <span className={cn('text-[11px]', isOut ? 'text-white/60' : 'text-neutral-500 dark:text-white/45')}>
           {new Date(msg.sentAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
         </span>
         {isOut && <StatusIcon status={msg.status} outbound />}
         {isOut && msg.status === 'failed' && onRetry && (
-          <button onClick={onRetry} className="text-[10px] font-medium text-red-300 hover:text-white bg-red-500/30 hover:bg-red-500/50 px-1.5 py-0.5 rounded transition-colors ml-1">
+          <button onClick={onRetry} className="text-[11px] font-medium text-red-300 hover:text-white bg-red-500/30 hover:bg-red-500/50 px-1.5 py-0.5 rounded transition-colors ml-1">
             Reintentar
           </button>
         )}
@@ -1054,19 +1054,19 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         {selectionMode ? (
           <div className="flex items-center gap-2 flex-1">
             <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{selectedIds.size} seleccionados</span>
-            <button onClick={openCreateTicket} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/90">
+            <button onClick={openCreateTicket} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-accent text-accent-foreground rounded-lg hover:bg-accent/90">
               <Plus className="w-3 h-3" /> Crear tramite
             </button>
-            <button onClick={openAddTicket} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-lg hover:bg-neutral-50">
+            <button onClick={openAddTicket} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-lg hover:bg-neutral-50">
               <ListTodo className="w-3 h-3" /> Agregar a tramite
             </button>
-            <button onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} className="ml-auto p-1.5 text-neutral-400 hover:text-neutral-600">
+            <button onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} className="ml-auto p-1.5 text-neutral-500 hover:text-neutral-600">
               <X className="w-4 h-4" />
             </button>
           </div>
         ) : (
           <>
-            <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent-ink flex-shrink-0">
               {name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -1074,13 +1074,13 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                 <p className="text-sm font-semibold text-neutral-800 dark:text-white truncate">{name}</p>
                 <ChannelBadge channel={conversation.channel} size="sm" />
                 {autoMode && (
-                  <span className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  <span className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800">
                     <Bot className="w-2.5 h-2.5" /> Auto activo
                   </span>
                 )}
               </div>
               {conversation.contactPhone && (
-                <p className="text-[11px] text-neutral-400">{formatMoviPhone(conversation.contactPhone)}</p>
+                <p className="text-[11px] text-neutral-500">{formatMoviPhone(conversation.contactPhone)}</p>
               )}
             </div>
 
@@ -1092,23 +1092,23 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
               </button>
               {/* Menu */}
               <div className="relative" ref={menuRef}>
-                <button onClick={() => setShowMenu(v => !v)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
+                <button onClick={() => setShowMenu(v => !v)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
                   <MoreVertical className="w-4 h-4" />
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-lg z-20 py-1 text-xs">
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-surface-card dark:bg-neutral-800 rounded-xl border border-soft dark:border-neutral-700 shadow-lg z-20 py-1 text-xs">
                     <button onClick={() => { setSelectionMode(true); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left">
-                      <CheckSquare className="w-3.5 h-3.5 text-neutral-400" /> Seleccionar mensajes
+                      <CheckSquare className="w-3.5 h-3.5 text-neutral-500" /> Seleccionar mensajes
                     </button>
                     <button onClick={() => { openCreateTicket(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left">
-                      <Plus className="w-3.5 h-3.5 text-accent" /> Crear tramite
+                      <Plus className="w-3.5 h-3.5 text-accent-ink" /> Crear tramite
                     </button>
                     <button onClick={() => { openAddTicket(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left">
-                      <ListTodo className="w-3.5 h-3.5 text-neutral-400" /> Agregar a tramite
+                      <ListTodo className="w-3.5 h-3.5 text-neutral-500" /> Agregar a tramite
                     </button>
                     {isWaPersonal && (
                       <button onClick={() => { syncHistory(); setShowMenu(false); }} disabled={syncingHistory} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left disabled:opacity-50">
-                        <RefreshCw className={cn('w-3.5 h-3.5 text-neutral-400', syncingHistory && 'animate-spin')} /> Sincronizar historial
+                        <RefreshCw className={cn('w-3.5 h-3.5 text-neutral-500', syncingHistory && 'animate-spin')} /> Sincronizar historial
                       </button>
                     )}
                   </div>
@@ -1127,7 +1127,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">{autoSession.assistant_name}</p>
-                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-800/40 text-emerald-600 dark:text-emerald-400 rounded-full font-medium">Auto activo</span>
+                <span className="text-[11px] px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-800/40 text-emerald-600 dark:text-emerald-400 rounded-full font-medium">Auto activo</span>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <div className="flex-1 h-1 bg-emerald-100 dark:bg-emerald-800/30 rounded-full overflow-hidden">
@@ -1136,12 +1136,12 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                     style={{ width: `${autoSession.total_fields > 0 ? (autoSession.captured_count / autoSession.total_fields) * 100 : 0}%` }}
                   />
                 </div>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex-shrink-0 tabular-nums">
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex-shrink-0 tabular-nums">
                   {autoSession.captured_count}/{autoSession.total_fields} campos
                 </span>
               </div>
             </div>
-            <button onClick={stopAutoMode} className="text-[10px] text-emerald-600 hover:text-emerald-800 font-medium flex-shrink-0 px-2 py-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
+            <button onClick={stopAutoMode} className="text-[11px] text-emerald-600 hover:text-emerald-800 font-medium flex-shrink-0 px-2 py-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
               Detener
             </button>
           </div>
@@ -1163,7 +1163,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
               <>
                 <WifiOff className="w-8 h-8 text-neutral-300" />
                 <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">Esta conversacion tiene actividad pero el historial aun no se ha sincronizado.</p>
-                <p className="text-xs text-neutral-400 max-w-xs">
+                <p className="text-xs text-neutral-500 max-w-xs">
                   Los mensajes se sincronizan automaticamente al conectar WhatsApp. Puedes forzar la sincronizacion ahora.
                 </p>
                 {syncResult && (
@@ -1174,14 +1174,14 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                 <button
                   onClick={syncHistory}
                   disabled={syncingHistory}
-                  className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/90 disabled:opacity-60 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:bg-accent/90 disabled:opacity-60 transition-colors"
                 >
                   {syncingHistory ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   {syncingHistory ? 'Sincronizando...' : 'Sincronizar historial'}
                 </button>
               </>
             ) : (
-              <p className="text-sm text-neutral-400">Sin mensajes todavia</p>
+              <p className="text-sm text-neutral-500">Sin mensajes todavia</p>
             )}
           </div>
         ) : messages.map((msg, i) => {
@@ -1230,7 +1230,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
               {/* Date separator */}
               {showDate && (
                 <div className="flex justify-center my-3">
-                  <span className="px-3 py-1 bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-500 dark:text-neutral-400 text-[10px] rounded-full">
+                  <span className="px-3 py-1 bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-500 dark:text-neutral-400 text-[11px] rounded-full">
                     {new Date(msg.sentAt).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </span>
                 </div>
@@ -1238,7 +1238,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
               {/* Time gap separator */}
               {showTimeSep && !showDate && (
                 <div className="flex justify-center my-2">
-                  <span className="text-[10px] text-neutral-300 dark:text-neutral-600">
+                  <span className="text-[11px] text-neutral-300 dark:text-neutral-600">
                     {new Date(msg.sentAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -1255,14 +1255,14 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                 {selectionMode && (
                   <div className="flex items-end pb-1 mr-2">
                     {isSelected
-                      ? <CheckSquare className="w-4 h-4 text-accent" />
+                      ? <CheckSquare className="w-4 h-4 text-accent-ink" />
                       : <Square className="w-4 h-4 text-neutral-300" />}
                   </div>
                 )}
                 {/* Inbound avatar placeholder — only show on last in group */}
                 {!isOut && (
                   <div className={cn('w-6 mr-1.5 flex items-end flex-shrink-0', sameAsNext ? 'invisible' : 'visible')}>
-                    <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-[9px] font-bold text-neutral-500 dark:text-neutral-400">
+                    <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-[10.5px] font-bold text-neutral-500 dark:text-neutral-400">
                       {(msg.senderName || '?').charAt(0).toUpperCase()}
                     </div>
                   </div>
@@ -1270,13 +1270,13 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                 <div className={cn('max-w-[72%]', isSelected && 'ring-2 ring-accent/40 rounded-2xl')}>
                   {/* Sender name — only on first message in group for inbound */}
                   {msg.senderName && !isOut && !sameAsPrev && (
-                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1 mb-0.5">{msg.senderName}</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-500 ml-1 mb-0.5">{msg.senderName}</p>
                   )}
                   <div className={cn(
                     'px-3 py-2 shadow-sm text-sm',
                     bubbleCorners,
                     isOut
-                      ? 'bg-accent text-white'
+                      ? 'bg-accent text-accent-foreground'
                       : 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 border border-neutral-100 dark:border-neutral-700'
                   )}>
                     <RichMessageBubble
@@ -1298,7 +1298,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       {showScrollBtn && (
         <button
           onClick={() => { scrollToBottom('smooth'); }}
-          className="absolute bottom-[72px] right-4 z-10 w-9 h-9 rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-md flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
+          className="absolute bottom-[72px] right-4 z-10 w-9 h-9 rounded-full bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 shadow-md flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
           title="Ir al ultimo mensaje"
         >
           <ChevronDown className="w-4 h-4" />
@@ -1328,10 +1328,10 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
             )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-neutral-700 dark:text-neutral-200 truncate">{pendingAttachment.file.name}</p>
-              <p className="text-[10px] text-neutral-400">{(pendingAttachment.file.size / 1024).toFixed(0)} KB</p>
-              {pendingAttachment.error && <p className="text-[10px] text-red-500">{pendingAttachment.error}</p>}
+              <p className="text-[11px] text-neutral-500">{(pendingAttachment.file.size / 1024).toFixed(0)} KB</p>
+              {pendingAttachment.error && <p className="text-[11px] text-red-500">{pendingAttachment.error}</p>}
             </div>
-            <button onClick={() => setPendingAttachment(null)} className="p-1 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 flex-shrink-0">
+            <button onClick={() => setPendingAttachment(null)} className="p-1 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 flex-shrink-0">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1339,14 +1339,14 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
         {/* Toolbar */}
         <div className="flex items-center gap-1 mb-2">
-          <button onClick={() => setShowEmoji(v => !v)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors" title="Emojis">
+          <button onClick={() => setShowEmoji(v => !v)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-600 transition-colors" title="Emojis">
             <Smile className="w-4 h-4" />
           </button>
           {/* WA Personal: file attachment button */}
           {isWaPersonal && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors text-[11px] font-medium"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-600 transition-colors text-[11px] font-medium"
               title="Adjuntar archivo"
             >
               <Paperclip className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Archivo</span>
@@ -1356,7 +1356,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
         {/* Emoji picker */}
         {showEmoji && (
-          <div className="absolute bottom-full left-3 mb-1 w-72 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl z-30 p-2">
+          <div className="absolute bottom-full left-3 mb-1 w-72 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-xl shadow-xl z-30 p-2">
             <div className="grid grid-cols-10 gap-0.5 max-h-28 overflow-y-auto">
               {EMOJIS.map(e => (
                 <button key={e} onClick={() => { setText(prev => prev + e); setShowEmoji(false); }} className="text-lg p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 leading-none">
@@ -1376,13 +1376,13 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
             onKeyDown={handleKeyDown}
             placeholder="Escribe un mensaje... (Enter para enviar)"
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-accent/40 placeholder:text-neutral-400 max-h-24 overflow-y-auto"
+            className="flex-1 resize-none rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-accent/40 placeholder:text-neutral-500 max-h-24 overflow-y-auto"
             style={{ minHeight: '42px' }}
           />
           <button
             onClick={pendingAttachment ? sendAttachment : sendMessage}
             disabled={(!text.trim() && !pendingAttachment) || sending}
-            className="p-2.5 bg-accent text-white rounded-xl hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+            className="p-2.5 bg-accent text-accent-foreground rounded-xl hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
           >
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
@@ -1396,7 +1396,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
             </button>
           </div>
         )}
-        <p className="text-[10px] text-neutral-400 mt-1 text-center">
+        <p className="text-[11px] text-neutral-500 mt-1 text-center">
           {CHANNEL_LABELS[conversation.channel]}
           {text.length > 450 && <span className="ml-2 text-amber-500">{text.length}/550</span>}
         </p>
@@ -1407,13 +1407,13 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         <Modal title="Plantillas de mensaje" onClose={() => setShowPlantillas(false)}>
           <input value={tmplSearch} onChange={e => setTmplSearch(e.target.value)} placeholder="Buscar plantilla..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 mb-3 focus:outline-none focus:ring-1 focus:ring-accent/40" />
           {tmplLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
-            : filteredTemplates.length === 0 ? <p className="text-xs text-neutral-400 text-center py-6">Sin plantillas disponibles</p>
+            : filteredTemplates.length === 0 ? <p className="text-xs text-neutral-500 text-center py-6">Sin plantillas disponibles</p>
             : <div className="space-y-2 max-h-80 overflow-y-auto">
                 {filteredTemplates.map(t => (
                   <button key={t.id} onClick={() => applyTemplate(t)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{t.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.category}</span>
+                      <span className="text-[11px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.category}</span>
                     </div>
                     <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">{t.content}</p>
                   </button>
@@ -1428,13 +1428,13 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         <Modal title="Formularios de cotizacion" onClose={() => setShowForms(false)}>
           <input value={formSearch} onChange={e => setFormSearch(e.target.value)} placeholder="Buscar formulario..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 mb-3 focus:outline-none focus:ring-1 focus:ring-accent/40" />
           {formLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
-            : filteredForms.length === 0 ? <p className="text-xs text-neutral-400 text-center py-6">Sin formularios</p>
+            : filteredForms.length === 0 ? <p className="text-xs text-neutral-500 text-center py-6">Sin formularios</p>
             : <div className="space-y-2 max-h-80 overflow-y-auto">
                 {filteredForms.map(f => (
                   <button key={f.id} onClick={() => sendFormLink(f)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{f.title}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{f.category}</span>
+                      <span className="text-[11px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{f.category}</span>
                     </div>
                   </button>
                 ))}
@@ -1463,18 +1463,18 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                 <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
               <p className="text-sm font-semibold text-green-700 dark:text-green-400 text-center">{addTicketSuccess}</p>
-              <p className="text-xs text-neutral-400">Cerrando...</p>
+              <p className="text-xs text-neutral-500">Cerrando...</p>
             </div>
           ) : (
             <>
               {/* Search */}
               <div className="relative mb-3">
-                <ClipboardList className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                <ClipboardList className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
                 <input
                   value={ticketSearch}
                   onChange={e => setTicketSearch(e.target.value)}
                   placeholder="Buscar por folio o descripción..."
-                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent/40 text-neutral-800 dark:text-white placeholder:text-neutral-400"
+                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent/40 text-neutral-800 dark:text-white placeholder:text-neutral-500"
                 />
               </div>
 
@@ -1518,7 +1518,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
               {/* Results count */}
               {!ticketLoading && (
-                <p className="text-[11px] text-neutral-400 dark:text-white/30 mb-2 px-0.5">
+                <p className="text-[11px] text-neutral-500 dark:text-white/45 mb-2 px-0.5">
                   {filteredTickets.length} trámite{filteredTickets.length !== 1 ? 's' : ''} encontrado{filteredTickets.length !== 1 ? 's' : ''}
                 </p>
               )}
@@ -1539,7 +1539,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
               ) : filteredTickets.length === 0 ? (
                 <div className="text-center py-8">
                   <ClipboardList className="w-8 h-8 text-neutral-200 dark:text-neutral-700 mx-auto mb-2" />
-                  <p className="text-xs text-neutral-400">Sin trámites que coincidan</p>
+                  <p className="text-xs text-neutral-500">Sin trámites que coincidan</p>
                 </div>
               ) : (
                 <div className="space-y-2 overflow-y-auto" style={{ maxHeight: '21rem' }}>
@@ -1552,8 +1552,8 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 bg-neutral-50 dark:bg-neutral-800/60">
                         <span className="text-xs font-bold text-neutral-800 dark:text-white tracking-wide">{t.folio}</span>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-neutral-500 dark:text-white/60 font-medium">{t.estatus_nombre}</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold">{t.tipo_tramite.replace(/_/g, ' ')}</span>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-surface-card dark:bg-neutral-700 border border-soft dark:border-neutral-600 text-neutral-500 dark:text-white/60 font-medium">{t.estatus_nombre}</span>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-accent/10 text-accent-ink font-semibold">{t.tipo_tramite.replace(/_/g, ' ')}</span>
                         </div>
                       </div>
                       {/* Card body */}
@@ -1561,13 +1561,13 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                         {(t.agente || t.responsable) && (
                           <div className="flex items-center gap-3 mb-1.5">
                             {t.agente && (
-                              <span className="flex items-center gap-1 text-[10px] text-neutral-500 dark:text-white/40">
+                              <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/55">
                                 <User className="w-3 h-3" />
                                 {t.agente.nombre_completo}
                               </span>
                             )}
                             {t.responsable && (
-                              <span className="flex items-center gap-1 text-[10px] text-neutral-400 dark:text-white/30">
+                              <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/45">
                                 <CheckSquare className="w-3 h-3" />
                                 {t.responsable.nombre_completo}
                               </span>
@@ -1578,7 +1578,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                         <button
                           onClick={() => addToTicket(t.id)}
                           disabled={!!addingToTicket}
-                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-white text-xs font-semibold transition-all disabled:opacity-60"
+                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-semibold transition-all disabled:opacity-60"
                         >
                           {addingToTicket === t.id
                             ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Agregando...</>
@@ -1603,8 +1603,8 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
             : userWaTemplates.filter(t => !waTemplateSearch || t.name.toLowerCase().includes(waTemplateSearch.toLowerCase()) || t.body.toLowerCase().includes(waTemplateSearch.toLowerCase())).length === 0
             ? (
               <div className="text-center py-6">
-                <p className="text-xs text-neutral-400">Sin plantillas personales</p>
-                <p className="text-[10px] text-neutral-300 mt-1">Crea plantillas en Mi WhatsApp</p>
+                <p className="text-xs text-neutral-500">Sin plantillas personales</p>
+                <p className="text-[11px] text-neutral-300 mt-1">Crea plantillas en Mi WhatsApp</p>
               </div>
             )
             : <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -1617,7 +1617,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                         {t.is_favorite && <Star className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
                         <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{t.name}</span>
                       </div>
-                      {t.category && <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.category}</span>}
+                      {t.category && <span className="text-[11px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.category}</span>}
                     </div>
                     <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">{t.body}</p>
                   </button>
@@ -1653,7 +1653,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
         <Modal title="Asistentes IA" onClose={() => setShowAssistants(false)}>
           <p className="text-xs text-neutral-500 mb-3">Selecciona un asistente para activar el modo automatico en esta conversacion.</p>
           {autoLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
-            : assistants.length === 0 ? <p className="text-xs text-neutral-400 text-center py-6">Sin asistentes configurados</p>
+            : assistants.length === 0 ? <p className="text-xs text-neutral-500 text-center py-6">Sin asistentes configurados</p>
             : <div className="space-y-2 max-h-72 overflow-y-auto">
                 {assistants.map(a => (
                   <button key={a.id} onClick={() => startAutoMode(a.id)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all">
@@ -1677,11 +1677,11 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 // ── Reusable modal wrapper ────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md mx-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md mx-4 bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 border border-soft dark:border-neutral-700 overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
           <h3 className="text-sm font-bold text-neutral-800 dark:text-white">{title}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>

@@ -828,8 +828,8 @@ export default function MiWhatsApp() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'read': return <CheckCheck className="w-3.5 h-3.5 text-blue-500" />;
-      case 'delivered': return <CheckCheck className="w-3.5 h-3.5 text-neutral-400" />;
-      case 'sent': return <Check className="w-3.5 h-3.5 text-neutral-400" />;
+      case 'delivered': return <CheckCheck className="w-3.5 h-3.5 text-neutral-500" />;
+      case 'sent': return <Check className="w-3.5 h-3.5 text-neutral-500" />;
       case 'failed': return <AlertCircle className="w-3.5 h-3.5 text-red-500" />;
       default: return <Clock className="w-3.5 h-3.5 text-neutral-300" />;
     }
@@ -876,7 +876,7 @@ export default function MiWhatsApp() {
               className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
                 activeView === tab.key
                   ? 'bg-emerald-600 text-white'
-                  : 'text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5')}>
+                  : 'text-neutral-500 dark:text-white/55 hover:bg-neutral-100 dark:hover:bg-white/5')}>
               <tab.icon className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{tab.label}</span>
             </button>
@@ -888,7 +888,7 @@ export default function MiWhatsApp() {
           {activeView === 'inbox' && selectedConversation && (
             <button onClick={() => setShowContactPanel(v => !v)}
               className={cn('p-1.5 rounded-lg transition-colors text-xs flex items-center gap-1',
-                showContactPanel ? 'bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-white/60' : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/5')}>
+                showContactPanel ? 'bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-white/60' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-white/5')}>
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span className="hidden sm:inline text-[11px]">Info</span>
             </button>
@@ -908,9 +908,9 @@ export default function MiWhatsApp() {
                 <div className="rounded-xl border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-xs font-bold text-blue-800 dark:text-blue-200">Resultado del Diagnostico</h4>
-                    <button onClick={() => setDiagResult(null)} className="text-blue-400 hover:text-blue-600"><X className="w-4 h-4" /></button>
+                    <button onClick={() => setDiagResult(null)} className="text-blue-400 hover:text-accent-ink"><X className="w-4 h-4" /></button>
                   </div>
-                  <pre className="text-[10px] leading-relaxed text-blue-900 dark:text-blue-100 font-mono whitespace-pre-wrap break-all max-h-80 overflow-y-auto">{JSON.stringify(diagResult, null, 2)}</pre>
+                  <pre className="text-[11px] leading-relaxed text-blue-900 dark:text-blue-100 font-mono whitespace-pre-wrap break-all max-h-80 overflow-y-auto">{JSON.stringify(diagResult, null, 2)}</pre>
                 </div>
               </div>
             )}
@@ -935,13 +935,13 @@ export default function MiWhatsApp() {
               {/* Search */}
               <div className="px-3 pt-3 pb-2 flex-shrink-0">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Buscar..."
-                    className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-white/5 text-xs placeholder:text-neutral-400 dark:text-white/80 focus:outline-none focus:ring-1 focus:ring-emerald-400/40 border-0 transition-all"
+                    className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-white/5 text-xs placeholder:text-neutral-500 dark:text-white/80 focus:outline-none focus:ring-1 focus:ring-emerald-400/40 border-0 transition-all"
                   />
                 </div>
               </div>
@@ -960,12 +960,12 @@ export default function MiWhatsApp() {
                       'flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all',
                       activeFilter === f.key
                         ? 'bg-emerald-600 text-white'
-                        : 'text-neutral-500 dark:text-white/40 hover:bg-neutral-100 dark:hover:bg-white/5'
+                        : 'text-neutral-500 dark:text-white/55 hover:bg-neutral-100 dark:hover:bg-white/5'
                     )}
                   >
                     {f.label}
                     {'count' in f && f.count > 0 && (
-                      <span className={cn('text-[10px] font-bold', activeFilter === f.key ? 'text-white/80' : 'text-neutral-400')}>
+                      <span className={cn('text-[11px] font-bold', activeFilter === f.key ? 'text-white/80' : 'text-neutral-500')}>
                         {f.count}
                       </span>
                     )}
@@ -984,7 +984,7 @@ export default function MiWhatsApp() {
                 ) : filteredConversations.length === 0 ? (
                   <div className="p-6 text-center">
                     <MessageSquare className="w-8 h-8 text-neutral-200 dark:text-white/10 mx-auto mb-2" />
-                    <p className="text-xs text-neutral-400 dark:text-white/30">{searchQuery ? 'Sin resultados' : 'Sin conversaciones'}</p>
+                    <p className="text-xs text-neutral-500 dark:text-white/45">{searchQuery ? 'Sin resultados' : 'Sin conversaciones'}</p>
                   </div>
                 ) : (
                   filteredConversations.map(conv => {
@@ -1012,7 +1012,7 @@ export default function MiWhatsApp() {
                             }
                           </div>
                           {conv.is_group && (
-                            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center">
+                            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-accent rounded-full flex items-center justify-center">
                               <Users className="w-2 h-2 text-white" />
                             </span>
                           )}
@@ -1024,16 +1024,16 @@ export default function MiWhatsApp() {
                             <span className={cn('text-[12.5px] truncate', conv.unread_count > 0 ? 'font-semibold text-neutral-900 dark:text-white' : 'font-medium text-neutral-700 dark:text-white/80')}>
                               {name}
                             </span>
-                            <span className="text-[10px] text-neutral-400 dark:text-white/30 flex-shrink-0">
+                            <span className="text-[11px] text-neutral-500 dark:text-white/45 flex-shrink-0">
                               {formatTime(conv.last_message_at)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-1 mt-0.5">
-                            <span className="text-[11px] text-neutral-400 dark:text-white/35 truncate leading-tight">
+                            <span className="text-[11px] text-neutral-500 dark:text-white/50 truncate leading-tight">
                               {conv.last_message_text || 'Sin mensajes'}
                             </span>
                             {conv.unread_count > 0 && (
-                              <span className="flex-shrink-0 min-w-[18px] h-[18px] bg-emerald-500 text-white rounded-full flex items-center justify-center text-[9px] font-bold px-1">
+                              <span className="flex-shrink-0 min-w-[18px] h-[18px] bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10.5px] font-bold px-1">
                                 {conv.unread_count > 99 ? '99+' : conv.unread_count}
                               </span>
                             )}
@@ -1066,8 +1066,8 @@ export default function MiWhatsApp() {
                     <MessageCircle className="w-7 h-7 text-emerald-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-neutral-500 dark:text-white/40">Selecciona una conversacion</p>
-                    <p className="text-[11px] text-neutral-400 dark:text-white/25 mt-0.5">
+                    <p className="text-sm font-semibold text-neutral-500 dark:text-white/55">Selecciona una conversacion</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-white/25 mt-0.5">
                       {totalUnread > 0 ? `${totalUnread} mensajes sin leer` : 'Tus conversaciones aparecen a la izquierda'}
                     </p>
                   </div>
@@ -1098,29 +1098,29 @@ export default function MiWhatsApp() {
                         <h3 className="text-[13px] font-semibold text-neutral-900 dark:text-white leading-tight truncate">
                           {resolveContactName(selectedConversation)}
                         </h3>
-                        <p className="text-[10px] text-neutral-400 dark:text-white/30 truncate">
+                        <p className="text-[11px] text-neutral-500 dark:text-white/45 truncate">
                           {selectedConversation.remote_phone}
-                          {contactNames[selectedConversation.remote_phone]?.is_business && <span className="ml-1.5 text-[8px] px-1 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded font-medium">Empresa</span>}
+                          {contactNames[selectedConversation.remote_phone]?.is_business && <span className="ml-1.5 text-[10px] px-1 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded font-medium">Empresa</span>}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        {selectedConversation.crm_contact_id && <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded font-medium">CRM</span>}
+                        {selectedConversation.crm_contact_id && <span className="text-[10.5px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded font-medium">CRM</span>}
                         {selectionMode && selectedMessages.size > 0 && (
-                          <button onClick={() => setShowCreateTramite(true)} className="flex items-center gap-1 px-2 py-1 bg-emerald-600 text-white rounded-lg text-[10px] font-medium hover:bg-emerald-700 transition-colors">
+                          <button onClick={() => setShowCreateTramite(true)} className="flex items-center gap-1 px-2 py-1 bg-emerald-600 text-white rounded-lg text-[11px] font-medium hover:bg-emerald-700 transition-colors">
                             <ClipboardList className="w-3 h-3" />
                             Tramite ({selectedMessages.size})
                           </button>
                         )}
                         <button
                           onClick={() => { setSelectionMode(!selectionMode); setSelectedMessages(new Set()); }}
-                          className={cn('p-1.5 rounded-lg transition-colors', selectionMode ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')}
+                          className={cn('p-1.5 rounded-lg transition-colors', selectionMode ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500')}
                         >
                           <CheckSquare className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setShowContactPanel(v => !v)}
-                          className={cn('p-1.5 rounded-lg transition-colors hidden sm:flex items-center', showContactPanel ? 'bg-neutral-100 dark:bg-white/5 text-neutral-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')}
+                          className={cn('p-1.5 rounded-lg transition-colors hidden sm:flex items-center', showContactPanel ? 'bg-neutral-100 dark:bg-white/5 text-neutral-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500')}
                         >
                           <SlidersHorizontal className="w-3.5 h-3.5" />
                         </button>
@@ -1144,7 +1144,7 @@ export default function MiWhatsApp() {
                       {hasMoreMessages && (
                         <div className="text-center mb-2">
                           <button onClick={handleLoadMore} disabled={loadingMore}
-                            className="text-[11px] px-3 py-1 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-white/50 rounded-full border border-neutral-200 dark:border-neutral-700 transition-colors shadow-sm disabled:opacity-50">
+                            className="text-[11px] px-3 py-1 bg-surface-card dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-500 dark:text-white/50 rounded-full border border-soft dark:border-neutral-700 transition-colors shadow-card disabled:opacity-50">
                             {loadingMore ? 'Cargando...' : 'Ver mensajes anteriores'}
                           </button>
                         </div>
@@ -1152,7 +1152,7 @@ export default function MiWhatsApp() {
 
                       {messages.length === 0 && (
                         <div className="text-center py-8">
-                          <p className="text-[11px] text-neutral-400 dark:text-white/25">Sin mensajes</p>
+                          <p className="text-[11px] text-neutral-500 dark:text-white/25">Sin mensajes</p>
                         </div>
                       )}
 
@@ -1178,7 +1178,7 @@ export default function MiWhatsApp() {
                             <React.Fragment key={msg.id}>
                               {showTimeSep && (
                                 <div className="flex items-center justify-center py-2">
-                                  <span className="text-[10px] text-neutral-400 dark:text-white/25 bg-white dark:bg-neutral-800/80 px-2 py-0.5 rounded-full border border-neutral-200/60 dark:border-white/10 shadow-sm">
+                                  <span className="text-[11px] text-neutral-500 dark:text-white/25 bg-surface-card dark:bg-neutral-800/80 px-2 py-0.5 rounded-full border border-neutral-200/60 dark:border-white/10 shadow-card">
                                     {new Date(msg.message_timestamp || msg.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                   </span>
                                 </div>
@@ -1200,7 +1200,7 @@ export default function MiWhatsApp() {
                                 {/* Inbound avatar: only on last in group */}
                                 {!isOut && (
                                   <div className={cn('w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center', isSameSenderAsNext ? 'invisible' : 'bg-emerald-100 dark:bg-emerald-900/30')}>
-                                    {!isSameSenderAsNext && <span className="text-[8px] font-bold text-emerald-700 dark:text-emerald-300">{resolveContactName(selectedConversation).charAt(0).toUpperCase()}</span>}
+                                    {!isSameSenderAsNext && <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">{resolveContactName(selectedConversation).charAt(0).toUpperCase()}</span>}
                                   </div>
                                 )}
 
@@ -1217,7 +1217,7 @@ export default function MiWhatsApp() {
                                 )} onClick={() => { if (selectionMode) handleToggleSelection(msg.id); }}>
 
                                   {msg.is_internal_note && (
-                                    <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Nota interna</span>
+                                    <span className="text-[10.5px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Nota interna</span>
                                   )}
 
                                   {/* ── Media types ── */}
@@ -1228,8 +1228,8 @@ export default function MiWhatsApp() {
                                           onClick={(e) => { e.stopPropagation(); setMediaPreview({ url: msg.media_url!, type: 'image' }); }} />
                                       ) : (
                                         <div className="w-40 h-28 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
-                                          <ImageIcon className="w-5 h-5 text-neutral-400 animate-pulse" />
-                                          <span className="text-[9px] text-neutral-400">{msg.media_download_status === 'failed' ? 'No disponible' : 'Descargando...'}</span>
+                                          <ImageIcon className="w-5 h-5 text-neutral-500 animate-pulse" />
+                                          <span className="text-[10.5px] text-neutral-500">{msg.media_download_status === 'failed' ? 'No disponible' : 'Descargando...'}</span>
                                         </div>
                                       )}
                                       {msg.media_caption && <p className={cn('text-xs mt-1', isOut ? 'text-white' : 'text-neutral-700 dark:text-white/80')}>{msg.media_caption}</p>}
@@ -1244,8 +1244,8 @@ export default function MiWhatsApp() {
                                         <video src={msg.media_url} controls className="rounded-xl max-w-full max-h-44" />
                                       ) : (
                                         <div className="w-40 h-28 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
-                                          <FileText className="w-5 h-5 text-neutral-400" />
-                                          <span className="text-[9px] text-neutral-400">{msg.media_download_status === 'failed' ? 'No disponible' : 'Descargando...'}</span>
+                                          <FileText className="w-5 h-5 text-neutral-500" />
+                                          <span className="text-[10.5px] text-neutral-500">{msg.media_download_status === 'failed' ? 'No disponible' : 'Descargando...'}</span>
                                         </div>
                                       )}
                                     </div>
@@ -1254,18 +1254,18 @@ export default function MiWhatsApp() {
                                     <div className="mb-1">
                                       {msg.media_url
                                         ? <audio src={msg.media_url} controls className="max-w-[200px] h-8" />
-                                        : <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-700/50"><Paperclip className="w-3.5 h-3.5 text-neutral-400" /><span className="text-[10px] text-neutral-500">{msg.message_type === 'voice_note' ? 'Nota de voz' : 'Audio'}</span></div>
+                                        : <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-700/50"><Paperclip className="w-3.5 h-3.5 text-neutral-500" /><span className="text-[11px] text-neutral-500">{msg.message_type === 'voice_note' ? 'Nota de voz' : 'Audio'}</span></div>
                                       }
                                     </div>
                                   )}
                                   {msg.message_type === 'document' && (
                                     <div className={cn('flex items-center gap-2 p-2 rounded-xl mb-1', isOut ? 'bg-emerald-700/40' : 'bg-neutral-50 dark:bg-neutral-700/50')}>
                                       <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                        <FileText className="w-3.5 h-3.5 text-accent-ink" />
                                       </div>
                                       <div className="flex-1 min-w-0">
                                         <p className={cn('text-xs font-medium truncate', isOut ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{msg.media_filename || 'Documento'}</p>
-                                        <p className={cn('text-[9px]', isOut ? 'text-white/60' : 'text-neutral-400')}>{msg.media_file_size ? `${(msg.media_file_size / 1024).toFixed(0)} KB` : msg.media_mime_type || 'Archivo'}</p>
+                                        <p className={cn('text-[10.5px]', isOut ? 'text-white/60' : 'text-neutral-500')}>{msg.media_file_size ? `${(msg.media_file_size / 1024).toFixed(0)} KB` : msg.media_mime_type || 'Archivo'}</p>
                                       </div>
                                       {msg.media_url && (
                                         <a href={msg.media_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
@@ -1280,11 +1280,11 @@ export default function MiWhatsApp() {
                                       <span className="text-base">📍</span>
                                       <div className="flex-1 min-w-0">
                                         <p className={cn('text-xs font-medium', isOut ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{(msg.metadata?.name as string) || 'Ubicacion'}</p>
-                                        {msg.metadata?.address && <p className={cn('text-[9px] truncate', isOut ? 'text-white/60' : 'text-neutral-400')}>{msg.metadata.address as string}</p>}
+                                        {msg.metadata?.address && <p className={cn('text-[10.5px] truncate', isOut ? 'text-white/60' : 'text-neutral-500')}>{msg.metadata.address as string}</p>}
                                       </div>
                                       {msg.metadata?.latitude && (
                                         <a href={`https://maps.google.com/?q=${msg.metadata.latitude},${msg.metadata.longitude}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                                          className={cn('text-[9px] font-medium px-1.5 py-0.5 rounded transition-colors', isOut ? 'bg-white/10 text-white' : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-700')}>
+                                          className={cn('text-[10.5px] font-medium px-1.5 py-0.5 rounded transition-colors', isOut ? 'bg-white/10 text-white' : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-700')}>
                                           Maps
                                         </a>
                                       )}
@@ -1297,7 +1297,7 @@ export default function MiWhatsApp() {
                                       </div>
                                       <div>
                                         <p className={cn('text-xs font-medium', isOut ? 'text-white' : 'text-neutral-800 dark:text-white/80')}>{(msg.metadata?.displayName as string) || msg.content || 'Contacto'}</p>
-                                        {msg.metadata?.phone && <p className={cn('text-[9px]', isOut ? 'text-white/60' : 'text-neutral-400')}>{msg.metadata.phone as string}</p>}
+                                        {msg.metadata?.phone && <p className={cn('text-[10.5px]', isOut ? 'text-white/60' : 'text-neutral-500')}>{msg.metadata.phone as string}</p>}
                                       </div>
                                     </div>
                                   )}
@@ -1309,19 +1309,19 @@ export default function MiWhatsApp() {
                                     </p>
                                   )}
                                   {msg.message_type === 'unknown' && (
-                                    <p className={cn('text-[11px] italic', isOut ? 'text-white/60' : 'text-neutral-400')}>Mensaje no soportado</p>
+                                    <p className={cn('text-[11px] italic', isOut ? 'text-white/60' : 'text-neutral-500')}>Mensaje no soportado</p>
                                   )}
 
                                   {/* Timestamp & status — only on last in group or different sender next */}
                                   {(!isSameSenderAsNext || !!(msg.status === 'failed')) && (
                                     <div className={cn('flex items-center gap-1 mt-0.5', isOut ? 'justify-end' : 'justify-start')}>
-                                      <span className={cn('text-[10px]', isOut && !msg.is_internal_note ? 'text-white/55' : 'text-neutral-400 dark:text-white/25')}>
+                                      <span className={cn('text-[11px]', isOut && !msg.is_internal_note ? 'text-white/55' : 'text-neutral-500 dark:text-white/25')}>
                                         {new Date(msg.message_timestamp || msg.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                                       </span>
                                       {isOut && !msg.is_internal_note && getStatusIcon(msg.status)}
                                       {isOut && msg.status === 'failed' && (
                                         <button onClick={(e) => { e.stopPropagation(); handleRetryMessage(msg); }}
-                                          className="text-[9px] font-medium text-red-300 hover:text-white bg-red-500/30 hover:bg-red-500/50 px-1.5 py-0.5 rounded transition-colors">
+                                          className="text-[10.5px] font-medium text-red-300 hover:text-white bg-red-500/30 hover:bg-red-500/50 px-1.5 py-0.5 rounded transition-colors">
                                           Reintentar
                                         </button>
                                       )}
@@ -1337,7 +1337,7 @@ export default function MiWhatsApp() {
 
                       {/* Context menu */}
                       {contextMenuMsg && (
-                        <div className="context-menu-container fixed z-50 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl py-1 min-w-[150px]"
+                        <div className="context-menu-container fixed z-50 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-xl shadow-xl py-1 min-w-[150px]"
                           style={{ left: contextMenuMsg.x, top: contextMenuMsg.y }}>
                           <button onClick={() => { navigator.clipboard.writeText(messages.find(m => m.id === contextMenuMsg.id)?.content || ''); setContextMenuMsg(null); }}
                             className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white/70"><Copy className="w-3 h-3" /> Copiar</button>
@@ -1355,11 +1355,11 @@ export default function MiWhatsApp() {
                         <div className="flex items-center gap-2.5 p-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
                           {pendingAttachment.preview
                             ? <img src={pendingAttachment.preview} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
-                            : <div className="w-12 h-12 rounded-lg bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center flex-shrink-0"><File className="w-5 h-5 text-neutral-400" /></div>
+                            : <div className="w-12 h-12 rounded-lg bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center flex-shrink-0"><File className="w-5 h-5 text-neutral-500" /></div>
                           }
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-neutral-800 dark:text-white truncate">{pendingAttachment.file.name}</p>
-                            <p className="text-[10px] text-neutral-400">{formatFileSize(pendingAttachment.file.size)}</p>
+                            <p className="text-[11px] text-neutral-500">{formatFileSize(pendingAttachment.file.size)}</p>
                           </div>
                           <button onClick={() => setPendingAttachment(null)} className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-lg"><X className="w-3.5 h-3.5 text-neutral-500" /></button>
                           <button onClick={handleSendAttachment} disabled={pendingAttachment.uploading} className="p-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg">
@@ -1384,7 +1384,7 @@ export default function MiWhatsApp() {
                         {/* Emoji */}
                         <div className="relative emoji-picker-container flex-shrink-0">
                           <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowTemplatesDropdown(false); setShowFormularios(false); }}
-                            className={cn('p-2 rounded-xl transition-colors', showEmojiPicker ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')}>
+                            className={cn('p-2 rounded-xl transition-colors', showEmojiPicker ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500')}>
                             <Smile className="w-4.5 h-4.5" />
                           </button>
                           {showEmojiPicker && <EmojiPicker onSelect={handleInsertEmoji} />}
@@ -1392,7 +1392,7 @@ export default function MiWhatsApp() {
 
                         {/* Attach */}
                         <div className="relative flex-shrink-0">
-                          <button onClick={() => fileInputRef.current?.click()} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors text-neutral-400">
+                          <button onClick={() => fileInputRef.current?.click()} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors text-neutral-500">
                             <Paperclip className="w-4.5 h-4.5" />
                           </button>
                           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" />
@@ -1401,17 +1401,17 @@ export default function MiWhatsApp() {
                         {/* Templates */}
                         <div className="relative templates-dropdown-container flex-shrink-0">
                           <button onClick={() => { setShowTemplatesDropdown(!showTemplatesDropdown); setShowEmojiPicker(false); setShowFormularios(false); }}
-                            className={cn('p-2 rounded-xl transition-colors', showTemplatesDropdown ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')}
+                            className={cn('p-2 rounded-xl transition-colors', showTemplatesDropdown ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500')}
                             title="Plantillas">
                             <Zap className="w-4.5 h-4.5" />
                           </button>
                           {showTemplatesDropdown && (
-                            <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50">
+                            <div className="absolute bottom-full left-0 mb-2 w-72 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50">
                               <div className="px-3 py-2 border-b border-neutral-100 dark:border-neutral-700">
-                                <p className="text-[10px] font-bold text-neutral-500 dark:text-white/40 uppercase tracking-wider">Plantillas</p>
+                                <p className="text-[11px] font-bold text-neutral-500 dark:text-white/55 uppercase tracking-wider">Plantillas</p>
                               </div>
                               {templates.length === 0
-                                ? <div className="p-4 text-center"><p className="text-xs text-neutral-400">Sin plantillas</p><button onClick={() => { setActiveView('templates'); setShowTemplatesDropdown(false); }} className="text-xs text-emerald-600 mt-1">Crear</button></div>
+                                ? <div className="p-4 text-center"><p className="text-xs text-neutral-500">Sin plantillas</p><button onClick={() => { setActiveView('templates'); setShowTemplatesDropdown(false); }} className="text-xs text-emerald-600 mt-1">Crear</button></div>
                                 : templates.map(tpl => (
                                   <button key={tpl.id} onClick={() => handleUseTemplate(tpl)}
                                     className="w-full text-left px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors border-b border-neutral-50/80 dark:border-neutral-700/50 last:border-0">
@@ -1419,7 +1419,7 @@ export default function MiWhatsApp() {
                                       {tpl.is_favorite && <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500 flex-shrink-0" />}
                                       <span className="text-xs font-medium text-neutral-700 dark:text-white/70 truncate">{tpl.name}</span>
                                     </div>
-                                    <p className="text-[10px] text-neutral-400 truncate mt-0.5">{tpl.body}</p>
+                                    <p className="text-[11px] text-neutral-500 truncate mt-0.5">{tpl.body}</p>
                                   </button>
                                 ))
                               }
@@ -1430,23 +1430,23 @@ export default function MiWhatsApp() {
                         {/* Formularios */}
                         <div className="relative formularios-container flex-shrink-0 hidden sm:block">
                           <button onClick={() => { setShowFormularios(!showFormularios); setShowEmojiPicker(false); setShowTemplatesDropdown(false); }}
-                            className={cn('p-2 rounded-xl transition-colors', showFormularios ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400')} title="Formularios">
+                            className={cn('p-2 rounded-xl transition-colors', showFormularios ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500')} title="Formularios">
                             <ExternalLink className="w-4.5 h-4.5" />
                           </button>
                           {showFormularios && (
-                            <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl max-h-64 overflow-y-auto z-50">
+                            <div className="absolute bottom-full left-0 mb-2 w-72 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-xl shadow-xl max-h-64 overflow-y-auto z-50">
                               <div className="px-3 py-2 border-b border-neutral-100 dark:border-neutral-700">
                                 <p className="text-xs font-bold text-neutral-800 dark:text-white">Enviar formulario</p>
                               </div>
                               {formTemplates.length === 0
-                                ? <div className="p-4 text-center"><p className="text-xs text-neutral-400">Sin formularios</p></div>
+                                ? <div className="p-4 text-center"><p className="text-xs text-neutral-500">Sin formularios</p></div>
                                 : formTemplates.map(form => (
                                   <button key={form.id} onClick={() => handleSendFormLink(form)} className="w-full text-left px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors border-b border-neutral-50/80 dark:border-neutral-700/50 last:border-0">
                                     <div className="flex items-center gap-2">
                                       <FileText className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                                       <div className="flex-1 min-w-0">
                                         <p className="text-xs font-medium text-neutral-700 dark:text-white/70 truncate">{form.form_title}</p>
-                                        <p className="text-[10px] text-neutral-400 truncate">{form.form_type.replace(/_/g, ' ')}</p>
+                                        <p className="text-[11px] text-neutral-500 truncate">{form.form_type.replace(/_/g, ' ')}</p>
                                       </div>
                                     </div>
                                   </button>
@@ -1463,7 +1463,7 @@ export default function MiWhatsApp() {
                               <Bot className="w-4.5 h-4.5" />
                             </button>
                           ) : (
-                            <button onClick={openAssistants} disabled={autoLoading} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400 transition-colors" title="IA">
+                            <button onClick={openAssistants} disabled={autoLoading} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-500 transition-colors" title="IA">
                               {autoLoading ? <RefreshCw className="w-4.5 h-4.5 animate-spin" /> : <Bot className="w-4.5 h-4.5" />}
                             </button>
                           )}
@@ -1471,7 +1471,7 @@ export default function MiWhatsApp() {
 
                         {/* Create tramite */}
                         <div className="flex-shrink-0 hidden sm:block">
-                          <button onClick={handleDirectCreateTramite} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors text-neutral-400" title="Crear tramite">
+                          <button onClick={handleDirectCreateTramite} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors text-neutral-500" title="Crear tramite">
                             <Plus className="w-4.5 h-4.5" />
                           </button>
                         </div>
@@ -1486,7 +1486,7 @@ export default function MiWhatsApp() {
                             placeholder={autoMode ? 'IA activa — escribe para intervenir...' : 'Escribe un mensaje...'}
                             rows={1}
                             className={cn(
-                              'w-full px-3 py-2 rounded-xl bg-neutral-100 dark:bg-white/5 border text-[13px] placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-emerald-400/40 resize-none transition-all',
+                              'w-full px-3 py-2 rounded-xl bg-neutral-100 dark:bg-white/5 border text-[13px] placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-emerald-400/40 resize-none transition-all',
                               autoMode ? 'border-emerald-300/60 dark:border-emerald-600/30' : 'border-transparent focus:border-emerald-300/40 dark:border-white/5'
                             )}
                           />
@@ -1515,33 +1515,33 @@ export default function MiWhatsApp() {
                           </div>
                           <div>
                             <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight">{resolveContactName(selectedConversation)}</h4>
-                            <p className="text-[11px] text-neutral-400 dark:text-white/30 mt-0.5">{selectedConversation.remote_phone}</p>
+                            <p className="text-[11px] text-neutral-500 dark:text-white/45 mt-0.5">{selectedConversation.remote_phone}</p>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            {selectedConversation.crm_contact_id && <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded font-semibold">CRM</span>}
-                            {selectedConversation.is_group && <span className="text-[9px] px-1.5 py-0.5 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded font-semibold">Grupo</span>}
-                            {contactNames[selectedConversation.remote_phone]?.is_business && <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded font-semibold">Empresa</span>}
+                            {selectedConversation.crm_contact_id && <span className="text-[10.5px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded font-semibold">CRM</span>}
+                            {selectedConversation.is_group && <span className="text-[10.5px] px-1.5 py-0.5 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded font-semibold">Grupo</span>}
+                            {contactNames[selectedConversation.remote_phone]?.is_business && <span className="text-[10.5px] px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded font-semibold">Empresa</span>}
                           </div>
                         </div>
                       </div>
 
                       {/* Contact details */}
                       <div className="px-3 py-3 border-b border-neutral-100 dark:border-neutral-800/80 space-y-2 flex-shrink-0">
-                        <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider">Contacto</p>
+                        <p className="text-[11px] font-bold text-neutral-500 dark:text-white/45 uppercase tracking-wider">Contacto</p>
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2">
-                            <Phone className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                            <Phone className="w-3 h-3 text-neutral-500 flex-shrink-0" />
                             <span className="text-[11px] text-neutral-600 dark:text-white/60 truncate">{selectedConversation.remote_phone}</span>
                           </div>
                           {selectedConversation.remote_name && selectedConversation.remote_name !== selectedConversation.remote_phone && (
                             <div className="flex items-center gap-2">
-                              <User className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                              <User className="w-3 h-3 text-neutral-500 flex-shrink-0" />
                               <span className="text-[11px] text-neutral-600 dark:text-white/60 truncate">{selectedConversation.remote_name}</span>
                             </div>
                           )}
                           {selectedConversation.is_group && selectedConversation.group_name && (
                             <div className="flex items-center gap-2">
-                              <Users className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                              <Users className="w-3 h-3 text-neutral-500 flex-shrink-0" />
                               <span className="text-[11px] text-neutral-600 dark:text-white/60 truncate">{selectedConversation.group_name}</span>
                             </div>
                           )}
@@ -1550,23 +1550,23 @@ export default function MiWhatsApp() {
 
                       {/* CRM */}
                       <div className="px-3 py-3 border-b border-neutral-100 dark:border-neutral-800/80 flex-shrink-0">
-                        <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider mb-2">CRM</p>
+                        <p className="text-[11px] font-bold text-neutral-500 dark:text-white/45 uppercase tracking-wider mb-2">CRM</p>
                         {selectedConversation.crm_contact_id ? (
-                          <a href={`/crm/contacto/${selectedConversation.crm_contact_id}`} className="flex items-center gap-1.5 text-[11px] text-blue-600 dark:text-blue-400 hover:underline">
+                          <a href={`/crm/contacto/${selectedConversation.crm_contact_id}`} className="flex items-center gap-1.5 text-[11px] text-accent-ink dark:text-blue-400 hover:underline">
                             <ExternalLink className="w-3 h-3" /> Ver perfil CRM
                           </a>
                         ) : (
-                          <p className="text-[11px] text-neutral-400 dark:text-white/25">Sin contacto CRM vinculado</p>
+                          <p className="text-[11px] text-neutral-500 dark:text-white/25">Sin contacto CRM vinculado</p>
                         )}
                       </div>
 
                       {/* Tags */}
                       {selectedConversation.tags && selectedConversation.tags.length > 0 && (
                         <div className="px-3 py-3 border-b border-neutral-100 dark:border-neutral-800/80 flex-shrink-0">
-                          <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider mb-2">Etiquetas</p>
+                          <p className="text-[11px] font-bold text-neutral-500 dark:text-white/45 uppercase tracking-wider mb-2">Etiquetas</p>
                           <div className="flex flex-wrap gap-1">
                             {selectedConversation.tags.map(tag => (
-                              <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-white/50 rounded font-medium">{tag}</span>
+                              <span key={tag} className="text-[10.5px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-white/50 rounded font-medium">{tag}</span>
                             ))}
                           </div>
                         </div>
@@ -1574,12 +1574,12 @@ export default function MiWhatsApp() {
 
                       {/* Actions */}
                       <div className="px-3 py-3 flex-shrink-0">
-                        <p className="text-[10px] font-bold text-neutral-400 dark:text-white/30 uppercase tracking-wider mb-2">Acciones</p>
+                        <p className="text-[11px] font-bold text-neutral-500 dark:text-white/45 uppercase tracking-wider mb-2">Acciones</p>
                         <div className="space-y-1">
                           {[
                             { label: 'Crear tramite', icon: ClipboardList, action: handleDirectCreateTramite, color: 'text-emerald-600' },
                             { label: 'Usar plantilla', icon: Zap, action: () => setShowTemplatesDropdown(true), color: 'text-amber-600' },
-                            { label: 'Enviar formulario', icon: FileText, action: () => setShowFormularios(true), color: 'text-blue-600' },
+                            { label: 'Enviar formulario', icon: FileText, action: () => setShowFormularios(true), color: 'text-accent-ink' },
                           ].map(({ label, icon: Icon, action, color }) => (
                             <button key={label} onClick={action}
                               className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-white/[0.04] transition-colors text-left">
@@ -1610,18 +1610,18 @@ export default function MiWhatsApp() {
 
       {/* Assistants Modal */}
       {showAssistants && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowAssistants(false)}>
-          <div className="w-full max-w-md mx-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={() => setShowAssistants(false)}>
+          <div className="w-full max-w-md mx-4 bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 border border-soft dark:border-neutral-700 overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
               <h3 className="text-sm font-bold text-neutral-800 dark:text-white">Asistentes IA</h3>
-              <button onClick={() => setShowAssistants(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X className="w-4 h-4" /></button>
+              <button onClick={() => setShowAssistants(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-5">
               <p className="text-xs text-neutral-500 mb-3">Selecciona un asistente para activar el modo automatico.</p>
               {autoLoading
                 ? <div className="flex justify-center py-6"><RefreshCw className="w-5 h-5 animate-spin text-neutral-300" /></div>
                 : assistants.length === 0
-                  ? <p className="text-xs text-neutral-400 text-center py-6">Sin asistentes configurados</p>
+                  ? <p className="text-xs text-neutral-500 text-center py-6">Sin asistentes configurados</p>
                   : <div className="space-y-2 max-h-72 overflow-y-auto">
                       {assistants.map(a => (
                         <button key={a.id} onClick={() => startAutoMode(a.id)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all">
@@ -1650,15 +1650,15 @@ function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
   const [activeCategory, setActiveCategory] = useState(0);
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl z-50 overflow-hidden">
+    <div className="absolute bottom-full left-0 mb-2 w-72 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-xl shadow-xl z-50 overflow-hidden">
       <div className="p-2 border-b border-neutral-100 dark:border-neutral-700">
         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar emoji..."
-          className="w-full px-3 py-1.5 text-xs rounded-lg bg-neutral-50 dark:bg-neutral-700 border border-neutral-200/60 dark:border-neutral-600 placeholder:text-neutral-400 focus:outline-none" />
+          className="w-full px-3 py-1.5 text-xs rounded-lg bg-neutral-50 dark:bg-neutral-700 border border-neutral-200/60 dark:border-neutral-600 placeholder:text-neutral-500 focus:outline-none" />
       </div>
       <div className="flex border-b border-neutral-100 dark:border-neutral-700 px-1">
         {EMOJI_CATEGORIES.map((cat, i) => (
           <button key={cat.name} onClick={() => setActiveCategory(i)}
-            className={cn('flex-1 py-1.5 text-[10px] font-medium truncate transition-colors', activeCategory === i ? 'text-emerald-600 border-b-2 border-emerald-600' : 'text-neutral-400 hover:text-neutral-600')}>
+            className={cn('flex-1 py-1.5 text-[11px] font-medium truncate transition-colors', activeCategory === i ? 'text-emerald-600 border-b-2 border-emerald-600' : 'text-neutral-500 hover:text-neutral-600')}>
             {cat.name}
           </button>
         ))}
@@ -1694,8 +1694,8 @@ function CreateTramiteModal({ selectedCount, conversationName, onClose, onSubmit
   const [comentarios, setComentarios] = useState('');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-neutral-200 dark:border-neutral-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-md mx-4 border border-soft dark:border-neutral-700 overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
           <div>
             <h3 className="text-sm font-bold text-neutral-800 dark:text-white flex items-center gap-2">
@@ -1704,7 +1704,7 @@ function CreateTramiteModal({ selectedCount, conversationName, onClose, onSubmit
             </h3>
             <p className="text-xs text-neutral-500 mt-0.5">{selectedCount} mensaje(s) de {conversationName}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1725,7 +1725,7 @@ function CreateTramiteModal({ selectedCount, conversationName, onClose, onSubmit
           <div>
             <label className="text-xs font-medium text-neutral-700 dark:text-white/70 block mb-1.5">Ramo (opcional)</label>
             <input type="text" value={ramo} onChange={e => setRamo(e.target.value)} placeholder="Ej: Autos, GMM, Vida..."
-              className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40" />
+              className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-accent/40" />
           </div>
           <div>
             <label className="text-xs font-medium text-neutral-700 dark:text-white/70 block mb-1.5">Prioridad</label>
@@ -1740,13 +1740,13 @@ function CreateTramiteModal({ selectedCount, conversationName, onClose, onSubmit
           <div>
             <label className="text-xs font-medium text-neutral-700 dark:text-white/70 block mb-1.5">Comentarios adicionales</label>
             <textarea value={comentarios} onChange={e => setComentarios(e.target.value)} placeholder="Agrega contexto o instrucciones..."
-              rows={3} className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none" />
+              rows={3} className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none" />
           </div>
         </div>
         <div className="px-5 py-4 border-t border-neutral-100 dark:border-neutral-800 flex gap-2">
           <button onClick={onClose} className="flex-1 px-4 py-2 text-sm border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-600 hover:bg-neutral-50 transition-colors">Cancelar</button>
           <button onClick={() => onSubmit({ tipo, ramo, prioridad, comentarios })}
-            className="flex-1 px-4 py-2 text-sm bg-accent text-white rounded-xl hover:bg-accent/90 transition-colors font-medium">Crear tramite</button>
+            className="flex-1 px-4 py-2 text-sm bg-accent text-accent-foreground rounded-xl hover:bg-accent/90 transition-colors font-medium">Crear tramite</button>
         </div>
       </div>
     </div>
@@ -1792,13 +1792,13 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
         <div className={cn('rounded-2xl border p-6', isConnected ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/40' : isError ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/40' : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700')}>
           <div className="flex items-center gap-4 mb-4">
             <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center', isConnected ? 'bg-emerald-100 dark:bg-emerald-800/30' : isError ? 'bg-red-100 dark:bg-red-800/30' : 'bg-neutral-100 dark:bg-white/5')}>
-              {isConnected ? <Wifi className="w-7 h-7 text-emerald-600" /> : isError ? <AlertCircle className="w-7 h-7 text-red-600" /> : <WifiOff className="w-7 h-7 text-neutral-400" />}
+              {isConnected ? <Wifi className="w-7 h-7 text-emerald-600" /> : isError ? <AlertCircle className="w-7 h-7 text-red-600" /> : <WifiOff className="w-7 h-7 text-neutral-500" />}
             </div>
             <div>
               <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
                 {isConnected ? 'WhatsApp Conectado' : isQrPending ? 'Esperando escaneo QR' : isConnecting ? 'Conectando...' : isError ? 'Error de conexion' : 'WhatsApp Desconectado'}
               </h2>
-              <p className="text-sm text-neutral-500 dark:text-white/40">
+              <p className="text-sm text-neutral-500 dark:text-white/55">
                 {isConnected && session?.phone_number ? `Numero: ${session.phone_number}` : isConnected ? 'Sesion activa' : isError && session?.error_message ? session.error_message : 'Conecta tu WhatsApp personal para usar la bandeja'}
               </p>
             </div>
@@ -1816,14 +1816,14 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
             )}
             {isConnected && (
               <button onClick={onSyncHistory} disabled={syncingHistory}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-accent-foreground rounded-xl text-sm font-medium transition-colors"
                 title="Sincronizar historial de mensajes desde el servidor">
                 <RefreshCw className={cn('w-4 h-4', syncingHistory && 'animate-spin')} />
                 {syncingHistory ? 'Sincronizando...' : 'Sincronizar historial'}
               </button>
             )}
             <button onClick={onRefresh} className="p-3 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-colors" title="Actualizar estado"><RefreshCw className={cn('w-4 h-4 text-neutral-500', polling && 'animate-spin')} /></button>
-            <button onClick={onDiagnose} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-white/40 dark:hover:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition-colors" title="Diagnosticar conexion"><AlertCircle className="w-3.5 h-3.5" /> Diagnosticar</button>
+            <button onClick={onDiagnose} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:text-white/55 dark:hover:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-lg transition-colors" title="Diagnosticar conexion"><AlertCircle className="w-3.5 h-3.5" /> Diagnosticar</button>
           </div>
           {syncResult && (
             <div className={cn('mt-3 text-xs px-3 py-2 rounded-lg', syncResult.includes('Error') || syncResult.includes('error') ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300')}>
@@ -1833,16 +1833,16 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
         </div>
 
         {(isQrPending || isConnecting) && (
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-8 text-center">
-            <div className="w-64 h-64 mx-auto bg-white rounded-2xl flex items-center justify-center mb-4 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+          <div className="bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl p-8 text-center">
+            <div className="w-64 h-64 mx-auto bg-surface-card rounded-2xl flex items-center justify-center mb-4 border border-soft dark:border-neutral-700 overflow-hidden">
               {qrCode ? (
                 <img src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} alt="WhatsApp QR Code" className="w-full h-full object-contain p-2" />
               ) : (
                 <div className="text-center p-4">
                   {polling ? (
-                    <><div className="w-10 h-10 border-[3px] border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" /><p className="text-xs text-neutral-500 dark:text-white/40">Generando codigo QR...</p></>
+                    <><div className="w-10 h-10 border-[3px] border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" /><p className="text-xs text-neutral-500 dark:text-white/55">Generando codigo QR...</p></>
                   ) : (
-                    <><QrCode className="w-16 h-16 text-neutral-200 dark:text-white/10 mx-auto mb-2" /><p className="text-xs text-neutral-400 dark:text-white/30">Presiona "Conectar WhatsApp" para generar el codigo QR</p></>
+                    <><QrCode className="w-16 h-16 text-neutral-200 dark:text-white/10 mx-auto mb-2" /><p className="text-xs text-neutral-500 dark:text-white/45">Presiona "Conectar WhatsApp" para generar el codigo QR</p></>
                   )}
                 </div>
               )}
@@ -1856,7 +1856,7 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
               </div>
             )}
             <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-2">Escanea el codigo QR</h3>
-            <ol className="text-left text-xs text-neutral-500 dark:text-white/40 space-y-1.5 max-w-xs mx-auto">
+            <ol className="text-left text-xs text-neutral-500 dark:text-white/55 space-y-1.5 max-w-xs mx-auto">
               <li>1. Abre WhatsApp en tu celular</li>
               <li>2. Toca Menu o Configuracion</li>
               <li>3. Selecciona "Dispositivos vinculados"</li>
@@ -1867,8 +1867,8 @@ function ConnectionPanel({ session, qrCode, providerConfigured, providerMessage,
         )}
 
         <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-5 border border-neutral-200/50 dark:border-neutral-700/50">
-          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2"><Settings className="w-4 h-4 text-neutral-400" /> Informacion importante</h3>
-          <ul className="text-xs text-neutral-500 dark:text-white/40 space-y-2">
+          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2"><Settings className="w-4 h-4 text-neutral-500" /> Informacion importante</h3>
+          <ul className="text-xs text-neutral-500 dark:text-white/55 space-y-2">
             <li className="flex items-start gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" /> Tu sesion de WhatsApp es personal y privada. Nadie mas puede ver tus conversaciones.</li>
             <li className="flex items-start gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" /> Si cierras sesion desde tu celular, la conexion en MOVI se desconectara automaticamente.</li>
             <li className="flex items-start gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" /> Los mensajes se sincronizan en tiempo real mientras la sesion este activa.</li>
@@ -1939,7 +1939,7 @@ function TemplatesPanel({ templates, userId, onRefresh, onUseTemplate }: {
     <div className="h-full overflow-y-auto">
       <div className="max-w-2xl mx-auto p-6 space-y-6">
         {/* Create/Edit form */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5">
+        <div className="bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl p-5">
           <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
             {editingId ? <Edit3 className="w-4 h-4 text-amber-500" /> : <Plus className="w-4 h-4 text-emerald-600" />}
             {editingId ? 'Editar plantilla' : 'Nueva plantilla'}
@@ -1947,13 +1947,13 @@ function TemplatesPanel({ templates, userId, onRefresh, onUseTemplate }: {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre"
-                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40" />
+                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-accent/40" />
               <input type="text" value={category} onChange={e => setCategory(e.target.value)} placeholder="Categoria (opcional)"
-                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40" />
+                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-accent/40" />
             </div>
             <textarea value={body} onChange={e => setBody(e.target.value)}
               placeholder="Hola {{nombre_cliente}}, te saluda {{nombre_usuario}} de {{nombre_oficina}}..."
-              rows={4} className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none" />
+              rows={4} className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-accent/40 resize-none" />
             <div className="flex items-center gap-2">
               <button onClick={handleSave} disabled={!name.trim() || !body.trim()}
                 className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-neutral-200 disabled:dark:bg-white/5 text-white disabled:text-neutral-400 rounded-xl text-sm font-medium transition-colors">
@@ -1980,25 +1980,25 @@ function TemplatesPanel({ templates, userId, onRefresh, onUseTemplate }: {
           {filtered.length === 0 ? (
             <div className="text-center py-10 bg-neutral-50 dark:bg-neutral-800/30 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50">
               <Zap className="w-8 h-8 text-neutral-300 dark:text-white/20 mx-auto mb-2" />
-              <p className="text-sm text-neutral-500 dark:text-white/40">No tienes plantillas aun</p>
+              <p className="text-sm text-neutral-500 dark:text-white/55">No tienes plantillas aun</p>
             </div>
           ) : (
             <div className="space-y-3">
               {filtered.map(tpl => (
-                <div key={tpl.id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 group">
+                <div key={tpl.id} className="bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl p-4 group">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         {tpl.is_favorite && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
                         <h4 className="text-sm font-semibold text-neutral-800 dark:text-white">{tpl.name}</h4>
-                        {tpl.category && <span className="text-[9px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-white/40 rounded">{tpl.category}</span>}
+                        {tpl.category && <span className="text-[10.5px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-white/55 rounded">{tpl.category}</span>}
                       </div>
-                      <p className="text-xs text-neutral-500 dark:text-white/40 mt-1 line-clamp-2">{tpl.body}</p>
+                      <p className="text-xs text-neutral-500 dark:text-white/55 mt-1 line-clamp-2">{tpl.body}</p>
                     </div>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => handleToggleFavorite(tpl)} className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg" title="Favorito"><Star className={cn('w-3.5 h-3.5', tpl.is_favorite ? 'text-amber-500 fill-amber-500' : 'text-neutral-300')} /></button>
                       <button onClick={() => onUseTemplate(tpl.body)} className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg" title="Usar"><Send className="w-3.5 h-3.5 text-emerald-600" /></button>
-                      <button onClick={() => handleDuplicate(tpl)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg" title="Duplicar"><Copy className="w-3.5 h-3.5 text-neutral-400" /></button>
+                      <button onClick={() => handleDuplicate(tpl)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg" title="Duplicar"><Copy className="w-3.5 h-3.5 text-neutral-500" /></button>
                       <button onClick={() => handleEdit(tpl)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg" title="Editar"><Edit3 className="w-3.5 h-3.5 text-blue-500" /></button>
                       <button onClick={() => handleDelete(tpl.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Eliminar"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
                     </div>
@@ -2011,7 +2011,7 @@ function TemplatesPanel({ templates, userId, onRefresh, onUseTemplate }: {
 
         {/* Variables reference */}
         <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-5 border border-neutral-200/50 dark:border-neutral-700/50">
-          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2"><Tag className="w-4 h-4 text-neutral-400" /> Variables disponibles</h3>
+          <h3 className="text-sm font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2"><Tag className="w-4 h-4 text-neutral-500" /> Variables disponibles</h3>
           <div className="grid grid-cols-2 gap-2">
             {[
               { var: '{{nombre_cliente}}', desc: 'Nombre del contacto' },
@@ -2028,8 +2028,8 @@ function TemplatesPanel({ templates, userId, onRefresh, onUseTemplate }: {
               { var: '{{email_oficina}}', desc: 'Email oficina' },
             ].map(v => (
               <div key={v.var} className="text-xs">
-                <code className="text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">{v.var}</code>
-                <span className="text-neutral-400 dark:text-white/30 ml-1.5">{v.desc}</span>
+                <code className="text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">{v.var}</code>
+                <span className="text-neutral-500 dark:text-white/45 ml-1.5">{v.desc}</span>
               </div>
             ))}
           </div>

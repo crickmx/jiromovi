@@ -39,14 +39,14 @@ export function PermisosPanel({ tipoId, usuarioId, showToast }: Props) {
         <table className="w-full text-sm border border-neutral-200 rounded-xl overflow-hidden">
           <thead className="bg-neutral-50">
             <tr>
-              <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Rol</th>
-              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
+              <th className="text-left px-4 py-2 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Rol</th>
+              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider w-20">
                 <Tooltip text={PERM_TOOLTIPS.puede_ver}><span className="cursor-default underline decoration-dotted">Ver</span></Tooltip>
               </th>
-              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
+              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider w-20">
                 <Tooltip text={PERM_TOOLTIPS.puede_crear}><span className="cursor-default underline decoration-dotted">Crear</span></Tooltip>
               </th>
-              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider w-20">
+              <th className="text-center px-4 py-2 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider w-20">
                 <Tooltip text={PERM_TOOLTIPS.puede_editar}><span className="cursor-default underline decoration-dotted">Editar</span></Tooltip>
               </th>
             </tr>
@@ -97,9 +97,9 @@ export function PermisosPanel({ tipoId, usuarioId, showToast }: Props) {
                 <div key={equipo.id} className="border border-neutral-200 rounded-xl overflow-hidden">
                   <div className="bg-neutral-50 px-3 py-2.5 flex items-center gap-2 border-b border-neutral-200">
                     <button onClick={() => toggleEquipoColapsado(equipo.id)} className="flex items-center gap-2 flex-1 text-left min-w-0">
-                      <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 flex-shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`} />
+                      <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`} />
                       <span className="text-xs font-bold text-neutral-700 uppercase tracking-wider truncate">{equipo.nombre}</span>
-                      <span className="text-xs text-neutral-400 flex-shrink-0">({equipo.miembros.length})</span>
+                      <span className="text-xs text-neutral-500 flex-shrink-0">({equipo.miembros.length})</span>
                     </button>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       {(['puede_ver', 'puede_crear', 'puede_editar'] as const).map(campo => {
@@ -109,12 +109,12 @@ export function PermisosPanel({ tipoId, usuarioId, showToast }: Props) {
                         const label = campo === 'puede_ver' ? 'Ver' : campo === 'puede_crear' ? 'Crear' : 'Editar';
                         return (
                           <div key={campo} className="flex items-center gap-1">
-                            <span className="text-[10px] text-neutral-400">{label}</span>
+                            <span className="text-[11px] text-neutral-500">{label}</span>
                             <button
                               onClick={() => toggleEquipoOverride(equipo, campo)}
                               className={`w-6 h-6 rounded-md border-2 transition-colors flex items-center justify-center text-xs ${
                                 allTrue ? 'bg-green-600 border-green-600 text-white'
-                                : allNull ? 'border-neutral-300 bg-neutral-100 text-neutral-400'
+                                : allNull ? 'border-neutral-300 bg-neutral-100 text-neutral-500'
                                 : 'border-yellow-400 bg-yellow-50 text-yellow-600'
                               }`}
                             >
@@ -141,7 +141,7 @@ export function PermisosPanel({ tipoId, usuarioId, showToast }: Props) {
                                     onClick={() => toggleUsuarioOverride(uo.user_id, campo)}
                                     disabled={isSaving}
                                     className={`w-6 h-6 rounded-md border-2 transition-colors mx-auto flex items-center justify-center text-xs ${
-                                      val === null ? 'border-neutral-300 bg-neutral-100 text-neutral-400'
+                                      val === null ? 'border-neutral-300 bg-neutral-100 text-neutral-500'
                                       : val ? 'bg-green-600 border-green-600 text-white'
                                       : 'bg-red-500 border-red-500 text-white'
                                     } ${isSaving ? 'opacity-40' : ''}`}

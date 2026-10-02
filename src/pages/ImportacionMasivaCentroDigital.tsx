@@ -55,7 +55,7 @@ const ESTADO_CONFIG: Record<string, { label: string; color: string; icon: typeof
   indexing: { label: 'Indexando IA', color: 'text-emerald-400 bg-emerald-400/10', icon: Brain },
   completed: { label: 'Completado', color: 'text-green-400 bg-green-400/10', icon: CheckCircle2 },
   error: { label: 'Error', color: 'text-red-400 bg-red-400/10', icon: XCircle },
-  cancelled: { label: 'Cancelado', color: 'text-slate-400 bg-slate-400/10', icon: XCircle },
+  cancelled: { label: 'Cancelado', color: 'text-neutral-500 bg-slate-400/10', icon: XCircle },
 };
 
 const ITEM_ESTADO_CONFIG: Record<string, { label: string; color: string }> = {
@@ -65,7 +65,7 @@ const ITEM_ESTADO_CONFIG: Record<string, { label: string; color: string }> = {
   stored: { label: 'Almacenado', color: 'bg-teal-400/10 text-teal-400 border-teal-400/20' },
   indexed: { label: 'Indexado', color: 'bg-green-400/10 text-green-400 border-green-400/20' },
   error: { label: 'Error', color: 'bg-red-400/10 text-red-400 border-red-400/20' },
-  skipped: { label: 'Omitido', color: 'bg-slate-400/10 text-slate-400 border-slate-400/20' },
+  skipped: { label: 'Omitido', color: 'bg-slate-400/10 text-neutral-500 border-slate-400/20' },
   duplicate: { label: 'Duplicado', color: 'bg-orange-400/10 text-orange-400 border-orange-400/20' },
 };
 
@@ -295,15 +295,15 @@ export default function ImportacionMasivaCentroDigital() {
       />
 
       {/* Upload Section */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center gap-2">
+      <div className="bg-surface-card rounded-2xl border border-soft p-6 shadow-card">
+        <h3 className="text-base font-semibold text-neutral-800 mb-4 flex items-center gap-2">
           <Upload className="w-4 h-4 text-teal-600" />
           Nueva Importación
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Título del job</label>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">Título del job</label>
             <Input
               value={titulo}
               onChange={e => setTitulo(e.target.value)}
@@ -313,11 +313,11 @@ export default function ImportacionMasivaCentroDigital() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Carpeta destino *</label>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">Carpeta destino *</label>
             <select
               value={carpetaDestinoId}
               onChange={e => setCarpetaDestinoId(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
             >
               <option value="">Seleccionar carpeta...</option>
               {carpetas.map(c => (
@@ -329,7 +329,7 @@ export default function ImportacionMasivaCentroDigital() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Archivo HTML *</label>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">Archivo HTML *</label>
             <input
               type="file"
               accept=".html,.htm"
@@ -362,10 +362,10 @@ export default function ImportacionMasivaCentroDigital() {
       </div>
 
       {/* Jobs List */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-slate-500" />
+      <div className="bg-surface-card rounded-xl border border-soft shadow-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-neutral-500" />
             Historial de Importaciones ({jobs.length})
           </h3>
           <Button onClick={loadJobs} variant="ghost" size="sm">
@@ -375,7 +375,7 @@ export default function ImportacionMasivaCentroDigital() {
 
         {loading ? (
           <div className="p-8 text-center">
-            <Loader2 className="w-6 h-6 animate-spin mx-auto text-slate-400" />
+            <Loader2 className="w-6 h-6 animate-spin mx-auto text-neutral-500" />
           </div>
         ) : jobs.length === 0 ? (
           <div className="p-8">
@@ -407,16 +407,16 @@ export default function ImportacionMasivaCentroDigital() {
 
       {/* Items Detail Panel */}
       {selectedJob && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-800">
+        <div className="bg-surface-card rounded-xl border border-soft shadow-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-neutral-800">
               Documentos: {selectedJob.titulo}
             </h3>
             <div className="flex items-center gap-2">
               <select
                 value={itemFilter}
                 onChange={e => setItemFilter(e.target.value)}
-                className="text-xs px-2 py-1 border border-slate-200 rounded-md"
+                className="text-xs px-2 py-1 border border-neutral-200 rounded-md"
               >
                 <option value="all">Todos</option>
                 <option value="pending">Pendientes</option>
@@ -426,45 +426,45 @@ export default function ImportacionMasivaCentroDigital() {
                 <option value="duplicate">Duplicados</option>
                 <option value="skipped">Omitidos</option>
               </select>
-              <span className="text-xs text-slate-500">{jobItems.length} items</span>
+              <span className="text-xs text-neutral-500">{jobItems.length} items</span>
             </div>
           </div>
 
           {jobItems.length === 0 ? (
-            <div className="p-6 text-center text-sm text-slate-500">No hay items con este filtro.</div>
+            <div className="p-6 text-center text-sm text-neutral-500">No hay items con este filtro.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead className="bg-slate-50">
+                <thead className="bg-neutral-50">
                   <tr>
-                    <th className="px-4 py-2.5 text-left font-medium text-slate-600">Título</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-slate-600">Aseguradora</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-slate-600">Categoría</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-slate-600">Ext</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-slate-600">Tamaño</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-slate-600">Estado</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-slate-600">Error</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-neutral-600">Título</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-neutral-600">Aseguradora</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-neutral-600">Categoría</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-neutral-600">Ext</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-neutral-600">Tamaño</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-neutral-600">Estado</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-neutral-600">Error</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {jobItems.map(item => (
                     <tr key={item.id} className="hover:bg-slate-50/50">
                       <td className="px-4 py-2 max-w-[200px]">
-                        <p className="truncate font-medium text-slate-700">{item.titulo}</p>
-                        <a href={item.url_original} target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 hover:text-teal-500 truncate block">
+                        <p className="truncate font-medium text-neutral-700">{item.titulo}</p>
+                        <a href={item.url_original} target="_blank" rel="noopener noreferrer" className="text-[11px] text-neutral-500 hover:text-teal-500 truncate block">
                           {item.url_original}
                         </a>
                       </td>
-                      <td className="px-4 py-2 text-slate-600">{item.aseguradora || '-'}</td>
-                      <td className="px-4 py-2 text-slate-600">{item.categoria || '-'}</td>
-                      <td className="px-4 py-2 text-slate-500 uppercase">{item.extension || '-'}</td>
-                      <td className="px-4 py-2 text-slate-500">{formatBytes(item.tamano_bytes)}</td>
+                      <td className="px-4 py-2 text-neutral-600">{item.aseguradora || '-'}</td>
+                      <td className="px-4 py-2 text-neutral-600">{item.categoria || '-'}</td>
+                      <td className="px-4 py-2 text-neutral-500 uppercase">{item.extension || '-'}</td>
+                      <td className="px-4 py-2 text-neutral-500">{formatBytes(item.tamano_bytes)}</td>
                       <td className="px-4 py-2">
                         <ItemEstadoBadge estado={item.estado} />
                       </td>
                       <td className="px-4 py-2 max-w-[150px]">
                         {item.error_mensaje && (
-                          <p className="text-[10px] text-red-500 truncate" title={item.error_mensaje}>
+                          <p className="text-[11px] text-red-500 truncate" title={item.error_mensaje}>
                             {item.error_mensaje}
                           </p>
                         )}
@@ -506,19 +506,19 @@ function JobRow({ job, isExpanded, isSelected, processing, indexing, onToggle, o
   return (
     <div className={`transition-colors ${isSelected ? 'bg-teal-50/30' : ''}`}>
       <div className="px-6 py-3 flex items-center gap-4 cursor-pointer hover:bg-slate-50/50" onClick={onToggle}>
-        <button className="text-slate-400">
+        <button className="text-neutral-500">
           {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-slate-800 truncate">{job.titulo}</p>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${config.color}`}>
+            <p className="text-sm font-medium text-neutral-800 truncate">{job.titulo}</p>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${config.color}`}>
               <Icon className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`} />
               {config.label}
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-0.5">
+          <p className="text-[11px] text-neutral-500 mt-0.5">
             {job.archivo_html_nombre || 'Sin archivo'} | {formatDate(job.created_at)}
           </p>
         </div>
@@ -526,39 +526,39 @@ function JobRow({ job, isExpanded, isSelected, processing, indexing, onToggle, o
         {/* Stats */}
         <div className="hidden md:flex items-center gap-4 text-[11px]">
           <div className="text-center">
-            <p className="font-semibold text-slate-700">{job.total_descargables}</p>
-            <p className="text-slate-400">Archivos</p>
+            <p className="font-semibold text-neutral-700">{job.total_descargables}</p>
+            <p className="text-neutral-500">Archivos</p>
           </div>
           <div className="text-center">
             <p className="font-semibold text-green-600">{job.total_descargados}</p>
-            <p className="text-slate-400">Descargados</p>
+            <p className="text-neutral-500">Descargados</p>
           </div>
           <div className="text-center">
             <p className="font-semibold text-emerald-600">{job.total_indexados}</p>
-            <p className="text-slate-400">Indexados</p>
+            <p className="text-neutral-500">Indexados</p>
           </div>
           <div className="text-center">
             <p className="font-semibold text-red-500">{job.total_errores}</p>
-            <p className="text-slate-400">Errores</p>
+            <p className="text-neutral-500">Errores</p>
           </div>
           <div className="text-center">
             <p className="font-semibold text-orange-500">{job.total_duplicados}</p>
-            <p className="text-slate-400">Duplicados</p>
+            <p className="text-neutral-500">Duplicados</p>
           </div>
         </div>
       </div>
 
       {/* Expanded Actions */}
       {isExpanded && (
-        <div className="px-6 pb-4 pt-1 ml-8 border-t border-slate-100">
+        <div className="px-6 pb-4 pt-1 ml-8 border-t border-neutral-100">
           {/* Progress bar */}
           {job.total_descargables > 0 && (
             <div className="mb-3">
-              <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+              <div className="flex items-center justify-between text-[11px] text-neutral-500 mb-1">
                 <span>Progreso descargas</span>
                 <span>{progress}%</span>
               </div>
-              <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+              <div className="w-full h-1.5 rounded-full bg-neutral-100 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-500"
                   style={{ width: `${progress}%` }}
@@ -610,7 +610,7 @@ function JobRow({ job, isExpanded, isSelected, processing, indexing, onToggle, o
           )}
 
           {/* Summary stats on mobile */}
-          <div className="flex md:hidden items-center gap-3 mt-3 text-[10px] text-slate-500 flex-wrap">
+          <div className="flex md:hidden items-center gap-3 mt-3 text-[11px] text-neutral-500 flex-wrap">
             <span>{job.total_no_descargables} no descargables</span>
             <span>{job.total_duplicados} duplicados</span>
             {job.completed_at && <span>Completado: {formatDate(job.completed_at)}</span>}
@@ -624,7 +624,7 @@ function JobRow({ job, isExpanded, isSelected, processing, indexing, onToggle, o
 function ItemEstadoBadge({ estado }: { estado: string }) {
   const config = ITEM_ESTADO_CONFIG[estado] || ITEM_ESTADO_CONFIG.pending;
   return (
-    <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border ${config.color}`}>
+    <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] font-medium border ${config.color}`}>
       {config.label}
     </span>
   );

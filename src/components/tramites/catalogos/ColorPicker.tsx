@@ -31,7 +31,7 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (c: 
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="#000000"
-          className="w-28 px-2 py-1 text-xs border border-neutral-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="w-28 px-2 py-1 text-xs border border-neutral-300 rounded-lg font-mono focus:ring-2 focus:ring-accent/40 focus:outline-none"
         />
       </div>
     </div>

@@ -251,13 +251,13 @@ export default function MisPolizas() {
           />
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white dark:bg-white/5 rounded-lg p-6 border border-neutral-200 dark:border-white/10 animate-pulse space-y-3">
+              <div key={i} className="bg-surface-card dark:bg-white/5 rounded-2xl p-6 border border-soft dark:border-white/10 animate-pulse space-y-3">
                 <div className="h-4 bg-neutral-200 dark:bg-white/10 rounded w-1/2" />
                 <div className="h-8 bg-neutral-200 dark:bg-white/10 rounded w-3/4" />
               </div>
             ))}
           </div>
-          <div className="bg-white dark:bg-white/5 rounded-lg border border-neutral-200 dark:border-white/10 p-4">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-4">
             <TableSkeleton rows={8} columns={6} />
           </div>
         </div>
@@ -307,17 +307,17 @@ export default function MisPolizas() {
 
         {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-white/5 rounded-lg shadow-sm p-6 border border-neutral-200 dark:border-white/10">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl shadow-card p-6 border border-soft dark:border-white/10">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-500 dark:text-white/50">Total Pólizas</p>
                 <p className="text-2xl font-bold text-neutral-900 dark:text-white">{totalRecords}</p>
               </div>
-              <FileText className="h-8 w-8 text-accent" />
+              <FileText className="h-8 w-8 text-accent-ink" />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-white/5 rounded-lg shadow-sm p-6 border border-neutral-200 dark:border-white/10">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl shadow-card p-6 border border-soft dark:border-white/10">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-500 dark:text-white/50">Prima Neta Total</p>
@@ -329,7 +329,7 @@ export default function MisPolizas() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-white/5 rounded-lg shadow-sm p-6 border border-neutral-200 dark:border-white/10">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl shadow-card p-6 border border-soft dark:border-white/10">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-500 dark:text-white/50">Importe Total</p>
@@ -337,11 +337,11 @@ export default function MisPolizas() {
                   {formatCurrency(stats.totalImporte)}
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-accent" />
+              <TrendingUp className="h-8 w-8 text-accent-ink" />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-white/5 rounded-lg shadow-sm p-6 border border-neutral-200 dark:border-white/10">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl shadow-card p-6 border border-soft dark:border-white/10">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-neutral-500 dark:text-white/50">Próximas a Vencer</p>
@@ -355,7 +355,7 @@ export default function MisPolizas() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-white dark:bg-white/5 rounded-lg shadow-sm border border-neutral-200 dark:border-white/10">
+        <div className="bg-surface-card dark:bg-white/5 rounded-lg shadow-card border border-soft dark:border-white/10">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors"
@@ -379,7 +379,7 @@ export default function MisPolizas() {
                   Búsqueda General
                 </label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500" />
                   <input
                     type="text"
                     value={filters.searchText}
@@ -483,7 +483,7 @@ export default function MisPolizas() {
         </div>
 
         {/* Tabla de pólizas */}
-        <div className="bg-white dark:bg-white/5 rounded-lg shadow-sm border border-neutral-200 dark:border-white/10 overflow-hidden">
+        <div className="bg-surface-card dark:bg-white/5 rounded-lg shadow-card border border-soft dark:border-white/10 overflow-hidden">
           <div className="px-6 py-4 border-b border-neutral-200 dark:border-white/10">
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
               Pólizas ({totalRecords})
@@ -563,7 +563,7 @@ export default function MisPolizas() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900 dark:text-white">
                           <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4 text-neutral-400" />
+                            <Calendar className="h-4 w-4 text-neutral-500" />
                             <span>{formatDate(poliza.vigencia_desde)}</span>
                           </div>
                           <div className="text-xs text-neutral-500 dark:text-white/50">
@@ -581,7 +581,7 @@ export default function MisPolizas() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button
                             onClick={() => handleVerCentroDigital(poliza)}
-                            className="text-accent hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                            className="text-accent-ink hover:text-accent-ink dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
                           >
                             <FolderOpen className="h-5 w-5" />
                             <span>Centro Digital</span>

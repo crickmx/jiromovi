@@ -351,8 +351,8 @@ export default function SicasPreRegistrationModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-2xl max-h-[90vh] flex flex-col animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b dark:border-neutral-800">
           <div className="flex items-center gap-3">
@@ -421,12 +421,12 @@ export default function SicasPreRegistrationModal({
               <div className="mt-2">
                 <button
                   onClick={() => setShowTechnicalDetail(!showTechnicalDetail)}
-                  className="text-[10px] text-red-600 dark:text-red-400 underline hover:no-underline"
+                  className="text-[11px] text-red-600 dark:text-red-400 underline hover:no-underline"
                 >
                   {showTechnicalDetail ? 'Ocultar detalle tecnico' : 'Ver detalle tecnico'}
                 </button>
                 {showTechnicalDetail && (
-                  <div className="mt-1.5 p-2.5 bg-neutral-900 dark:bg-neutral-950 text-neutral-200 rounded-lg font-mono text-[10px] space-y-1 overflow-x-auto max-h-48 overflow-y-auto">
+                  <div className="mt-1.5 p-2.5 bg-neutral-900 dark:bg-neutral-950 text-neutral-200 rounded-lg font-mono text-[11px] space-y-1 overflow-x-auto max-h-48 overflow-y-auto">
                     <p><span className="text-neutral-500">Etapa:</span> {STEP_LABELS[stepErrorDetail.step] || stepErrorDetail.step}</p>
                     {stepErrorDetail.endpoint && <p><span className="text-neutral-500">Endpoint:</span> {stepErrorDetail.endpoint}</p>}
                     {stepErrorDetail.statusCode && <p><span className="text-neutral-500">HTTP Status:</span> {stepErrorDetail.statusCode}</p>}
@@ -441,7 +441,7 @@ export default function SicasPreRegistrationModal({
                     {stepErrorDetail.responseBody && (
                       <div>
                         <p className="text-neutral-500 mt-1">Respuesta SICAS:</p>
-                        <pre className="whitespace-pre-wrap break-all text-[9px] text-neutral-400">{stepErrorDetail.responseBody}</pre>
+                        <pre className="whitespace-pre-wrap break-all text-[10.5px] text-neutral-500">{stepErrorDetail.responseBody}</pre>
                       </div>
                     )}
                   </div>
@@ -455,7 +455,7 @@ export default function SicasPreRegistrationModal({
         {showDiagnostics && hasWarnings && (
           <div className="px-5 pt-3">
             <div className="p-3 bg-neutral-50 dark:bg-neutral-800/50 border dark:border-neutral-700 rounded-xl">
-              <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Diagnostico de resolucion</p>
+              <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Diagnostico de resolucion</p>
               <ul className="space-y-1">
                 {resolutionData.warnings.map((warning, i) => (
                   <li key={i} className="text-[11px] text-neutral-600 dark:text-neutral-400 flex items-start gap-1.5">
@@ -479,29 +479,29 @@ export default function SicasPreRegistrationModal({
               </h3>
               <div className="flex flex-wrap gap-2">
                 {ejecutivoAutoAssigned && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-neutral-800 rounded-lg border border-teal-200 dark:border-teal-700">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-card dark:bg-neutral-800 rounded-lg border border-teal-200 dark:border-teal-700">
                     <User className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                     <span className="text-[11px] text-neutral-700 dark:text-neutral-300">
                       <span className="font-medium">Ejecutivo</span> = {ejecutivoResolved?.label || 'Vendedor'}
                     </span>
-                    <Badge className="text-[9px] px-1.5 py-0 bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800">
+                    <Badge className="text-[10.5px] px-1.5 py-0 bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800">
                       Auto
                     </Badge>
                   </div>
                 )}
                 {clientAutoCreatePending && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-neutral-800 rounded-lg border border-teal-200 dark:border-teal-700">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-card dark:bg-neutral-800 rounded-lg border border-teal-200 dark:border-teal-700">
                     <UserPlus className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                     <span className="text-[11px] text-neutral-700 dark:text-neutral-300">
                       <span className="font-medium">Cliente</span> = {clienteResolved?.label || 'Se creara'}
                     </span>
-                    <Badge className="text-[9px] px-1.5 py-0 bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800">
+                    <Badge className="text-[10.5px] px-1.5 py-0 bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800">
                       Auto
                     </Badge>
                   </div>
                 )}
               </div>
-              <p className="text-[10px] text-teal-700/70 dark:text-teal-400/70 mt-2">
+              <p className="text-[11px] text-teal-700/70 dark:text-teal-400/70 mt-2">
                 MOVI resolvera estos campos automaticamente al registrar en SICAS.
               </p>
             </div>
@@ -516,9 +516,9 @@ export default function SicasPreRegistrationModal({
               </h3>
               <div className="border dark:border-neutral-800 rounded-xl overflow-hidden">
                 <div className="grid grid-cols-[1fr_1.2fr_1fr] bg-neutral-50 dark:bg-neutral-800/50 px-4 py-2 border-b dark:border-neutral-800">
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">Campo</span>
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">Valor</span>
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">Fuente</span>
+                  <span className="text-[11px] uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">Campo</span>
+                  <span className="text-[11px] uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">Valor</span>
+                  <span className="text-[11px] uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">Fuente</span>
                 </div>
                 {resolvedEntries.map(([fieldKey, field], idx) => (
                   <div
@@ -537,12 +537,12 @@ export default function SicasPreRegistrationModal({
                         <>
                           {field.label || field.value}
                           {field.label && field.value && field.label !== field.value && field.value !== '__auto_create__' && (
-                            <span className="ml-1 text-[10px] text-muted-foreground">({field.value})</span>
+                            <span className="ml-1 text-[11px] text-muted-foreground">({field.value})</span>
                           )}
                         </>
                       )}
                     </span>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[10px] font-medium w-fit ${getSourceColorClasses(field.source)}`}>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[11px] font-medium w-fit ${getSourceColorClasses(field.source)}`}>
                       {getSourceLabel(field.source)}
                     </span>
                   </div>
@@ -597,7 +597,7 @@ export default function SicasPreRegistrationModal({
                 type="checkbox"
                 checked={saveAsDefault}
                 onChange={(e) => setSaveAsDefault(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-neutral-300 dark:border-neutral-600 text-blue-600 focus:ring-blue-500"
+                className="h-3.5 w-3.5 rounded border-neutral-300 dark:border-neutral-600 text-accent-ink focus:ring-accent/40"
               />
               <span className="text-[11px] text-neutral-600 dark:text-neutral-400">
                 Guardar selecciones como default HWCAPTURE (se usaran automaticamente en futuras polizas)
@@ -606,7 +606,7 @@ export default function SicasPreRegistrationModal({
           )}
 
           <div className="flex items-center justify-between">
-            <p className="text-[10px] text-muted-foreground max-w-[50%]">
+            <p className="text-[11px] text-muted-foreground max-w-[50%]">
               {hasMissing
                 ? allMissingFilled
                   ? 'Campos completados. Listo para registrar.'
@@ -674,10 +674,10 @@ function MissingFieldSelector({ fieldLabel, options, selectedValue, selectedLabe
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
           {fieldLabel}
-          {!selectedValue && <Badge variant="destructive" className="text-[9px] px-1 py-0">Requerido</Badge>}
+          {!selectedValue && <Badge variant="destructive" className="text-[10.5px] px-1 py-0">Requerido</Badge>}
         </span>
         {selectedValue && (
-          <Badge className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
+          <Badge className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
             {selectedLabel} ({selectedValue})
           </Badge>
         )}
@@ -702,7 +702,7 @@ function MissingFieldSelector({ fieldLabel, options, selectedValue, selectedLabe
           </div>
 
           {isOpen && (
-            <div className="absolute z-20 top-full left-0 right-0 mt-1 max-h-44 overflow-y-auto border dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 shadow-xl">
+            <div className="absolute z-20 top-full left-0 right-0 mt-1 max-h-44 overflow-y-auto border dark:border-neutral-700 rounded-lg bg-surface-card dark:bg-neutral-900 shadow-xl">
               {filtered.length === 0 ? (
                 <p className="p-3 text-xs text-muted-foreground text-center">Sin resultados</p>
               ) : (
@@ -713,14 +713,14 @@ function MissingFieldSelector({ fieldLabel, options, selectedValue, selectedLabe
                     onClick={() => { onSelect(opt.id_sicas, opt.nombre); setIsOpen(false); setSearchTerm(''); }}
                   >
                     <span className="truncate">{opt.nombre}</span>
-                    <span className="text-[10px] text-muted-foreground ml-2 shrink-0 font-mono">{opt.id_sicas}</span>
+                    <span className="text-[11px] text-muted-foreground ml-2 shrink-0 font-mono">{opt.id_sicas}</span>
                   </button>
                 ))
               )}
             </div>
           )}
 
-          <button onClick={() => setShowManual(true)} className="mt-1.5 text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
+          <button onClick={() => setShowManual(true)} className="mt-1.5 text-[11px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
             Capturar ID manualmente
           </button>
         </div>
@@ -733,7 +733,7 @@ function MissingFieldSelector({ fieldLabel, options, selectedValue, selectedLabe
             </Button>
           </div>
           {options.length > 0 && (
-            <button onClick={() => setShowManual(false)} className="text-[10px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
+            <button onClick={() => setShowManual(false)} className="text-[11px] text-muted-foreground hover:text-neutral-700 dark:hover:text-neutral-300 underline underline-offset-2">
               Volver a buscar en catalogo
             </button>
           )}

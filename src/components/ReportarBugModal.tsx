@@ -238,8 +238,8 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm px-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 w-full max-w-md overflow-hidden animate-scale-in">
         {enviado ? (
           <div className="p-6 text-center space-y-3">
             <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
@@ -251,7 +251,7 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
             </p>
             <button
               onClick={onClose}
-              className="w-full px-4 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors"
+              className="w-full px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors"
             >
               Cerrar
             </button>
@@ -281,7 +281,7 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
                 <select
                   value={tipoReporte}
                   onChange={(e) => setTipoReporte(e.target.value as 'error' | 'sugerencia')}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                 >
                   <option value="error">Un error / algo no funciona</option>
                   <option value="sugerencia">Una sugerencia de mejora</option>
@@ -307,14 +307,14 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
                   placeholder={tipoReporte === 'sugerencia'
                     ? 'Ej: Sería útil poder filtrar los trámites por fecha de cierre.'
                     : 'Ej: Le di clic a Guardar en un trámite y la pantalla se puso en blanco.'}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none resize-none bg-white dark:bg-white/5 text-neutral-900 dark:text-white"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-accent focus:outline-none resize-none bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
                 />
               </div>
               {error && <p className="text-xs text-red-600">{error}</p>}
               <button
                 onClick={handleEnviar}
                 disabled={loading}
-                className="w-full px-4 py-2 bg-accent text-white rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+                className="w-full px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
                 {loading ? 'Enviando...' : tipoReporte === 'sugerencia' ? 'Enviar sugerencia' : 'Enviar reporte'}
               </button>

@@ -66,10 +66,10 @@ export function AssistantAnalytics() {
     return (
       <Card className="p-6">
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="h-6 bg-neutral-200 rounded w-1/3 mb-4"></div>
           <div className="space-y-3">
-            <div className="h-20 bg-gray-200 rounded"></div>
-            <div className="h-20 bg-gray-200 rounded"></div>
+            <div className="h-20 bg-neutral-200 rounded"></div>
+            <div className="h-20 bg-neutral-200 rounded"></div>
           </div>
         </div>
       </Card>
@@ -79,7 +79,7 @@ export function AssistantAnalytics() {
   if (!analytics) {
     return (
       <Card className="p-6">
-        <p className="text-sm text-gray-500">No hay datos de analytics disponibles</p>
+        <p className="text-sm text-neutral-500">No hay datos de analytics disponibles</p>
       </Card>
     );
   }
@@ -95,7 +95,7 @@ export function AssistantAnalytics() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-2">Analytics del Asistente Inteligente</h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-neutral-600">
           Métricas del sistema de routing dual-mode (últimas 100 consultas)
         </p>
       </div>
@@ -104,10 +104,10 @@ export function AssistantAnalytics() {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary-100 rounded-lg">
-              <Brain className="h-5 w-5 text-accent" />
+              <Brain className="h-5 w-5 text-accent-ink" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Total Consultas</p>
+              <p className="text-sm text-neutral-600">Total Consultas</p>
               <p className="text-2xl font-bold">{analytics.total_queries}</p>
             </div>
           </div>
@@ -119,7 +119,7 @@ export function AssistantAnalytics() {
               <Zap className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">ChatGPT</p>
+              <p className="text-sm text-neutral-600">ChatGPT</p>
               <p className="text-2xl font-bold">{chatgptPercentage}%</p>
             </div>
           </div>
@@ -128,10 +128,10 @@ export function AssistantAnalytics() {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary-100 rounded-lg">
-              <CheckCircle2 className="h-5 w-5 text-accent" />
+              <CheckCircle2 className="h-5 w-5 text-accent-ink" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">MOVI</p>
+              <p className="text-sm text-neutral-600">MOVI</p>
               <p className="text-2xl font-bold">{moviPercentage}%</p>
             </div>
           </div>
@@ -143,7 +143,7 @@ export function AssistantAnalytics() {
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Confianza Promedio</p>
+              <p className="text-sm text-neutral-600">Confianza Promedio</p>
               <p className="text-2xl font-bold">{analytics.avg_confidence}%</p>
             </div>
           </div>
@@ -156,7 +156,7 @@ export function AssistantAnalytics() {
           {analytics.recent_decisions.map((decision, idx) => (
             <div
               key={idx}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
             >
               <div className="flex items-center gap-3">
                 <span
@@ -168,13 +168,13 @@ export function AssistantAnalytics() {
                 >
                   {decision.selected_mode === 'chatgpt' ? '🤖 ChatGPT' : '📊 MOVI'}
                 </span>
-                <span className="text-sm text-gray-600">{decision.intent}</span>
+                <span className="text-sm text-neutral-600">{decision.intent}</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-neutral-500">
                   {decision.confidence_score}% confianza
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-neutral-500">
                   {new Date(decision.created_at).toLocaleDateString('es-MX', {
                     month: 'short',
                     day: 'numeric',

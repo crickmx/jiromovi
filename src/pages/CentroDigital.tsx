@@ -28,7 +28,7 @@ import { ACCIONES_AUDITORIA } from '../lib/centroDigitalTypes';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function FileIcon({ mime }: { mime: string | null }) {
-  if (!mime) return <File className="w-8 h-8 text-gray-400" />;
+  if (!mime) return <File className="w-8 h-8 text-neutral-500" />;
   if (mime.startsWith('image/')) return <FileImage className="w-8 h-8 text-blue-500" />;
   if (mime.startsWith('video/')) return <FileVideo className="w-8 h-8 text-violet-500" />;
   if (mime.startsWith('audio/')) return <FileAudio className="w-8 h-8 text-green-500" />;
@@ -36,18 +36,18 @@ function FileIcon({ mime }: { mime: string | null }) {
   if (mime.includes('sheet') || mime.includes('excel') || mime.includes('csv'))
     return <FileSpreadsheet className="w-8 h-8 text-emerald-600" />;
   if (mime.includes('document') || mime.includes('word') || mime.includes('text'))
-    return <FileText className="w-8 h-8 text-blue-600" />;
-  return <File className="w-8 h-8 text-gray-400" />;
+    return <FileText className="w-8 h-8 text-accent-ink" />;
+  return <File className="w-8 h-8 text-neutral-500" />;
 }
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4 animate-pulse">
+    <div className="bg-surface-card rounded-2xl border border-soft p-4 animate-pulse">
       <div className="flex items-start gap-3">
-        <div className="w-12 h-12 bg-gray-200 rounded-lg" />
+        <div className="w-12 h-12 bg-neutral-200 rounded-lg" />
         <div className="flex-1">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-          <div className="h-3 bg-gray-100 rounded w-1/2" />
+          <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2" />
+          <div className="h-3 bg-neutral-100 rounded w-1/2" />
         </div>
       </div>
     </div>
@@ -85,7 +85,7 @@ function FilePreviewThumbnail({ archivo }: { archivo: CentroDigitalArchivo }) {
   if (!thumbUrl) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-400 rounded-full animate-spin" />
       </div>
     );
   }
@@ -167,24 +167,24 @@ function SafeFileViewer({ archivo, onClose, onDownload }: {
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b">
           <div>
-            <h3 className="text-base font-semibold text-gray-900 truncate">{archivo.nombre}</h3>
-            <p className="text-xs text-gray-500">{formatearTamano(archivo.tamano_bytes)}</p>
+            <h3 className="text-base font-semibold text-neutral-900 truncate">{archivo.nombre}</h3>
+            <p className="text-xs text-neutral-500">{formatearTamano(archivo.tamano_bytes)}</p>
           </div>
           <div className="flex gap-2">
             <button onClick={onDownload}
-              className="p-2 text-accent hover:bg-gray-100 rounded-lg">
+              className="p-2 text-accent-ink hover:bg-gray-100 rounded-lg">
               <Download className="w-4 h-4" />
             </button>
             <button onClick={onClose}
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+              className="p-2 text-neutral-500 hover:bg-gray-100 rounded-lg">
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-auto p-4 bg-gray-50 min-h-[400px]">
+        <div className="flex-1 overflow-auto p-4 bg-neutral-50 min-h-[400px]">
           {viewLoading && !viewError ? (
             <div className="flex items-center justify-center h-full min-h-[400px]">
-              <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+              <RefreshCw className="w-6 h-6 animate-spin text-neutral-500" />
             </div>
           ) : viewError ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 py-16">
@@ -192,8 +192,8 @@ function SafeFileViewer({ archivo, onClose, onDownload }: {
                 <AlertTriangle className="w-8 h-8 text-red-400" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-gray-700 mb-1">Archivo no disponible</p>
-                <p className="text-xs text-gray-500 max-w-sm">
+                <p className="text-sm font-semibold text-neutral-700 mb-1">Archivo no disponible</p>
+                <p className="text-xs text-neutral-500 max-w-sm">
                   Este archivo no se encuentra en el almacenamiento. Puede haber sido eliminado o movido.
                   Puedes descargarlo o usar la herramienta de Reparación en la pestaña Auditoría.
                 </p>
@@ -226,7 +226,7 @@ function SafeFileViewer({ archivo, onClose, onDownload }: {
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4 py-16">
               <FileIcon mime={archivo.tipo_mime} />
-              <p className="text-sm text-gray-600">Vista previa no disponible para este tipo de archivo.</p>
+              <p className="text-sm text-neutral-600">Vista previa no disponible para este tipo de archivo.</p>
               <Button onClick={onDownload} size="sm">
                 <Download className="w-3.5 h-3.5 mr-1.5" />Descargar archivo
               </Button>
@@ -275,22 +275,22 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-50 flex items-center justify-center p-4">
+      <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-lg animate-scale-in">
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-lg font-bold text-gray-900">Crear estructura de carpetas</h2>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded">
+          <h2 className="text-lg font-bold text-neutral-900">Crear estructura de carpetas</h2>
+          <button onClick={onClose} className="p-1 text-neutral-500 hover:text-gray-600 rounded">
             <X className="w-5 h-5" />
           </button>
         </div>
         <div className="p-6 space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-neutral-600">
             Esta accion crea las carpetas por aseguradora y ramo en el Centro Digital.
             No elimina ni modifica carpetas existentes.
           </p>
-          <div className="bg-gray-50 rounded-xl border p-4 min-h-[120px] font-mono text-xs text-gray-700 space-y-1 overflow-y-auto max-h-48">
+          <div className="bg-neutral-50 rounded-xl border p-4 min-h-[120px] font-mono text-xs text-neutral-700 space-y-1 overflow-y-auto max-h-48">
             {log.length === 0
-              ? <p className="text-gray-400">Listo para iniciar...</p>
+              ? <p className="text-neutral-500">Listo para iniciar...</p>
               : log.map((line, i) => <p key={i}>{line}</p>)
             }
           </div>
@@ -376,7 +376,7 @@ function AuditoriaPanel({ esAdmin }: { esAdmin: boolean }) {
   return (
     <div className="p-6 space-y-4">
       {/* Tab switcher */}
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 bg-neutral-100 rounded-lg p-1 w-fit">
         {(['historial', 'integridad'] as const).map(t => (
           <button
             key={t}
@@ -389,29 +389,29 @@ function AuditoriaPanel({ esAdmin }: { esAdmin: boolean }) {
       </div>
 
       {tab === 'historial' && (
-        <div className="bg-white rounded-xl border overflow-hidden">
+        <div className="bg-surface-card rounded-xl border overflow-hidden">
           <div className="px-6 py-3 border-b flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-gray-500" />
+            <h3 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-neutral-500" />
               Registro de actividad
             </h3>
-            <button onClick={loadAuditoria} className="p-1.5 rounded-lg hover:bg-gray-50 text-gray-400">
+            <button onClick={loadAuditoria} className="p-1.5 rounded-lg hover:bg-gray-50 text-neutral-500">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
           {loadingAudit ? (
             <div className="p-8 flex justify-center">
-              <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+              <RefreshCw className="w-5 h-5 animate-spin text-neutral-500" />
             </div>
           ) : auditoria.length === 0 ? (
             <EmptyState icon={Activity} title="Sin registros" description="No hay actividad registrada aun." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-neutral-50 border-b">
                   <tr>
                     {['Accion', 'Carpeta', 'Archivo', 'Usuario', 'Fecha'].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">{h}</th>
+                      <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -423,10 +423,10 @@ function AuditoriaPanel({ esAdmin }: { esAdmin: boolean }) {
                           {ACCIONES_AUDITORIA[entry.accion] || entry.accion}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-xs text-gray-600">{entry.carpeta?.nombre || '-'}</td>
-                      <td className="px-4 py-2.5 text-xs text-gray-600">{entry.archivo?.nombre || '-'}</td>
-                      <td className="px-4 py-2.5 text-xs text-gray-600">{entry.usuario?.nombre_completo || '-'}</td>
-                      <td className="px-4 py-2.5 text-xs text-gray-400">
+                      <td className="px-4 py-2.5 text-xs text-neutral-600">{entry.carpeta?.nombre || '-'}</td>
+                      <td className="px-4 py-2.5 text-xs text-neutral-600">{entry.archivo?.nombre || '-'}</td>
+                      <td className="px-4 py-2.5 text-xs text-neutral-600">{entry.usuario?.nombre_completo || '-'}</td>
+                      <td className="px-4 py-2.5 text-xs text-neutral-500">
                         {new Date(entry.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
                       </td>
                     </tr>
@@ -441,14 +441,14 @@ function AuditoriaPanel({ esAdmin }: { esAdmin: boolean }) {
       {tab === 'integridad' && (
         <div className="space-y-4">
           {/* Integrity check card */}
-          <div className="bg-white rounded-xl border p-6">
+          <div className="bg-surface-card rounded-2xl border p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   Verificacion de integridad
                 </h3>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-neutral-500 mt-1">
                   Compara los registros de la base de datos con los archivos reales en Storage para detectar registros huerfanos.
                 </p>
               </div>
@@ -469,11 +469,11 @@ function AuditoriaPanel({ esAdmin }: { esAdmin: boolean }) {
             {/* Progress */}
             {integrityStatus === 'checking' && integrityProgress.total > 0 && (
               <div className="mb-4">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <div className="flex justify-between text-xs text-neutral-500 mb-1">
                   <span>Verificando archivos...</span>
                   <span>{integrityProgress.checked} / {integrityProgress.total}</span>
                 </div>
-                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-emerald-500 rounded-full transition-all duration-300"
                     style={{ width: `${(integrityProgress.checked / integrityProgress.total) * 100}%` }}
@@ -486,21 +486,21 @@ function AuditoriaPanel({ esAdmin }: { esAdmin: boolean }) {
             {integrityReport && (
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-gray-800">{integrityReport.totalDbRecords}</p>
-                    <p className="text-xs text-gray-500">Registros en BD</p>
+                  <div className="bg-neutral-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-neutral-800">{integrityReport.totalDbRecords}</p>
+                    <p className="text-xs text-neutral-500">Registros en BD</p>
                   </div>
                   <div className={`rounded-lg p-3 text-center ${integrityReport.missingStoragePaths.length === 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
                     <p className={`text-2xl font-bold ${integrityReport.missingStoragePaths.length === 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                       {integrityReport.missingStoragePaths.length}
                     </p>
-                    <p className="text-xs text-gray-500">Sin respaldo en Storage</p>
+                    <p className="text-xs text-neutral-500">Sin respaldo en Storage</p>
                   </div>
                   <div className="bg-emerald-50 rounded-lg p-3 text-center">
                     <p className="text-2xl font-bold text-emerald-600">
                       {integrityReport.totalDbRecords - integrityReport.missingStoragePaths.length}
                     </p>
-                    <p className="text-xs text-gray-500">Archivos saludables</p>
+                    <p className="text-xs text-neutral-500">Archivos saludables</p>
                   </div>
                 </div>
 
@@ -533,17 +533,17 @@ function AuditoriaPanel({ esAdmin }: { esAdmin: boolean }) {
                     </div>
 
                     {/* List of broken records */}
-                    <div className="bg-white border rounded-lg overflow-hidden">
-                      <div className="px-4 py-2 bg-gray-50 border-b text-xs font-medium text-gray-600">
+                    <div className="bg-surface-card border rounded-lg overflow-hidden">
+                      <div className="px-4 py-2 bg-neutral-50 border-b text-xs font-medium text-neutral-600">
                         Registros afectados
                       </div>
-                      <div className="divide-y divide-gray-50 max-h-48 overflow-y-auto">
+                      <div className="divide-y divide-neutral-50 max-h-48 overflow-y-auto">
                         {integrityReport.missingStoragePaths.map(r => (
                           <div key={r.id} className="flex items-center gap-3 px-4 py-2">
                             <AlertTriangle className="w-3 h-3 text-red-400 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-700 truncate">{r.nombre}</p>
-                              <p className="text-[10px] text-gray-400 truncate font-mono">{r.ruta_storage}</p>
+                              <p className="text-xs font-medium text-neutral-700 truncate">{r.nombre}</p>
+                              <p className="text-[11px] text-neutral-500 truncate font-mono">{r.ruta_storage}</p>
                             </div>
                           </div>
                         ))}
@@ -552,7 +552,7 @@ function AuditoriaPanel({ esAdmin }: { esAdmin: boolean }) {
                   </div>
                 )}
 
-                <p className="text-[10px] text-gray-400">
+                <p className="text-[11px] text-neutral-500">
                   Verificado el {new Date(integrityReport.checkedAt).toLocaleString('es-MX')}
                 </p>
               </div>
@@ -724,12 +724,12 @@ export default function CentroDigital() {
           {archivosPapelera.length === 0 ? (
             <EmptyState icon={Archive} title="Papelera vacia" description="No hay archivos eliminados" />
           ) : (
-            <div className="bg-white rounded-xl border overflow-hidden">
+            <div className="bg-surface-card rounded-xl border overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-neutral-50 border-b">
                   <tr>
                     {['Archivo', 'Carpeta', 'Eliminado por', 'Fecha', 'Acciones'].map(h => (
-                      <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                      <th key={h} className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -738,16 +738,16 @@ export default function CentroDigital() {
                     <tr key={archivo.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <File className="w-5 h-5 text-gray-400" />
+                          <File className="w-5 h-5 text-neutral-500" />
                           <div>
-                            <p className="font-medium text-gray-900">{archivo.nombre}</p>
-                            <p className="text-xs text-gray-500">{formatearTamano(archivo.tamano_bytes)}</p>
+                            <p className="font-medium text-neutral-900">{archivo.nombre}</p>
+                            <p className="text-xs text-neutral-500">{formatearTamano(archivo.tamano_bytes)}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{archivo.carpeta?.nombre || '-'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{archivo.eliminador?.nombre_completo || '-'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-neutral-600">{archivo.carpeta?.nombre || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">{archivo.eliminador?.nombre_completo || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">
                         {archivo.fecha_eliminacion ? new Date(archivo.fecha_eliminacion).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4">
@@ -804,13 +804,13 @@ export default function CentroDigital() {
 
         <div className="p-6">
           <div className="mb-4 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <Input placeholder="Buscar archivos..." value={busqueda}
               onChange={e => setBusqueda(e.target.value)} className="pl-9" />
           </div>
 
           {archivos.length === 0 ? (
-            <div className="bg-white rounded-xl border">
+            <div className="bg-surface-card rounded-xl border">
               <EmptyState icon={File} title="Sin archivos" description="Esta carpeta aun no tiene archivos"
                 action={puedeSubirArchivos ? (
                   <Button onClick={() => setShowSubirModal(true)}>
@@ -822,17 +822,17 @@ export default function CentroDigital() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {archivosFiltrados.map(archivo => (
                 <div key={archivo.id}
-                  className="bg-white rounded-xl border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 overflow-hidden group">
-                  <div className="aspect-[4/3] bg-gray-50 flex items-center justify-center relative overflow-hidden">
+                  className="bg-surface-card rounded-xl border border-soft hover:shadow-lg hover:border-gray-200 transition-all duration-200 overflow-hidden group">
+                  <div className="aspect-[4/3] bg-neutral-50 flex items-center justify-center relative overflow-hidden">
                     <FilePreviewThumbnail archivo={archivo} />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
                       <button onClick={() => { setArchivoPrevisualizar(archivo); trackDigitalFileViewed(archivo.nombre); }}
                         className="p-1.5 bg-white rounded-full shadow hover:bg-gray-100">
-                        <Eye className="w-3.5 h-3.5 text-gray-700" />
+                        <Eye className="w-3.5 h-3.5 text-neutral-700" />
                       </button>
                       <button onClick={() => handleDescargar(archivo)}
                         className="p-1.5 bg-white rounded-full shadow hover:bg-gray-100">
-                        <Download className="w-3.5 h-3.5 text-gray-700" />
+                        <Download className="w-3.5 h-3.5 text-neutral-700" />
                       </button>
                       {puedeSubirArchivos && carpetaSeleccionada?.enable_chava_ai && (
                         <button onClick={() => handleIndexarArchivo(archivo.id)}
@@ -849,19 +849,19 @@ export default function CentroDigital() {
                     </div>
                   </div>
                   <div className="p-3">
-                    <p className="font-medium text-sm text-gray-900 truncate" title={archivo.nombre}>{archivo.nombre}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{formatearTamano(archivo.tamano_bytes)}</p>
+                    <p className="font-medium text-sm text-neutral-900 truncate" title={archivo.nombre}>{archivo.nombre}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{formatearTamano(archivo.tamano_bytes)}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-xl border overflow-hidden">
+            <div className="bg-surface-card rounded-xl border overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-neutral-50 border-b">
                   <tr>
                     {['Archivo', 'Tamano', 'Subido por', 'Fecha', 'Acciones'].map(h => (
-                      <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+                      <th key={h} className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -870,23 +870,23 @@ export default function CentroDigital() {
                     <tr key={archivo.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-50 flex-shrink-0 flex items-center justify-center">
                             <FilePreviewThumbnail archivo={archivo} />
                           </div>
-                          <span className="font-medium text-gray-900">{archivo.nombre}</span>
+                          <span className="font-medium text-neutral-900">{archivo.nombre}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{formatearTamano(archivo.tamano_bytes)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{archivo.cargador?.nombre_completo || '-'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{new Date(archivo.created_at).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">{formatearTamano(archivo.tamano_bytes)}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">{archivo.cargador?.nombre_completo || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">{new Date(archivo.created_at).toLocaleDateString()}</td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           <button onClick={() => { setArchivoPrevisualizar(archivo); trackDigitalFileViewed(archivo.nombre); }}
-                            className="text-gray-500 hover:text-gray-700 p-1 rounded hover:bg-gray-50">
+                            className="text-neutral-500 hover:text-gray-700 p-1 rounded hover:bg-gray-50">
                             <Eye className="w-4 h-4" />
                           </button>
                           <button onClick={() => handleDescargar(archivo)}
-                            className="text-accent hover:text-blue-700 p-1 rounded hover:bg-blue-50">
+                            className="text-accent-ink hover:text-accent-ink p-1 rounded hover:bg-blue-50">
                             <Download className="w-4 h-4" />
                           </button>
                           {puedeSubirArchivos && carpetaSeleccionada?.enable_chava_ai && (
@@ -956,37 +956,37 @@ export default function CentroDigital() {
                 {showImportMenu && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowImportMenu(false)} />
-                    <div className="absolute right-0 top-full mt-1.5 w-56 bg-white border border-gray-100 rounded-xl shadow-lg z-20 overflow-hidden">
+                    <div className="absolute right-0 top-full mt-1.5 w-56 bg-surface-card border border-soft rounded-xl shadow-lg z-20 overflow-hidden">
                       <button
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-neutral-700 hover:bg-gray-50 transition-colors"
                         onClick={() => { setShowImportMenu(false); setShowBulkImport(true); }}
                       >
-                        <RefreshCw className="w-4 h-4 text-slate-500" />
+                        <RefreshCw className="w-4 h-4 text-neutral-500" />
                         <div className="text-left">
                           <p className="font-medium">Crear estructura</p>
-                          <p className="text-xs text-gray-400">Carpetas por aseguradora</p>
+                          <p className="text-xs text-neutral-500">Carpetas por aseguradora</p>
                         </div>
                       </button>
-                      <div className="border-t border-gray-50" />
+                      <div className="border-t border-neutral-50" />
                       <button
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-neutral-700 hover:bg-gray-50 transition-colors"
                         onClick={() => { setShowImportMenu(false); setShowMigracion(true); }}
                       >
                         <FolderInput className="w-4 h-4 text-blue-500" />
                         <div className="text-left">
                           <p className="font-medium">Migración HTML</p>
-                          <p className="text-xs text-gray-400">Importar documentos externos</p>
+                          <p className="text-xs text-neutral-500">Importar documentos externos</p>
                         </div>
                       </button>
-                      <div className="border-t border-gray-50" />
+                      <div className="border-t border-neutral-50" />
                       <button
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-neutral-700 hover:bg-gray-50 transition-colors"
                         onClick={() => { setShowImportMenu(false); setShowImportaciones(true); }}
                       >
-                        <History className="w-4 h-4 text-gray-400" />
+                        <History className="w-4 h-4 text-neutral-500" />
                         <div className="text-left">
                           <p className="font-medium">Historial</p>
-                          <p className="text-xs text-gray-400">Ver importaciones anteriores</p>
+                          <p className="text-xs text-neutral-500">Ver importaciones anteriores</p>
                         </div>
                       </button>
                     </div>
@@ -1005,7 +1005,7 @@ export default function CentroDigital() {
 
       {/* Tab navigation (admin only shows Auditoria) */}
       {esAdmin && (
-        <div className="px-6 pt-4 border-b border-gray-100">
+        <div className="px-6 pt-4 border-b border-neutral-100">
           <div className="flex gap-0">
             {([
               { id: 'carpetas', label: 'Carpetas', icon: Folder },
@@ -1016,8 +1016,8 @@ export default function CentroDigital() {
                 onClick={() => setActiveTab(id)}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === id
-                    ? 'border-accent text-accent'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-accent text-accent-ink'
+                    : 'border-transparent text-neutral-500 hover:text-gray-700'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -1033,7 +1033,7 @@ export default function CentroDigital() {
       ) : (
         <div className="p-6">
           <div className="mb-5 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <Input placeholder="Buscar carpetas..." value={busqueda}
               onChange={e => setBusqueda(e.target.value)} className="pl-9" />
           </div>
@@ -1054,24 +1054,24 @@ export default function CentroDigital() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {carpetasFiltradas.map(carpeta => (
                 <div key={carpeta.id}
-                  className="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-md hover:border-gray-200 transition-all cursor-pointer group"
+                  className="bg-surface-card border border-soft rounded-2xl p-4 hover:shadow-card-hover hover:border-gray-200 transition-all cursor-pointer group"
                   onClick={() => setCarpetaSeleccionada(carpeta)}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3 flex-1">
                       <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Folder className="w-5 h-5 text-accent" />
+                        <Folder className="w-5 h-5 text-accent-ink" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">{carpeta.nombre}</h3>
+                        <h3 className="font-semibold text-neutral-900 truncate">{carpeta.nombre}</h3>
                         {carpeta.descripcion && (
-                          <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{carpeta.descripcion}</p>
+                          <p className="text-xs text-neutral-500 line-clamp-2 mt-0.5">{carpeta.descripcion}</p>
                         )}
                       </div>
                     </div>
                     {(esAdmin || esGerente) && (
                       <button
                         onClick={e => { e.stopPropagation(); setCarpetaEditar(carpeta); setShowCarpetaModal(true); }}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 rounded transition-opacity">
+                        className="opacity-0 group-hover:opacity-100 p-1 text-neutral-500 hover:text-gray-600 rounded transition-opacity">
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     )}
@@ -1092,15 +1092,15 @@ export default function CentroDigital() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
+                  <div className="mt-3 pt-3 border-t border-neutral-50 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-400">{new Date(carpeta.created_at).toLocaleDateString()}</span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
+                      <span className="text-xs text-neutral-500">{new Date(carpeta.created_at).toLocaleDateString()}</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-100 text-neutral-600 text-xs rounded-full font-medium">
                         <File className="w-3 h-3" />
                         {carpeta.total_archivos ?? 0} archivo{(carpeta.total_archivos ?? 0) !== 1 ? 's' : ''}
                       </span>
                     </div>
-                    <span className="text-xs text-accent font-medium group-hover:underline flex items-center gap-1">
+                    <span className="text-xs text-accent-ink font-medium group-hover:underline flex items-center gap-1">
                       Ver archivos <ChevronRight className="w-3 h-3" />
                     </span>
                   </div>
@@ -1131,14 +1131,14 @@ export default function CentroDigital() {
       )}
 
       {showImportaciones && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-card rounded-2xl shadow-e4 w-full max-w-2xl flex flex-col max-h-[85vh] animate-scale-in">
             <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Historial de Importaciones</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Migraciones documentales anteriores</p>
+                <h2 className="text-lg font-bold text-neutral-900">Historial de Importaciones</h2>
+                <p className="text-xs text-neutral-500 mt-0.5">Migraciones documentales anteriores</p>
               </div>
-              <button onClick={() => setShowImportaciones(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+              <button onClick={() => setShowImportaciones(false)} className="p-1.5 rounded-lg text-neutral-500 hover:text-gray-600 hover:bg-gray-100">
                 <X className="w-5 h-5" />
               </button>
             </div>

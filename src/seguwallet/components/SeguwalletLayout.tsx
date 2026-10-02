@@ -370,13 +370,13 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
                   {firstName}
                 </span>
                 <ChevronDown
-                  className={cn('w-3.5 h-3.5 text-neutral-400 transition-transform duration-200', userMenuOpen && 'rotate-180')}
+                  className={cn('w-3.5 h-3.5 text-neutral-500 transition-transform duration-200', userMenuOpen && 'rotate-180')}
                 />
               </button>
 
               {/* ── Dropdown panel ── */}
               {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl border border-neutral-200 shadow-xl shadow-neutral-900/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 top-full mt-2 w-72 bg-surface-card rounded-2xl border border-soft shadow-xl shadow-neutral-900/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
 
                   {/* User header */}
                   <div className="px-5 pt-5 pb-4 flex items-center gap-4" style={{ background: `linear-gradient(135deg, ${primary}18 0%, ${primary}08 100%)` }}>
@@ -393,7 +393,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
                       </p>
                       <p className="text-xs text-neutral-500 truncate mt-0.5">{customer?.email}</p>
                       <span
-                        className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                        className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold"
                         style={{ backgroundColor: primary + '20', color: primary }}
                       >
                         <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: primary }} />
@@ -422,7 +422,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-neutral-800">{item.label}</p>
-                            <p className="text-[11px] text-neutral-400">{item.desc}</p>
+                            <p className="text-[11px] text-neutral-500">{item.desc}</p>
                           </div>
                         </button>
                       );
@@ -511,7 +511,7 @@ export function SeguwalletLayout({ children }: { children: ReactNode }) {
                     onClick={() => navTo(item.path)}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-neutral-600 hover:bg-neutral-50 transition-all text-left"
                   >
-                    <Icon className="w-4 h-4 flex-shrink-0 text-neutral-400" />
+                    <Icon className="w-4 h-4 flex-shrink-0 text-neutral-500" />
                     {item.label}
                   </button>
                 );

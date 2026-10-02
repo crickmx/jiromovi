@@ -338,7 +338,7 @@ export function Oficinas() {
             {oficinas.map((oficina) => (
               <div
                 key={oficina.id}
-                className="bg-white dark:bg-neutral-800/50 border border-neutral-200/60 dark:border-white/8 rounded-xl overflow-hidden hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200"
+                className="bg-surface-card dark:bg-neutral-800/50 border border-neutral-200/60 dark:border-white/8 rounded-xl overflow-hidden hover:border-neutral-300 dark:hover:border-white/15 hover:shadow-sm transition-all duration-200"
               >
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -383,7 +383,7 @@ export function Oficinas() {
                               href={oficina.facebook}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-accent hover:text-primary-700"
+                              className="text-accent-ink hover:text-primary-700"
                             >
                               <Facebook className="w-5 h-5" />
                             </a>
@@ -412,8 +412,8 @@ export function Oficinas() {
                         </>
                       ) : (
                         <>
-                          <ToggleLeft className="w-6 h-6 text-neutral-400 dark:text-white/30" />
-                          <span className="text-sm text-neutral-400 dark:text-white/30 font-medium">Inactiva</span>
+                          <ToggleLeft className="w-6 h-6 text-neutral-500 dark:text-white/45" />
+                          <span className="text-sm text-neutral-500 dark:text-white/45 font-medium">Inactiva</span>
                         </>
                       )}
                     </button>
@@ -445,7 +445,7 @@ export function Oficinas() {
                       )}
                       <button
                         onClick={() => openModal(oficina)}
-                        className="flex items-center space-x-2 text-accent hover:bg-primary-50 px-3 py-2 rounded-lg transition"
+                        className="flex items-center space-x-2 text-accent-ink hover:bg-primary-50 px-3 py-2 rounded-lg transition"
                       >
                         <Edit className="w-4 h-4" />
                         <span className="text-sm font-medium">Editar</span>
@@ -467,7 +467,7 @@ export function Oficinas() {
                         {usuarios[oficina.id].map((usuario) => (
                           <div
                             key={usuario.id}
-                            className="bg-white border border-neutral-200 dark:border-white/10 rounded-lg p-3"
+                            className="bg-surface-card border border-soft dark:border-white/10 rounded-2xl p-3"
                           >
                             <div className="flex items-center space-x-3">
                               {usuario.imagen_perfil_url ? (
@@ -487,7 +487,7 @@ export function Oficinas() {
                                 <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                                   {usuario.nombre} {usuario.apellidos}
                                 </p>
-                                <p className="text-xs text-neutral-500 dark:text-white/40 truncate">{usuario.puesto}</p>
+                                <p className="text-xs text-neutral-500 dark:text-white/55 truncate">{usuario.puesto}</p>
                               </div>
                             </div>
                           </div>
@@ -511,15 +511,15 @@ export function Oficinas() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-xl max-w-4xl w-full my-8 flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-start justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-[var(--radius-xl)] shadow-e4 max-w-4xl w-full my-8 flex flex-col max-h-[85vh] animate-scale-in">
             <div className="flex-shrink-0 border-b border-neutral-200 dark:border-white/10 px-6 py-4 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {selectedOficina ? 'Editar Oficina' : 'Nueva Oficina'}
               </h2>
               <button
                 onClick={() => setModalOpen(false)}
-                className="text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:text-white/60"
+                className="text-neutral-500 dark:text-white/45 hover:text-neutral-600 dark:text-white/60"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -734,7 +734,7 @@ export function Oficinas() {
                           Reset
                         </button>
                       </div>
-                      <p className="mt-1 text-xs text-neutral-500 dark:text-white/40">
+                      <p className="mt-1 text-xs text-neutral-500 dark:text-white/55">
                         Color personalizado para la UI de esta oficina (formato HEX: #RRGGBB)
                       </p>
                     </div>
@@ -747,7 +747,7 @@ export function Oficinas() {
                     id="activa"
                     checked={formData.activa}
                     onChange={(e) => setFormData({ ...formData, activa: e.target.checked })}
-                    className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-5 h-5 text-accent-ink rounded focus:ring-2 focus:ring-accent/40"
                   />
                   <label htmlFor="activa" className="text-sm font-medium text-neutral-700 dark:text-white/70">
                     Oficina activa
@@ -760,7 +760,7 @@ export function Oficinas() {
                     id="es_espacio_jiro"
                     checked={formData.es_espacio_jiro}
                     onChange={(e) => setFormData({ ...formData, es_espacio_jiro: e.target.checked })}
-                    className="w-5 h-5 text-accent rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-5 h-5 text-accent-ink rounded focus:ring-2 focus:ring-accent/40"
                   />
                   <label htmlFor="es_espacio_jiro" className="text-sm font-medium text-neutral-700 dark:text-white/70">
                     Marcar como Espacio JIRO (oficina con áreas reservables)
@@ -782,7 +782,7 @@ export function Oficinas() {
                   type="submit"
                   form="oficina-form"
                   disabled={saving}
-                  className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition disabled:opacity-50"
+                  className="px-6 py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent-hover transition disabled:opacity-50"
                 >
                   {saving ? 'Guardando...' : selectedOficina ? 'Actualizar' : 'Crear'}
                 </button>
@@ -793,13 +793,13 @@ export function Oficinas() {
       )}
 
       {customFieldsModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-xl max-w-2xl w-full my-8 flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm flex items-start justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-[var(--radius-xl)] shadow-e4 max-w-2xl w-full my-8 flex flex-col max-h-[85vh] animate-scale-in">
             <div className="flex-shrink-0 border-b border-neutral-200 dark:border-white/10 px-6 py-4 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Campos Personalizados</h2>
               <button
                 onClick={() => setCustomFieldsModalOpen(false)}
-                className="text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:text-white/60"
+                className="text-neutral-500 dark:text-white/45 hover:text-neutral-600 dark:text-white/60"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -830,7 +830,7 @@ export function Oficinas() {
                   </select>
                   <button
                     onClick={handleAddCustomField}
-                    className="px-4 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition"
+                    className="px-4 py-2.5 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent-hover transition"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -840,7 +840,7 @@ export function Oficinas() {
               <div className="space-y-2">
                 <h3 className="font-semibold text-neutral-900 dark:text-white mb-3">Campos Existentes</h3>
                 {camposPersonalizados.length === 0 ? (
-                  <p className="text-neutral-500 dark:text-white/40 text-center py-4">No hay campos personalizados</p>
+                  <p className="text-neutral-500 dark:text-white/55 text-center py-4">No hay campos personalizados</p>
                 ) : (
                   camposPersonalizados.map((campo) => (
                     <div
@@ -849,7 +849,7 @@ export function Oficinas() {
                     >
                       <div>
                         <p className="font-medium text-neutral-900 dark:text-white">{campo.nombre_campo}</p>
-                        <p className="text-sm text-neutral-500 dark:text-white/40">Tipo: {campo.tipo}</p>
+                        <p className="text-sm text-neutral-500 dark:text-white/55">Tipo: {campo.tipo}</p>
                       </div>
                       <button
                         onClick={() => handleDeleteCustomField(campo.id)}

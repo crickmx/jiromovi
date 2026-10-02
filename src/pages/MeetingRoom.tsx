@@ -359,7 +359,7 @@ export function MeetingRoom() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-slate-900">
+      <div className="flex justify-center items-center min-h-screen bg-neutral-900">
         <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -371,14 +371,14 @@ export function MeetingRoom() {
 
   if (!hasJoined) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">{meeting.title}</h1>
-          <p className="text-slate-600 mb-6">Ingresa tu nombre para unirte</p>
+      <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl shadow-e4 max-w-md w-full p-8 animate-scale-in">
+          <h1 className="text-2xl font-bold text-neutral-800 mb-2">{meeting.title}</h1>
+          <p className="text-neutral-600 mb-6">Ingresa tu nombre para unirte</p>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Nombre
               </label>
               <input
@@ -386,7 +386,7 @@ export function MeetingRoom() {
                 value={joinName}
                 onChange={(e) => setJoinName(e.target.value)}
                 placeholder="Tu nombre"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
 
@@ -400,7 +400,7 @@ export function MeetingRoom() {
 
             <button
               onClick={() => navigate('/movi-meet')}
-              className="w-full text-slate-600 py-3 rounded-lg hover:bg-slate-100 transition"
+              className="w-full text-neutral-600 py-3 rounded-lg hover:bg-slate-100 transition"
             >
               Cancelar
             </button>
@@ -411,12 +411,12 @@ export function MeetingRoom() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
-      <div className="bg-slate-800 border-b border-slate-700 px-6 py-4">
+    <div className="min-h-screen bg-neutral-900 flex flex-col">
+      <div className="bg-neutral-800 border-b border-neutral-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-white">{meeting.title}</h1>
-            <p className="text-slate-400 text-sm">Código: {meeting.code}</p>
+            <p className="text-neutral-500 text-sm">Código: {meeting.code}</p>
           </div>
           {isHost && (
             <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
@@ -436,10 +436,10 @@ export function MeetingRoom() {
         </div>
 
         {showChat && (
-          <div className="w-80 bg-white border-l border-slate-200 flex flex-col">
+          <div className="w-80 bg-white border-l border-neutral-200 flex flex-col">
             <button
               onClick={() => setShowChat(false)}
-              className="absolute top-2 right-2 p-1 text-slate-600 hover:text-slate-800"
+              className="absolute top-2 right-2 p-1 text-neutral-600 hover:text-slate-800"
             >
               <X className="w-5 h-5" />
             </button>
@@ -452,10 +452,10 @@ export function MeetingRoom() {
         )}
 
         {showParticipants && (
-          <div className="w-80 bg-white border-l border-slate-200 flex flex-col">
+          <div className="w-80 bg-white border-l border-neutral-200 flex flex-col">
             <button
               onClick={() => setShowParticipants(false)}
-              className="absolute top-2 right-2 p-1 text-slate-600 hover:text-slate-800"
+              className="absolute top-2 right-2 p-1 text-neutral-600 hover:text-slate-800"
             >
               <X className="w-5 h-5" />
             </button>
@@ -470,13 +470,13 @@ export function MeetingRoom() {
         )}
       </div>
 
-      <div className="bg-slate-800 border-t border-slate-700 px-6 py-4">
+      <div className="bg-neutral-800 border-t border-neutral-700 px-6 py-4">
         <div className="flex items-center justify-center space-x-4">
           <button
             onClick={toggleAudio}
             className={`p-4 rounded-full transition ${
               audioEnabled
-                ? 'bg-slate-700 text-white hover:bg-slate-600'
+                ? 'bg-neutral-700 text-white hover:bg-slate-600'
                 : 'bg-red-600 text-white hover:bg-red-700'
             }`}
             title={audioEnabled ? 'Silenciar' : 'Activar micrófono'}
@@ -488,7 +488,7 @@ export function MeetingRoom() {
             onClick={toggleVideo}
             className={`p-4 rounded-full transition ${
               videoEnabled
-                ? 'bg-slate-700 text-white hover:bg-slate-600'
+                ? 'bg-neutral-700 text-white hover:bg-slate-600'
                 : 'bg-red-600 text-white hover:bg-red-700'
             }`}
             title={videoEnabled ? 'Desactivar cámara' : 'Activar cámara'}
@@ -501,7 +501,7 @@ export function MeetingRoom() {
             className={`p-4 rounded-full transition ${
               showChat
                 ? 'bg-purple-600 text-white'
-                : 'bg-slate-700 text-white hover:bg-slate-600'
+                : 'bg-neutral-700 text-white hover:bg-slate-600'
             }`}
             title="Chat"
           >
@@ -513,7 +513,7 @@ export function MeetingRoom() {
             className={`p-4 rounded-full transition ${
               showParticipants
                 ? 'bg-purple-600 text-white'
-                : 'bg-slate-700 text-white hover:bg-slate-600'
+                : 'bg-neutral-700 text-white hover:bg-slate-600'
             }`}
             title="Participantes"
           >
@@ -526,7 +526,7 @@ export function MeetingRoom() {
               className={`p-4 rounded-full transition ${
                 isScreenSharing
                   ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-slate-700 text-white hover:bg-slate-600'
+                  : 'bg-neutral-700 text-white hover:bg-slate-600'
               }`}
               title={isScreenSharing ? 'Detener compartir pantalla' : 'Compartir pantalla'}
             >
@@ -534,7 +534,7 @@ export function MeetingRoom() {
             </button>
           )}
 
-          <div className="w-px h-12 bg-slate-700" />
+          <div className="w-px h-12 bg-neutral-700" />
 
           <button
             onClick={handleLeaveMeeting}

@@ -37,7 +37,7 @@ export function ResponseMessage({ response }: ResponseMessageProps) {
           {response.chart && <ResponseChart chart={response.chart} />}
           {response.table && <ResponseTable table={response.table} />}
           {response.insights && (
-            <p className="text-sm text-gray-700">{response.insights}</p>
+            <p className="text-sm text-neutral-700">{response.insights}</p>
           )}
           {response.actions.length > 0 && (
             <ResponseActionButtons actions={response.actions} />
@@ -50,7 +50,7 @@ export function ResponseMessage({ response }: ResponseMessageProps) {
         <div className="space-y-3">
           <ResponseTable table={response.table} />
           {response.explanation && (
-            <p className="text-sm text-gray-700">{response.explanation}</p>
+            <p className="text-sm text-neutral-700">{response.explanation}</p>
           )}
           {response.actions.length > 0 && (
             <ResponseActionButtons actions={response.actions} />
@@ -70,8 +70,8 @@ export function ResponseMessage({ response }: ResponseMessageProps) {
                 <p className="font-medium">
                   Comisión atípica: ${anomaly.amount.toLocaleString()}
                 </p>
-                <p className="text-gray-600">Desviación: {anomaly.deviation}%</p>
-                <p className="text-gray-700 mt-1">{anomaly.reason}</p>
+                <p className="text-neutral-600">Desviación: {anomaly.deviation}%</p>
+                <p className="text-neutral-700 mt-1">{anomaly.reason}</p>
               </div>
             ))}
           </div>
@@ -130,7 +130,7 @@ export function ResponseMessage({ response }: ResponseMessageProps) {
     case 'text':
       return (
         <div className="space-y-3">
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">{response.text}</p>
+          <p className="text-sm text-neutral-700 whitespace-pre-wrap">{response.text}</p>
           {response.actions && response.actions.length > 0 && (
             <ResponseActionButtons actions={response.actions} />
           )}
@@ -138,6 +138,6 @@ export function ResponseMessage({ response }: ResponseMessageProps) {
       );
 
     default:
-      return <p className="text-sm text-gray-700">Respuesta no reconocida</p>;
+      return <p className="text-sm text-neutral-700">Respuesta no reconocida</p>;
   }
 }

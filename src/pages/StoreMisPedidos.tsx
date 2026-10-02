@@ -72,21 +72,21 @@ export default function StoreMisPedidos() {
         />
 
         {pedidos.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10">
-            <Package className="w-16 h-16 text-neutral-400 dark:text-white/40 mx-auto mb-4" />
+          <div className="text-center py-12 bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10">
+            <Package className="w-16 h-16 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
               No tienes pedidos aún
             </h3>
             <p className="text-neutral-500 dark:text-white/50 mb-6">Realiza tu primer pedido en MOVI Store</p>
             <button
               onClick={() => navigate('/store')}
-              className="bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
+              className="bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
             >
               Explorar productos
             </button>
           </div>
         ) : (
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 overflow-hidden">
+          <div className="bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
                 <thead className="bg-neutral-50 dark:bg-white/5">
@@ -110,11 +110,11 @@ export default function StoreMisPedidos() {
                     <tr key={pedido.id} className="hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {pedido.folio_oc ? (
-                          <span className="text-sm font-semibold text-accent bg-primary-50 px-2 py-1 rounded">
+                          <span className="text-sm font-semibold text-accent-ink bg-primary-50 px-2 py-1 rounded">
                             {pedido.folio_oc}
                           </span>
                         ) : (
-                          <span className="text-sm text-neutral-400 dark:text-white/40 italic">
+                          <span className="text-sm text-neutral-500 dark:text-white/55 italic">
                             Pendiente
                           </span>
                         )}
@@ -133,7 +133,7 @@ export default function StoreMisPedidos() {
                         <div className="inline-flex items-center gap-3">
                           <button
                             onClick={() => navigate(`/store/pedido/${pedido.id}`)}
-                            className="inline-flex items-center gap-2 text-accent hover:text-primary-800 font-medium"
+                            className="inline-flex items-center gap-2 text-accent-ink hover:text-primary-800 font-medium"
                           >
                             <Eye className="w-4 h-4" />
                             Ver Detalle

@@ -133,7 +133,7 @@ export function RecipientsInput({
             return (
               <span
                 key={`${email}-${i}`}
-                className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 bg-accent/10 text-accent rounded-full text-[11px] max-w-full"
+                className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 bg-accent/10 text-accent-ink rounded-full text-[11px] max-w-full"
                 title={email}
               >
                 <span className="truncate max-w-[160px]">{nm || email}</span>
@@ -163,7 +163,7 @@ export function RecipientsInput({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setOpenPicker((v) => !v); setPickerQuery(''); }}
-            className="p-1 text-neutral-400 hover:text-accent hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition flex-shrink-0"
+            className="p-1 text-neutral-500 hover:text-accent-ink hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition flex-shrink-0"
             title="Elegir de contactos"
           >
             <ContactRound className="w-4 h-4" />
@@ -172,7 +172,7 @@ export function RecipientsInput({
 
         {/* Autocompletar mientras escribes */}
         {openSug && suggestions.length > 0 && (
-          <div className="absolute z-[60] left-0 right-0 mt-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg overflow-hidden">
+          <div className="absolute z-[60] left-0 right-0 mt-1 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-lg shadow-lg overflow-hidden">
             {suggestions.map((c, i) => (
               <button
                 key={c.id}
@@ -185,9 +185,9 @@ export function RecipientsInput({
               >
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-neutral-800 dark:text-white truncate">{c.name}</p>
-                  <p className="text-[10px] text-neutral-400 truncate">{c.email}{c.sub ? ` · ${c.sub}` : ''}</p>
+                  <p className="text-[11px] text-neutral-500 truncate">{c.email}{c.sub ? ` · ${c.sub}` : ''}</p>
                 </div>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${c.source === 'corporativo' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-300'}`}>
+                <span className={`text-[10.5px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${c.source === 'corporativo' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-300'}`}>
                   {c.source === 'corporativo' ? 'JIRO' : 'Contacto'}
                 </span>
               </button>
@@ -197,10 +197,10 @@ export function RecipientsInput({
 
         {/* Selector completo de contactos */}
         {openPicker && (
-          <div className="absolute z-[60] left-0 right-0 mt-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden">
+          <div className="absolute z-[60] left-0 right-0 mt-1 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-lg shadow-xl overflow-hidden">
             <div className="p-2 border-b border-neutral-100 dark:border-neutral-700">
               <div className="flex items-center gap-2 px-2 py-1.5 bg-neutral-50 dark:bg-neutral-900 rounded-lg">
-                <Search className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                <Search className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                 <input
                   autoFocus
                   value={pickerQuery}
@@ -212,7 +212,7 @@ export function RecipientsInput({
             </div>
             <div className="max-h-56 overflow-y-auto">
               {pickerList.length === 0 ? (
-                <p className="px-3 py-4 text-center text-[11px] text-neutral-400">Sin contactos</p>
+                <p className="px-3 py-4 text-center text-[11px] text-neutral-500">Sin contactos</p>
               ) : (
                 pickerList.map((c) => {
                   const added = value.some((v) => v.toLowerCase() === c.email.toLowerCase());
@@ -225,7 +225,7 @@ export function RecipientsInput({
                     >
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-neutral-800 dark:text-white truncate">{c.name}</p>
-                        <p className="text-[10px] text-neutral-400 truncate">{c.email}{c.sub ? ` · ${c.sub}` : ''}</p>
+                        <p className="text-[11px] text-neutral-500 truncate">{c.email}{c.sub ? ` · ${c.sub}` : ''}</p>
                       </div>
                       <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition ${added ? 'bg-accent text-white' : 'border border-neutral-300 dark:border-neutral-600'}`}>
                         {added && <Check className="w-3 h-3" />}

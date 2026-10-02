@@ -242,8 +242,8 @@ export default function CompletarDatosSicasModal({ record, onClose, onSaved, onS
   const canRegister = coreMissing.length === 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay p-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-[var(--radius-xl)] shadow-e4 w-full max-w-2xl max-h-[90vh] flex flex-col animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b dark:border-neutral-800">
           <div>
@@ -266,7 +266,7 @@ export default function CompletarDatosSicasModal({ record, onClose, onSaved, onS
             <div className="flex items-center gap-2 mb-2">
               <h3 className="text-sm font-semibold text-neutral-800 dark:text-white">Datos obligatorios de la poliza</h3>
               {coreMissing.length > 0 && (
-                <Badge variant="destructive" className="text-[10px]">Faltan {coreMissing.length}</Badge>
+                <Badge variant="destructive" className="text-[11px]">Faltan {coreMissing.length}</Badge>
               )}
             </div>
 
@@ -338,7 +338,7 @@ export default function CompletarDatosSicasModal({ record, onClose, onSaved, onS
               <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg px-3 py-2">
                 <span className="font-medium">IDVend:</span>
                 <span className="font-mono">{record.vendor_sicas_id}</span>
-                <span className="text-neutral-400">({record.vendor_sicas_name})</span>
+                <span className="text-neutral-500">({record.vendor_sicas_name})</span>
               </div>
             )}
           </div>
@@ -351,8 +351,8 @@ export default function CompletarDatosSicasModal({ record, onClose, onSaved, onS
             <div className="mt-3 space-y-3 pl-1">
               {loadingCatalogs ? (
                 <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
-                  <span className="ml-2 text-sm text-neutral-400">Cargando catalogos...</span>
+                  <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+                  <span className="ml-2 text-sm text-neutral-500">Cargando catalogos...</span>
                 </div>
               ) : (
                 OVERRIDE_FIELDS.map((field) => {
@@ -454,10 +454,10 @@ function CoreField({ label, value, onChange, source, required, placeholder, type
         <Label className="text-xs font-medium flex items-center gap-1.5">
           {label}
           {required && <span className="text-red-500">*</span>}
-          {isEmpty && required && <Badge variant="destructive" className="text-[9px] px-1 py-0">Faltante</Badge>}
+          {isEmpty && required && <Badge variant="destructive" className="text-[10.5px] px-1 py-0">Faltante</Badge>}
         </Label>
         {source && (
-          <span className="text-[9px] text-neutral-400 font-mono">{source}</span>
+          <span className="text-[10.5px] text-neutral-500 font-mono">{source}</span>
         )}
       </div>
       <Input
@@ -469,7 +469,7 @@ function CoreField({ label, value, onChange, source, required, placeholder, type
         className="h-8 text-sm"
       />
       {hint && (
-        <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">{hint}</p>
+        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">{hint}</p>
       )}
     </div>
   );
@@ -502,7 +502,7 @@ function FieldSelector({ field, options, currentValue, currentLabel, searchTerm,
       <div className="flex items-center justify-between mb-2">
         <Label className="text-xs font-medium">{field.label}</Label>
         {currentValue && (
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-[11px]">
             {currentLabel || currentValue}
           </Badge>
         )}
@@ -512,7 +512,7 @@ function FieldSelector({ field, options, currentValue, currentLabel, searchTerm,
         <div className="relative">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-neutral-400" />
+              <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-neutral-500" />
               <Input
                 placeholder={`Buscar ${field.label.toLowerCase()}...`}
                 value={searchTerm}
@@ -524,13 +524,13 @@ function FieldSelector({ field, options, currentValue, currentLabel, searchTerm,
                 className="h-8 pl-8 text-sm"
               />
             </div>
-            <span className="text-[9px] text-neutral-400 whitespace-nowrap">{options.length}</span>
+            <span className="text-[10.5px] text-neutral-500 whitespace-nowrap">{options.length}</span>
           </div>
 
           {isOpen && (
-            <div className="absolute z-10 top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto border rounded-md bg-white dark:bg-neutral-800 shadow-lg">
+            <div className="absolute z-10 top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto border rounded-md bg-surface-card dark:bg-neutral-800 shadow-lg">
               {filtered.length === 0 ? (
-                <p className="p-2 text-xs text-neutral-400 text-center">Sin resultados</p>
+                <p className="p-2 text-xs text-neutral-500 text-center">Sin resultados</p>
               ) : (
                 filtered.map((opt) => (
                   <button
@@ -539,7 +539,7 @@ function FieldSelector({ field, options, currentValue, currentLabel, searchTerm,
                     onClick={() => onSelect(opt.id_sicas)}
                   >
                     <span className="truncate">{opt.nombre}</span>
-                    <span className="text-[10px] text-neutral-400 ml-2 shrink-0">{opt.id_sicas}</span>
+                    <span className="text-[11px] text-neutral-500 ml-2 shrink-0">{opt.id_sicas}</span>
                   </button>
                 ))
               )}

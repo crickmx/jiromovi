@@ -167,16 +167,16 @@ export default function FotosEstudioAdmin({ embedded }: { embedded?: boolean } =
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-5 items-start">
 
         {/* ── Panel izquierdo: lista de agentes ── */}
-        <div className="rounded-2xl border border-neutral-200 dark:border-white/8 bg-white dark:bg-white/3 overflow-hidden flex flex-col">
+        <div className="rounded-2xl border border-soft dark:border-white/8 bg-surface-card dark:bg-white/3 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-neutral-100 dark:border-white/8 space-y-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
               <input
                 type="text"
                 placeholder="Buscar agente…"
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
             <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -194,7 +194,7 @@ export default function FotosEstudioAdmin({ embedded }: { embedded?: boolean } =
             {loadingAgentes ? (
               <LoadingState text="Cargando agentes…" compact />
             ) : agentesFiltrados.length === 0 ? (
-              <p className="text-sm text-neutral-400 text-center py-8">Sin resultados</p>
+              <p className="text-sm text-neutral-500 text-center py-8">Sin resultados</p>
             ) : (
               agentesFiltrados.map(agente => {
                 const activo = agenteSeleccionado?.id === agente.id;
@@ -217,14 +217,14 @@ export default function FotosEstudioAdmin({ embedded }: { embedded?: boolean } =
                       />
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-neutral-100 dark:bg-white/10 flex items-center justify-center shrink-0">
-                        <User className="w-4 h-4 text-neutral-400" />
+                        <User className="w-4 h-4 text-neutral-500" />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-neutral-800 dark:text-white truncate">
                         {agente.nombre} {agente.apellidos}
                       </p>
-                      <p className="text-xs text-neutral-400 truncate">{agente.oficina?.nombre ?? '—'}</p>
+                      <p className="text-xs text-neutral-500 truncate">{agente.oficina?.nombre ?? '—'}</p>
                     </div>
                     {agente.plan_mkt_premium && (
                       <CheckCircle className="w-4 h-4 text-purple-500 shrink-0" />
@@ -238,7 +238,7 @@ export default function FotosEstudioAdmin({ embedded }: { embedded?: boolean } =
 
         {/* ── Panel derecho: carpeta del agente ── */}
         {!agenteSeleccionado ? (
-          <div className="rounded-2xl border border-neutral-200 dark:border-white/8 bg-white dark:bg-white/3">
+          <div className="rounded-2xl border border-soft dark:border-white/8 bg-surface-card dark:bg-white/3">
             <EmptyState
               icon={Camera}
               title="Selecciona un agente"
@@ -247,14 +247,14 @@ export default function FotosEstudioAdmin({ embedded }: { embedded?: boolean } =
             />
           </div>
         ) : (
-          <div className="rounded-2xl border border-neutral-200 dark:border-white/8 bg-white dark:bg-white/3 overflow-hidden">
+          <div className="rounded-2xl border border-soft dark:border-white/8 bg-surface-card dark:bg-white/3 overflow-hidden">
             {/* Cabecera del agente */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-white/8">
               <div>
                 <p className="font-semibold text-neutral-800 dark:text-white">
                   {agenteSeleccionado.nombre} {agenteSeleccionado.apellidos}
                 </p>
-                <p className="text-xs text-neutral-400">{agenteSeleccionado.oficina?.nombre ?? '—'} · {fotos.length} foto{fotos.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-neutral-500">{agenteSeleccionado.oficina?.nombre ?? '—'} · {fotos.length} foto{fotos.length !== 1 ? 's' : ''}</p>
               </div>
               <div className="flex items-center gap-2">
                 {agenteSeleccionado.plan_mkt_premium && (

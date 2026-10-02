@@ -113,12 +113,12 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Documentos adjuntos</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">Adjunta documentos relevantes para la cotizacion. Todos los archivos son opcionales. Max 10 MB por archivo.</p>
+        <h2 className="text-base font-semibold text-neutral-900 dark:text-white mb-1">Documentos adjuntos</h2>
+        <p className="text-xs text-neutral-500 dark:text-gray-400">Adjunta documentos relevantes para la cotizacion. Todos los archivos son opcionales. Max 10 MB por archivo.</p>
       </div>
 
       {!quoteFormId && (
-        <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-600 dark:text-gray-300 text-sm">
+        <div className="flex items-center gap-3 p-4 bg-neutral-50 dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 rounded-xl text-neutral-600 dark:text-gray-300 text-sm">
           <Loader2 className="w-4 h-4 animate-spin shrink-0" />
           <p>Preparando almacenamiento de archivos...</p>
         </div>
@@ -132,7 +132,7 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900"
+                className="px-3 py-2 rounded-lg border border-soft dark:border-gray-700 text-sm bg-surface-card dark:bg-gray-900"
               >
                 {ATTACHMENT_CATEGORIES.map(cat => (
                   <option key={cat} value={cat}>{getAttachmentCategoryLabel(cat)}</option>
@@ -141,7 +141,7 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground text-sm font-medium rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
               >
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                 {uploading ? 'Subiendo...' : 'Seleccionar archivos'}
@@ -160,20 +160,20 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
             {/* Drop zone visual */}
             <div
               onClick={() => !uploading && fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors"
+              className="border-2 border-dashed border-neutral-200 dark:border-gray-700 rounded-xl p-8 text-center cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors"
             >
-              <Paperclip className="w-8 h-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <Paperclip className="w-8 h-8 mx-auto text-neutral-300 dark:text-gray-600 mb-2" />
+              <p className="text-sm text-neutral-500 dark:text-gray-400">
                 {pendingFiles.length > 0
                   ? `${pendingFiles.length} archivo${pendingFiles.length !== 1 ? 's' : ''} seleccionado${pendingFiles.length !== 1 ? 's' : ''}`
                   : 'Haz clic o arrastra archivos aqui'}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, imagenes, Excel, Word, XML (max 10 MB)</p>
+              <p className="text-xs text-neutral-500 dark:text-gray-500 mt-1">PDF, imagenes, Excel, Word, XML (max 10 MB)</p>
             </div>
 
             {pendingFiles.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                <p className="text-xs font-medium text-neutral-500 dark:text-gray-400">
                   Listo para subir
                 </p>
                 <div className="space-y-2">
@@ -183,10 +183,10 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
                       className="flex items-center justify-between gap-3 rounded-lg border border-blue-100 dark:border-blue-900/40 bg-blue-50/80 dark:bg-blue-500/10 px-3 py-2"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
+                        <p className="truncate text-sm font-medium text-neutral-800 dark:text-gray-100">
                           {file.name}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-neutral-500 dark:text-gray-400">
                           {file.type || 'Archivo'} · {formatSize(file.size)}
                         </p>
                       </div>
@@ -207,25 +207,25 @@ export default function QuoteFormStepAttachments({ formData, quoteFormId, update
           {/* Attachments list */}
           {attachments.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-2">
                 Archivos adjuntos ({attachments.length})
               </label>
               <div className="space-y-2">
                 {attachments.map(att => {
                   const Icon = getFileIcon(att.file_type);
                   return (
-                    <div key={att.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700">
-                      <Icon className="w-5 h-5 text-gray-400 shrink-0" />
+                    <div key={att.id} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-gray-900/50 rounded-lg border border-neutral-100 dark:border-gray-700">
+                      <Icon className="w-5 h-5 text-neutral-500 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-800 dark:text-gray-200 truncate">{att.file_name}</p>
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <p className="text-sm text-neutral-800 dark:text-gray-200 truncate">{att.file_name}</p>
+                        <div className="flex items-center gap-2 text-xs text-neutral-500">
                           <span>{formatSize(att.file_size)}</span>
-                          <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-[10px]">{getAttachmentCategoryLabel(att.category)}</span>
+                          <span className="px-1.5 py-0.5 bg-neutral-100 dark:bg-gray-700 rounded text-[11px]">{getAttachmentCategoryLabel(att.category)}</span>
                         </div>
                       </div>
                       <button
                         onClick={() => deleteAttachment(att)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-1.5 text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

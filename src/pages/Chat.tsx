@@ -274,7 +274,7 @@ export function Chat() {
             <div className="flex gap-1.5">
               <button
                 onClick={() => setShowNuevoChat(true)}
-                className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Chat</span>
@@ -293,13 +293,13 @@ export function Chat() {
 
           {/* Search */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar chats..."
-              className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-accent/40 transition"
+              className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-accent/40 transition"
             />
           </div>
         </div>
@@ -327,7 +327,7 @@ export function Chat() {
                 {searchTerm ? 'Sin resultados' : 'Sin chats aun'}
               </p>
               {!searchTerm && (
-                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 leading-relaxed">
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-500 leading-relaxed">
                   Crea un nuevo chat para comunicarte con tu equipo
                 </p>
               )}
@@ -365,7 +365,7 @@ export function Chat() {
             <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
               Selecciona un chat
             </h3>
-            <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-xs">
+            <p className="text-xs text-neutral-500 dark:text-neutral-500 max-w-xs">
               Elige una conversacion del panel izquierdo para ver los mensajes.
             </p>
           </div>

@@ -126,7 +126,7 @@ function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: '
         )}
         <button
           onClick={() => setOpen(o => !o)}
-          className="inline-flex items-center gap-1 text-xs text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:hover:text-white/60 transition-colors ml-auto"
+          className="inline-flex items-center gap-1 text-xs text-neutral-500 dark:text-white/45 hover:text-neutral-600 dark:hover:text-white/60 transition-colors ml-auto"
         >
           <Info className="w-3 h-3" />
           {open ? 'Ocultar fuentes' : 'Ver fuentes'}
@@ -149,7 +149,7 @@ function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: '
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className={`font-semibold ${cfg.color}`}>{cfg.label}</span>
                     {f.modulo && (
-                      <span className="text-neutral-400 dark:text-white/30">· {f.modulo}</span>
+                      <span className="text-neutral-500 dark:text-white/45">· {f.modulo}</span>
                     )}
                     <span className={`inline-flex items-center gap-0.5 ${fConf.text}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${fConf.dot}`} />
@@ -158,10 +158,10 @@ function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: '
                   </div>
                   <p className="text-neutral-500 dark:text-white/50 mt-0.5 leading-snug">{f.descripcion}</p>
                   {f.documento && (
-                    <p className="text-neutral-400 dark:text-white/30 mt-0.5">Documento: {f.documento}</p>
+                    <p className="text-neutral-500 dark:text-white/45 mt-0.5">Documento: {f.documento}</p>
                   )}
                   {f.fecha_actualizacion && (
-                    <p className="text-neutral-400 dark:text-white/30 mt-0.5">
+                    <p className="text-neutral-500 dark:text-white/45 mt-0.5">
                       Actualizado: {new Date(f.fecha_actualizacion).toLocaleDateString('es-MX', {
                         day: '2-digit', month: 'short', year: 'numeric',
                         hour: '2-digit', minute: '2-digit',
@@ -170,7 +170,7 @@ function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: '
                   )}
                   {f.url && (
                     <a href={f.url} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-blue-600 hover:underline mt-0.5">
+                      className="inline-flex items-center gap-1 text-accent-ink hover:underline mt-0.5">
                       <ExternalLink className="w-2.5 h-2.5" />
                       Ver fuente
                     </a>
@@ -179,7 +179,7 @@ function FuentesPanel({ fuentes, confianza }: { fuentes: Fuente[]; confianza?: '
               </div>
             );
           })}
-          <div className="px-3 py-2 text-neutral-400 dark:text-white/30 bg-white dark:bg-neutral-800/60">
+          <div className="px-3 py-2 text-neutral-500 dark:text-white/45 bg-white dark:bg-neutral-800/60">
             Chava usa exclusivamente información real de tus cuentas vinculadas. La IA complementa con conocimiento general de seguros cuando corresponde.
           </div>
         </div>
@@ -414,7 +414,7 @@ export default function ChavaSeguwallet() {
               <ChevronDown className={`w-3 h-3 transition-transform ${showAgent ? 'rotate-180' : ''}`} />
             </button>
             <button onClick={resetConversation}
-              className="p-1.5 rounded-xl text-neutral-400 dark:text-white/30 hover:text-neutral-600 dark:hover:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors"
+              className="p-1.5 rounded-xl text-neutral-500 dark:text-white/45 hover:text-neutral-600 dark:hover:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/8 transition-colors"
               title="Nueva conversación">
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -428,7 +428,7 @@ export default function ChavaSeguwallet() {
               <img src={agent.imagen_perfil_url} alt={agentName} crossOrigin="anonymous" className="w-11 h-11 rounded-xl object-cover flex-shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             ) : (
               <div className="w-11 h-11 rounded-xl bg-neutral-200 dark:bg-white/10 flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-neutral-400 dark:text-white/30" />
+                <User className="w-5 h-5 text-neutral-500 dark:text-white/45" />
               </div>
             )}
             <div className="flex-1 min-w-0">
@@ -490,7 +490,7 @@ export default function ChavaSeguwallet() {
                 <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                   msg.role === 'user'
                     ? 'text-white rounded-tr-md'
-                    : 'bg-white dark:bg-neutral-800/60 border border-neutral-100 dark:border-white/8 text-neutral-800 dark:text-white rounded-tl-md shadow-sm'
+                    : 'bg-surface-card dark:bg-neutral-800/60 border border-soft dark:border-white/8 text-neutral-800 dark:text-white rounded-tl-md shadow-card'
                 }`} style={msg.role === 'user' ? { background: 'linear-gradient(135deg, #0D6EFD, #0047bb)' } : {}}>
                   <span dangerouslySetInnerHTML={{ __html: renderContent(msg.content) }} />
                 </div>
@@ -518,8 +518,8 @@ export default function ChavaSeguwallet() {
                   <circle cx="14.5" cy="9.5" r="0.7" fill="#002233" />
                 </svg>
               </div>
-              <div className="bg-white dark:bg-neutral-800/60 border border-neutral-100 dark:border-white/8 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
-                <div className="flex items-center gap-1.5 text-sm text-neutral-400 dark:text-white/30">
+              <div className="bg-surface-card dark:bg-neutral-800/60 border border-soft dark:border-white/8 rounded-2xl rounded-tl-md px-4 py-3 shadow-card">
+                <div className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/45">
                   <div className="flex gap-1">
                     {[0, 1, 2].map(i => (
                       <div key={i} className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-white/20 animate-bounce"
@@ -542,7 +542,7 @@ export default function ChavaSeguwallet() {
                 <button
                   key={action.label}
                   onClick={() => sendMessage(action.prompt)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-white/10 text-xs text-neutral-600 dark:text-white/60 bg-white dark:bg-neutral-800/60 hover:bg-neutral-50 dark:hover:bg-white/4 hover:border-neutral-300 dark:hover:border-white/15 transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-soft dark:border-white/10 text-xs text-neutral-600 dark:text-white/60 bg-surface-card dark:bg-neutral-800/60 hover:bg-neutral-50 dark:hover:bg-white/4 hover:border-neutral-300 dark:hover:border-white/15 transition-all"
                 >
                   {action.icon}
                   {action.label}
@@ -554,7 +554,7 @@ export default function ChavaSeguwallet() {
 
         {/* Input */}
         <div className="pt-3 border-t border-neutral-100 dark:border-white/8">
-          <div className="flex items-end gap-2 bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200 dark:border-white/10 px-4 py-3 focus-within:border-blue-300 dark:focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/10 transition-all">
+          <div className="flex items-end gap-2 bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-soft dark:border-white/10 px-4 py-3 focus-within:border-blue-300 dark:focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-500/10 transition-all">
             <textarea
               ref={inputRef}
               value={input}

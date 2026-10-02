@@ -82,13 +82,13 @@ export default function Manuales() {
           {/* Search & Filters */}
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
               <input
                 type="text"
                 placeholder="Buscar por titulo o descripcion..."
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 dark:focus:border-blue-500/40 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 dark:focus:border-blue-500/40 transition-all"
               />
             </div>
             {isAdmin && (
@@ -132,7 +132,7 @@ export default function Manuales() {
           )}
 
           {busqueda && (
-            <p className="text-xs text-neutral-400 dark:text-white/40">
+            <p className="text-xs text-neutral-500 dark:text-white/55">
               {filteredManuals.length} {filteredManuals.length === 1 ? 'resultado' : 'resultados'}
               {' '}para "<span className="text-neutral-600 dark:text-white/60">{busqueda}</span>"
             </p>
@@ -146,7 +146,7 @@ export default function Manuales() {
               <h3 className="text-base font-semibold text-neutral-700 dark:text-white/70 mb-1">
                 {busqueda ? 'Sin resultados' : 'No hay manuales disponibles'}
               </h3>
-              <p className="text-sm text-neutral-400 dark:text-white/40 text-center max-w-xs">
+              <p className="text-sm text-neutral-500 dark:text-white/55 text-center max-w-xs">
                 {busqueda
                   ? 'Intenta con otro termino de busqueda o cambia el filtro de categoria'
                   : 'Los manuales apareceran aqui cuando esten disponibles'}
@@ -154,7 +154,7 @@ export default function Manuales() {
               {busqueda && (
                 <button
                   onClick={() => { setBusqueda(''); setCategoriaFiltro('all'); }}
-                  className="mt-4 px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  className="mt-4 px-4 py-2 text-sm text-accent-ink dark:text-blue-400 hover:underline"
                 >
                   Limpiar filtros
                 </button>
@@ -203,7 +203,7 @@ function ManualCard({ manual, index, onClick }: { manual: Manual; index: number;
   return (
     <button
       onClick={onClick}
-      className="group text-left w-full bg-white dark:bg-white/[0.03] border border-neutral-200/80 dark:border-white/[0.08] rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-neutral-200/50 dark:hover:shadow-black/20 hover:border-neutral-300 dark:hover:border-white/15 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:shadow-md"
+      className="group text-left w-full bg-surface-card dark:bg-white/[0.03] border border-neutral-200/80 dark:border-white/[0.08] rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-neutral-200/50 dark:hover:shadow-black/20 hover:border-neutral-300 dark:hover:border-white/15 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:shadow-md"
     >
       <div className={`relative h-36 sm:h-40 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden`}>
         {manual.cover_image ? (
@@ -217,7 +217,7 @@ function ManualCard({ manual, index, onClick }: { manual: Manual; index: number;
             </div>
           </div>
         )}
-        <span className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-neutral-700 dark:text-white/70 bg-white/80 dark:bg-black/30 backdrop-blur-sm px-2.5 py-1 rounded-full">
+        <span className="absolute top-3 left-3 text-[11px] font-bold uppercase tracking-wider text-neutral-700 dark:text-white/70 bg-white/80 dark:bg-black/30 backdrop-blur-sm px-2.5 py-1 rounded-full">
           {manual.category}
         </span>
       </div>

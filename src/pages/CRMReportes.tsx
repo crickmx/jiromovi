@@ -138,11 +138,11 @@ export default function CRMReportes() {
       />
 
       {/* Filters */}
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-4">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
+              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1.5">
                 Fecha Inicio
               </label>
               <input
@@ -153,7 +153,7 @@ export default function CRMReportes() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/40 uppercase tracking-wider mb-1.5">
+              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/55 uppercase tracking-wider mb-1.5">
                 Fecha Fin
               </label>
               <input
@@ -187,9 +187,9 @@ export default function CRMReportes() {
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+            <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
               <div className="flex items-center gap-2 mb-4">
-                <PieChart className="h-4 w-4 text-neutral-400 dark:text-white/30" />
+                <PieChart className="h-4 w-4 text-neutral-500 dark:text-white/45" />
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Por Estatus</h3>
               </div>
               <div className="space-y-3">
@@ -203,7 +203,7 @@ export default function CRMReportes() {
                       <div key={estatus}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium text-neutral-600 dark:text-white/60">{estatus}</span>
-                          <span className="text-xs text-neutral-400 dark:text-white/30">{count} ({pct}%)</span>
+                          <span className="text-xs text-neutral-500 dark:text-white/45">{count} ({pct}%)</span>
                         </div>
                         <div className="w-full h-1.5 bg-neutral-100 dark:bg-white/5 rounded-full overflow-hidden">
                           <div
@@ -215,14 +215,14 @@ export default function CRMReportes() {
                     );
                   })}
                 {Object.keys(reporteData.porEstatus).length === 0 && (
-                  <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-4">Sin datos en este periodo</p>
+                  <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-4">Sin datos en este periodo</p>
                 )}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-5">
+            <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5">
               <div className="flex items-center gap-2 mb-4">
-                <BarChart3 className="h-4 w-4 text-neutral-400 dark:text-white/30" />
+                <BarChart3 className="h-4 w-4 text-neutral-500 dark:text-white/45" />
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Por Fuente</h3>
               </div>
               <div className="space-y-3">
@@ -236,7 +236,7 @@ export default function CRMReportes() {
                       <div key={fuente}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium text-neutral-600 dark:text-white/60">{fuente}</span>
-                          <span className="text-xs text-neutral-400 dark:text-white/30">{count} ({pct}%)</span>
+                          <span className="text-xs text-neutral-500 dark:text-white/45">{count} ({pct}%)</span>
                         </div>
                         <div className="w-full h-1.5 bg-neutral-100 dark:bg-white/5 rounded-full overflow-hidden">
                           <div
@@ -248,7 +248,7 @@ export default function CRMReportes() {
                     );
                   })}
                 {Object.keys(reporteData.porFuente).length === 0 && (
-                  <p className="text-xs text-neutral-400 dark:text-white/30 text-center py-4">Sin datos en este periodo</p>
+                  <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-4">Sin datos en este periodo</p>
                 )}
               </div>
             </div>
@@ -277,7 +277,7 @@ function MetricCard({
 
   return (
     <div className={`p-3 rounded-xl border ${colors[color]}`}>
-      <div className="flex items-center gap-1.5 mb-1">{icon}<span className="text-[10px] font-medium opacity-70">{label}</span></div>
+      <div className="flex items-center gap-1.5 mb-1">{icon}<span className="text-[11px] font-medium opacity-70">{label}</span></div>
       <p className="text-lg font-bold">{value}</p>
     </div>
   );

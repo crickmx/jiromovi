@@ -154,7 +154,7 @@ function StatusBadge({ status }: { status: ReceiptClass }) {
   };
   const cfg = map[status];
   return (
-    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold border leading-none', cfg.cls)}>
+    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-bold border leading-none', cfg.cls)}>
       {cfg.label}
     </span>
   );
@@ -165,7 +165,7 @@ function StatusBadge({ status }: { status: ReceiptClass }) {
 function StatCell({ label, value, color }: { label: string; value: string; color?: 'emerald' | 'amber' | 'red' }) {
   return (
     <div className="bg-white/70 rounded-xl p-2.5">
-      <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">{label}</p>
+      <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">{label}</p>
       <p className={cn('text-lg font-bold mt-0.5 leading-none',
         color === 'emerald' ? 'text-emerald-700'
         : color === 'amber' ? 'text-amber-700'
@@ -183,7 +183,7 @@ function BillingSummaryCard({ summary, primary, onContactAgent }: {
     al_corriente: { icon: CheckCircle, label: 'Al corriente', desc: 'No tienes pagos pendientes ni vencidos.', cls: 'bg-emerald-50 border-emerald-200', iconCls: 'text-emerald-600', textCls: 'text-emerald-800' },
     pendiente:    { icon: Clock,        label: 'Tienes pagos pendientes', desc: 'Hay recibos por vencer. Evita cargos adicionales.', cls: 'bg-amber-50 border-amber-200', iconCls: 'text-amber-600', textCls: 'text-amber-800' },
     vencido:      { icon: AlertTriangle, label: 'Tienes pagos vencidos', desc: 'Contacta a tu agente para evitar afectaciones en tu cobertura.', cls: 'bg-red-50 border-red-200', iconCls: 'text-red-600', textCls: 'text-red-800' },
-    sin_info:     { icon: Info,          label: 'Sin informacion', desc: 'No se encontro informacion de cobranza para esta poliza.', cls: 'bg-neutral-50 border-neutral-200', iconCls: 'text-neutral-400', textCls: 'text-neutral-600' },
+    sin_info:     { icon: Info,          label: 'Sin informacion', desc: 'No se encontro informacion de cobranza para esta poliza.', cls: 'bg-neutral-50 border-neutral-200', iconCls: 'text-neutral-500', textCls: 'text-neutral-600' },
   }[summary.billing_status];
 
   const IconComp = cfg.icon;
@@ -223,13 +223,13 @@ function BillingSummaryCard({ summary, primary, onContactAgent }: {
         <div className="grid grid-cols-2 gap-2">
           {summary.total_paid > 0 && (
             <div className="bg-white/70 rounded-xl p-3">
-              <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Total pagado</p>
+              <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">Total pagado</p>
               <p className="text-sm font-bold text-emerald-700 mt-0.5">{fmtMoney(summary.total_paid)}</p>
             </div>
           )}
           {summary.total_pending > 0 && (
             <div className="bg-white/70 rounded-xl p-3">
-              <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Total pendiente</p>
+              <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">Total pendiente</p>
               <p className="text-sm font-bold text-amber-700 mt-0.5">{fmtMoney(summary.total_pending)}</p>
             </div>
           )}
@@ -238,10 +238,10 @@ function BillingSummaryCard({ summary, primary, onContactAgent }: {
 
       {summary.next_due_date && (
         <div className="bg-white/80 rounded-xl border border-white p-3">
-          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-1.5">Proximo pago</p>
+          <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mb-1.5">Proximo pago</p>
           <div className="flex items-center justify-between flex-wrap gap-1">
             <div className="flex items-center gap-1.5 text-sm font-bold text-neutral-900">
-              <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+              <Calendar className="w-3.5 h-3.5 text-neutral-500" />
               {fmt(summary.next_due_date)}
             </div>
             {summary.next_due_amount != null && (
@@ -275,7 +275,7 @@ function ReceiptRow({ record, isLast }: { record: BillingRecord; isLast: boolean
     : cls === 'vencido'              ? <AlertTriangle className="w-4 h-4 text-red-500" />
     : cls === 'pendiente'            ? <Clock className="w-4 h-4 text-amber-500" />
     : cls === 'programado'           ? <Calendar className="w-4 h-4 text-sky-500" />
-    : <Ban className="w-4 h-4 text-neutral-400" />;
+    : <Ban className="w-4 h-4 text-neutral-500" />;
 
   const iconBg = cls === 'pagado' ? 'bg-emerald-50' : cls === 'vencido' ? 'bg-red-50'
     : cls === 'pendiente' ? 'bg-amber-50' : cls === 'programado' ? 'bg-sky-50' : 'bg-neutral-100';
@@ -300,7 +300,7 @@ function ReceiptRow({ record, isLast }: { record: BillingRecord; isLast: boolean
             )}
             {/* Period covered */}
             {(parseDate(record.fecha_desde) || parseDate(record.fecha_hasta)) && (
-              <p className="text-[11px] text-neutral-400 mt-0.5">
+              <p className="text-[11px] text-neutral-500 mt-0.5">
                 {fmt(record.fecha_desde) ?? ''}{fmt(record.fecha_hasta) ? ` — ${fmt(record.fecha_hasta)}` : ''}
               </p>
             )}
@@ -323,7 +323,7 @@ function ReceiptRow({ record, isLast }: { record: BillingRecord; isLast: boolean
             )}
             {/* Payment reference */}
             {record.referencia && (
-              <p className="text-[11px] text-neutral-400 mt-0.5">Ref: {record.referencia}</p>
+              <p className="text-[11px] text-neutral-500 mt-0.5">Ref: {record.referencia}</p>
             )}
           </div>
           <div className="text-right flex-shrink-0 space-y-1">
@@ -337,7 +337,7 @@ function ReceiptRow({ record, isLast }: { record: BillingRecord; isLast: boolean
               </p>
             )}
             {record.forma_pago && record.forma_pago !== 'No Definida' && record.forma_pago !== 'null' && record.forma_pago !== 'undefined' && (
-              <p className="text-[10px] text-neutral-400">{record.forma_pago}</p>
+              <p className="text-[11px] text-neutral-500">{record.forma_pago}</p>
             )}
           </div>
         </div>
@@ -440,7 +440,7 @@ export function PolicyBillingTab({ poliza, idDocto, onContactAgent }: PolicyBill
             : isIdentifier ? 'No fue posible relacionar esta poliza'
             : 'No fue posible consultar la cobranza'}
         </p>
-        <p className="text-xs text-neutral-400 mt-1 max-w-xs mx-auto">
+        <p className="text-xs text-neutral-500 mt-1 max-w-xs mx-auto">
           {isTimeout
             ? 'El servicio de cobranza no respondio. Intenta nuevamente mas tarde.'
             : isIdentifier
@@ -469,7 +469,7 @@ export function PolicyBillingTab({ poliza, idDocto, onContactAgent }: PolicyBill
           <p className="text-sm font-semibold text-neutral-500">
             {isSicasErr ? 'Error al consultar cobranza' : 'Sin movimientos de cobranza'}
           </p>
-          <p className="text-xs text-neutral-400 mt-1 max-w-xs mx-auto">
+          <p className="text-xs text-neutral-500 mt-1 max-w-xs mx-auto">
             {isSicasErr
               ? 'No fue posible consultar la informacion de cobranza en este momento.'
               : 'Esta poliza no tiene movimientos de cobranza registrados.'}
@@ -497,11 +497,11 @@ export function PolicyBillingTab({ poliza, idDocto, onContactAgent }: PolicyBill
           <div className="flex items-center gap-2">
             <CreditCard className="w-3.5 h-3.5 text-neutral-500" />
             <p className="text-xs font-bold text-neutral-700 uppercase tracking-wide">Historial de recibos</p>
-            <span className="text-[10px] text-neutral-400">({records.length})</span>
+            <span className="text-[11px] text-neutral-500">({records.length})</span>
           </div>
           <button
             onClick={load}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200 transition-all"
+            className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200 transition-all"
             title="Actualizar"
           >
             <RefreshCw className="w-3.5 h-3.5" />

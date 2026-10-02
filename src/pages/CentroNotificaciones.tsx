@@ -180,9 +180,9 @@ export function CentroNotificacionesContent() {
       />
 
       {/* Send Notification Form */}
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-6">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-6">
         <h2 className="text-xl font-bold text-neutral-800 dark:text-white mb-6 flex items-center gap-2">
-          <Send className="w-5 h-5 text-accent" />
+          <Send className="w-5 h-5 text-accent-ink" />
           Enviar Nueva Notificacion
         </h2>
 
@@ -195,7 +195,7 @@ export function CentroNotificacionesContent() {
               type="text"
               value={formData.titulo}
               onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-              className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-surface-card dark:bg-neutral-900 text-neutral-900 dark:text-white"
               placeholder="Ej: Nueva politica interna"
             />
           </div>
@@ -208,7 +208,7 @@ export function CentroNotificacionesContent() {
               value={formData.mensaje}
               onChange={(e) => setFormData({ ...formData, mensaje: e.target.value })}
               rows={4}
-              className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-surface-card dark:bg-neutral-900 text-neutral-900 dark:text-white"
               placeholder="Escribe el mensaje de la notificacion..."
             />
           </div>
@@ -221,7 +221,7 @@ export function CentroNotificacionesContent() {
               type="text"
               value={formData.accion_url}
               onChange={(e) => setFormData({ ...formData, accion_url: e.target.value })}
-              className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
+              className="w-full px-4 py-2 border border-neutral-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-surface-card dark:bg-neutral-900 text-neutral-900 dark:text-white"
               placeholder="/vacaciones, /seguros-education, etc."
             />
           </div>
@@ -240,7 +240,7 @@ export function CentroNotificacionesContent() {
                     : 'border-neutral-200 hover:border-primary-300'
                 }`}
               >
-                <Users className="w-6 h-6 mx-auto mb-2 text-accent" />
+                <Users className="w-6 h-6 mx-auto mb-2 text-accent-ink" />
                 <span className="text-sm font-medium">Todos</span>
               </button>
 
@@ -252,7 +252,7 @@ export function CentroNotificacionesContent() {
                     : 'border-neutral-200 hover:border-primary-300'
                 }`}
               >
-                <Building2 className="w-6 h-6 mx-auto mb-2 text-accent" />
+                <Building2 className="w-6 h-6 mx-auto mb-2 text-accent-ink" />
                 <span className="text-sm font-medium">Oficina</span>
               </button>
 
@@ -264,7 +264,7 @@ export function CentroNotificacionesContent() {
                     : 'border-neutral-200 hover:border-primary-300'
                 }`}
               >
-                <UserCheck className="w-6 h-6 mx-auto mb-2 text-accent" />
+                <UserCheck className="w-6 h-6 mx-auto mb-2 text-accent-ink" />
                 <span className="text-sm font-medium">Rol</span>
               </button>
             </div>
@@ -308,11 +308,11 @@ export function CentroNotificacionesContent() {
 
             <div className="space-y-3">
               <div className="flex items-start gap-3 p-3 bg-primary-50 border border-primary-200 rounded-lg">
-                <Bell className="w-5 h-5 text-accent mt-0.5" />
+                <Bell className="w-5 h-5 text-accent-ink mt-0.5" />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-primary-900">Notificacion Push (Campanita)</span>
-                    <span className="px-2 py-0.5 bg-accent text-white text-xs rounded-full">Siempre</span>
+                    <span className="px-2 py-0.5 bg-accent text-accent-foreground text-xs rounded-full">Siempre</span>
                   </div>
                   <p className="text-xs text-primary-700 mt-1">
                     Se enviara una notificacion en el sistema a todos los destinatarios seleccionados
@@ -326,7 +326,7 @@ export function CentroNotificacionesContent() {
                   : 'bg-neutral-50 border-neutral-200'
               }`}>
                 <MessageCircle className={`w-5 h-5 mt-0.5 ${
-                  formData.enviar_whatsapp ? 'text-emerald-600' : 'text-neutral-400'
+                  formData.enviar_whatsapp ? 'text-emerald-600' : 'text-neutral-500'
                 }`} />
                 <div className="flex-1">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -359,7 +359,7 @@ export function CentroNotificacionesContent() {
             <button
               onClick={handleEnviar}
               disabled={sending || !formData.titulo || !formData.mensaje}
-              className="flex items-center gap-2 px-6 py-3 bg-accent text-white font-semibold rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-3 bg-accent text-accent-foreground font-semibold rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {sending ? (
                 <>Enviando...</>
@@ -375,10 +375,10 @@ export function CentroNotificacionesContent() {
       </div>
 
       {/* Notification History */}
-      <div className="bg-white dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8">
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8">
         <div className="p-6 border-b border-neutral-200 dark:border-white/8">
           <h2 className="text-xl font-bold text-neutral-800 dark:text-white flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-accent" />
+            <CheckCircle className="w-5 h-5 text-accent-ink" />
             Historial de Notificaciones Enviadas
           </h2>
         </div>

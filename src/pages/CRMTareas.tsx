@@ -266,7 +266,7 @@ export default function CRMTareas() {
           actions={
             <button
               onClick={handleNuevaTarea}
-              className="flex items-center justify-center gap-2 bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent/90 transition shadow-md hover:shadow-lg"
+              className="flex items-center justify-center gap-2 bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent/90 transition shadow-md hover:shadow-lg"
             >
               <Plus className="h-5 w-5" />
               Nueva Tarea
@@ -281,7 +281,7 @@ export default function CRMTareas() {
                 <p className="text-xs text-neutral-600 dark:text-white/60 font-medium">Total</p>
                 <p className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{contadores.total}</p>
               </div>
-              <List className="h-8 w-8 text-neutral-400 dark:text-white/30" />
+              <List className="h-8 w-8 text-neutral-500 dark:text-white/45" />
             </div>
           </div>
 
@@ -327,24 +327,24 @@ export default function CRMTareas() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-neutral-900 rounded-lg shadow dark:shadow-none border border-neutral-200 dark:border-neutral-700 mb-6 p-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl shadow dark:shadow-none border border-soft dark:border-neutral-700 mb-6 p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400 dark:text-white/40" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-500 dark:text-white/55" />
               <input
                 type="text"
                 placeholder="Buscar tareas..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                className="w-full pl-10 pr-4 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
               />
             </div>
           </div>
 
           {boardId && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
-              <Calendar className="h-4 w-4 text-blue-600" />
+              <Calendar className="h-4 w-4 text-accent-ink" />
               <span className="text-sm text-blue-800 font-medium">Calendario siempre visible</span>
             </div>
           )}
@@ -353,7 +353,7 @@ export default function CRMTareas() {
             <select
               value={filtroEstatus}
               onChange={(e) => setFiltroEstatus(e.target.value as FiltroEstatus)}
-              className="px-4 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+              className="px-4 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
             >
               <option value="todas">Todos los estatus</option>
               <option value="Pendiente">Pendiente</option>
@@ -365,7 +365,7 @@ export default function CRMTareas() {
             <select
               value={filtroPrioridad}
               onChange={(e) => setFiltroPrioridad(e.target.value)}
-              className="px-4 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+              className="px-4 py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent bg-surface-card dark:bg-neutral-800 text-neutral-900 dark:text-white"
             >
               <option value="todas">Todas las prioridades</option>
               <option value="Alta">Alta</option>
@@ -377,7 +377,7 @@ export default function CRMTareas() {
               <button
                 onClick={() => setVista('kanban')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
-                  vista === 'kanban' ? 'bg-white dark:bg-neutral-700 shadow text-accent' : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
+                  vista === 'kanban' ? 'bg-white dark:bg-neutral-700 shadow text-accent-ink' : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
                 }`}
               >
                 <LayoutGrid className="h-4 w-4" />
@@ -387,7 +387,7 @@ export default function CRMTareas() {
                 <button
                   onClick={() => setVista('calendario')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
-                    vista === 'calendario' ? 'bg-white dark:bg-neutral-700 shadow text-accent' : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
+                    vista === 'calendario' ? 'bg-white dark:bg-neutral-700 shadow text-accent-ink' : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
                   }`}
                 >
                   <Calendar className="h-4 w-4" />
@@ -397,7 +397,7 @@ export default function CRMTareas() {
               <button
                 onClick={() => setVista('lista')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md transition ${
-                  vista === 'lista' ? 'bg-white dark:bg-neutral-700 shadow text-accent' : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
+                  vista === 'lista' ? 'bg-white dark:bg-neutral-700 shadow text-accent-ink' : 'text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white'
                 }`}
               >
                 <List className="h-4 w-4" />
@@ -413,7 +413,7 @@ export default function CRMTareas() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-accent" />
+              <Calendar className="h-5 w-5 text-accent-ink" />
               Calendario de Tareas
             </h2>
             <span className="text-xs text-neutral-500 dark:text-white/50 bg-neutral-100 dark:bg-neutral-800 px-3 py-1 rounded-full">
@@ -466,7 +466,7 @@ export default function CRMTareas() {
           loading={loading}
         />
       ) : (
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow dark:shadow-none border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+        <div className="bg-surface-card dark:bg-neutral-900 rounded-lg shadow dark:shadow-none border border-soft dark:border-neutral-700 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
@@ -475,7 +475,7 @@ export default function CRMTareas() {
             <div className="text-center py-12">
               <Clock className="h-16 w-16 text-neutral-300 dark:text-white/20 mx-auto mb-4" />
               <p className="text-neutral-500 dark:text-white/50 text-lg mb-2">No hay tareas</p>
-              <p className="text-neutral-400 dark:text-white/40 text-sm">
+              <p className="text-neutral-500 dark:text-white/55 text-sm">
                 {busqueda || filtroEstatus !== 'todas' || filtroPrioridad !== 'todas'
                   ? 'Intenta cambiar los filtros'
                   : 'Crea tu primera tarea para comenzar'}
@@ -513,11 +513,11 @@ export default function CRMTareas() {
                         <td className="px-6 py-4">
                           {tarea.crm_contactos?.nombre_completo ? (
                             <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-neutral-400 dark:text-white/40" />
+                              <User className="h-4 w-4 text-neutral-500 dark:text-white/55" />
                               <span className="text-sm text-neutral-700 dark:text-white/70">{tarea.crm_contactos.nombre_completo}</span>
                             </div>
                           ) : (
-                            <span className="text-sm text-neutral-400 dark:text-white/40">-</span>
+                            <span className="text-sm text-neutral-500 dark:text-white/55">-</span>
                           )}
                         </td>
                         <td className="px-6 py-4">
@@ -541,7 +541,7 @@ export default function CRMTareas() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-neutral-400 dark:text-white/40" />
+                            <Calendar className="h-4 w-4 text-neutral-500 dark:text-white/55" />
                             <span className={`text-sm ${vencida ? 'text-red-600 font-semibold' : 'text-neutral-700 dark:text-white/70'}`}>
                               {new Date(tarea.fecha_vencimiento).toLocaleDateString('es-MX', {
                                 day: 'numeric',

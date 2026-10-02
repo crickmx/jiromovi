@@ -74,27 +74,27 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
   };
 
   const getPositionColor = (position: number | null) => {
-    if (!position) return 'text-gray-600';
+    if (!position) return 'text-neutral-600';
     if (position === 1) return 'text-yellow-600';
     if (position <= 3) return 'text-orange-600';
-    if (position <= 10) return 'text-accent';
-    return 'text-gray-600';
+    if (position <= 10) return 'text-accent-ink';
+    return 'text-neutral-600';
   };
 
   const getPositionIcon = (position: number | null) => {
-    if (!position) return <Award className="w-8 h-8 text-gray-400" />;
+    if (!position) return <Award className="w-8 h-8 text-neutral-500" />;
     if (position === 1) return <Trophy className="w-8 h-8 text-yellow-500" />;
     if (position <= 3) return <Award className="w-8 h-8 text-orange-500" />;
-    return <TrendingUp className="w-8 h-8 text-accent" />;
+    return <TrendingUp className="w-8 h-8 text-accent-ink" />;
   };
 
   if (loading) {
     return (
       <Card className="p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-gray-200 rounded w-1/2"></div>
-          <div className="h-16 bg-gray-200 rounded"></div>
-          <div className="h-16 bg-gray-200 rounded"></div>
+          <div className="h-6 bg-neutral-200 rounded w-1/2"></div>
+          <div className="h-16 bg-neutral-200 rounded"></div>
+          <div className="h-16 bg-neutral-200 rounded"></div>
         </div>
       </Card>
     );
@@ -128,7 +128,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
             {getPositionIcon(ranking.posicion_nacional)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-gray-600 mb-1">Tu posición</p>
+            <p className="text-sm text-neutral-600 mb-1">Tu posición</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               {ranking.posicion_nacional && (
                 <span className={`text-lg font-bold ${getPositionColor(ranking.posicion_nacional)}`}>
@@ -136,7 +136,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
                 </span>
               )}
               {ranking.posicion_oficina && ranking.nombre_oficina && (
-                <span className="text-lg font-bold text-accent">
+                <span className="text-lg font-bold text-accent-ink">
                   #{ranking.posicion_oficina} en {ranking.nombre_oficina}
                 </span>
               )}
@@ -168,8 +168,8 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
                 {getPositionIcon(ranking.posicion_nacional)}
               </div>
               <div>
-                <p className="text-sm text-gray-600 font-medium">Nivel Nacional</p>
-                <p className="text-xs text-gray-500">{ranking.total_vendedores_nacional} vendedores</p>
+                <p className="text-sm text-neutral-600 font-medium">Nivel Nacional</p>
+                <p className="text-xs text-neutral-500">{ranking.total_vendedores_nacional} vendedores</p>
               </div>
             </div>
             {ranking.posicion_nacional ? (
@@ -177,7 +177,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
                 <div className={`text-5xl font-bold mb-1 ${getPositionColor(ranking.posicion_nacional)}`}>
                   #{ranking.posicion_nacional}
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-neutral-600">
                   {ranking.posicion_nacional === 1 && '¡Eres el número 1! 🏆'}
                   {ranking.posicion_nacional === 2 && 'Segundo lugar nacional'}
                   {ranking.posicion_nacional === 3 && 'Tercer lugar nacional'}
@@ -185,7 +185,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
                 </p>
               </div>
             ) : (
-              <p className="text-gray-500 italic">Posición no disponible</p>
+              <p className="text-neutral-500 italic">Posición no disponible</p>
             )}
           </div>
 
@@ -193,21 +193,21 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-primary-200">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-3 bg-white rounded-lg shadow-sm">
-                <Users className="w-8 h-8 text-accent" />
+                <Users className="w-8 h-8 text-accent-ink" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-600 font-medium">En tu oficina</p>
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-sm text-neutral-600 font-medium">En tu oficina</p>
+                <p className="text-xs text-neutral-500 truncate">
                   {ranking.nombre_oficina || 'Sin oficina asignada'}
                 </p>
               </div>
             </div>
             {ranking.posicion_oficina && ranking.nombre_oficina ? (
               <div>
-                <div className="text-5xl font-bold text-accent mb-1">
+                <div className="text-5xl font-bold text-accent-ink mb-1">
                   #{ranking.posicion_oficina}
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-neutral-600">
                   {ranking.posicion_oficina === 1 && '¡El mejor de tu oficina! 🌟'}
                   {ranking.posicion_oficina === 2 && 'Segundo en tu oficina'}
                   {ranking.posicion_oficina === 3 && 'Tercero en tu oficina'}
@@ -215,7 +215,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
                 </p>
               </div>
             ) : (
-              <p className="text-gray-500 italic">
+              <p className="text-neutral-500 italic">
                 {ranking.nombre_oficina ? 'Posición no disponible' : 'Oficina no asignada'}
               </p>
             )}
@@ -223,17 +223,17 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
         </div>
 
         {/* Producción Total */}
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Tu producción anual</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-neutral-600 mb-1">Tu producción anual</p>
+              <p className="text-2xl font-bold text-neutral-900">
                 {formatMoney(ranking.produccion_anual)}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-600 mb-1">Documentos</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-neutral-600 mb-1">Documentos</p>
+              <p className="text-2xl font-bold text-neutral-900">
                 {ranking.num_documentos.toLocaleString('es-MX')}
               </p>
             </div>
@@ -241,7 +241,7 @@ export default function RankingVendedor({ compact = false }: RankingVendedorProp
         </div>
 
         <div className="mt-4 text-center">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-neutral-500">
             Comparado contra todos los vendedores registrados en el sistema
           </p>
         </div>

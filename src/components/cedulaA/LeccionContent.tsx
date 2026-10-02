@@ -76,7 +76,7 @@ export default function LeccionContent({ contenido }: Props) {
             <ul className="space-y-2">
               {seccion.items?.map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 text-accent-ink flex-shrink-0 mt-0.5" />
                   <span className="text-neutral-700 leading-relaxed">{item}</span>
                 </li>
               ))}

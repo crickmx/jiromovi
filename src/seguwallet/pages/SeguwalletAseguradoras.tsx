@@ -10,7 +10,7 @@ function LogoFallback({ nombre, size = 'md' }: { nombre: string; size?: 'sm' | '
   const initials = nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
   return (
     <div className={`w-full h-full flex items-center justify-center bg-neutral-100 rounded-xl ${size === 'sm' ? '' : ''}`}>
-      <span className={`font-bold text-neutral-400 ${size === 'sm' ? 'text-xs' : 'text-lg'}`}>{initials}</span>
+      <span className={`font-bold text-neutral-500 ${size === 'sm' ? 'text-xs' : 'text-lg'}`}>{initials}</span>
     </div>
   );
 }
@@ -23,10 +23,10 @@ function AseguradoraCard({ ins, primary }: { ins: SeguwalletInsurer; primary: st
   const logoSrc = getInsurerLogoUrl(ins);
 
   return (
-    <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
+    <div className="bg-surface-card rounded-2xl border border-neutral-200/60 shadow-card hover:shadow-lg transition-all duration-300 overflow-hidden">
       {/* Logo + name */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl overflow-hidden border border-neutral-100 bg-white flex-shrink-0 shadow-sm">
+        <div className="w-16 h-16 rounded-2xl overflow-hidden border border-soft bg-surface-card flex-shrink-0 shadow-card">
           {logoSrc && !logoError ? (
             <img src={logoSrc} alt={ins.name} className="w-full h-full object-contain p-1" onError={() => setLogoError(true)} />
           ) : (
@@ -37,7 +37,7 @@ function AseguradoraCard({ ins, primary }: { ins: SeguwalletInsurer; primary: st
           <h3 className="font-bold text-neutral-900 text-base leading-tight">{ins.name}</h3>
           {ins.customer_service_phone && (
             <a href={callLink(ins.customer_service_phone)} className="flex items-center gap-1.5 mt-1.5 group">
-              <Phone className="w-3.5 h-3.5 text-neutral-400 group-hover:text-[var(--brand)] transition-colors" style={{ '--brand': primary } as any} />
+              <Phone className="w-3.5 h-3.5 text-neutral-500 group-hover:text-[var(--brand)] transition-colors" style={{ '--brand': primary } as any} />
               <span className="text-sm font-medium text-neutral-600 group-hover:text-[var(--brand)] transition-colors" style={{ '--brand': primary } as any}>
                 {formatPhoneDisplay(ins.customer_service_phone)}
               </span>
@@ -51,7 +51,7 @@ function AseguradoraCard({ ins, primary }: { ins: SeguwalletInsurer; primary: st
         <div className="mx-6 mb-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-100">
           <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Siniestros</p>
+            <p className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Siniestros</p>
             <a
               href={callLink(ins.claims_phone)}
               onClick={() => logClick(ins, 'call')}
@@ -83,7 +83,7 @@ function AseguradoraCard({ ins, primary }: { ins: SeguwalletInsurer; primary: st
           <button onClick={() => openLink(ins.general_conditions_url!)}
             className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl border bg-neutral-50 hover:bg-neutral-100 border-neutral-200 text-neutral-700 text-sm font-medium transition-all">
             <div className="flex items-center gap-2"><Shield className="w-4 h-4 opacity-60" />Condiciones Generales</div>
-            <span className="text-neutral-400 text-xs">→</span>
+            <span className="text-neutral-500 text-xs">→</span>
           </button>
         )}
 
@@ -156,18 +156,18 @@ export function SeguwalletAseguradoras() {
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
           placeholder="Buscar aseguradora..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-white text-sm focus:outline-none transition-all shadow-sm"
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-surface-card text-sm focus:outline-none transition-all shadow-card"
           style={{ borderColor: searchFocused ? primary + '80' : '#e5e5e5', boxShadow: searchFocused ? `0 0 0 3px ${primary}15` : undefined }} />
       </div>
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm h-64 animate-pulse" />
+            <div key={i} className="bg-surface-card rounded-2xl border border-neutral-200/60 shadow-card h-64 animate-pulse" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-neutral-200/50 shadow-sm p-12 text-center">
+        <div className="bg-surface-card rounded-2xl border border-neutral-200/50 shadow-card p-12 text-center">
           <Search className="w-10 h-10 text-neutral-300 mx-auto mb-3" />
           <p className="text-sm font-medium text-neutral-500">
             {search ? `Sin resultados para "${search}"` : 'No hay aseguradoras disponibles'}
@@ -179,7 +179,7 @@ export function SeguwalletAseguradoras() {
         </div>
       )}
 
-      <p className="text-xs text-neutral-400 text-center pb-2">
+      <p className="text-xs text-neutral-500 text-center pb-2">
         Informacion de referencia. Para reportar un siniestro, usa el boton de emergencia o contacta directamente a tu aseguradora.
       </p>
     </div>

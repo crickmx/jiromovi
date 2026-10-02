@@ -59,11 +59,11 @@ export default function Cobranza() {
 
       {items.length > 0 && !loading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
-          <div className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
+          <div className="bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
             <p className="text-xs text-neutral-500 dark:text-white/50 mb-1">Total pendiente</p>
             <p className="text-xl font-bold text-neutral-800 dark:text-white">{formatMXN(totalPendiente)}</p>
           </div>
-          <div className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
+          <div className="bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4">
             <p className="text-xs text-neutral-500 dark:text-white/50 mb-1">Recibos</p>
             <p className="text-xl font-bold text-neutral-800 dark:text-white">{items.length}</p>
           </div>
@@ -86,7 +86,7 @@ export default function Cobranza() {
       ) : (
         <div className="space-y-3">
           {items.map(item => (
-            <div key={item.id} className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4 flex items-center gap-4">
+            <div key={item.id} className="bg-surface-card dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-4 flex items-center gap-4">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                 item.dias_vencidos > 0 ? 'bg-red-50 dark:bg-red-500/15' : 'bg-amber-50 dark:bg-amber-500/15'
               }`}>
@@ -97,8 +97,8 @@ export default function Cobranza() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-neutral-800 dark:text-white text-sm">Póliza {item.no_poliza}</p>
-                {item.cliente && <p className="text-xs text-neutral-400 dark:text-white/30 truncate">{item.cliente}</p>}
-                <p className="text-xs text-neutral-400 dark:text-white/30 mt-0.5">
+                {item.cliente && <p className="text-xs text-neutral-500 dark:text-white/45 truncate">{item.cliente}</p>}
+                <p className="text-xs text-neutral-500 dark:text-white/45 mt-0.5">
                   Límite: {new Date(item.fecha_limite).toLocaleDateString('es-MX')}
                   {item.dias_vencidos > 0 && (
                     <span className="ml-1 text-red-500 dark:text-red-400 font-medium">· {item.dias_vencidos} días vencido</span>

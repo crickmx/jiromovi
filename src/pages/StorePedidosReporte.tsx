@@ -376,7 +376,7 @@ export default function StorePedidosReporte() {
         />
 
         {/* Filtros de periodo */}
-        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-4 mb-6">
+        <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-4 mb-6">
           <div className="flex flex-wrap items-center gap-3">
             <Calendar className="w-5 h-5 text-neutral-500 dark:text-white/50" />
             {(['este_mes', 'mes_anterior', 'anio', 'personalizado'] as PeriodoFiltro[]).map(p => (
@@ -385,7 +385,7 @@ export default function StorePedidosReporte() {
                 onClick={() => { setPeriodo(p); actualizarFechasPorPeriodo(p); }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   periodo === p
-                    ? 'bg-accent text-white'
+                    ? 'bg-accent text-accent-foreground'
                     : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
                 }`}
               >
@@ -414,7 +414,7 @@ export default function StorePedidosReporte() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-neutral-500 dark:text-white/50">Ingresos Totales</p>
               <DollarSign className="w-5 h-5 text-green-600" />
@@ -423,7 +423,7 @@ export default function StorePedidosReporte() {
             <p className="text-xs text-neutral-500 dark:text-white/50 mt-1">{resumen.pedidosCount} pedidos | {resumen.pedidosCobrados} cobrados</p>
           </div>
 
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-neutral-500 dark:text-white/50">Costo de Productos</p>
               <Package className="w-5 h-5 text-orange-600" />
@@ -434,7 +434,7 @@ export default function StorePedidosReporte() {
             </p>
           </div>
 
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-neutral-500 dark:text-white/50">Gastos Totales</p>
               <Receipt className="w-5 h-5 text-red-600" />
@@ -445,7 +445,7 @@ export default function StorePedidosReporte() {
             </p>
           </div>
 
-          <div className={`bg-white rounded-xl border p-6 ${resumen.gananciaNeta >= 0 ? 'border-green-200' : 'border-red-200'}`}>
+          <div className={`bg-surface-card rounded-2xl border p-6 ${resumen.gananciaNeta >= 0 ? 'border-green-200' : 'border-red-200'}`}>
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-neutral-500 dark:text-white/50">Ganancia Neta</p>
               {resumen.gananciaNeta >= 0
@@ -462,9 +462,9 @@ export default function StorePedidosReporte() {
 
         {/* P&L Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
             <div className="flex items-center gap-2 mb-5">
-              <BarChart3 className="w-5 h-5 text-accent" />
+              <BarChart3 className="w-5 h-5 text-accent-ink" />
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Estado de Resultados</h2>
             </div>
             <div className="space-y-3">
@@ -498,14 +498,14 @@ export default function StorePedidosReporte() {
           </div>
 
           {/* Gastos por Tipo */}
-          <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
             <div className="flex items-center gap-2 mb-5">
-              <PieChart className="w-5 h-5 text-accent" />
+              <PieChart className="w-5 h-5 text-accent-ink" />
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Desglose de Gastos</h2>
             </div>
             {Object.keys(gastosPorTipo).length === 0 ? (
               <div className="text-center py-8 text-neutral-500 dark:text-white/50">
-                <Receipt className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/30" />
+                <Receipt className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/45" />
                 <p className="text-sm">Sin gastos en este periodo</p>
               </div>
             ) : (
@@ -528,7 +528,7 @@ export default function StorePedidosReporte() {
                             style={{ width: `${Math.min(porcentaje, 100)}%` }}
                           />
                         </div>
-                        <p className="text-xs text-neutral-400 dark:text-white/40 mt-0.5">{porcentaje.toFixed(1)}%</p>
+                        <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">{porcentaje.toFixed(1)}%</p>
                       </div>
                     );
                   })}
@@ -538,11 +538,11 @@ export default function StorePedidosReporte() {
         </div>
 
         {/* Top Productos */}
-        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-8">
+        <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6 mb-8">
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Top Productos por Ganancia</h2>
           {topProductos.length === 0 ? (
             <div className="text-center py-8 text-neutral-500 dark:text-white/50">
-              <Package className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/30" />
+              <Package className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/45" />
               <p className="text-sm">Sin datos de productos en este periodo</p>
             </div>
           ) : (
@@ -588,12 +588,12 @@ export default function StorePedidosReporte() {
         </div>
 
         {/* Gastos Generales */}
-        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-8">
+        <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Gastos Generales del Negocio</h2>
             <button
               onClick={() => setShowNuevoGasto(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Agregar Gasto
@@ -629,15 +629,15 @@ export default function StorePedidosReporte() {
         </div>
 
         {/* Metas de Utilidad */}
-        <div className="bg-white dark:bg-white/5 rounded-xl border border-neutral-200 dark:border-white/10 p-6 mb-8">
+        <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6 mb-8">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-accent" />
+              <Target className="w-5 h-5 text-accent-ink" />
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Metas de Utilidad</h2>
             </div>
             <button
               onClick={() => setShowNuevaMeta(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-primary-800 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Nueva Meta
@@ -645,7 +645,7 @@ export default function StorePedidosReporte() {
           </div>
           {metas.length === 0 ? (
             <div className="text-center py-8 text-neutral-500 dark:text-white/50">
-              <Target className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/30" />
+              <Target className="w-10 h-10 mx-auto mb-2 text-neutral-300 dark:text-white/45" />
               <p className="text-sm">Sin metas activas. Define una meta de utilidad para dar seguimiento.</p>
             </div>
           ) : (
@@ -668,7 +668,7 @@ export default function StorePedidosReporte() {
                         </h3>
                         {meta.descripcion && <p className="text-xs text-neutral-500 dark:text-white/50 mt-0.5">{meta.descripcion}</p>}
                       </div>
-                      <button onClick={() => eliminarMeta(meta.id)} className="text-neutral-400 dark:text-white/40 hover:text-red-600 p-1">
+                      <button onClick={() => eliminarMeta(meta.id)} className="text-neutral-500 dark:text-white/55 hover:text-red-600 p-1">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -698,8 +698,8 @@ export default function StorePedidosReporte() {
 
       {/* Modal Nuevo Gasto */}
       {showNuevoGasto && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full p-6 animate-scale-in">
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Nuevo Gasto General</h3>
             <div className="space-y-3">
               <div>
@@ -767,7 +767,7 @@ export default function StorePedidosReporte() {
               <button
                 onClick={guardarGasto}
                 disabled={saving || !nuevoGasto.concepto || !nuevoGasto.monto}
-                className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-primary-800 font-medium disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-primary-800 font-medium disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : 'Guardar'}
               </button>
@@ -778,8 +778,8 @@ export default function StorePedidosReporte() {
 
       {/* Modal Nueva Meta */}
       {showNuevaMeta && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full p-6 animate-scale-in">
             <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">Nueva Meta de Utilidad</h3>
             <div className="space-y-3">
               <div>
@@ -845,7 +845,7 @@ export default function StorePedidosReporte() {
               <button
                 onClick={guardarMeta}
                 disabled={saving || !nuevaMeta.nombre || !nuevaMeta.monto_objetivo || !nuevaMeta.fecha_inicio || !nuevaMeta.fecha_fin}
-                className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-primary-800 font-medium disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-primary-800 font-medium disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : 'Crear Meta'}
               </button>

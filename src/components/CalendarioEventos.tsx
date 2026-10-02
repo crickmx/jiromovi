@@ -34,14 +34,14 @@ function DetalleEvento({ evento, onClose, onNavigate }: DetalleEventoProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full p-6 animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex items-center space-x-2 mb-2">
               {evento.tipo === 'evento' ? (
                 <div className="bg-primary-100 p-2 rounded-lg">
-                  <CalendarIcon className="h-5 w-5 text-accent" />
+                  <CalendarIcon className="h-5 w-5 text-accent-ink" />
                 </div>
               ) : evento.tipo === 'cumpleanos' ? (
                 <div className="bg-pink-100 p-2 rounded-lg">
@@ -52,15 +52,15 @@ function DetalleEvento({ evento, onClose, onNavigate }: DetalleEventoProps) {
                   <CheckCircle className="h-5 w-5 text-orange-600" />
                 </div>
               )}
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+              <span className="text-xs font-medium px-2 py-1 rounded-full bg-neutral-100 text-neutral-700">
                 {evento.tipo === 'evento' ? 'Seguros Education' : evento.tipo === 'cumpleanos' ? 'Cumpleaños / Aniversario' : 'Tarea CRM'}
               </span>
             </div>
-            <h3 className="text-xl font-bold text-gray-900">{evento.titulo}</h3>
+            <h3 className="text-xl font-bold text-neutral-900">{evento.titulo}</h3>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
+            className="text-neutral-500 hover:text-gray-600 transition"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -69,7 +69,7 @@ function DetalleEvento({ evento, onClose, onNavigate }: DetalleEventoProps) {
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center space-x-3 text-gray-600">
+          <div className="flex items-center space-x-3 text-neutral-600">
             <CalendarIcon className="h-5 w-5 flex-shrink-0" />
             <span className="text-sm">
               {new Date(evento.fecha).toLocaleDateString('es-MX', {
@@ -82,34 +82,34 @@ function DetalleEvento({ evento, onClose, onNavigate }: DetalleEventoProps) {
           </div>
 
           {evento.hora && (
-            <div className="flex items-center space-x-3 text-gray-600">
+            <div className="flex items-center space-x-3 text-neutral-600">
               <Clock className="h-5 w-5 flex-shrink-0" />
               <span className="text-sm">{evento.hora}</span>
             </div>
           )}
 
           {evento.ubicacion && (
-            <div className="flex items-center space-x-3 text-gray-600">
+            <div className="flex items-center space-x-3 text-neutral-600">
               <MapPin className="h-5 w-5 flex-shrink-0" />
               <span className="text-sm">{evento.ubicacion}</span>
             </div>
           )}
 
           {evento.contacto && (
-            <div className="flex items-center space-x-3 text-gray-600">
+            <div className="flex items-center space-x-3 text-neutral-600">
               <Users className="h-5 w-5 flex-shrink-0" />
               <span className="text-sm">{evento.contacto}</span>
             </div>
           )}
 
           {evento.descripcion && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-sm text-gray-700">{evento.descripcion}</p>
+            <div className="mt-4 pt-4 border-t border-neutral-200">
+              <p className="text-sm text-neutral-700">{evento.descripcion}</p>
             </div>
           )}
 
           {evento.tipo === 'tarea' && evento.completada !== undefined && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="mt-4 pt-4 border-t border-neutral-200">
               <div className="flex items-center space-x-2">
                 <CheckCircle className={`h-5 w-5 ${evento.completada ? 'text-green-600' : 'text-gray-400'}`} />
                 <span className={`text-sm font-medium ${evento.completada ? 'text-green-600' : 'text-gray-600'}`}>
@@ -132,7 +132,7 @@ function DetalleEvento({ evento, onClose, onNavigate }: DetalleEventoProps) {
           )}
           <button
             onClick={onClose}
-            className="w-full bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700 transition"
+            className="w-full bg-neutral-600 text-white py-2 rounded-lg hover:bg-gray-700 transition"
           >
             Cerrar
           </button>
@@ -312,7 +312,7 @@ export default function CalendarioEventos() {
     <>
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-neutral-900">
             {currentDate.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
           </h2>
           <div className="flex space-x-2">
@@ -321,14 +321,14 @@ export default function CalendarioEventos() {
               className="p-2 rounded-lg hover:bg-gray-100 transition"
               title="Mes anterior"
             >
-              <ChevronLeft className="h-5 w-5 text-gray-600" />
+              <ChevronLeft className="h-5 w-5 text-neutral-600" />
             </button>
             <button
               onClick={mesSiguiente}
               className="p-2 rounded-lg hover:bg-gray-100 transition"
               title="Mes siguiente"
             >
-              <ChevronRight className="h-5 w-5 text-gray-600" />
+              <ChevronRight className="h-5 w-5 text-neutral-600" />
             </button>
           </div>
         </div>
@@ -341,7 +341,7 @@ export default function CalendarioEventos() {
           <>
             <div className="grid grid-cols-7 gap-1 mb-1">
               {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
-                <div key={dia} className="text-center text-xs font-semibold text-gray-600 py-1">
+                <div key={dia} className="text-center text-xs font-semibold text-neutral-600 py-1">
                   {dia}
                 </div>
               ))}
@@ -363,16 +363,16 @@ export default function CalendarioEventos() {
                       dia.esDelMes
                         ? esHoy(dia.fecha)
                           ? 'bg-primary-50 border-primary-300'
-                          : 'bg-white border-gray-200 hover:bg-gray-50'
-                        : 'bg-gray-50 border-gray-100'
+                          : 'bg-white border-neutral-200 hover:bg-gray-50'
+                        : 'bg-neutral-50 border-neutral-100'
                     } ${tieneEventos && dia.esDelMes ? 'cursor-pointer' : ''}`}
                   >
                     <div className={`text-xs font-medium mb-1 ${
                       dia.esDelMes
                         ? esHoy(dia.fecha)
-                          ? 'text-accent'
-                          : 'text-gray-900'
-                        : 'text-gray-400'
+                          ? 'text-accent-ink'
+                          : 'text-neutral-900'
+                        : 'text-neutral-500'
                     }`}>
                       {dia.fecha.getDate()}
                     </div>
@@ -384,7 +384,7 @@ export default function CalendarioEventos() {
                             onClick={() => setEventoSeleccionado(cumpleanos[0])}
                             className="w-full text-left"
                           >
-                            <div className="bg-pink-100 text-pink-700 text-[10px] px-1.5 py-0.5 rounded truncate hover:bg-pink-200 transition">
+                            <div className="bg-pink-100 text-pink-700 text-[11px] px-1.5 py-0.5 rounded truncate hover:bg-pink-200 transition">
                               {cumpleanos.length === 1 ? (
                                 cumpleanos[0].titulo.substring(0, 15) + (cumpleanos[0].titulo.length > 15 ? '...' : '')
                               ) : (
@@ -399,7 +399,7 @@ export default function CalendarioEventos() {
                             onClick={() => setEventoSeleccionado(eventosEducation[0])}
                             className="w-full text-left"
                           >
-                            <div className="bg-primary-100 text-primary-700 text-[10px] px-1.5 py-0.5 rounded truncate hover:bg-primary-200 transition">
+                            <div className="bg-primary-100 text-primary-700 text-[11px] px-1.5 py-0.5 rounded truncate hover:bg-primary-200 transition">
                               {eventosEducation.length === 1 ? (
                                 eventosEducation[0].titulo.substring(0, 15) + (eventosEducation[0].titulo.length > 15 ? '...' : '')
                               ) : (
@@ -414,7 +414,7 @@ export default function CalendarioEventos() {
                             onClick={() => setEventoSeleccionado(tareasCRM[0])}
                             className="w-full text-left"
                           >
-                            <div className="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded truncate hover:bg-orange-200 transition">
+                            <div className="bg-orange-100 text-orange-700 text-[11px] px-1.5 py-0.5 rounded truncate hover:bg-orange-200 transition">
                               {tareasCRM.length === 1 ? (
                                 tareasCRM[0].titulo.substring(0, 15) + (tareasCRM[0].titulo.length > 15 ? '...' : '')
                               ) : (
@@ -430,18 +430,18 @@ export default function CalendarioEventos() {
               })}
             </div>
 
-            <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-center space-x-4 text-xs flex-wrap gap-2">
+            <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-center space-x-4 text-xs flex-wrap gap-2">
               <div className="flex items-center space-x-1.5">
                 <div className="w-2.5 h-2.5 bg-pink-500 rounded"></div>
-                <span className="text-gray-600">Cumpleaños / Aniversario</span>
+                <span className="text-neutral-600">Cumpleaños / Aniversario</span>
               </div>
               <div className="flex items-center space-x-1.5">
                 <div className="w-2.5 h-2.5 bg-accent rounded"></div>
-                <span className="text-gray-600">Seguros Education</span>
+                <span className="text-neutral-600">Seguros Education</span>
               </div>
               <div className="flex items-center space-x-1.5">
                 <div className="w-2.5 h-2.5 bg-orange-500 rounded"></div>
-                <span className="text-gray-600">Tareas CRM</span>
+                <span className="text-neutral-600">Tareas CRM</span>
               </div>
             </div>
           </>

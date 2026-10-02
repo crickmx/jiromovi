@@ -282,13 +282,13 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       <div className="space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 max-w-sm min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <input
               type="text"
               placeholder="Buscar notificacion..."
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:border-transparent"
             />
           </div>
 
@@ -308,7 +308,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
               onClick={() => setPlatformFilter('movi')}
               className={`px-3 py-2 text-xs font-medium transition-colors flex items-center gap-1 border-l border-neutral-200 ${
                 platformFilter === 'movi'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-accent text-accent-foreground'
                   : 'bg-white text-neutral-600 hover:bg-neutral-50'
               }`}
             >
@@ -367,7 +367,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
               mostrarMotor
                 ? 'bg-neutral-100 text-neutral-700 border-neutral-400'
-                : 'bg-white text-neutral-400 border-neutral-200 hover:border-neutral-300'
+                : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300'
             }`}
           >
             {mostrarMotor ? 'Ocultar motor' : 'Ver motor interno'}
@@ -376,7 +376,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
       </div>
 
       {Object.keys(porModulo).length === 0 ? (
-        <div className="text-center py-12 text-neutral-400">
+        <div className="text-center py-12 text-neutral-500">
           <Mail className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p>No se encontraron notificaciones</p>
         </div>
@@ -427,24 +427,24 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                           >
                             {isExpanded
                               ? <ChevronUp className="w-4 h-4 text-neutral-500" />
-                              : <ChevronDown className="w-4 h-4 text-neutral-400" />
+                              : <ChevronDown className="w-4 h-4 text-neutral-500" />
                             }
                           </button>
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className={`text-sm font-medium ${
-                                tipo.activo ? 'text-neutral-800' : 'text-neutral-400 line-through'
+                                tipo.activo ? 'text-neutral-800' : 'text-neutral-500 line-through'
                               }`}>
                                 {tipo.nombre}
                               </span>
                               {tipo.platform === 'seguwallet' ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-700 text-[10px] rounded border border-teal-200 font-semibold uppercase tracking-wide">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-700 text-[11px] rounded border border-teal-200 font-semibold uppercase tracking-wide">
                                   <Smartphone className="w-2.5 h-2.5" />
                                   Seguwallet
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded border border-blue-200 font-semibold uppercase tracking-wide">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[11px] rounded border border-blue-200 font-semibold uppercase tracking-wide">
                                   <Monitor className="w-2.5 h-2.5" />
                                   MOVI
                                 </span>
@@ -458,7 +458,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                   )}
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs rounded border border-blue-100">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-accent-ink text-xs rounded border border-blue-100">
                                   <UserCheck className="w-2.5 h-2.5" />
                                   Automatica
                                 </span>
@@ -568,7 +568,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                 </div>
 
                                 {isManaging && (
-                                  <div className="bg-white rounded-lg border border-violet-200 p-3 mb-2">
+                                  <div className="bg-surface-card rounded-2xl border border-violet-200 p-3 mb-2">
                                     <p className="text-xs text-neutral-500 mb-2">Selecciona quien recibe esta notificacion:</p>
                                     <div className="space-y-1 max-h-36 overflow-y-auto">
                                       {usuariosDisponibles
@@ -581,13 +581,13 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                           >
                                             <div>
                                               <p className="text-xs font-medium text-neutral-800">{u.nombre} {u.apellidos}</p>
-                                              <p className="text-xs text-neutral-400">{u.email_laboral} · {u.rol}</p>
+                                              <p className="text-xs text-neutral-500">{u.email_laboral} · {u.rol}</p>
                                             </div>
                                             <Check className="w-3.5 h-3.5 text-violet-500" />
                                           </button>
                                         ))}
                                       {usuariosDisponibles.filter(u => !destTipo.find(d => d.usuario_id === u.id)).length === 0 && (
-                                        <p className="text-xs text-neutral-400 text-center py-2">Todos los usuarios ya estan agregados</p>
+                                        <p className="text-xs text-neutral-500 text-center py-2">Todos los usuarios ya estan agregados</p>
                                       )}
                                     </div>
                                   </div>
@@ -615,7 +615,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                 )}
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-lg p-2">
+                              <div className="flex items-center gap-2 text-xs text-accent-ink bg-blue-50 border border-blue-100 rounded-lg p-2">
                                 <UserCheck className="w-3.5 h-3.5 flex-shrink-0" />
                                 Se envia automaticamente al usuario relacionado con la accion.
                               </div>
@@ -623,7 +623,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
 
                             <button
                               onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre, platform: tipo.platform })}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
                             >
                               <Edit className="w-4 h-4" />
                               Editar plantillas (Correo · WhatsApp · Push)

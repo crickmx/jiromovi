@@ -172,28 +172,28 @@ export function AdminDeploy() {
         <button
           onClick={() => disparar('beta')}
           disabled={loading !== null}
-          className="flex flex-col items-center gap-2 p-6 bg-white dark:bg-neutral-800/50 border border-neutral-200 dark:border-white/10 rounded-2xl hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+          className="flex flex-col items-center gap-2 p-6 bg-surface-card dark:bg-neutral-800/50 border border-soft dark:border-white/10 rounded-2xl hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
         >
           <RefreshCw className={`w-8 h-8 text-purple-500 ${loading === 'beta' ? 'animate-spin' : ''}`} />
           <span className="font-bold text-neutral-800 dark:text-white">Actualizar Beta</span>
-          <span className="text-xs text-neutral-400">beta.movi.digital</span>
+          <span className="text-xs text-neutral-500">beta.movi.digital</span>
         </button>
 
         <button
           onClick={() => disparar('produccion')}
           disabled={loading !== null}
-          className="flex flex-col items-center gap-2 p-6 bg-white dark:bg-neutral-800/50 border border-neutral-200 dark:border-white/10 rounded-2xl hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+          className="flex flex-col items-center gap-2 p-6 bg-surface-card dark:bg-neutral-800/50 border border-soft dark:border-white/10 rounded-2xl hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
         >
           <Rocket className={`w-8 h-8 text-emerald-500 ${loading === 'produccion' ? 'animate-spin' : ''}`} />
           <span className="font-bold text-neutral-800 dark:text-white">Actualizar Producción</span>
-          <span className="text-xs text-neutral-400 flex items-center gap-1">
+          <span className="text-xs text-neutral-500 flex items-center gap-1">
             movi.digital <ShieldCheck className="w-3 h-3 text-emerald-400" />
           </span>
         </button>
       </div>
 
       {versionActual && (
-        <p className="text-xs text-neutral-400 max-w-2xl">
+        <p className="text-xs text-neutral-500 max-w-2xl">
           Ahora mismo este sitio sirve el commit{' '}
           <span className="font-mono text-neutral-500 dark:text-neutral-300">{versionActual.commitHash?.slice(0, 8) ?? '—'}</span>
           {versionActual.buildTimestamp && (
@@ -272,13 +272,13 @@ export function AdminDeploy() {
             <Clock className="w-3.5 h-3.5" />
             Últimos disparos
           </h3>
-          <div className="bg-white dark:bg-neutral-800/50 border border-neutral-200 dark:border-white/10 rounded-xl divide-y divide-neutral-100 dark:divide-white/5">
+          <div className="bg-surface-card dark:bg-neutral-800/50 border border-soft dark:border-white/10 rounded-xl divide-y divide-neutral-100 dark:divide-white/5">
             {historial.map(h => (
               <div key={h.id} className="px-4 py-2.5 flex items-center gap-3 text-sm">
                 {h.ok ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
                 <span className="font-semibold capitalize">{h.target}</span>
-                <span className="text-neutral-400 text-xs truncate flex-1">{h.usuarios?.nombre_completo ?? 'Usuario'}</span>
-                <span className="text-neutral-400 text-xs shrink-0">
+                <span className="text-neutral-500 text-xs truncate flex-1">{h.usuarios?.nombre_completo ?? 'Usuario'}</span>
+                <span className="text-neutral-500 text-xs shrink-0">
                   {new Date(h.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -289,8 +289,8 @@ export function AdminDeploy() {
 
       {/* Modal TOTP para producción */}
       {totpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-neutral-200 dark:border-white/10 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
+          <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-sm shadow-e4 border border-soft dark:border-white/10 space-y-4 animate-scale-in">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
