@@ -157,7 +157,7 @@ export function DesktopSidebar({
         <aside
           aria-label="Menú lateral inteligente"
           className={cn(
-            'flex flex-col h-full bg-white dark:bg-[#111114] border-r border-neutral-200/90 dark:border-white/[0.08] transition-all duration-200 ease-out',
+            'flex flex-col h-full bg-surface-card/95 backdrop-blur-sm dark:bg-[#111114] border-r border-soft shadow-[8px_0_24px_-18px_rgba(28,25,23,0.18)] transition-all duration-200 ease-out',
             isExpanded
               ? 'w-[264px] shadow-[6px_0_24px_rgba(0,0,0,0.08)] dark:shadow-[6px_0_28px_rgba(0,0,0,0.45)]'
               : 'w-[72px] shadow-2xs',
@@ -171,7 +171,7 @@ export function DesktopSidebar({
                 {/* Logo MOVI Expandido */}
                 <button
                   onClick={() => handleNav('/dashboard')}
-                  className="flex items-center gap-2.5 py-1 px-1 rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95 transition-all group"
+                  className="flex items-center gap-2.5 py-1 px-1 rounded-xl hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
                   title="Ir al Dashboard"
                 >
                   <img
@@ -197,8 +197,8 @@ export function DesktopSidebar({
                       className={cn(
                         'w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90',
                         isPinned
-                          ? 'bg-accent/10 text-accent font-semibold'
-                          : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
+                          ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
+                          : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
                       )}
                       aria-label={isPinned ? 'Desfijar menú (hover automático)' : 'Fijar menú abierto'}
                     >
@@ -215,7 +215,7 @@ export function DesktopSidebar({
               <div className="w-full flex items-center justify-center">
                 <button
                   onClick={() => handleNav('/dashboard')}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-white/5 active:scale-95 transition-all group"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
                   title="MOVI Digital"
                 >
                   <img
@@ -234,7 +234,7 @@ export function DesktopSidebar({
               const customBadgeEl = badge ? (
                 <span
                   className={cn(
-                    'px-1.5 py-[1px] rounded-full text-[8px] font-bold leading-none whitespace-nowrap shrink-0',
+                    'px-1.5 py-[1px] rounded-full text-[9.5px] font-bold leading-none whitespace-nowrap shrink-0',
                     BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber
                   )}
                 >
@@ -254,7 +254,7 @@ export function DesktopSidebar({
                 const badgeEl = tlBadge > 0 ? (
                   <span className="relative flex items-center justify-center shrink-0">
                     <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" />
-                    <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                    <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
                       {tlBadge > 99 ? '99+' : tlBadge}
                     </span>
                   </span>
@@ -271,8 +271,8 @@ export function DesktopSidebar({
                             className={cn(
                               'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
                               isActive
-                                ? 'bg-accent/10 dark:bg-accent/20 text-accent font-semibold shadow-2xs'
-                                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
+                                ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
                             )}
                           >
                             <Icon className="w-4 h-4" />
@@ -298,11 +298,11 @@ export function DesktopSidebar({
                       className={cn(
                         'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group active:scale-[0.98]',
                         isActive
-                          ? 'bg-accent/10 dark:bg-accent/15 text-accent font-semibold shadow-2xs'
-                          : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
+                          ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                          : 'text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
                       )}
                     >
-                      <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-accent' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
+                      <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-accent-ink' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
                       <span className="truncate flex-1">{item.label}</span>
                       {badgeEl}
                       {customBadgeEl}
@@ -361,8 +361,8 @@ export function DesktopSidebar({
                           className={cn(
                             'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
                             isWsActive
-                              ? 'bg-accent/10 dark:bg-accent/20 text-accent font-semibold shadow-2xs'
-                              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
+                              ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
                           )}
                         >
                           <Icon className="w-4 h-4" />
@@ -389,12 +389,12 @@ export function DesktopSidebar({
                     className={cn(
                       'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group cursor-pointer active:scale-[0.98]',
                       isWsActive
-                        ? 'bg-accent/10 dark:bg-accent/15 text-accent font-semibold shadow-2xs'
-                        : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
+                        ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                        : 'text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isWsActive ? 'text-accent' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
+                      <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isWsActive ? 'text-accent-ink' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
                       <span className="truncate">{ws.label}</span>
                       {customBadgeEl}
                     </div>
@@ -433,17 +433,17 @@ export function DesktopSidebar({
                             className={cn(
                               'w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium transition-colors text-left group',
                               active
-                                ? 'bg-accent/10 dark:bg-accent/20 text-accent font-semibold'
-                                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
+                                ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
+                                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
                             )}
                           >
                             <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <SubIcon className={cn('w-3.5 h-3.5 shrink-0 transition-colors', active ? 'text-accent' : 'text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300')} />
+                              <SubIcon className={cn('w-3.5 h-3.5 shrink-0 transition-colors', active ? 'text-accent-ink' : 'text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300')} />
                               <span className="truncate">{item.label}</span>
                             </div>
 
                             {badgeCount > 0 && (
-                              <span className="px-1.5 py-0.2 bg-red-500 text-white text-[8px] font-bold rounded-full shrink-0">
+                              <span className="px-1.5 py-0.2 bg-red-500 text-white text-[9.5px] font-bold rounded-full shrink-0">
                                 {badgeCount > 99 ? '99+' : badgeCount}
                               </span>
                             )}
@@ -455,7 +455,7 @@ export function DesktopSidebar({
                       {isExtensive && (
                         <button
                           onClick={() => setPanelWorkspace(ws)}
-                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-accent hover:bg-accent/10 transition-colors text-left"
+                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-accent-ink hover:bg-accent-softer transition-colors text-left"
                         >
                           <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
                           <span>Ver todas ({allWsItems.length}) ▾</span>
@@ -469,7 +469,7 @@ export function DesktopSidebar({
           </div>
 
           {/* ── FOOTER: Perfil del Usuario + Acciones Globales ── */}
-          <div className="p-3 border-t border-neutral-100 dark:border-white/[0.06] bg-neutral-50/60 dark:bg-white/[0.015] shrink-0 space-y-2">
+          <div className="p-3 border-t border-soft bg-surface-muted/60 dark:bg-white/[0.015] shrink-0 space-y-2">
             {/* Perfil del Usuario */}
             {isExpanded ? (
               <button

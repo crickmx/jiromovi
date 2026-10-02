@@ -279,3 +279,44 @@ SET accent_color = '#0E23E2';
 2. Crear script de migración automatizada para reemplazar en batch
 3. Documentar casos especiales (ej. gráficos con colores fijos)
 4. Considerar tema oscuro (dark mode) con accent colors
+
+---
+
+## Sistema visual MOVI (rediseño 2026-10)
+
+Rediseño solo de presentación: no cambia rutas, permisos, datos ni lógica.
+
+### Tipografía
+- **Sora** (`font-display`, `var(--font-display)`): títulos, métricas, navegación, botones/CTA.
+- **Manrope** (`font-sans`, por defecto en toda la app): interfaz, formularios, tablas, texto.
+- Auto-hospedadas con `@fontsource-variable/sora` y `@fontsource-variable/manrope` (importadas en `main.tsx`).
+- `h1–h6` y cualquier `text-xl` o mayor usan Sora automáticamente (`:where()`, especificidad 0: cualquier `font-*` explícito gana).
+- Escala: `text-micro/caption/body-sm/body/body-lg/title-sm/title/title-lg/display/metric`.
+- **Gotham sigue cargada** solo para firmas de e-mail, plecas (canvas) y el editor de logos.
+
+### Color (sigue saliendo SOLO de `oficinas.accent_color` / color del agente en Seguwallet)
+`computeThemeVars(hex)` en `themeUtils.ts` calcula, además de las 4 variables originales (misma fórmula):
+
+| Variable | Tailwind | Uso |
+|---|---|---|
+| `--movi-accent-text-rgb` / `--movi-accent-text-on-dark-rgb` | `text-accent-ink` | Texto/íconos de marca con contraste AA garantizado (claro/oscuro) |
+| `--movi-accent-soft-rgb` / `--movi-accent-softer-rgb` | `bg-accent-soft` / `bg-accent-softer` | Activos, chips, hovers |
+| `--movi-accent-deep-rgb` | `bg-accent-deep` | Fondos de marca profundos |
+| `--movi-accent-2-rgb` | `accent-2` | Tono análogo para gradientes |
+
+Los colores semánticos (éxito/error/alerta/info) siguen fijos e independientes de la marca.
+
+### Superficies, radios, sombras, movimiento
+- `bg-surface-canvas|card|muted|sunken`, `border-soft|strong` (cambian solos en modo oscuro).
+- `rounded-[var(--radius-lg)]` etc. (`--radius-xs…xl`), sombras `shadow-e1…e4`, `shadow-accent`.
+- Duraciones `duration-fast|base|slow` (180/240/350 ms), curvas `ease-smooth`, `ease-spring`.
+- Utilidades: `.movi-hero` (hero de marca con formas orgánicas), `.movi-surface`, `.movi-eyebrow`, `.movi-stagger` (entrada escalonada), `animate-rise|pop|scale-in`.
+- `prefers-reduced-motion` desactiva animaciones/transiciones globalmente.
+
+### Navegación
+- Escritorio: barra angosta (gradiente del acento) + panel por sección colapsable, ambos con orden/grupos/separadores/badges del Editor de Sidebar.
+- Móvil: barra inferior + `MobileDrawer`, que **ahora también usa** `useSidebarConfig()`/`useSidebarItemsConfig()` (orden, grupos, separadores, badges de texto y contadores).
+- Seguwallet: en escritorio (≥ lg) barra lateral con marca del agente; en móvil conserva barra inferior y botón flotante de siniestro. Las variables de tema se aplican con el color del agente y se restauran al salir.
+
+### Alias heredados
+Las clases `ios-*` (`bg-ios-gray-*`, `rounded-ios-*`, `shadow-ios-xl`, `backdrop-blur-ios`) se usaban en ~11 archivos sin estar definidas; ahora están mapeadas al sistema en `tailwind.config.js`.

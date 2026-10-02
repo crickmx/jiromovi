@@ -22,9 +22,9 @@ const TabsList = React.forwardRef<
         variant === "underline"
           ? "inline-flex h-10 items-center justify-start gap-0 border-b border-neutral-200 dark:border-white/10"
           : cn(
-              "inline-flex h-10 items-center justify-start rounded-xl",
-              "bg-neutral-100/80 dark:bg-white/8",
-              "p-1 gap-0.5"
+              "inline-flex h-11 items-center justify-start rounded-2xl",
+              "bg-surface-muted dark:bg-white/8 border border-soft",
+              "p-1 gap-0.5 max-w-full overflow-x-auto"
             ),
         className
       )}
@@ -44,21 +44,21 @@ const TabsTrigger = React.forwardRef<
       ref={ref}
       className={cn(
         "inline-flex items-center justify-center gap-1.5 whitespace-nowrap",
-        "text-sm font-medium",
+        "font-display text-[13px] font-semibold",
         "ring-offset-background transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:ring-offset-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2",
         "disabled:pointer-events-none disabled:opacity-50",
         variant === "underline"
           ? cn(
               "relative rounded-none border-b-2 border-transparent -mb-px",
               "mx-3 first:ml-0 px-1 py-2",
               "hover:text-neutral-800 dark:hover:text-white/80",
-              "data-[state=active]:border-accent data-[state=active]:text-accent",
+              "data-[state=active]:border-accent data-[state=active]:text-accent-ink",
               "dark:data-[state=active]:text-white dark:data-[state=active]:border-accent"
             )
           : cn(
-              "rounded-lg px-3.5 py-1.5",
-              "data-[state=active]:bg-white data-[state=active]:text-neutral-900 data-[state=active]:shadow-sm",
+              "rounded-xl px-3.5 py-1.5 hover:text-neutral-800 dark:hover:text-white/80",
+              "data-[state=active]:bg-white data-[state=active]:text-accent-ink data-[state=active]:shadow-e2",
               "dark:data-[state=active]:bg-white/12 dark:data-[state=active]:text-white"
             ),
         className

@@ -14,22 +14,24 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // Shape
           "rounded-xl",
           // Border + background — use CSS token vars for guaranteed contrast
-          "border border-neutral-200 dark:border-white/15",
-          "bg-white dark:bg-white/6",
+          "border border-strong dark:border-white/15",
+          "bg-white dark:bg-white/6 shadow-[inset_0_1px_1px_rgba(28,25,23,0.03)]",
           // Typography — explicit colors, no opacity fallbacks that can disappear
           "px-3.5 py-2 text-sm text-neutral-900 dark:text-white",
-          // Placeholder — WCAG AA: neutral-400 on white = 4.6:1, white/50 on dark bg = ~3:1 min
-          "placeholder:text-neutral-400 dark:placeholder:text-white/60",
+          // Placeholder — neutral-500 sobre blanco ≈ 4.8:1 (AA)
+          "placeholder:text-neutral-500 dark:placeholder:text-white/60",
           // File input reset
           "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-neutral-700 dark:file:text-white/70",
           // Focus — visible ring for keyboard nav
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:border-accent/70",
+          "hover:border-neutral-300 dark:hover:border-white/25",
+          "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/15 focus-visible:border-accent",
+          "aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus-visible:ring-red-500/15",
           // Disabled — clear visual state
           "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-neutral-50 dark:disabled:bg-white/3",
           // Read-only
           "read-only:bg-neutral-50 dark:read-only:bg-white/3 read-only:text-neutral-600 dark:read-only:text-white/65",
           // Transition
-          "transition-all duration-200",
+          "transition-[border-color,box-shadow,background-color] duration-fast",
           className
         )}
         ref={ref}

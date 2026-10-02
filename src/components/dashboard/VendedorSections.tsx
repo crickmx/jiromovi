@@ -11,7 +11,7 @@ function money(n: number) {
 }
 
 function Sk({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-lg bg-neutral-200 dark:bg-white/10', className)} />;
+  return <div className={cn('rounded-lg bg-surface-muted dark:bg-white/10 shimmer', className)} />;
 }
 
 type TramiteReciente = {
@@ -31,14 +31,14 @@ function Panel({
   stripe: string; eyebrow: string; title: string; desc: string; children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl overflow-hidden flex flex-col">
+    <div className="bg-surface-card border border-soft rounded-[var(--radius-lg)] shadow-card overflow-hidden flex flex-col transition-[box-shadow,transform] duration-base ease-smooth hover:shadow-card-hover hover:-translate-y-0.5">
       <div className={cn('h-1 w-full', stripe)} />
-      <div className="px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-white/8">
-        <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-1">
+      <div className="px-4 pt-4 pb-3 border-b border-soft">
+        <p className="movi-eyebrow text-neutral-500 dark:text-white/50 mb-1">
           {eyebrow}
         </p>
-        <p className="text-base font-extrabold text-neutral-900 dark:text-white leading-tight">{title}</p>
-        <p className="text-[11px] text-neutral-500 dark:text-white/40 mt-0.5">{desc}</p>
+        <p className="font-display text-title-sm font-semibold text-neutral-900 dark:text-white leading-tight">{title}</p>
+        <p className="text-xs text-neutral-600 dark:text-white/55 mt-0.5">{desc}</p>
       </div>
       <div className="p-4 flex-1 flex flex-col gap-3">{children}</div>
     </div>
@@ -49,14 +49,14 @@ function StatBox({
   label, value, sub, subColor,
 }: { label: string; value: string; sub?: string; subColor?: string }) {
   return (
-    <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3">
-      <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-400 dark:text-white/35 mb-1">
+    <div className="bg-surface-muted dark:bg-white/5 rounded-2xl p-3">
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">
         {label}
       </p>
-      <p className="text-lg font-extrabold text-neutral-900 dark:text-white font-variant-numeric tabular-nums">
+      <p className="font-display text-lg font-semibold tracking-[-0.02em] text-neutral-900 dark:text-white tabular-nums">
         {value}
       </p>
-      {sub && <p className={cn('text-[10px] font-semibold mt-1', subColor)}>{sub}</p>}
+      {sub && <p className={cn('text-[11px] font-semibold mt-1', subColor)}>{sub}</p>}
     </div>
   );
 }
@@ -96,8 +96,8 @@ function ProduccionPanel() {
           />
 
           {content.produccion.meta_monto != null && (
-            <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3">
-              <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-400 dark:text-white/35 mb-1">
+            <div className="bg-surface-muted dark:bg-white/5 rounded-2xl p-3">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">
                 Meta {content.produccion.meta_pct != null ? `(${content.produccion.meta_pct}%)` : ''}
               </p>
               <p className="text-lg font-extrabold text-neutral-900 dark:text-white">
@@ -112,7 +112,7 @@ function ProduccionPanel() {
                   }}
                 />
               </div>
-              <p className="text-right text-[10px] text-neutral-400 dark:text-white/35 mt-1">
+              <p className="text-right text-[11px] text-neutral-400 dark:text-white/35 mt-1">
                 {content.produccion.meta_pct}% alcanzado
               </p>
             </div>
@@ -120,7 +120,7 @@ function ProduccionPanel() {
 
           {(content.renovaciones ?? []).length > 0 && (
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2 flex items-center gap-1">
+              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3" /> Próximas renovaciones
               </p>
               <div>
@@ -133,7 +133,7 @@ function ProduccionPanel() {
                       <p className="text-[11px] font-medium text-neutral-800 dark:text-white/80 truncate">
                         {r.asegurado || '—'}
                       </p>
-                      <p className="text-[10px] text-neutral-400 dark:text-white/35">
+                      <p className="text-[11px] text-neutral-400 dark:text-white/35">
                         {r.ramo} · {r.compania}
                       </p>
                     </div>
@@ -176,7 +176,7 @@ function MetasPanel() {
         <>
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-400 dark:text-white/35 mb-1">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">
                 Nivel actual
               </p>
               <p className="text-xl font-extrabold text-sky-600 dark:text-sky-400">
@@ -208,7 +208,7 @@ function MetasPanel() {
                   />
                   <p
                     className={cn(
-                      'text-[9px] truncate',
+                      'text-[10.5px] truncate',
                       s.status === 'done'
                         ? 'text-emerald-600 dark:text-emerald-400'
                         : s.status === 'active'
@@ -227,7 +227,7 @@ function MetasPanel() {
           {!c.maximo && c.siguiente ? (
             <>
               <div className="bg-sky-50 dark:bg-sky-950/20 border-l-[3px] border-sky-500 rounded-r-xl p-2.5">
-                <p className="text-[10px] text-neutral-500 dark:text-white/40">Falta para {c.siguiente}</p>
+                <p className="text-[11px] text-neutral-500 dark:text-white/40">Falta para {c.siguiente}</p>
                 <p className="text-base font-extrabold text-sky-600 dark:text-sky-400">{money(c.falta)}</p>
               </div>
               <div>
@@ -237,7 +237,7 @@ function MetasPanel() {
                     style={{ width: `${c.pct}%`, background: 'linear-gradient(90deg,#0284c7,#38bdf8)' }}
                   />
                 </div>
-                <p className="text-right text-[10px] font-semibold text-sky-600 dark:text-sky-400 mt-1">
+                <p className="text-right text-[11px] font-semibold text-sky-600 dark:text-sky-400 mt-1">
                   {Math.round(c.pct)}% hacia {c.siguiente}
                 </p>
               </div>
@@ -261,8 +261,8 @@ function MetasPanel() {
       >
         <span className="text-lg">🌴</span>
         <div className="text-center">
-          <p className="text-[8px] font-semibold uppercase tracking-widest text-white/65">¡tu próximo destino!</p>
-          <p className="text-[10px] font-extrabold uppercase tracking-wide text-white">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-white/65">¡tu próximo destino!</p>
+          <p className="text-[11px] font-extrabold uppercase tracking-wide text-white">
             Convención {new Date().getFullYear()}
           </p>
         </div>
@@ -306,13 +306,13 @@ function CampanaPanel() {
         <>
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-white/35">
+              <p className="text-[10.5px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-white/35">
                 Campaña
               </p>
               <p className="text-sm font-extrabold text-neutral-900 dark:text-white mt-0.5 truncate">
                 🏆 {cd.nombre}
               </p>
-              <p className="text-[10px] text-neutral-400 dark:text-white/35 mt-0.5">
+              <p className="text-[11px] text-neutral-400 dark:text-white/35 mt-0.5">
                 {cd.total_participantes} participantes
               </p>
             </div>
@@ -359,7 +359,7 @@ function CampanaPanel() {
                       <p className="text-[12px] font-bold text-neutral-900 dark:text-white truncate">
                         {gr.entity_name}
                         {gr.is_me && (
-                          <span className="text-[10px] font-normal text-indigo-500 ml-1">← tú</span>
+                          <span className="text-[11px] font-normal text-indigo-500 ml-1">← tú</span>
                         )}
                       </p>
                     </div>
@@ -370,7 +370,7 @@ function CampanaPanel() {
                       {gr.avance_pct != null && (
                         <p
                           className={cn(
-                            'text-[10px] font-semibold',
+                            'text-[11px] font-semibold',
                             gr.avance_pct >= 100
                               ? 'text-emerald-500'
                               : gr.avance_pct >= 75
@@ -436,7 +436,7 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
   function estatusChip(label?: string | null) {
     if (!label) {
       return (
-        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400">
+        <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400">
           Activo
         </span>
       );
@@ -444,20 +444,20 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
     const lc = label.toLowerCase();
     if (lc.includes('complet') || lc.includes('termin') || lc.includes('finaliz')) {
       return (
-        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+        <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
           {label}
         </span>
       );
     }
     if (lc.includes('revis') || lc.includes('espera') || lc.includes('pendient')) {
       return (
-        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+        <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
           {label}
         </span>
       );
     }
     return (
-      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-white/50">
+      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-white/50">
         {label}
       </span>
     );
@@ -479,7 +479,7 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold text-neutral-900 dark:text-white">Nuevo Trámite</p>
-          <p className="text-[10px] text-neutral-400 dark:text-white/35">Crear solicitud</p>
+          <p className="text-[11px] text-neutral-400 dark:text-white/35">Crear solicitud</p>
         </div>
         <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-white/30 shrink-0" />
       </button>
@@ -493,7 +493,7 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-semibold text-neutral-900 dark:text-white">Mis Trámites</p>
-          <p className="text-[10px] text-neutral-400 dark:text-white/35">Ver activos e historial</p>
+          <p className="text-[11px] text-neutral-400 dark:text-white/35">Ver activos e historial</p>
         </div>
         <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-white/30 shrink-0" />
       </button>
@@ -502,7 +502,7 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
         <><Sk className="h-9" /><Sk className="h-9 mt-1" /><Sk className="h-9 mt-1" /></>
       ) : tramites.length > 0 ? (
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2">
+          <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-400 dark:text-white/35 mb-2">
             Trámites activos
           </p>
           <div>
@@ -516,7 +516,7 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
                   <p className="text-[12px] font-semibold text-neutral-800 dark:text-white">
                     {t.folio}
                   </p>
-                  <p className="text-[10px] text-neutral-400 dark:text-white/35 truncate">
+                  <p className="text-[11px] text-neutral-400 dark:text-white/35 truncate">
                     {(t.ticket_tipos as { label: string } | null)?.label ?? t.tipo_tramite}
                   </p>
                 </div>
@@ -544,12 +544,12 @@ export function VendedorSections({ usuario }: { usuario: Usuario }) {
           👤
         </div>
         <div>
-          <p className="text-lg font-extrabold text-neutral-900 dark:text-white leading-tight">Asesor</p>
-          <p className="text-[11px] text-neutral-400 dark:text-white/35">Lo que necesitas</p>
+          <p className="font-display text-title font-semibold text-neutral-900 dark:text-white leading-tight">Asesor</p>
+          <p className="text-xs text-neutral-500 dark:text-white/50">Lo que necesitas</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 movi-stagger">
         <ProduccionPanel />
         <MetasPanel />
         <CampanaPanel />

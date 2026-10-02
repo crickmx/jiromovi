@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors whitespace-nowrap",
+  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11.5px] font-semibold leading-5 tracking-[0.005em] transition-colors whitespace-nowrap",
   {
     variants: {
       variant: {
@@ -26,7 +26,7 @@ const badgeVariants = cva(
           "border-transparent bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300",
         // Subtle accent — tinted bg with accent-colored text
         subtle:
-          "border-transparent bg-accent/10 text-accent dark:bg-accent/20 dark:text-white/90",
+          "border-transparent bg-accent-soft text-accent-ink dark:bg-accent/20 dark:text-white/90",
         purple:
           "border-transparent bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
       },

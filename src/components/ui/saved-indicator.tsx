@@ -30,7 +30,7 @@ export function SavedIndicator({ show, message = "Guardado", duration = 2000 }: 
         "flex items-center gap-2 px-4 py-3",
         "bg-white/90 dark:bg-slate-800/90 backdrop-blur-md",
         "border border-green-200 dark:border-green-500/30",
-        "rounded-xl shadow-ios-lg",
+        "rounded-2xl shadow-e3 animate-rise",
         "animate-slide-up"
       )}
     >

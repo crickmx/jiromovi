@@ -53,7 +53,7 @@ export function LoadingState({
   // Default: spinner
   return (
     <div className={cn("flex flex-col items-center justify-center", padding, className)}>
-      <div className="h-8 w-8 rounded-full border-2 border-neutral-200 dark:border-white/10 border-t-accent animate-spin" />
+      <div className="h-9 w-9 rounded-full border-[3px] border-accent/15 border-t-accent animate-spin" role="status" aria-label="Cargando" />
       {text && (
         <p className="mt-4 text-sm text-neutral-500 dark:text-white/50">{text}</p>
       )}
@@ -73,7 +73,7 @@ export function TableSkeleton({ rows = 5, columns = 4, className }: TableSkeleto
   return (
     <div className={cn("space-y-0 animate-fade-in", className)}>
       {/* Header row */}
-      <div className="flex gap-4 px-4 py-3 border-b border-neutral-100 dark:border-white/8 bg-neutral-50 dark:bg-white/3 rounded-t-xl">
+      <div className="flex gap-4 px-4 py-3 border-b border-soft bg-surface-muted/60 dark:bg-white/3 rounded-t-2xl">
         {Array.from({ length: columns }).map((_, i) => (
           <Skeleton key={i} className="h-3.5 flex-1" />
         ))}
@@ -107,7 +107,7 @@ export function CardSkeleton({ count = 3, className }: CardSkeletonProps) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/60 dark:border-white/8 p-5 space-y-3"
+          className="bg-surface-card rounded-[var(--radius-lg)] border border-soft shadow-e1 p-5 space-y-3"
         >
           <div className="flex items-center gap-3">
             <Skeleton className="h-10 w-10 rounded-xl flex-shrink-0" />

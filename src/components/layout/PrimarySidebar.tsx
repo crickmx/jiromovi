@@ -58,20 +58,22 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="sidebar-rail flex flex-col h-full w-[84px] items-center">
+      <nav aria-label="Navegación principal" className="sidebar-rail flex flex-col h-full w-[84px] items-center">
 
         {/* Logo / Close button on mobile */}
         <div className="flex items-center justify-center h-16 w-full relative">
           {mobileMode && (
             <button
               onClick={onMobileClose}
-              className="absolute top-3 right-1 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+              aria-label="Cerrar menú"
+              className="absolute top-3 right-1 p-1.5 rounded-lg text-white/60 hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           )}
           <button
             onClick={() => handleNav('/dashboard')}
+            aria-label="Ir al inicio"
             className="sidebar-rail-logo-btn w-11 h-11 rounded-2xl flex items-center justify-center"
           >
             <img
@@ -95,7 +97,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             const customBadgeEl = badge ? (
               <span
                 className={cn(
-                  'absolute -bottom-1 -right-1 px-1 py-[1px] rounded-full text-[8px] font-bold leading-none whitespace-nowrap',
+                  'absolute -bottom-1.5 -right-2 px-1 py-[2px] rounded-full text-[8.5px] font-bold leading-none whitespace-nowrap shadow-sm ring-1 ring-white/30',
                   BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber
                 )}
               >
@@ -117,7 +119,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                     className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
                     style={{ animationDuration: '2s' }}
                   />
-                  <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                  <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none ring-2 ring-[rgb(var(--movi-accent-text-rgb))]">
                     {tlBadge > 99 ? '99+' : tlBadge}
                   </span>
                 </span>
@@ -129,6 +131,8 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                     {separatorEl}
                     <button
                       onClick={() => handleNav(item.path)}
+                      aria-label={item.label}
+                      aria-current={isActive ? 'page' : undefined}
                       className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
                       title={badge ? `${item.label} · ${badge.texto}` : item.label}
                     >
@@ -147,6 +151,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => handleNav(item.path)}
+                        aria-current={isActive ? 'page' : undefined}
                         className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
                       >
                         <Icon className="w-[18px] h-[18px]" />
@@ -186,7 +191,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                   className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping"
                   style={{ animationDuration: '2s' }}
                 />
-                <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                <span className="relative min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none ring-2 ring-[rgb(var(--movi-accent-text-rgb))]">
                   {wsBadge > 99 ? '99+' : wsBadge}
                 </span>
               </span>
@@ -196,6 +201,8 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
               const wsButton = (
                 <button
                   onClick={() => handleNav(firstPath)}
+                  aria-label={ws.label}
+                  aria-current={isActive ? 'page' : undefined}
                   className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
                   title={badge ? `${ws.label} · ${badge.texto}` : ws.label}
                 >
@@ -214,7 +221,8 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => handleNav(firstPath)}
-                      className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
+                      aria-current={isActive ? 'page' : undefined}
+                        className={cn('sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90 relative', isActive && 'active')}
                     >
                       <Icon className="w-[18px] h-[18px]" />
                       {wsBadgeEl}
@@ -248,6 +256,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
               <TooltipTrigger asChild>
                 <button
                   onClick={() => handleNav('/chava')}
+                  aria-label="Chava IA"
                   className="sidebar-rail-chava-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90"
                 >
                   <ChavaOrbIcon size="sm" sidebarVariant />
@@ -286,6 +295,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
               <TooltipTrigger asChild>
                 <button
                   onClick={() => handleNav('/perfil')}
+                  aria-label="Mi perfil"
                   className="sidebar-rail-avatar-ring rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95"
                 >
                   <Avatar className="h-9 w-9 rounded-xl">
@@ -315,6 +325,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
               <TooltipTrigger asChild>
                 <button
                   onClick={onSignOut}
+                  aria-label="Cerrar sesión"
                   className="sidebar-rail-signout w-9 h-9 rounded-xl flex items-center justify-center active:scale-90"
                 >
                   <LogOut className="w-4 h-4" />
@@ -326,7 +337,7 @@ export function PrimarySidebar({ activeWorkspaceId, userRole, usuario, onSignOut
             </Tooltip>
           )}
         </div>
-      </div>
+      </nav>
     </TooltipProvider>
   );
 }

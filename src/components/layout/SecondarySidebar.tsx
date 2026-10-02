@@ -78,7 +78,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
             "cursor-pointer"
           )}
         >
-          <div className="h-10 w-1 rounded-full bg-accent/40 hover:bg-accent transition-colors" />
+          <div className="h-12 w-1 rounded-full bg-accent/40 hover:bg-accent transition-colors" />
         </button>
         {/* Floating expand button near the top */}
         <button
@@ -87,8 +87,9 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
           className={cn(
             "absolute top-[72px] -right-4 z-10",
             "w-7 h-7 rounded-full flex items-center justify-center shadow-md",
-            "bg-white dark:bg-[#1a1a1f] border border-neutral-200 dark:border-white/10",
-            "text-neutral-400 hover:text-accent dark:hover:text-accent",
+            "bg-surface-card border border-soft shadow-e2",
+            "text-neutral-500 hover:text-accent-ink dark:text-white/60 dark:hover:text-white",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45",
             "transition-all duration-200 hover:scale-110 active:scale-95"
           )}
         >
@@ -99,14 +100,20 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
   }
 
   return (
-    <div className="flex flex-col h-full w-[208px] bg-white dark:bg-[#111113] border-r border-neutral-200 dark:border-white/[0.07] shadow-[1px_0_8px_rgba(0,0,0,0.04)]">
+    <div className="relative flex flex-col h-full w-[228px] bg-surface-card/95 dark:bg-[#111113] backdrop-blur-sm border-r border-soft shadow-[1px_0_0_rgba(28,25,23,0.02),8px_0_24px_-18px_rgba(28,25,23,0.18)] overflow-hidden">
+      {/* Velo de marca muy sutil en la cabecera */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(120%_100%_at_0%_0%,rgb(var(--movi-accent-rgb)/0.07),transparent_70%)]" />
       {/* Workspace header */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-neutral-100 dark:border-white/[0.06]">
+      <div className="relative flex items-center justify-between h-16 px-4 border-b border-soft">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-accent/10 dark:bg-accent/15 flex-shrink-0">
-            <workspace.icon className="w-4 h-4 text-accent" />
+          <div
+            className="flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 text-accent-foreground shadow-accent"
+            style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-rgb)) 0%, rgb(var(--movi-accent-2-rgb)) 140%)' }}
+            aria-hidden="true"
+          >
+            <workspace.icon className="w-4 h-4" />
           </div>
-          <span className="text-[13px] font-bold text-neutral-900 dark:text-white truncate tracking-tight">
+          <span className="font-display text-[14px] font-semibold text-neutral-900 dark:text-white truncate tracking-[-0.01em]">
             {workspace.label}
           </span>
         </div>
@@ -114,7 +121,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
           <button
             onClick={onToggleCollapse}
             aria-label="Colapsar menú"
-            className="p-1.5 rounded-xl text-neutral-500 hover:text-accent hover:bg-accent/8 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-white/10 transition-all flex-shrink-0"
+            className="p-1.5 rounded-xl text-neutral-500 hover:text-accent-ink hover:bg-accent-softer dark:text-neutral-400 dark:hover:text-white dark:hover:bg-white/10 transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -122,7 +129,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
       </div>
 
       {/* Nav items — icono + texto, agrupados según el Editor de Sidebar */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
+      <nav aria-label={`Menú de ${workspace.label}`} className="relative flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
         {gruposResueltos.map(({ grupo, items }) => {
           const colapsado = grupo ? isGrupoColapsado(grupo.id, grupo.colapsado_default) : false;
           return (
@@ -130,7 +137,8 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
               {grupo && (
                 <button
                   onClick={() => toggleGrupo(grupo.id, grupo.colapsado_default)}
-                  className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-white/45 hover:text-neutral-700 dark:hover:text-white/70 transition-colors"
+                  aria-expanded={!colapsado}
+                  className="w-full flex items-center gap-1.5 px-3 py-1.5 rounded-lg movi-eyebrow !text-[10.5px] text-neutral-500 dark:text-white/50 hover:text-neutral-800 dark:hover:text-white/75 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                 >
                   {colapsado ? <ChevronRight className="w-3 h-3 flex-shrink-0" /> : <ChevronDown className="w-3 h-3 flex-shrink-0" />}
                   <span className="w-2.5 h-px bg-current opacity-50 flex-shrink-0" />
@@ -139,7 +147,7 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
               )}
               {!colapsado && items.map((entry) => {
                 if (entry.kind === 'separador') {
-                  return <div key={`sep-${entry.id}`} className="my-1.5 border-t border-neutral-200 dark:border-white/10" />;
+                  return <div key={`sep-${entry.id}`} className="my-2 mx-3 border-t border-soft" />;
                 }
                 const { item, badge: customBadge } = entry;
                 const active = isActive(item);
@@ -150,18 +158,20 @@ export function SecondarySidebar({ workspace, activeItem, userRole, collapsed, o
                   <button
                     key={item.path}
                     onClick={() => handleNav(item.path)}
+                    aria-current={active ? 'page' : undefined}
                     className={cn(
-                      "relative w-full flex flex-col gap-0.5 px-3 rounded-xl text-[13px] font-medium transition-all duration-200",
+                      "relative w-full flex flex-col gap-0.5 px-3 rounded-xl text-[13.5px] font-medium transition-[background-color,color,transform] duration-fast",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
                       mobileMode ? "py-3.5" : "py-2.5",
                       "active:scale-[0.97] text-left",
                       active
-                        ? "bg-accent/10 text-accent dark:bg-accent/15 font-semibold"
-                        : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.07] hover:text-neutral-900 dark:hover:text-white"
+                        ? "bg-accent-soft text-accent-ink dark:bg-accent/15 font-semibold shadow-[inset_0_0_0_1px_rgb(var(--movi-accent-rgb)/0.08)]"
+                        : "text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/[0.07] hover:text-neutral-900 dark:hover:text-white"
                     )}
                   >
-                    {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-accent" aria-hidden="true" />}
+                    {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-accent animate-pop" aria-hidden="true" />}
                     <span className="w-full flex items-center gap-2.5">
-                      <Icon className={cn("flex-shrink-0 w-4 h-4", active ? "text-accent" : "text-neutral-400 dark:text-neutral-500")} />
+                      <Icon className={cn("flex-shrink-0 w-4 h-4", active ? "text-accent-ink" : "text-neutral-500 dark:text-neutral-400")} />
                       <span className="truncate flex-1 min-w-0">{item.label}</span>
 
                       {/* Attention badge */}

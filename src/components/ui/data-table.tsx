@@ -35,19 +35,19 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={cn("overflow-x-auto rounded-xl", className)}>
+    <div className={cn("overflow-x-auto rounded-2xl", className)}>
       <table className="w-full text-sm">
         <thead>
           <tr className={cn(
-            "border-b border-neutral-200 dark:border-white/8",
-            stickyHeader && "sticky top-0 bg-white/97 dark:bg-neutral-900/97 backdrop-blur-sm z-10"
+            "border-b border-soft bg-surface-muted/60 dark:bg-white/[0.03]",
+            stickyHeader && "sticky top-0 bg-surface-card/95 backdrop-blur-sm z-10"
           )}>
             {columns.map((col) => (
               <th
                 key={col.key}
                 className={cn(
                   // WCAG AA: neutral-600 on white = 5.7:1, white/65 on dark = ~4.5:1+
-                  "text-left text-xs font-semibold text-neutral-600 dark:text-white/65 uppercase tracking-wider px-4 py-3.5",
+                  "text-left text-[11px] font-bold text-neutral-600 dark:text-white/65 uppercase tracking-[0.08em] px-4 py-3",
                   col.headerClassName
                 )}
               >
@@ -63,7 +63,7 @@ export function DataTable<T>({
               onClick={() => onRowClick?.(item)}
               className={cn(
                 "transition-colors duration-150",
-                onRowClick && "cursor-pointer hover:bg-neutral-50 dark:hover:bg-white/5"
+                onRowClick && "cursor-pointer hover:bg-accent-softer dark:hover:bg-white/5 transition-colors duration-fast"
               )}
             >
               {columns.map((col) => (

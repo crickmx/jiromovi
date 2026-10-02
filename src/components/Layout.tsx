@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DesktopSidebar } from './layout/DesktopSidebar';
 import { Breadcrumbs } from './navigation/Breadcrumbs';
@@ -17,6 +17,7 @@ import { useTramitesAttentionCount } from '../hooks/useTramitesAttentionCount';
 import { useStoreAttentionCount } from '../hooks/useStoreAttentionCount';
 import { useBugReportConfig } from '../hooks/useBugReportConfig';
 import { FloatingBugReportButton } from './FloatingBugReportButton';
+import { AmbientBackdrop } from './layout/AmbientBackdrop';
 
 const PINNED_KEY = 'movi:sidebar_pinned';
 
@@ -75,6 +76,20 @@ export function Layout({ children }: LayoutProps) {
   if (tramitesAttentionCount > 0) topLevelBadges['/tramites'] = tramitesAttentionCount;
   if (storeAttentionCount > 0) topLevelBadges['/store'] = storeAttentionCount;
 
+  // Transición corta al cambiar de sección. Se anima el contenedor (no se usa `key`)
+  // para NO re-montar la página ni perder su estado. Respeta prefers-reduced-motion.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    const el = contentRef.current;
+    if (!el || typeof el.animate !== 'function') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    // Solo opacidad: un transform convertiría al contenedor en containing block
+    // de los elementos `position: fixed` de la página durante la animación.
+    el.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 240, easing: 'cubic-bezier(0.16,1,0.3,1)' });
+  }, [location.pathname]);
+
   // Auto-close drawer on route change
   useEffect(() => {
     setMobileDrawerOpen(false);
@@ -106,7 +121,10 @@ export function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className={`app-shell min-h-screen flex overflow-hidden bg-neutral-50 dark:bg-[#0c0c0e] ${bannerPt}`}>
+    <div className={`app-shell min-h-screen flex overflow-hidden ${bannerPt}`}>
+      {/* Formas orgánicas de marca detrás del contenido (decorativo) */}
+      <AmbientBackdrop />
+
       {/* Impersonation banner & Beta Banner */}
       <ImpersonationBanner />
       {isBeta && <BetaBanner />}
@@ -130,17 +148,19 @@ export function Layout({ children }: LayoutProps) {
       {/* ── Área de Contenido Principal (Aprovecha el 100% del alto y ancho) ── */}
       {isFullHeight ? (
         <main className="flex-1 flex flex-col overflow-hidden min-w-0 mobile-page-content md:!pb-0">
-          {children}
+          <div ref={contentRef} className="flex-1 min-h-0 flex flex-col">
+            {children}
+          </div>
         </main>
       ) : (
         <main className="flex-1 flex flex-col overflow-y-auto min-w-0 mobile-page-content md:!pb-0">
           {/* Barra de Breadcrumbs contextual */}
-          <div className="hidden md:flex px-6 py-2.5 border-b border-neutral-200/60 dark:border-white/5 bg-white/40 dark:bg-white/[0.015] shrink-0 justify-between items-center">
+          <div className="hidden md:flex px-6 py-2.5 border-b border-soft bg-surface-card/60 backdrop-blur-sm shrink-0 justify-between items-center">
             <Breadcrumbs workspace={workspace} activeItem={activeItem} />
           </div>
 
           {/* Contenedor de Página */}
-          <div className="flex-1 p-4 md:p-6 max-w-screen-2xl mx-auto w-full">
+          <div ref={contentRef} className="flex-1 p-4 md:p-6 lg:p-8 max-w-screen-2xl mx-auto w-full">
             {children}
           </div>
         </main>
@@ -157,6 +177,8 @@ export function Layout({ children }: LayoutProps) {
         onSignOut={handleSignOut}
         isModuleVisible={isModuleVisible}
         oficinaId={oficinaId}
+        badgeCounts={badgeCounts}
+        topLevelBadges={topLevelBadges}
       />
 
       {/* Mobile bottom navigation (Intacto para teléfonos) */}

@@ -28,7 +28,7 @@ export function FilterBar({
 }: FilterBarProps) {
   return (
     <div className={cn(
-      "bg-white dark:bg-neutral-800/60 rounded-xl border border-neutral-200/70 dark:border-white/10 p-3 sm:p-4",
+      "bg-surface-card rounded-2xl border border-soft shadow-e1 p-3 sm:p-4",
       sticky && "sticky top-0 z-10 shadow-sm",
       className
     )}>
@@ -43,11 +43,11 @@ export function FilterBar({
               placeholder={searchPlaceholder}
               className={cn(
                 "w-full pl-9 pr-3 py-2 text-sm rounded-xl outline-none",
-                "bg-neutral-50 dark:bg-white/6",
-                "border border-neutral-200 dark:border-white/12",
+                "bg-surface-muted dark:bg-white/6",
+                "border border-soft dark:border-white/12",
                 "text-neutral-900 dark:text-white",
-                "placeholder:text-neutral-400 dark:placeholder:text-white/40",
-                "focus:ring-2 focus:ring-accent/30 focus:border-accent/70",
+                "placeholder:text-neutral-500 dark:placeholder:text-white/50",
+                "focus:ring-4 focus:ring-accent/15 focus:border-accent focus:bg-white dark:focus:bg-white/8",
                 "transition-all"
               )}
             />
@@ -98,12 +98,12 @@ export function FilterSelect({
       onChange={(e) => onChange(e.target.value)}
       className={cn(
         "px-3 py-2 text-sm rounded-xl outline-none",
-        "bg-neutral-50 dark:bg-white/6",
-        "border border-neutral-200 dark:border-white/12",
+        "bg-surface-muted dark:bg-white/6",
+        "border border-soft dark:border-white/12",
         "text-neutral-800 dark:text-white/85",
         // native dark mode for options dropdown
         "dark:[color-scheme:dark]",
-        "focus:ring-2 focus:ring-accent/30 focus:border-accent/70",
+        "focus:ring-4 focus:ring-accent/15 focus:border-accent focus:bg-white dark:focus:bg-white/8",
         "transition-all",
         className
       )}

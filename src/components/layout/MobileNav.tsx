@@ -26,12 +26,13 @@ export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }
     <nav
       className={cn(
         'md:hidden fixed bottom-0 left-0 right-0 z-40',
-        'bg-white/95 dark:bg-[#111113]/95 backdrop-blur-md',
-        'border-t border-neutral-200/80 dark:border-white/[0.06]',
-        'flex items-center',
+        'bg-white/90 dark:bg-[#111113]/92 backdrop-blur-xl backdrop-saturate-150',
+        'border-t border-soft shadow-[0_-8px_24px_-16px_rgba(28,25,23,0.25)]',
+        'flex items-center px-1.5 pt-1',
         className
       )}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      aria-label="Navegación rápida"
     >
       {/* Quick nav items */}
       {NAV_ITEMS.map((item) => {
@@ -53,7 +54,7 @@ export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }
               <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-lg shadow-accent/30 group-active:scale-95 transition-transform">
                 <Icon className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-semibold text-accent mt-0.5">{item.label}</span>
+              <span className="font-display text-[10.5px] font-semibold text-accent-ink mt-0.5">{item.label}</span>
             </button>
           );
         }
@@ -66,37 +67,43 @@ export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }
               if (item.href === '/chava' && onChavaClick) onChavaClick();
               else navigate(item.href);
             }}
+            aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex-1 flex flex-col items-center gap-1 py-2 px-1 transition-colors',
+              'flex-1 flex flex-col items-center gap-1 py-1.5 px-1 min-h-[52px] transition-colors active:scale-95',
               active
-                ? 'text-[rgb(var(--movi-accent-rgb))]'
-                : 'text-neutral-400 dark:text-white/35 active:text-neutral-600 dark:active:text-white/60'
+                ? 'text-accent-ink'
+                : 'text-neutral-500 dark:text-white/50 active:text-neutral-700 dark:active:text-white/70'
             )}
           >
-            <Icon className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{item.label}</span>
+            <span className={cn(
+              'flex items-center justify-center w-12 h-7 rounded-full transition-colors duration-fast',
+              active && 'bg-accent-soft dark:bg-accent/20'
+            )}>
+              <Icon className="w-5 h-5" />
+            </span>
+            <span className={cn('font-display text-[10.5px] leading-none', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
           </button>
         );
       })}
 
       {/* Divider */}
-      <div className="w-px h-8 bg-neutral-200 dark:bg-white/[0.06] mx-1 flex-shrink-0" />
+      <div className="w-px h-8 bg-[var(--border-soft)] mx-0.5 flex-shrink-0" aria-hidden="true" />
 
       {/* Menu button — opens MobileDrawer (also surfaces unread notification count) */}
       <button
         onClick={onOpenDrawer}
-        className="flex-1 flex flex-col items-center gap-1 py-2.5 px-2 text-neutral-400 dark:text-white/35 active:text-neutral-600 dark:active:text-white/60 transition-colors relative"
+        className="flex-1 flex flex-col items-center gap-1 py-1.5 px-1 min-h-[52px] text-neutral-500 dark:text-white/50 active:text-neutral-700 dark:active:text-white/70 transition-colors relative active:scale-95"
         aria-label="Abrir menu"
       >
-        <span className="relative">
+        <span className="relative flex items-center justify-center w-12 h-7">
           <Menu className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+            <span className="absolute -top-1 right-1.5 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </span>
-        <span className="text-[10px] font-medium">Menu</span>
+        <span className="font-display text-[10.5px] font-medium leading-none">Menú</span>
       </button>
     </nav>
   );

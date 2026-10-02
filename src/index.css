@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Gotham ya NO es la tipografía de la interfaz (ahora Sora + Manrope), pero se
+   conserva cargada: la usan las firmas de e-mail (SIGNATURE_FONT_STACK), las
+   plecas en canvas (plecaUtils) y el editor de logos de la tienda. */
 @font-face {
   font-family: 'Gotham';
   src: url('/fonts/gotham/gotham-book.woff2') format('woff2');
@@ -41,7 +44,7 @@
 ───────────────────────────────────────────────────────────── */
 :root {
   /* App backgrounds */
-  --bg-base:   #f8fafc;
+  --bg-base:   var(--surface-canvas);
   --text-base: #0f172a;
 
   /* Dynamic accent (MOVI blue default) — updated by applyTheme() */
@@ -70,13 +73,63 @@
 
   /* Focus ring */
   --focus-ring: 0 0 0 3px rgba(var(--movi-accent-rgb) / 0.25);
+
+  /* ── Derivados del acento (los recalcula themeUtils.computeThemeVars) ── */
+  --movi-accent-text-rgb:         22 66 129;   /* acento con contraste AA sobre blanco */
+  --movi-accent-text-on-dark-rgb: 104 132 173; /* acento con contraste AA sobre superficie oscura */
+  --movi-accent-soft-rgb:         232 236 242; /* tinte 10% */
+  --movi-accent-softer-rgb:       243 246 249; /* tinte 5% */
+  --movi-accent-deep-rgb:         12 36 71;    /* acento profundo (fondos de marca) */
+  --movi-accent-2-rgb:            31 132 160;  /* tono análogo para gradientes */
+
+  /* Acento "de lectura" activo según tema — usar en texto/íconos de marca */
+  --accent-ink-rgb: var(--movi-accent-text-rgb);
+
+  /* ── Tipografía ── */
+  --font-display: 'Sora Variable', 'Sora', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Manrope Variable', 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* ── Superficies (marfil cálido) ── */
+  /* Canales RGB (permiten opacidad en Tailwind: bg-surface-card/95) */
+  --surface-canvas-rgb: 246 245 242;
+  --surface-card-rgb:   255 255 255;
+  --surface-muted-rgb:  241 239 235;
+  --surface-sunken-rgb: 235 233 228;
+  --surface-canvas:  rgb(var(--surface-canvas-rgb));   /* fondo de la app */
+  --surface-card:    rgb(var(--surface-card-rgb));
+  --surface-muted:   rgb(var(--surface-muted-rgb));
+  --surface-sunken:  rgb(var(--surface-sunken-rgb));
+  --border-soft:     rgba(28, 25, 23, 0.07);
+  --border-strong:   rgba(28, 25, 23, 0.13);
+
+  /* ── Radios ── */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* ── Elevación (sombras suaves y cálidas en capas) ── */
+  --shadow-1: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 1px rgba(28, 25, 23, 0.02);
+  --shadow-2: 0 1px 2px rgba(28, 25, 23, 0.04), 0 6px 16px -6px rgba(28, 25, 23, 0.08);
+  --shadow-3: 0 2px 4px rgba(28, 25, 23, 0.04), 0 16px 36px -12px rgba(28, 25, 23, 0.14);
+  --shadow-4: 0 4px 8px rgba(28, 25, 23, 0.05), 0 28px 64px -20px rgba(28, 25, 23, 0.22);
+  --shadow-accent: 0 8px 24px -10px rgb(var(--movi-accent-rgb) / 0.55);
+
+  /* ── Movimiento ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --dur-fast: 180ms;
+  --dur-base: 240ms;
+  --dur-slow: 350ms;
 }
 
 /* ────────────────────────────────────────────────────────────
    DARK MODE OVERRIDES
 ───────────────────────────────────────────────────────────── */
 :root.dark {
-  --bg-base:   #090f1a;
+  --bg-base:   var(--surface-canvas);
   --text-base: #f8fafc;
 
   --color-text-primary:   #f1f5f9;
@@ -95,6 +148,20 @@
   --color-input-border:   rgba(255, 255, 255, 0.12);
   --color-input-text:     #f1f5f9;
   --color-input-placeholder: rgba(255, 255, 255, 0.38);
+
+  --accent-ink-rgb: var(--movi-accent-text-on-dark-rgb);
+
+  --surface-canvas-rgb: 14 14 16;
+  --surface-card-rgb:   22 22 26;
+  --surface-muted-rgb:  28 28 33;
+  --surface-sunken-rgb: 10 10 12;
+  --border-soft:     rgba(255, 255, 255, 0.07);
+  --border-strong:   rgba(255, 255, 255, 0.13);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -8px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 2px 4px rgba(0, 0, 0, 0.3), 0 18px 40px -14px rgba(0, 0, 0, 0.6);
+  --shadow-4: 0 4px 8px rgba(0, 0, 0, 0.35), 0 30px 70px -20px rgba(0, 0, 0, 0.7);
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -104,7 +171,9 @@ body {
   margin: 0;
   background: var(--bg-base);
   color: var(--text-base);
-  font-family: 'Gotham', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-body);
+  font-feature-settings: 'cv11', 'ss01';
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s ease, color 0.2s ease;
@@ -142,7 +211,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.7) 50%,
     transparent 100%
   );
   background-size: 200% 100%;
@@ -197,39 +266,79 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────
-   SIDEBAR RAIL — primary icon sidebar
-   Uses dynamic office accent via CSS vars from themeUtils.applyTheme()
+   SIDEBAR RAIL — barra angosta principal (PrimarySidebar)
+   Fondo de marca: gradiente profundo generado del acento de la oficina,
+   con un arco orgánico translúcido abajo. Activo = cápsula clara.
 ───────────────────────────────────────────────────────────── */
 .sidebar-rail {
-  background: rgb(var(--movi-accent-dark-rgb));
-  border-right: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 60% at 0% 100%, rgb(var(--movi-accent-2-rgb) / 0.35) 0%, transparent 60%),
+    /* --movi-accent-text-rgb = acento ajustado a contraste AA contra blanco, así las
+       etiquetas blancas siguen siendo legibles aunque la oficina elija un color claro */
+    linear-gradient(180deg, rgb(var(--movi-accent-text-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%);
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+/* Forma orgánica decorativa (no interactiva) */
+.sidebar-rail::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: -60%;
+  bottom: -14%;
+  width: 220%;
+  height: 46%;
+  border-radius: 46% 54% 0 0 / 38% 42% 0 0;
+  background: rgba(255,255,255,0.045);
+  pointer-events: none;
+}
+.sidebar-rail::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -70%;
+  top: 18%;
+  width: 140%;
+  height: 26%;
+  border-radius: 58% 42% 55% 45% / 50% 46% 54% 50%;
+  background: rgba(255,255,255,0.03);
+  pointer-events: none;
 }
 
 :root.dark .sidebar-rail {
-  background: rgb(var(--movi-accent-dark-rgb));
-  border-right: 1px solid rgba(255,255,255,0.07);
+  border-right: 1px solid rgba(255,255,255,0.06);
 }
 
 /* Nav icon buttons */
 .sidebar-rail-btn {
-  color: rgba(255,255,255,0.62);
-  transition: background 0.15s, color 0.15s, transform 0.1s;
+  color: rgba(255,255,255,0.86);
+  font-family: var(--font-display);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform 120ms var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .sidebar-rail-btn:hover {
   background: rgba(255,255,255,0.10);
-  color: rgba(255,255,255,0.90);
+  color: #ffffff;
 }
 .sidebar-rail-btn.active {
-  background: rgba(255,255,255,0.16);
-  color: #ffffff;
-  /* Stronger active marker: 3px accent bar on the left + subtle full ring */
-  box-shadow: inset 3px 0 0 0 #ffffff, inset 0 0 0 1px rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.96);
+  color: rgb(var(--movi-accent-text-rgb));
+  box-shadow: 0 6px 18px -8px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.6);
+}
+.sidebar-rail-btn:focus-visible,
+.sidebar-rail-chava-btn:focus-visible,
+.sidebar-rail-logo-btn:focus-visible,
+.sidebar-rail-signout:focus-visible,
+.sidebar-rail-avatar-ring:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
 
 /* Chava AI dedicated button */
 .sidebar-rail-chava-btn {
-  color: rgba(255,255,255,0.75);
-  transition: background 0.15s, color 0.15s, transform 0.1s, box-shadow 0.15s;
+  color: rgba(255,255,255,0.8);
+  transition: background var(--dur-fast), color var(--dur-fast), transform 120ms, box-shadow var(--dur-fast);
   position: relative;
 }
 .sidebar-rail-chava-btn:hover {
@@ -240,41 +349,42 @@ body {
 
 /* Logo button */
 .sidebar-rail-logo-btn {
-  background: rgba(255,255,255,0.12);
-  transition: background 0.15s, transform 0.1s;
+  background: rgba(255,255,255,0.14);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+  transition: background var(--dur-fast), transform 120ms;
 }
 .sidebar-rail-logo-btn:hover {
-  background: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.22);
 }
 
 /* Separator line */
 .sidebar-rail-sep {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.14);
 }
 
 /* Avatar ring */
 .sidebar-rail-avatar-ring {
   padding: 2px;
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.20);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.24);
 }
 .sidebar-rail-avatar-ring:hover {
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.40);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
 }
 
 /* Avatar fallback text */
 .sidebar-rail-avatar-fallback {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.16);
   color: #ffffff;
 }
 
 /* Sign out button */
 .sidebar-rail-signout {
-  color: rgba(255,255,255,0.45);
-  transition: background 0.15s, color 0.15s;
+  color: rgba(255,255,255,0.55);
+  transition: background var(--dur-fast), color var(--dur-fast);
 }
 .sidebar-rail-signout:hover {
-  background: rgba(255,80,80,0.18);
-  color: rgba(255,150,150,0.95);
+  background: rgba(255,80,80,0.2);
+  color: #ffd2d2;
 }
 
 /* Mobile content area — add bottom padding for the fixed nav bar */
@@ -294,5 +404,168 @@ body {
     position: fixed;
     inset: 0;
     background: #fff;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   SISTEMA VISUAL MOVI (rediseño 2026-10)
+   Sora → encabezados, métricas, navegación, botones/CTA
+   Manrope → todo el texto de interfaz y contenido
+════════════════════════════════════════════════════════════ */
+@layer base {
+  h1, h2, h3, h4,
+  [role="heading"] {
+    font-family: var(--font-display);
+    letter-spacing: -0.018em;
+  }
+  h5, h6 { font-family: var(--font-display); }
+
+  /* Métricas/números grandes: cualquier texto ≥ xl usa la display.
+     :where() = especificidad 0, así que cualquier font-* explícito gana. */
+  :where(.text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl, .text-6xl, .text-7xl) {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  /* Tablas: cifras alineadas y legibles */
+  table { font-variant-numeric: tabular-nums; }
+  th { font-family: var(--font-body); }
+
+  ::selection { background: rgb(var(--movi-accent-rgb) / 0.18); }
+
+  /* Controles nativos heredan la tipografía de interfaz */
+  input, select, textarea { font-family: inherit; }
+}
+
+@layer components {
+  /* Superficie de tarjeta reutilizable para páginas que no usan <Card> */
+  .movi-surface {
+    background: var(--surface-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+  }
+
+  /* Fondo ambiental orgánico (detrás del contenido; nunca interactivo) */
+  .movi-ambient {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+  .movi-ambient__blob {
+    position: absolute;
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+    filter: blur(2px);
+  }
+  .movi-ambient__blob--a {
+    width: 46rem; height: 30rem;
+    top: -18rem; right: -12rem;
+    background: radial-gradient(closest-side, rgb(var(--movi-accent-rgb) / 0.10), transparent 72%);
+  }
+  .movi-ambient__blob--b {
+    width: 38rem; height: 26rem;
+    top: -10rem; left: 18%;
+    border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
+    background: radial-gradient(closest-side, rgb(var(--movi-accent-2-rgb) / 0.08), transparent 70%);
+  }
+  .movi-ambient__wave {
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    width: 100%;
+    height: 220px;
+    color: rgb(var(--movi-accent-rgb));
+    opacity: 0.05;
+  }
+  :root.dark .movi-ambient__blob--a { background: radial-gradient(closest-side, rgb(var(--movi-accent-rgb) / 0.16), transparent 72%); }
+  :root.dark .movi-ambient__blob--b { background: radial-gradient(closest-side, rgb(var(--movi-accent-2-rgb) / 0.10), transparent 70%); }
+  :root.dark .movi-ambient__wave { opacity: 0.08; }
+
+  /* Hero de marca: gradiente generado del acento + formas orgánicas */
+  .movi-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    color: rgb(var(--movi-accent-foreground-rgb));
+    background:
+      radial-gradient(80% 120% at 100% 0%, rgb(var(--movi-accent-2-rgb) / 0.55) 0%, transparent 55%),
+      linear-gradient(135deg, rgb(var(--movi-accent-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%);
+    box-shadow: var(--shadow-3);
+  }
+  .movi-hero::before,
+  .movi-hero::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    background: rgba(255,255,255,0.08);
+  }
+  .movi-hero::before {
+    width: 60%; height: 140%;
+    right: -18%; top: -50%;
+    border-radius: 58% 42% 46% 54% / 47% 52% 48% 53%;
+  }
+  .movi-hero::after {
+    width: 42%; height: 90%;
+    right: 8%; bottom: -62%;
+    border-radius: 50% 50% 38% 62% / 60% 44% 56% 40%;
+    background: rgba(255,255,255,0.06);
+  }
+
+  /* Eyebrow / overline */
+  .movi-eyebrow {
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* Entrada escalonada moderada para cuadrículas de tarjetas (opt-in) */
+  .movi-stagger > * {
+    animation: movi-rise var(--dur-slow) var(--ease-out) both;
+  }
+  .movi-stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .movi-stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .movi-stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .movi-stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .movi-stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .movi-stagger > *:nth-child(n+7) { animation-delay: 240ms; }
+}
+
+/* Entrada de modales/overlays (usa `scale` independiente para no pisar el
+   transform de centrado de Radix) */
+.movi-dialog-in[data-state="open"]  { animation: movi-dialog-in var(--dur-base) var(--ease-out) both; }
+.movi-overlay-in[data-state="open"] { animation: movi-fade var(--dur-fast) ease-out both; }
+@keyframes movi-dialog-in {
+  from { opacity: 0; scale: 0.97; }
+  to   { opacity: 1; scale: 1; }
+}
+@keyframes movi-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes movi-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes movi-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+/* ────────────────────────────────────────────────────────────
+   REDUCED MOTION — respeta la preferencia del sistema
+───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

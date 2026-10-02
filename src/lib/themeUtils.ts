@@ -92,29 +92,105 @@ export function getAccessibleColor(background: string, preferDark = false): stri
   return whiteContrast >= blackContrast ? 'rgb(255 255 255)' : 'rgb(0 0 0)';
 }
 
+// ── Derivados del acento (rediseño 2026-10) ──────────────────────────────────
+// Todo se calcula a partir del ÚNICO color configurable (oficinas.accent_color o
+// el color primario del agente en Seguwallet). Nada de esto se guarda en BD.
+
+type RGB = [number, number, number];
+
+const parseRgb = (rgb: string): RGB => rgb.split(' ').map(Number) as RGB;
+const fmt = ([r, g, b]: RGB) => `${Math.round(r)} ${Math.round(g)} ${Math.round(b)}`;
+
+/** Mezcla lineal en sRGB: t=0 → a, t=1 → b */
+function mix(a: RGB, b: RGB, t: number): RGB {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
+/**
+ * Ajusta un color hacia `toward` (negro o blanco) en pasos hasta que alcanza
+ * `target` de contraste contra `bg`. Garantiza texto AA del color de marca sobre
+ * superficies claras/oscuras aunque la oficina elija un amarillo o un azul marino.
+ */
+function ensureContrast(color: RGB, bg: RGB, toward: RGB, target = 4.5): RGB {
+  let c = color;
+  for (let i = 0; i < 20 && getContrastRatio(fmt(c), fmt(bg)) < target; i++) {
+    c = mix(color, toward, (i + 1) / 20);
+  }
+  return c;
+}
+
+function rgbToHsl([r, g, b]: RGB): [number, number, number] {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h /= 6;
+  return [h * 360, s, l];
+}
+
+function hslToRgb(h: number, s: number, l: number): RGB {
+  h = ((h % 360) + 360) % 360 / 360;
+  if (s === 0) return [l * 255, l * 255, l * 255];
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const f = (t: number) => {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
+}
+
+const LIGHT_SURFACE: RGB = [255, 255, 255];
+const DARK_SURFACE: RGB = [17, 17, 20];
+const BLACK: RGB = [0, 0, 0];
+const WHITE: RGB = [255, 255, 255];
+
+/**
+ * Calcula TODAS las variables CSS del tema a partir de un color HEX.
+ * Las 4 originales (`--movi-accent-*-rgb`) conservan exactamente su fórmula previa.
+ */
+export function computeThemeVars(accentColor: string): Record<string, string> {
+  const accentRgb = hexToRgb(accentColor);
+  const accentForegroundRgb = getForegroundColor(accentColor);
+  const base = parseRgb(accentRgb);
+  const [r, g, b] = base;
+  const [h, s, l] = rgbToHsl(base);
+
+  // Segundo tono para gradientes: vecino análogo (-22°, hacia tonos más frescos/cálidos
+  // según el caso: azul→cian, amarillo→ámbar, rojo→magenta) y algo más luminoso.
+  const companion = hslToRgb(h - 22, Math.min(1, s * 0.95), Math.max(0.32, Math.min(0.6, l + 0.08)));
+
+  return {
+    '--movi-accent-rgb': accentRgb,
+    '--movi-accent-foreground-rgb': accentForegroundRgb,
+    '--movi-accent-hover-rgb': `${Math.min(r + 20, 255)} ${Math.min(g + 20, 255)} ${Math.min(b + 20, 255)}`,
+    '--movi-accent-dark-rgb': `${Math.max(r - 20, 0)} ${Math.max(g - 20, 0)} ${Math.max(b - 20, 0)}`,
+    // Texto/enlaces/íconos del color de marca con contraste AA garantizado
+    '--movi-accent-text-rgb': fmt(ensureContrast(base, LIGHT_SURFACE, BLACK)),
+    '--movi-accent-text-on-dark-rgb': fmt(ensureContrast(base, DARK_SURFACE, WHITE)),
+    // Fondos tintados (chips activos, hero, halos)
+    '--movi-accent-soft-rgb': fmt(mix(base, WHITE, 0.9)),
+    '--movi-accent-softer-rgb': fmt(mix(base, WHITE, 0.95)),
+    '--movi-accent-deep-rgb': fmt(mix(base, BLACK, 0.45)),
+    '--movi-accent-2-rgb': fmt(companion),
+  };
+}
+
 /**
  * Aplica el tema de la oficina actualizando las CSS variables globales.
  * También recalcula hover y dark variants automáticamente.
  */
 export function applyTheme(accentColor: string): void {
   const root = document.documentElement;
-
-  const accentRgb = hexToRgb(accentColor);
-  const accentForegroundRgb = getForegroundColor(accentColor);
-
-  root.style.setProperty('--movi-accent-rgb', accentRgb);
-  root.style.setProperty('--movi-accent-foreground-rgb', accentForegroundRgb);
-
-  // Hover = slightly lighter, dark = slightly darker
-  const [r, g, b] = accentRgb.split(' ').map(Number);
-  root.style.setProperty(
-    '--movi-accent-hover-rgb',
-    `${Math.min(r + 20, 255)} ${Math.min(g + 20, 255)} ${Math.min(b + 20, 255)}`
-  );
-  root.style.setProperty(
-    '--movi-accent-dark-rgb',
-    `${Math.max(r - 20, 0)} ${Math.max(g - 20, 0)} ${Math.max(b - 20, 0)}`
-  );
+  for (const [k, v] of Object.entries(computeThemeVars(accentColor))) {
+    root.style.setProperty(k, v);
+  }
 }
 
 /** Vuelve al tema azul corporativo de JIRO */

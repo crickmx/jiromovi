@@ -169,7 +169,7 @@ export function NavigationPanel({
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-white/5"
+            className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-white rounded-xl hover:bg-surface-muted dark:hover:bg-white/5"
             title="Cerrar (Esc)"
           >
             <X className="w-4 h-4" />
@@ -246,7 +246,7 @@ export function NavigationPanel({
                       )}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-accent' : 'text-neutral-400 group-hover:text-accent')} />
+                        <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-accent-ink' : 'text-neutral-400 group-hover:text-accent')} />
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate group-hover:text-accent">
                             {item.label}
@@ -259,12 +259,12 @@ export function NavigationPanel({
 
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
                         {countBadge > 0 && (
-                          <span className="px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full">
+                          <span className="px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">
                             {countBadge}
                           </span>
                         )}
                         {badge && (
-                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-neutral-300">
+                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-neutral-300">
                             {badge.texto}
                           </span>
                         )}

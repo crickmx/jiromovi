@@ -333,14 +333,14 @@ export default function MoviLogin() {
                 style={{ color: 'rgba(13,110,253,0.8)' }}>
                 Plataforma de gestión
               </p>
-              <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-[1.1] tracking-tight">
+              <h1 className="font-display text-4xl xl:text-5xl font-semibold text-white leading-[1.08] tracking-[-0.03em]">
                 Tu<br />
                 <span style={{ background: 'linear-gradient(90deg, #0D6EFD, #00c8e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                   oficina virtual
                 </span>
               </h1>
               <p className="mt-5 text-base leading-relaxed max-w-sm"
-                style={{ color: 'rgba(255,255,255,0.4)' }}>
+                style={{ color: 'rgba(255,255,255,0.72)' }}>
                 Gestiona pólizas, comisiones, clientes y producción desde un solo lugar.
               </p>
 
@@ -353,13 +353,13 @@ export default function MoviLogin() {
                 ].map((label, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#0D6EFD' }} />
-                    <span className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>{label}</span>
+                    <span className="text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>{label}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="flex items-center gap-5 text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            <div className="flex items-center gap-5 text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
               <a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer"
                 className="hover:text-white/60 transition-colors">grupojiro.com</a>
               <span className="w-px h-3" style={{ background: 'rgba(255,255,255,0.15)' }} />
@@ -387,8 +387,8 @@ export default function MoviLogin() {
               {step === 'main' && (
                 <>
                   <div className="mb-7">
-                    <h2 className="text-2xl font-extrabold text-white tracking-tight">Iniciar sesión</h2>
-                    <p className="mt-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                    <h2 className="font-display text-2xl font-semibold text-white tracking-[-0.025em]">Iniciar sesión</h2>
+                    <p className="mt-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.72)' }}>
                       {mode === 'password' ? 'Ingresa con tu contraseña' : 'Recibe un código de acceso'}
                     </p>
                   </div>
@@ -430,13 +430,13 @@ export default function MoviLogin() {
                     <form onSubmit={handlePasswordLogin} className="space-y-4" noValidate>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-semibold tracking-wide uppercase"
-                          style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          style={{ color: 'rgba(255,255,255,0.72)' }}>
                           Correo electrónico o celular
                         </label>
                         <div className="relative">
                           {isPhoneInput(identifier)
-                            ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                            : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                            ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.6)' }} />
+                            : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.6)' }} />
                           }
                           <input
                             type="text"
@@ -455,12 +455,12 @@ export default function MoviLogin() {
 
                       <div className="space-y-1.5">
                         <label className="block text-xs font-semibold tracking-wide uppercase"
-                          style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          style={{ color: 'rgba(255,255,255,0.72)' }}>
                           Contraseña
                         </label>
                         <div className="relative">
                           <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                            style={{ color: 'rgba(255,255,255,0.3)' }} />
+                            style={{ color: 'rgba(255,255,255,0.6)' }} />
                           <input
                             type={showPassword ? 'text' : 'password'}
                             value={password}
@@ -476,7 +476,7 @@ export default function MoviLogin() {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3.5 top-1/2 -translate-y-1/2 p-0.5 rounded transition-colors"
-                            style={{ color: 'rgba(255,255,255,0.35)' }}
+                            style={{ color: 'rgba(255,255,255,0.72)' }}
                             tabIndex={-1}
                           >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -510,13 +510,13 @@ export default function MoviLogin() {
                     <form onSubmit={handleExpressSend} className="space-y-4" noValidate>
                       <div className="space-y-1.5">
                         <label className="block text-xs font-semibold tracking-wide uppercase"
-                          style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          style={{ color: 'rgba(255,255,255,0.72)' }}>
                           Correo electrónico o celular
                         </label>
                         <div className="relative">
                           {isPhoneInput(identifier)
-                            ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                            : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                            ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.6)' }} />
+                            : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.6)' }} />
                           }
                           <input
                             type="text"
@@ -560,7 +560,7 @@ export default function MoviLogin() {
                       <div className="w-full border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }} />
                     </div>
                     <div className="relative flex justify-center">
-                      <span className="px-3 text-xs font-medium" style={{ background: '#050e20', color: 'rgba(255,255,255,0.3)' }}>
+                      <span className="px-3 text-xs font-medium" style={{ background: '#050e20', color: 'rgba(255,255,255,0.6)' }}>
                         O bien
                       </span>
                     </div>
@@ -575,7 +575,7 @@ export default function MoviLogin() {
                       style={{
                         background: 'rgba(255,255,255,0.04)',
                         border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'rgba(255,255,255,0.6)',
+                        color: 'rgba(255,255,255,0.8)',
                       }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
@@ -591,7 +591,7 @@ export default function MoviLogin() {
                       style={{
                         background: 'rgba(255,255,255,0.04)',
                         border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'rgba(255,255,255,0.6)',
+                        color: 'rgba(255,255,255,0.8)',
                       }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
@@ -601,7 +601,7 @@ export default function MoviLogin() {
                     </button>
                   )}
 
-                  <p className="mt-5 text-xs text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  <p className="mt-5 text-xs text-center" style={{ color: 'rgba(255,255,255,0.6)' }}>
                     {mode === 'password'
                       ? '¿No tienes contraseña? Usa Ingreso Express.'
                       : 'Recibirás un código de 6 dígitos por correo y WhatsApp'
@@ -617,15 +617,15 @@ export default function MoviLogin() {
                     <button
                       onClick={() => { setStep('main'); setError(''); setCode(''); }}
                       className="flex items-center gap-1.5 text-xs font-semibold mb-4 transition-colors"
-                      style={{ color: 'rgba(255,255,255,0.4)' }}
+                      style={{ color: 'rgba(255,255,255,0.72)' }}
                       onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                       onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
                     >
                       <ChevronLeft className="w-4 h-4" />
                       Volver
                     </button>
-                    <h2 className="text-2xl font-extrabold text-white tracking-tight">Verifica tu acceso</h2>
-                    <p className="mt-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                    <h2 className="font-display text-2xl font-semibold text-white tracking-[-0.025em]">Verifica tu acceso</h2>
+                    <p className="mt-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.72)' }}>
                       Te enviamos un código a tu correo y WhatsApp registrados
                     </p>
                     <p className="mt-0.5 text-sm font-semibold" style={{ color: 'rgba(13,110,253,0.9)' }}>
@@ -646,7 +646,7 @@ export default function MoviLogin() {
                   <form onSubmit={handleCodeSubmit} className="space-y-4" noValidate>
                     <div className="space-y-1.5">
                       <label className="block text-xs font-semibold tracking-wide uppercase"
-                        style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        style={{ color: 'rgba(255,255,255,0.72)' }}>
                         Código de acceso
                       </label>
                       <input
@@ -665,7 +665,7 @@ export default function MoviLogin() {
                         maxLength={6}
                         autoFocus
                       />
-                      <p className="text-xs text-center mt-1" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                      <p className="text-xs text-center mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
                         El código vence en 10 minutos
                       </p>
                     </div>
@@ -711,7 +711,7 @@ export default function MoviLogin() {
             </div>
 
             {/* Mobile footer */}
-            <div className="lg:hidden mt-12 text-[11px]" style={{ color: 'rgba(255,255,255,0.22)' }}>
+            <div className="lg:hidden mt-12 text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
               © {new Date().getFullYear()} MOVI Digital · Grupo JIRO
             </div>
           </div>

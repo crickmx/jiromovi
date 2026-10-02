@@ -44,17 +44,17 @@ export function Section({
             {title && (
               <div className="flex items-center gap-2 mb-1">
                 {Icon && (
-                  <div className="p-1.5 rounded-lg bg-accent/8 dark:bg-accent/15">
-                    <Icon className="w-4 h-4 text-accent flex-shrink-0" />
+                  <div className="p-1.5 rounded-xl bg-accent-soft dark:bg-accent/15">
+                    <Icon className="w-4 h-4 text-accent-ink flex-shrink-0" />
                   </div>
                 )}
-                <h2 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-white tracking-tight truncate">
+                <h2 className="font-display text-title-sm sm:text-title font-semibold text-neutral-900 dark:text-white truncate">
                   {title}
                 </h2>
               </div>
             )}
             {description && (
-              <p className="text-sm text-neutral-500 dark:text-white/50 leading-relaxed">
+              <p className="text-sm text-neutral-600 dark:text-white/60 leading-relaxed">
                 {description}
               </p>
             )}

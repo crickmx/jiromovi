@@ -18,15 +18,15 @@ const SelectTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "flex h-10 w-full items-center justify-between gap-2 rounded-xl",
-      "border border-neutral-200 dark:border-white/15",
+      "border border-strong dark:border-white/15 hover:border-neutral-300 dark:hover:border-white/25",
       "bg-white dark:bg-white/6",
       "px-3.5 py-2 text-sm",
       "text-neutral-900 dark:text-white",
       "ring-offset-background",
       // Empty/placeholder state
-      "data-[placeholder]:text-neutral-400 dark:data-[placeholder]:text-white/60",
+      "data-[placeholder]:text-neutral-500 dark:data-[placeholder]:text-white/60",
       // Focus
-      "focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/70",
+      "focus:outline-none focus:ring-4 focus:ring-accent/15 focus:border-accent transition-[border-color,box-shadow] duration-fast",
       // Disabled
       "disabled:cursor-not-allowed disabled:opacity-50",
       "transition-all duration-200 [&>span]:line-clamp-1",
@@ -85,11 +85,11 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-xl",
-        "border border-neutral-200 dark:border-white/12",
-        "bg-white dark:bg-neutral-900",
+        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-2xl animate-scale-in",
+        "border border-soft",
+        "bg-surface-card",
         "text-neutral-900 dark:text-white",
-        "shadow-ios-lg",
+        "shadow-e3",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
