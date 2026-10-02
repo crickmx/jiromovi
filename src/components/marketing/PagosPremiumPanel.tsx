@@ -8,9 +8,12 @@
 // que un movimiento quedara sin rastro.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, History, Loader2, X } from 'lucide-react';
+import { Plus, Trash2, History, Loader2, X, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { saldoPremium, pesos, type PlanPremium } from '../../lib/mktPremiumPagos';
+import {
+  BUCKET_COMPROBANTES, ACCEPT_COMPROBANTE, validarComprobante, rutaComprobante,
+} from '../../lib/comprobantePago';
 
 interface PagoRow {
   id: string;
@@ -19,6 +22,8 @@ interface PagoRow {
   monto: string | number;
   comentario: string;
   registrado_por: string | null;
+  comprobante_path: string | null;
+  comprobante_nombre: string | null;
   registrador?: { nombre_completo: string | null; nombre: string | null } | null;
 }
 
@@ -77,12 +82,14 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
   const [metodo, setMetodo] = useState(METODOS[0].value);
   const [monto, setMonto] = useState('');
   const [comentario, setComentario] = useState('');
+  const [comprobante, setComprobante] = useState<File | null>(null);
+  const [abriendo, setAbriendo] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     setLoading(true);
     const { data, error: err } = await supabase
       .from('mkt_premium_pagos')
-      .select('id, fecha, metodo, monto, comentario, registrado_por, registrador:usuarios!registrado_por(nombre_completo, nombre)')
+      .select('id, fecha, metodo, monto, comentario, registrado_por, comprobante_path, comprobante_nombre, registrador:usuarios!registrado_por(nombre_completo, nombre)')
       .eq('usuario_id', usuarioId)
       .order('fecha', { ascending: false });
     if (err) setError(err.message);
@@ -111,9 +118,34 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
   const registrar = async () => {
     const valor = Number(monto);
     if (!Number.isFinite(valor) || valor <= 0) { setError('El monto tiene que ser mayor que cero.'); return; }
+    if (comprobante) {
+      const problema = validarComprobante(comprobante);
+      if (problema) { setError(problema); return; }
+    }
+
     setGuardando(true); setError('');
     const { data: sesion } = await supabase.auth.getUser();
+
+    // El id se decide aquí para poder subir el archivo ANTES de insertar: así la
+    // fila nace completa y la bitácora registra un alta, no un alta seguida de
+    // una edición por el adjunto.
+    const pagoId = crypto.randomUUID();
+    let path: string | null = null;
+
+    if (comprobante) {
+      path = rutaComprobante(usuarioId, pagoId, comprobante.name);
+      const { error: errSubida } = await supabase.storage
+        .from(BUCKET_COMPROBANTES)
+        .upload(path, comprobante, { upsert: true, contentType: comprobante.type || undefined });
+      if (errSubida) {
+        setGuardando(false);
+        setError(`No se pudo subir el comprobante: ${errSubida.message}`);
+        return;
+      }
+    }
+
     const { error: err } = await supabase.from('mkt_premium_pagos').insert({
+      id: pagoId,
       usuario_id: usuarioId,
       fecha,
       metodo,
@@ -121,16 +153,37 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
       comentario: comentario.trim(),
       // La política de inserción exige que coincida con quien está en sesión.
       registrado_por: sesion.user?.id ?? null,
+      comprobante_path: path,
+      comprobante_nombre: comprobante?.name ?? null,
     });
+
     setGuardando(false);
-    if (err) { setError(err.message); return; }
-    setMonto(''); setComentario(''); setShowForm(false);
+    if (err) {
+      // El archivo ya está arriba y el pago no existe: se limpia para no dejar
+      // basura en el bucket.
+      if (path) await supabase.storage.from(BUCKET_COMPROBANTES).remove([path]);
+      setError(err.message);
+      return;
+    }
+    setMonto(''); setComentario(''); setComprobante(null); setShowForm(false);
     cargar();
     if (verLog) cargarLog();
   };
 
+  /** El bucket es privado: para ver un comprobante hay que firmar la URL. */
+  const abrirComprobante = async (p: PagoRow) => {
+    if (!p.comprobante_path) return;
+    setAbriendo(p.id); setError('');
+    const { data, error: err } = await supabase.storage
+      .from(BUCKET_COMPROBANTES)
+      .createSignedUrl(p.comprobante_path, 120);
+    setAbriendo(null);
+    if (err || !data?.signedUrl) { setError(err?.message ?? 'No se pudo abrir el comprobante.'); return; }
+    window.open(data.signedUrl, '_blank', 'noopener');
+  };
+
   const eliminar = async (p: PagoRow) => {
-    if (!confirm(`¿Eliminar el pago de ${pesos(Number(p.monto))} del ${soloDia(p.fecha)}?\n\nQueda registrado en la bitácora.`)) return;
+    if (!confirm(`¿Eliminar el pago de ${pesos(Number(p.monto))} del ${soloDia(p.fecha)}?\n\nQueda registrado en la bitácora, y el comprobante se conserva.`)) return;
     const { error: err } = await supabase.from('mkt_premium_pagos').delete().eq('id', p.id);
     if (err) { setError(err.message); return; }
     cargar();
@@ -200,6 +253,24 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
             <input type="text" value={comentario} onChange={e => setComentario(e.target.value)} placeholder="Ej: parcialidad 2 de 3"
               className="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-neutral-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-neutral-900 dark:text-white" />
           </label>
+          <label className="sm:col-span-2 text-xs text-neutral-600 dark:text-white/60">
+            Comprobante <span className="text-neutral-400">(opcional — PDF, JPG o PNG, máx. 10 MB)</span>
+            <div className="mt-0.5 flex items-center gap-2">
+              <input
+                type="file"
+                accept={ACCEPT_COMPROBANTE}
+                onChange={e => { setComprobante(e.target.files?.[0] ?? null); setError(''); }}
+                className="flex-1 text-xs file:mr-2 file:px-2.5 file:py-1 file:rounded-lg file:border-0 file:bg-purple-50 file:text-purple-700 file:text-xs"
+              />
+              {comprobante && (
+                <button type="button" onClick={() => setComprobante(null)} title="Quitar"
+                  className="p-1 rounded hover:bg-white/60 dark:hover:bg-white/10 text-neutral-400 shrink-0">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </label>
+
           <div className="sm:col-span-2 flex justify-end">
             <button onClick={registrar} disabled={guardando}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold disabled:opacity-50">
@@ -227,6 +298,19 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
                   {p.comentario && ` · ${p.comentario}`}
                 </p>
               </div>
+              {p.comprobante_path && (
+                <button
+                  onClick={() => abrirComprobante(p)}
+                  disabled={abriendo === p.id}
+                  title={p.comprobante_nombre ?? 'Ver comprobante'}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 shrink-0 disabled:opacity-50"
+                >
+                  {abriendo === p.id
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <FileText className="w-3.5 h-3.5" />}
+                  Comprobante
+                </button>
+              )}
               {puedeEditar && (
                 <button onClick={() => eliminar(p)} title="Eliminar"
                   className="p-1.5 rounded-lg hover:bg-red-50 text-neutral-300 hover:text-red-500 shrink-0">
