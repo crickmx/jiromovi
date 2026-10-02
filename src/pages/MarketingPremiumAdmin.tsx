@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { eventosDisparados, type EventoPremium, type EstadoPremium } from '../lib/mktPremiumEventos';
 import { EventosPremiumPanel } from '../components/marketing/EventosPremiumPanel';
+import { PagosPremiumPanel } from '../components/marketing/PagosPremiumPanel';
+import type { PlanPremium } from '../lib/mktPremiumPagos';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -1224,6 +1226,14 @@ ALTER TABLE usuarios
                       )}
                     </div>
                   </div>
+
+                  {/* Pagos — debajo de la configuración del plan, que es lo que
+                      define cuánto se espera cobrar. */}
+                  <PagosPremiumPanel
+                    usuarioId={seleccionado.id}
+                    plan={(seleccionado.mkt_premium_plan ?? null) as PlanPremium | null}
+                    puedeEditar={tieneAcceso}
+                  />
 
                   {/* Guardar */}
                   <div className="space-y-2 pt-2">
