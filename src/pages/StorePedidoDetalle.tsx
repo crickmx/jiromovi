@@ -418,7 +418,7 @@ export default function StorePedidoDetalle() {
         if (!mapeo.some(m => m.fuente === 'adjunto_oc')) return;
         let folioOC = pedido.folio_oc;
         if (!folioOC) {
-          folioOC = await generarFolioOC();
+          folioOC = await generarFolioOC(pedido.usuario_id);
           await supabase.from('store_pedidos').update({
             folio_oc: folioOC,
             oc_generada_por: usuario.id,
@@ -521,7 +521,7 @@ export default function StorePedidoDetalle() {
       setGenerandoOC(true);
       let folio = pedido.folio_oc;
       if (!folio) {
-        folio = await generarFolioOC();
+        folio = await generarFolioOC(pedido.usuario_id);
         await supabase.from('store_pedidos').update({
           folio_oc: folio,
           oc_generada_por: usuario?.id,

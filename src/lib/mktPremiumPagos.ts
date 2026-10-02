@@ -62,6 +62,4 @@ export function saldoPremium(plan: PlanPremium | null | undefined, pagos: PagoPr
   return { esperado, pagado, saldo, estado: saldo > 0 ? 'debe' : 'a_favor' };
 }
 
-export function pesos(n: number): string {
-  return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
-}
+export { pesos } from './cobroDesglose';

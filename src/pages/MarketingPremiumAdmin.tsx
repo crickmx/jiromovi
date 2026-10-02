@@ -19,7 +19,7 @@ import { uploadUserLogo, deleteUserLogo } from '../lib/logoUtils';
 import { generarThumbnailVideo } from '../lib/videoThumbnail';
 import { dispararTriggersPremium, triggersAplicablesPremium } from '../lib/mktPremiumTriggers';
 import { ConfirmarTramitesAutoModal, type TramiteAutoPreview } from '../components/admin/ConfirmarTramitesAutoModal';
-import { adjuntarComprobantePremium } from '../lib/mktPremiumPdf';
+import { adjuntarComprobantePremium, construirPDFComprobantePremium } from '../lib/mktPremiumPdf';
 
 import { UserModal } from '../components/UserModal';
 import { format } from 'date-fns';
@@ -42,6 +42,8 @@ interface Agente {
   mkt_premium_parcialidades: number | null;
   /** Folio del Premium contratado, como el folio_oc de un pedido de Store. */
   mkt_premium_folio: string | null;
+  /** Cada cuándo se descuenta. Del mismo catálogo que Store. */
+  mkt_premium_frecuencia_pago: string | null;
   oficina: { nombre: string } | null;
   mi_logotipo_url: string | null;
 }
@@ -53,6 +55,7 @@ interface FormData {
   mkt_premium_fecha_inicio: string;
   mkt_premium_fecha_pago: string;
   mkt_premium_parcialidades: string;
+  mkt_premium_frecuencia_pago: string;
 }
 
 const METODOS: { value: MetodoPago; label: string }[] = [
@@ -107,6 +110,7 @@ function emptyForm(a?: Agente | null): FormData {
     mkt_premium_fecha_inicio: a?.mkt_premium_fecha_inicio ?? '',
     mkt_premium_fecha_pago: a?.mkt_premium_fecha_pago ?? '',
     mkt_premium_parcialidades: a?.mkt_premium_parcialidades ? String(a.mkt_premium_parcialidades) : '',
+    mkt_premium_frecuencia_pago: a?.mkt_premium_frecuencia_pago ?? '',
   };
 }
 
@@ -126,6 +130,9 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [sqlCopiado, setSqlCopiado] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState('');
   const [triggerToast, setTriggerToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+  // Cada cuándo se descuenta. Sale del catálogo de Store (`store_frecuencias_pago`)
+  // para no mantener dos listas que se desincronicen.
+  const [frecuenciasPago, setFrecuenciasPago] = useState<{ id: string; nombre: string }[]>([]);
   // Guardado esperando confirmación porque va a levantar trámites solo.
   const [confirmAuto, setConfirmAuto] = useState<{
     payload: Record<string, unknown>; eventos: string[]; items: TramiteAutoPreview[];
@@ -258,13 +265,18 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
 
   useEffect(() => { cargarAgentes(); }, []);
 
+  useEffect(() => {
+    supabase.from('store_frecuencias_pago').select('id, nombre').eq('activo', true).order('orden')
+      .then(({ data }) => setFrecuenciasPago((data ?? []) as { id: string; nombre: string }[]));
+  }, []);
+
   async function cargarAgentes() {
     setLoading(true);
 
     // Intentar query completa (requiere que las migraciones estén aplicadas)
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, apellidos, puesto, imagen_perfil_url, mi_logotipo_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, mkt_premium_folio, oficinas:oficina_id(nombre)')
+      .select('id, nombre, apellidos, puesto, imagen_perfil_url, mi_logotipo_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, mkt_premium_folio, mkt_premium_frecuencia_pago, oficinas:oficina_id(nombre)')
       .eq('activo', true)
       .order('nombre');
 
@@ -285,6 +297,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
           mkt_premium_metodo_pago: null,
           mkt_premium_parcialidades: null,
           mkt_premium_folio: null,
+          mkt_premium_frecuencia_pago: null,
           oficina: Array.isArray(u.oficinas) ? u.oficinas[0] ?? null : u.oficinas ?? null,
         }))
       );
@@ -413,14 +426,9 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
           nombre: seleccionado.nombre,
           apellidos: seleccionado.apellidos,
           oficina: seleccionado.oficina,
+          folio: seleccionado.mkt_premium_folio,
         },
-        form: {
-          mkt_premium_plan: seleccionado.mkt_premium_plan ?? '',
-          mkt_premium_metodo_pago: seleccionado.mkt_premium_metodo_pago ?? '',
-          mkt_premium_parcialidades: seleccionado.mkt_premium_parcialidades ? String(seleccionado.mkt_premium_parcialidades) : '',
-          mkt_premium_fecha_inicio: seleccionado.mkt_premium_fecha_inicio ?? '',
-          mkt_premium_fecha_pago: seleccionado.mkt_premium_fecha_pago ?? '',
-        },
+        form: contextoFormDe(seleccionado),
         usuarioId: usuario.id,
         creadorNombre: `${usuario.nombre} ${usuario.apellidos ?? ''}`.trim(),
       });
@@ -433,121 +441,41 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   }
 
   async function descargarPDFTramitePremium(tramite: TramiteResumen, agente: Agente) {
-    const METODO_LABELS: Record<string, string> = {
-      deposito_jiro: 'Depósito a cuenta Jiro',
-      bono_anual: 'Descuento de bono anual',
-      comisiones: 'Descuento a comisiones',
-    };
-    const PLAN_LABELS: Record<string, string> = {
-      mensual: 'Mensual ($200 MXN/mes)',
-      anual: 'Anual ($2,000 MXN/año)',
-    };
-
     let creadorNombre = '—';
     if (tramite.creado_por) {
       const { data: creador } = await supabase
-        .from('usuarios')
-        .select('nombre, apellidos')
-        .eq('id', tramite.creado_por)
-        .single();
-      if (creador) creadorNombre = `${(creador as any).nombre} ${(creador as any).apellidos}`.trim();
+        .from('usuarios').select('nombre, apellidos').eq('id', tramite.creado_por).single();
+      if (creador) creadorNombre = `${(creador as any).nombre} ${(creador as any).apellidos ?? ''}`.trim();
     }
 
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 20;
+    // Es el MISMO documento que se adjunta solo al trámite. Antes este botón
+    // traía su propia copia del PDF escrita a mano, y las dos versiones ya habían
+    // empezado a diferir.
+    const doc = construirPDFComprobantePremium({
+      folio: agente.mkt_premium_folio || tramite.folio,
+      fechaCreacion: tramite.fecha_creacion,
+      tipoLabel: tramite.tipo_label,
+      estatusLabel: tramite.custom_estatus_label || '',
+      agente: {
+        id: agente.id, nombre: agente.nombre, apellidos: agente.apellidos,
+        oficina: agente.oficina, folio: agente.mkt_premium_folio,
+      },
+      form: contextoFormDe(agente),
+      creadorNombre,
+    });
+    doc.save(`Orden_Compra_Servicio_${agente.mkt_premium_folio || tramite.folio}.pdf`);
+  }
 
-    // Encabezado
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('COMPROBANTE DE TRÁMITE', pageWidth / 2, y, { align: 'center' });
-    y += 8;
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Marketing Premium · MOVI', pageWidth / 2, y, { align: 'center' });
-    y += 4;
-    doc.setLineWidth(0.5);
-    doc.line(14, y, pageWidth - 14, y);
-    y += 10;
-
-    // Folio y fecha
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Folio:', 14, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(tramite.folio, 45, y);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Fecha:', pageWidth / 2, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(format(new Date(tramite.fecha_creacion), "d 'de' MMMM yyyy", { locale: es }), pageWidth / 2 + 16, y);
-    y += 6;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Tipo de trámite:', 14, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(tramite.tipo_label, 45, y);
-    y += 6;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Estatus:', 14, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(tramite.custom_estatus_label || '—', 45, y);
-    y += 12;
-
-    // Datos del agente
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('DATOS DEL AGENTE', 14, y);
-    y += 2;
-    doc.setLineWidth(0.3);
-    doc.line(14, y, pageWidth - 14, y);
-    y += 8;
-    doc.setFontSize(10);
-
-    const camposAgente: [string, string][] = [
-      ['Folio Premium:', agente.mkt_premium_folio || '—'],
-      ['Nombre:', `${agente.nombre} ${agente.apellidos}`],
-      ['Oficina:', agente.oficina?.nombre || '—'],
-      ['Plan:', PLAN_LABELS[agente.mkt_premium_plan ?? ''] || agente.mkt_premium_plan || '—'],
-      ['Método de pago:', METODO_LABELS[agente.mkt_premium_metodo_pago ?? ''] || agente.mkt_premium_metodo_pago || '—'],
-    ];
-    if (agente.mkt_premium_parcialidades) {
-      camposAgente.push(['Parcialidades:', `${agente.mkt_premium_parcialidades}`]);
-    }
-    if (agente.mkt_premium_fecha_inicio) {
-      camposAgente.push(['Fecha de inicio:', format(new Date(agente.mkt_premium_fecha_inicio), "d 'de' MMMM yyyy", { locale: es })]);
-    }
-    if (agente.mkt_premium_fecha_pago) {
-      camposAgente.push(['Fecha de pago:', format(new Date(agente.mkt_premium_fecha_pago), "d 'de' MMMM yyyy", { locale: es })]);
-    }
-
-    for (const [label, value] of camposAgente) {
-      doc.setFont('helvetica', 'bold');
-      doc.text(label, 14, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(value, 60, y);
-      y += 6;
-    }
-    y += 6;
-
-    // Generado por
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('GENERADO POR', 14, y);
-    y += 2;
-    doc.line(14, y, pageWidth - 14, y);
-    y += 8;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Responsable:', 14, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(creadorNombre, 60, y);
-    y += 16;
-
-    // Pie
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text(`Generado el ${format(new Date(), "d 'de' MMMM yyyy 'a las' HH:mm", { locale: es })}`, pageWidth / 2, y, { align: 'center' });
-
-    doc.save(`tramite-premium-${tramite.folio}.pdf`);
+  /** Los datos de cobro del agente, en la forma que esperan el PDF y los triggers. */
+  function contextoFormDe(agente: Agente) {
+    return {
+      mkt_premium_plan: agente.mkt_premium_plan ?? '',
+      mkt_premium_metodo_pago: agente.mkt_premium_metodo_pago ?? '',
+      mkt_premium_parcialidades: agente.mkt_premium_parcialidades?.toString() ?? '',
+      mkt_premium_fecha_inicio: agente.mkt_premium_fecha_inicio ?? '',
+      mkt_premium_fecha_pago: agente.mkt_premium_fecha_pago ?? '',
+      mkt_premium_frecuencia_pago: agente.mkt_premium_frecuencia_pago ?? '',
+    };
   }
 
   async function generarTramiteManual() {
@@ -557,13 +485,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       const res = await dispararTriggersPremium({
         eventoKey: 'activacion',
         agente: { id: seleccionado.id, nombre: seleccionado.nombre, apellidos: seleccionado.apellidos, oficina: seleccionado.oficina, folio: seleccionado.mkt_premium_folio },
-        form: {
-          mkt_premium_plan: seleccionado.mkt_premium_plan ?? '',
-          mkt_premium_metodo_pago: seleccionado.mkt_premium_metodo_pago ?? '',
-          mkt_premium_parcialidades: seleccionado.mkt_premium_parcialidades?.toString() ?? '',
-          mkt_premium_fecha_inicio: seleccionado.mkt_premium_fecha_inicio ?? '',
-          mkt_premium_fecha_pago: seleccionado.mkt_premium_fecha_pago ?? '',
-        },
+        form: contextoFormDe(seleccionado),
         usuarioId: usuario.id,
         usuarioNombre: `${usuario.nombre} ${usuario.apellidos}`.trim(),
       });
@@ -716,13 +638,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       const res = await dispararTriggersPremium({
         eventoKey,
         agente: { id: agente.id, nombre: agente.nombre, apellidos: agente.apellidos, oficina: agente.oficina, folio: agente.mkt_premium_folio },
-        form: {
-          mkt_premium_plan: form.mkt_premium_plan,
-          mkt_premium_metodo_pago: form.mkt_premium_metodo_pago,
-          mkt_premium_parcialidades: form.mkt_premium_parcialidades,
-          mkt_premium_fecha_inicio: form.mkt_premium_fecha_inicio,
-          mkt_premium_fecha_pago: form.mkt_premium_fecha_pago,
-        },
+        form: { ...form },
         usuarioId: usuario.id,
         usuarioNombre: `${usuario.nombre} ${usuario.apellidos}`.trim(),
       });
@@ -768,13 +684,14 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       payload.mkt_premium_parcialidades = form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_parcialidades
         ? parseInt(form.mkt_premium_parcialidades, 10)
         : null;
+      payload.mkt_premium_frecuencia_pago = form.mkt_premium_frecuencia_pago || null;
 
       // El folio nace con la contratación, igual que el folio_oc de un pedido de
       // Store: se genera al activar y lo comparten todos los trámites de ese
       // periodo. Al desactivar se suelta — si lo vuelven a activar, es otra
       // contratación y le toca folio nuevo.
       if (form.plan_mkt_premium && !seleccionado.mkt_premium_folio) {
-        const { data: folioNuevo, error: folioError } = await supabase.rpc('generar_folio_premium');
+        const { data: folioNuevo, error: folioError } = await supabase.rpc('generar_folio_premium', { p_usuario_id: seleccionado.id });
         if (folioError) console.error('[MKT] generar_folio_premium:', folioError);
         else payload.mkt_premium_folio = folioNuevo;
       } else if (!form.plan_mkt_premium) {
@@ -827,7 +744,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
 
     const selectCols = needsMigration
       ? 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, oficinas:oficina_id(nombre)'
-      : 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, mkt_premium_folio, oficinas:oficina_id(nombre)';
+      : 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, mkt_premium_folio, mkt_premium_frecuencia_pago, oficinas:oficina_id(nombre)';
 
     const { data, error } = await supabase
       .from('usuarios')
@@ -1249,6 +1166,24 @@ ALTER TABLE usuarios
                         )}
                       </div>
                     )}
+
+                    {/* Cada cuándo se descuenta — mismo catálogo que MOVI Store */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wide">
+                        Frecuencia del descuento
+                      </label>
+                      <select
+                        value={form.mkt_premium_frecuencia_pago}
+                        onChange={e => setForm(f => ({ ...f, mkt_premium_frecuencia_pago: e.target.value }))}
+                        className="w-full px-3 py-2.5 text-sm rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      >
+                        <option value="">La del plan ({form.mkt_premium_plan === 'anual' ? 'anual' : 'mensual'})</option>
+                        {frecuenciasPago.map(f => (
+                          <option key={f.id} value={f.nombre}>{f.nombre}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-neutral-400">Cada cuándo se aplica el cargo. Aparece así en la Orden de Compra.</p>
+                    </div>
 
                     {/* Fecha inicio */}
                     <div className="space-y-2">

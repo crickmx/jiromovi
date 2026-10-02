@@ -46,6 +46,7 @@ export const PLACEHOLDERS_TRIGGER_PREMIUM: { key: string; label: string }[] = [
   { key: '{{plan}}', label: 'Plan (mensual/anual)' },
   { key: '{{metodo_pago}}', label: 'Método de pago' },
   { key: '{{parcialidades}}', label: 'Número de parcialidades' },
+  { key: '{{frecuencia}}', label: 'Cada cuándo se descuenta' },
   { key: '{{fecha_inicio}}', label: 'Fecha de inicio' },
   { key: '{{fecha_pago}}', label: 'Fecha de próximo pago' },
   { key: '{{evento}}', label: 'Nombre del evento que disparó la regla' },
@@ -83,6 +84,8 @@ export interface FormPremiumContext {
   mkt_premium_parcialidades: string;
   mkt_premium_fecha_inicio: string;
   mkt_premium_fecha_pago: string;
+  /** Cada cuándo se descuenta. Del mismo catálogo que Store; vacío = la del plan. */
+  mkt_premium_frecuencia_pago?: string;
 }
 
 export function resolverTemplatePremium(
@@ -99,6 +102,7 @@ export function resolverTemplatePremium(
     .replace(/\{\{plan\}\}/g, form.mkt_premium_plan ? (PLAN_LABELS[form.mkt_premium_plan] || form.mkt_premium_plan) : 'Sin especificar')
     .replace(/\{\{metodo_pago\}\}/g, form.mkt_premium_metodo_pago ? (METODO_LABELS[form.mkt_premium_metodo_pago] || form.mkt_premium_metodo_pago) : 'Sin especificar')
     .replace(/\{\{parcialidades\}\}/g, form.mkt_premium_parcialidades ? form.mkt_premium_parcialidades : 'N/A')
+    .replace(/\{\{frecuencia\}\}/g, form.mkt_premium_frecuencia_pago || 'Sin especificar')
     .replace(/\{\{fecha_inicio\}\}/g, form.mkt_premium_fecha_inicio || 'Sin especificar')
     .replace(/\{\{fecha_pago\}\}/g, form.mkt_premium_fecha_pago || 'Sin especificar')
     .replace(/\{\{evento\}\}/g, nombreEvento)
