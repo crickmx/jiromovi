@@ -13,6 +13,7 @@
 
 import { supabase } from './supabase';
 import { construirRespuesta, type RespuestaTramite } from './tramiteRespuestas';
+import { crearNotificacion } from './notificationHelpers';
 import type { TriggerBase, MapeoCampoTrigger, ResultadoTriggers } from './tramiteTriggerFiltro';
 
 export * from './tramiteTriggerFiltro';
@@ -54,6 +55,33 @@ export interface OpcionesMotor<T extends TriggerBase> {
 }
 
 /**
+ * Avisa a los Administradores de un trámite que nadie va a atender.
+ *
+ * Copiado del alta manual a propósito: si un trámite automático se crea sin
+ * equipo ni responsable y nadie recibe aviso, se queda esperando para siempre.
+ * Los errores se tragan —el trámite ya existe y vale más que la notificación.
+ */
+async function avisarSinAsignacion(ticketId: string, folio: string, tipoLabel: string) {
+  try {
+    const { data: admins } = await supabase
+      .from('usuarios').select('id').eq('rol', 'Administrador').eq('activo', true);
+    for (const adm of admins ?? []) {
+      await crearNotificacion({
+        user_id: adm.id as string,
+        titulo: 'Trámite sin equipo asignado',
+        mensaje: `El trámite ${folio} (${tipoLabel}) se creó automáticamente y no cayó en ninguna regla de asignación. Requiere asignación manual.`,
+        modulo: 'Tramites',
+        icono: 'alert-triangle',
+        accion_url: `/tramites/${ticketId}`,
+        accion_texto: 'Ver trámite',
+      });
+    }
+  } catch (err) {
+    console.error('[triggers] No se pudo avisar de un trámite sin asignación:', err);
+  }
+}
+
+/**
  * Crea un trámite por cada regla. Un error en una no tumba a las demás: se
  * junta y se reporta al final, que es lo que permite decir en pantalla qué se
  * creó y qué no.
@@ -85,10 +113,13 @@ export async function crearTramitesDesdeTriggers<T extends TriggerBase>(
       // devuelve una TABLA: leer `.grupo_id` sobre el arreglo da undefined, y un
       // arreglo vacío es truthy, así que el error pasa en silencio. Ya costó que
       // ningún trámite hijo recibiera equipo durante semanas.
-      const { data: grupoRow } = await supabase.rpc('get_grupo_para_ticket', {
+      const { data: grupoRow, error: errGrupo } = await supabase.rpc('get_grupo_para_ticket', {
         p_agente_id: opciones.agenteId,
         p_tipo_tramite: tipo.value,
       });
+      // Si esto falla sin dejar rastro, el trámite se crea sin equipo ni
+      // responsable y nadie se entera (ver el bug TK37540).
+      if (errGrupo) console.error('[triggers] get_grupo_para_ticket falló:', errGrupo);
       const grupo = Array.isArray(grupoRow) && grupoRow.length > 0
         ? grupoRow[0] as { grupo_id: string; ejecutivo_id: string | null }
         : null;
@@ -158,6 +189,13 @@ export async function crearTramitesDesdeTriggers<T extends TriggerBase>(
 
       if (opciones.adjuntar) {
         await opciones.adjuntar({ trigger, mapeo, ticketId: ticket.id, folio: ticket.folio, tipoLabel: tipo.label });
+      }
+
+      // Mismo aviso que al crear un trámite a mano: sin esto, un trámite
+      // automático que no cae en ninguna regla queda sin dueño y sin que nadie
+      // lo sepa. Es justo lo que no tenían ni Store ni Marketing.
+      if (!grupo?.grupo_id && !grupo?.ejecutivo_id) {
+        await avisarSinAsignacion(ticket.id as string, ticket.folio as string, tipo.label);
       }
 
       resultado.creados.push({ folio: ticket.folio, tipoLabel: tipo.label });
