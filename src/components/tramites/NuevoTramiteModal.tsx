@@ -94,6 +94,7 @@ interface NuevoTramiteModalProps {
     instrucciones?: string;
     descripcion?: string;
     prioridad?: string;
+    agenteId?: string;
   };
 }
 
@@ -553,6 +554,8 @@ export function NuevoTramiteModal({
 
     if (isAgent && usuario) {
       setAsignado(usuario.id);
+    } else if (preloadedData?.agenteId) {
+      setAsignado(preloadedData.agenteId);
     } else {
       setAsignado('');
     }

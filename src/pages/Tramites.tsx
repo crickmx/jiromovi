@@ -230,7 +230,7 @@ export function Tramites() {
   const sortRef = useRef<HTMLDivElement>(null);
   const [grupos, setGrupos] = useState<Array<{ id: string; nombre: string }>>([]);
   const [showNuevoModal, setShowNuevoModal] = useState(false);
-  const [duplicarPreload, setDuplicarPreload] = useState<{ tipoTramite?: string; descripcion?: string; prioridad?: string } | null>(null);
+  const [duplicarPreload, setDuplicarPreload] = useState<{ tipoTramite?: string; descripcion?: string; instrucciones?: string; prioridad?: string; agenteId?: string } | null>(null);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
   const [showGruposModal, setShowGruposModal] = useState(false);
   const [showPanelLider, setShowPanelLider] = useState(false);
@@ -281,6 +281,19 @@ export function Tramites() {
     supabase.from('tramites_grupos_visualizacion').select('id, nombre').eq('activo', true).order('nombre').then(({ data }) => {
       if (data) setGrupos(data as Array<{ id: string; nombre: string }>);
     });
+  }, []);
+
+  // Precarga desde Central de Producción (source=cp en URL)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('source') !== 'cp') return;
+    setDuplicarPreload({
+      tipoTramite:  params.get('tipo_tramite')  || undefined,
+      agenteId:     params.get('agente_id')     || undefined,
+      instrucciones: params.get('instrucciones') || undefined,
+      prioridad:    params.get('prioridad')     || undefined,
+    });
+    setShowNuevoModal(true);
   }, []);
 
   useEffect(() => {
@@ -2191,6 +2204,11 @@ export function Tramites() {
         isOpen={showNuevoModal}
         onClose={() => { setShowNuevoModal(false); setDuplicarPreload(null); }}
         onSuccess={() => {
+          if (new URLSearchParams(window.location.search).get('source') === 'cp') {
+            window.opener?.postMessage({ type: 'tramite_created' }, '*');
+            window.close();
+            return;
+          }
           setShowNuevoModal(false);
           setDuplicarPreload(null);
           invalidateCacheByPrefix('tramites_');
