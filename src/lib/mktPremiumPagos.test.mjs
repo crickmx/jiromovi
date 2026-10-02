@@ -6,7 +6,7 @@
 // centavos de redondeo y los montos que llegan como texto desde Postgres.
 
 import assert from 'node:assert/strict';
-import { totalPagado, montoDelPlan, saldoPremium, PRECIO_PREMIUM } from './mktPremiumPagos.ts';
+import { totalPagado, montoDelPlan, cobrosDelPlan, saldoPremium, PRECIO_PREMIUM, COBROS_DEL_PERIODO } from './mktPremiumPagos.ts';
 
 // ── Postgres devuelve `numeric` como texto ─────────────────────────────────
 assert.equal(totalPagado([{ monto: '200.00' }, { monto: '150.50' }]), 350.5);
@@ -15,9 +15,20 @@ assert.equal(totalPagado([]), 0);
 // Un valor basura no debe tumbar la suma ni contar como NaN.
 assert.equal(totalPagado([{ monto: 'x' }, { monto: 100 }]), 100);
 
-assert.equal(montoDelPlan('mensual'), PRECIO_PREMIUM.mensual);
-assert.equal(montoDelPlan('anual'), PRECIO_PREMIUM.anual);
+// El precio del plan es por COBRO, no por periodo: el mensual son 12 de $200.
+assert.equal(montoDelPlan('mensual'), 2400, '$200 al mes durante 12 meses');
+assert.equal(montoDelPlan('mensual'), PRECIO_PREMIUM.mensual * COBROS_DEL_PERIODO.mensual);
+assert.equal(montoDelPlan('anual'), 2000, 'el anual se cobra una vez al año');
 assert.equal(montoDelPlan(null), 0);
+
+// El calendario del mensual no lo cambia el campo de parcialidades.
+assert.equal(cobrosDelPlan('mensual'), 12);
+assert.equal(cobrosDelPlan('mensual', 3), 12, 'el mensual son 12 meses aunque alguien escriba otra cosa');
+// El anual sí se difiere.
+assert.equal(cobrosDelPlan('anual'), 1);
+assert.equal(cobrosDelPlan('anual', 4), 4);
+assert.equal(cobrosDelPlan('anual', 0), 1, 'cero parcialidades no divide entre cero');
+assert.equal(cobrosDelPlan(null), 1);
 
 // ── Sin plan no hay cuenta que hacer ───────────────────────────────────────
 {
@@ -33,7 +44,8 @@ assert.equal(saldoPremium('anual', []).saldo, 2000);
 assert.equal(saldoPremium('anual', [{ monto: 2000 }]).estado, 'al_corriente');
 assert.equal(saldoPremium('anual', [{ monto: 2500 }]).estado, 'a_favor');
 assert.equal(saldoPremium('anual', [{ monto: 2500 }]).saldo, -500);
-assert.equal(saldoPremium('mensual', [{ monto: 200 }]).estado, 'al_corriente');
+assert.equal(saldoPremium('mensual', [{ monto: 200 }]).estado, 'debe', 'un mes pagado de doce sigue debiendo');
+assert.equal(saldoPremium('mensual', [{ monto: 2400 }]).estado, 'al_corriente');
 
 // ── El centavo de redondeo: el caso que motivó la función ──────────────────
 // 2000 en tres parcialidades son 666.67 cada una = 2000.01. Sin redondear, la

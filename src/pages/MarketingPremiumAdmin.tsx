@@ -664,7 +664,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
         setErrorValidacion('Para activar el premium debes seleccionar la fecha de inicio y la fecha de pago.');
         return;
       }
-      if (form.mkt_premium_metodo_pago === 'comisiones' && !form.mkt_premium_parcialidades) {
+      if (form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_plan === 'anual' && !form.mkt_premium_parcialidades) {
         setErrorValidacion('Para diferir a comisiones debes indicar en cuántas parcialidades.');
         return;
       }
@@ -1136,8 +1136,9 @@ ALTER TABLE usuarios
                       </div>
                     </div>
 
-                    {/* Parcialidades — solo aplica cuando se difiere a comisiones */}
-                    {form.mkt_premium_metodo_pago === 'comisiones' && (
+                    {/* Parcialidades — solo el plan ANUAL se difiere: el mensual ya son
+                        12 cobros de $200, uno por mes. */}
+                    {form.mkt_premium_metodo_pago === 'comisiones' && form.mkt_premium_plan === 'anual' && (
                       <div className="space-y-2 sm:col-span-2">
                         <label className={`text-xs font-medium uppercase tracking-wide ${
                           form.plan_mkt_premium && !form.mkt_premium_parcialidades
@@ -1160,7 +1161,7 @@ ALTER TABLE usuarios
                               : 'border-neutral-200 dark:border-white/10 focus:ring-purple-400'
                           }`}
                         />
-                        <p className="text-xs text-neutral-400">En cuántas comisiones se va a diferir el cobro (1 a 12).</p>
+                        <p className="text-xs text-neutral-400">En cuántas comisiones se difieren los $2,000 del plan anual (1 a 12).</p>
                         {seleccionado.mkt_premium_parcialidades && (
                           <p className="text-xs text-neutral-400">Actual: {seleccionado.mkt_premium_parcialidades} parcialidades</p>
                         )}

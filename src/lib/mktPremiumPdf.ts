@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { supabase } from './supabase';
 import type { AgentePremiumContext, FormPremiumContext } from './mktPremiumTriggers';
-import { montoDelPlan, type PlanPremium } from './mktPremiumPagos';
+import { montoDelPlan, cobrosDelPlan, PRECIO_PREMIUM, type PlanPremium } from './mktPremiumPagos';
 import { planDeCobro } from './cobroDesglose';
 import { dibujarFranja, tablaConceptos, bloqueCobro, bloqueDatos, pieDocumento } from './ordenCompraPdf';
 
@@ -30,6 +30,11 @@ const PLAN_LABELS: Record<string, string> = {
 const FRECUENCIA_DEL_PLAN: Record<string, string> = {
   mensual: 'Mensual',
   anual: 'Anual',
+};
+
+const PERIODO_LABELS: Record<string, string> = {
+  mensual: 'Periodo contratado: 12 meses',
+  anual: 'Periodo contratado: 1 año',
 };
 
 export function construirPDFComprobantePremium(params: {
@@ -56,20 +61,26 @@ export function construirPDFComprobantePremium(params: {
   const total = montoDelPlan(plan);
   const planLabel = PLAN_LABELS[plan] || plan || 'Plan sin especificar';
 
+  // El precio del plan es por cobro: el mensual son 12 cargos de $200, no uno
+  // de $200. En la tabla se ve como cantidad × precio unitario, que es
+  // exactamente lo que se está contratando.
+  const cobros = cobrosDelPlan(plan, parseInt(form.mkt_premium_parcialidades || '', 10));
+  const precioUnitario = PRECIO_PREMIUM[plan] ?? total;
+
   y = tablaConceptos(doc, y, 'servicio', [{
     concepto: `Marketing Premium — ${planLabel}`,
-    detalle: 'Diseños semanales, logotipo y material de publicidad personalizado.',
-    cantidad: 1,
-    precioUnitario: total,
+    detalle: `${PERIODO_LABELS[plan] || 'Periodo contratado'} · Diseños semanales, logotipo y material de publicidad personalizado.`,
+    cantidad: plan === 'mensual' ? cobros : 1,
+    precioUnitario: plan === 'mensual' ? precioUnitario : total,
   }]);
 
-  const parcialidades = parseInt(form.mkt_premium_parcialidades || '', 10) || 1;
   const frecuencia = form.mkt_premium_frecuencia_pago?.trim() || FRECUENCIA_DEL_PLAN[plan] || null;
 
   y = bloqueCobro(doc, y, 'servicio', {
-    plan: planDeCobro(total, parcialidades, frecuencia),
+    plan: planDeCobro(total, cobros, frecuencia),
     metodo: METODO_LABELS[form.mkt_premium_metodo_pago] || form.mkt_premium_metodo_pago || null,
     responsable: `${agente.nombre} ${agente.apellidos}`.trim(),
+    etiquetaCantidad: plan === 'mensual' ? 'MENSUALIDADES' : 'PARCIALIDADES',
   });
 
   const fecha = (v?: string) => (v ? format(new Date(v), "d 'de' MMMM yyyy", { locale: es }) : '—');

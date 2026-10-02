@@ -6,13 +6,25 @@
 // aparte: es donde un error no da ningún síntoma —un saldo mal sumado se ve
 // como un número cualquiera.
 
-/** Precios vigentes del plan. Si cambian, se cambian aquí. */
+/**
+ * Precio de CADA cobro del plan. No es el total del periodo.
+ *
+ * El plan mensual son $200 **al mes**, no $200 al año: tratarlo como total
+ * decía que un agente debía $200 cuando en realidad debía $2,400, y la Orden de
+ * Compra ofrecía 12 descuentos de $16.66.
+ */
 export const PRECIO_PREMIUM = {
   mensual: 200,
   anual: 2000,
 } as const;
 
 export type PlanPremium = keyof typeof PRECIO_PREMIUM;
+
+/** Cuántas veces se cobra en un periodo contratado: 12 meses, o 1 año. */
+export const COBROS_DEL_PERIODO = {
+  mensual: 12,
+  anual: 1,
+} as const;
 
 export interface PagoPremium {
   monto: number | string;
@@ -24,14 +36,26 @@ export function totalPagado(pagos: PagoPremium[]): number {
 }
 
 /**
- * Lo que el agente debía por el periodo contratado.
+ * Lo que el agente debe por el periodo contratado completo.
  *
- * `parcialidades` solo divide el cobro, no lo cambia: pagar en 12 partes no
- * hace que el plan cueste más. Por eso no entra en esta cuenta.
+ * Mensual: $200 × 12 meses = $2,400. Anual: $2,000 de una vez.
  */
 export function montoDelPlan(plan: PlanPremium | null | undefined): number {
   if (!plan) return 0;
-  return PRECIO_PREMIUM[plan] ?? 0;
+  return (PRECIO_PREMIUM[plan] ?? 0) * (COBROS_DEL_PERIODO[plan] ?? 1);
+}
+
+/**
+ * En cuántos cargos se reparte el periodo.
+ *
+ * El mensual ya trae su propio calendario: son 12 meses y punto, `parcialidades`
+ * no lo cambia. El anual es un solo cobro que SÍ se puede diferir —es lo que
+ * hace el campo de parcialidades cuando se descuenta a comisiones.
+ */
+export function cobrosDelPlan(plan: PlanPremium | null | undefined, parcialidades?: number | null): number {
+  if (!plan) return 1;
+  if (plan === 'mensual') return COBROS_DEL_PERIODO.mensual;
+  return Math.max(1, Math.floor(parcialidades ?? 0) || 1);
 }
 
 export interface SaldoPremium {

@@ -164,6 +164,8 @@ export function bloqueCobro(doc: jsPDF, y: number, tipo: TipoOrden, datos: {
   plan: PlanCobro;
   metodo?: string | null;
   responsable?: string | null;
+  /** "PARCIALIDADES" por defecto; un plan mensual son COBROS, no parcialidades. */
+  etiquetaCantidad?: string;
 }): number {
   const meta = ORDEN_META[tipo];
   const ancho = doc.internal.pageSize.getWidth();
@@ -192,7 +194,7 @@ export function bloqueCobro(doc: jsPDF, y: number, tipo: TipoOrden, datos: {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(110, 110, 120);
   doc.text('TOTAL', col1, fila);
-  doc.text('PARCIALIDADES', col2, fila);
+  doc.text(datos.etiquetaCantidad ?? 'PARCIALIDADES', col2, fila);
   doc.text('SE LE DESCUENTA CADA VEZ', col3, fila);
 
   fila += 8;
