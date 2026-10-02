@@ -16,6 +16,10 @@ import {
   crearTramitesDesdeTriggers, filtrarTriggersPorPago,
   type TriggerBase, type ResultadoTriggers,
 } from '../lib/tramiteTriggers';
+import { ConfirmarTramitesAutoModal } from '../components/admin/ConfirmarTramitesAutoModal';
+
+/** Reglas que aplican a un estatus, más cuántas había antes de filtrar por pago. */
+type TriggersAplicables = { triggers: TriggerBase[]; total: number };
 
 export default function StorePedidoDetalle() {
   const { usuario } = useAuth();
@@ -25,6 +29,10 @@ export default function StorePedidoDetalle() {
   const [estatus, setEstatus] = useState<StoreEstatusPedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [actualizandoEstatus, setActualizandoEstatus] = useState(false);
+  // Cambio de estatus esperando confirmación porque va a levantar trámites solo.
+  const [confirmAuto, setConfirmAuto] = useState<{
+    estatusId: string; nombreEstatus: string; aplicables: TriggersAplicables;
+  } | null>(null);
   const [nuevaNota, setNuevaNota] = useState('');
   const [agregandoNota, setAgregandoNota] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -292,19 +300,38 @@ export default function StorePedidoDetalle() {
       }
     }
 
+    const nombreEstatus = estatusSeleccionado?.nombre ?? '';
+
+    // Antes el trámite se creaba solo y te enterabas por el toast, con el
+    // trámite ya creado y notificado. Ahora se advierte primero qué se va a
+    // crear y nada se guarda hasta que quien lo dispara lo confirma — por eso
+    // la pregunta va ANTES del cambio de estatus: cancelar no deja nada a medias.
+    const aplicables = await cargarTriggersAplicables(nuevoEstatusId);
+    if (aplicables.triggers.length > 0) {
+      setConfirmAuto({ estatusId: nuevoEstatusId, nombreEstatus, aplicables });
+      return;
+    }
+
     if (!confirm('Cambiar el estatus de este pedido?')) return;
+    await aplicarCambioEstatus(nuevoEstatusId, nombreEstatus, aplicables);
+  };
+
+  const aplicarCambioEstatus = async (
+    nuevoEstatusId: string,
+    nombreEstatus: string,
+    aplicables: TriggersAplicables,
+  ) => {
+    if (!pedidoId) return;
     try {
       setActualizandoEstatus(true);
       await actualizarEstatusPedido(pedidoId, nuevoEstatusId);
 
-      // Verificar si el nuevo estatus es "Entregado"
-      const nuevoEstatus = estatus.find(e => e.id === nuevoEstatusId);
-      if (nuevoEstatus?.nombre === 'Entregado' && pedido) {
+      if (nombreEstatus === 'Entregado' && pedido) {
         await activarPremiumSiAplica(pedido);
       }
 
       // Disparar triggers: crear tramites automaticos vinculados al pedido
-      const resultadoTriggers = await dispararTriggersEstatus(nuevoEstatusId, nuevoEstatus?.nombre ?? '');
+      const resultadoTriggers = await dispararTriggersEstatus(aplicables, nombreEstatus);
 
       await cargarDatos();
 
@@ -328,15 +355,16 @@ export default function StorePedidoDetalle() {
       showToast('Error al actualizar el estatus del pedido.', 'error');
     } finally {
       setActualizandoEstatus(false);
+      setConfirmAuto(null);
     }
   };
 
   // Mismos "tipos de texto" que usa TramiteDetalle.tsx/NuevoTramiteModal.tsx para decidir en qué
   // columna de tramite_respuestas vive el valor de cada campo del FormBuilder. Si no coincide con
   // la columna que se lee al mostrar el campo, el campo aparece vacío aunque sí se haya guardado.
-  const dispararTriggersEstatus = async (nuevoEstatusId: string, nombreEstatus: string) => {
-    const vacio: ResultadoTriggers = { creados: [], omitidos: [], errores: [], totalTriggers: 0, triggersAplicados: 0 };
-    if (!pedidoId || !usuario?.id || !pedido) return vacio;
+  /** Qué reglas va a disparar este estatus, sin crear nada: la advertencia las necesita antes. */
+  const cargarTriggersAplicables = async (nuevoEstatusId: string): Promise<TriggersAplicables> => {
+    if (!pedidoId || !pedido) return { triggers: [], total: 0 };
 
     const { data: triggersRaw } = await supabase
       .from('store_tramite_triggers')
@@ -345,10 +373,17 @@ export default function StorePedidoDetalle() {
       .eq('activo', true);
 
     const todos = (triggersRaw ?? []) as unknown as TriggerBase[];
-    const triggers = filtrarTriggersPorPago(todos, {
-      metodo: pedido.metodo_pago,
-      forma: pedido.forma_pago,
-    });
+    return {
+      total: todos.length,
+      triggers: filtrarTriggersPorPago(todos, { metodo: pedido.metodo_pago, forma: pedido.forma_pago }),
+    };
+  };
+
+  const dispararTriggersEstatus = async (aplicables: TriggersAplicables, nombreEstatus: string) => {
+    const vacio: ResultadoTriggers = { creados: [], omitidos: [], errores: [], totalTriggers: aplicables.total, triggersAplicados: 0 };
+    if (!pedidoId || !usuario?.id || !pedido) return vacio;
+
+    const { triggers } = aplicables;
 
     const folio = pedido.folio_oc ?? pedidoId.slice(0, 8).toUpperCase();
 
@@ -404,7 +439,7 @@ export default function StorePedidoDetalle() {
 
     // Cuenta las del estatus, aplicadas o no: es lo que el toast usa para decir
     // "ningún trigger aplicó por el método/forma de pago".
-    resultado.totalTriggers = todos.length;
+    resultado.totalTriggers = aplicables.total;
     return resultado;
   };
 
@@ -671,6 +706,21 @@ export default function StorePedidoDetalle() {
 
   return (
     <>
+      {confirmAuto && (
+        <ConfirmarTramitesAutoModal
+          accion={`El pedido ${pedido.folio_oc || ''} pasa a "${confirmAuto.nombreEstatus}"`.replace('  ', ' ')}
+          items={confirmAuto.aplicables.triggers.map(t => ({
+            id: t.id,
+            nombre: t.nombre,
+            tipoLabel: t.ticket_tipos.label,
+            disparador: `Estatus: ${confirmAuto.nombreEstatus}`,
+          }))}
+          usuarioNombre={usuario?.nombre_completo || usuario?.nombre}
+          confirmando={actualizandoEstatus}
+          onConfirm={() => aplicarCambioEstatus(confirmAuto.estatusId, confirmAuto.nombreEstatus, confirmAuto.aplicables)}
+          onCancel={() => setConfirmAuto(null)}
+        />
+      )}
       {toast && (
         <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium max-w-md ${
           toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'

@@ -126,6 +126,41 @@ export async function guardarMapeoCampoTriggerPremium(mapeo: {
   if (error) throw error;
 }
 
+/**
+ * Qué reglas va a disparar un evento, sin crear nada.
+ *
+ * Se separó del motor para poder ADVERTIR antes de guardar: la pantalla
+ * pregunta primero qué se va a crear, lo enseña y espera la confirmación.
+ * Devuelve `null` si el evento no existe.
+ */
+export async function triggersAplicablesPremium(params: {
+  eventoKey: string;
+  metodoPago?: string | null;
+  plan?: string | null;
+}): Promise<{ eventoNombre: string; triggers: TriggerBase[]; total: number } | null> {
+  const { data: evento } = await supabase
+    .from('mkt_premium_eventos')
+    .select('id, nombre')
+    .eq('key', params.eventoKey)
+    .maybeSingle();
+  if (!evento) return null;
+
+  const { data: triggersRaw } = await supabase
+    .from('mkt_premium_triggers')
+    .select('*, ticket_tipos!inner(id, value, label, area)')
+    .eq('evento_id', evento.id)
+    .eq('activo', true);
+
+  const todos = (triggersRaw ?? []) as unknown as TriggerBase[];
+  return {
+    eventoNombre: evento.nombre as string,
+    // `total` cuenta las del evento, aplicadas o no: es lo que la pantalla usa
+    // para decir "ninguna regla aplicó por el método de pago".
+    total: todos.length,
+    triggers: filtrarTriggersPorPago(todos, { metodo: params.metodoPago, forma: params.plan }),
+  };
+}
+
 export type DispararTriggersPremiumResultado = ResultadoTriggers;
 
 export async function dispararTriggersPremium(params: {
@@ -137,29 +172,18 @@ export async function dispararTriggersPremium(params: {
 }): Promise<ResultadoTriggers> {
   const vacio: ResultadoTriggers = { creados: [], omitidos: [], errores: [], totalTriggers: 0, triggersAplicados: 0 };
 
-  const { data: evento } = await supabase
-    .from('mkt_premium_eventos')
-    .select('id, nombre')
-    .eq('key', params.eventoKey)
-    .maybeSingle();
-  if (!evento) return vacio;
-
-  const { data: triggersRaw } = await supabase
-    .from('mkt_premium_triggers')
-    .select('*, ticket_tipos!inner(id, value, label, area)')
-    .eq('evento_id', evento.id)
-    .eq('activo', true);
-
-  const todos = (triggersRaw ?? []) as unknown as TriggerBase[];
-  const triggers = filtrarTriggersPorPago(todos, {
-    metodo: params.form.mkt_premium_metodo_pago,
-    forma: params.form.mkt_premium_plan,
+  const aplicables = await triggersAplicablesPremium({
+    eventoKey: params.eventoKey,
+    metodoPago: params.form.mkt_premium_metodo_pago,
+    plan: params.form.mkt_premium_plan,
   });
+  if (!aplicables) return vacio;
+  const { eventoNombre, triggers, total } = aplicables;
 
   const resultado = await crearTramitesDesdeTriggers({
     triggers,
     mapeoDe: obtenerMapeoCamposTriggerPremium,
-    resolverPlantilla: (texto) => resolverTemplatePremium(texto, params.agente, params.form, evento.nombre),
+    resolverPlantilla: (texto) => resolverTemplatePremium(texto, params.agente, params.form, eventoNombre),
     agenteId: params.agente.id,
     usuarioId: params.usuarioId,
     usuarioNombre: params.usuarioNombre,
@@ -201,6 +225,6 @@ export async function dispararTriggersPremium(params: {
 
   // `totalTriggers` cuenta las del evento, aplicadas o no: es lo que la pantalla
   // usa para decir "ninguna regla aplicó por el método de pago".
-  resultado.totalTriggers = todos.length;
+  resultado.totalTriggers = total;
   return resultado;
 }

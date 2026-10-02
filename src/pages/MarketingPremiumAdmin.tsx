@@ -17,7 +17,8 @@ import { resolveImageUrl } from '../lib/storageUtils';
 import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
 import { uploadUserLogo, deleteUserLogo } from '../lib/logoUtils';
 import { generarThumbnailVideo } from '../lib/videoThumbnail';
-import { dispararTriggersPremium } from '../lib/mktPremiumTriggers';
+import { dispararTriggersPremium, triggersAplicablesPremium } from '../lib/mktPremiumTriggers';
+import { ConfirmarTramitesAutoModal, type TramiteAutoPreview } from '../components/admin/ConfirmarTramitesAutoModal';
 import { adjuntarComprobantePremium } from '../lib/mktPremiumPdf';
 
 import { UserModal } from '../components/UserModal';
@@ -125,6 +126,10 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [sqlCopiado, setSqlCopiado] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState('');
   const [triggerToast, setTriggerToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+  // Guardado esperando confirmación porque va a levantar trámites solo.
+  const [confirmAuto, setConfirmAuto] = useState<{
+    payload: Record<string, unknown>; eventos: string[]; items: TramiteAutoPreview[];
+  } | null>(null);
   const [tieneAcceso, setTieneAcceso] = useState(false);
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
@@ -750,11 +755,6 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     }
     setErrorValidacion('');
 
-    const agenteAntes = seleccionado;
-
-    setGuardando(true);
-    setGuardado(false);
-
     // Si las columnas de detalle no existen, solo actualizar plan_mkt_premium
     const payload: Record<string, unknown> = {
       plan_mkt_premium: form.plan_mkt_premium,
@@ -782,6 +782,49 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       }
     }
 
+    // Qué trámites levantaría este guardado, ANTES de guardarlo. Antes se
+    // creaban solos y el admin se enteraba por el toast, con el trámite ya
+    // notificado; ahora la acción se detiene hasta que lo confirma. Como la
+    // pregunta va antes del UPDATE, cancelar no deja nada a medias.
+    const despues = { ...seleccionado, ...payload } as unknown as Agente;
+    const eventos = await detectarEventosPremium(seleccionado, despues);
+    const items = await previsualizarTramites(eventos);
+    if (items.length > 0) {
+      setConfirmAuto({ payload, eventos, items });
+      return;
+    }
+
+    await aplicarGuardado(payload, eventos);
+  }
+
+  /** Qué reglas dispararian estos eventos, sin crear nada. */
+  async function previsualizarTramites(eventos: string[]): Promise<TramiteAutoPreview[]> {
+    const items: TramiteAutoPreview[] = [];
+    for (const eventoKey of eventos) {
+      const aplicables = await triggersAplicablesPremium({
+        eventoKey,
+        metodoPago: form.mkt_premium_metodo_pago,
+        plan: form.mkt_premium_plan,
+      });
+      if (!aplicables) continue;
+      for (const t of aplicables.triggers) {
+        items.push({
+          id: `${eventoKey}:${t.id}`,
+          nombre: t.nombre,
+          tipoLabel: t.ticket_tipos.label,
+          disparador: `Evento: ${aplicables.eventoNombre}`,
+        });
+      }
+    }
+    return items;
+  }
+
+  async function aplicarGuardado(payload: Record<string, unknown>, eventos: string[]) {
+    if (!seleccionado) return;
+
+    setGuardando(true);
+    setGuardado(false);
+
     const selectCols = needsMigration
       ? 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, oficinas:oficina_id(nombre)'
       : 'id, nombre, apellidos, puesto, imagen_perfil_url, plan_mkt_premium, mkt_premium_fecha_inicio, mkt_premium_fecha_pago, mkt_premium_plan, mkt_premium_metodo_pago, mkt_premium_parcialidades, mkt_premium_folio, oficinas:oficina_id(nombre)';
@@ -794,6 +837,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
       .single();
 
     setGuardando(false);
+    setConfirmAuto(null);
 
     if (error || !data) {
       setErrorValidacion(error?.message || 'No se pudo guardar — no tienes permiso para modificar a este agente.');
@@ -807,8 +851,8 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
     setSeleccionado(actualizado);
     setAgentes(prev => prev.map(a => a.id === actualizado.id ? actualizado : a));
 
-    // Disparar las reglas configuradas para el/los eventos que ocurrieron en este guardado
-    const eventos = await detectarEventosPremium(agenteAntes, actualizado);
+    // Los eventos ya se calcularon antes de guardar: son los mismos que se
+    // mostraron en la advertencia, para que no se cree nada que no se enseñó.
     await dispararReglasPremium(eventos, actualizado);
     if (eventos.length > 0) cargarTramitesAgente(actualizado.id);
 
@@ -883,6 +927,16 @@ ALTER TABLE usuarios
 
   return (
     <>
+    {confirmAuto && seleccionado && (
+      <ConfirmarTramitesAutoModal
+        accion={`Plan Premium de ${seleccionado.nombre} ${seleccionado.apellidos}`}
+        items={confirmAuto.items}
+        usuarioNombre={usuario ? `${usuario.nombre} ${usuario.apellidos}`.trim() : null}
+        confirmando={guardando}
+        onConfirm={() => aplicarGuardado(confirmAuto.payload, confirmAuto.eventos)}
+        onCancel={() => setConfirmAuto(null)}
+      />
+    )}
     <div className="space-y-5">
       {!embedded && (
         <PageHeader
