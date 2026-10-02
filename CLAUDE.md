@@ -6,7 +6,7 @@
 
 Todo el código está en **`origin/main` y `origin/produccion`**, ambas en `0bf630b8`, árbol limpio.
 
-#### 1. Migraciones — correr lo que falte
+#### 1. Migraciones — **todas corridas**, no queda ninguna pendiente
 
 | Archivo | Qué hace | Estado |
 |---|---|---|
@@ -14,11 +14,11 @@ Todo el código está en **`origin/main` y `origin/produccion`**, ambas en `0bf6
 | `20261002000002_mkt_premium_eventos_configurables.sql` | eventos que declaran qué observan | ✅ corrida |
 | `20261002000003_mkt_premium_pagos.sql` | pagos + bitácora inmutable | ✅ corrida |
 | `20261002000004_mkt_premium_pagos_comprobante.sql` | comprobante adjunto + bucket | ✅ corrida |
-| `20261002000005_mkt_premium_folio.sql` | folio `MKT-XXXXXX` (formato viejo) | ❓ **confirmar** |
-| `20261002000006_folios_legibles_y_frecuencia_mkt.sql` | folios nuevos + `mkt_premium_frecuencia_pago` | ❓ **confirmar** |
-| `20261002000007_folio_oc_mas_largo.sql` | `folio_oc` de `varchar(8)` a `text` | ❓ **confirmar** |
+| `20261002000005_mkt_premium_folio.sql` | folio `MKT-XXXXXX` (formato viejo) | ✅ corrida |
+| `20261002000006_folios_legibles_y_frecuencia_mkt.sql` | folios nuevos + `mkt_premium_frecuencia_pago` | ✅ corrida |
+| `20261002000007_folio_oc_mas_largo.sql` | `folio_oc` de `varchar(8)` a `text` | ✅ corrida |
 
-La `...0006` es idempotente y rehace los folios `MKT-%` de la `...0005`, así que corre bien se haya corrido la otra o no. La `...0007` es obligatoria: sin ella **no se puede crear ningún pedido de Store** (`value too long for type character varying(8)`).
+Ricardo confirmó las siete el 2026-10-02. Si alguna vez hay que rehacer este camino en otro ambiente: la `...0006` es idempotente y rehace los folios `MKT-%` que haya dejado la `...0005`, y la `...0007` es obligatoria — sin ella **no se puede crear ningún pedido de Store** (`value too long for type character varying(8)`).
 
 #### 2. Falta verificar en navegador
 
