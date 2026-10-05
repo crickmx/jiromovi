@@ -397,6 +397,14 @@ export function NuevoTramiteModal({
           setRespuestasDinamicas({});
         }
 
+        // Agente/vendedor precargado desde CP — se aplica después del reset de respuestas
+        // para que el setRespuestasDinamicas({}) de arriba no lo borre.
+        const agCampo = campos.find(c => c.sistema_key === 'agente_vendedor');
+        if (agCampo && preloadedData?.agenteId) {
+          setRespuestasDinamicas(prev => ({ ...prev, [agCampo.id]: preloadedData.agenteId! }));
+          setAsignado(preloadedData.agenteId!);
+        }
+
         // La prioridad inicial se configura por tipo desde el FormBuilder; antes
         // era 'Baja' fija en el código para todos. Un borrador restaurado o un
         // valor precargado mandan sobre esto, por eso se aplica solo si no hay.
