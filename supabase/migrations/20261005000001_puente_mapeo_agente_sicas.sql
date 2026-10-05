@@ -40,6 +40,23 @@ RETURNS text LANGUAGE sql IMMUTABLE AS $$
   SELECT nullif(trim(regexp_replace(public.folio_normaliza(p_texto), '\s+', ' ', 'g')), '');
 $$;
 
+-- ── Arreglo de paso: `vendor_mappings` rechazaba sus propias escrituras ────
+--
+-- `vendor_mappings.source_type` solo admite 'email' y 'name', pero la migración
+-- 20260908120000 escribe 'id' en CUATRO lugares — entre ellos el trigger que
+-- corre al tocar `usuarios.id_sicas` y el propio `link_vendor_to_user`. Nadie
+-- extendió el CHECK cuando se agregó ese tipo, así que desde septiembre
+-- **enlazar un vendedor con ID de SICAS truena**:
+--   new row for relation "vendor_mappings" violates check constraint
+--   "vendor_mappings_source_type_check"
+--
+-- Es muy probable que sea la razón de que "Enlazar usuario SICAS" no sirviera.
+ALTER TABLE public.vendor_mappings
+  DROP CONSTRAINT IF EXISTS vendor_mappings_source_type_check;
+ALTER TABLE public.vendor_mappings
+  ADD CONSTRAINT vendor_mappings_source_type_check
+  CHECK (source_type IN ('email', 'name', 'id'));
+
 -- ── 1. Emparejar los dos catálogos por nombre ───────────────────────────────
 -- Solo cuando el nombre identifica a UNO de cada lado: un homónimo sin
 -- resolver es peor que dejarlo sin emparejar, porque el mapeo quedaría en la
