@@ -536,7 +536,11 @@ export function NuevoTramiteModal({
   // inactivo, y al guardar se crea igual. Se limpia en cuanto llega el catálogo.
   useEffect(() => {
     if (tiposDb.length === 0 || !tipoTramite) return;
-    if (!tiposDb.some(t => t.value === tipoTramite)) {
+    if (tiposDb.some(t => t.value === tipoTramite)) return; // ya es value string válido
+    const byId = tiposDb.find(t => t.id === tipoTramite);   // podría ser UUID
+    if (byId) {
+      setTipoTramite(byId.value);                           // resuelve UUID → value
+    } else {
       setTipoTramite('');
       setAreaSeleccionada('');
     }

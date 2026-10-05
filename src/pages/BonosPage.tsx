@@ -227,8 +227,10 @@ export default function BonosPage() {
       }
 
       if (type === 'cp_crear_tramite') {
+        const tipoTramite = event.data.tipo_tramite || '';
+        if (!tipoTramite) return; // sin tipo configurado en CP — no abrir modal vacío
         setTramitePreload({
-          tipoTramite:   event.data.tipo_tramite  || undefined,
+          tipoTramite,
           agenteId:      event.data.agente_id     || undefined,
           instrucciones: event.data.instrucciones || undefined,
           prioridad:     event.data.prioridad     || undefined,
