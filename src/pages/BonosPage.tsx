@@ -8,6 +8,7 @@ import { Hop as Home, ChartBar as BarChart2, DollarSign, Target, BookOpen, Cloud
 import { LoadingOrb } from '../components/loading/LoadingOrb';
 import { LoadingFactCard } from '../components/loading/LoadingFactCard';
 import SicasCCJReports from './SicasCCJReports';
+import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 
 const BONOS_URL = import.meta.env.VITE_BONOS_URL || 'http://localhost:8003';
 const IS_LOCAL_BONOS = BONOS_URL.includes('localhost') || BONOS_URL.includes('127.0.');
@@ -101,6 +102,15 @@ export default function BonosPage() {
   const SSO_TIMEOUT_MS = 20000;
   type ErrorReason = 'no_session' | 'timeout' | 'login_redirect' | null;
   const [errorReason, setErrorReason] = useState<ErrorReason>(null);
+  const [showTramiteModal, setShowTramiteModal] = useState(false);
+  const [tramitePreload, setTramitePreload] = useState<{ tipoTramite?: string; agenteId?: string; instrucciones?: string; prioridad?: string } | null>(null);
+  const [estatusList, setEstatusList] = useState<{ id: string; nombre: string; color: string; orden: number; tipo_aplicable: string[] | null }[]>([]);
+
+  useEffect(() => {
+    supabase.from('ticket_estatus').select('*').eq('activo', true).order('orden').then(({ data }) => {
+      if (data) setEstatusList(data);
+    });
+  }, []);
 
   const clearSsoTimeout = useCallback(() => {
     if (timeoutRef.current) {
@@ -214,6 +224,17 @@ export default function BonosPage() {
         clearSsoTimeout();
         if (activePathRef.current === SICAS_CCJ_REPORTS_PATH) return;
         setActivePath(path);
+      }
+
+      if (type === 'cp_crear_tramite') {
+        setTramitePreload({
+          tipoTramite:   event.data.tipo_tramite  || undefined,
+          agenteId:      event.data.agente_id     || undefined,
+          instrucciones: event.data.instrucciones || undefined,
+          prioridad:     event.data.prioridad     || undefined,
+        });
+        setShowTramiteModal(true);
+        return;
       }
 
       if (type === 'bonos:userinfo') {
@@ -462,6 +483,14 @@ export default function BonosPage() {
           )}
         </div>
       </div>
+
+      <NuevoTramiteModal
+        isOpen={showTramiteModal}
+        onClose={() => { setShowTramiteModal(false); setTramitePreload(null); }}
+        onSuccess={() => { setShowTramiteModal(false); setTramitePreload(null); }}
+        estatusList={estatusList}
+        preloadedData={tramitePreload ?? undefined}
+      />
     </div>
   );
 }
