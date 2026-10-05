@@ -378,6 +378,11 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   // Cubrir TODAS las categorías solo se le exige al Agente: obligar lo mismo a un
   // Administrador bloquearía editarlo por algo que no se le había pedido nunca.
   const mustValidateTramiteTeams = canManageTramiteTeams && formData.rol === 'Agente';
+  // Faltarle equipos ya NO impide guardar: impide ACTIVARLO. Antes bloqueaba el
+  // botón entero, así que corregirle el teléfono a un agente sin equipos era
+  // imposible — y la única salida era asignarle equipos que quizá no le tocan.
+  const faltanEquiposTramite =
+    mustValidateTramiteTeams && tramiteTeamState.ready && !tramiteTeamState.valid;
 
   const uploadImage = async (file: File, bucket: string, userId: string): Promise<string | null> => {
     try {
@@ -451,8 +456,11 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         }
       }
 
-      if (mustValidateTramiteTeams && (!tramiteTeamState.ready || !tramiteTeamState.valid)) {
-        setError(`El agente debe tener al menos un equipo en cada categoría activa. Faltan: ${tramiteTeamState.missingCategories.join(', ')}`);
+      // Un usuario nuevo nace ACTIVO (`create-user` lo inserta así), y un agente
+      // activo sí necesita sus equipos. Editar a uno que ya existe no se bloquea:
+      // ahí lo que se impide es activarlo, desde el botón del directorio.
+      if (!user && faltanEquiposTramite) {
+        setError(`Para dar de alta a un agente hace falta un equipo en cada categoría. Faltan: ${tramiteTeamState.missingCategories.join(', ')}`);
         setLoading(false);
         return;
       }
@@ -791,6 +799,16 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
           <span className="text-red-500 text-lg">⚠</span>
           <span>{error}</span>
+        </div>
+      )}
+
+      {faltanEquiposTramite && user && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+          <span className="text-amber-500 text-lg">⚠</span>
+          <span>
+            Los cambios sí se guardan, pero <strong>no se podrá activar</strong> a este agente hasta que
+            tenga un equipo en cada categoría. Faltan: {tramiteTeamState.missingCategories.join(', ')}.
+          </span>
         </div>
       )}
 

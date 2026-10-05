@@ -117,14 +117,6 @@ export function PerfilUsuario() {
     const puedeAsignarEquiposTramite = isAdmin && puedeTenerEquiposTramite(formData.rol);
     // La exigencia de cubrir todas las categorías sigue siendo solo del Agente.
     const mustValidateTramiteTeams = isAdmin && formData.rol === 'Agente';
-    if (mustValidateTramiteTeams && (!tramiteTeamState.ready || !tramiteTeamState.valid)) {
-      setMessage({
-        type: 'error',
-        text: `El agente debe tener al menos un equipo en cada categoría activa. Faltan: ${tramiteTeamState.missingCategories.join(', ')}`,
-      });
-      setSaving(false);
-      return;
-    }
 
     const updateData: UsuarioPerfilUpdate = {
       nombre: formData.nombre,

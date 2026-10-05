@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import type { Database } from '../lib/database.types';
+import { loadActiveTramiteTeams, loadUserTramiteTeamIds, validateTramiteTeamSelection } from '../lib/tramiteTeamAssignments';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -195,6 +196,32 @@ export function Directorio() {
 
     // Determinar el nuevo estado basado en el campo activo
     const nuevoActivo = !usuario.activo;
+
+    // Lo que exige tener todos los equipos cubiertos es ACTIVAR al agente, no
+    // guardar su ficha: un agente sin equipos no tiene a quién caerle, pero
+    // corregirle el teléfono no debería estar prohibido por eso.
+    if (nuevoActivo && usuario.rol === 'Agente') {
+      try {
+        const [teams, ids] = await Promise.all([
+          loadActiveTramiteTeams(),
+          loadUserTramiteTeamIds(usuario.id),
+        ]);
+        const { valid, missingCategories } = validateTramiteTeamSelection(teams, ids);
+        if (!valid) {
+          alert(
+            `No se puede activar a este agente: le falta un equipo en ${missingCategories.join(', ')}.
+
+` +
+            'Asígnaselos en Editar Usuario y vuelve a intentarlo.'
+          );
+          return;
+        }
+      } catch (err) {
+        console.error('Error revisando los equipos del agente:', err);
+        // Si la revisión falla no se bloquea la activación: dejar a alguien
+        // inactivo por un error de red es peor que activarlo sin revisar.
+      }
+    }
 
     try {
       // Call secure RPC function instead of direct update
