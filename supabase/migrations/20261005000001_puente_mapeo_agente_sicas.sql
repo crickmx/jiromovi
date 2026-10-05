@@ -50,7 +50,7 @@ WITH sicas_unicos AS (
   WHERE status IN ('active', 'pending_review') AND nombre_comparable(vend_nombre) IS NOT NULL
   GROUP BY 1 HAVING count(*) = 1
 ), agentes_unicos AS (
-  SELECT nombre_comparable(nombre) AS clave, min(id) AS agente_id
+  SELECT nombre_comparable(nombre) AS clave, (array_agg(id))[1] AS agente_id
   FROM public.maestro_agentes
   WHERE vend_id IS NULL AND nombre_comparable(nombre) IS NOT NULL
   GROUP BY 1 HAVING count(*) = 1
