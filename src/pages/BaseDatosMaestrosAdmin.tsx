@@ -9,6 +9,7 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { normalizarTexto } from '../lib/utils';
 import { invalidateTiposTramiteCache } from '../hooks/useTiposTramite';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -1057,12 +1058,13 @@ export default function BaseDatosMaestrosAdmin() {
   // ─── TAB: Catálogo ────────────────────────────────────────────────────────────
 
   function TabCatalogo() {
-    const ramosFiltrados = ramos.filter(r => r.nombre.toLowerCase().includes(searchCat.toLowerCase()));
+    const qCat = normalizarTexto(searchCat);
+    const ramosFiltrados = ramos.filter(r => normalizarTexto(r.nombre).includes(qCat));
 
     return (
       <div className="space-y-6">
-        <ImportPanel />
-        <ImportConvenioPanel />
+        {ImportPanel()}
+        {ImportConvenioPanel()}
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"/>
@@ -1145,7 +1147,7 @@ export default function BaseDatosMaestrosAdmin() {
             )}
             {loadingCat ? <Skeleton/> : (
               <div className="space-y-1 max-h-64 overflow-y-auto">
-                {companias.filter(c => c.nombre.toLowerCase().includes(searchCat.toLowerCase())).map(comp => (
+                {companias.filter(c => normalizarTexto(c.nombre).includes(qCat)).map(comp => (
                   <div key={comp.id} className="flex items-center justify-between py-1.5 px-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 rounded-lg group">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100">{comp.nombre}</span>
@@ -1187,13 +1189,13 @@ export default function BaseDatosMaestrosAdmin() {
   // ─── TAB: Vendedores ──────────────────────────────────────────────────────────
 
   function TabVendedores() {
-    const lc = searchVend.toLowerCase();
-    const despFiltrados = despachos.filter(d => d.nombre.toLowerCase().includes(lc));
+    const lc = normalizarTexto(searchVend);
+    const despFiltrados = despachos.filter(d => normalizarTexto(d.nombre).includes(lc));
 
     // Agrupación por nombre del vendedor para la vista "Por Vendedor"
     const vendedorMap = new Map<string, Agente[]>();
     agentes.forEach(ag => {
-      if (!ag.nombre.toLowerCase().includes(lc)) return;
+      if (!normalizarTexto(ag.nombre).includes(lc)) return;
       if (!vendedorMap.has(ag.nombre)) vendedorMap.set(ag.nombre, []);
       vendedorMap.get(ag.nombre)!.push(ag);
     });
@@ -1237,7 +1239,7 @@ export default function BaseDatosMaestrosAdmin() {
 
     return (
       <div className="space-y-6">
-        <ImportPanel />
+        {ImportPanel()}
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"/>
@@ -1487,16 +1489,21 @@ export default function BaseDatosMaestrosAdmin() {
   // ─── TAB: Mapeo ───────────────────────────────────────────────────────────────
 
   function TabMapeo() {
+    // Sin acentos y sin mayúsculas: buscar "leon" tenía que encontrar "LEÓN".
+    const q = normalizarTexto(searchMapeo);
     const mapeosFiltrados = mapeos.filter(m => {
-      const agt  = (m.maestro_agentes as any)?.nombre?.toLowerCase() ?? '';
-      const usr  = (m.usuarios as any)?.nombre?.toLowerCase() ?? '';
-      const mail = (m.usuarios as any)?.email_laboral?.toLowerCase() ?? '';
-      return agt.includes(searchMapeo.toLowerCase()) || usr.includes(searchMapeo.toLowerCase()) || mail.includes(searchMapeo.toLowerCase());
+      const u = m.usuarios as any;
+      return [
+        (m.maestro_agentes as any)?.nombre,
+        u?.nombre, u?.apellidos, `${u?.nombre ?? ''} ${u?.apellidos ?? ''}`,
+        u?.email_laboral,
+        (m.maestro_agentes as any)?.maestro_despachos?.nombre,
+      ].some(v => normalizarTexto(v).includes(q));
     });
 
     return (
       <div className="space-y-6">
-        <ImportPanel />
+        {ImportPanel()}
 
         {/* Agregar mapeo */}
         <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-soft dark:border-neutral-700 p-5 space-y-4">
@@ -1851,13 +1858,13 @@ export default function BaseDatosMaestrosAdmin() {
   function TabCodigosPostales() {
     const cpFiltrados = codigosPostales.filter(cp =>
       cp.codigo.includes(searchCP) ||
-      cp.colonia.toLowerCase().includes(searchCP.toLowerCase()) ||
-      cp.estado.toLowerCase().includes(searchCP.toLowerCase())
+      normalizarTexto(cp.colonia).includes(normalizarTexto(searchCP)) ||
+      normalizarTexto(cp.estado).includes(normalizarTexto(searchCP))
     );
 
     return (
       <div className="space-y-6">
-        <ImportPanel />
+        {ImportPanel()}
 
         <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 flex items-center justify-between gap-4">
           <div>
@@ -1929,12 +1936,12 @@ export default function BaseDatosMaestrosAdmin() {
   // ─── TAB: Trámites (Áreas, Equipos, Tipos) ───────────────────────────────────
 
   function TabTramites() {
-    const lc = searchTramites.toLowerCase();
-    const areasFilt = areas.filter(a => a.nombre.toLowerCase().includes(lc));
-    const gruposFilt = gruposViz.filter(g => g.nombre.toLowerCase().includes(lc));
+    const lc = normalizarTexto(searchTramites);
+    const areasFilt = areas.filter(a => normalizarTexto(a.nombre).includes(lc));
+    const gruposFilt = gruposViz.filter(g => normalizarTexto(g.nombre).includes(lc));
     const tiposFilt  = tiposTramite.filter(t =>
-      t.label.toLowerCase().includes(lc) ||
-      (areas.find(a => a.id === t.area_id)?.nombre ?? '').toLowerCase().includes(lc)
+      normalizarTexto(t.label).includes(lc) ||
+      normalizarTexto(areas.find(a => a.id === t.area_id)?.nombre).includes(lc)
     );
 
     function RowEdit({ id, nombre, table, field }: { id: string; nombre: string; table: string; field?: string }) {
@@ -2122,9 +2129,9 @@ export default function BaseDatosMaestrosAdmin() {
   // ─── Tab Adjuntos ─────────────────────────────────────────────────────────────
 
   function TabAdjuntos() {
-    const lc = searchAdj.toLowerCase();
+    const lc = normalizarTexto(searchAdj);
     const filtered = adjCats.filter(c =>
-      c.nombre.toLowerCase().includes(lc) || (c.descripcion ?? '').toLowerCase().includes(lc)
+      normalizarTexto(c.nombre).includes(lc) || normalizarTexto(c.descripcion).includes(lc)
     );
 
     return (
@@ -2260,13 +2267,13 @@ export default function BaseDatosMaestrosAdmin() {
       </div>
 
       {/* Contenido del tab activo */}
-      {tab === 'catalogo'          && <TabCatalogo />}
-      {tab === 'vendedores'        && <TabVendedores />}
-      {tab === 'mapeo'             && <TabMapeo />}
-      {tab === 'tramites'          && <TabTramites />}
-      {tab === 'adjuntos'          && <TabAdjuntos />}
-      {tab === 'codigos_postales'  && <TabCodigosPostales />}
-      {tab === 'historial'         && <TabHistorial />}
+      {tab === 'catalogo'          && TabCatalogo()}
+      {tab === 'vendedores'        && TabVendedores()}
+      {tab === 'mapeo'             && TabMapeo()}
+      {tab === 'tramites'          && TabTramites()}
+      {tab === 'adjuntos'          && TabAdjuntos()}
+      {tab === 'codigos_postales'  && TabCodigosPostales()}
+      {tab === 'historial'         && TabHistorial()}
     </div>
   );
 }
