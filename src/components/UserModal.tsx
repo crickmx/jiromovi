@@ -304,20 +304,25 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
     setSicasSearch('');
     setSicasResults([]);
 
-    // Autollenar los datos del usuario a partir del vendedor SICAS.
+    // Enlazar NO es reescribir al usuario. Antes esto pisaba nombre, apellidos,
+    // rol, puesto, oficina y slug con lo que dijera SICAS — y SICAS trae erratas
+    // ("ARON" por "AARON"), así que enlazar a alguien le estropeaba la ficha.
+    // Solo se llena lo que esté vacío, que es la única parte útil del autollenado:
+    // dar de alta a un agente nuevo sin teclear sus datos dos veces.
     const parsed = parseSicasVendorName(vendor.vend_nombre);
     const slug = computeSicasSlug(parsed);
-    // La oficina no se sobreescribe para Gerentes (quedan fijos a su oficina).
     const oficinaMatch = isGerente ? '' : matchOficinaId(vendor.desp_nombre, oficinas);
+    const siVacio = (actual: string | undefined, propuesto: string) =>
+      (actual ?? '').trim() ? (actual as string) : propuesto;
 
     setFormData((prev) => ({
       ...prev,
-      nombre: parsed.nombre || prev.nombre,
-      apellidos: parsed.apellidos,
-      rol: 'Agente',
-      puesto: 'Agente',
-      web_slug: slug || prev.web_slug,
-      oficina_id: oficinaMatch || prev.oficina_id,
+      nombre: siVacio(prev.nombre, parsed.nombre),
+      apellidos: siVacio(prev.apellidos, parsed.apellidos),
+      rol: (prev.rol ?? '').trim() ? prev.rol : 'Agente',
+      puesto: siVacio(prev.puesto, 'Agente'),
+      web_slug: siVacio(prev.web_slug, slug),
+      oficina_id: siVacio(prev.oficina_id, oficinaMatch || ''),
     }));
   };
 
@@ -828,8 +833,9 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                   Enlazar usuario SICAS
                 </h3>
                 <p className="text-xs text-neutral-600 mb-3">
-                  Busca al vendedor para autollenar nombre, apellidos, oficina, rol y slug, y dejar el usuario enlazado.
-                  Es el <strong>mismo mapeo</strong> de Admin › Base de Datos › "Mapeo MOVI ↔ Agente": enlazar aquí enlaza allá.
+                  Busca al vendedor para dejar el usuario enlazado. Es el <strong>mismo mapeo</strong> de
+                  Admin › Base de Datos › "Mapeo MOVI ↔ Agente": enlazar aquí enlaza allá.
+                  <br />No cambia los datos que ya tenga el usuario; solo rellena los que estén vacíos.
                 </p>
 
                 {sicasLink ? (
