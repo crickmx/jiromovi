@@ -17,12 +17,16 @@ import { supabase } from './supabase';
  */
 
 export interface SicasVendorOption {
-  id: string; // uuid de la fila del mapeo (para link_vendor_to_user)
+  /** uuid de la fila de `sicas_vendor_user_mappings` (para `link_vendor_to_user`). Vacío si el vendedor solo existe en el catálogo del Excel. */
+  id: string;
+  /** ID de SICAS. Vacío si el vendedor solo existe en el catálogo del Excel. */
   vend_id: string;
   vend_nombre: string;
   desp_nombre: string | null;
   movi_user_id: string | null;
   status: string;
+  /** Id en `maestro_agentes` cuando el vendedor viene del catálogo del Excel y no tiene contraparte en SICAS. */
+  agente_id?: string | null;
 }
 
 export interface OficinaLite {
@@ -129,26 +133,77 @@ export function matchOficinaId(despNombre: string | null | undefined, oficinas: 
   return bestId;
 }
 
-/** Busca vendedores SICAS por nombre o ID (activos / pendientes de revisión). */
+/**
+ * Busca un vendedor para enlazar, en los DOS catálogos.
+ *
+ * `sicas_vendor_user_mappings` lo llena la sincronización de SICAS (hoy
+ * pausada) y `maestro_agentes` el Excel que se sube en Admin › Base de Datos.
+ * Buscar solo en el primero dejaba fuera a todo vendedor que solo existiera en
+ * el Excel — y entonces el enlace "no aparecía" sin motivo visible.
+ *
+ * Los que ya están emparejados traen `vend_id`, así que pedir del Excel solo
+ * los que NO lo tienen evita que el mismo vendedor salga dos veces.
+ */
 export async function searchSicasVendors(term: string): Promise<SicasVendorOption[]> {
-  let query = supabase
+  const safe = term.replace(/[,%()]/g, ' ').trim();
+
+  let qSicas = supabase
     .from('sicas_vendor_user_mappings')
     .select('id, vend_id, vend_nombre, desp_nombre, movi_user_id, status')
     .in('status', ['active', 'pending_review'])
     .order('vend_nombre', { ascending: true })
     .limit(20);
+  if (safe) qSicas = qSicas.or(`vend_nombre.ilike.%${safe}%,vend_id.ilike.%${safe}%`);
 
-  const safe = term.replace(/[,%()]/g, ' ').trim();
-  if (safe) {
-    query = query.or(`vend_nombre.ilike.%${safe}%,vend_id.ilike.%${safe}%`);
-  }
+  let qExcel = supabase
+    .from('maestro_agentes')
+    .select('id, nombre, maestro_despachos(nombre), maestro_usuario_agente(user_id, activo)')
+    .is('vend_id', null)
+    .eq('activo', true)
+    .order('nombre', { ascending: true })
+    .limit(20);
+  if (safe) qExcel = qExcel.ilike('nombre', `%${safe}%`);
 
-  const { data, error } = await query;
+  const [sicas, excel] = await Promise.all([qSicas, qExcel]);
+  if (sicas.error) console.error('Error buscando vendedores SICAS:', sicas.error);
+  if (excel.error) console.error('Error buscando agentes del catálogo:', excel.error);
+
+  const delExcel: SicasVendorOption[] = ((excel.data ?? []) as unknown as RawAgente[]).map(a => ({
+    id: '',
+    vend_id: '',
+    vend_nombre: a.nombre,
+    desp_nombre: a.maestro_despachos?.nombre ?? null,
+    movi_user_id: (a.maestro_usuario_agente ?? []).find(m => m.activo)?.user_id ?? null,
+    status: 'active',
+    agente_id: a.id,
+  }));
+
+  return [...((sicas.data ?? []) as SicasVendorOption[]), ...delExcel];
+}
+
+interface RawAgente {
+  id: string;
+  nombre: string;
+  maestro_despachos?: { nombre: string } | null;
+  maestro_usuario_agente?: { user_id: string; activo: boolean }[] | null;
+}
+
+/**
+ * Enlaza el usuario con un vendedor que solo existe en el catálogo del Excel.
+ *
+ * El RPC de SICAS no aplica (no hay `vend_id`), así que se escribe directo el
+ * mapeo de trámites, que es la misma tabla que usa la pestaña "Mapeo MOVI ↔
+ * Agente".
+ */
+export async function vincularAgenteDelCatalogo(agenteId: string, moviUserId: string): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('maestro_usuario_agente')
+    .upsert({ user_id: moviUserId, agente_id: agenteId, activo: true }, { onConflict: 'user_id' });
   if (error) {
-    console.error('Error buscando vendedores SICAS:', error);
-    return [];
+    console.error('Error vinculando agente del catálogo:', error);
+    return { success: false, error: error.message };
   }
-  return (data || []) as SicasVendorOption[];
+  return { success: true };
 }
 
 /** Trae un vendedor SICAS por su vend_id (para prellenar el chip al editar). */
@@ -184,3 +239,25 @@ export async function unlinkSicasVendor(params: { vendorId?: string; moviUserId?
   }
 }
 
+
+/** El agente del catálogo al que ya está mapeado un usuario, para prellenar el chip. */
+export async function agenteDelCatalogoDeUsuario(moviUserId: string): Promise<SicasVendorOption | null> {
+  const { data } = await supabase
+    .from('maestro_usuario_agente')
+    .select('agente_id, maestro_agentes(id, nombre, vend_id, maestro_despachos(nombre))')
+    .eq('user_id', moviUserId)
+    .eq('activo', true)
+    .maybeSingle();
+
+  const a = (data as unknown as { maestro_agentes?: RawAgente & { vend_id?: string | null } } | null)?.maestro_agentes;
+  if (!a) return null;
+  return {
+    id: '',
+    vend_id: a.vend_id ?? '',
+    vend_nombre: a.nombre,
+    desp_nombre: a.maestro_despachos?.nombre ?? null,
+    movi_user_id: moviUserId,
+    status: 'active',
+    agente_id: a.id,
+  };
+}

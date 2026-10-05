@@ -17,6 +17,8 @@ import {
   parseSicasVendorName,
   computeSicasSlug,
   matchOficinaId,
+  vincularAgenteDelCatalogo,
+  agenteDelCatalogoDeUsuario,
   type SicasVendorOption,
 } from '../lib/sicasVendorLink';
 import { syncUserTramiteTeamAssignments, puedeTenerEquiposTramite } from '../lib/tramiteTeamAssignments';
@@ -200,6 +202,12 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         setSicasLink(null);
         setTramiteTeamIds([]);
         setTramiteTeamState({ ready: false, valid: false, missingCategories: [] });
+        // Sin ID de SICAS todavía puede estar mapeado a un agente del catálogo
+        // del Excel. Sin esto el modal diría "sin enlace" sobre un usuario que
+        // sí lo tiene, y alguien lo volvería a enlazar.
+        if (editableUser.id) {
+          agenteDelCatalogoDeUsuario(editableUser.id).then(v => { if (v) setSicasLink(v); });
+        }
       }
       setSicasTouched(false);
     }
@@ -326,18 +334,28 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
     if (!sicasTouched) return;
     try {
       if (sicasLink && sicasLink.id) {
+        // Vendedor con contraparte en SICAS: el RPC escribe su lado y un trigger
+        // crea el mapeo de trámites (`maestro_usuario_agente`) — el mismo que
+        // edita Admin › Base de Datos › "Mapeo MOVI ↔ Agente".
         const { error: rpcError } = await supabase.rpc('link_vendor_to_user', {
           p_vendor_id: sicasLink.id,
           p_movi_user_id: userId,
           p_linked_by: currentUser?.id ?? null,
         });
         if (rpcError) throw rpcError;
+      } else if (sicasLink?.agente_id) {
+        // Solo existe en el catálogo del Excel: no hay RPC de SICAS que llamar,
+        // se escribe directo el mapeo de trámites.
+        const res = await vincularAgenteDelCatalogo(sicasLink.agente_id, userId);
+        if (!res.success) throw new Error(res.error);
       } else {
         // Se desvinculó
         await supabase.rpc('unlink_vendor_from_user', {
           p_vendor_id: null,
           p_movi_user_id: userId,
         });
+        // El RPC solo conoce el lado de SICAS; un agente del Excel no pasa por ahí.
+        await supabase.from('maestro_usuario_agente').delete().eq('user_id', userId);
       }
     } catch (err) {
       console.error('Error sincronizando enlace SICAS del usuario:', err);
@@ -810,7 +828,8 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                   Enlazar usuario SICAS
                 </h3>
                 <p className="text-xs text-neutral-600 mb-3">
-                  Busca al vendedor en el catálogo SICAS para autollenar nombre, apellidos, oficina, rol y slug, y dejar el usuario enlazado.
+                  Busca al vendedor para autollenar nombre, apellidos, oficina, rol y slug, y dejar el usuario enlazado.
+                  Es el <strong>mismo mapeo</strong> de Admin › Base de Datos › "Mapeo MOVI ↔ Agente": enlazar aquí enlaza allá.
                 </p>
 
                 {sicasLink ? (
@@ -819,7 +838,9 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-neutral-900 truncate">{sicasLink.vend_nombre}</p>
                         <p className="text-xs text-neutral-500 mt-0.5">
-                          ID SICAS: <span className="font-mono">{sicasLink.vend_id}</span>
+                          {sicasLink.vend_id
+                            ? <>ID SICAS: <span className="font-mono">{sicasLink.vend_id}</span></>
+                            : 'Del catálogo de la base de datos (sin ID de SICAS)'}
                           {sicasLink.desp_nombre ? <> · Despacho: {sicasLink.desp_nombre}</> : null}
                         </p>
                         {sicasLink.movi_user_id && (!user || sicasLink.movi_user_id !== user.id) && (
@@ -859,7 +880,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                           </div>
                         ) : sicasResults.length === 0 ? (
                           <p className="px-3 py-3 text-sm text-neutral-500">
-                            {sicasSearch ? 'Sin resultados' : 'Escribe para buscar un vendedor SICAS'}
+                            {sicasSearch ? 'Sin resultados' : 'Escribe para buscar un vendedor'}
                           </p>
                         ) : (
                           sicasResults.map((v) => (
@@ -871,7 +892,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-sm font-medium text-neutral-900 truncate">{v.vend_nombre}</span>
-                                <span className="text-[11px] font-mono text-neutral-500 shrink-0">{v.vend_id}</span>
+                                <span className="text-[11px] font-mono text-neutral-500 shrink-0">{v.vend_id || 'Sin ID SICAS'}</span>
                               </div>
                               <div className="flex items-center gap-2 mt-0.5">
                                 {v.desp_nombre && <span className="text-xs text-neutral-500">{v.desp_nombre}</span>}
