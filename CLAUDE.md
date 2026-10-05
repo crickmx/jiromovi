@@ -1,42 +1,131 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-02)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-05)
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-02
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-05
 
-Todo el código está en **`origin/main` y `origin/produccion`**, ambas en `0bf630b8`, árbol limpio.
+Todo el código está en **`origin/main` y `origin/produccion`**, ambas en `810d119e`, árbol limpio.
 
-#### 1. Migraciones — **todas corridas**, no queda ninguna pendiente
+**⚠️ Hay otra persona trabajando en el repo.** El 2026-10-05 aparecieron commits que no son de esta sesión (`48c642fd`, `6dd5fd03`, `4af6053e`: abrir el alta de trámite desde Central de Producción con `?source=cp`). **Hacer `git fetch` y revisar `origin/main` antes de empezar**, y no confiar en que el HEAD local sea el último.
+
+**El `tsc` de referencia subió de 321 a 323 líneas / 234 a 236 errores** por esos commits ajenos. Al medir, comparar contra `git stash` y no contra el número de la bitácora.
+
+#### Migraciones — **todas corridas**, no queda ninguna pendiente
 
 | Archivo | Qué hace | Estado |
 |---|---|---|
-| `20261002000001_mkt_premium_triggers_paridad_store.sql` | `forma_pago_filtro` + adjunto | ✅ corrida |
-| `20261002000002_mkt_premium_eventos_configurables.sql` | eventos que declaran qué observan | ✅ corrida |
-| `20261002000003_mkt_premium_pagos.sql` | pagos + bitácora inmutable | ✅ corrida |
-| `20261002000004_mkt_premium_pagos_comprobante.sql` | comprobante adjunto + bucket | ✅ corrida |
-| `20261002000005_mkt_premium_folio.sql` | folio `MKT-XXXXXX` (formato viejo) | ✅ corrida |
-| `20261002000006_folios_legibles_y_frecuencia_mkt.sql` | folios nuevos + `mkt_premium_frecuencia_pago` | ✅ corrida |
-| `20261002000007_folio_oc_mas_largo.sql` | `folio_oc` de `varchar(8)` a `text` | ✅ corrida |
+| `20261005000001_puente_mapeo_agente_sicas.sql` | `maestro_agentes.vend_id`, arregla el CHECK de `vendor_mappings`, empareja los dos catálogos | ✅ corrida |
+| `20261005000002_puente_mapeo_triggers.sql` | los 4 triggers que mantienen el puente | ✅ corrida |
 
-Ricardo confirmó las siete el 2026-10-02. Si alguna vez hay que rehacer este camino en otro ambiente: la `...0006` es idempotente y rehace los folios `MKT-%` que haya dejado la `...0005`, y la `...0007` es obligatoria — sin ella **no se puede crear ningún pedido de Store** (`value too long for type character varying(8)`).
+#### Falta verificar en navegador
 
-#### 2. Falta verificar en navegador
+- **Mapeo de ida y vuelta**: enlazar un vendedor desde Editar Usuario y confirmar que aparece en Admin › Base de Datos › "Mapeo MOVI ↔ Agente"; y al revés, mapear desde esa pestaña y ver el chip ya lleno en la ficha.
+- **Enlazar ya no pisa la ficha**: enlazar a alguien cuyo nombre en SICAS esté mal escrito y confirmar que el nombre de MOVI no cambia.
+- **Buscador de Base de Datos**: escribir varias letras seguidas sin perder el foco, y que `leon` encuentre `LEÓN`.
+- **Equipos**: editar un agente al que le faltan equipos (debe guardar, con aviso ámbar) e intentar activarlo desde el directorio (debe negarse).
+- **Y lo que quedó del 2026-10-02**: las dos Órdenes de Compra, el folio con oficina e iniciales, los pagos de Premium con comprobante, y la ventana de confirmación de triggers al cancelarla.
 
-- **Orden de Compra de artículos** con parcialidades reales (franja mostaza, desglose, bloque de cobro).
-- **Orden de Compra de servicio** del plan **anual** — el mensual ya lo confirmó Ricardo.
-- **Folio con oficina e iniciales correctas** en un pedido nuevo (`ARTMKT-00001-...`).
-- **Pagos de Premium**: registrar uno con comprobante PDF/JPG/PNG y ver la bitácora.
-- **Ventana de confirmación** antes de que un trigger levante un trámite, en Store y en Marketing. Probar que al **cancelar** el estatus del pedido NO cambie.
-- **Saldo del Premium mensual**: ahora un pago de $200 se ve como "Falta $2,200 de $2,400". Es lo acordado; si molesta, se cambia en `montoDelPlan`.
-
-#### Hilos que siguen abiertos (no se tocaron hoy)
+#### Hilos que siguen abiertos
 - **Ningún modal del proyecto soporta modo oscuro** (`BaseModal.tsx` tiene 0 clases `dark:`). Empezar por ahí cubre todos de una vez.
 - **SICAS sigue pausado** a propósito (4 crons apagados) y el filtro de fecha de "efectuada" sigue roto.
 - **Borrar las ~65 ramas muertas del remoto**. Pendiente del visto bueno de Ricardo.
 - **No mergear la rama de dependabot** — ver la sección con ⛔ más abajo.
-- Diferencias Store↔Marketing que se dejaron fuera a propósito: historial de cambios, notas internas, reporte descargable, gastos/utilidad.
+- El normalizador de texto sigue copiado a mano en ~10 archivos; el compartido nuevo es `normalizarTexto()` en `src/lib/utils.ts`.
 
 **🔑 La lección que más tiempo costó este mes:** cuando Ricardo diga "no aparece el cambio", lo PRIMERO es comparar el `Commit:` de la barra naranja contra la rama que sirve ese sitio. **Beta compila de `origin/main`, producción de `origin/produccion`** — pushear solo a una deja la otra en el commit anterior.
+
+---
+
+### 🔴 2026-10-05 — `vendor_mappings` llevaba desde septiembre rechazando sus propias escrituras
+
+Salió al correr la migración del puente, pero **no es culpa de ella**:
+
+```
+ERROR: new row for relation "vendor_mappings" violates check constraint
+       "vendor_mappings_source_type_check"
+```
+
+`vendor_mappings.source_type` solo admite `'email'` y `'name'` (desde `20251215182450`), pero la migración `20260908120000_unify_sicas_vendor_mappings_complete.sql` escribe `'id'` en **cuatro** lugares: el trigger que corre al tocar `usuarios.id_sicas`, el que corre al tocar `nombre_sicas`, y el propio `link_vendor_to_user`. Nadie extendió el CHECK cuando se agregó ese tipo.
+
+**Consecuencia:** desde el 8 de septiembre, enlazar cualquier vendedor que tuviera ID de SICAS tronaba. Es muy probablemente la razón de fondo por la que "Enlazar usuario SICAS" nunca sirvió. Corregido en `20261005000001`.
+
+**🔑 Patrón:** una migración que empieza a escribir un valor nuevo en una columna con `CHECK (x IN (...))` tiene que extender el CHECK en la misma migración. Aquí el error tardó un mes en aparecer porque solo se dispara desde un trigger, y los triggers fallan donde nadie los mira.
+
+---
+
+### ✅ 2026-10-05 — un solo mapeo usuario ↔ vendedor
+
+Ricardo: *"el mapeo se hace desde Admin › Base de Datos, pero me gustaría poder hacerlo también desde la configuración del usuario. Existe como 'Enlazar usuario SICAS' pero sospecho que no es el mismo mapeo… necesito que usen la misma tabla"*. Tenía razón: eran dos sistemas que no se conocían.
+
+| | Pestaña "Mapeo MOVI ↔ Agente" | Modal "Enlazar usuario SICAS" |
+|---|---|---|
+| Tabla | `maestro_usuario_agente` → `maestro_agentes` | `sicas_vendor_user_mappings` |
+| De dónde salen los vendedores | el **Excel** que se sube en esa misma pantalla | la **sincronización de SICAS** (hoy pausada) |
+| Además escribía | nada | `usuarios.id_sicas` / `nombre_sicas` |
+| Quién lo lee | **los trámites** (`agente_vendedor`, reglas de equipo) | el **Excel de pólizas** para SICAS |
+
+**No compartían ninguna llave**, así que nada podía notar que eran la misma persona.
+
+**Lo hecho:** `maestro_agentes.vend_id` es la llave que faltaba, y el puente vive **en la base de datos, no en las pantallas**. El enlace se escribe desde seis lugares —el modal, la pestaña Mapeo, la sugerencia de IA, la validación de una propuesta, la importación del Excel y la sincronización de SICAS— y un arreglo por pantalla habría dejado fuera a cinco.
+
+**Cuatro triggers** (`20261005000002`), todos con guardas `IS DISTINCT FROM` que **cortan el ida y vuelta** entre ellos y el `sync_usuario_sicas_to_all_mappings` que ya existía:
+
+| Trigger | Sobre | Qué hace |
+|---|---|---|
+| `trg_sync_mapeo_agente_a_sicas` | `maestro_usuario_agente` INSERT/UPDATE | llena `usuarios.id_sicas` y el `movi_user_id` de SICAS |
+| `trg_sync_sicas_a_mapeo_agente` | `sicas_vendor_user_mappings` INSERT/UPDATE | crea o reutiliza el agente del catálogo y lo mapea |
+| `trg_sync_desenlace_sicas` | `sicas_vendor_user_mappings` UPDATE | desenlazar suelta el mapeo de trámites |
+| `trg_sync_borrado_mapeo_agente` | `maestro_usuario_agente` DELETE | y al revés |
+
+**Límites que conviene recordar:**
+- El emparejamiento inicial de los dos catálogos es **por nombre normalizado y solo cuando identifica a UNO de cada lado**. Los homónimos quedan sin emparejar a propósito: dejarlo mal pone el mapeo en la persona equivocada y nadie lo nota. Esos se enlazan a mano.
+- **Un Gerente puede enlazar desde el modal**, así que ahora puede crear indirectamente un mapeo de trámites, que era Admin-only. Es la consecuencia de que las dos pantallas hagan el mismo mapeo. Si molesta, se restringe `canLinkSicas`.
+- Los triggers son `SECURITY DEFINER` justamente para eso: si no, el enlace del modal fallaría en silencio contra la RLS de `maestro_usuario_agente`.
+
+**De paso:** el buscador del modal solo miraba el catálogo de la sincronización SICAS (pausada), así que un vendedor que solo existiera en el Excel **no aparecía, sin motivo visible**. Ahora busca en los dos (`searchSicasVendors`), y el chip se prellena también desde el mapeo de trámites — antes decía "sin enlace" sobre usuarios que sí lo tenían.
+
+---
+
+### 🔴 2026-10-05 — el buscador solo admitía una letra: los tabs eran componentes de dentro
+
+Ricardo: *"el buscador sólo me permite ingresar una letra, y luego saca el cursor de la barra de texto"*.
+
+**La causa no era el filtro.** Los siete tabs de `BaseDatosMaestrosAdmin.tsx` eran **componentes definidos dentro del componente padre** y se renderizaban como `<TabMapeo />`. El texto del buscador vive en el padre, así que cada tecla lo re-renderizaba, React veía un **tipo de componente nuevo**, desmontaba el subárbol entero y el input —ya destruido— perdía el foco.
+
+**El arreglo son dos caracteres por tab:** `{TabMapeo()}` en vez de `<TabMapeo />`. Llamarlos como funciones de render los vuelve parte del árbol del padre y ya no hay remontaje. **Es seguro porque ninguno usa hooks** — si alguno los usara, llamarlo condicionalmente rompería las reglas de hooks y habría que sacarlo a su propio archivo. Lo mismo con `ImportPanel`/`ImportConvenioPanel`, donde además se perdía el archivo ya elegido.
+
+**🔑 Patrón:** *un componente declarado dentro de otro se remonta en cada render del padre.* El síntoma es siempre el mismo —un input que pierde el foco a la primera tecla— y la causa no está en el input.
+
+**De paso, las búsquedas de los siete tabs normalizan** (sin acentos ni mayúsculas): `leon` encuentra `LEÓN`. El normalizador estaba copiado a mano en ~10 archivos; ahora hay uno compartido, `normalizarTexto()` en `src/lib/utils.ts`, y los nuevos lo toman de ahí. El de Mapeo además busca por apellidos, nombre completo y despacho, no solo por nombre de pila.
+
+---
+
+### ✅ 2026-10-05 — enlazar un vendedor ya no reescribe la ficha del usuario
+
+Al enlazar, el modal pisaba **nombre, apellidos, rol, puesto, oficina y slug** con lo que dijera SICAS. Y SICAS trae erratas: enlazar a "AARON FRANCISCO SOLIS FUENTES" lo dejaba como "ARON SOLIS FUENTES", con el slug cambiado.
+
+Ahora **solo rellena lo que esté vacío**, que es la única parte útil del autollenado: dar de alta a un agente nuevo sin teclear sus datos dos veces. A un usuario que ya existe no se le toca nada. Si algún día se quiere que no rellene ni eso, es quitar el `siVacio` de `handleSelectSicasVendor`.
+
+---
+
+### ✅ 2026-10-05 — faltarle equipos a un agente ya no impide editarlo, solo activarlo
+
+Ricardo: *"necesito que me deje guardar ediciones aunque no tengan todos los equipos asignados… si no los tienen, entonces sí, que no se pueda activar al usuario, pero sí hacer cambios en su perfil"*.
+
+Antes, corregirle el teléfono a un agente sin equipos era imposible: el guardado se bloqueaba hasta asignarle equipos que quizá no le tocan. La exigencia es sobre estar **activo** —un agente activo sin equipos no tiene a quién caerle—, no sobre editar su ficha.
+
+| Acción | Con equipos incompletos |
+|---|---|
+| Editar la ficha (modal o pestaña Equipos del perfil) | ✅ guarda, con aviso ámbar |
+| Desactivar | ✅ siempre |
+| **Activar** desde el directorio | ❌ se niega y dice qué categoría falta |
+| Dar de alta a un agente nuevo | ❌ se niega |
+
+**Por qué crear sí se sigue bloqueando:** `create-user` inserta con `activo: true`, así que un agente nuevo sin equipos nacería justo en el estado que esto viene a evitar.
+
+**Si la revisión de equipos falla por red, la activación pasa** — dejar a alguien inactivo por un error de conexión es peor que activarlo sin revisar.
+
+La comprobación reusa `validateTramiteTeamSelection()` + `loadActiveTramiteTeams()` / `loadUserTramiteTeamIds()`, que ya existían para el formulario.
 
 ---
 
