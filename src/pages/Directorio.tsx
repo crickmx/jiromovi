@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import type { Database } from '../lib/database.types';
 import { loadActiveTramiteTeams, loadUserTramiteTeamIds, validateTramiteTeamSelection } from '../lib/tramiteTeamAssignments';
+import { SolicitudesAltaPanel } from '../components/admin/SolicitudesAltaPanel';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -328,6 +329,8 @@ export function Directorio() {
           </Button>
         }
       />
+
+      <SolicitudesAltaPanel isAdmin={isAdmin} onResuelta={loadData} />
 
       {loadError && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">

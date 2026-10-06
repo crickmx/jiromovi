@@ -8,6 +8,7 @@ import { ImageUploader } from './ImageUploader';
 import { ExpedienteSection } from './ExpedienteSection';
 import { User, Mail, Phone, Building2, Image, FileText, Calendar, Smartphone, Laptop, Palette, Shield, Send, CheckCircle, MapPin, Link2, Search, X, Loader2, TriangleAlert } from 'lucide-react';
 import type { Database } from '../lib/database.types';
+import { quienOcupaCorreo, liberarCorreoOcupado, dejarSolicitudAlta, nombreDeOcupante } from '../lib/correoOcupado';
 import UbicacionPicker, { type UbicacionValue } from './ubicacion/UbicacionPicker';
 import { useRoles } from '../hooks/useRoles';
 import AgentTramiteTeamsSection from './tramites/AgentTramiteTeamsSection';
@@ -616,6 +617,65 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             tramite_group_ids: mustValidateTramiteTeams ? tramiteTeamIds : undefined,
           },
         };
+
+        // El correo puede estar ocupado por alguien que NO se ve en MOVI: un
+        // usuario dado de baja o una cuenta huérfana sin ficha. Antes el alta
+        // moría aquí con el mensaje crudo de Supabase ("already registered") y
+        // no había forma de seguir ni de saber quién lo tenía.
+        const ocupante = await quienOcupaCorreo(formData.email_laboral);
+        if (ocupante) {
+          const quien = nombreDeOcupante(ocupante);
+
+          // Quien no es Administrador no puede quitarle el correo a nadie, pero
+          // tampoco tiene por qué perder lo que ya capturó.
+          if (!isAdmin) {
+            const res = await dejarSolicitudAlta({
+              datos: requestBody.userData as unknown as Record<string, unknown>,
+              emailSolicitado: formData.email_laboral,
+              solicitadoPor: currentUser?.id ?? '',
+              ocupadoPor: ocupante.motivo === 'huerfano_auth' ? null : ocupante.user_id,
+            });
+            setLoading(false);
+            if (!res.success) {
+              setError(`Ese correo ya está ocupado y no se pudo dejar la solicitud: ${res.error ?? ''}`);
+              return;
+            }
+            alert(
+              `El correo ${formData.email_laboral} ya está ocupado por ${quien}.
+
+` +
+              'El usuario NO se creó todavía: la solicitud quedó guardada con todos los datos que capturaste ' +
+              'y un Administrador tiene que autorizarla.'
+            );
+            onSave();
+            onClose();
+            return;
+          }
+
+          const aviso = ocupante.visible
+            ? `⚠ El correo ${formData.email_laboral} lo usa ${quien} (${ocupante.rol ?? 'sin rol'}), que SÍ aparece en MOVI.
+
+` +
+              'Si continúas, esa persona se queda SIN PODER INICIAR SESIÓN hasta que se le ponga otro correo.'
+            : `El correo ${formData.email_laboral} lo tiene ${quien}, que ya no aparece en MOVI.
+
+` +
+              'Liberarlo no afecta a nadie: su historial se conserva igual.';
+
+          if (!confirm(`${aviso}
+
+¿Liberarlo y usarlo para este usuario?`)) {
+            setLoading(false);
+            return;
+          }
+
+          const liberado = await liberarCorreoOcupado(formData.email_laboral, ocupante.visible);
+          if (!liberado.success) {
+            setError(liberado.error ?? 'No se pudo liberar el correo');
+            setLoading(false);
+            return;
+          }
+        }
 
         const response = await fetch(
           `${supabaseUrl}/functions/v1/create-user`,
