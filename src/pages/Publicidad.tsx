@@ -8,6 +8,7 @@ import { PlanMKTPremiumBlock } from '../components/PlanMKTPremiumBlock';
 import { DesignDetailModal } from '../components/publicidad/DesignDetailModal';
 import { PlecaDescargable } from '../components/publicidad/PlecaDescargable';
 import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
+import { tieneAccesoEquipoMkt } from '../lib/mktUtils';
 import { trackPublicityCreated } from '../lib/activityLogger';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -157,7 +158,17 @@ export default function Publicidad({ initialTab = 'biblioteca' }: PublicidadProp
   const [showPlanBlock, setShowPlanBlock] = useState(false);
   const [selectedDiseno, setSelectedDiseno] = useState<Diseno | null>(null);
 
-  const isAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.PUBLICIDAD);
+  // `tienePermisoAdminEnModulo` solo mira el rol, y nunca supo de
+  // `mkt_equipos_acceso`: por eso el equipo de Mercadotecnia no veía "Nueva
+  // Plantilla" aunque el panel de equipos prometiera que administran "igual que
+  // un Administrador". Mismo criterio que usa StoreAdmin con su propio equipo.
+  const [esEquipoMkt, setEsEquipoMkt] = useState(false);
+  useEffect(() => {
+    if (!usuario?.id) { setEsEquipoMkt(false); return; }
+    tieneAccesoEquipoMkt(usuario.id).then(setEsEquipoMkt);
+  }, [usuario?.id]);
+
+  const isAdmin = tienePermisoAdminEnModulo(usuario, MODULOS.PUBLICIDAD) || esEquipoMkt;
   const isAgente = usuario?.rol === 'Agente';
   const hasPlanPremium = usuario?.plan_mkt_premium || false;
 
