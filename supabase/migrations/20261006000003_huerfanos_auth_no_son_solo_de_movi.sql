@@ -98,7 +98,10 @@ COMMENT ON VIEW public.vista_correos_bloqueados IS
   'Correos que ocupa alguien invisible en MOVI. `motivo = sin_ficha_movi` NO significa que sobre: puede ser un cliente de SeguWallet o de Chava. Mirar la columna `referencias` antes de tocar nada.';
 
 -- ── La purga se niega a borrar cualquier cosa de la que cuelgue algo ────────
-CREATE OR REPLACE FUNCTION public.purgar_huerfanos_auth(p_minutos_minimos integer DEFAULT 60)
+-- Igual que la vista: ahora devuelve una columna más (`resultado`), y Postgres
+-- no deja cambiar el tipo de retorno de una función que ya existe.
+DROP FUNCTION IF EXISTS public.purgar_huerfanos_auth(integer);
+CREATE FUNCTION public.purgar_huerfanos_auth(p_minutos_minimos integer DEFAULT 60)
 RETURNS TABLE (id uuid, correo text, creada timestamptz, resultado text)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
