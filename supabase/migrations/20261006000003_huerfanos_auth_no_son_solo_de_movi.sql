@@ -69,7 +69,10 @@ COMMENT ON FUNCTION public.referencias_de_cuenta IS
   'De qué cuelga una cuenta de auth.users dentro de public. Si devuelve algo, esa cuenta NO se puede borrar sin llevarse datos por delante.';
 
 -- ── La vista deja de llamar "huérfano" a un cliente de otra app ─────────────
-CREATE OR REPLACE VIEW public.vista_correos_bloqueados AS
+-- Se recrea entera: `CREATE OR REPLACE VIEW` solo deja AGREGAR columnas al
+-- final, y aquí `referencias` entra en medio.
+DROP VIEW IF EXISTS public.vista_correos_bloqueados;
+CREATE VIEW public.vista_correos_bloqueados AS
 SELECT
   au.id,
   au.email AS correo_retenido,
