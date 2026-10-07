@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { 
   ShieldCheck, 
@@ -6,41 +6,37 @@ import {
   X, 
   Phone, 
   MessageSquare, 
-  HeartHandshake, 
   Sparkles, 
   Clock, 
   Hospital, 
   Stethoscope, 
-  Smartphone, 
-  Users, 
-  Download, 
-  ExternalLink, 
-  ChevronDown, 
-  ChevronUp, 
   ArrowRight, 
-  ShieldAlert, 
   Building2, 
-  Award, 
   FileText, 
-  HelpCircle, 
-  Calendar,
-  AlertTriangle,
-  Play,
-  Send,
-  Loader2,
-  CheckCircle2
+  Send, 
+  Loader2, 
+  CheckCircle2,
+  Tag
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
-// ─── Design Tokens & Consts ──────────────────────────────────────────────────
-const COLOR_PRIMARY = '#003896';
-const COLOR_PRIMARY_SOFT = '#F4F9FF';
-const COLOR_PRIMARY_TINT = '#EFF6FF';
-const COLOR_LIME = '#9CD41C';
-const COLOR_WHATSAPP = '#25D366';
+export interface LandingCustomization {
+  heroTitle?: string;
+  heroSubtitle?: string;
+  badgeText?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  ctaText?: string;
+  whatsappNumber?: string;
+  promoBanner?: string;
+  discountAnnual?: number;
+  featuredPlan?: 'uno' | 'dos' | 'plus';
+  plansData?: typeof PLANES_DATA;
+  customFaqs?: Array<{ q: string; a: string }>;
+}
 
 // ─── FAQ Data with Rich SEO Content ──────────────────────────────────────────
-const FAQS = [
+const DEFAULT_FAQS = [
   {
     q: '¿Qué es exactamente Mutuus y cómo funciona la membresía de salud?',
     a: 'Mutuus es un esquema integral de salud privada que combina una membresía médica digital (telemedicina 24/7 ilimitada, consultas de especialidad a precio preferencial y red de asistencias) con el respaldo de una póliza de seguro de Gastos Médicos Mayores con $0 deducible y $0 coaseguro en su red hospitalaria autorizada.'
@@ -218,13 +214,12 @@ const HOSPITALES = [
   { nombre: 'Hospital San Javier', tipo: 'Alta Especialidad', ciudad: 'Guadalajara y Vallarta' }
 ];
 
-export default function MutuusLanding() {
+export default function MutuusLanding({ customization }: { customization?: LandingCustomization }) {
   const [periodicidad, setPeriodicidad] = useState<'anual' | 'mensual'>('anual');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [tabCobertura, setTabCobertura] = useState<'cubierto' | 'no_cubierto'>('cubierto');
   const [showModalLead, setShowModalLead] = useState(false);
   const [selectedPlanForModal, setSelectedPlanForModal] = useState<string>('Plan DOS');
-  const [videoLoaded, setVideoLoaded] = useState(false);
 
   // Form State
   const [leadForm, setLeadForm] = useState({
@@ -238,7 +233,22 @@ export default function MutuusLanding() {
   const [submittingLead, setSubmittingLead] = useState(false);
   const [leadSuccess, setLeadSuccess] = useState(false);
 
-  const plans = PLANES_DATA[periodicidad];
+  // Dynamic overrides
+  const heroTitle = customization?.heroTitle || 'Membresía de salud y gastos médicos con cero deducible';
+  const heroSubtitle = customization?.heroSubtitle || 'Accede a la mejor atención médica privada, telemedicina 24/7 ilimitada y respaldo hospitalario nacional sin pagar deducibles sorpresa al momento de una emergencia.';
+  const badgeText = customization?.badgeText || 'Cero Deducible · Cero Coaseguro en Red';
+  const primaryColor = customization?.primaryColor || '#003896';
+  const accentColor = customization?.accentColor || '#9CD41C';
+  const ctaText = customization?.ctaText || 'Ver Planes y Precios';
+  const whatsappNumber = customization?.whatsappNumber || '525540001234';
+  const promoBanner = customization?.promoBanner;
+  
+  const allFaqs = customization?.customFaqs && customization.customFaqs.length > 0 
+    ? [...customization.customFaqs, ...DEFAULT_FAQS] 
+    : DEFAULT_FAQS;
+
+  const rawPlans = customization?.plansData || PLANES_DATA;
+  const plans = rawPlans[periodicidad];
 
   const handleOpenLeadModal = (planNombre: string) => {
     setSelectedPlanForModal(planNombre);
@@ -263,12 +273,11 @@ export default function MutuusLanding() {
       ]);
       setLeadSuccess(true);
 
-      // Redirigir opcional a WhatsApp con mensaje prearmado
       const msg = encodeURIComponent(
         `Hola, me interesa información y cotizar el ${leadForm.plan} de Mutuus. Mi nombre es ${leadForm.nombre}, tengo ${leadForm.edad} años y vivo en ${leadForm.ciudad || 'México'}.`
       );
       setTimeout(() => {
-        window.open(`https://wa.me/525540001234?text=${msg}`, '_blank');
+        window.open(`https://wa.me/${whatsappNumber}?text=${msg}`, '_blank');
       }, 1200);
     } catch (err) {
       console.error('Error enviando lead:', err);
@@ -279,93 +288,50 @@ export default function MutuusLanding() {
 
   return (
     <>
-      {/* ─── SEO & GEO META TAGS (INTERNATIONAL STANDARDS) ──────────────────── */}
       <Helmet>
         <html lang="es-MX" />
-        <title>Mutuus Seguro de Gastos Médicos | Cero Deducible y Coaseguro</title>
+        <title>{heroTitle.length > 60 ? heroTitle.slice(0, 57) + '...' : heroTitle} | Mutuus</title>
         <meta 
           name="description" 
-          content="Membresía de salud y seguro de gastos médicos Mutuus con atención hospitalaria directa, telemedicina 24/7 y 0% de deducible en México. Cotiza en línea con un promotor autorizado." 
+          content={heroSubtitle} 
         />
         <meta 
           name="keywords" 
           content="Mutuus seguro gastos medicos, seguro sin deducible, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguros metlife mutuus, promotor autorizado mutuus, hospital pago directo" 
         />
         <link rel="canonical" href="https://landings.movi.digital/mutuus" />
-
-        {/* Metatags Geográficos (GEO Optimization) */}
         <meta name="geo.region" content="MX" />
         <meta name="geo.placename" content="México" />
         <meta name="geo.position" content="19.432608;-99.133208" />
         <meta name="ICBM" content="19.432608, -99.133208" />
-
-        {/* Open Graph / Social */}
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="es_MX" />
         <meta property="og:site_name" content="Movi Digital · Promotor Autorizado Mutuus" />
-        <meta property="og:title" content="Mutuus Seguro de Gastos Médicos | Sin Deducible ni Coaseguro" />
-        <meta property="og:description" content="Atención médica privada de excelencia, telemedicina 24/7 y cero desembolso de deducible en la red de hospitales autorizados." />
+        <meta property="og:title" content={heroTitle} />
+        <meta property="og:description" content={heroSubtitle} />
         <meta property="og:url" content="https://landings.movi.digital/mutuus" />
-        <meta property="og:image" content="https://movi.digital/wp-content/uploads/2026/02/og-mutuus-banner.jpg" />
-
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Mutuus Salud | Cero Deducible y Cero Coaseguro" />
-        <meta name="twitter:description" content="Planes de salud y gastos médicos mayores y menores con respaldo hospitalario nacional." />
-
-        {/* Schema.org Structured Data (JSON-LD) */}
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@graph": [
-              {
-                "@type": "InsuranceAgency",
-                "@id": "https://landings.movi.digital/mutuus/#agency",
-                "name": "Promotoría Autorizada Mutuus - Movi Digital",
-                "url": "https://landings.movi.digital/mutuus",
-                "logo": "https://movi.digital/wp-content/uploads/elementor/thumbs/moviRecurso-10-rgqg5n2oyvobfmstl7md0o8mr5w7vjv6rsxrkauuio.png",
-                "description": "Asesoría y contratación autorizada de membresías de salud y seguros de gastos médicos Mutuus en México.",
-                "areaServed": {
-                  "@type": "Country",
-                  "name": "Mexico"
-                },
-                "telephone": "+52-55-4000-1234",
-                "priceRange": "$$"
-              },
-              {
-                "@type": "Product",
-                "name": "Membresía de Salud y Gastos Médicos Mutuus",
-                "description": "Esquema integral de protección médica privada con $0 de deducible y coaseguro en red de pago directo.",
-                "brand": {
-                  "@type": "Brand",
-                  "name": "Mutuus"
-                },
-                "offers": {
-                  "@type": "AggregateOffer",
-                  "priceCurrency": "MXN",
-                  "lowPrice": "1299.00",
-                  "highPrice": "26990.00",
-                  "offerCount": "3"
-                }
-              },
-              {
-                "@type": "FAQPage",
-                "mainEntity": FAQS.map(faq => ({
-                  "@type": "Question",
-                  "name": faq.q,
-                  "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": faq.a
-                  }
-                }))
-              }
-            ]
-          })}
-        </script>
       </Helmet>
 
       {/* ─── CONTENEDOR PRINCIPAL ────────────────────────────────────────── */}
-      <div className="min-h-screen bg-white text-[#2B2A2A] font-sans antialiased selection:bg-[#003896] selection:text-white" style={{ fontFamily: 'Montserrat, system-ui, -apple-system, sans-serif' }}>
+      <div 
+        className="min-h-screen bg-white text-[#2B2A2A] font-sans antialiased selection:text-white"
+        style={{ 
+          fontFamily: 'Montserrat, system-ui, -apple-system, sans-serif',
+          '--primary-brand': primaryColor,
+          '--accent-brand': accentColor
+        } as React.CSSProperties}
+      >
+
+        {/* ─── PROMO BANNER DINÁMICO ────────────────────────────────────── */}
+        {promoBanner && (
+          <div 
+            className="text-white py-2 px-4 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-inner"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <Tag className="w-3.5 h-3.5" style={{ color: accentColor }} />
+            <span>{promoBanner}</span>
+          </div>
+        )}
 
         {/* ─── 1. HEADER STICKY (PROMOTOR AUTORIZADO) ────────────────────── */}
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
@@ -373,11 +339,17 @@ export default function MutuusLanding() {
             {/* Logos & Leyenda Promotor */}
             <div className="flex items-center gap-3 sm:gap-4">
               <a href="#inicio" className="flex items-center gap-2 group">
-                <div className="w-10 h-10 rounded-xl bg-[#003896] flex items-center justify-center text-white font-black text-xl tracking-tighter shadow-md">
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xl tracking-tighter shadow-md"
+                  style={{ backgroundColor: primaryColor }}
+                >
                   M
                 </div>
                 <div>
-                  <span className="font-extrabold text-xl text-[#003896] tracking-tight block leading-none">
+                  <span 
+                    className="font-extrabold text-xl tracking-tight block leading-none"
+                    style={{ color: primaryColor }}
+                  >
                     mutuus
                   </span>
                   <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mt-0.5">
@@ -388,33 +360,37 @@ export default function MutuusLanding() {
 
               <div className="h-7 w-[1px] bg-slate-200 hidden sm:block" />
 
-              <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-[11px] font-bold text-[#003896]">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#003896]" />
+              <div 
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border"
+                style={{ backgroundColor: '#EFF6FF', borderColor: '#CBD5E1', color: primaryColor }}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" style={{ color: primaryColor }} />
                 <span>Promotor Autorizado</span>
               </div>
             </div>
 
             {/* Menú de Navegación Desktop */}
             <nav className="hidden lg:flex items-center gap-7 text-sm font-semibold text-slate-700">
-              <a href="#porque-mutuus" className="hover:text-[#003896] transition-colors">¿Por qué Mutuus?</a>
-              <a href="#planes" className="hover:text-[#003896] transition-colors">Planes y Precios</a>
-              <a href="#red-hospitalaria" className="hover:text-[#003896] transition-colors">Red de Hospitales</a>
-              <a href="#coberturas" className="hover:text-[#003896] transition-colors">Coberturas</a>
-              <a href="#faq" className="hover:text-[#003896] transition-colors">Preguntas Frecuentes</a>
+              <a href="#porque-mutuus" className="hover:opacity-80 transition-opacity">¿Por qué Mutuus?</a>
+              <a href="#planes" className="hover:opacity-80 transition-opacity">Planes y Precios</a>
+              <a href="#red-hospitalaria" className="hover:opacity-80 transition-opacity">Red de Hospitales</a>
+              <a href="#coberturas" className="hover:opacity-80 transition-opacity">Coberturas</a>
+              <a href="#faq" className="hover:opacity-80 transition-opacity">Preguntas Frecuentes</a>
             </nav>
 
             {/* Acciones */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => handleOpenLeadModal('Plan DOS')}
-                className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs md:text-sm font-bold text-white bg-[#003896] hover:bg-[#002b75] transition-all shadow-md shadow-[#003896]/20 active:scale-95 cursor-pointer"
+                className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs md:text-sm font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer"
+                style={{ backgroundColor: primaryColor }}
               >
                 <span>Cotizar Plan</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
               <a
-                href="https://wa.me/525540001234?text=Hola,%20deseo%20asesoria%20sobre%20los%20planes%20Mutuus."
+                href={`https://wa.me/${whatsappNumber}?text=Hola,%20deseo%20asesoria%20sobre%20los%20planes%20Mutuus.`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold text-slate-900 bg-[#25D366] hover:bg-[#20ba5a] transition-all shadow-sm active:scale-95"
@@ -428,8 +404,6 @@ export default function MutuusLanding() {
 
         {/* ─── 2. HERO SECTION CON OVERLAY Y FOTO ─────────────────────────── */}
         <section id="inicio" className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden bg-gradient-to-b from-[#F4F9FF] via-white to-white">
-          <div className="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none bg-[radial-gradient(#003896_1px,transparent_1px)] [background-size:16px_16px]" />
-
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               
@@ -437,19 +411,30 @@ export default function MutuusLanding() {
               <div className="lg:col-span-7 space-y-6">
                 
                 {/* Badge de Seguridad */}
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-xs font-bold text-[#003896]">
-                  <Sparkles className="w-4 h-4 text-[#003896]" />
-                  <span>Cero Deducible · Cero Coaseguro en Red</span>
+                <div 
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold border"
+                  style={{ backgroundColor: '#EFF6FF', borderColor: '#CBD5E1', color: primaryColor }}
+                >
+                  <Sparkles className="w-4 h-4" style={{ color: primaryColor }} />
+                  <span>{badgeText}</span>
                 </div>
 
                 {/* H1 Principal con SEO Keyword */}
                 <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#2B2A2A] tracking-tight leading-[1.15]">
-                  Membresía de salud y gastos médicos con <span className="text-[#003896]">cero deducible</span>
+                  {heroTitle.includes('cero deducible') ? (
+                    <>
+                      {heroTitle.split('cero deducible')[0]}
+                      <span style={{ color: primaryColor }}>cero deducible</span>
+                      {heroTitle.split('cero deducible')[1]}
+                    </>
+                  ) : (
+                    heroTitle
+                  )}
                 </h1>
 
                 {/* Subtítulo Descriptivo */}
                 <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal max-w-2xl">
-                  Accede a la mejor atención médica privada, telemedicina 24/7 ilimitada y respaldo hospitalario nacional sin pagar deducibles sorpresa al momento de una emergencia.
+                  {heroSubtitle}
                 </p>
 
                 {/* Nota Legal visible */}
@@ -461,15 +446,17 @@ export default function MutuusLanding() {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
                   <a
                     href="#planes"
-                    className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full text-base font-bold text-white bg-[#003896] hover:bg-[#002c77] transition-all shadow-lg shadow-[#003896]/25 hover:shadow-xl active:scale-98 text-center"
+                    className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full text-base font-bold text-white transition-all shadow-lg active:scale-98 text-center cursor-pointer"
+                    style={{ backgroundColor: primaryColor }}
                   >
-                    <span>Ver Planes y Precios</span>
+                    <span>{ctaText}</span>
                     <ArrowRight className="w-5 h-5" />
                   </a>
 
                   <button
                     onClick={() => handleOpenLeadModal('Plan DOS')}
-                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full text-base font-bold text-[#003896] bg-white border-2 border-[#003896] hover:bg-[#EFF6FF] transition-all text-center"
+                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full text-base font-bold bg-white border-2 hover:bg-[#EFF6FF] transition-all text-center cursor-pointer"
+                    style={{ borderColor: primaryColor, color: primaryColor }}
                   >
                     <Phone className="w-4 h-4" />
                     <span>Hablar con un Asesor</span>
@@ -496,13 +483,20 @@ export default function MutuusLanding() {
 
               {/* Tarjeta Visual Hero Derecha */}
               <div className="lg:col-span-5 relative">
-                <div className="relative rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-[#003896] to-[#00225d] text-white shadow-2xl border border-white/20 overflow-hidden">
-                  
-                  {/* Destellos de fondo */}
-                  <div className="absolute -top-24 -right-24 w-60 h-60 bg-[#9CD41C]/20 rounded-full blur-3xl pointer-events-none" />
+                <div 
+                  className="relative rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-white/20 overflow-hidden"
+                  style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, #001a4a 100%)` }}
+                >
+                  <div 
+                    className="absolute -top-24 -right-24 w-60 h-60 rounded-full blur-3xl pointer-events-none opacity-20"
+                    style={{ backgroundColor: accentColor }}
+                  />
                   
                   <div className="relative z-10 space-y-6">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-[#9CD41C] border border-white/10">
+                    <div 
+                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold border border-white/10"
+                      style={{ color: accentColor }}
+                    >
                       <Hospital className="w-4 h-4" />
                       <span>Pago Directo al Hospital</span>
                     </div>
@@ -511,7 +505,6 @@ export default function MutuusLanding() {
                       La diferencia de no pagar deducible:
                     </h3>
 
-                    {/* Comparativa rápida visual */}
                     <div className="space-y-3">
                       <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-between">
                         <div>
@@ -521,7 +514,10 @@ export default function MutuusLanding() {
                         <span className="text-rose-300 font-extrabold text-sm">$60,000+ MXN</span>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-[#9CD41C] text-slate-900 border border-[#9CD41C] flex items-center justify-between shadow-lg">
+                      <div 
+                        className="p-4 rounded-2xl text-slate-900 border flex items-center justify-between shadow-lg"
+                        style={{ backgroundColor: accentColor, borderColor: accentColor }}
+                      >
                         <div>
                           <p className="text-xs font-bold text-slate-800">Con Membresía Mutuus</p>
                           <p className="text-base font-black text-slate-900">Pago en Red de Convenio</p>
@@ -536,7 +532,8 @@ export default function MutuusLanding() {
 
                     <button
                       onClick={() => handleOpenLeadModal('Plan DOS')}
-                      className="w-full py-3.5 px-6 rounded-full font-extrabold text-sm text-slate-900 bg-[#9CD41C] hover:bg-[#8ec218] transition-all shadow-md active:scale-95 cursor-pointer text-center block"
+                      className="w-full py-3.5 px-6 rounded-full font-extrabold text-sm text-slate-900 transition-all shadow-md active:scale-95 cursor-pointer text-center block"
+                      style={{ backgroundColor: accentColor }}
                     >
                       Cotizar mi Membresía Ahora
                     </button>
@@ -552,30 +549,33 @@ export default function MutuusLanding() {
         <section className="py-12 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="p-6 sm:p-8 rounded-3xl bg-[#EFF6FF] border border-[#CBD5E1] flex flex-col md:flex-row items-center gap-6 shadow-xs">
-              <div className="w-16 h-16 rounded-2xl bg-[#003896] text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                <ShieldCheck className="w-9 h-9 text-[#9CD41C]" />
+              <div 
+                className="w-16 h-16 rounded-2xl text-white flex items-center justify-center flex-shrink-0 shadow-md"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <ShieldCheck className="w-9 h-9" style={{ color: accentColor }} />
               </div>
               <div className="space-y-2 text-center md:text-left">
-                <h2 className="text-xl sm:text-2xl font-extrabold text-[#003896]">
+                <h2 className="text-xl sm:text-2xl font-extrabold" style={{ color: primaryColor }}>
                   ¿Qué es Mutuus?
                 </h2>
                 <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-normal">
-                  Mutuus es el ecosistema de salud privada que elimina las barreras económicas tradicionales: combina consultas médicas ilimitadas por videollamada 24/7 y una póliza hospitalaria que te garantiza <strong className="text-[#003896] font-bold">cero deducible y cero coaseguro</strong> al atenderte en su red nacional de hospitales certificados.
+                  Mutuus es el ecosistema de salud privada que elimina las barreras económicas tradicionales: combina consultas médicas ilimitadas por videollamada 24/7 y una póliza hospitalaria que te garantiza <strong className="font-bold" style={{ color: primaryColor }}>cero deducible y cero coaseguro</strong> al atenderte en su red nacional de hospitales certificados.
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ─── 4. POR QUÉ MUTUUS (TABLA COMPARATIVA 3 VÍAS) ───────────────── */}
+        {/* ─── 4. POR QUÉ MUTUUS ──────────────────────────────────────────── */}
         <section id="porque-mutuus" className="py-20 bg-[#F4F9FF]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
-              <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
                 Comparativa de Impacto Financiero
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003896]">
+              <h2 className="text-3xl sm:text-4xl font-extrabold" style={{ color: primaryColor }}>
                 ¿Por qué elegir Mutuus frente a un seguro tradicional?
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
@@ -583,12 +583,17 @@ export default function MutuusLanding() {
               </p>
             </div>
 
-            {/* Grid 3 Columnas Comparativas */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
               
-              {/* Columna 1: Mutuus (Destacada) */}
-              <div className="rounded-3xl p-6 sm:p-8 bg-white border-2 border-[#003896] shadow-xl relative flex flex-col justify-between order-1 md:order-1 ring-4 ring-[#003896]/10">
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#003896] text-white text-xs font-extrabold uppercase tracking-wide">
+              {/* Columna 1: Mutuus */}
+              <div 
+                className="rounded-3xl p-6 sm:p-8 bg-white border-2 shadow-xl relative flex flex-col justify-between order-1 ring-4"
+                style={{ borderColor: primaryColor, ringColor: `${primaryColor}20` }}
+              >
+                <div 
+                  className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-extrabold uppercase tracking-wide"
+                  style={{ backgroundColor: primaryColor }}
+                >
                   Opción Mutuus
                 </div>
 
@@ -596,7 +601,7 @@ export default function MutuusLanding() {
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">🛡️</span>
                     <div>
-                      <h3 className="text-xl font-black text-[#003896]">Con Mutuus</h3>
+                      <h3 className="text-xl font-black" style={{ color: primaryColor }}>Con Mutuus</h3>
                       <p className="text-xs text-slate-500">En Red de Pago Directo</p>
                     </div>
                   </div>
@@ -618,8 +623,8 @@ export default function MutuusLanding() {
                 </div>
 
                 <div className="mt-8 pt-4 border-t-2 border-slate-100 bg-[#EFF6FF] -mx-6 -mb-6 p-6 rounded-b-3xl">
-                  <p className="text-xs font-bold text-[#003896] uppercase">Pago Final de tu Bolsillo:</p>
-                  <p className="text-3xl font-black text-[#003896] mt-1">$0 MXN</p>
+                  <p className="text-xs font-bold uppercase" style={{ color: primaryColor }}>Pago Final de tu Bolsillo:</p>
+                  <p className="text-3xl font-black mt-1" style={{ color: primaryColor }}>$0 MXN</p>
                   <p className="text-[11px] text-slate-500 mt-1">Condonación total cumpliendo protocolo en red.</p>
                 </div>
               </div>
@@ -702,17 +707,19 @@ export default function MutuusLanding() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               
-              {/* Imagen/Mockup App */}
               <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center">
-                <div className="relative w-full max-w-sm p-6 rounded-3xl bg-gradient-to-tr from-[#003896] to-[#001f52] text-white shadow-2xl">
+                <div 
+                  className="relative w-full max-w-sm p-6 rounded-3xl text-white shadow-2xl"
+                  style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, #001a4a 100%)` }}
+                >
                   <div className="flex items-center justify-between pb-4 border-b border-white/10">
-                    <span className="text-xs font-bold text-[#9CD41C]">App Oficial Mutuus</span>
+                    <span className="text-xs font-bold" style={{ color: accentColor }}>App Oficial Mutuus</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">En línea 24/7</span>
                   </div>
 
                   <div className="py-6 space-y-4">
                     <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center gap-3">
-                      <Stethoscope className="w-8 h-8 text-[#9CD41C]" />
+                      <Stethoscope className="w-8 h-8" style={{ color: accentColor }} />
                       <div>
                         <p className="text-xs text-white/70">Consulta en Vivo</p>
                         <p className="text-sm font-bold">Médico General y Pediatría</p>
@@ -728,7 +735,7 @@ export default function MutuusLanding() {
                     </div>
 
                     <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center gap-3">
-                      <ShieldCheck className="w-8 h-8 text-[#9CD41C]" />
+                      <ShieldCheck className="w-8 h-8" style={{ color: accentColor }} />
                       <div>
                         <p className="text-xs text-white/70">Credencial Digital</p>
                         <p className="text-sm font-bold">Acceso inmediato en admisión</p>
@@ -750,13 +757,12 @@ export default function MutuusLanding() {
                 </div>
               </div>
 
-              {/* Contenido Descriptivo */}
               <div className="lg:col-span-7 order-1 lg:order-2 space-y-6">
-                <span className="px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
+                <span className="px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
                   Salud Digital en tu Bolsillo
                 </span>
 
-                <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003896]">
+                <h2 className="text-3xl sm:text-4xl font-extrabold" style={{ color: primaryColor }}>
                   Tu médico de cabecera disponible las 24 horas del día
                 </h2>
 
@@ -786,7 +792,8 @@ export default function MutuusLanding() {
                 <div className="pt-4 flex flex-wrap gap-4">
                   <button
                     onClick={() => handleOpenLeadModal('Plan DOS')}
-                    className="px-6 py-3 rounded-full bg-[#003896] text-white font-bold text-xs sm:text-sm hover:bg-[#002b75] transition-all shadow-md cursor-pointer"
+                    className="px-6 py-3 rounded-full text-white font-bold text-xs sm:text-sm hover:opacity-90 transition-all shadow-md cursor-pointer"
+                    style={{ backgroundColor: primaryColor }}
                   >
                     Contratar y Activar App
                   </button>
@@ -802,26 +809,26 @@ export default function MutuusLanding() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center max-w-3xl mx-auto space-y-4 mb-12">
-              <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
                 Tarifas y Coberturas
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003896]">
+              <h2 className="text-3xl sm:text-4xl font-extrabold" style={{ color: primaryColor }}>
                 Elige el plan diseñado para tu estilo de vida
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
                 Precios claros, sin costos ocultos ni letras pequeñas. Respaldo asegurador oficial en moneda nacional (MXN).
               </p>
 
-              {/* Selector Switch Mensual / Anual */}
               <div className="pt-4 flex items-center justify-center">
                 <div className="bg-white p-1 rounded-full border border-slate-200 shadow-xs inline-flex">
                   <button
                     onClick={() => setPeriodicidad('anual')}
                     className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       periodicidad === 'anual'
-                        ? 'bg-[#003896] text-white shadow-xs'
+                        ? 'text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
+                    style={periodicidad === 'anual' ? { backgroundColor: primaryColor } : {}}
                   >
                     Pago Anual (Ahorro 10%)
                   </button>
@@ -829,9 +836,10 @@ export default function MutuusLanding() {
                     onClick={() => setPeriodicidad('mensual')}
                     className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       periodicidad === 'mensual'
-                        ? 'bg-[#003896] text-white shadow-xs'
+                        ? 'text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
+                    style={periodicidad === 'mensual' ? { backgroundColor: primaryColor } : {}}
                   >
                     Pago Mensual Flexible
                   </button>
@@ -839,19 +847,22 @@ export default function MutuusLanding() {
               </div>
             </div>
 
-            {/* Grid de Tarjetas de Planes */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
               {plans.map((p) => (
                 <div
                   key={p.id}
                   className={`rounded-3xl p-6 sm:p-8 bg-white transition-all duration-300 flex flex-col justify-between relative ${
                     p.popular
-                      ? 'border-2 border-[#003896] shadow-2xl scale-102 lg:-translate-y-2'
+                      ? 'border-2 shadow-2xl scale-102 lg:-translate-y-2'
                       : 'border border-slate-200 shadow-md hover:shadow-xl'
                   }`}
+                  style={p.popular ? { borderColor: primaryColor } : {}}
                 >
                   {p.popular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#003896] text-white text-xs font-extrabold uppercase tracking-wide">
+                    <div 
+                      className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-extrabold uppercase tracking-wide"
+                      style={{ backgroundColor: primaryColor }}
+                    >
                       {p.badge}
                     </div>
                   )}
@@ -867,7 +878,7 @@ export default function MutuusLanding() {
                     
                     <div className="mt-4 pb-5 border-b border-slate-100">
                       <p className="text-xs text-slate-500 font-medium">Suma Asegurada por Evento:</p>
-                      <p className="text-xl font-extrabold text-[#003896]">{p.sumaAsegurada}</p>
+                      <p className="text-xl font-extrabold" style={{ color: primaryColor }}>{p.sumaAsegurada}</p>
                       
                       <div className="mt-3 flex items-baseline gap-1">
                         <span className="text-3xl sm:text-4xl font-black text-slate-900">{p.pagoInicial}</span>
@@ -881,7 +892,6 @@ export default function MutuusLanding() {
                       )}
                     </div>
 
-                    {/* Lista de Beneficios */}
                     <ul className="mt-6 space-y-3 text-xs sm:text-sm text-slate-700">
                       {p.caracteristicas.map((c, idx) => (
                         <li key={idx} className="flex items-start gap-2.5">
@@ -895,17 +905,14 @@ export default function MutuusLanding() {
                   <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
                     <button
                       onClick={() => handleOpenLeadModal(p.nombre)}
-                      className={`w-full py-3.5 px-6 rounded-full font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 cursor-pointer text-center block ${
-                        p.popular
-                          ? 'bg-[#003896] text-white hover:bg-[#002b75]'
-                          : 'bg-slate-900 text-white hover:bg-slate-800'
-                      }`}
+                      className="w-full py-3.5 px-6 rounded-full font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 cursor-pointer text-center block text-white"
+                      style={{ backgroundColor: p.popular ? primaryColor : '#0f172a' }}
                     >
                       Solicitar {p.nombre}
                     </button>
                     
                     <a
-                      href={`https://wa.me/525540001234?text=Hola,%20deseo%20cotizar%20el%20${encodeURIComponent(p.nombre)}%20de%20Mutuus.`}
+                      href={`https://wa.me/${whatsappNumber}?text=Hola,%20deseo%20cotizar%20el%20${encodeURIComponent(p.nombre)}%20de%20Mutuus.`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-2.5 px-4 rounded-full font-semibold text-xs text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-all text-center flex items-center justify-center gap-1.5"
@@ -919,7 +926,6 @@ export default function MutuusLanding() {
               ))}
             </div>
 
-            {/* Aviso de vigencia de tarifas */}
             <p className="text-center text-xs text-slate-500 mt-10">
               * Tarifas vigentes al 2026. Precios en Moneda Nacional con IVA incluido. Consulta condicionado general de póliza para sumas aseguradas por parentesco.
             </p>
@@ -932,10 +938,10 @@ export default function MutuusLanding() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
-              <span className="px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
                 Infraestructura Hospitalaria
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003896]">
+              <h2 className="text-3xl sm:text-4xl font-extrabold" style={{ color: primaryColor }}>
                 Red Médica Nacional de Pago Directo
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
@@ -943,20 +949,22 @@ export default function MutuusLanding() {
               </p>
             </div>
 
-            {/* Grid de Hospitales Principales */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {HOSPITALES.map((h, i) => (
                 <div
                   key={i}
-                  className="p-6 rounded-2xl bg-[#F4F9FF] border border-slate-200/80 hover:border-[#003896] hover:shadow-lg transition-all group"
+                  className="p-6 rounded-2xl bg-[#F4F9FF] border border-slate-200/80 hover:shadow-lg transition-all group"
                 >
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-white text-[#003896] border border-slate-200 flex items-center justify-center font-bold text-lg group-hover:bg-[#003896] group-hover:text-white transition-colors">
+                    <div 
+                      className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-lg group-hover:text-white transition-colors"
+                      style={{ color: primaryColor }}
+                    >
                       <Hospital className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-900 text-base">{h.nombre}</h4>
-                      <span className="text-[11px] font-semibold text-[#003896] uppercase">{h.tipo}</span>
+                      <span className="text-[11px] font-semibold uppercase" style={{ color: primaryColor }}>{h.tipo}</span>
                     </div>
                   </div>
                   <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-2">
@@ -973,7 +981,8 @@ export default function MutuusLanding() {
               </p>
               <button
                 onClick={() => handleOpenLeadModal('Consulta Red Hospitalaria')}
-                className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#003896] hover:underline cursor-pointer"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold hover:underline cursor-pointer"
+                style={{ color: primaryColor }}
               >
                 <span>Consultar directorio médico completo</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -983,13 +992,16 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 8. LÍNEA DE ATENCIÓN Y URGENCIAS (FRANJA AZUL #003896) ──────── */}
-        <section className="py-16 bg-[#003896] text-white">
+        {/* ─── 8. LÍNEA DE ATENCIÓN Y URGENCIAS ───────────────────────────── */}
+        <section className="py-16 text-white" style={{ backgroundColor: primaryColor }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
               
               <div className="space-y-3 text-center lg:text-left">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-[#9CD41C] border border-white/10 uppercase tracking-wider">
+                <span 
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-xs font-bold border border-white/10 uppercase tracking-wider"
+                  style={{ color: accentColor }}
+                >
                   <Clock className="w-3.5 h-3.5" /> Atención Continua 24/7/365
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
@@ -1002,15 +1014,16 @@ export default function MutuusLanding() {
 
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <a
-                  href="tel:5540001234"
-                  className="px-8 py-4 rounded-full font-extrabold text-sm text-slate-900 bg-[#9CD41C] hover:bg-[#8ec218] transition-all shadow-lg active:scale-95 text-center flex items-center gap-2"
+                  href={`tel:${whatsappNumber}`}
+                  className="px-8 py-4 rounded-full font-extrabold text-sm text-slate-900 transition-all shadow-lg active:scale-95 text-center flex items-center gap-2"
+                  style={{ backgroundColor: accentColor }}
                 >
                   <Phone className="w-4 h-4 fill-slate-900" />
                   <span>Llamar a Urgencias</span>
                 </a>
                 
                 <a
-                  href="https://wa.me/525540001234?text=Hola,%20requiero%20atencion%20sobre%20mi%20membresia%20Mutuus."
+                  href={`https://wa.me/${whatsappNumber}?text=Hola,%20requiero%20atencion%20sobre%20mi%20membresia%20Mutuus.`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-6 py-4 rounded-full font-bold text-sm text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-all text-center flex items-center gap-2"
@@ -1029,17 +1042,16 @@ export default function MutuusLanding() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center max-w-2xl mx-auto space-y-3 mb-12">
-              <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
                 Transparencia Total
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003896]">
+              <h2 className="text-3xl sm:text-4xl font-extrabold" style={{ color: primaryColor }}>
                 Claridad en lo que cubre tu membresía
               </h2>
               <p className="text-slate-600 text-sm">
                 Sin letras chiquitas. Conoce con total exactitud el alcance de tu protección médica.
               </p>
 
-              {/* Tabs */}
               <div className="pt-4 flex justify-center">
                 <div className="bg-white p-1 rounded-full border border-slate-200 shadow-xs inline-flex">
                   <button
@@ -1066,7 +1078,6 @@ export default function MutuusLanding() {
               </div>
             </div>
 
-            {/* Contenido de Tabs */}
             {tabCobertura === 'cubierto' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
@@ -1120,44 +1131,42 @@ export default function MutuusLanding() {
         <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
-              
               <div className="p-6 rounded-2xl bg-[#F4F9FF] border border-slate-200/70">
-                <p className="text-3xl sm:text-4xl font-black text-[#003896]">+50,000</p>
+                <p className="text-3xl sm:text-4xl font-black" style={{ color: primaryColor }}>+50,000</p>
                 <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-1">Miembros Protegidos</p>
                 <p className="text-[11px] text-slate-500 mt-0.5">En toda la República Mexicana</p>
               </div>
 
               <div className="p-6 rounded-2xl bg-[#F4F9FF] border border-slate-200/70">
-                <p className="text-3xl sm:text-4xl font-black text-[#003896]">100%</p>
+                <p className="text-3xl sm:text-4xl font-black" style={{ color: primaryColor }}>100%</p>
                 <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-1">Deducible $0 en Red</p>
                 <p className="text-[11px] text-slate-500 mt-0.5">En eventos autorizados</p>
               </div>
 
               <div className="p-6 rounded-2xl bg-[#F4F9FF] border border-slate-200/70">
-                <p className="text-3xl sm:text-4xl font-black text-[#003896]">+115</p>
+                <p className="text-3xl sm:text-4xl font-black" style={{ color: primaryColor }}>+115</p>
                 <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-1">Hospitales Directos</p>
                 <p className="text-[11px] text-slate-500 mt-0.5">Y +548 en convenio nacional</p>
               </div>
 
               <div className="p-6 rounded-2xl bg-[#F4F9FF] border border-slate-200/70">
-                <p className="text-3xl sm:text-4xl font-black text-[#003896]">98.4%</p>
+                <p className="text-3xl sm:text-4xl font-black" style={{ color: primaryColor }}>98.4%</p>
                 <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-1">Satisfacción Médica</p>
                 <p className="text-[11px] text-slate-500 mt-0.5">Opiniones verificadas</p>
               </div>
-
             </div>
           </div>
         </section>
 
-        {/* ─── 11. FAQ ACCORDION (SEO OPTIMIZADO CON SCHEMA) ──────────────── */}
+        {/* ─── 11. FAQ ACCORDION ──────────────────────────────────────────── */}
         <section id="faq" className="py-20 bg-[#F4F9FF]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center space-y-3 mb-12">
-              <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
                 Resolvemos tus Dudas
               </span>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003896]">
+              <h2 className="text-3xl sm:text-4xl font-extrabold" style={{ color: primaryColor }}>
                 Preguntas Frecuentes
               </h2>
               <p className="text-slate-600 text-sm">
@@ -1166,7 +1175,7 @@ export default function MutuusLanding() {
             </div>
 
             <div className="space-y-3">
-              {FAQS.map((faq, idx) => {
+              {allFaqs.map((faq, idx) => {
                 const isOpen = openFaq === idx;
                 return (
                   <div
@@ -1175,11 +1184,11 @@ export default function MutuusLanding() {
                   >
                     <button
                       onClick={() => setOpenFaq(isOpen ? null : idx)}
-                      className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-slate-900 text-sm sm:text-base hover:text-[#003896] transition-colors cursor-pointer"
+                      className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-slate-900 text-sm sm:text-base hover:opacity-80 transition-opacity cursor-pointer"
                     >
                       <span>{faq.q}</span>
                       {isOpen ? (
-                        <ChevronUp className="w-5 h-5 text-[#003896] flex-shrink-0" />
+                        <ChevronUp className="w-5 h-5 flex-shrink-0" style={{ color: primaryColor }} />
                       ) : (
                         <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />
                       )}
@@ -1198,13 +1207,16 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 12. CTA FINAL CON FORMULARIO DE COTIZACIÓN ─────────────────── */}
-        <section id="contacto" className="py-20 bg-[#003896] text-white">
+        {/* ─── 12. CTA FINAL CON FORMULARIO ──────────────────────────────── */}
+        <section id="contacto" className="py-20 text-white" style={{ backgroundColor: primaryColor }}>
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 sm:p-12 border border-white/20 shadow-2xl">
               
               <div className="text-center max-w-2xl mx-auto space-y-3 mb-8">
-                <span className="px-3 py-1 rounded-full bg-white/20 text-xs font-bold text-[#9CD41C] uppercase tracking-wider">
+                <span 
+                  className="px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider"
+                  style={{ color: accentColor }}
+                >
                   Cotización Inmediata
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
@@ -1217,7 +1229,7 @@ export default function MutuusLanding() {
 
               {leadSuccess ? (
                 <div className="p-8 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 text-center space-y-3">
-                  <CheckCircle2 className="w-12 h-12 text-[#9CD41C] mx-auto" />
+                  <CheckCircle2 className="w-12 h-12 mx-auto" style={{ color: accentColor }} />
                   <h3 className="text-xl font-bold text-white">¡Solicitud recibida con éxito!</h3>
                   <p className="text-xs sm:text-sm text-white/90 max-w-md mx-auto">
                     Un asesor especializado te contactará en breve por WhatsApp o teléfono con el desglose de tu membresía.
@@ -1234,7 +1246,7 @@ export default function MutuusLanding() {
                         value={leadForm.nombre}
                         onChange={(e) => setLeadForm({ ...leadForm, nombre: e.target.value })}
                         placeholder="Ej. Carlos Mendoza"
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
+                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2"
                       />
                     </div>
                     <div>
@@ -1247,7 +1259,7 @@ export default function MutuusLanding() {
                         value={leadForm.edad}
                         onChange={(e) => setLeadForm({ ...leadForm, edad: e.target.value })}
                         placeholder="Ej. 34"
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
+                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2"
                       />
                     </div>
                   </div>
@@ -1261,7 +1273,7 @@ export default function MutuusLanding() {
                         value={leadForm.telefono}
                         onChange={(e) => setLeadForm({ ...leadForm, telefono: e.target.value })}
                         placeholder="10 dígitos (ej. 5512345678)"
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
+                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2"
                       />
                     </div>
                     <div>
@@ -1271,7 +1283,7 @@ export default function MutuusLanding() {
                         value={leadForm.ciudad}
                         onChange={(e) => setLeadForm({ ...leadForm, ciudad: e.target.value })}
                         placeholder="Ej. CDMX / Guadalajara"
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
+                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2"
                       />
                     </div>
                   </div>
@@ -1281,7 +1293,7 @@ export default function MutuusLanding() {
                     <select
                       value={leadForm.plan}
                       onChange={(e) => setLeadForm({ ...leadForm, plan: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-sm focus:outline-none focus:ring-2"
                     >
                       <option value="Plan UNO" className="text-slate-900">Plan UNO ($1,000,000 MXN Suma Asegurada)</option>
                       <option value="Plan DOS" className="text-slate-900">Plan DOS ($3,000,000 MXN Suma Asegurada · Más Elegido)</option>
@@ -1292,7 +1304,8 @@ export default function MutuusLanding() {
                   <button
                     type="submit"
                     disabled={submittingLead}
-                    className="w-full py-4 px-6 rounded-full font-black text-sm text-slate-900 bg-[#9CD41C] hover:bg-[#8ec218] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full py-4 px-6 rounded-full font-black text-sm text-slate-900 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    style={{ backgroundColor: accentColor }}
                   >
                     {submittingLead ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -1312,13 +1325,10 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 13. FOOTER INSTITUCIONAL Y LEGAL ───────────────────────────── */}
-        <footer className="bg-[#00225d] text-white/80 text-xs py-14 border-t border-white/10">
+        {/* ─── 13. FOOTER ─────────────────────────────────────────────────── */}
+        <footer className="bg-[#001738] text-white/80 text-xs py-14 border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-            
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              
-              {/* Columna 1: Marca y Promotor */}
               <div className="space-y-3">
                 <span className="font-extrabold text-xl text-white tracking-tight block">
                   mutuus
@@ -1327,13 +1337,15 @@ export default function MutuusLanding() {
                   Promotoría Autorizada de Mutuus. Distribución y asesoría certificada de membresías de salud y pólizas de gastos médicos.
                 </p>
                 <div className="pt-1">
-                  <span className="inline-block px-2.5 py-1 rounded-full bg-white/10 text-[10px] font-bold text-[#9CD41C] border border-white/10">
+                  <span 
+                    className="inline-block px-2.5 py-1 rounded-full bg-white/10 text-[10px] font-bold border border-white/10"
+                    style={{ color: accentColor }}
+                  >
                     Promotor Oficial Grupo JIRO / Movi Digital
                   </span>
                 </div>
               </div>
 
-              {/* Columna 2: Navegación */}
               <div className="space-y-2">
                 <p className="font-bold text-white text-sm">Secciones</p>
                 <ul className="space-y-1.5 text-white/70">
@@ -1345,7 +1357,6 @@ export default function MutuusLanding() {
                 </ul>
               </div>
 
-              {/* Columna 3: Documentación Legal */}
               <div className="space-y-2">
                 <p className="font-bold text-white text-sm">Documentos Oficiales</p>
                 <ul className="space-y-1.5 text-white/70">
@@ -1356,23 +1367,20 @@ export default function MutuusLanding() {
                 </ul>
               </div>
 
-              {/* Columna 4: Contacto */}
               <div className="space-y-2">
                 <p className="font-bold text-white text-sm">Contacto Directo</p>
                 <p className="text-white/70 text-xs">
                   Atención personalizada para agentes, familias y empresas.
                 </p>
                 <p className="text-white font-bold text-xs pt-1">
-                  WhatsApp: <a href="https://wa.me/525540001234" className="text-[#9CD41C] hover:underline">+52 55 4000 1234</a>
+                  WhatsApp: <a href={`https://wa.me/${whatsappNumber}`} className="hover:underline" style={{ color: accentColor }}>+{whatsappNumber}</a>
                 </p>
                 <p className="text-white/70 text-[11px]">
                   México · Cobertura a nivel nacional
                 </p>
               </div>
-
             </div>
 
-            {/* Notas Legales Regulatorias */}
             <div className="pt-8 border-t border-white/10 space-y-2 text-[11px] text-white/50 leading-relaxed">
               <p>
                 * Mutuus es una marca registrada. Este sitio es operado por promotores y asesores profesionales autorizados para la intermediación y difusión de sus productos. La condonación del deducible y coaseguro opera exclusivamente bajo el estricto cumplimiento del protocolo de atención en la red de pago directo y reporte previo del siniestro. Cobertura de maternidad sujeta a 10 meses continuos y topes establecidos en Unidades de Medida y Actualización (UMA).
@@ -1382,7 +1390,6 @@ export default function MutuusLanding() {
                 <p>Cumplimiento WCAG 2.1 AA · Optimizado para SEO & GEO México</p>
               </div>
             </div>
-
           </div>
         </footer>
 
@@ -1398,7 +1405,10 @@ export default function MutuusLanding() {
               </button>
 
               <div className="space-y-2 mb-6">
-                <span className="px-2.5 py-1 rounded-full bg-[#EFF6FF] text-[#003896] text-xs font-bold">
+                <span 
+                  className="px-2.5 py-1 rounded-full text-xs font-bold"
+                  style={{ backgroundColor: '#EFF6FF', color: primaryColor }}
+                >
                   {selectedPlanForModal}
                 </span>
                 <h3 className="text-xl font-black text-slate-900">
@@ -1425,7 +1435,7 @@ export default function MutuusLanding() {
                       value={leadForm.nombre}
                       onChange={(e) => setLeadForm({ ...leadForm, nombre: e.target.value })}
                       placeholder="Tu nombre y apellido"
-                      className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#003896]"
+                      className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2"
                     />
                   </div>
 
@@ -1438,7 +1448,7 @@ export default function MutuusLanding() {
                         value={leadForm.edad}
                         onChange={(e) => setLeadForm({ ...leadForm, edad: e.target.value })}
                         placeholder="Ej. 30"
-                        className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#003896]"
+                        className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2"
                       />
                     </div>
                     <div>
@@ -1449,7 +1459,7 @@ export default function MutuusLanding() {
                         value={leadForm.telefono}
                         onChange={(e) => setLeadForm({ ...leadForm, telefono: e.target.value })}
                         placeholder="10 dígitos"
-                        className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#003896]"
+                        className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2"
                       />
                     </div>
                   </div>
@@ -1461,14 +1471,15 @@ export default function MutuusLanding() {
                       value={leadForm.email}
                       onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })}
                       placeholder="tu@correo.com"
-                      className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#003896]"
+                      className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={submittingLead}
-                    className="w-full mt-2 py-3.5 px-6 bg-[#003896] hover:bg-[#002b75] text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md shadow-[#003896]/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full mt-2 py-3.5 px-6 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    style={{ backgroundColor: primaryColor }}
                   >
                     {submittingLead ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1485,7 +1496,7 @@ export default function MutuusLanding() {
 
         {/* ─── BOTÓN FLOTANTE WHATSAPP FIJO ───────────────────────────────── */}
         <a
-          href="https://wa.me/525540001234?text=Hola,%20deseo%20cotizar%20la%20membresia%20Mutuus."
+          href={`https://wa.me/${whatsappNumber}?text=Hola,%20deseo%20cotizar%20la%20membresia%20Mutuus.`}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Cotizar por WhatsApp"
