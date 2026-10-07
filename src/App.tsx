@@ -12,8 +12,8 @@ import { useAppUpdate } from './lib/useAppUpdate';
 import { AppUpdateBanner } from './components/AppUpdateBanner';
 
 // ── Landings (lazy) ────────────────────────────────────────────────────────
-const LandingsStudio = lazy(() => import('./landings/LandingsStudio'));
 const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
+const LandingsStudio = lazy(() => import('./landings/LandingsStudio'));
 
 // ── Seguwallet pages (lazy) ────────────────────────────────────────────────
 import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
@@ -93,23 +93,37 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 // ── Per-domain apps ───────────────────────────────────────────────────────
 
 function LandingsApp() {
+  useEffect(() => {
+    document.getElementById('root')?.classList.add('public-page');
+    return () => {
+      document.getElementById('root')?.classList.remove('public-page');
+    };
+  }, []);
+
   return (
     <HelmetProvider>
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Hermes Landing Studio (tipo Bolt/Lovable con autenticacion Marsella14$) */}
-            <Route path="/" element={<LandingsStudio />} />
-            <Route path="/studio" element={<LandingsStudio />} />
-
-            {/* Landings individuales para acceso y vista previa */}
+            {/* Landing pública principal Mutuus */}
             <Route path="/mutuus" element={<MutuusLanding />} />
+            
+            {/* Otras landings públicas */}
             <Route path="/seguros-express" element={<SegurosExpressLanding />} />
             <Route path="/seguros-education" element={<SegurosEducationLanding />} />
             <Route path="/chava-agente" element={<ChavaAgenteLanding />} />
-
-            {/* Fallback al Studio */}
-            <Route path="/*" element={<LandingsStudio />} />
+            
+            {/* Studio workspace */}
+            <Route path="/studio" element={<LandingsStudio />} />
+            
+            {/* Raíz y rutas públicas por defecto */}
+            <Route path="/" element={<MutuusLanding />} />
+            
+            {/* Anulación de cualquier redirección hacia login */}
+            <Route path="/login" element={<Navigate to="/mutuus" replace />} />
+            
+            {/* Catch-all */}
+            <Route path="*" element={<MutuusLanding />} />
           </Routes>
         </Suspense>
       </BrowserRouter>
