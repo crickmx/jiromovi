@@ -93,16 +93,23 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 // ── Per-domain apps ───────────────────────────────────────────────────────
 
 function LandingsApp() {
+  useEffect(() => {
+    document.getElementById('root')?.classList.add('public-page');
+    return () => {
+      document.getElementById('root')?.classList.remove('public-page');
+    };
+  }, []);
+
   return (
     <HelmetProvider>
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Hermes Landing Studio (tipo Bolt/Lovable con autenticacion Marsella14$) */}
+            {/* Hermes Landing Studio tipo Bolt/Lovable con autenticacion Marsella14$ */}
             <Route path="/" element={<LandingsStudio />} />
             <Route path="/studio" element={<LandingsStudio />} />
 
-            {/* Landings individuales para acceso y vista previa */}
+            {/* Landings individuales públicas */}
             <Route path="/mutuus" element={<MutuusLanding />} />
             <Route path="/seguros-express" element={<SegurosExpressLanding />} />
             <Route path="/seguros-education" element={<SegurosEducationLanding />} />
@@ -304,7 +311,7 @@ function MoviApp() {
                     <SeguwalletProtectedRoute><SeguwalletDescargas /></SeguwalletProtectedRoute>
                   </SeguwalletStack>
                 } />
-                <Route path="/seguwallet/aseguradoras" element={
+                <Route path="/aseguradoras" element={
                   <SeguwalletStack>
                     <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
                   </SeguwalletStack>
