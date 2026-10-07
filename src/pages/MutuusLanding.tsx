@@ -1,26 +1,19 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {
   ShieldCheck,
   HeartPulse,
   Activity,
   Stethoscope,
-  Building2,
   CheckCircle2,
-  XCircle,
   HelpCircle,
   ArrowRight,
-  PhoneCall,
   Sparkles,
   ChevronDown,
   ChevronRight,
-  Users,
-  Clock,
   MapPin,
-  Calendar,
   Smartphone,
   Hospital,
-  AlertCircle,
   Check,
   Zap,
   TrendingUp,
@@ -30,9 +23,7 @@ import {
   Globe,
   Sliders,
   Send,
-  Eye,
-  Smile,
-  FileCheck
+  Smile
 } from 'lucide-react';
 
 // ── Hospital Data by Region ────────────────────────────────────────────────
@@ -54,7 +45,6 @@ const HOSPITALS = [
     locations: 'Pedregal, Lomas, Interlomas, Acoxpa, Metropolitano',
     badge: 'Nivel Alta Especialidad',
     coverage: 'Hospitalización, Cirugía, Urgencias, Terapia Intensiva',
-    icon: Hospital,
   },
   {
     name: 'Médica Sur',
@@ -62,7 +52,6 @@ const HOSPITALS = [
     locations: 'Tlalpan, CDMX (Certificación Mayo Clinic)',
     badge: 'Centro Médico de Excelencia',
     coverage: 'Especialidades, Cirugías Complejas, Urgencias 24/7',
-    icon: Hospital,
   },
   {
     name: 'Hospital Español',
@@ -70,7 +59,6 @@ const HOSPITALS = [
     locations: 'Polanco / Miguel Hidalgo, CDMX',
     badge: 'Tradición y Alta Tecnología',
     coverage: 'Hospitalización General, Quirófanos, Cuidados Críticos',
-    icon: Hospital,
   },
   {
     name: 'Hospital Puerta de Hierro',
@@ -78,7 +66,6 @@ const HOSPITALS = [
     locations: 'Zapopan, Andares, Sur y Tlajomulco',
     badge: 'Red Élite Occidente',
     coverage: 'Cirugía Avanzada, Maternidad, Urgencias',
-    icon: Hospital,
   },
   {
     name: 'Hospital San Javier',
@@ -86,7 +73,6 @@ const HOSPITALS = [
     locations: 'Guadalajara y Puerto Vallarta',
     badge: 'Referencia en Salud',
     coverage: 'Cirugía Robótica, Hospitalización, Check-ups',
-    icon: Hospital,
   },
   {
     name: 'Christus Muguerza',
@@ -94,7 +80,6 @@ const HOSPITALS = [
     locations: 'Alta Especialidad, Sur, Conchitas, San Nicolás',
     badge: 'Líder en el Norte',
     coverage: 'Trauma, Cirugía Cardiovascular, Urgencias Pediátricas',
-    icon: Hospital,
   },
   {
     name: 'Doctors Hospital',
@@ -102,7 +87,6 @@ const HOSPITALS = [
     locations: 'Monterrey Galerías y East',
     badge: 'Tecnología Médica de Vanguardia',
     coverage: 'Unidad de Quemados, Terapia Intensiva, Maternidad',
-    icon: Hospital,
   },
   {
     name: 'Star Médica',
@@ -110,7 +94,6 @@ const HOSPITALS = [
     locations: 'Querétaro, Morelia, Mérida, San Luis Potosí, CDMX',
     badge: 'Red Nacional Confort',
     coverage: 'Urgencias, Quirófanos de Corta Estancia, Hospitalización',
-    icon: Hospital,
   },
   {
     name: 'Hospital Puebla',
@@ -118,7 +101,6 @@ const HOSPITALS = [
     locations: 'Angelópolis / Puebla',
     badge: 'Centro Regional de Referencia',
     coverage: 'Cirugía General, Urgencias, Medicina Interna',
-    icon: Hospital,
   },
   {
     name: 'Hospital Faro del Mayab',
@@ -126,7 +108,6 @@ const HOSPITALS = [
     locations: 'Mérida Norte (Operado por Médica Sur)',
     badge: 'Vanguardia Sureste',
     coverage: 'Urgencias 24/7, Cirugía Laparoscópica, Terapia',
-    icon: Hospital,
   },
 ];
 
@@ -152,10 +133,6 @@ const PLANS = [
       'Asistencia médica en viajes nacionales e internacionales',
       'App móvil con credencial digital y botón SOS',
     ],
-    notIncluded: [
-      'Cirugías programadas no urgentes',
-      'Maternidad y parto programado',
-    ],
     ctaText: 'Cotizar Esencial',
   },
   {
@@ -176,11 +153,10 @@ const PLANS = [
       'Terapia Intensiva e Intermedia sin límite de días cubiertos',
       'Medicamentos intrahospitalarios y material de curación',
       'Tratamientos oncológicos y cardiovasculares de alta gama',
-      'Maternidad y complicaciones del embarazo (con periodo de espera)',
+      'Maternidad y complicaciones del embarazo',
       'Pago directo al hospital: sin trámites de reembolso',
       'Concierge médico personal para citas y admisiones',
     ],
-    notIncluded: [],
     ctaText: 'Elegir Plan Total Plus',
   },
   {
@@ -203,7 +179,6 @@ const PLANS = [
       'Manejo de accidentes escolares y deportivos de los hijos',
       'Asistencia psicológica y nutricional familiar vía App',
     ],
-    notIncluded: [],
     ctaText: 'Cotizar Plan Familiar',
   },
   {
@@ -225,7 +200,6 @@ const PLANS = [
       'Cobertura para accidentes de trabajo y emergencias generales',
       'Webinars de salud mental, ergonomía y bienestar corporativo',
     ],
-    notIncluded: [],
     ctaText: 'Cotizar para mi Empresa',
   },
 ];
@@ -267,21 +241,15 @@ const FAQS = [
 ];
 
 export default function MutuusLanding() {
-  // Plan billing interval
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
-  // Selected City Filter for Hospitals
   const [selectedCity, setSelectedCity] = useState('all');
-  // Search query in FAQ
   const [faqSearch, setFaqSearch] = useState('');
-  // Expanded FAQ item index
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  // Interactive Calculator State
   const [calcAgeGroup, setCalcAgeGroup] = useState<string>('30-39');
   const [calcMembers, setCalcMembers] = useState<number>(1);
   const [calcPlan, setCalcPlan] = useState<'esencial' | 'total'>('total');
 
-  // Lead Form State
   const [leadName, setLeadName] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
   const [leadEmail, setLeadEmail] = useState('');
@@ -292,6 +260,10 @@ export default function MutuusLanding() {
 
   const formRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    document.title = 'Mutuus Salud Inteligente | Membresía Médica Sin Deducible';
+  }, []);
+
   const scrollToForm = (planName?: string) => {
     if (planName) {
       setLeadPlanInterest(planName);
@@ -299,13 +271,11 @@ export default function MutuusLanding() {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Filtered Hospitals
   const filteredHospitals = useMemo(() => {
     if (selectedCity === 'all') return HOSPITALS;
     return HOSPITALS.filter((h) => h.region === selectedCity);
   }, [selectedCity]);
 
-  // Filtered FAQs
   const filteredFaqs = useMemo(() => {
     if (!faqSearch.trim()) return FAQS;
     const q = faqSearch.toLowerCase();
@@ -314,7 +284,6 @@ export default function MutuusLanding() {
     );
   }, [faqSearch]);
 
-  // Estimated Calculator Math
   const calculatedQuote = useMemo(() => {
     let base = calcPlan === 'esencial' ? 699 : 1490;
     if (calcAgeGroup === '40-49') base *= 1.35;
@@ -328,7 +297,7 @@ export default function MutuusLanding() {
     return {
       monthlyPerPerson: Math.round(base),
       totalMonthly,
-      totalAnnual: Math.round(totalMonthly * 10.8), // 10% disc on annual
+      totalAnnual: Math.round(totalMonthly * 10.8),
       estimatedSavingsAnnual,
     };
   }, [calcAgeGroup, calcMembers, calcPlan]);
@@ -341,44 +310,22 @@ export default function MutuusLanding() {
     setTimeout(() => {
       setLeadLoading(false);
       setLeadSubmitted(true);
-    }, 900);
+    }, 700);
   };
 
   return (
-    <div className="min-h-screen bg-[#070D1E] text-slate-100 font-sans selection:bg-emerald-500 selection:text-white antialiased">
+    <div className="w-full min-h-screen bg-[#070D1E] text-slate-100 font-sans selection:bg-emerald-500 selection:text-white antialiased">
       <Helmet>
         <title>Mutuus Salud Inteligente | Membresía Médica Sin Deducible en México</title>
         <meta
           name="description"
           content="Conoce Mutuus, la membresía de gastos médicos sin deducible y sin coaseguro. Atención en los mejores hospitales privados de México, cirugías, urgencias y telemedicina 24/7."
         />
-        <meta
-          name="keywords"
-          content="mutuus membresia medica, gastos medicos sin deducible, seguro medico mexico, hospital angeles sin deducible, medicina privada cdmx guadalajara monterrey, salud digital mexico"
-        />
-        <meta property="og:title" content="Mutuus Salud Inteligente | Protección Médica Sin Deducible" />
-        <meta
-          property="og:description"
-          content="La evolución de los gastos médicos en México: $0 Deducible, 0% Coaseguro y más de 650 hospitales privados."
-        />
-        <meta property="og:type" content="website" />
         <meta name="theme-color" content="#070D1E" />
-        <script type="application/ld+json">
-          {JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'MedicalBusiness',
-            name: 'Mutuus Salud Inteligente',
-            description: 'Membresías médicas de salud privada sin deducible ni coaseguro en México.',
-            areaServed: ['CDMX', 'Guadalajara', 'Monterrey', 'Querétaro', 'Puebla', 'Mérida', 'Tijuana'],
-            medicalSpecialty: ['Emergency', 'Surgery', 'GeneralPractice', 'Telemedicine'],
-            currenciesAccepted: 'MXN',
-            paymentAccepted: 'Credit Card, Debit Card, Bank Transfer',
-          })}
-        </script>
       </Helmet>
 
       {/* ── Top Announcement Bar ── */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white text-xs md:text-sm font-medium py-2 px-4 text-center flex items-center justify-center gap-2 shadow-sm">
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white text-xs md:text-sm font-medium py-2.5 px-4 text-center flex items-center justify-center gap-2 shadow-sm">
         <Sparkles className="w-4 h-4 shrink-0 animate-pulse" />
         <span>
           <strong>Nueva Cobertura 2025:</strong> $0 Deducible en más de 650 hospitales privados de México.
@@ -392,7 +339,7 @@ export default function MutuusLanding() {
       </div>
 
       {/* ── Navigation Header ── */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070D1E]/85 border-b border-white/10 transition-all">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#070D1E]/90 border-b border-white/10 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
@@ -421,7 +368,7 @@ export default function MutuusLanding() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => scrollToForm()}
-              className="relative group overflow-hidden px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+              className="relative group overflow-hidden px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5"
             >
               <span className="relative z-10 flex items-center gap-1.5">
                 Cotizar Membresía <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -433,9 +380,7 @@ export default function MutuusLanding() {
 
       {/* ── HERO SECTION ── */}
       <section className="relative pt-12 pb-20 md:pt-20 md:pb-32 overflow-hidden">
-        {/* Glowing Background Orbs */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-b from-emerald-500/15 via-teal-500/10 to-transparent blur-3xl -z-10 pointer-events-none" />
-        <div className="absolute top-1/3 right-10 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-center">
@@ -808,7 +753,6 @@ export default function MutuusLanding() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {/* Card 1 */}
             <div className="p-7 rounded-3xl bg-slate-900/80 border border-white/10 hover:border-emerald-500/40 transition-all group hover:-translate-y-1">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Hospital className="w-6 h-6" />
@@ -819,7 +763,6 @@ export default function MutuusLanding() {
               </p>
             </div>
 
-            {/* Card 2 */}
             <div className="p-7 rounded-3xl bg-slate-900/80 border border-white/10 hover:border-teal-500/40 transition-all group hover:-translate-y-1">
               <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <ShieldCheck className="w-6 h-6" />
@@ -830,7 +773,6 @@ export default function MutuusLanding() {
               </p>
             </div>
 
-            {/* Card 3 */}
             <div className="p-7 rounded-3xl bg-slate-900/80 border border-white/10 hover:border-cyan-500/40 transition-all group hover:-translate-y-1">
               <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Smartphone className="w-6 h-6" />
@@ -841,7 +783,6 @@ export default function MutuusLanding() {
               </p>
             </div>
 
-            {/* Card 4 */}
             <div className="p-7 rounded-3xl bg-slate-900/80 border border-white/10 hover:border-emerald-500/40 transition-all group hover:-translate-y-1">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Activity className="w-6 h-6" />
@@ -852,7 +793,6 @@ export default function MutuusLanding() {
               </p>
             </div>
 
-            {/* Card 5 */}
             <div className="p-7 rounded-3xl bg-slate-900/80 border border-white/10 hover:border-teal-500/40 transition-all group hover:-translate-y-1">
               <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Smile className="w-6 h-6" />
@@ -863,7 +803,6 @@ export default function MutuusLanding() {
               </p>
             </div>
 
-            {/* Card 6 */}
             <div className="p-7 rounded-3xl bg-slate-900/80 border border-white/10 hover:border-cyan-500/40 transition-all group hover:-translate-y-1">
               <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                 <Globe className="w-6 h-6" />
@@ -1244,7 +1183,6 @@ export default function MutuusLanding() {
               Resolvemos tus dudas sobre cómo opera la membresía de salud en México.
             </p>
 
-            {/* FAQ Search */}
             <div className="pt-4 max-w-md mx-auto relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
