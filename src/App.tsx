@@ -30,6 +30,9 @@ const SeguwalletCompleteProfile = lazy(() => import('./seguwallet/pages/Seguwall
 import { ChavaAgenteProvider } from './chava-agente/lib/ChavaAgenteContext';
 const ChavaAgenteLanding = lazy(() => import('./chava-agente/pages/ChavaAgenteLanding'));
 
+// ── Landings Chris Standalone App (lazy) ────────────────────────────────────
+const LandingsChrisApp = lazy(() => import('./landingschris/LandingsChrisApp'));
+
 // ── Public advisor page (lazy, no auth) ───────────────────────────────────
 const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
 const AgendaPublica = lazy(() => import('./pages/AgendaPublica'));
@@ -58,6 +61,9 @@ const isExpressSite    = HOST === 'seguros.express'
 const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
+const isLandingSite    = HOST === 'landing.movi.digital'
+  || HOST.endsWith('.landing.movi.digital')
+  || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('site') === 'landing' || new URLSearchParams(window.location.search).get('site') === 'landingschris'));
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
@@ -298,6 +304,7 @@ function PageLoader() {
 }
 
 function App() {
+  if (isLandingSite) return <Suspense fallback={<PageLoader />}><LandingsChrisApp /></Suspense>;
   if (isAgenteSite) return <AgenteWebsiteApp />;
   if (isChavaSite)  return <ChavaAIApp />;
   if (isSeguwalletSite) return <SeguwalletApp />;
