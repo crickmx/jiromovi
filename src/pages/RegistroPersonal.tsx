@@ -184,7 +184,7 @@ export default function RegistroPersonal() {
     let contraseña = '';
     contraseña += mayusculas[Math.floor(Math.random() * mayusculas.length)];
     contraseña += minusculas[Math.floor(Math.random() * minusculas.length)];
-    contraseña += numeros[Math.floor(Math.random() * numeros.length)];
+    contraseña += numeros[Math.floor(Math.random() * minusculas.length)];
     contraseña += especiales[Math.floor(Math.random() * especiales.length)];
 
     for (let i = 4; i < 16; i++) {
@@ -222,7 +222,7 @@ export default function RegistroPersonal() {
             userData: {
               nombre: formData.nombre.trim().toUpperCase(),
               apellidos: formData.apellidos.trim().toUpperCase(),
-              rol: formData.rol,
+              rol: formData.rol, // 'Empleado' (Colaborador) o 'Agente'
               email_laboral: emailNormalizado,
               email_personal: null,
               puesto: formData.rol === 'Empleado' ? formData.puesto.trim() : 'Agente de Seguros',
@@ -297,7 +297,7 @@ export default function RegistroPersonal() {
           </div>
           <PageHeader
             title="Registro de Personal"
-            description="Pre-registro para empleados y agentes de JIRO"
+            description="Pre-registro para colaboradores y agentes de JIRO"
             icon={UserPlus}
           />
         </div>
@@ -318,31 +318,32 @@ export default function RegistroPersonal() {
               Selecciona el tipo de perfil para mostrar los campos correspondientes.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(['Empleado', 'Agente'] as RolRegistro[]).map((rol) => (
+              {[
+                { key: 'Empleado' as RolRegistro, label: 'Colaborador', desc: 'Personal interno con puesto y línea laboral JIRO.' },
+                { key: 'Agente' as RolRegistro, label: 'Agente', desc: 'Agente de seguros y fianzas de JIRO.' },
+              ].map((item) => (
                 <button
-                  key={rol}
+                  key={item.key}
                   type="button"
                   onClick={() => {
-                    setFormData({ ...formData, rol });
+                    setFormData({ ...formData, rol: item.key });
                     setErrors({});
                     setError(null);
                   }}
                   className={`rounded-xl border-2 p-5 text-left transition-all ${
-                    formData.rol === rol
+                    formData.rol === item.key
                       ? 'border-primary bg-primary/5 shadow-sm'
                       : 'border-neutral-200 dark:border-white/10 hover:border-primary/50'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-neutral-900 dark:text-white">{rol}</p>
+                      <p className="font-semibold text-neutral-900 dark:text-white">{item.label}</p>
                       <p className="text-sm text-neutral-500 dark:text-white/60 mt-1">
-                        {rol === 'Empleado'
-                          ? 'Personal interno con puesto y línea laboral JIRO.'
-                          : 'Agente de seguros y fianzas.'}
+                        {item.desc}
                       </p>
                     </div>
-                    {formData.rol === rol && <CheckCircle className="w-6 h-6 text-primary shrink-0" />}
+                    {formData.rol === item.key && <CheckCircle className="w-6 h-6 text-primary shrink-0" />}
                   </div>
                 </button>
               ))}
@@ -408,7 +409,7 @@ export default function RegistroPersonal() {
 
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
-              {formData.rol === 'Empleado' ? 'Datos Laborales y Contacto' : 'Datos del Agente y Contacto'}
+              {formData.rol === 'Empleado' ? 'Datos del Colaborador y Contacto' : 'Datos del Agente y Contacto'}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {formData.rol === 'Empleado' && (
