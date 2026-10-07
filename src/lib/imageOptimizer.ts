@@ -1,7 +1,8 @@
 /**
- * Utilidad de compresión y optimización de imágenes (Avatares y Fotos de Perfil)
- * Convierte cualquier formato de imagen (PNG, JPEG, WebP, etc.) a un JPEG/WebP optimizado,
- * redimensiona a dimensiones estándar (máx 512x512) y comprime a calidad 0.85 (~60-120 KB).
+ * Utilidad Integral de Compresión y Optimización de Imágenes en MOVI Digital
+ * - Para Avatares: Recorte cuadrado centrado 1:1, máx 512x512 px (~60-90 KB).
+ * - Para Documentos / Pólizas / Comprobantes: Conserva proporciones completas sin cortes,
+ *   mantiene nitidez y legibilidad de texto a alta resolución (máx 2048x2048 px, ~200-350 KB).
  */
 
 export interface OptimizeImageOptions {
@@ -12,16 +13,71 @@ export interface OptimizeImageOptions {
   squareCrop?: boolean;
 }
 
+export interface OptimizedResult {
+  file: File;
+  dataUrl: string;
+  width: number;
+  height: number;
+  sizeBytes: number;
+  originalSizeBytes: number;
+  ahorroPorcentaje: number;
+}
+
+/**
+ * Optimiza avatares y fotos de perfil (proporción cuadrada 1:1)
+ */
 export async function optimizarImagenAvatar(
   file: File,
   options: OptimizeImageOptions = {}
-): Promise<{ file: File; dataUrl: string; width: number; height: number; sizeBytes: number }> {
+): Promise<OptimizedResult> {
+  return optimizarImagenGenerica(file, {
+    maxWidth: 512,
+    maxHeight: 512,
+    quality: 0.85,
+    squareCrop: true,
+    format: 'image/jpeg',
+    ...options,
+  });
+}
+
+/**
+ * Optimiza fotografías de documentos, identificaciones (INE), pólizas y comprobantes
+ * - NO recorta la imagen (conserva 100% de los bordes y datos).
+ * - Conserva alta resolución (hasta 2048px) para nitidez en letras pequeñas y firmas.
+ * - Reduce el peso de fotos móviles de ~8-12 MB a ~200-350 KB.
+ */
+export async function optimizarDocumentoImagen(
+  file: File,
+  options: OptimizeImageOptions = {}
+): Promise<OptimizedResult> {
+  // Si no es imagen (ej. es PDF), no procesar con Canvas
+  if (!file.type.startsWith('image/')) {
+    throw new Error('El archivo no es una imagen procesable.');
+  }
+
+  return optimizarImagenGenerica(file, {
+    maxWidth: 2048,
+    maxHeight: 2048,
+    quality: 0.88, // Mayor fidelidad para texto y sellos
+    squareCrop: false,
+    format: 'image/jpeg',
+    ...options,
+  });
+}
+
+/**
+ * Función central de procesamiento por Canvas
+ */
+export async function optimizarImagenGenerica(
+  file: File,
+  options: OptimizeImageOptions = {}
+): Promise<OptimizedResult> {
   const {
-    maxWidth = 512,
-    maxHeight = 512,
+    maxWidth = 1600,
+    maxHeight = 1600,
     quality = 0.85,
     format = 'image/jpeg',
-    squareCrop = true,
+    squareCrop = false,
   } = options;
 
   return new Promise((resolve, reject) => {
@@ -32,7 +88,7 @@ export async function optimizarImagenAvatar(
     reader.onload = () => {
       const img = new Image();
 
-      img.onerror = () => reject(new Error('El archivo no es una imagen válida o está dañado.'));
+      img.onerror = () => reject(new Error('El archivo seleccionado no es una imagen válida o está dañado.'));
 
       img.onload = () => {
         try {
@@ -45,7 +101,7 @@ export async function optimizarImagenAvatar(
           let destHeight = img.height;
 
           if (squareCrop) {
-            // Recorte cuadrado centrado
+            // Recorte cuadrado centrado para perfiles
             const minDim = Math.min(img.width, img.height);
             sourceX = (img.width - minDim) / 2;
             sourceY = (img.height - minDim) / 2;
@@ -54,7 +110,7 @@ export async function optimizarImagenAvatar(
             destWidth = Math.min(maxWidth, minDim);
             destHeight = Math.min(maxHeight, minDim);
           } else {
-            // Ajuste proporcional manteniendo aspecto
+            // Documentos: Proporción original exacta, redimensionando solo si excede los límites máximos
             if (destWidth > maxWidth || destHeight > maxHeight) {
               const ratio = Math.min(maxWidth / destWidth, maxHeight / destHeight);
               destWidth = Math.round(destWidth * ratio);
@@ -67,14 +123,14 @@ export async function optimizarImagenAvatar(
 
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            throw new Error('No se pudo obtener el contexto 2D del canvas.');
+            throw new Error('No se pudo inicializar el motor de renderizado 2D.');
           }
 
-          // Suavizado de imagen de alta calidad
+          // Suavizado bicúbico de alta fidelidad
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
 
-          // Fondo blanco en caso de transparencias en JPEG
+          // Fondo blanco para imágenes transparentes en JPEG
           if (format === 'image/jpeg') {
             ctx.fillStyle = '#FFFFFF';
             ctx.fillRect(0, 0, destWidth, destHeight);
@@ -97,17 +153,22 @@ export async function optimizarImagenAvatar(
           canvas.toBlob(
             (blob) => {
               if (!blob) {
-                return reject(new Error('Error al generar blob comprimido.'));
+                return reject(new Error('Error al generar la imagen comprimida.'));
               }
 
               const ext = format === 'image/webp' ? 'webp' : 'jpg';
               const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
-              const fileName = `avatar_${Date.now()}_${cleanName}.${ext}`;
+              const fileName = `doc_${Date.now()}_${cleanName}.${ext}`;
 
               const optimizedFile = new File([blob], fileName, {
                 type: format,
                 lastModified: Date.now(),
               });
+
+              const ahorroPorcentaje = Math.max(
+                0,
+                Math.round(((file.size - blob.size) / file.size) * 100)
+              );
 
               resolve({
                 file: optimizedFile,
@@ -115,6 +176,8 @@ export async function optimizarImagenAvatar(
                 width: destWidth,
                 height: destHeight,
                 sizeBytes: blob.size,
+                originalSizeBytes: file.size,
+                ahorroPorcentaje,
               });
             },
             format,
