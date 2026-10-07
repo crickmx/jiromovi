@@ -24,7 +24,13 @@ import {
   Maximize2,
   Minimize2,
   Bot,
-  User
+  User,
+  Sliders,
+  Code,
+  Layout,
+  Palette,
+  FileCode,
+  FolderOpen
 } from 'lucide-react';
 import MutuusLanding from './mutuus/MutuusLanding';
 import SegurosExpressLanding from '../seguros-express/SegurosExpressLanding';
@@ -33,9 +39,9 @@ import ChavaAgenteLanding from '../chava-agente/pages/ChavaAgenteLanding';
 
 // ─── CREDENCIALES Y CONSTANTES ───────────────────────────────────────────────
 const STUDIO_PASSWORD = 'Marsella14$';
-const STORAGE_AUTH_KEY = 'hermes_studio_auth_v1';
-const STORAGE_PROJECTS_KEY = 'hermes_studio_projects_v1';
-const STORAGE_CHATS_KEY = 'hermes_studio_chats_v1';
+const STORAGE_AUTH_KEY = 'crickwebai_auth_v1';
+const STORAGE_PROJECTS_KEY = 'crickwebai_projects_v1';
+const STORAGE_CHATS_KEY = 'crickwebai_chats_v1';
 
 // ─── PROYECTOS INICIALES ────────────────────────────────────────────────────
 interface Project {
@@ -135,7 +141,7 @@ const INITIAL_PROJECTS: Project[] = [
 // ─── TIPOS DE MENSAJE CHAT ──────────────────────────────────────────────────
 interface ChatMessage {
   id: string;
-  sender: 'hermes' | 'user';
+  sender: 'crick' | 'user';
   text: string;
   timestamp: string;
   actions?: string[];
@@ -179,7 +185,7 @@ export default function LandingsStudio() {
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) || projects[0];
 
-  // ─── Chat & Hermes Copilot ────────────────────────────────────────────────
+  // ─── Chat & Crick Copilot ─────────────────────────────────────────────────
   const [chats, setChats] = useState<Record<string, ChatMessage[]>>(() => {
     const saved = localStorage.getItem(STORAGE_CHATS_KEY);
     if (saved) {
@@ -193,14 +199,14 @@ export default function LandingsStudio() {
       mutuus: [
         {
           id: '1',
-          sender: 'hermes',
-          text: `¡Hola Christofer! Soy Hermes, tu copilot de diseño para el proyecto ${selectedProject?.name || 'Mutuus'}. He cargado la estructura de la landing en ${selectedProject?.slug || '/mutuus'}. Puedes pedirme cambios en los textos, secciones de héroe, tabuladores de planes, integración con WhatsApp o rediseño visual en tiempo real.`,
+          sender: 'crick',
+          text: `¡Hola Christofer! Soy CrickWebAI, tu motor de diseño web y desarrollo en tiempo real. He cargado la estructura de ${selectedProject?.name || 'Mutuus'}. Puedes pedirme ajustes en el Hero, tablas de precios, diseño responsivo, colores o llamados a la acción directamente aquí.`,
           timestamp: 'Justo ahora',
           actions: [
-            'Hero con enfoque en Cero Deducible',
-            'Selector de periodicidad Mensual/Anual con 10% de descuento',
-            'Directorio interactivo de hospitales',
-            'Formulario de cotización con envío a Supabase'
+            'Ajustar títulos y propuesta de valor',
+            'Modificar paleta de color y contrastes',
+            'Optimizar para captación móvil',
+            'Revisar tabla de planes y coberturas'
           ]
         }
       ]
@@ -243,8 +249,8 @@ export default function LandingsStudio() {
         [selectedProjectId]: [
           {
             id: Date.now().toString(),
-            sender: 'hermes',
-            text: `Proyecto activo: **${selectedProject.name}** (${selectedProject.slug}). ¿Qué cambios de diseño, estructura, colores o copy deseas aplicar en esta landing?`,
+            sender: 'crick',
+            text: `Proyecto activo: **${selectedProject.name}** (${selectedProject.slug}). ¿Qué cambios deseas aplicar en este diseño?`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             actions: [
               'Revisar paleta de color y contraste',
@@ -277,7 +283,7 @@ export default function LandingsStudio() {
     setPasswordInput('');
   };
 
-  // ─── Manejador de Chat con Hermes ─────────────────────────────────────────
+  // ─── Manejador de Chat con CrickWebAI ─────────────────────────────────────
   const handleSendMessage = async (textToSend?: string) => {
     const msg = (textToSend || inputPrompt).trim();
     if (!msg || isGenerating) return;
@@ -297,47 +303,42 @@ export default function LandingsStudio() {
     setInputPrompt('');
     setIsGenerating(true);
 
-    // Flujo de pasos realistas de Hermes
-    setGeneratingStep('Analizando layout y componentes de ' + selectedProject.name + '...');
+    // Flujo de pasos de CrickWebAI
+    setGeneratingStep('Analizando componentes de ' + selectedProject.name + '...');
+    await new Promise(r => setTimeout(r, 500));
+
+    setGeneratingStep('Procesando diseño visual y arquitectura de página...');
     await new Promise(r => setTimeout(r, 600));
 
-    setGeneratingStep('Generando modificaciones visuales y optimización de copy...');
-    await new Promise(r => setTimeout(r, 700));
+    setGeneratingStep('Compilando estilos Tailwind y renderizando en el Canvas...');
+    await new Promise(r => setTimeout(r, 500));
 
-    setGeneratingStep('Aplicando estilos Tailwind y renderizando vista previa...');
-    await new Promise(r => setTimeout(r, 600));
-
-    // Generar respuesta contextual según la orden
     const lower = msg.toLowerCase();
     let responseText = '';
     let diffDetails = '';
     let actions: string[] = [];
 
     if (lower.includes('hero') || lower.includes('portada') || lower.includes('encabezado')) {
-      responseText = `He rediseñado la sección **Hero** de **${selectedProject.name}**:\n\n• Aplicado un estilo más limpio con tipografía destacada y micro-badges.\n• Optimizado el contraste del botón principal de llamada a la acción (CTA).\n• Incluido sello de respaldo y leyenda de atención inmediata.`;
-      diffDetails = `Actualizado contenedor Hero y gradiente de fondo en ${selectedProject.slug}`;
-      actions = ['Ver Hero en pantalla completa', 'Ajustar color del botón de cotización'];
+      responseText = `He actualizado la sección **Hero** de **${selectedProject.name}**:\n\n• Ajustado el balance tipográfico y contraste del título principal.\n• Optimizado el botón primario de llamada a la acción (CTA).\n• Asegurado el contenedor responsivo sin desbordamientos.`;
+      diffDetails = `Actualizado contenedor Hero y tipografía en ${selectedProject.slug}`;
+      actions = ['Ver en modo móvil', 'Ajustar color del botón'];
     } else if (lower.includes('precio') || lower.includes('plan') || lower.includes('costo') || lower.includes('tarifa')) {
-      responseText = `He actualizado la sección de **Planes y Precios**:\n\n• Integrado selector interactivo mensual/anual con cálculo automático de 10% de descuento.\n• Resaltada la tarjeta más elegida (Plan DOS / Recomendado).\n• Incluido desglose claro de sumas aseguradas y cero deducible.`;
-      diffDetails = `Componente de precios actualizado con selector dinámico en ${selectedProject.slug}`;
-      actions = ['Revisar tabla comparativa', 'Configurar envío directo a WhatsApp'];
-    } else if (lower.includes('hospital') || lower.includes('red') || lower.includes('directorio')) {
-      responseText = `Actualizada la sección de **Red Hospitalaria de Pago Directo**:\n\n• Mostrando más de 115 hospitales directos y 548 convenios nacionales (Ángeles, Médica Sur, Star Médica, Christus Muguerza).\n• Añadido buscador rápido por estado o ciudad.`;
-      diffDetails = `Grid de red hospitalaria sincronizado en ${selectedProject.slug}`;
-      actions = ['Ver hospitales destacados', 'Modificar mapa de cobertura'];
-    } else if (lower.includes('color') || lower.includes('paleta') || lower.includes('estilo') || lower.includes('dark') || lower.includes('claro')) {
-      responseText = `Paleta de diseño refinada para **${selectedProject.name}**:\n\n• Look & feel moderno con fondo claro (#F8FAFC), acento principal (${selectedProject.theme.primary}) y contraste optimizado.\n• Bordes suaves, tarjetas glassmorphic y tipografía de lectura rápida.`;
-      diffDetails = `Tokens de diseño y paleta de colores actualizados`;
-      actions = ['Probar modo móvil', 'Aplicar a componentes secundarios'];
+      responseText = `He actualizado la sección de **Planes y Tarifas**:\n\n• Selector dinámico con cálculo automático de periodicidad.\n• Destacado visual del plan recomendado.\n• Desglose limpio de beneficios y sumas aseguradas.`;
+      diffDetails = `Componente de tarifas actualizado en ${selectedProject.slug}`;
+      actions = ['Probar switch anual/mensual', 'Verificar botón de contratación'];
+    } else if (lower.includes('menu') || lower.includes('header') || lower.includes('barra')) {
+      responseText = `He optimizado el **Header de Navegación**:\n\n• El menú se mantiene contenido de forma estricta dentro del marco de la vista previa.\n• Navegación fluida con enlaces a cada sección del proyecto.`;
+      diffDetails = `Ajustado encabezado y aislamiento de viewport en ${selectedProject.slug}`;
+      actions = ['Probar scroll interno', 'Ver en pantalla completa'];
     } else {
-      responseText = `He procesado tu instrucción: "${msg}".\n\nLos cambios se han compilado y renderizado inmediatamente en la vista previa interactiva. El código está optimizado y listo para publicarse en **${selectedProject.slug}**.`;
+      responseText = `He aplicado tu instrucción: "${msg}".\n\nLos cambios se compilaron y renderizaron de forma instantánea en el Canvas de vista previa. El código está optimizado y listo para publicarse en **${selectedProject.slug}**.`;
       diffDetails = `Modificaciones aplicadas en vivo sobre ${selectedProject.slug}`;
-      actions = ['Ver cambios en vista previa', 'Publicar a producción'];
+      actions = ['Ver cambios en Canvas', 'Publicar en Producción'];
     }
 
-    const hermesResponse: ChatMessage = {
+    const crickResponse: ChatMessage = {
       id: (Date.now() + 1).toString(),
-      sender: 'hermes',
+      sender: 'crick',
       text: responseText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       actions,
@@ -349,10 +350,9 @@ export default function LandingsStudio() {
 
     setChats(prev => ({
       ...prev,
-      [selectedProjectId]: [...(prev[selectedProjectId] || []), hermesResponse]
+      [selectedProjectId]: [...(prev[selectedProjectId] || []), crickResponse]
     }));
 
-    // Actualizar estado del proyecto a "modified"
     setProjects(prev =>
       prev.map(p =>
         p.id === selectedProjectId
@@ -366,29 +366,24 @@ export default function LandingsStudio() {
     setPreviewKey(k => k + 1);
   };
 
-  // ─── Manejador de Publicación (Deploy a Live) ──────────────────────────────
+  // ─── Manejador de Publicación ─────────────────────────────────────────────
   const handleDeployToLive = async () => {
     setShowDeployModal(true);
     setDeployStep(0);
     setDeploySuccess(false);
 
-    // Paso 1: Validación
     setDeployStep(1);
     await new Promise(r => setTimeout(r, 600));
 
-    // Paso 2: Optimización de Assets
     setDeployStep(2);
-    await new Promise(r => setTimeout(r, 800));
-
-    // Paso 3: Sincronización con Plesk y CDN
-    setDeployStep(3);
     await new Promise(r => setTimeout(r, 700));
 
-    // Paso 4: Publicado
+    setDeployStep(3);
+    await new Promise(r => setTimeout(r, 600));
+
     setDeployStep(4);
     setDeploySuccess(true);
 
-    // Actualizar versión y estado en vivo del proyecto
     const currentVerParts = selectedProject.version.replace('v', '').split('.').map(Number);
     const nextVer = `v${currentVerParts[0] || 1}.${currentVerParts[1] || 0}.${(currentVerParts[2] || 0) + 1}`;
 
@@ -420,7 +415,7 @@ export default function LandingsStudio() {
       id: newId,
       name: newProjectForm.name,
       slug: cleanSlug,
-      description: newProjectForm.description || `Landing creada desde Hermes Studio para ${newProjectForm.name}.`,
+      description: newProjectForm.description || `Landing creada desde CrickWebAI para ${newProjectForm.name}.`,
       category: newProjectForm.category,
       status: 'draft',
       version: 'v1.0.0',
@@ -464,26 +459,24 @@ export default function LandingsStudio() {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
         <Helmet>
-          <title>Hermes Landing Studio | Acceso Seguro</title>
+          <title>CrickWebAI | Acceso al Workspace</title>
         </Helmet>
 
-        {/* Círculos decorativos de fondo */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-100/60 rounded-full blur-3xl pointer-events-none" />
 
         <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-xl p-8 sm:p-10 relative z-10">
           
-          {/* Logo y Encabezado */}
           <div className="text-center space-y-3 mb-8">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center mx-auto shadow-md shadow-blue-500/20">
               <Sparkles className="w-7 h-7 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                Hermes Studio
+                CrickWebAI
               </h1>
               <p className="text-xs font-semibold text-slate-500 mt-1">
-                Landings Copilot · Bolt & Lovable Engine
+                Motor de Desarrollo & Diseño Web Autónomo
               </p>
             </div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] font-semibold text-slate-700">
@@ -492,7 +485,6 @@ export default function LandingsStudio() {
             </div>
           </div>
 
-          {/* Formulario de Contraseña */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -553,10 +545,9 @@ export default function LandingsStudio() {
             </button>
           </form>
 
-          {/* Footer de Acceso */}
           <div className="mt-8 pt-6 border-t border-slate-100 text-center">
             <p className="text-[11px] text-slate-400">
-              Hermes AI Designer · MOVI Digital Ecosystem
+              CrickWebAI · Plataforma de Páginas Web Premium
             </p>
           </div>
 
@@ -565,37 +556,35 @@ export default function LandingsStudio() {
     );
   }
 
-  // ─── INTERFAZ PRINCIPAL DE HERMES STUDIO (BOLT / LOVABLE LOOK) ────────────
+  // ─── WORKSPACE PRINCIPAL DE CRICKWEBAI (ONE FULL SINGLE PAGE) ─────────────
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="h-screen w-screen overflow-hidden bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       <Helmet>
-        <title>Hermes Landing Studio · {selectedProject.name}</title>
+        <title>CrickWebAI · {selectedProject.name}</title>
       </Helmet>
 
-      {/* ─── 1. TOP NAVIGATION BAR ───────────────────────────────────────── */}
-      <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+      {/* ─── 1. BARRA SUPERIOR DE CRICKWEBAI ─────────────────────────────── */}
+      <header className="h-16 bg-white border-b border-slate-200/90 px-4 sm:px-6 flex items-center justify-between flex-shrink-0 z-40 shadow-xs">
         
-        {/* Izquierda: Logo y Selector de Proyecto */}
+        {/* Logo CrickWebAI y Selector de Proyecto */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-blue-500/30">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm text-slate-900 tracking-tight">
-                  Hermes Studio
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
-                  Bolt/Lovable
-                </span>
-              </div>
+              <span className="font-extrabold text-base text-slate-900 tracking-tight block leading-none">
+                CrickWebAI
+              </span>
+              <span className="text-[10px] font-semibold text-slate-500 block mt-0.5">
+                AI Web Builder Engine
+              </span>
             </div>
           </div>
 
           <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
 
-          {/* Selector de Proyecto Activo */}
+          {/* Selector de Proyecto */}
           <div className="relative group">
             <select
               value={selectedProjectId}
@@ -611,7 +600,7 @@ export default function LandingsStudio() {
             <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Badge de Estatus */}
+          {/* Estatus del Proyecto */}
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
             <span
               className={`w-2 h-2 rounded-full ${
@@ -629,10 +618,9 @@ export default function LandingsStudio() {
           </div>
         </div>
 
-        {/* Centro: Controles de Vista y Dispositivo */}
+        {/* Modos de Vista y Dispositivos */}
         <div className="hidden lg:flex items-center gap-3">
           
-          {/* View Modes */}
           <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80">
             <button
               onClick={() => setViewMode('split')}
@@ -654,7 +642,7 @@ export default function LandingsStudio() {
               }`}
             >
               <Bot className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Chat Hermes</span>
+              <span>Copilot</span>
             </button>
             <button
               onClick={() => setViewMode('preview')}
@@ -669,7 +657,6 @@ export default function LandingsStudio() {
             </button>
           </div>
 
-          {/* Device Toggles (Solo en Split o Preview) */}
           {viewMode !== 'chat' && (
             <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80">
               <button
@@ -704,9 +691,8 @@ export default function LandingsStudio() {
 
         </div>
 
-        {/* Derecha: Botón Publicar en Vivo y Acciones */}
+        {/* Acciones y Botón Publicar */}
         <div className="flex items-center gap-2.5">
-          
           <button
             onClick={() => setPreviewKey(k => k + 1)}
             title="Recargar vista previa"
@@ -719,14 +705,13 @@ export default function LandingsStudio() {
             href={selectedProject.slug}
             target="_blank"
             rel="noopener noreferrer"
-            title="Abrir URL pública en nueva pestaña"
+            title="Abrir URL pública en pestaña externa"
             className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors hidden sm:flex items-center gap-1.5 text-xs font-semibold"
           >
             <ExternalLink className="w-4 h-4" />
             <span className="hidden xl:inline">{selectedProject.slug}</span>
           </a>
 
-          {/* Botón Principal: PUBLICAR */}
           <button
             onClick={handleDeployToLive}
             className="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/25 flex items-center gap-2 cursor-pointer"
@@ -737,10 +722,9 @@ export default function LandingsStudio() {
 
           <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
 
-          {/* Botón Salir */}
           <button
             onClick={handleLogout}
-            title="Cerrar sesión protegida"
+            title="Cerrar sesión segura"
             className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
           >
             <Lock className="w-4 h-4" />
@@ -749,14 +733,14 @@ export default function LandingsStudio() {
 
       </header>
 
-      {/* ─── 2. CUERPO PRINCIPAL DEL STUDIO ──────────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* ─── 2. CUERPO ONE FULL SINGLE PAGE ──────────────────────────────── */}
+      <div className="flex-1 flex overflow-hidden w-full relative">
         
-        {/* ─── COLUMNA IZQUIERDA: HERMES COPILOT CHAT (BOLT STYLE) ────────── */}
+        {/* ─── COLUMNA IZQUIERDA: CRICK COPILOT CHAT ───────────────────────── */}
         {(viewMode === 'split' || viewMode === 'chat') && (
           <div
-            className={`flex flex-col bg-white border-r border-slate-200/80 transition-all ${
-              viewMode === 'chat' ? 'w-full' : 'w-full lg:w-[480px] xl:w-[520px]'
+            className={`flex flex-col bg-white border-r border-slate-200/90 transition-all ${
+              viewMode === 'chat' ? 'w-full' : 'w-full lg:w-[460px] xl:w-[500px]'
             }`}
           >
             
@@ -768,22 +752,21 @@ export default function LandingsStudio() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-slate-900">Hermes Designer</span>
+                    <span className="font-bold text-xs text-slate-900">Crick Copilot</span>
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
                   <p className="text-[10px] text-slate-500">
-                    Instrucciones de diseño para <span className="font-semibold text-blue-600">{selectedProject.name}</span>
+                    Instrucciones en tiempo real para <strong className="text-blue-600">{selectedProject.name}</strong>
                   </p>
                 </div>
               </div>
 
-              {/* Botón para abrir modal de proyectos */}
               <button
                 onClick={() => setShowNewProjectModal(true)}
                 className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Nuevo</span>
+                <span>Nuevo</span>
               </button>
             </div>
 
@@ -794,7 +777,7 @@ export default function LandingsStudio() {
                   key={m.id}
                   className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {m.sender === 'hermes' && (
+                  {m.sender === 'crick' && (
                     <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-xs shadow-xs">
                       <Sparkles className="w-3.5 h-3.5" />
                     </div>
@@ -807,12 +790,10 @@ export default function LandingsStudio() {
                         : 'bg-white border border-slate-200/90 text-slate-800 shadow-xs rounded-tl-xs'
                     }`}
                   >
-                    {/* Texto del Mensaje */}
                     <div className="whitespace-pre-line space-y-2">
                       {m.text}
                     </div>
 
-                    {/* Previsualización de cambios aplicados si existen */}
                     {m.diffPreview && (
                       <div className="mt-3 pt-3 border-t border-slate-100 bg-slate-50 -mx-4 -mb-4 p-3 rounded-b-2xl flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 text-slate-600">
@@ -831,7 +812,6 @@ export default function LandingsStudio() {
                       </div>
                     )}
 
-                    {/* Acciones sugeridas de Hermes */}
                     {m.actions && m.actions.length > 0 && (
                       <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap gap-1.5">
                         {m.actions.map((act, i) => (
@@ -859,14 +839,13 @@ export default function LandingsStudio() {
                 </div>
               ))}
 
-              {/* Indicador de Generación / Pensamiento */}
               {isGenerating && (
                 <div className="flex items-center gap-3 bg-white p-3.5 rounded-2xl border border-blue-200/80 shadow-xs max-w-sm animate-in fade-in">
                   <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center animate-spin">
                     <RotateCw className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-900">Hermes Copilot</p>
+                    <p className="text-xs font-bold text-slate-900">CrickWebAI Engine</p>
                     <p className="text-[11px] text-blue-600">{generatingStep}</p>
                   </div>
                 </div>
@@ -875,32 +854,26 @@ export default function LandingsStudio() {
               <div ref={chatBottomRef} />
             </div>
 
-            {/* Pastillas de Prompts Rápidos Sugeridos */}
+            {/* Sugerencias Rápidas */}
             <div className="px-4 py-2 border-t border-slate-100 bg-white flex items-center gap-1.5 overflow-x-auto text-[11px]">
-              <span className="text-slate-400 font-bold flex-shrink-0">Sugerencias:</span>
+              <span className="text-slate-400 font-bold flex-shrink-0">Acciones:</span>
               <button
-                onClick={() => handleSendMessage("Rediseñar Hero con badge de Cero Deducible y CTA llamativo")}
+                onClick={() => handleSendMessage("Rediseñar Hero con badge y contraste optimizado")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                🎨 Rediseñar Hero
+                🎨 Ajustar Hero
               </button>
               <button
-                onClick={() => handleSendMessage("Agregar comparativa de planes con selector de descuento anual")}
+                onClick={() => handleSendMessage("Actualizar tabla de planes con selector de descuento anual")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                💳 Tabla de Precios
+                💳 Tarifas
               </button>
               <button
-                onClick={() => handleSendMessage("Optimizar formulario de cotización para capturar leads a WhatsApp")}
+                onClick={() => handleSendMessage("Revisar encabezado y menú de navegación")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                📲 Lead Capture
-              </button>
-              <button
-                onClick={() => handleSendMessage("Actualizar listado de hospitales y convenios de pago directo")}
-                className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
-              >
-                🏥 Hospitales
+                🧭 Menú
               </button>
             </div>
 
@@ -934,15 +907,15 @@ export default function LandingsStudio() {
           </div>
         )}
 
-        {/* ─── COLUMNA DERECHA: CANVAS / VISTA PREVIA EN VIVO ─────────────── */}
+        {/* ─── COLUMNA DERECHA: CANVAS CON MENÚ FIJO AISLADO DENTRO DEL MARCO ─── */}
         {(viewMode === 'split' || viewMode === 'preview') && (
           <div className="flex-1 bg-slate-100/70 flex flex-col overflow-hidden relative">
             
             {/* Barra Superior del Canvas */}
-            <div className="h-11 bg-white border-b border-slate-200/80 px-4 flex items-center justify-between text-xs">
+            <div className="h-11 bg-white border-b border-slate-200/80 px-4 flex items-center justify-between text-xs flex-shrink-0">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="font-bold text-slate-700">Preview:</span>
+                <span className="font-bold text-slate-700">Canvas Live:</span>
                 <span className="font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                   https://landings.movi.digital{selectedProject.slug}
                 </span>
@@ -959,26 +932,36 @@ export default function LandingsStudio() {
               </div>
             </div>
 
-            {/* Contenedor del Canvas con Escala según Dispositivo */}
-            <div className="flex-1 overflow-auto p-4 md:p-8 flex items-start justify-center">
+            {/* 
+              CONTENEDOR DE AISLAMIENTO CSS:
+              `transform: translateZ(0)` obliga a que cualquier elemento con `position: fixed` 
+              (como el header del componente hijo) quede estrictamente contenido dentro del 
+              marco de la vista previa y no se escape a la parte superior de la ventana.
+            */}
+            <div className="flex-1 overflow-auto p-4 md:p-6 flex items-start justify-center">
               <div
-                className={`transition-all duration-300 bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden ${
+                style={{
+                  transform: 'translateZ(0)',
+                  WebkitTransform: 'translateZ(0)',
+                  isolation: 'isolate'
+                }}
+                className={`transition-all duration-300 bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden relative ${
                   device === 'desktop'
-                    ? 'w-full max-w-7xl min-h-[800px]'
+                    ? 'w-full max-w-7xl h-[calc(100vh-140px)]'
                     : device === 'tablet'
-                    ? 'w-[768px] min-h-[900px] border-4 border-slate-800 rounded-3xl'
-                    : 'w-[390px] min-h-[844px] border-8 border-slate-800 rounded-[40px]'
+                    ? 'w-[768px] h-[calc(100vh-140px)] border-4 border-slate-800 rounded-3xl'
+                    : 'w-[390px] h-[calc(100vh-140px)] border-8 border-slate-800 rounded-[40px]'
                 }`}
               >
-                {/* Header Mockup si es Móvil/Tablet */}
+                {/* Header Mockup en Tablet/Mobile */}
                 {device === 'mobile' && (
-                  <div className="h-6 bg-slate-800 flex items-center justify-center">
+                  <div className="h-6 bg-slate-800 flex items-center justify-center z-50 relative flex-shrink-0">
                     <div className="w-20 h-3.5 bg-black rounded-full" />
                   </div>
                 )}
 
-                {/* Renderizado del Componente */}
-                <div className="overflow-y-auto max-h-[calc(100vh-160px)]">
+                {/* Contenedor de Scroll Interno */}
+                <div className="w-full h-full overflow-y-auto overflow-x-hidden relative">
                   {renderLiveComponent()}
                 </div>
               </div>
@@ -989,7 +972,7 @@ export default function LandingsStudio() {
 
       </div>
 
-      {/* ─── MODAL DE PUBLICACIÓN EN PRODUCCIÓN (DEPLOY A LIVE) ───────────── */}
+      {/* ─── MODAL DE PUBLICACIÓN EN PRODUCCIÓN ───────────────────────────── */}
       {showDeployModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 relative">
@@ -999,14 +982,13 @@ export default function LandingsStudio() {
                 <Rocket className={`w-7 h-7 ${deploySuccess ? 'text-emerald-600' : 'text-blue-600 animate-bounce'}`} />
               </div>
               <h3 className="text-xl font-black text-slate-900">
-                {deploySuccess ? '¡Landing Publicada en Vivo!' : 'Publicando en Producción...'}
+                {deploySuccess ? '¡Página Publicada con Éxito!' : 'Publicando en Producción...'}
               </h3>
               <p className="text-xs text-slate-500">
                 Proyecto: <strong className="text-slate-800">{selectedProject.name}</strong> ({selectedProject.slug})
               </p>
             </div>
 
-            {/* Progreso de Pasos */}
             <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div className="flex items-center gap-3 text-xs">
                 {deployStep >= 1 ? (
@@ -1015,7 +997,7 @@ export default function LandingsStudio() {
                   <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
                 )}
                 <span className={deployStep >= 1 ? 'font-bold text-slate-900' : 'text-slate-400'}>
-                  1. Validando componentes y bundles de Tailwind CSS
+                  1. Validando estructura y bundles de producción
                 </span>
               </div>
 
@@ -1026,7 +1008,7 @@ export default function LandingsStudio() {
                   <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
                 )}
                 <span className={deployStep >= 2 ? 'font-bold text-slate-900' : 'text-slate-400'}>
-                  2. Sincronizando assets y base de datos con Plesk & CDN
+                  2. Sincronizando assets locales y base de datos Supabase
                 </span>
               </div>
 
@@ -1037,7 +1019,7 @@ export default function LandingsStudio() {
                   <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
                 )}
                 <span className={deployStep >= 3 ? 'font-bold text-slate-900' : 'text-slate-400'}>
-                  3. Purgando caché y verificando SSL Let's Encrypt
+                  3. Purgando caché web y verificando SSL
                 </span>
               </div>
 
@@ -1048,12 +1030,11 @@ export default function LandingsStudio() {
                   <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
                 )}
                 <span className={deployStep >= 4 ? 'font-bold text-emerald-700' : 'text-slate-400'}>
-                  4. Despliegue completado con éxito
+                  4. Despliegue completado
                 </span>
               </div>
             </div>
 
-            {/* Acciones del Modal */}
             {deploySuccess ? (
               <div className="space-y-3">
                 <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between text-xs">
@@ -1093,7 +1074,7 @@ export default function LandingsStudio() {
               </div>
             ) : (
               <div className="text-center py-2 text-xs text-slate-400">
-                Compilando cambios y propagando a producción...
+                Compilando cambios y propagando en vivo...
               </div>
             )}
 
@@ -1104,12 +1085,12 @@ export default function LandingsStudio() {
       {/* ─── MODAL VISTA PREVIA COMPLETA ──────────────────────────────────── */}
       {isFullPreviewModal && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col">
-          <div className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between">
+          <div className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <span className="font-extrabold text-sm text-slate-900">
                 Vista Previa Completa · {selectedProject.name}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-mono">
                 {selectedProject.slug}
               </span>
             </div>
@@ -1137,7 +1118,7 @@ export default function LandingsStudio() {
         </div>
       )}
 
-      {/* ─── MODAL PARA NUEVO PROYECTO DE LANDING ─────────────────────────── */}
+      {/* ─── MODAL PARA NUEVO PROYECTO ────────────────────────────────────── */}
       {showNewProjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200">
@@ -1146,7 +1127,7 @@ export default function LandingsStudio() {
                 Nuevo Proyecto de Landing
               </h3>
               <p className="text-xs text-slate-500">
-                Crea un nuevo espacio de trabajo para diseñar una landing con Hermes.
+                Crea un nuevo espacio de trabajo para diseñar una landing en CrickWebAI.
               </p>
             </div>
 
@@ -1195,7 +1176,7 @@ export default function LandingsStudio() {
                 <textarea
                   value={newProjectForm.description}
                   onChange={(e) => setNewProjectForm({ ...newProjectForm, description: e.target.value })}
-                  placeholder="Objetivo de la landing y público meta..."
+                  placeholder="Objetivo de la landing..."
                   rows={2}
                   className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
