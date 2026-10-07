@@ -1,81 +1,80 @@
-import React, { useState, useId } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { 
   ShieldCheck, 
   Check, 
   X, 
-  Phone, 
-  MessageSquare, 
-  HeartHandshake, 
   Sparkles, 
   Clock, 
   Hospital, 
   Stethoscope, 
   Smartphone, 
   Users, 
-  Download, 
-  ExternalLink, 
   ChevronDown, 
   ChevronUp, 
   ArrowRight, 
-  ShieldAlert, 
   Building2, 
   Award, 
   FileText, 
-  HelpCircle, 
-  Calendar,
-  AlertTriangle,
-  Play,
-  Send,
-  Loader2,
-  CheckCircle2
+  Search,
+  Menu,
+  Activity,
+  Heart,
+  Video,
+  MapPin,
+  HelpCircle
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 
-// ─── Design Tokens & Consts ──────────────────────────────────────────────────
-const COLOR_PRIMARY = '#003896';
-const COLOR_PRIMARY_SOFT = '#F4F9FF';
-const COLOR_PRIMARY_TINT = '#EFF6FF';
-const COLOR_LIME = '#9CD41C';
-const COLOR_WHATSAPP = '#25D366';
+// ─── LOGO MUTUUS OFICIAL VECTORIAL EN ALTA DEFINICIÓN ────────────────────────
+function MutuusLogo({ className = "h-9 w-auto" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 220 54" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <rect width="44" height="44" y="5" rx="12" fill="#003896"/>
+      <path d="M14 35V19L22 29L30 19V35" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="33" cy="15" r="3.5" fill="#9CD41C"/>
+      <text x="54" y="36" fontFamily="Montserrat, system-ui, sans-serif" fontSize="27" fontWeight="800" fill="#003896" letterSpacing="-0.5">mutuus</text>
+      <text x="54" y="47" fontFamily="Montserrat, system-ui, sans-serif" fontSize="8" fontWeight="700" fill="#64748B" letterSpacing="1.8">SALUD INTELIGENTE</text>
+    </svg>
+  );
+}
 
-// ─── FAQ Data with Rich SEO Content ──────────────────────────────────────────
+// ─── BASE DE DATOS DE PREGUNTAS FRECUENTES (FAQ) ─────────────────────────────
 const FAQS = [
   {
-    q: '¿Qué es exactamente Mutuus y cómo funciona la membresía de salud?',
-    a: 'Mutuus es un esquema integral de salud privada que combina una membresía médica digital (telemedicina 24/7 ilimitada, consultas de especialidad a precio preferencial y red de asistencias) con el respaldo de una póliza de seguro de Gastos Médicos Mayores con $0 deducible y $0 coaseguro en su red hospitalaria autorizada.'
+    q: '¿Qué es exactamente Mutuus y cómo opera la membresía de salud?',
+    a: 'Mutuus es un ecosistema privado de salud integral que combina consultas de telemedicina 24/7 ilimitadas, tarifas preferenciales en consultas presenciales y el respaldo de una póliza de Gastos Médicos Mayores con $0 deducible y $0 coaseguro al atenderte dentro de su red hospitalaria autorizada.'
   },
   {
-    q: '¿Realmente no pago deducible ni coaseguro al atenderme en un hospital?',
-    a: 'Es correcto. Siempre que reportes el evento médico oportunamente antes de tu ingreso y acudas a los hospitales y médicos de la red de pago directo de Mutuus, el deducible y coaseguro quedan condonados al 100%, pagando $0 de tu bolsillo por los gastos cubiertos.'
+    q: '¿Cómo funciona la condonación total de deducible y coaseguro?',
+    a: 'Al ingresar a cualquiera de los más de 115 hospitales de pago directo o 548 convenios autorizados y realizar el reporte previo a la línea médica de Mutuus, la cuenta médica cubierta es liquidada directamente por la aseguradora, permitiéndote pagar $0 de tu bolsillo.'
   },
   {
     q: '¿Qué hospitales de México forman parte de la red de pago directo?',
-    a: 'La red incluye más de 115 hospitales de pago directo y más de 548 convenios en todo el país, incluyendo cadenas líderes como Grupo Hospitales Ángeles, Médica Sur, Star Médica, Hospitales San Javier, Christus Muguerza y Hospitales MAC, entre otros.'
+    a: 'La red abarca instituciones de primer nivel en todo México, incluyendo Grupo Hospitales Ángeles, Médica Sur, Star Médica, Christus Muguerza, Hospitales MAC y Hospital San Javier, entre otras clínicas especializadas.'
   },
   {
-    q: '¿Cubre maternidad, parto o cesárea?',
-    a: 'Sí, la cobertura de maternidad incluye ayuda económica y atención hospitalaria conforme a las condiciones de cada plan (sujeto al periodo de espera de 10 meses continuos y topes establecidos en Unidades de Medida y Actualización - UMA).'
+    q: '¿Incluye cobertura para maternidad, parto o cesárea?',
+    a: 'Sí, la cobertura de maternidad ofrece ayuda económica y cobertura hospitalaria para parto o cesárea tras un periodo de espera de 10 meses continuos de vigencia de la póliza, con montos calculados conforme a las Unidades de Medida y Actualización (UMA).'
   },
   {
-    q: '¿Cómo solicito una consulta médica o videollamada 24/7?',
-    a: 'Desde la aplicación móvil de Mutuus puedes iniciar una videollamada o chat médico con médicos generales, pediatras y psicólogos certificados en cualquier momento del día o la noche, sin costo adicional ni límite de consultas.'
+    q: '¿Cómo se solicita una videollamada con un médico 24/7?',
+    a: 'Desde la aplicación móvil oficial de Mutuus puedes pulsar en "Consulta Médica" e iniciar una videollamada o chat seguro con médicos generales, pediatras o psicólogos en menos de 2 minutos, sin costo extra y las 24 horas del día.'
   },
   {
-    q: '¿Qué sucede en caso de una urgencia médica?',
-    a: 'En situaciones de emergencia, puedes comunicarte a la línea directa de asistencia médica 24/7 marcando el botón de urgencias en la app o llamando al teléfono exclusivo. Se te coordinará ambulancia terrestre o pase de ingreso inmediato al hospital de la red más cercano.'
+    q: '¿Qué debo hacer en caso de una urgencia médica?',
+    a: 'En caso de urgencia, puedes comunicarte inmediatamente a la línea de asistencia médica 24/7 marcando el botón de emergencia en la app. Nuestro equipo coordinará ambulancia terrestre o emitirá el pase de admisión directa en el hospital más cercano.'
   },
   {
-    q: '¿Cuáles son los periodos de espera para enfermedades preexistentes?',
-    a: 'Como en cualquier seguro de gastos médicos, existen periodos de espera específicos (por ejemplo: 12 meses para ciertas cirugías programadas, 24 meses para padecimientos específicos y 10 meses para maternidad). Te entregamos el detalle completo antes de tu contratación.'
+    q: '¿Cuáles son los requisitos y tiempos de activación?',
+    a: 'El proceso es 100% en línea. Tras llenar tus datos y seleccionar tu plan, tu membresía y credencial digital se activan en menos de 24 horas hábiles, listas para usarse desde tu smartphone.'
   },
   {
-    q: '¿Cómo es el proceso de contratación y activación?',
-    a: 'El trámite es 100% digital. Completas tu solicitud, realizas el pago en línea y recibes tu credencial digital y póliza en tu correo y en tu app en menos de 24 horas hábiles.'
+    q: '¿Cómo pido un reembolso si me atiendo fuera de la red?',
+    a: 'Para padecimientos cubiertos fuera de la red de pago directo, puedes ingresar tu reclamación y facturas digitales a través del portal de trámites para su dictamen y reembolso conforme a tabulador médico.'
   }
 ];
 
-// ─── Planes Data ─────────────────────────────────────────────────────────────
+// ─── TARIFAS Y PLANES VIGENTES 2026 ──────────────────────────────────────────
 const PLANES_DATA = {
   mensual: [
     {
@@ -83,60 +82,57 @@ const PLANES_DATA = {
       nombre: 'Plan UNO',
       badge: 'Básico Esencial',
       sumaAsegurada: '$1,000,000 MXN',
-      pagoInicial: '$1,299',
-      mensualidad: '$1,299',
-      anualTotal: '$15,588',
+      cuota: '$1,299',
+      periodo: 'mes',
       popular: false,
       caracteristicas: [
         'Cero Deducible en red de pago directo',
-        'Cero Coaseguro en eventos hospitalarios',
-        'Suma asegurada de $1,000,000 MXN por evento',
-        'Telemedicina 24/7 ilimitada (Medicina general)',
-        'Red de 115+ hospitales nacionales',
-        'Ambulancia de urgencia (2 eventos al año)',
-        'Atención médica en el extranjero por urgencia'
+        'Cero Coaseguro en hospitalización',
+        'Suma asegurada de $1,000,000 MXN por padecimiento',
+        'Telemedicina ilimitada 24/7 (Medicina general y pediatría)',
+        'Red de más de 115 hospitales de pago directo',
+        '2 traslados en ambulancia de urgencia al año',
+        'Asistencia médica de urgencia en el extranjero'
       ]
     },
     {
       id: 'dos',
       nombre: 'Plan DOS',
-      badge: 'Más Popular ★',
+      badge: 'Más Elegido ★',
       sumaAsegurada: '$3,000,000 MXN',
-      pagoInicial: '$1,899',
-      mensualidad: '$1,899',
-      anualTotal: '$22,788',
+      cuota: '$1,899',
+      periodo: 'mes',
       popular: true,
       caracteristicas: [
-        'Cero Deducible en red de pago directo',
-        'Cero Coaseguro en eventos hospitalarios',
-        'Suma asegurada de $3,000,000 MXN por evento',
-        'Telemedicina 24/7 (General, Psicología, Nutrición)',
+        'Cero Deducible en toda la red nacional',
+        'Cero Coaseguro en cirugías y estancias',
+        'Suma asegurada de $3,000,000 MXN por padecimiento',
+        'Telemedicina 24/7 (General, Pediatría, Psicología, Nutrición)',
         'Red completa de 548+ hospitales en convenio',
-        'Ambulancia de urgencia (3 eventos al año)',
+        '3 traslados en ambulancia terrestre al año',
         'Ayuda de maternidad (parto/cesárea) tras 10 meses',
-        'Check-up preventivo anual básico',
+        'Check-up preventivo básico anual',
         'Médico a domicilio con copago preferencial'
       ]
     },
     {
       id: 'plus',
       nombre: 'Plan PLUS',
-      badge: 'Máxima Protección',
+      badge: 'Protección Integral',
       sumaAsegurada: '$5,000,000 MXN',
-      pagoInicial: '$2,499',
-      mensualidad: '$2,499',
-      anualTotal: '$29,988',
+      cuota: '$2,499',
+      periodo: 'mes',
       popular: false,
       caracteristicas: [
-        'Cero Deducible en red hospitalaria premium',
-        'Cero Coaseguro en hospitalización y cirugía',
-        'Suma asegurada de $5,000,000 MXN por evento',
-        'Acceso prioritario a hospitales del Grupo Ángeles y Médica Sur',
-        'Telemedicina 24/7 sin límite de especialidades',
-        'Ambulancia aérea y terrestre en urgencias',
-        'Mayor tope de cobertura en maternidad',
-        'Check-up integral anual incluido',
-        'Orientación jurídica y psicológica telefónica 24/7'
+        'Cero Deducible en hospitales de alta especialidad',
+        'Cero Coaseguro en tratamientos oncológicos y cirugías',
+        'Suma asegurada de $5,000,000 MXN por padecimiento',
+        'Acceso prioritario a Grupo Ángeles, Médica Sur y Star Médica',
+        'Telemedicina 24/7 multi-especialidad sin límites',
+        'Coordinación de ambulancia aérea y terrestre',
+        'Mayor tope en cobertura de maternidad',
+        'Check-up integral anual con estudios de laboratorio',
+        'Orientación legal, médica y psicológica telefónica 24/7'
       ]
     }
   ],
@@ -144,174 +140,128 @@ const PLANES_DATA = {
     {
       id: 'uno',
       nombre: 'Plan UNO',
-      badge: 'Ahorro Anual',
+      badge: 'Ahorro Anual 10%',
       sumaAsegurada: '$1,000,000 MXN',
-      pagoInicial: '$13,990',
-      mensualidad: 'Equiv. $1,165/mes',
-      anualTotal: '$13,990',
-      descuento: 'Ahorra 10%',
+      cuota: '$13,990',
+      periodo: 'año',
+      ahorro: 'Equivale a $1,165/mes',
       popular: false,
       caracteristicas: [
         'Cero Deducible en red de pago directo',
-        'Cero Coaseguro en eventos hospitalarios',
-        'Suma asegurada de $1,000,000 MXN por evento',
-        'Telemedicina 24/7 ilimitada (Medicina general)',
-        'Red de 115+ hospitales nacionales',
-        'Ambulancia de urgencia (2 eventos al año)',
-        'Atención médica en el extranjero por urgencia'
+        'Cero Coaseguro en hospitalización',
+        'Suma asegurada de $1,000,000 MXN por padecimiento',
+        'Telemedicina ilimitada 24/7 (Medicina general y pediatría)',
+        'Red de más de 115 hospitales de pago directo',
+        '2 traslados en ambulancia de urgencia al año',
+        'Asistencia médica de urgencia en el extranjero'
       ]
     },
     {
       id: 'dos',
       nombre: 'Plan DOS',
-      badge: 'Más Elegido · Mejor Valor',
+      badge: 'Mejor Valor · Recomendado',
       sumaAsegurada: '$3,000,000 MXN',
-      pagoInicial: '$20,490',
-      mensualidad: 'Equiv. $1,707/mes',
-      anualTotal: '$20,490',
-      descuento: 'Ahorra 10%',
+      cuota: '$20,490',
+      periodo: 'año',
+      ahorro: 'Equivale a $1,707/mes',
       popular: true,
       caracteristicas: [
-        'Cero Deducible en red de pago directo',
-        'Cero Coaseguro en eventos hospitalarios',
-        'Suma asegurada de $3,000,000 MXN por evento',
-        'Telemedicina 24/7 (General, Psicología, Nutrición)',
+        'Cero Deducible en toda la red nacional',
+        'Cero Coaseguro en cirugías y estancias',
+        'Suma asegurada de $3,000,000 MXN por padecimiento',
+        'Telemedicina 24/7 (General, Pediatría, Psicología, Nutrición)',
         'Red completa de 548+ hospitales en convenio',
-        'Ambulancia de urgencia (3 eventos al año)',
+        '3 traslados en ambulancia terrestre al año',
         'Ayuda de maternidad (parto/cesárea) tras 10 meses',
-        'Check-up preventivo anual básico',
+        'Check-up preventivo básico anual',
         'Médico a domicilio con copago preferencial'
       ]
     },
     {
       id: 'plus',
       nombre: 'Plan PLUS',
-      badge: 'Protección Total',
+      badge: 'Máxima Cobertura',
       sumaAsegurada: '$5,000,000 MXN',
-      pagoInicial: '$26,990',
-      mensualidad: 'Equiv. $2,249/mes',
-      anualTotal: '$26,990',
-      descuento: 'Ahorra 10%',
+      cuota: '$26,990',
+      periodo: 'año',
+      ahorro: 'Equivale a $2,249/mes',
       popular: false,
       caracteristicas: [
-        'Cero Deducible en red hospitalaria premium',
-        'Cero Coaseguro en hospitalización y cirugía',
-        'Suma asegurada de $5,000,000 MXN por evento',
-        'Acceso prioritario a hospitales del Grupo Ángeles y Médica Sur',
-        'Telemedicina 24/7 sin límite de especialidades',
-        'Ambulancia aérea y terrestre en urgencias',
-        'Mayor tope de cobertura en maternidad',
-        'Check-up integral anual incluido',
-        'Orientación jurídica y psicológica telefónica 24/7'
+        'Cero Deducible en hospitales de alta especialidad',
+        'Cero Coaseguro en tratamientos oncológicos y cirugías',
+        'Suma asegurada de $5,000,000 MXN por padecimiento',
+        'Acceso prioritario a Grupo Ángeles, Médica Sur y Star Médica',
+        'Telemedicina 24/7 multi-especialidad sin límites',
+        'Coordinación de ambulancia aérea y terrestre',
+        'Mayor tope en cobertura de maternidad',
+        'Check-up integral anual con estudios de laboratorio',
+        'Orientación legal, médica y psicológica telefónica 24/7'
       ]
     }
   ]
 };
 
-// ─── Red Hospitalaria Logos ──────────────────────────────────────────────────
-const HOSPITALES = [
-  { nombre: 'Hospitales Ángeles', tipo: 'Red Directa Nacional', ciudad: 'CDMX, GDL, MTY, Puebla' },
-  { nombre: 'Médica Sur', tipo: 'Alta Especialidad', ciudad: 'CDMX' },
-  { nombre: 'Star Médica', tipo: 'Red Directa Nacional', ciudad: 'Nacional (15 sedes)' },
-  { nombre: 'Christus Muguerza', tipo: 'Red Hospitalaria Norte', ciudad: 'Monterrey, Saltillo, Chihuahua' },
-  { nombre: 'Hospitales MAC', tipo: 'Red de Excelencia', ciudad: 'Bajío, Centro y Norte' },
-  { nombre: 'Hospital San Javier', tipo: 'Alta Especialidad', ciudad: 'Guadalajara y Vallarta' }
+// ─── RED DE HOSPITALES NACIONALES ────────────────────────────────────────────
+const HOSPITALES_DATA = [
+  { nombre: 'Hospitales Ángeles', ubicaciones: 'CDMX, Guadalajara, Monterrey, Puebla, Querétaro', tipo: 'Pago Directo' },
+  { nombre: 'Médica Sur', ubicaciones: 'Ciudad de México (Tlalpan)', tipo: 'Alta Especialidad' },
+  { nombre: 'Star Médica', ubicaciones: 'CDMX, Morelia, Mérida, Querétaro, Aguascalientes', tipo: 'Pago Directo' },
+  { nombre: 'Christus Muguerza', ubicaciones: 'Monterrey, Saltillo, Chihuahua, Reynosa', tipo: 'Pago Directo' },
+  { nombre: 'Hospitales MAC', ubicaciones: 'Guadalajara, Puebla, León, Celaya, Aguascalientes', tipo: 'Red de Excelencia' },
+  { nombre: 'Hospital San Javier', ubicaciones: 'Guadalajara y Puerto Vallarta', tipo: 'Alta Especialidad' },
+  { nombre: 'Centro Médico ABC', ubicaciones: 'Observatorio y Santa Fe (Planes Plus)', tipo: 'Convenio Especial' },
+  { nombre: 'Hospital Español', ubicaciones: 'Ciudad de México (Polanco)', tipo: 'Pago Directo' }
 ];
 
 export default function MutuusLanding() {
   const [periodicidad, setPeriodicidad] = useState<'anual' | 'mensual'>('anual');
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [tabCobertura, setTabCobertura] = useState<'cubierto' | 'no_cubierto'>('cubierto');
-  const [showModalLead, setShowModalLead] = useState(false);
-  const [selectedPlanForModal, setSelectedPlanForModal] = useState<string>('Plan DOS');
-  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [searchHospital, setSearchHospital] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Form State
-  const [leadForm, setLeadForm] = useState({
-    nombre: '',
-    edad: '',
-    telefono: '',
-    email: '',
-    ciudad: '',
-    plan: 'Plan DOS'
-  });
-  const [submittingLead, setSubmittingLead] = useState(false);
-  const [leadSuccess, setLeadSuccess] = useState(false);
+  // Asegurar que el documento principal tenga scroll libre y fluido
+  useEffect(() => {
+    const root = document.getElementById('root');
+    root?.classList.add('public-page');
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+    document.body.style.height = 'auto';
+    document.documentElement.style.height = 'auto';
+
+    return () => {
+      root?.classList.remove('public-page');
+    };
+  }, []);
 
   const plans = PLANES_DATA[periodicidad];
 
-  const handleOpenLeadModal = (planNombre: string) => {
-    setSelectedPlanForModal(planNombre);
-    setLeadForm(prev => ({ ...prev, plan: planNombre }));
-    setShowModalLead(true);
-  };
-
-  const handleLeadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!leadForm.nombre || !leadForm.telefono) return;
-
-    setSubmittingLead(true);
-    try {
-      await supabase.from('leads').insert([
-        {
-          full_name: leadForm.nombre,
-          email: leadForm.email || 'sin-correo@mutuus.landing',
-          company: `Edad: ${leadForm.edad} | Ciudad: ${leadForm.ciudad} | Plan: ${leadForm.plan}`,
-          message: `Solicitud de cotización de membresía Mutuus (${leadForm.plan}) enviada desde landings.movi.digital/mutuus. Tel: ${leadForm.telefono}`,
-          created_at: new Date().toISOString()
-        }
-      ]);
-      setLeadSuccess(true);
-
-      // Redirigir opcional a WhatsApp con mensaje prearmado
-      const msg = encodeURIComponent(
-        `Hola, me interesa información y cotizar el ${leadForm.plan} de Mutuus. Mi nombre es ${leadForm.nombre}, tengo ${leadForm.edad} años y vivo en ${leadForm.ciudad || 'México'}.`
-      );
-      setTimeout(() => {
-        window.open(`https://wa.me/525540001234?text=${msg}`, '_blank');
-      }, 1200);
-    } catch (err) {
-      console.error('Error enviando lead:', err);
-    } finally {
-      setSubmittingLead(false);
-    }
-  };
+  // Filtro de Hospitales
+  const filteredHospitales = useMemo(() => {
+    if (!searchHospital.trim()) return HOSPITALES_DATA;
+    const q = searchHospital.toLowerCase();
+    return HOSPITALES_DATA.filter(h => 
+      h.nombre.toLowerCase().includes(q) || h.ubicaciones.toLowerCase().includes(q)
+    );
+  }, [searchHospital]);
 
   return (
     <>
-      {/* ─── SEO & GEO META TAGS (INTERNATIONAL STANDARDS) ──────────────────── */}
+      {/* ─── METATAGS SEO & GEO ────────────────────────────────────────────── */}
       <Helmet>
         <html lang="es-MX" />
         <title>Mutuus Seguro de Gastos Médicos | Cero Deducible y Coaseguro</title>
         <meta 
           name="description" 
-          content="Membresía de salud y seguro de gastos médicos Mutuus con atención hospitalaria directa, telemedicina 24/7 y 0% de deducible en México. Cotiza en línea con un promotor autorizado." 
+          content="Contrata tu membresía de salud y seguro de gastos médicos Mutuus con atención hospitalaria directa, telemedicina 24/7 y 0% de deducible en México." 
         />
         <meta 
           name="keywords" 
-          content="Mutuus seguro gastos medicos, seguro sin deducible, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguros metlife mutuus, promotor autorizado mutuus, hospital pago directo" 
+          content="Mutuus seguro gastos medicos, seguro sin deducible, seguro medico sin coaseguro, telemedicina 24/7 mexico, promotor autorizado mutuus" 
         />
         <link rel="canonical" href="https://landings.movi.digital/mutuus" />
-
-        {/* Metatags Geográficos (GEO Optimization) */}
         <meta name="geo.region" content="MX" />
         <meta name="geo.placename" content="México" />
-        <meta name="geo.position" content="19.432608;-99.133208" />
-        <meta name="ICBM" content="19.432608, -99.133208" />
-
-        {/* Open Graph / Social */}
-        <meta property="og:type" content="website" />
-        <meta property="og:locale" content="es_MX" />
-        <meta property="og:site_name" content="Movi Digital · Promotor Autorizado Mutuus" />
-        <meta property="og:title" content="Mutuus Seguro de Gastos Médicos | Sin Deducible ni Coaseguro" />
-        <meta property="og:description" content="Atención médica privada de excelencia, telemedicina 24/7 y cero desembolso de deducible en la red de hospitales autorizados." />
-        <meta property="og:url" content="https://landings.movi.digital/mutuus" />
-        <meta property="og:image" content="https://movi.digital/wp-content/uploads/2026/02/og-mutuus-banner.jpg" />
-
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Mutuus Salud | Cero Deducible y Cero Coaseguro" />
-        <meta name="twitter:description" content="Planes de salud y gastos médicos mayores y menores con respaldo hospitalario nacional." />
 
         {/* Schema.org Structured Data (JSON-LD) */}
         <script type="application/ld+json">
@@ -320,43 +270,22 @@ export default function MutuusLanding() {
             "@graph": [
               {
                 "@type": "InsuranceAgency",
-                "@id": "https://landings.movi.digital/mutuus/#agency",
                 "name": "Promotoría Autorizada Mutuus - Movi Digital",
                 "url": "https://landings.movi.digital/mutuus",
-                "logo": "https://movi.digital/wp-content/uploads/elementor/thumbs/moviRecurso-10-rgqg5n2oyvobfmstl7md0o8mr5w7vjv6rsxrkauuio.png",
-                "description": "Asesoría y contratación autorizada de membresías de salud y seguros de gastos médicos Mutuus en México.",
-                "areaServed": {
-                  "@type": "Country",
-                  "name": "Mexico"
-                },
-                "telephone": "+52-55-4000-1234",
-                "priceRange": "$$"
+                "description": "Contratación autorizada de membresías de salud y seguros de gastos médicos Mutuus en México."
               },
               {
                 "@type": "Product",
                 "name": "Membresía de Salud y Gastos Médicos Mutuus",
-                "description": "Esquema integral de protección médica privada con $0 de deducible y coaseguro en red de pago directo.",
-                "brand": {
-                  "@type": "Brand",
-                  "name": "Mutuus"
-                },
-                "offers": {
-                  "@type": "AggregateOffer",
-                  "priceCurrency": "MXN",
-                  "lowPrice": "1299.00",
-                  "highPrice": "26990.00",
-                  "offerCount": "3"
-                }
+                "description": "Protección médica privada con $0 de deducible y coaseguro en red de pago directo.",
+                "brand": { "@type": "Brand", "name": "Mutuus" }
               },
               {
                 "@type": "FAQPage",
                 "mainEntity": FAQS.map(faq => ({
                   "@type": "Question",
                   "name": faq.q,
-                  "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": faq.a
-                  }
+                  "acceptedAnswer": { "@type": "Answer", "text": faq.a }
                 }))
               }
             ]
@@ -364,73 +293,123 @@ export default function MutuusLanding() {
         </script>
       </Helmet>
 
-      {/* ─── CONTENEDOR PRINCIPAL ────────────────────────────────────────── */}
-      <div className="min-h-screen bg-white text-[#2B2A2A] font-sans antialiased selection:bg-[#003896] selection:text-white" style={{ fontFamily: 'Montserrat, system-ui, -apple-system, sans-serif' }}>
+      {/* ─── CONTENEDOR PRINCIPAL CON SCROLL COMPLETO ────────────────────── */}
+      <div 
+        className="w-full min-h-screen bg-white text-[#2B2A2A] font-sans antialiased relative"
+        style={{ fontFamily: 'Montserrat, system-ui, -apple-system, sans-serif' }}
+      >
 
-        {/* ─── 1. HEADER STICKY (PROMOTOR AUTORIZADO) ────────────────────── */}
-        <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+        {/* ─── 1. HEADER LIMPIO, ESPACIOSO Y NO ENCIMADO ──────────────────── */}
+        <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-            {/* Logos & Leyenda Promotor */}
-            <div className="flex items-center gap-3 sm:gap-4">
-              <a href="#inicio" className="flex items-center gap-2 group">
-                <div className="w-10 h-10 rounded-xl bg-[#003896] flex items-center justify-center text-white font-black text-xl tracking-tighter shadow-md">
-                  M
-                </div>
-                <div>
-                  <span className="font-extrabold text-xl text-[#003896] tracking-tight block leading-none">
-                    mutuus
-                  </span>
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mt-0.5">
-                    Salud Inteligente
-                  </span>
-                </div>
+            
+            {/* Logo y Leyenda de Promotor Autorizado */}
+            <div className="flex items-center gap-3">
+              <a href="#inicio" className="flex items-center">
+                <MutuusLogo className="h-10 w-auto" />
               </a>
 
               <div className="h-7 w-[1px] bg-slate-200 hidden sm:block" />
 
-              <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-[11px] font-bold text-[#003896]">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-[11px] font-bold text-[#003896]">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#003896]" />
                 <span>Promotor Autorizado</span>
-              </div>
+              </span>
             </div>
 
             {/* Menú de Navegación Desktop */}
-            <nav className="hidden lg:flex items-center gap-7 text-sm font-semibold text-slate-700">
-              <a href="#porque-mutuus" className="hover:text-[#003896] transition-colors">¿Por qué Mutuus?</a>
-              <a href="#planes" className="hover:text-[#003896] transition-colors">Planes y Precios</a>
-              <a href="#red-hospitalaria" className="hover:text-[#003896] transition-colors">Red de Hospitales</a>
+            <nav className="hidden lg:flex items-center gap-6 xl:gap-8 text-sm font-semibold text-slate-700">
+              <a href="#comparativa" className="hover:text-[#003896] transition-colors">¿Por qué Mutuus?</a>
+              <a href="#planes" className="hover:text-[#003896] transition-colors">Planes & Tarifas</a>
+              <a href="#hospitales" className="hover:text-[#003896] transition-colors">Red Hospitalaria</a>
+              <a href="#app" className="hover:text-[#003896] transition-colors">App 24/7</a>
               <a href="#coberturas" className="hover:text-[#003896] transition-colors">Coberturas</a>
-              <a href="#faq" className="hover:text-[#003896] transition-colors">Preguntas Frecuentes</a>
+              <a href="#faq" className="hover:text-[#003896] transition-colors">FAQ</a>
             </nav>
 
-            {/* Acciones */}
+            {/* Botón Contratar */}
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => handleOpenLeadModal('Plan DOS')}
-                className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs md:text-sm font-bold text-white bg-[#003896] hover:bg-[#002b75] transition-all shadow-md shadow-[#003896]/20 active:scale-95 cursor-pointer"
-              >
-                <span>Cotizar Plan</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
               <a
-                href="https://wa.me/525540001234?text=Hola,%20deseo%20asesoria%20sobre%20los%20planes%20Mutuus."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold text-slate-900 bg-[#25D366] hover:bg-[#20ba5a] transition-all shadow-sm active:scale-95"
+                href="#"
+                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white bg-[#003896] hover:bg-[#002b75] transition-all shadow-md shadow-[#003896]/20 active:scale-95"
               >
-                <MessageSquare className="w-4 h-4 fill-slate-900 text-slate-900" />
-                <span className="hidden md:inline">WhatsApp Asesor</span>
+                <span>Contratar</span>
+                <ArrowRight className="w-4 h-4" />
               </a>
+
+              {/* Botón Menú Móvil */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition"
+                aria-label="Abrir menú"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
+
           </div>
+
+          {/* Menú Desplegable en Móvil */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden bg-white border-b border-slate-200 px-6 py-5 space-y-3 shadow-lg">
+              <a
+                href="#comparativa"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 text-sm font-bold text-slate-800 hover:text-[#003896]"
+              >
+                ¿Por qué Mutuus?
+              </a>
+              <a
+                href="#planes"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 text-sm font-bold text-slate-800 hover:text-[#003896]"
+              >
+                Planes & Tarifas
+              </a>
+              <a
+                href="#hospitales"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 text-sm font-bold text-slate-800 hover:text-[#003896]"
+              >
+                Red Hospitalaria
+              </a>
+              <a
+                href="#app"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 text-sm font-bold text-slate-800 hover:text-[#003896]"
+              >
+                App & Telemedicina
+              </a>
+              <a
+                href="#coberturas"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 text-sm font-bold text-slate-800 hover:text-[#003896]"
+              >
+                Coberturas
+              </a>
+              <a
+                href="#faq"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-2 text-sm font-bold text-slate-800 hover:text-[#003896]"
+              >
+                Preguntas Frecuentes
+              </a>
+              <div className="pt-2">
+                <a
+                  href="#"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-3 rounded-full text-center font-bold text-sm text-white bg-[#003896] block"
+                >
+                  Contratar Plan
+                </a>
+              </div>
+            </div>
+          )}
         </header>
 
-        {/* ─── 2. HERO SECTION CON OVERLAY Y FOTO ─────────────────────────── */}
-        <section id="inicio" className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden bg-gradient-to-b from-[#F4F9FF] via-white to-white">
-          <div className="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none bg-[radial-gradient(#003896_1px,transparent_1px)] [background-size:16px_16px]" />
-
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* ─── 2. HERO SECTION CON ILUSTRACIÓN INTEGRADA ───────────────────── */}
+        <section id="inicio" className="pt-12 pb-20 md:pt-20 md:pb-28 bg-gradient-to-b from-[#F4F9FF] via-white to-white overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               
               {/* Contenido Izquierdo */}
@@ -443,7 +422,7 @@ export default function MutuusLanding() {
                 </div>
 
                 {/* H1 Principal con SEO Keyword */}
-                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#2B2A2A] tracking-tight leading-[1.15]">
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#2B2A2A] tracking-tight leading-[1.12]">
                   Membresía de salud y gastos médicos con <span className="text-[#003896]">cero deducible</span>
                 </h1>
 
@@ -454,26 +433,18 @@ export default function MutuusLanding() {
 
                 {/* Nota Legal visible */}
                 <p className="text-xs text-slate-400 italic">
-                  * Aplican términos, condiciones y periodos de espera estipulados en la póliza.
+                  * Aplican términos, condiciones y periodos de espera estipulados en el contrato de póliza.
                 </p>
 
-                {/* Botones de Acción (CTA) */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+                {/* Botón Contratar Principal */}
+                <div className="pt-2">
                   <a
-                    href="#planes"
+                    href="#"
                     className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full text-base font-bold text-white bg-[#003896] hover:bg-[#002c77] transition-all shadow-lg shadow-[#003896]/25 hover:shadow-xl active:scale-98 text-center"
                   >
-                    <span>Ver Planes y Precios</span>
+                    <span>Contratar Plan</span>
                     <ArrowRight className="w-5 h-5" />
                   </a>
-
-                  <button
-                    onClick={() => handleOpenLeadModal('Plan DOS')}
-                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full text-base font-bold text-[#003896] bg-white border-2 border-[#003896] hover:bg-[#EFF6FF] transition-all text-center"
-                  >
-                    <Phone className="w-4 h-4" />
-                    <span>Hablar con un Asesor</span>
-                  </button>
                 </div>
 
                 {/* Micro-beneficios con Checks */}
@@ -494,21 +465,18 @@ export default function MutuusLanding() {
 
               </div>
 
-              {/* Tarjeta Visual Hero Derecha */}
-              <div className="lg:col-span-5 relative">
-                <div className="relative rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-[#003896] to-[#00225d] text-white shadow-2xl border border-white/20 overflow-hidden">
+              {/* Tarjeta Visual Hero Derecha (Ilustración Gráfica) */}
+              <div className="lg:col-span-5">
+                <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-[#003896] to-[#00225d] text-white shadow-2xl border border-white/20 relative overflow-hidden">
                   
-                  {/* Destellos de fondo */}
-                  <div className="absolute -top-24 -right-24 w-60 h-60 bg-[#9CD41C]/20 rounded-full blur-3xl pointer-events-none" />
-                  
-                  <div className="relative z-10 space-y-6">
+                  <div className="space-y-6">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-[#9CD41C] border border-white/10">
                       <Hospital className="w-4 h-4" />
                       <span>Pago Directo al Hospital</span>
                     </div>
 
                     <h3 className="text-2xl font-black text-white leading-snug">
-                      La diferencia de no pagar deducible:
+                      La diferencia real de no pagar deducible:
                     </h3>
 
                     {/* Comparativa rápida visual */}
@@ -524,22 +492,22 @@ export default function MutuusLanding() {
                       <div className="p-4 rounded-2xl bg-[#9CD41C] text-slate-900 border border-[#9CD41C] flex items-center justify-between shadow-lg">
                         <div>
                           <p className="text-xs font-bold text-slate-800">Con Membresía Mutuus</p>
-                          <p className="text-base font-black text-slate-900">Pago en Red de Convenio</p>
+                          <p className="text-base font-black text-slate-900">En Red Hospitalaria</p>
                         </div>
                         <span className="text-2xl font-black text-slate-900">$0 MXN</span>
                       </div>
                     </div>
 
                     <p className="text-xs text-white/75 leading-relaxed">
-                      Sin trámites engorrosos de reembolso ni desembolsos iniciales que desestabilicen tu patrimonio familiar.
+                      Sin trámites engorrosos de reembolso ni desembolsos iniciales que desestabilicen el patrimonio de tu familia.
                     </p>
 
-                    <button
-                      onClick={() => handleOpenLeadModal('Plan DOS')}
-                      className="w-full py-3.5 px-6 rounded-full font-extrabold text-sm text-slate-900 bg-[#9CD41C] hover:bg-[#8ec218] transition-all shadow-md active:scale-95 cursor-pointer text-center block"
+                    <a
+                      href="#"
+                      className="w-full py-3.5 px-6 rounded-full font-extrabold text-sm text-slate-900 bg-[#9CD41C] hover:bg-[#8ec218] transition-all shadow-md active:scale-95 text-center block"
                     >
-                      Cotizar mi Membresía Ahora
-                    </button>
+                      Contratar Membresía Mutuus
+                    </a>
                   </div>
                 </div>
               </div>
@@ -548,7 +516,7 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 3. CAJA DE DEFINICIÓN (QUÉ ES MUTUUS) ──────────────────────── */}
+        {/* ─── 3. DEFINICIÓN CON ESCUDO ──────────────────────────────────── */}
         <section className="py-12 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="p-6 sm:p-8 rounded-3xl bg-[#EFF6FF] border border-[#CBD5E1] flex flex-col md:flex-row items-center gap-6 shadow-xs">
@@ -557,23 +525,23 @@ export default function MutuusLanding() {
               </div>
               <div className="space-y-2 text-center md:text-left">
                 <h2 className="text-xl sm:text-2xl font-extrabold text-[#003896]">
-                  ¿Qué es Mutuus?
+                  ¿Cómo funciona el modelo Mutuus?
                 </h2>
                 <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-normal">
-                  Mutuus es el ecosistema de salud privada que elimina las barreras económicas tradicionales: combina consultas médicas ilimitadas por videollamada 24/7 y una póliza hospitalaria que te garantiza <strong className="text-[#003896] font-bold">cero deducible y cero coaseguro</strong> al atenderte en su red nacional de hospitales certificados.
+                  Mutuus es el esquema integral de salud privada que elimina las barreras económicas tradicionales: combina consultas médicas ilimitadas por videollamada 24/7 y una póliza hospitalaria que te garantiza <strong className="text-[#003896] font-bold">cero deducible y cero coaseguro</strong> al atenderte en su red nacional de hospitales certificados.
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ─── 4. POR QUÉ MUTUUS (TABLA COMPARATIVA 3 VÍAS) ───────────────── */}
-        <section id="porque-mutuus" className="py-20 bg-[#F4F9FF]">
+        {/* ─── 4. POR QUÉ MUTUUS (COMPARATIVA DE 3 COLUMNAS) ──────────────── */}
+        <section id="comparativa" className="py-20 bg-[#F4F9FF]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
               <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
-                Comparativa de Impacto Financiero
+                Impacto Financiero Real
               </span>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003896]">
                 ¿Por qué elegir Mutuus frente a un seguro tradicional?
@@ -587,14 +555,16 @@ export default function MutuusLanding() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
               
               {/* Columna 1: Mutuus (Destacada) */}
-              <div className="rounded-3xl p-6 sm:p-8 bg-white border-2 border-[#003896] shadow-xl relative flex flex-col justify-between order-1 md:order-1 ring-4 ring-[#003896]/10">
+              <div className="rounded-3xl p-6 sm:p-8 bg-white border-2 border-[#003896] shadow-xl relative flex flex-col justify-between order-1 ring-4 ring-[#003896]/10">
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#003896] text-white text-xs font-extrabold uppercase tracking-wide">
                   Opción Mutuus
                 </div>
 
                 <div className="space-y-6 pt-2">
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">🛡️</span>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <ShieldCheck className="w-6 h-6 text-[#22C55E]" />
+                    </div>
                     <div>
                       <h3 className="text-xl font-black text-[#003896]">Con Mutuus</h3>
                       <p className="text-xs text-slate-500">En Red de Pago Directo</p>
@@ -628,7 +598,9 @@ export default function MutuusLanding() {
               <div className="rounded-3xl p-6 sm:p-8 bg-white border border-slate-200 shadow-sm flex flex-col justify-between order-2">
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">📄</span>
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-amber-700" />
+                    </div>
                     <div>
                       <h3 className="text-xl font-bold text-slate-800">Seguro Tradicional</h3>
                       <p className="text-xs text-slate-500">Póliza GMM Estándar</p>
@@ -662,7 +634,9 @@ export default function MutuusLanding() {
               <div className="rounded-3xl p-6 sm:p-8 bg-white border border-slate-200 shadow-sm flex flex-col justify-between order-3">
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">⚠️</span>
+                    <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
+                      <X className="w-5 h-5 text-rose-600 stroke-[3]" />
+                    </div>
                     <div>
                       <h3 className="text-xl font-bold text-slate-800">Sin Protección</h3>
                       <p className="text-xs text-slate-500">Gasto de Bolsillo 100%</p>
@@ -688,7 +662,7 @@ export default function MutuusLanding() {
                 <div className="mt-8 pt-4 border-t border-slate-100 bg-rose-50 -mx-6 -mb-6 p-6 rounded-b-3xl">
                   <p className="text-xs font-bold text-rose-700 uppercase">Pago Total Requerido:</p>
                   <p className="text-3xl font-black text-rose-700 mt-1">$705,500 MXN</p>
-                  <p className="text-[11px] text-rose-600 mt-1">Riesgo patrimonial severo o endeudamiento.</p>
+                  <p className="text-[11px] text-rose-600 mt-1">Riesgo de endeudamiento familiar severo.</p>
                 </div>
               </div>
 
@@ -698,53 +672,50 @@ export default function MutuusLanding() {
         </section>
 
         {/* ─── 5. APP Y TELEMEDICINA 24/7 ─────────────────────────────────── */}
-        <section className="py-20 bg-white">
+        <section id="app" className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               
-              {/* Imagen/Mockup App */}
+              {/* Mockup Móvil */}
               <div className="lg:col-span-5 order-2 lg:order-1 flex justify-center">
-                <div className="relative w-full max-w-sm p-6 rounded-3xl bg-gradient-to-tr from-[#003896] to-[#001f52] text-white shadow-2xl">
-                  <div className="flex items-center justify-between pb-4 border-b border-white/10">
-                    <span className="text-xs font-bold text-[#9CD41C]">App Oficial Mutuus</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">En línea 24/7</span>
+                <div className="w-full max-w-xs p-5 rounded-[36px] bg-slate-900 text-white shadow-2xl border-4 border-slate-800">
+                  <div className="h-5 flex items-center justify-center mb-3">
+                    <div className="w-20 h-3 bg-black rounded-full" />
                   </div>
 
-                  <div className="py-6 space-y-4">
-                    <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center gap-3">
-                      <Stethoscope className="w-8 h-8 text-[#9CD41C]" />
+                  <div className="rounded-2xl bg-gradient-to-br from-[#003896] to-[#00225d] p-4 text-white space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
                       <div>
-                        <p className="text-xs text-white/70">Consulta en Vivo</p>
-                        <p className="text-sm font-bold">Médico General y Pediatría</p>
+                        <p className="text-[10px] text-white/70">Credencial Digital</p>
+                        <p className="text-xs font-extrabold">Mutuus Salud</p>
                       </div>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[9px]">ACTIVA</span>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center gap-3">
-                      <Hospital className="w-8 h-8 text-blue-300" />
-                      <div>
-                        <p className="text-xs text-white/70">Geolocalizador</p>
-                        <p className="text-sm font-bold">115+ Hospitales Cercanos</p>
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-xl bg-white/10 flex items-center gap-2.5">
+                        <Video className="w-5 h-5 text-[#9CD41C]" />
+                        <div>
+                          <p className="text-[11px] font-bold">Consulta Médica 24/7</p>
+                          <p className="text-[9px] text-white/70">Videollamada en &lt; 2 min</p>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center gap-3">
-                      <ShieldCheck className="w-8 h-8 text-[#9CD41C]" />
-                      <div>
-                        <p className="text-xs text-white/70">Credencial Digital</p>
-                        <p className="text-sm font-bold">Acceso inmediato en admisión</p>
+                      <div className="p-3 rounded-xl bg-white/10 flex items-center gap-2.5">
+                        <Hospital className="w-5 h-5 text-blue-300" />
+                        <div>
+                          <p className="text-[11px] font-bold">115+ Hospitales en Red</p>
+                          <p className="text-[9px] text-white/70">Pago directo geolocalizado</p>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="pt-4 border-t border-white/10 flex items-center justify-around text-xs text-center text-white/75">
-                    <div>
-                      <p className="font-bold text-white">App Store</p>
-                      <p className="text-[10px]">iOS 14.0+</p>
-                    </div>
-                    <div className="h-6 w-[1px] bg-white/20" />
-                    <div>
-                      <p className="font-bold text-white">Google Play</p>
-                      <p className="text-[10px]">Android 8.0+</p>
+                      <div className="p-3 rounded-xl bg-white/10 flex items-center gap-2.5">
+                        <FileText className="w-5 h-5 text-[#9CD41C]" />
+                        <div>
+                          <p className="text-[11px] font-bold">Receta Digital</p>
+                          <p className="text-[9px] text-white/70">Válida en farmacias de México</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -753,7 +724,7 @@ export default function MutuusLanding() {
               {/* Contenido Descriptivo */}
               <div className="lg:col-span-7 order-1 lg:order-2 space-y-6">
                 <span className="px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
-                  Salud Digital en tu Bolsillo
+                  Telemedicina & Asistencia Inmediata
                 </span>
 
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003896]">
@@ -783,13 +754,14 @@ export default function MutuusLanding() {
                   </div>
                 </div>
 
-                <div className="pt-4 flex flex-wrap gap-4">
-                  <button
-                    onClick={() => handleOpenLeadModal('Plan DOS')}
-                    className="px-6 py-3 rounded-full bg-[#003896] text-white font-bold text-xs sm:text-sm hover:bg-[#002b75] transition-all shadow-md cursor-pointer"
+                <div className="pt-2">
+                  <a
+                    href="#"
+                    className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#003896] text-white font-bold text-sm hover:bg-[#002b75] transition-all shadow-md"
                   >
-                    Contratar y Activar App
-                  </button>
+                    <span>Contratar Membresía</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
                 </div>
               </div>
 
@@ -797,16 +769,16 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 6. PLANES Y PRECIOS TRANSPARENTES ──────────────────────────── */}
+        {/* ─── 6. PLANES Y TARIFAS TRANSPARENTES ──────────────────────────── */}
         <section id="planes" className="py-20 bg-[#F4F9FF]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center max-w-3xl mx-auto space-y-4 mb-12">
               <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
-                Tarifas y Coberturas
+                Tarifas y Coberturas Oficiales
               </span>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-[#003896]">
-                Elige el plan diseñado para tu estilo de vida
+                Elige el plan diseñado para ti y tu familia
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
                 Precios claros, sin costos ocultos ni letras pequeñas. Respaldo asegurador oficial en moneda nacional (MXN).
@@ -817,7 +789,7 @@ export default function MutuusLanding() {
                 <div className="bg-white p-1 rounded-full border border-slate-200 shadow-xs inline-flex">
                   <button
                     onClick={() => setPeriodicidad('anual')}
-                    className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       periodicidad === 'anual'
                         ? 'bg-[#003896] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -827,7 +799,7 @@ export default function MutuusLanding() {
                   </button>
                   <button
                     onClick={() => setPeriodicidad('mensual')}
-                    className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       periodicidad === 'mensual'
                         ? 'bg-[#003896] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -846,7 +818,7 @@ export default function MutuusLanding() {
                   key={p.id}
                   className={`rounded-3xl p-6 sm:p-8 bg-white transition-all duration-300 flex flex-col justify-between relative ${
                     p.popular
-                      ? 'border-2 border-[#003896] shadow-2xl scale-102 lg:-translate-y-2'
+                      ? 'border-2 border-[#003896] shadow-2xl scale-102 lg:-translate-y-2 ring-4 ring-[#003896]/10'
                       : 'border border-slate-200 shadow-md hover:shadow-xl'
                   }`}
                 >
@@ -866,17 +838,17 @@ export default function MutuusLanding() {
                     <h3 className="text-2xl font-black text-[#2B2A2A] mt-2">{p.nombre}</h3>
                     
                     <div className="mt-4 pb-5 border-b border-slate-100">
-                      <p className="text-xs text-slate-500 font-medium">Suma Asegurada por Evento:</p>
+                      <p className="text-xs text-slate-500 font-medium">Suma Asegurada por Padecimiento:</p>
                       <p className="text-xl font-extrabold text-[#003896]">{p.sumaAsegurada}</p>
                       
                       <div className="mt-3 flex items-baseline gap-1">
-                        <span className="text-3xl sm:text-4xl font-black text-slate-900">{p.pagoInicial}</span>
-                        <span className="text-xs text-slate-500 font-semibold">MXN / {periodicidad === 'anual' ? 'año' : 'mes'}</span>
+                        <span className="text-3xl sm:text-4xl font-black text-slate-900">{p.cuota}</span>
+                        <span className="text-xs text-slate-500 font-semibold">MXN / {p.periodo}</span>
                       </div>
                       
-                      {p.descuento && (
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold">
-                          {p.descuento}
+                      {p.ahorro && (
+                        <span className="inline-block mt-1 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold">
+                          {p.ahorro}
                         </span>
                       )}
                     </div>
@@ -892,26 +864,16 @@ export default function MutuusLanding() {
                     </ul>
                   </div>
 
-                  <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
-                    <button
-                      onClick={() => handleOpenLeadModal(p.nombre)}
-                      className={`w-full py-3.5 px-6 rounded-full font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 cursor-pointer text-center block ${
+                  <div className="mt-8 pt-6 border-t border-slate-100">
+                    <a
+                      href="#"
+                      className={`w-full py-3.5 px-6 rounded-full font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 text-center block ${
                         p.popular
                           ? 'bg-[#003896] text-white hover:bg-[#002b75]'
                           : 'bg-slate-900 text-white hover:bg-slate-800'
                       }`}
                     >
-                      Solicitar {p.nombre}
-                    </button>
-                    
-                    <a
-                      href={`https://wa.me/525540001234?text=Hola,%20deseo%20cotizar%20el%20${encodeURIComponent(p.nombre)}%20de%20Mutuus.`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2.5 px-4 rounded-full font-semibold text-xs text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-all text-center flex items-center justify-center gap-1.5"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-[#25D366]" />
-                      <span>Cotizar por WhatsApp</span>
+                      Contratar {p.nombre}
                     </a>
                   </div>
 
@@ -927,11 +889,11 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 7. RED HOSPITALARIA DE PAGO DIRECTO ────────────────────────── */}
-        <section id="red-hospitalaria" className="py-20 bg-white">
+        {/* ─── 7. RED HOSPITALARIA Y EXPLORADOR ────────────────────────────── */}
+        <section id="hospitales" className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
+            <div className="text-center max-w-3xl mx-auto space-y-3 mb-10">
               <span className="px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-xs font-bold text-[#003896] uppercase tracking-wider">
                 Infraestructura Hospitalaria
               </span>
@@ -943,80 +905,86 @@ export default function MutuusLanding() {
               </p>
             </div>
 
-            {/* Grid de Hospitales Principales */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {HOSPITALES.map((h, i) => (
+            {/* Buscador de Hospitales */}
+            <div className="max-w-md mx-auto mb-10">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchHospital}
+                  onChange={(e) => setSearchHospital(e.target.value)}
+                  placeholder="Buscar hospital o ciudad (ej. Ángeles, CDMX, Monterrey)..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-full border border-slate-300 bg-slate-50 text-xs focus:outline-none focus:ring-2 focus:ring-[#003896] focus:bg-white transition"
+                />
+              </div>
+            </div>
+
+            {/* Grid de Hospitales */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {filteredHospitales.map((h, i) => (
                 <div
                   key={i}
-                  className="p-6 rounded-2xl bg-[#F4F9FF] border border-slate-200/80 hover:border-[#003896] hover:shadow-lg transition-all group"
+                  className="p-5 rounded-2xl bg-[#F4F9FF] border border-slate-200/80 hover:border-[#003896] hover:shadow-md transition-all group flex flex-col justify-between"
                 >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-white text-[#003896] border border-slate-200 flex items-center justify-center font-bold text-lg group-hover:bg-[#003896] group-hover:text-white transition-colors">
-                      <Hospital className="w-5 h-5" />
+                  <div>
+                    <div className="flex items-center gap-2.5 mb-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-white text-[#003896] border border-slate-200 flex items-center justify-center font-bold text-sm group-hover:bg-[#003896] group-hover:text-white transition-colors">
+                        <Hospital className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{h.nombre}</h4>
+                        <span className="text-[10px] font-semibold text-[#003896] uppercase">{h.tipo}</span>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-base">{h.nombre}</h4>
-                      <span className="text-[11px] font-semibold text-[#003896] uppercase">{h.tipo}</span>
-                    </div>
+                    <p className="text-xs text-slate-500 flex items-start gap-1 mt-1">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                      <span>{h.ubicaciones}</span>
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-2">
-                    <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Cobertura: {h.ciudad}</span>
-                  </p>
                 </div>
               ))}
             </div>
 
             <div className="mt-10 p-6 rounded-2xl bg-[#EFF6FF] border border-blue-200/60 text-center max-w-2xl mx-auto">
               <p className="text-xs sm:text-sm text-slate-700">
-                ¿Buscas un hospital específico en tu ciudad o municipio? Nuestro equipo te comparte la lista completa actualizada.
+                ¿Buscas un hospital específico en tu ciudad? Nuestro equipo te apoya con la ubicación exacta.
               </p>
-              <button
-                onClick={() => handleOpenLeadModal('Consulta Red Hospitalaria')}
-                className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#003896] hover:underline cursor-pointer"
+              <a
+                href="#"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#003896] hover:underline"
               >
-                <span>Consultar directorio médico completo</span>
+                <span>Contratar para acceder a la red completa</span>
                 <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              </a>
             </div>
 
           </div>
         </section>
 
-        {/* ─── 8. LÍNEA DE ATENCIÓN Y URGENCIAS (FRANJA AZUL #003896) ──────── */}
+        {/* ─── 8. LÍNEA DE ATENCIÓN (FRANJA AZUL #003896) ─────────────────── */}
         <section className="py-16 bg-[#003896] text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8 text-center lg:text-left">
               
-              <div className="space-y-3 text-center lg:text-left">
+              <div className="space-y-3">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-[#9CD41C] border border-white/10 uppercase tracking-wider">
-                  <Clock className="w-3.5 h-3.5" /> Atención Continua 24/7/365
+                  <Clock className="w-3.5 h-3.5" /> Atención Médica Continua 24/7/365
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-                  Línea Exclusiva de Soporte y Urgencias Médicas
+                  Protección Hospitalaria y Telemedicina en Todo México
                 </h2>
                 <p className="text-white/80 text-sm max-w-xl">
-                  Asistencia para reporte previo de eventos, coordinación de ambulancias y asesoría de trámites en tiempo real.
+                  Acceso garantizado a consultas médicas digitales y coordinación de atención hospitalaria con cero deducible en red.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div>
                 <a
-                  href="tel:5540001234"
-                  className="px-8 py-4 rounded-full font-extrabold text-sm text-slate-900 bg-[#9CD41C] hover:bg-[#8ec218] transition-all shadow-lg active:scale-95 text-center flex items-center gap-2"
+                  href="#"
+                  className="px-8 py-4 rounded-full font-extrabold text-sm text-slate-900 bg-[#9CD41C] hover:bg-[#8ec218] transition-all shadow-lg active:scale-95 inline-flex items-center gap-2"
                 >
-                  <Phone className="w-4 h-4 fill-slate-900" />
-                  <span>Llamar a Urgencias</span>
-                </a>
-                
-                <a
-                  href="https://wa.me/525540001234?text=Hola,%20requiero%20atencion%20sobre%20mi%20membresia%20Mutuus."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-6 py-4 rounded-full font-bold text-sm text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-all text-center flex items-center gap-2"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Chat de Asistencia</span>
+                  <span>Contratar Ahora</span>
+                  <ArrowRight className="w-4 h-4" />
                 </a>
               </div>
 
@@ -1024,7 +992,7 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 9. COBERTURA: QUÉ ESTÁ CUBIERTO VS QUÉ NO ─────────────────── */}
+        {/* ─── 9. COBERTURAS: QUÉ CUBRE VS QUÉ NO CUBRE ──────────────────── */}
         <section id="coberturas" className="py-20 bg-[#F4F9FF]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             
@@ -1116,7 +1084,7 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 10. PRUEBA SOCIAL & ESTADÍSTICAS ───────────────────────────── */}
+        {/* ─── 10. MÉTRICAS Y PRUEBA SOCIAL ───────────────────────────────── */}
         <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
@@ -1149,7 +1117,7 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 11. FAQ ACCORDION (SEO OPTIMIZADO CON SCHEMA) ──────────────── */}
+        {/* ─── 11. FAQ ACCORDION ──────────────────────────────────────────── */}
         <section id="faq" className="py-20 bg-[#F4F9FF]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             
@@ -1198,116 +1166,26 @@ export default function MutuusLanding() {
           </div>
         </section>
 
-        {/* ─── 12. CTA FINAL CON FORMULARIO DE COTIZACIÓN ─────────────────── */}
-        <section id="contacto" className="py-20 bg-[#003896] text-white">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 sm:p-12 border border-white/20 shadow-2xl">
-              
-              <div className="text-center max-w-2xl mx-auto space-y-3 mb-8">
-                <span className="px-3 py-1 rounded-full bg-white/20 text-xs font-bold text-[#9CD41C] uppercase tracking-wider">
-                  Cotización Inmediata
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
-                  Protege tu salud y la de tu familia hoy
-                </h2>
-                <p className="text-white/80 text-sm">
-                  Déjanos tus datos y un asesor certificado te enviará tu cotización personalizada sin compromiso.
-                </p>
-              </div>
-
-              {leadSuccess ? (
-                <div className="p-8 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 text-center space-y-3">
-                  <CheckCircle2 className="w-12 h-12 text-[#9CD41C] mx-auto" />
-                  <h3 className="text-xl font-bold text-white">¡Solicitud recibida con éxito!</h3>
-                  <p className="text-xs sm:text-sm text-white/90 max-w-md mx-auto">
-                    Un asesor especializado te contactará en breve por WhatsApp o teléfono con el desglose de tu membresía.
-                  </p>
-                </div>
-              ) : (
-                <form onSubmit={handleLeadSubmit} className="space-y-4 max-w-xl mx-auto">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-white/90 mb-1">Nombre Completo *</label>
-                      <input
-                        type="text"
-                        required
-                        value={leadForm.nombre}
-                        onChange={(e) => setLeadForm({ ...leadForm, nombre: e.target.value })}
-                        placeholder="Ej. Carlos Mendoza"
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-white/90 mb-1">Edad del Titular *</label>
-                      <input
-                        type="number"
-                        required
-                        min="0"
-                        max="80"
-                        value={leadForm.edad}
-                        onChange={(e) => setLeadForm({ ...leadForm, edad: e.target.value })}
-                        placeholder="Ej. 34"
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-white/90 mb-1">Teléfono / WhatsApp *</label>
-                      <input
-                        type="tel"
-                        required
-                        value={leadForm.telefono}
-                        onChange={(e) => setLeadForm({ ...leadForm, telefono: e.target.value })}
-                        placeholder="10 dígitos (ej. 5512345678)"
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-white/90 mb-1">Ciudad / Estado</label>
-                      <input
-                        type="text"
-                        value={leadForm.ciudad}
-                        onChange={(e) => setLeadForm({ ...leadForm, ciudad: e.target.value })}
-                        placeholder="Ej. CDMX / Guadalajara"
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-white/90 mb-1">Plan de Interés</label>
-                    <select
-                      value={leadForm.plan}
-                      onChange={(e) => setLeadForm({ ...leadForm, plan: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9CD41C]"
-                    >
-                      <option value="Plan UNO" className="text-slate-900">Plan UNO ($1,000,000 MXN Suma Asegurada)</option>
-                      <option value="Plan DOS" className="text-slate-900">Plan DOS ($3,000,000 MXN Suma Asegurada · Más Elegido)</option>
-                      <option value="Plan PLUS" className="text-slate-900">Plan PLUS ($5,000,000 MXN Suma Asegurada · Premium)</option>
-                    </select>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={submittingLead}
-                    className="w-full py-4 px-6 rounded-full font-black text-sm text-slate-900 bg-[#9CD41C] hover:bg-[#8ec218] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {submittingLead ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Send className="w-5 h-5" />
-                    )}
-                    <span>Enviar y Recibir Cotización en WhatsApp</span>
-                  </button>
-
-                  <p className="text-[11px] text-center text-white/60">
-                    Tus datos están protegidos conforme a la Ley Federal de Protección de Datos Personales (LFPDPPP).
-                  </p>
-                </form>
-              )}
-
+        {/* ─── 12. CTA FINAL CON LINK A # ─────────────────────────────────── */}
+        <section className="py-20 bg-[#003896] text-white text-center">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <span className="px-3.5 py-1 rounded-full bg-white/20 text-xs font-bold text-[#9CD41C] uppercase tracking-wider">
+              Contratación Inmediata
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+              Protege tu salud y la de tu familia hoy mismo
+            </h2>
+            <p className="text-white/80 text-sm max-w-xl mx-auto">
+              Activa tu membresía de salud y seguro de gastos médicos con cero deducible en red y telemedicina 24/7.
+            </p>
+            <div className="pt-4">
+              <a
+                href="#"
+                className="inline-flex items-center justify-center gap-2 px-9 py-4 rounded-full font-black text-sm text-slate-900 bg-[#9CD41C] hover:bg-[#8ec218] transition-all shadow-xl active:scale-95"
+              >
+                <span>Contratar Ahora</span>
+                <ArrowRight className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </section>
@@ -1320,7 +1198,7 @@ export default function MutuusLanding() {
               
               {/* Columna 1: Marca y Promotor */}
               <div className="space-y-3">
-                <span className="font-extrabold text-xl text-white tracking-tight block">
+                <span className="font-extrabold text-2xl text-white tracking-tight block">
                   mutuus
                 </span>
                 <p className="text-white/70 text-xs leading-relaxed">
@@ -1337,9 +1215,9 @@ export default function MutuusLanding() {
               <div className="space-y-2">
                 <p className="font-bold text-white text-sm">Secciones</p>
                 <ul className="space-y-1.5 text-white/70">
-                  <li><a href="#porque-mutuus" className="hover:text-white transition-colors">¿Por qué Mutuus?</a></li>
+                  <li><a href="#comparativa" className="hover:text-white transition-colors">¿Por qué Mutuus?</a></li>
                   <li><a href="#planes" className="hover:text-white transition-colors">Planes UNO, DOS y PLUS</a></li>
-                  <li><a href="#red-hospitalaria" className="hover:text-white transition-colors">Red de Hospitales</a></li>
+                  <li><a href="#hospitales" className="hover:text-white transition-colors">Red de Hospitales</a></li>
                   <li><a href="#coberturas" className="hover:text-white transition-colors">Tabulador de Coberturas</a></li>
                   <li><a href="#faq" className="hover:text-white transition-colors">Preguntas Frecuentes</a></li>
                 </ul>
@@ -1356,18 +1234,20 @@ export default function MutuusLanding() {
                 </ul>
               </div>
 
-              {/* Columna 4: Contacto */}
+              {/* Columna 4: Contratación */}
               <div className="space-y-2">
-                <p className="font-bold text-white text-sm">Contacto Directo</p>
+                <p className="font-bold text-white text-sm">Contratación</p>
                 <p className="text-white/70 text-xs">
-                  Atención personalizada para agentes, familias y empresas.
+                  Planes de salud individuales, familiares y colectivos.
                 </p>
-                <p className="text-white font-bold text-xs pt-1">
-                  WhatsApp: <a href="https://wa.me/525540001234" className="text-[#9CD41C] hover:underline">+52 55 4000 1234</a>
-                </p>
-                <p className="text-white/70 text-[11px]">
-                  México · Cobertura a nivel nacional
-                </p>
+                <div className="pt-2">
+                  <a
+                    href="#"
+                    className="inline-block px-4 py-2 rounded-full bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition"
+                  >
+                    Contratar en Línea
+                  </a>
+                </div>
               </div>
 
             </div>
@@ -1385,115 +1265,6 @@ export default function MutuusLanding() {
 
           </div>
         </footer>
-
-        {/* ─── MODAL RÁPIDO DE COTIZACIÓN ─────────────────────────────────── */}
-        {showModalLead && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative border border-slate-200">
-              <button
-                onClick={() => setShowModalLead(false)}
-                className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="space-y-2 mb-6">
-                <span className="px-2.5 py-1 rounded-full bg-[#EFF6FF] text-[#003896] text-xs font-bold">
-                  {selectedPlanForModal}
-                </span>
-                <h3 className="text-xl font-black text-slate-900">
-                  Solicitar Cotización Inmediata
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Completa tus datos para enviarte la propuesta formal y activar tu membresía.
-                </p>
-              </div>
-
-              {leadSuccess ? (
-                <div className="p-6 rounded-2xl bg-emerald-50 text-center space-y-2">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                  <p className="font-bold text-emerald-900 text-sm">¡Datos enviados con éxito!</p>
-                  <p className="text-xs text-emerald-700">Te estamos abriendo WhatsApp para darte atención inmediata.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleLeadSubmit} className="space-y-3.5">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre Completo *</label>
-                    <input
-                      type="text"
-                      required
-                      value={leadForm.nombre}
-                      onChange={(e) => setLeadForm({ ...leadForm, nombre: e.target.value })}
-                      placeholder="Tu nombre y apellido"
-                      className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#003896]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Edad *</label>
-                      <input
-                        type="number"
-                        required
-                        value={leadForm.edad}
-                        onChange={(e) => setLeadForm({ ...leadForm, edad: e.target.value })}
-                        placeholder="Ej. 30"
-                        className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#003896]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Teléfono / WhatsApp *</label>
-                      <input
-                        type="tel"
-                        required
-                        value={leadForm.telefono}
-                        onChange={(e) => setLeadForm({ ...leadForm, telefono: e.target.value })}
-                        placeholder="10 dígitos"
-                        className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#003896]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Correo Electrónico</label>
-                    <input
-                      type="email"
-                      value={leadForm.email}
-                      onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })}
-                      placeholder="tu@correo.com"
-                      className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#003896]"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={submittingLead}
-                    className="w-full mt-2 py-3.5 px-6 bg-[#003896] hover:bg-[#002b75] text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md shadow-[#003896]/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {submittingLead ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                    <span>Recibir Asesoría y Cotización</span>
-                  </button>
-                </form>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ─── BOTÓN FLOTANTE WHATSAPP FIJO ───────────────────────────────── */}
-        <a
-          href="https://wa.me/525540001234?text=Hola,%20deseo%20cotizar%20la%20membresia%20Mutuus."
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Cotizar por WhatsApp"
-          className="fixed bottom-6 right-6 z-40 p-4 rounded-full bg-[#25D366] text-slate-900 shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border-2 border-white"
-        >
-          <MessageSquare className="w-6 h-6 fill-slate-900 text-slate-900" />
-          <span className="font-extrabold text-xs hidden sm:inline text-slate-900">Cotizar por WhatsApp</span>
-        </a>
 
       </div>
     </>
