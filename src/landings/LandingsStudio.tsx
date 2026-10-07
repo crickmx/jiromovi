@@ -24,126 +24,26 @@ import {
   Maximize2,
   Minimize2,
   Bot,
-  User
+  User,
+  Sliders,
+  FolderOpen,
+  Search,
+  Code2
 } from 'lucide-react';
 import MutuusLanding from './mutuus/MutuusLanding';
 import SegurosExpressLanding from '../seguros-express/SegurosExpressLanding';
 import SegurosEducationLanding from '../seguros-education/SegurosEducationLanding';
 import ChavaAgenteLanding from '../chava-agente/pages/ChavaAgenteLanding';
+import {
+  hermesLandingService,
+  HermesProject,
+  HermesChatMessage,
+  INITIAL_HERMES_PROJECTS
+} from './hermesLandingService';
 
 // ─── CREDENCIALES Y CONSTANTES ───────────────────────────────────────────────
 const STUDIO_PASSWORD = 'Marsella14$';
 const STORAGE_AUTH_KEY = 'hermes_studio_auth_v1';
-const STORAGE_PROJECTS_KEY = 'hermes_studio_projects_v1';
-const STORAGE_CHATS_KEY = 'hermes_studio_chats_v1';
-
-// ─── PROYECTOS INICIALES ────────────────────────────────────────────────────
-interface Project {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  category: string;
-  status: 'live' | 'draft' | 'modified';
-  version: string;
-  lastUpdated: string;
-  views: number;
-  conversion: string;
-  color: string;
-  theme: {
-    primary: string;
-    accent: string;
-    font: string;
-  };
-}
-
-const INITIAL_PROJECTS: Project[] = [
-  {
-    id: 'mutuus',
-    name: 'Mutuus Salud & GMM',
-    slug: '/mutuus',
-    description: 'Landing de Membresía de Salud y Gastos Médicos Mayores con $0 deducible y $0 coaseguro.',
-    category: 'Salud & Gastos Médicos',
-    status: 'live',
-    version: 'v2.4.2',
-    lastUpdated: 'Hoy, hace unos momentos',
-    views: 1420,
-    conversion: '8.4%',
-    color: '#003896',
-    theme: {
-      primary: '#003896',
-      accent: '#9CD41C',
-      font: 'Montserrat'
-    }
-  },
-  {
-    id: 'seguros-express',
-    name: 'Seguros Express Autos',
-    slug: '/seguros-express',
-    description: 'Cotizador ultrarrápido de seguros de auto con emisión digital inmediata.',
-    category: 'Autos & Movilidad',
-    status: 'live',
-    version: 'v1.8.0',
-    lastUpdated: 'Ayer',
-    views: 890,
-    conversion: '11.2%',
-    color: '#D92F3C',
-    theme: {
-      primary: '#D92F3C',
-      accent: '#2563EB',
-      font: 'Sora'
-    }
-  },
-  {
-    id: 'chava-agente',
-    name: 'Chava IA Copilot',
-    slug: '/chava-agente',
-    description: 'Landing promocional del asistente de inteligencia artificial para agentes de seguros.',
-    category: 'Inteligencia Artificial',
-    status: 'live',
-    version: 'v3.1.0',
-    lastUpdated: 'Hace 3 días',
-    views: 2150,
-    conversion: '14.6%',
-    color: '#10B981',
-    theme: {
-      primary: '#10B981',
-      accent: '#3B82F6',
-      font: 'Manrope'
-    }
-  },
-  {
-    id: 'seguros-education',
-    name: 'Seguros Education',
-    slug: '/seguros-education',
-    description: 'Academia y portal de certificación para agentes y asesores patrimoniales.',
-    category: 'Educación & Capacitación',
-    status: 'live',
-    version: 'v1.2.4',
-    lastUpdated: 'Hace 5 días',
-    views: 640,
-    conversion: '6.8%',
-    color: '#6366F1',
-    theme: {
-      primary: '#6366F1',
-      accent: '#F59E0B',
-      font: 'Inter'
-    }
-  }
-];
-
-// ─── TIPOS DE MENSAJE CHAT ──────────────────────────────────────────────────
-interface ChatMessage {
-  id: string;
-  sender: 'hermes' | 'user';
-  text: string;
-  timestamp: string;
-  actions?: string[];
-  diffPreview?: {
-    section: string;
-    details: string;
-  };
-}
 
 export default function LandingsStudio() {
   // ─── Autenticación ────────────────────────────────────────────────────────
@@ -156,57 +56,18 @@ export default function LandingsStudio() {
   const [rememberMe, setRememberMe] = useState(true);
 
   // ─── Gestión de Proyectos ─────────────────────────────────────────────────
-  const [projects, setProjects] = useState<Project[]>(() => {
-    const saved = localStorage.getItem(STORAGE_PROJECTS_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_PROJECTS;
-      }
-    }
-    return INITIAL_PROJECTS;
-  });
-
+  const [projects, setProjects] = useState<HermesProject[]>(INITIAL_HERMES_PROJECTS);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('mutuus');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectForm, setNewProjectForm] = useState({
     name: '',
     slug: '',
     description: '',
-    category: 'Salud'
+    category: 'Salud & Gastos Médicos'
   });
-
-  const selectedProject = projects.find(p => p.id === selectedProjectId) || projects[0];
 
   // ─── Chat & Hermes Copilot ────────────────────────────────────────────────
-  const [chats, setChats] = useState<Record<string, ChatMessage[]>>(() => {
-    const saved = localStorage.getItem(STORAGE_CHATS_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return {};
-      }
-    }
-    return {
-      mutuus: [
-        {
-          id: '1',
-          sender: 'hermes',
-          text: `¡Hola Christofer! Soy Hermes, tu copilot de diseño para el proyecto ${selectedProject?.name || 'Mutuus'}. He cargado la estructura de la landing en ${selectedProject?.slug || '/mutuus'}. Puedes pedirme cambios en los textos, secciones de héroe, tabuladores de planes, integración con WhatsApp o rediseño visual en tiempo real.`,
-          timestamp: 'Justo ahora',
-          actions: [
-            'Hero con enfoque en Cero Deducible',
-            'Selector de periodicidad Mensual/Anual con 10% de descuento',
-            'Directorio interactivo de hospitales',
-            'Formulario de cotización con envío a Supabase'
-          ]
-        }
-      ]
-    };
-  });
-
+  const [chats, setChats] = useState<Record<string, HermesChatMessage[]>>({});
   const [inputPrompt, setInputPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingStep, setGeneratingStep] = useState<string>('');
@@ -222,40 +83,27 @@ export default function LandingsStudio() {
   const [deploySuccess, setDeploySuccess] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  // Guardar en Storage
+  // Cargar proyectos iniciales de hermesLandingService / Supabase
   useEffect(() => {
-    localStorage.setItem(STORAGE_PROJECTS_KEY, JSON.stringify(projects));
-  }, [projects]);
+    hermesLandingService.getProjects().then((loadedProjects) => {
+      if (loadedProjects && loadedProjects.length > 0) {
+        setProjects(loadedProjects);
+      }
+    });
+  }, []);
 
+  // Cargar chat del proyecto seleccionado
   useEffect(() => {
-    localStorage.setItem(STORAGE_CHATS_KEY, JSON.stringify(chats));
-  }, [chats]);
+    hermesLandingService.getChats(selectedProjectId).then((msgs) => {
+      setChats(prev => ({ ...prev, [selectedProjectId]: msgs }));
+    });
+  }, [selectedProjectId]);
+
+  const selectedProject = projects.find(p => p.id === selectedProjectId) || projects[0] || INITIAL_HERMES_PROJECTS[0];
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chats, selectedProjectId, isGenerating]);
-
-  // Inicializar chat si el proyecto no tiene historial
-  useEffect(() => {
-    if (!chats[selectedProjectId] || chats[selectedProjectId].length === 0) {
-      setChats(prev => ({
-        ...prev,
-        [selectedProjectId]: [
-          {
-            id: Date.now().toString(),
-            sender: 'hermes',
-            text: `Proyecto activo: **${selectedProject.name}** (${selectedProject.slug}). ¿Qué cambios de diseño, estructura, colores o copy deseas aplicar en esta landing?`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            actions: [
-              'Revisar paleta de color y contraste',
-              'Optimizar para captación de leads en móvil',
-              'Agregar testimonios o sellos de garantía'
-            ]
-          }
-        ]
-      }));
-    }
-  }, [selectedProjectId, selectedProject]);
 
   // ─── Manejadores de Autenticación ─────────────────────────────────────────
   const handleLogin = (e: React.FormEvent) => {
@@ -277,89 +125,81 @@ export default function LandingsStudio() {
     setPasswordInput('');
   };
 
-  // ─── Manejador de Chat con Hermes ─────────────────────────────────────────
+  // ─── Manejador de Chat con Hermes Copilot ─────────────────────────────────
   const handleSendMessage = async (textToSend?: string) => {
     const msg = (textToSend || inputPrompt).trim();
     if (!msg || isGenerating) return;
 
-    const userMessage: ChatMessage = {
+    const userMessage: HermesChatMessage = {
       id: Date.now().toString(),
+      project_id: selectedProjectId,
       sender: 'user',
       text: msg,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
+    // Actualizar UI y guardar en Supabase
     setChats(prev => ({
       ...prev,
       [selectedProjectId]: [...(prev[selectedProjectId] || []), userMessage]
     }));
+    hermesLandingService.saveMessage(selectedProjectId, userMessage);
 
     setInputPrompt('');
     setIsGenerating(true);
 
-    // Flujo de pasos realistas de Hermes
-    setGeneratingStep('Analizando layout y componentes de ' + selectedProject.name + '...');
+    // Animación de pasos de razonamiento
+    setGeneratingStep('Analizando arquitectura de componentes y CSS...');
+    await new Promise(r => setTimeout(r, 500));
+
+    setGeneratingStep('Sintetizando cambios y procesando diseño con Hermes AI...');
     await new Promise(r => setTimeout(r, 600));
 
-    setGeneratingStep('Generando modificaciones visuales y optimización de copy...');
-    await new Promise(r => setTimeout(r, 700));
+    // Procesar cambios con el motor de Hermes
+    const result = await hermesLandingService.processDesignInstruction(
+      selectedProjectId,
+      msg,
+      selectedProject.designConfig
+    );
 
-    setGeneratingStep('Aplicando estilos Tailwind y renderizando vista previa...');
-    await new Promise(r => setTimeout(r, 600));
+    setGeneratingStep('Inyectando estilos dinámicos en el Canvas en tiempo real...');
+    await new Promise(r => setTimeout(r, 400));
 
-    // Generar respuesta contextual según la orden
-    const lower = msg.toLowerCase();
-    let responseText = '';
-    let diffDetails = '';
-    let actions: string[] = [];
-
-    if (lower.includes('hero') || lower.includes('portada') || lower.includes('encabezado')) {
-      responseText = `He rediseñado la sección **Hero** de **${selectedProject.name}**:\n\n• Aplicado un estilo más limpio con tipografía destacada y micro-badges.\n• Optimizado el contraste del botón principal de llamada a la acción (CTA).\n• Incluido sello de respaldo y leyenda de atención inmediata.`;
-      diffDetails = `Actualizado contenedor Hero y gradiente de fondo en ${selectedProject.slug}`;
-      actions = ['Ver Hero en pantalla completa', 'Ajustar color del botón de cotización'];
-    } else if (lower.includes('precio') || lower.includes('plan') || lower.includes('costo') || lower.includes('tarifa')) {
-      responseText = `He actualizado la sección de **Planes y Precios**:\n\n• Integrado selector interactivo mensual/anual con cálculo automático de 10% de descuento.\n• Resaltada la tarjeta más elegida (Plan DOS / Recomendado).\n• Incluido desglose claro de sumas aseguradas y cero deducible.`;
-      diffDetails = `Componente de precios actualizado con selector dinámico en ${selectedProject.slug}`;
-      actions = ['Revisar tabla comparativa', 'Configurar envío directo a WhatsApp'];
-    } else if (lower.includes('hospital') || lower.includes('red') || lower.includes('directorio')) {
-      responseText = `Actualizada la sección de **Red Hospitalaria de Pago Directo**:\n\n• Mostrando más de 115 hospitales directos y 548 convenios nacionales (Ángeles, Médica Sur, Star Médica, Christus Muguerza).\n• Añadido buscador rápido por estado o ciudad.`;
-      diffDetails = `Grid de red hospitalaria sincronizado en ${selectedProject.slug}`;
-      actions = ['Ver hospitales destacados', 'Modificar mapa de cobertura'];
-    } else if (lower.includes('color') || lower.includes('paleta') || lower.includes('estilo') || lower.includes('dark') || lower.includes('claro')) {
-      responseText = `Paleta de diseño refinada para **${selectedProject.name}**:\n\n• Look & feel moderno con fondo claro (#F8FAFC), acento principal (${selectedProject.theme.primary}) y contraste optimizado.\n• Bordes suaves, tarjetas glassmorphic y tipografía de lectura rápida.`;
-      diffDetails = `Tokens de diseño y paleta de colores actualizados`;
-      actions = ['Probar modo móvil', 'Aplicar a componentes secundarios'];
-    } else {
-      responseText = `He procesado tu instrucción: "${msg}".\n\nLos cambios se han compilado y renderizado inmediatamente en la vista previa interactiva. El código está optimizado y listo para publicarse en **${selectedProject.slug}**.`;
-      diffDetails = `Modificaciones aplicadas en vivo sobre ${selectedProject.slug}`;
-      actions = ['Ver cambios en vista previa', 'Publicar a producción'];
-    }
-
-    const hermesResponse: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      sender: 'hermes',
-      text: responseText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      actions,
-      diffPreview: {
-        section: 'Componentes de ' + selectedProject.name,
-        details: diffDetails
+    // Aplicar patch de diseño al proyecto en tiempo real
+    const updatedProjects = projects.map(p => {
+      if (p.id === selectedProjectId) {
+        return {
+          ...p,
+          status: 'modified' as const,
+          lastUpdated: 'Modificado recién',
+          designConfig: {
+            ...p.designConfig,
+            ...result.designPatch
+          }
+        };
       }
+      return p;
+    });
+
+    setProjects(updatedProjects);
+    hermesLandingService.saveProjects(updatedProjects);
+
+    const hermesResponse: HermesChatMessage = {
+      id: (Date.now() + 1).toString(),
+      project_id: selectedProjectId,
+      sender: 'hermes',
+      text: result.replyText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      actions: result.actions,
+      diffPreview: result.diffPreview,
+      designPatch: result.designPatch
     };
 
     setChats(prev => ({
       ...prev,
       [selectedProjectId]: [...(prev[selectedProjectId] || []), hermesResponse]
     }));
-
-    // Actualizar estado del proyecto a "modified"
-    setProjects(prev =>
-      prev.map(p =>
-        p.id === selectedProjectId
-          ? { ...p, status: 'modified', lastUpdated: 'Modificado recién' }
-          : p
-      )
-    );
+    hermesLandingService.saveMessage(selectedProjectId, hermesResponse);
 
     setIsGenerating(false);
     setGeneratingStep('');
@@ -372,41 +212,37 @@ export default function LandingsStudio() {
     setDeployStep(0);
     setDeploySuccess(false);
 
-    // Paso 1: Validación
     setDeployStep(1);
     await new Promise(r => setTimeout(r, 600));
 
-    // Paso 2: Optimización de Assets
     setDeployStep(2);
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 700));
 
-    // Paso 3: Sincronización con Plesk y CDN
     setDeployStep(3);
     await new Promise(r => setTimeout(r, 700));
 
-    // Paso 4: Publicado
     setDeployStep(4);
     setDeploySuccess(true);
 
-    // Actualizar versión y estado en vivo del proyecto
     const currentVerParts = selectedProject.version.replace('v', '').split('.').map(Number);
     const nextVer = `v${currentVerParts[0] || 1}.${currentVerParts[1] || 0}.${(currentVerParts[2] || 0) + 1}`;
 
-    setProjects(prev =>
-      prev.map(p =>
-        p.id === selectedProjectId
-          ? {
-              ...p,
-              status: 'live',
-              version: nextVer,
-              lastUpdated: 'Publicado hoy a las ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }
-          : p
-      )
+    const updatedProjects = projects.map(p =>
+      p.id === selectedProjectId
+        ? {
+            ...p,
+            status: 'live' as const,
+            version: nextVer,
+            lastUpdated: 'Publicado hoy a las ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        : p
     );
+
+    setProjects(updatedProjects);
+    hermesLandingService.saveProjects(updatedProjects);
   };
 
-  // ─── Manejador para Crear Nuevo Proyecto ──────────────────────────────────
+  // ─── Manejador para Iniciar Nuevo Proyecto ─────────────────────────────────
   const handleCreateProject = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectForm.name || !newProjectForm.slug) return;
@@ -416,7 +252,7 @@ export default function LandingsStudio() {
 
     const newId = cleanSlug.replace('/', '').toLowerCase();
 
-    const newProj: Project = {
+    const newProj: HermesProject = {
       id: newId,
       name: newProjectForm.name,
       slug: cleanSlug,
@@ -432,20 +268,31 @@ export default function LandingsStudio() {
         primary: '#2563EB',
         accent: '#10B981',
         font: 'Inter'
+      },
+      designConfig: {
+        heroBadge: 'Nuevo Proyecto · En Desarrollo',
+        heroTitle: newProjectForm.name,
+        heroSubtitle: newProjectForm.description || 'Bienvenido a la nueva experiencia digital diseñada por Hermes Copilot.',
+        primaryColor: '#2563EB',
+        accentColor: '#10B981',
+        ctaText: 'Solicitar Información',
+        whatsappNumber: '525540001234'
       }
     };
 
-    setProjects(prev => [newProj, ...prev]);
+    const newProjectsList = [newProj, ...projects];
+    setProjects(newProjectsList);
+    hermesLandingService.saveProjects(newProjectsList);
     setSelectedProjectId(newProj.id);
     setShowNewProjectModal(false);
-    setNewProjectForm({ name: '', slug: '', description: '', category: 'Salud' });
+    setNewProjectForm({ name: '', slug: '', description: '', category: 'Salud & Gastos Médicos' });
   };
 
-  // ─── Renderizador del Componente de Vista Previa ──────────────────────────
+  // ─── Renderizador del Componente en Vivo ──────────────────────────────────
   const renderLiveComponent = () => {
     switch (selectedProjectId) {
       case 'mutuus':
-        return <MutuusLanding key={previewKey} />;
+        return <MutuusLanding key={previewKey} designOverrides={selectedProject.designConfig} />;
       case 'seguros-express':
         return <SegurosExpressLanding key={previewKey} />;
       case 'seguros-education':
@@ -453,7 +300,7 @@ export default function LandingsStudio() {
       case 'chava-agente':
         return <ChavaAgenteLanding key={previewKey} />;
       default:
-        return <MutuusLanding key={previewKey} />;
+        return <MutuusLanding key={previewKey} designOverrides={selectedProject.designConfig} />;
     }
   };
 
@@ -467,13 +314,11 @@ export default function LandingsStudio() {
           <title>Hermes Landing Studio | Acceso Seguro</title>
         </Helmet>
 
-        {/* Círculos decorativos de fondo */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-100/60 rounded-full blur-3xl pointer-events-none" />
 
         <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-xl p-8 sm:p-10 relative z-10">
           
-          {/* Logo y Encabezado */}
           <div className="text-center space-y-3 mb-8">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center mx-auto shadow-md shadow-blue-500/20">
               <Sparkles className="w-7 h-7 text-white" />
@@ -492,7 +337,6 @@ export default function LandingsStudio() {
             </div>
           </div>
 
-          {/* Formulario de Contraseña */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -553,7 +397,6 @@ export default function LandingsStudio() {
             </button>
           </form>
 
-          {/* Footer de Acceso */}
           <div className="mt-8 pt-6 border-t border-slate-100 text-center">
             <p className="text-[11px] text-slate-400">
               Hermes AI Designer · MOVI Digital Ecosystem
@@ -576,7 +419,7 @@ export default function LandingsStudio() {
       <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         
         {/* Izquierda: Logo y Selector de Proyecto */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-blue-500/30">
               <Sparkles className="w-4 h-4 text-white" />
@@ -611,8 +454,18 @@ export default function LandingsStudio() {
             <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
+          {/* Botón para Iniciar Nuevo Proyecto */}
+          <button
+            onClick={() => setShowNewProjectModal(true)}
+            className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+            title="Crear nueva landing"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Nuevo Proyecto</span>
+          </button>
+
           {/* Badge de Estatus */}
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
             <span
               className={`w-2 h-2 rounded-full ${
                 selectedProject.status === 'live'
@@ -632,7 +485,6 @@ export default function LandingsStudio() {
         {/* Centro: Controles de Vista y Dispositivo */}
         <div className="hidden lg:flex items-center gap-3">
           
-          {/* View Modes */}
           <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80">
             <button
               onClick={() => setViewMode('split')}
@@ -669,7 +521,6 @@ export default function LandingsStudio() {
             </button>
           </div>
 
-          {/* Device Toggles (Solo en Split o Preview) */}
           {viewMode !== 'chat' && (
             <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80">
               <button
@@ -705,7 +556,7 @@ export default function LandingsStudio() {
         </div>
 
         {/* Derecha: Botón Publicar en Vivo y Acciones */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           
           <button
             onClick={() => setPreviewKey(k => k + 1)}
@@ -737,7 +588,6 @@ export default function LandingsStudio() {
 
           <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
 
-          {/* Botón Salir */}
           <button
             onClick={handleLogout}
             title="Cerrar sesión protegida"
@@ -772,19 +622,16 @@ export default function LandingsStudio() {
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
                   <p className="text-[10px] text-slate-500">
-                    Instrucciones de diseño para <span className="font-semibold text-blue-600">{selectedProject.name}</span>
+                    Copilot de diseño conectado a <span className="font-semibold text-blue-600">{selectedProject.name}</span>
                   </p>
                 </div>
               </div>
 
-              {/* Botón para abrir modal de proyectos */}
-              <button
-                onClick={() => setShowNewProjectModal(true)}
-                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Nuevo</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                  Supabase Live Sync
+                </span>
+              </div>
             </div>
 
             {/* Mensajes del Chat */}
@@ -807,12 +654,10 @@ export default function LandingsStudio() {
                         : 'bg-white border border-slate-200/90 text-slate-800 shadow-xs rounded-tl-xs'
                     }`}
                   >
-                    {/* Texto del Mensaje */}
                     <div className="whitespace-pre-line space-y-2">
                       {m.text}
                     </div>
 
-                    {/* Previsualización de cambios aplicados si existen */}
                     {m.diffPreview && (
                       <div className="mt-3 pt-3 border-t border-slate-100 bg-slate-50 -mx-4 -mb-4 p-3 rounded-b-2xl flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 text-slate-600">
@@ -831,7 +676,6 @@ export default function LandingsStudio() {
                       </div>
                     )}
 
-                    {/* Acciones sugeridas de Hermes */}
                     {m.actions && m.actions.length > 0 && (
                       <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap gap-1.5">
                         {m.actions.map((act, i) => (
@@ -859,7 +703,6 @@ export default function LandingsStudio() {
                 </div>
               ))}
 
-              {/* Indicador de Generación / Pensamiento */}
               {isGenerating && (
                 <div className="flex items-center gap-3 bg-white p-3.5 rounded-2xl border border-blue-200/80 shadow-xs max-w-sm animate-in fade-in">
                   <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center animate-spin">
@@ -879,28 +722,28 @@ export default function LandingsStudio() {
             <div className="px-4 py-2 border-t border-slate-100 bg-white flex items-center gap-1.5 overflow-x-auto text-[11px]">
               <span className="text-slate-400 font-bold flex-shrink-0">Sugerencias:</span>
               <button
-                onClick={() => handleSendMessage("Rediseñar Hero con badge de Cero Deducible y CTA llamativo")}
+                onClick={() => handleSendMessage("Cambiar título a Membresía Médica con Cero Deducible")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                🎨 Rediseñar Hero
+                🎨 Título Hero
               </button>
               <button
-                onClick={() => handleSendMessage("Agregar comparativa de planes con selector de descuento anual")}
+                onClick={() => handleSendMessage("Ajustar precios: Plan UNO a $1,199 y Plan DOS a $1,799 mensual")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                💳 Tabla de Precios
+                💳 Ajustar Tarifas
               </button>
               <button
-                onClick={() => handleSendMessage("Optimizar formulario de cotización para capturar leads a WhatsApp")}
+                onClick={() => handleSendMessage("Cambiar botón CTA a 'Cotizar por WhatsApp con un Asesor'")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                📲 Lead Capture
+                📲 CTA WhatsApp
               </button>
               <button
-                onClick={() => handleSendMessage("Actualizar listado de hospitales y convenios de pago directo")}
+                onClick={() => handleSendMessage("Cambiar paleta a azul marino con acento verde esmeralda")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                🏥 Hospitales
+                🎨 Paleta de Color
               </button>
             </div>
 
@@ -917,7 +760,7 @@ export default function LandingsStudio() {
                   type="text"
                   value={inputPrompt}
                   onChange={(e) => setInputPrompt(e.target.value)}
-                  placeholder={`Indica un cambio de diseño para ${selectedProject.name}...`}
+                  placeholder={`Indica un cambio en lenguaje natural para ${selectedProject.name}...`}
                   className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                   disabled={isGenerating}
                 />
@@ -938,7 +781,6 @@ export default function LandingsStudio() {
         {(viewMode === 'split' || viewMode === 'preview') && (
           <div className="flex-1 bg-slate-100/70 flex flex-col overflow-hidden relative">
             
-            {/* Barra Superior del Canvas */}
             <div className="h-11 bg-white border-b border-slate-200/80 px-4 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
@@ -959,7 +801,6 @@ export default function LandingsStudio() {
               </div>
             </div>
 
-            {/* Contenedor del Canvas con Escala según Dispositivo */}
             <div className="flex-1 overflow-auto p-4 md:p-8 flex items-start justify-center">
               <div
                 className={`transition-all duration-300 bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden ${
@@ -970,14 +811,12 @@ export default function LandingsStudio() {
                     : 'w-[390px] min-h-[844px] border-8 border-slate-800 rounded-[40px]'
                 }`}
               >
-                {/* Header Mockup si es Móvil/Tablet */}
                 {device === 'mobile' && (
                   <div className="h-6 bg-slate-800 flex items-center justify-center">
                     <div className="w-20 h-3.5 bg-black rounded-full" />
                   </div>
                 )}
 
-                {/* Renderizado del Componente */}
                 <div className="overflow-y-auto max-h-[calc(100vh-160px)]">
                   {renderLiveComponent()}
                 </div>
@@ -1006,7 +845,6 @@ export default function LandingsStudio() {
               </p>
             </div>
 
-            {/* Progreso de Pasos */}
             <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div className="flex items-center gap-3 text-xs">
                 {deployStep >= 1 ? (
@@ -1053,7 +891,6 @@ export default function LandingsStudio() {
               </div>
             </div>
 
-            {/* Acciones del Modal */}
             {deploySuccess ? (
               <div className="space-y-3">
                 <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between text-xs">
@@ -1137,16 +974,16 @@ export default function LandingsStudio() {
         </div>
       )}
 
-      {/* ─── MODAL PARA NUEVO PROYECTO DE LANDING ─────────────────────────── */}
+      {/* ─── MODAL PARA INICIAR NUEVO PROYECTO DE LANDING ─────────────────── */}
       {showNewProjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200">
             <div className="space-y-2 mb-6">
               <h3 className="text-xl font-black text-slate-900">
-                Nuevo Proyecto de Landing
+                Iniciar Nuevo Proyecto de Landing
               </h3>
               <p className="text-xs text-slate-500">
-                Crea un nuevo espacio de trabajo para diseñar una landing con Hermes.
+                Crea un nuevo espacio de trabajo para diseñar una landing personalizada con Hermes AI.
               </p>
             </div>
 
@@ -1206,7 +1043,7 @@ export default function LandingsStudio() {
                   type="submit"
                   className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer"
                 >
-                  Crear Proyecto
+                  Crear e Iniciar Chat
                 </button>
                 <button
                   type="button"
