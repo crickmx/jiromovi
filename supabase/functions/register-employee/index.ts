@@ -25,6 +25,9 @@ interface RegisterEmployeeRequest {
     imagen_perfil_url?: string;
     equipo_computo?: string;
     equipo_celular?: string;
+    web_slug?: string;
+    banco?: string;
+    clabe?: string;
   };
 }
 
@@ -200,20 +203,21 @@ Deno.serve(async (req: Request) => {
       puesto: rol === 'Empleado' ? userData.puesto || '' : 'Agente de Seguros',
       oficina_id: userData.oficina_id,
       fecha_nacimiento: userData.fecha_nacimiento,
-      fecha_ingreso: rol === 'Empleado' ? userData.fecha_ingreso || null : null,
+      fecha_ingreso: userData.fecha_ingreso || null,
       celular_personal: userData.celular_personal || '',
       celular_laboral: userData.celular_laboral || userData.celular_personal || '',
       cedula_cnsf: userData.cedula_cnsf || null,
       extension_telefonica: userData.extension_telefonica || '',
       equipo_computo: userData.equipo_computo || '',
       equipo_celular: userData.equipo_celular || '',
+      web_slug: userData.web_slug ? userData.web_slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') : null,
+      banco: userData.banco || '',
+      clabe: userData.clabe || '',
       imagen_perfil_url: userData.imagen_perfil_url || '/display-avatar.png',
       created_by: currentUserId,
       password_generated_at: new Date().toISOString(),
       status: 'pendiente_activacion',
       activo: false,
-      banco: '',
-      clabe: '',
     };
 
     console.log('[register-employee] Inserting into usuarios table...');
