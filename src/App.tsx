@@ -92,6 +92,13 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 // ── Per-domain apps ───────────────────────────────────────────────────────
 
 function LandingsApp() {
+  useEffect(() => {
+    document.getElementById('root')?.classList.add('public-page');
+    return () => {
+      document.getElementById('root')?.classList.remove('public-page');
+    };
+  }, []);
+
   return (
     <HelmetProvider>
       <BrowserRouter>
