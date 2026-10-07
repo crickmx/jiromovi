@@ -12,8 +12,8 @@ import { useAppUpdate } from './lib/useAppUpdate';
 import { AppUpdateBanner } from './components/AppUpdateBanner';
 
 // ── Landings (lazy) ────────────────────────────────────────────────────────
-const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
 const LandingsStudio = lazy(() => import('./landings/LandingsStudio'));
+const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
 
 // ── Seguwallet pages (lazy) ────────────────────────────────────────────────
 import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
@@ -105,25 +105,18 @@ function LandingsApp() {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Landing pública principal Mutuus */}
+            {/* Hermes Landing Studio tipo Bolt/Lovable con autenticacion Marsella14$ */}
+            <Route path="/" element={<LandingsStudio />} />
+            <Route path="/studio" element={<LandingsStudio />} />
+
+            {/* Landings individuales públicas */}
             <Route path="/mutuus" element={<MutuusLanding />} />
-            
-            {/* Otras landings públicas */}
             <Route path="/seguros-express" element={<SegurosExpressLanding />} />
             <Route path="/seguros-education" element={<SegurosEducationLanding />} />
             <Route path="/chava-agente" element={<ChavaAgenteLanding />} />
-            
-            {/* Studio workspace */}
-            <Route path="/studio" element={<LandingsStudio />} />
-            
-            {/* Raíz y rutas públicas por defecto */}
-            <Route path="/" element={<MutuusLanding />} />
-            
-            {/* Anulación de cualquier redirección hacia login */}
-            <Route path="/login" element={<Navigate to="/mutuus" replace />} />
-            
-            {/* Catch-all */}
-            <Route path="*" element={<MutuusLanding />} />
+
+            {/* Fallback al Studio */}
+            <Route path="/*" element={<LandingsStudio />} />
           </Routes>
         </Suspense>
       </BrowserRouter>
@@ -318,7 +311,7 @@ function MoviApp() {
                     <SeguwalletProtectedRoute><SeguwalletDescargas /></SeguwalletProtectedRoute>
                   </SeguwalletStack>
                 } />
-                <Route path="/seguwallet/aseguradoras" element={
+                <Route path="/aseguradoras" element={
                   <SeguwalletStack>
                     <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
                   </SeguwalletStack>
