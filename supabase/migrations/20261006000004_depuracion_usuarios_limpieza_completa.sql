@@ -1,4 +1,4 @@
--- Migración: Limpieza y depuración integral de bases de datos de usuarios
+-- Migración: Limpieza y depuración integral de bases de datos de usuarios (Resiliente)
 -- Anonimiza correos de eliminados, limpia asignaciones huérfanas, reglas, mapeos y purga auth.users.
 
 BEGIN;
@@ -26,35 +26,47 @@ WHERE au.id = u.id
   AND (u.is_deleted = true OR u.estado = 'eliminado')
   AND au.email NOT LIKE 'deleted-%@deleted.local';
 
--- 3. Limpiar relaciones operativas y reglas asignadas a usuarios eliminados
-DELETE FROM public.tramites_grupos_miembros
-WHERE usuario_id IN (
-  SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
-);
+-- 3. Limpiar relaciones operativas y reglas asignadas a usuarios eliminados de forma segura
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tramites_grupos_miembros') THEN
+    DELETE FROM public.tramites_grupos_miembros
+    WHERE usuario_id IN (
+      SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
+    );
+  END IF;
 
-DELETE FROM public.tramites_reglas_por_tipo
-WHERE usuario_id IN (
-  SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
-);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tramites_reglas_por_tipo') THEN
+    DELETE FROM public.tramites_reglas_por_tipo
+    WHERE usuario_id IN (
+      SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
+    );
+  END IF;
 
-DELETE FROM public.destinatarios_notificacion
-WHERE usuario_id IN (
-  SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
-);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'destinatarios_notificacion') THEN
+    DELETE FROM public.destinatarios_notificacion
+    WHERE usuario_id IN (
+      SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
+    );
+  END IF;
 
--- 4. Limpiar mapeos SICAS y producción de usuarios eliminados
-DELETE FROM public.sicas_mapeo_vendedor_usuario
-WHERE movi_user_id IN (
-  SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
-);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sicas_mapeo_vendedor_usuario') THEN
+    DELETE FROM public.sicas_mapeo_vendedor_usuario
+    WHERE movi_user_id IN (
+      SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
+    );
+  END IF;
 
-UPDATE public.vendor_mappings
-SET status = 'inactive', updated_at = NOW()
-WHERE movi_user_id IN (
-  SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
-) AND status = 'active';
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vendor_mappings') THEN
+    UPDATE public.vendor_mappings
+    SET status = 'inactive', updated_at = NOW()
+    WHERE movi_user_id IN (
+      SELECT id FROM public.usuarios WHERE is_deleted = true OR estado = 'eliminado'
+    ) AND status = 'active';
+  END IF;
+END $$;
 
--- 5. Trigger automático para que futuros borrados limpien todo en cascada
+-- 4. Trigger automático para que futuros borrados limpien todo en cascada
 CREATE OR REPLACE FUNCTION public.fn_auto_cleanup_deleted_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -83,12 +95,22 @@ BEGIN
       RAISE WARNING '[auto_cleanup_deleted_user] Error actualizando auth.users: %', SQLERRM;
     END;
 
-    -- Limpiar membresías y reglas
-    DELETE FROM public.tramites_grupos_miembros WHERE usuario_id = NEW.id;
-    DELETE FROM public.tramites_reglas_por_tipo WHERE usuario_id = NEW.id;
-    DELETE FROM public.destinatarios_notificacion WHERE usuario_id = NEW.id;
-    DELETE FROM public.sicas_mapeo_vendedor_usuario WHERE movi_user_id = NEW.id;
-    UPDATE public.vendor_mappings SET status = 'inactive', updated_at = NOW() WHERE movi_user_id = NEW.id AND status = 'active';
+    -- Limpiezas condicionales
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tramites_grupos_miembros') THEN
+      DELETE FROM public.tramites_grupos_miembros WHERE usuario_id = NEW.id;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tramites_reglas_por_tipo') THEN
+      DELETE FROM public.tramites_reglas_por_tipo WHERE usuario_id = NEW.id;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sicas_mapeo_vendedor_usuario') THEN
+      DELETE FROM public.sicas_mapeo_vendedor_usuario WHERE movi_user_id = NEW.id;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vendor_mappings') THEN
+      UPDATE public.vendor_mappings SET status = 'inactive', updated_at = NOW() WHERE movi_user_id = NEW.id AND status = 'active';
+    END IF;
 
   END IF;
   RETURN NEW;
@@ -101,7 +123,7 @@ CREATE TRIGGER trg_auto_cleanup_deleted_user
   FOR EACH ROW
   EXECUTE FUNCTION public.fn_auto_cleanup_deleted_user();
 
--- 6. Purgar huérfanos reales en auth.users que no pertenezcan a SeguWallet ni Chava
+-- 5. Purgar huérfanos reales en auth.users (sin tocar SeguWallet ni Chava)
 SELECT * FROM public.purgar_huerfanos_auth(1);
 
 COMMIT;

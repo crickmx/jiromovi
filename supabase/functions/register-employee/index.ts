@@ -70,12 +70,12 @@ Deno.serve(async (req: Request) => {
     }
 
     const rol = userData.rol === 'Agente' ? 'Agente' : 'Empleado';
-    const emailAcceso = (rol === 'Agente' ? userData.email_personal : userData.email_laboral)?.trim().toLowerCase();
+    const emailAcceso = (userData.email_laboral || userData.email_personal)?.trim().toLowerCase();
 
     if (!emailAcceso || !password) {
       return new Response(
         JSON.stringify({
-          error: 'El email de acceso y la contraseña son requeridos',
+          error: 'El correo electrónico y la contraseña son requeridos',
           details: {
             email: emailAcceso ? 'provided' : 'missing',
             password: password ? 'provided' : 'missing'
@@ -98,9 +98,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (rol === 'Agente' && (!userData.cedula_cnsf || !userData.celular_personal)) {
+    // Para Agentes o Empleados: teléfono de contacto (laboral o personal) requerido
+    const telefonoContacto = userData.celular_laboral || userData.celular_personal;
+    if (!telefonoContacto || telefonoContacto.trim() === '') {
       return new Response(
-        JSON.stringify({ error: 'La cédula CNSF y el celular personal son requeridos para agentes' }),
+        JSON.stringify({ error: 'El celular de contacto es requerido' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -116,7 +118,7 @@ Deno.serve(async (req: Request) => {
 
     if (existingUser) {
       return new Response(
-        JSON.stringify({ error: 'Ya existe un usuario con ese email' }),
+        JSON.stringify({ error: 'Ya existe un usuario activo con ese correo electrónico' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -187,20 +189,21 @@ Deno.serve(async (req: Request) => {
 
     console.log('[register-employee] Auth user created:', authData.user.id);
 
+    // email_laboral es SIEMPRE la columna principal de acceso para todos los roles (Empleado y Agente)
     const insertData = {
       id: authData.user.id,
       nombre: userData.nombre.toUpperCase(),
       apellidos: userData.apellidos.toUpperCase(),
       rol,
-      email_laboral: rol === 'Empleado' ? emailAcceso.toLowerCase() : '',
-      email_personal: rol === 'Agente' ? emailAcceso.toLowerCase() : '',
+      email_laboral: emailAcceso.toLowerCase(),
+      email_personal: null,
       puesto: rol === 'Empleado' ? userData.puesto || '' : 'Agente de Seguros',
       oficina_id: userData.oficina_id,
       fecha_nacimiento: userData.fecha_nacimiento,
       fecha_ingreso: rol === 'Empleado' ? userData.fecha_ingreso || null : null,
-      celular_personal: rol === 'Agente' ? userData.celular_personal || '' : '',
-      celular_laboral: rol === 'Empleado' ? userData.celular_laboral || '' : '',
-      cedula_cnsf: rol === 'Agente' ? userData.cedula_cnsf || '' : null,
+      celular_personal: userData.celular_personal || '',
+      celular_laboral: userData.celular_laboral || userData.celular_personal || '',
+      cedula_cnsf: userData.cedula_cnsf || null,
       extension_telefonica: userData.extension_telefonica || '',
       equipo_computo: userData.equipo_computo || '',
       equipo_celular: userData.equipo_celular || '',
