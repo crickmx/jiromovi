@@ -30,6 +30,9 @@ const SeguwalletCompleteProfile = lazy(() => import('./seguwallet/pages/Seguwall
 import { ChavaAgenteProvider } from './chava-agente/lib/ChavaAgenteContext';
 const ChavaAgenteLanding = lazy(() => import('./chava-agente/pages/ChavaAgenteLanding'));
 
+// ── Landings Chris Standalone App (Direct import for instant load) ───────────
+import LandingsChrisApp from './landingschris/LandingsChrisApp';
+
 // ── Public advisor page (lazy, no auth) ───────────────────────────────────
 const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
 const AgendaPublica = lazy(() => import('./pages/AgendaPublica'));
@@ -41,7 +44,7 @@ const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEd
 const SegurosExpressLanding = lazy(() => import('./seguros-express/SegurosExpressLanding'));
 const SegurosExpressCotizar = lazy(() => import('./seguros-express/CotizarPage'));
 
-// ── MOVI Tienda pública (lazy) ────────────────────────────────────────────
+// ── MOVI Tienda pública (lazy) ────────────────────────────────────
 const TiendaHome     = lazy(() => import('./movistore/TiendaHome').then(m => ({ default: m.TiendaHome })));
 const TiendaProducto = lazy(() => import('./movistore/TiendaProducto').then(m => ({ default: m.TiendaProducto })));
 const TiendaCatalogo = lazy(() => import('./movistore/TiendaCatalogo').then(m => ({ default: m.TiendaCatalogo })));
@@ -58,6 +61,10 @@ const isExpressSite    = HOST === 'seguros.express'
 const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
+const isLandingSite    = HOST === 'landing.movi.digital'
+  || HOST === 'landings.movi.digital'
+  || HOST.includes('landing')
+  || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('site') === 'landing' || new URLSearchParams(window.location.search).get('site') === 'landings' || new URLSearchParams(window.location.search).get('site') === 'landingschris'));
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
@@ -291,13 +298,14 @@ function MoviApp() {
 
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#040c1f]">
-      <div className="w-10 h-10 border-[3px] border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center bg-[#070D1E] text-white">
+      <div className="w-10 h-10 border-[3px] border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
     </div>
   );
 }
 
 function App() {
+  if (isLandingSite) return <LandingsChrisApp />;
   if (isAgenteSite) return <AgenteWebsiteApp />;
   if (isChavaSite)  return <ChavaAIApp />;
   if (isSeguwalletSite) return <SeguwalletApp />;

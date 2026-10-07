@@ -135,7 +135,7 @@ const AdminAltas = lazy(() => import('./AdminAltas'));
 const DiasNoHabiles = lazy(() => import('./admin/DiasNoHabiles'));
 const ConfigJornada = lazy(() => import('./admin/ConfigJornada'));
 
-// Shared
+// Shared & Public Landings
 const Perfil = lazy(() => import('./Perfil'));
 const Oficinas = lazy(() => import('./Oficinas'));
 const RegistroPersonal = lazy(() => import('./RegistroPersonal'));
@@ -144,6 +144,7 @@ const AgendaPublica = lazy(() => import('./AgendaPublica'));
 const Alta = lazy(() => import('./Alta'));
 const AltaSimular = lazy(() => import('./AltaSimular'));
 const AdminContratosAlta = lazy(() => import('./AdminContratosAlta'));
+const MutuusLanding = lazy(() => import('./MutuusLanding'));
 
 function PageLoader() {
   return (
@@ -177,6 +178,11 @@ export default function MoviFullRoutes() {
         <Route path="/p/:slug" element={<PaginaPublicaAsesor />} />
         <Route path="/cotizar/formularios/:slug" element={<PublicQuoteForm />} />
         <Route path="/agenda/:eventTypeId" element={<AgendaPublica />} />
+
+        {/* Public Mutuus Health Membership Landing */}
+        <Route path="/mutuus" element={<MutuusLanding />} />
+        <Route path="/membresia-salud" element={<MutuusLanding />} />
+        <Route path="/salud/mutuus" element={<MutuusLanding />} />
 
         {/* All authenticated MOVI routes — wrapped in Layout + providers */}
         <Route element={<LayoutShell />}>

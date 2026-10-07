@@ -1,63 +1,28 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <!-- Favicon Oficial — MOVI Digital -->
-    <link rel="icon" type="image/png" href="/movirecurso_7.png" />
-    <link rel="apple-touch-icon" href="/movirecurso_7.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#ffffff" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310b981'><path d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Precarga de las variantes de Gotham más usadas (Book 400 / Medium 500) para evitar
-         el parpadeo de la fuente de sistema en el primer render. -->
-    <link rel="preload" href="/fonts/gotham/gotham-book.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/gotham/gotham-medium.woff2" as="font" type="font/woff2" crossorigin />
-    <title>MOVI Digital</title>
-    <meta name="description" content="La plataforma digital que impulsa a los agentes de seguros: trámites, comisiones, CRM, producción y cotizaciones en un solo lugar." />
-    <!-- Open Graph / imagen social al compartir enlaces — MOVI Digital -->
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="MOVI Digital" />
-    <meta property="og:title" content="MOVI Digital — Toda tu operación de seguros, en un solo lugar" />
-    <meta property="og:description" content="Trámites, comisiones, CRM, producción y cotizaciones. La plataforma digital que impulsa a los agentes de seguros MOVI." />
-    <meta property="og:url" content="https://app.movi.digital/" />
-    <meta property="og:image" content="https://app.movi.digital/og-movi.jpg?v=1" />
-    <meta property="og:image:secure_url" content="https://app.movi.digital/og-movi.jpg?v=1" />
-    <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="MOVI Digital — plataforma para agentes de seguros" />
-    <meta property="og:locale" content="es_MX" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="MOVI Digital — Toda tu operación de seguros, en un solo lugar" />
-    <meta name="twitter:description" content="Trámites, comisiones, CRM, producción y cotizaciones. La plataforma digital que impulsa a los agentes de seguros MOVI." />
-    <meta name="twitter:image" content="https://app.movi.digital/og-movi.jpg?v=1" />
-    <meta name="twitter:image:alt" content="MOVI Digital — plataforma para agentes de seguros" />
+    <title>Mutuus Salud Inteligente | Membresía Médica Sin Deducible</title>
 </head>
-  <body>
-    <div id="root"></div>
+  <body style="background-color: #070D1E; color: #f8fafc; margin: 0; min-height: 100vh;">
+    <div id="root" class="public-page" style="min-height: 100vh; background-color: #070D1E;"></div>
     <script>
-      // Migrate old "system" default → "light"
       (function() {
+        document.documentElement.classList.add('dark');
+        var r = document.getElementById('root');
+        if (r) r.className = 'public-page';
+        var h = window.location.hostname || '';
+        if (h.indexOf('landing') !== -1) {
+          document.title = 'Mutuus Salud Inteligente | Membresía Médica';
+          return;
+        }
         var saved = localStorage.getItem('movi-theme-mode');
         if (!saved || saved === 'system') {
           localStorage.setItem('movi-theme-mode', 'light');
-          document.documentElement.classList.remove('dark');
         }
       })();
-      // Unregister old caching service workers but keep push-sw.js
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) {
-            if (r.active && r.active.scriptURL && r.active.scriptURL.includes('push-sw.js')) return;
-            r.unregister();
-          });
-        });
-      }
-      if ('caches' in window) {
-        caches.keys().then(function(keys) {
-          keys.forEach(function(k) { caches.delete(k); });
-        });
-      }
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
