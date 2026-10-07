@@ -98,9 +98,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (rol === 'Agente' && (!userData.cedula_cnsf || (!userData.celular_personal && !userData.celular_laboral))) {
+    // Para Agentes o Empleados: teléfono de contacto (laboral o personal) requerido
+    const telefonoContacto = userData.celular_laboral || userData.celular_personal;
+    if (!telefonoContacto || telefonoContacto.trim() === '') {
       return new Response(
-        JSON.stringify({ error: 'La cédula CNSF y el celular son requeridos para agentes' }),
+        JSON.stringify({ error: 'El celular de contacto es requerido' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -199,9 +201,9 @@ Deno.serve(async (req: Request) => {
       oficina_id: userData.oficina_id,
       fecha_nacimiento: userData.fecha_nacimiento,
       fecha_ingreso: rol === 'Empleado' ? userData.fecha_ingreso || null : null,
-      celular_personal: rol === 'Agente' ? (userData.celular_personal || userData.celular_laboral || '') : '',
-      celular_laboral: rol === 'Empleado' ? (userData.celular_laboral || '') : (userData.celular_personal || ''),
-      cedula_cnsf: rol === 'Agente' ? userData.cedula_cnsf || '' : null,
+      celular_personal: userData.celular_personal || '',
+      celular_laboral: userData.celular_laboral || userData.celular_personal || '',
+      cedula_cnsf: userData.cedula_cnsf || null,
       extension_telefonica: userData.extension_telefonica || '',
       equipo_computo: userData.equipo_computo || '',
       equipo_celular: userData.equipo_celular || '',
