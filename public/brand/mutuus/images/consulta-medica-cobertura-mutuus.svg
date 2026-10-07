@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" fill="none">
+  <rect width="600" height="400" rx="24" fill="#F4F9FF"/>
+  <rect x="40" y="40" width="520" height="320" rx="20" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <circle cx="120" cy="130" r="45" fill="#003896"/>
+  <path d="M105 130H135M120 115V145" stroke="#9CD41C" stroke-width="4" stroke-linecap="round"/>
+  <text x="190" y="115" font-family="Montserrat, sans-serif" font-size="20" font-weight="800" fill="#003896">Equipo Médico Hospitalario</text>
+  <text x="190" y="142" font-family="Montserrat, sans-serif" font-size="13" font-weight="500" fill="#475569">Atención de especialistas, cirujanos y urgencias 24 horas.</text>
+  <line x1="80" y1="200" x2="520" y2="200" stroke="#E2E8F0" stroke-width="1.5"/>
+  <g transform="translate(80, 230)">
+    <circle cx="20" cy="20" r="14" fill="#EBFFF0"/>
+    <path d="M15 20L19 24L26 16" stroke="#22C55E" stroke-width="2" stroke-linecap="round"/>
+    <text x="45" y="24" font-family="Montserrat, sans-serif" font-size="13" font-weight="700" fill="#0F172A">Honorarios quirúrgicos cubiertos al 100% en red</text>
+  </g>
+  <g transform="translate(80, 280)">
+    <circle cx="20" cy="20" r="14" fill="#EBFFF0"/>
+    <path d="M15 20L19 24L26 16" stroke="#22C55E" stroke-width="2" stroke-linecap="round"/>
+    <text x="45" y="24" font-family="Montserrat, sans-serif" font-size="13" font-weight="700" fill="#0F172A">Estancia hospitalaria en habitación estándar privada</text>
+  </g>
+</svg>
