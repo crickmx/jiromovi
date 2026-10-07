@@ -30,8 +30,8 @@ const SeguwalletCompleteProfile = lazy(() => import('./seguwallet/pages/Seguwall
 import { ChavaAgenteProvider } from './chava-agente/lib/ChavaAgenteContext';
 const ChavaAgenteLanding = lazy(() => import('./chava-agente/pages/ChavaAgenteLanding'));
 
-// ── Landings Chris Standalone App (lazy) ────────────────────────────────────
-const LandingsChrisApp = lazy(() => import('./landingschris/LandingsChrisApp'));
+// ── Landings Chris Standalone App (Direct import for instant load) ───────────
+import LandingsChrisApp from './landingschris/LandingsChrisApp';
 
 // ── Public advisor page (lazy, no auth) ───────────────────────────────────
 const PaginaPublicaAsesor = lazy(() => import('./pages/PaginaPublicaAsesor'));
@@ -298,14 +298,14 @@ function MoviApp() {
 
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#040c1f]">
-      <div className="w-10 h-10 border-[3px] border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center bg-[#070D1E] text-white">
+      <div className="w-10 h-10 border-[3px] border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
     </div>
   );
 }
 
 function App() {
-  if (isLandingSite) return <Suspense fallback={<PageLoader />}><LandingsChrisApp /></Suspense>;
+  if (isLandingSite) return <LandingsChrisApp />;
   if (isAgenteSite) return <AgenteWebsiteApp />;
   if (isChavaSite)  return <ChavaAIApp />;
   if (isSeguwalletSite) return <SeguwalletApp />;
