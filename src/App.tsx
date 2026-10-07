@@ -63,8 +63,7 @@ const isTiendaSite     = HOST === 'tienda.movi.digital'
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
 const isLandingSite    = HOST === 'landing.movi.digital'
   || HOST === 'landings.movi.digital'
-  || HOST.endsWith('.landing.movi.digital')
-  || HOST.endsWith('.landings.movi.digital')
+  || HOST.includes('landing')
   || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('site') === 'landing' || new URLSearchParams(window.location.search).get('site') === 'landings' || new URLSearchParams(window.location.search).get('site') === 'landingschris'));
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 

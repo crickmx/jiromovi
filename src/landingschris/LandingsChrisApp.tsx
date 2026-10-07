@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 
@@ -10,14 +10,14 @@ function SlugRouter() {
 
   if (!slug) return <LandingsIndex />;
 
-  const normalized = slug.toLowerCase();
+  const normalized = (slug || '').toLowerCase();
 
   if (normalized === 'mutuus' || normalized === 'membresia-salud' || normalized === 'salud-sin-deducible') {
     return <MutuusLanding />;
   }
 
-  // Fallback to landings index if slug not found
-  return <Navigate to="/" replace />;
+  // Fallback to Mutuus if any subroute is visited, or LandingsIndex
+  return <MutuusLanding />;
 }
 
 function PageLoader() {
@@ -29,13 +29,26 @@ function PageLoader() {
 }
 
 export default function LandingsChrisApp() {
+  useEffect(() => {
+    const rootEl = document.getElementById('root');
+    rootEl?.classList.add('public-page');
+    document.body.style.backgroundColor = '#070D1E';
+    document.body.style.color = '#f8fafc';
+    return () => {
+      rootEl?.classList.remove('public-page');
+    };
+  }, []);
+
   return (
     <HelmetProvider>
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={<LandingsIndex />} />
+            <Route path="/mutuus" element={<MutuusLanding />} />
+            <Route path="/membresia-salud" element={<MutuusLanding />} />
+            <Route path="/salud-sin-deducible" element={<MutuusLanding />} />
             <Route path="/:slug" element={<SlugRouter />} />
+            <Route path="/" element={<LandingsIndex />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
