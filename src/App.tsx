@@ -44,7 +44,7 @@ const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEd
 const SegurosExpressLanding = lazy(() => import('./seguros-express/SegurosExpressLanding'));
 const SegurosExpressCotizar = lazy(() => import('./seguros-express/CotizarPage'));
 
-// ── MOVI Tienda pública (lazy) ────────────────────────────────────────────
+// ── MOVI Tienda pública (lazy) ────────────────────────────────────
 const TiendaHome     = lazy(() => import('./movistore/TiendaHome').then(m => ({ default: m.TiendaHome })));
 const TiendaProducto = lazy(() => import('./movistore/TiendaProducto').then(m => ({ default: m.TiendaProducto })));
 const TiendaCatalogo = lazy(() => import('./movistore/TiendaCatalogo').then(m => ({ default: m.TiendaCatalogo })));
@@ -62,8 +62,10 @@ const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
 const isLandingSite    = HOST === 'landing.movi.digital'
+  || HOST === 'landings.movi.digital'
   || HOST.endsWith('.landing.movi.digital')
-  || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('site') === 'landing' || new URLSearchParams(window.location.search).get('site') === 'landingschris'));
+  || HOST.endsWith('.landings.movi.digital')
+  || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('site') === 'landing' || new URLSearchParams(window.location.search).get('site') === 'landings' || new URLSearchParams(window.location.search).get('site') === 'landingschris'));
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
