@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { 
   ShieldCheck, 
@@ -16,7 +16,15 @@ import {
   Send, 
   Loader2, 
   CheckCircle2,
-  Tag
+  Tag,
+  Search,
+  Calculator,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  HeartPulse,
+  Activity,
+  Users
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -204,14 +212,20 @@ const PLANES_DATA = {
   ]
 };
 
-// ─── Red Hospitalaria Logos ──────────────────────────────────────────────────
-const HOSPITALES = [
-  { nombre: 'Hospitales Ángeles', tipo: 'Red Directa Nacional', ciudad: 'CDMX, GDL, MTY, Puebla' },
-  { nombre: 'Médica Sur', tipo: 'Alta Especialidad', ciudad: 'CDMX' },
-  { nombre: 'Star Médica', tipo: 'Red Directa Nacional', ciudad: 'Nacional (15 sedes)' },
-  { nombre: 'Christus Muguerza', tipo: 'Red Hospitalaria Norte', ciudad: 'Monterrey, Saltillo, Chihuahua' },
-  { nombre: 'Hospitales MAC', tipo: 'Red de Excelencia', ciudad: 'Bajío, Centro y Norte' },
-  { nombre: 'Hospital San Javier', tipo: 'Alta Especialidad', ciudad: 'Guadalajara y Vallarta' }
+// ─── Directorio de Hospitales con Búsqueda ──────────────────────────────────
+const HOSPITALES_LISTA = [
+  { nombre: 'Hospitales Ángeles', tipo: 'Alta Especialidad / Red Directa', estado: 'CDMX', sedes: 'Pedregal, Lomas, Acoxpa, Mocel, Metropolitano' },
+  { nombre: 'Médica Sur', tipo: 'Centro Médico de Excelencia', estado: 'CDMX', sedes: 'Tlalpan, Puente de Piedra' },
+  { nombre: 'Star Médica', tipo: 'Red Directa Nacional', estado: 'Nacional', sedes: 'CDMX, Querétaro, Mérida, Morelia, Chihuahua, Puebla' },
+  { nombre: 'Christus Muguerza', tipo: 'Red de Alta Especialidad Norte', estado: 'Nuevo León', sedes: 'Monterrey, Saltillo, Chihuahua, Reynosa' },
+  { nombre: 'Hospitales MAC', tipo: 'Red Médica de Vanguardia', estado: 'Guanajuato / Centro', sedes: 'León, Celaya, Irapuato, San Miguel, Aguascalientes, Puebla' },
+  { nombre: 'Hospital San Javier', tipo: 'Alta Especialidad Occidente', estado: 'Jalisco', sedes: 'Guadalajara, Puerto Vallarta' },
+  { nombre: 'Hospital Español', tipo: 'Red Médica Hospitalaria', estado: 'CDMX', sedes: 'Polanco' },
+  { nombre: 'Hospital San José TecSalud', tipo: 'Alta Especialidad Tec de Monterrey', estado: 'Nuevo León', sedes: 'Monterrey, San Pedro' },
+  { nombre: 'Hospital Puerta de Hierro', tipo: 'Red Médico Quirúrgica', estado: 'Jalisco', sedes: 'Zapopan, Tlajomulco, Colima, Tepic' },
+  { nombre: 'Hospital Faro del Mayab', tipo: 'Red Christus Muguerza', estado: 'Yucatán', sedes: 'Mérida' },
+  { nombre: 'Hospital Ángeles Puebla', tipo: 'Alta Especialidad', estado: 'Puebla', sedes: 'Angelópolis' },
+  { nombre: 'Hospital Star Médica Querétaro', tipo: 'Red Directa', estado: 'Querétaro', sedes: 'Bernardo Quintana' }
 ];
 
 export default function MutuusLanding({ customization }: { customization?: LandingCustomization }) {
@@ -220,6 +234,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
   const [tabCobertura, setTabCobertura] = useState<'cubierto' | 'no_cubierto'>('cubierto');
   const [showModalLead, setShowModalLead] = useState(false);
   const [selectedPlanForModal, setSelectedPlanForModal] = useState<string>('Plan DOS');
+  const [hospitalSearch, setHospitalSearch] = useState<string>('');
+  const [montoCuenta, setMontoCuenta] = useState<number>(705500);
 
   // Form State
   const [leadForm, setLeadForm] = useState({
@@ -233,7 +249,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
   const [submittingLead, setSubmittingLead] = useState(false);
   const [leadSuccess, setLeadSuccess] = useState(false);
 
-  // Dynamic overrides
+  // Overrides dinámicos
   const heroTitle = customization?.heroTitle || 'Membresía de salud y gastos médicos con cero deducible';
   const heroSubtitle = customization?.heroSubtitle || 'Accede a la mejor atención médica privada, telemedicina 24/7 ilimitada y respaldo hospitalario nacional sin pagar deducibles sorpresa al momento de una emergencia.';
   const badgeText = customization?.badgeText || 'Cero Deducible · Cero Coaseguro en Red';
@@ -249,6 +265,18 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
   const rawPlans = customization?.plansData || PLANES_DATA;
   const plans = rawPlans[periodicidad];
+
+  // Filtro de hospitales
+  const filteredHospitales = useMemo(() => {
+    if (!hospitalSearch.trim()) return HOSPITALES_LISTA;
+    const term = hospitalSearch.toLowerCase();
+    return HOSPITALES_LISTA.filter(
+      h => h.nombre.toLowerCase().includes(term) ||
+           h.estado.toLowerCase().includes(term) ||
+           h.sedes.toLowerCase().includes(term) ||
+           h.tipo.toLowerCase().includes(term)
+    );
+  }, [hospitalSearch]);
 
   const handleOpenLeadModal = (planNombre: string) => {
     setSelectedPlanForModal(planNombre);
@@ -267,7 +295,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           full_name: leadForm.nombre,
           email: leadForm.email || 'sin-correo@mutuus.landing',
           company: `Edad: ${leadForm.edad} | Ciudad: ${leadForm.ciudad} | Plan: ${leadForm.plan}`,
-          message: `Solicitud de cotización de membresía Mutuus (${leadForm.plan}) enviada desde landings.movi.digital/mutuus. Tel: ${leadForm.telefono}`,
+          message: `Solicitud de cotización Mutuus (${leadForm.plan}) enviada desde landings.movi.digital/mutuus. Tel: ${leadForm.telefono}`,
           created_at: new Date().toISOString()
         }
       ]);
@@ -286,33 +314,29 @@ export default function MutuusLanding({ customization }: { customization?: Landi
     }
   };
 
+  // Cálculo comparativa dinámica
+  const deducibleTradicional = Math.min(30000, montoCuenta * 0.1);
+  const coaseguroTradicional = Math.min(45000, (montoCuenta - deducibleTradicional) * 0.1);
+  const pagoTradicional = deducibleTradicional + coaseguroTradicional;
+
   return (
     <>
       <Helmet>
         <html lang="es-MX" />
-        <title>{heroTitle.length > 60 ? heroTitle.slice(0, 57) + '...' : heroTitle} | Mutuus</title>
-        <meta 
-          name="description" 
-          content={heroSubtitle} 
-        />
-        <meta 
-          name="keywords" 
-          content="Mutuus seguro gastos medicos, seguro sin deducible, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguros metlife mutuus, promotor autorizado mutuus, hospital pago directo" 
-        />
+        <title>{heroTitle.length > 60 ? heroTitle.slice(0, 57) + '...' : heroTitle} | Mutuus Salud</title>
+        <meta name="description" content={heroSubtitle} />
+        <meta name="keywords" content="Mutuus seguro gastos medicos, seguro sin deducible, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguros metlife mutuus, promotor autorizado mutuus, hospital pago directo" />
         <link rel="canonical" href="https://landings.movi.digital/mutuus" />
         <meta name="geo.region" content="MX" />
         <meta name="geo.placename" content="México" />
-        <meta name="geo.position" content="19.432608;-99.133208" />
-        <meta name="ICBM" content="19.432608, -99.133208" />
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="es_MX" />
-        <meta property="og:site_name" content="Movi Digital · Promotor Autorizado Mutuus" />
+        <meta property="og:site_name" content="MOVI Digital · Mutuus Salud" />
         <meta property="og:title" content={heroTitle} />
         <meta property="og:description" content={heroSubtitle} />
         <meta property="og:url" content="https://landings.movi.digital/mutuus" />
       </Helmet>
 
-      {/* ─── CONTENEDOR PRINCIPAL ────────────────────────────────────────── */}
       <div 
         className="min-h-screen bg-white text-[#2B2A2A] font-sans antialiased selection:text-white"
         style={{ 
@@ -325,18 +349,17 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         {/* ─── PROMO BANNER DINÁMICO ────────────────────────────────────── */}
         {promoBanner && (
           <div 
-            className="text-white py-2 px-4 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-inner"
+            className="text-white py-2.5 px-4 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-inner sticky top-0 z-50 animate-in fade-in"
             style={{ backgroundColor: primaryColor }}
           >
-            <Tag className="w-3.5 h-3.5" style={{ color: accentColor }} />
+            <Tag className="w-4 h-4" style={{ color: accentColor }} />
             <span>{promoBanner}</span>
           </div>
         )}
 
         {/* ─── 1. HEADER STICKY (PROMOTOR AUTORIZADO) ────────────────────── */}
-        <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-            {/* Logos & Leyenda Promotor */}
             <div className="flex items-center gap-3 sm:gap-4">
               <a href="#inicio" className="flex items-center gap-2 group">
                 <div 
@@ -369,7 +392,6 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               </div>
             </div>
 
-            {/* Menú de Navegación Desktop */}
             <nav className="hidden lg:flex items-center gap-7 text-sm font-semibold text-slate-700">
               <a href="#porque-mutuus" className="hover:opacity-80 transition-opacity">¿Por qué Mutuus?</a>
               <a href="#planes" className="hover:opacity-80 transition-opacity">Planes y Precios</a>
@@ -378,7 +400,6 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               <a href="#faq" className="hover:opacity-80 transition-opacity">Preguntas Frecuentes</a>
             </nav>
 
-            {/* Acciones */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => handleOpenLeadModal('Plan DOS')}
@@ -402,24 +423,21 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           </div>
         </header>
 
-        {/* ─── 2. HERO SECTION CON OVERLAY Y FOTO ─────────────────────────── */}
+        {/* ─── 2. HERO SECTION ULTRA PREMIUM ──────────────────────────────── */}
         <section id="inicio" className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden bg-gradient-to-b from-[#F4F9FF] via-white to-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               
-              {/* Contenido Izquierdo */}
               <div className="lg:col-span-7 space-y-6">
                 
-                {/* Badge de Seguridad */}
                 <div 
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold border"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold border shadow-xs"
                   style={{ backgroundColor: '#EFF6FF', borderColor: '#CBD5E1', color: primaryColor }}
                 >
                   <Sparkles className="w-4 h-4" style={{ color: primaryColor }} />
                   <span>{badgeText}</span>
                 </div>
 
-                {/* H1 Principal con SEO Keyword */}
                 <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#2B2A2A] tracking-tight leading-[1.15]">
                   {heroTitle.includes('cero deducible') ? (
                     <>
@@ -432,17 +450,14 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   )}
                 </h1>
 
-                {/* Subtítulo Descriptivo */}
                 <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal max-w-2xl">
                   {heroSubtitle}
                 </p>
 
-                {/* Nota Legal visible */}
                 <p className="text-xs text-slate-400 italic">
                   * Aplican términos, condiciones y periodos de espera estipulados en la póliza.
                 </p>
 
-                {/* Botones de Acción (CTA) */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
                   <a
                     href="#planes"
@@ -463,7 +478,6 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   </button>
                 </div>
 
-                {/* Micro-beneficios con Checks */}
                 <div className="pt-6 border-t border-slate-200/80 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-semibold text-slate-700">
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-[#22C55E] stroke-[3]" />
@@ -481,7 +495,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
               </div>
 
-              {/* Tarjeta Visual Hero Derecha */}
+              {/* Tarjeta Visual Glassmorphic Derecha */}
               <div className="lg:col-span-5 relative">
                 <div 
                   className="relative rounded-3xl p-6 sm:p-8 text-white shadow-2xl border border-white/20 overflow-hidden"
@@ -545,7 +559,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           </div>
         </section>
 
-        {/* ─── 3. CAJA DE DEFINICIÓN (QUÉ ES MUTUUS) ──────────────────────── */}
+        {/* ─── 3. CAJA DEFINICIÓN ─────────────────────────────────────────── */}
         <section className="py-12 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="p-6 sm:p-8 rounded-3xl bg-[#EFF6FF] border border-[#CBD5E1] flex flex-col md:flex-row items-center gap-6 shadow-xs">
@@ -567,25 +581,48 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           </div>
         </section>
 
-        {/* ─── 4. POR QUÉ MUTUUS ──────────────────────────────────────────── */}
+        {/* ─── 4. CALCULADORA INTERACTIVA DE AHORRO ────────────────────────── */}
         <section id="porque-mutuus" className="py-20 bg-[#F4F9FF]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
+            <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
               <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
-                Comparativa de Impacto Financiero
+                Simulador Financiero de Ahorro
               </span>
               <h2 className="text-3xl sm:text-4xl font-extrabold" style={{ color: primaryColor }}>
-                ¿Por qué elegir Mutuus frente a un seguro tradicional?
+                ¿Cuánto ahorras realmente con Mutuus?
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
-                Ejemplo real de una cuenta hospitalaria de <strong className="text-slate-900 font-bold">$705,500 MXN</strong> por atención de urgencia médica:
+                Selecciona el monto estimado de un evento hospitalario para simular el impacto en tu bolsillo:
               </p>
+
+              {/* Botones de montos predefinidos */}
+              <div className="pt-4 flex flex-wrap justify-center gap-2">
+                {[
+                  { label: 'Urgencia Menor ($85,000)', val: 85000 },
+                  { label: 'Cirugía / Apéndice ($240,000)', val: 240000 },
+                  { label: 'Evento Mayor ($705,500)', val: 705500 },
+                  { label: 'Alta Especialidad ($1,500,000)', val: 1500000 },
+                ].map((item) => (
+                  <button
+                    key={item.val}
+                    onClick={() => setMontoCuenta(item.val)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      montoCuenta === item.val
+                        ? 'text-white shadow-md'
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                    style={montoCuenta === item.val ? { backgroundColor: primaryColor } : {}}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
               
-              {/* Columna 1: Mutuus */}
+              {/* Opción Mutuus */}
               <div 
                 className="rounded-3xl p-6 sm:p-8 bg-white border-2 shadow-xl relative flex flex-col justify-between order-1 ring-4"
                 style={{ borderColor: primaryColor, ringColor: `${primaryColor}20` }}
@@ -594,7 +631,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-extrabold uppercase tracking-wide"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  Opción Mutuus
+                  Opción Mutuus ($0 Deducible)
                 </div>
 
                 <div className="space-y-6 pt-2">
@@ -609,14 +646,14 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   <div className="space-y-3 text-sm border-t border-slate-100 pt-4">
                     <div className="flex justify-between py-1 border-b border-slate-50">
                       <span className="text-slate-600">Cuenta hospitalaria:</span>
-                      <span className="font-bold text-slate-900">$705,500 MXN</span>
+                      <span className="font-bold text-slate-900">${montoCuenta.toLocaleString('es-MX')} MXN</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-slate-50">
                       <span className="text-slate-600">Deducible pagado:</span>
                       <span className="font-bold text-[#22C55E]">$0 MXN</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-slate-50">
-                      <span className="text-slate-600">Coaseguro (10%):</span>
+                      <span className="text-slate-600">Coaseguro:</span>
                       <span className="font-bold text-[#22C55E]">$0 MXN</span>
                     </div>
                   </div>
@@ -625,11 +662,11 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 <div className="mt-8 pt-4 border-t-2 border-slate-100 bg-[#EFF6FF] -mx-6 -mb-6 p-6 rounded-b-3xl">
                   <p className="text-xs font-bold uppercase" style={{ color: primaryColor }}>Pago Final de tu Bolsillo:</p>
                   <p className="text-3xl font-black mt-1" style={{ color: primaryColor }}>$0 MXN</p>
-                  <p className="text-[11px] text-slate-500 mt-1">Condonación total cumpliendo protocolo en red.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">100% cubierto en red de convenio.</p>
                 </div>
               </div>
 
-              {/* Columna 2: Seguro Tradicional */}
+              {/* Seguro Tradicional */}
               <div className="rounded-3xl p-6 sm:p-8 bg-white border border-slate-200 shadow-sm flex flex-col justify-between order-2">
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
@@ -643,41 +680,41 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   <div className="space-y-3 text-sm border-t border-slate-100 pt-4">
                     <div className="flex justify-between py-1 border-b border-slate-50">
                       <span className="text-slate-600">Cuenta hospitalaria:</span>
-                      <span className="font-bold text-slate-900">$705,500 MXN</span>
+                      <span className="font-bold text-slate-900">${montoCuenta.toLocaleString('es-MX')} MXN</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-slate-50">
-                      <span className="text-slate-600">Deducible inicial:</span>
-                      <span className="font-bold text-rose-600">$25,000 MXN</span>
+                      <span className="text-slate-600">Deducible (aprox):</span>
+                      <span className="font-bold text-rose-600">${Math.round(deducibleTradicional).toLocaleString('es-MX')} MXN</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-slate-50">
-                      <span className="text-slate-600">Coaseguro (tope):</span>
-                      <span className="font-bold text-rose-600">$35,000 MXN</span>
+                      <span className="text-slate-600">Coaseguro (10%):</span>
+                      <span className="font-bold text-rose-600">${Math.round(coaseguroTradicional).toLocaleString('es-MX')} MXN</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-8 pt-4 border-t border-slate-100 bg-slate-50 -mx-6 -mb-6 p-6 rounded-b-3xl">
                   <p className="text-xs font-bold text-slate-500 uppercase">Pago Final de tu Bolsillo:</p>
-                  <p className="text-3xl font-black text-rose-600 mt-1">$60,000 MXN</p>
+                  <p className="text-3xl font-black text-rose-600 mt-1">${Math.round(pagoTradicional).toLocaleString('es-MX')} MXN</p>
                   <p className="text-[11px] text-slate-400 mt-1">Más trámites de dictamen y reembolsos.</p>
                 </div>
               </div>
 
-              {/* Columna 3: Sin Seguro */}
+              {/* Sin Protección */}
               <div className="rounded-3xl p-6 sm:p-8 bg-white border border-slate-200 shadow-sm flex flex-col justify-between order-3">
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">⚠️</span>
                     <div>
-                      <h3 className="text-xl font-bold text-slate-800">Sin Protección</h3>
-                      <p className="text-xs text-slate-500">Gasto de Bolsillo 100%</p>
+                      <h3 className="text-xl font-bold text-slate-800">Sin Seguro</h3>
+                      <p className="text-xs text-slate-500">Gasto 100% de Bolsillo</p>
                     </div>
                   </div>
 
                   <div className="space-y-3 text-sm border-t border-slate-100 pt-4">
                     <div className="flex justify-between py-1 border-b border-slate-50">
                       <span className="text-slate-600">Cuenta hospitalaria:</span>
-                      <span className="font-bold text-slate-900">$705,500 MXN</span>
+                      <span className="font-bold text-slate-900">${montoCuenta.toLocaleString('es-MX')} MXN</span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-slate-50">
                       <span className="text-slate-600">Descuento aplicado:</span>
@@ -692,8 +729,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
                 <div className="mt-8 pt-4 border-t border-slate-100 bg-rose-50 -mx-6 -mb-6 p-6 rounded-b-3xl">
                   <p className="text-xs font-bold text-rose-700 uppercase">Pago Total Requerido:</p>
-                  <p className="text-3xl font-black text-rose-700 mt-1">$705,500 MXN</p>
-                  <p className="text-[11px] text-rose-600 mt-1">Riesgo patrimonial severo o endeudamiento.</p>
+                  <p className="text-3xl font-black text-rose-700 mt-1">${montoCuenta.toLocaleString('es-MX')} MXN</p>
+                  <p className="text-[11px] text-rose-600 mt-1">Riesgo patrimonial severo.</p>
                 </div>
               </div>
 
@@ -933,11 +970,11 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           </div>
         </section>
 
-        {/* ─── 7. RED HOSPITALARIA DE PAGO DIRECTO ────────────────────────── */}
+        {/* ─── 7. RED HOSPITALARIA INTERACTIVA CON BUSCADOR ───────────────── */}
         <section id="red-hospitalaria" className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
+            <div className="text-center max-w-3xl mx-auto space-y-3 mb-10">
               <span className="px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
                 Infraestructura Hospitalaria
               </span>
@@ -945,35 +982,74 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 Red Médica Nacional de Pago Directo
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
-                Más de <strong>115 hospitales de pago directo</strong> y más de <strong>548 instituciones médicas</strong> en convenio en toda la República Mexicana.
+                Más de <strong>115 hospitales directos</strong> y más de <strong>548 instituciones médicas</strong> en convenio en toda la República Mexicana.
               </p>
+
+              {/* Input buscador interactivo */}
+              <div className="pt-4 max-w-md mx-auto relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={hospitalSearch}
+                  onChange={(e) => setHospitalSearch(e.target.value)}
+                  placeholder="Buscar por hospital, ciudad o estado (ej. Ángeles, CDMX, Monterrey)..."
+                  className="w-full pl-11 pr-4 py-3 rounded-full border border-slate-300 bg-slate-50 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all shadow-xs"
+                />
+                {hospitalSearch && (
+                  <button
+                    onClick={() => setHospitalSearch('')}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
+                  >
+                    Limpiar
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {HOSPITALES.map((h, i) => (
+              {filteredHospitales.map((h, i) => (
                 <div
                   key={i}
-                  className="p-6 rounded-2xl bg-[#F4F9FF] border border-slate-200/80 hover:shadow-lg transition-all group"
+                  className="p-6 rounded-2xl bg-[#F4F9FF] border border-slate-200/80 hover:shadow-lg transition-all group flex flex-col justify-between"
                 >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div 
-                      className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-lg group-hover:text-white transition-colors"
-                      style={{ color: primaryColor }}
-                    >
-                      <Hospital className="w-5 h-5" />
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div 
+                        className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-lg group-hover:text-white transition-colors flex-shrink-0"
+                        style={{ color: primaryColor }}
+                      >
+                        <Hospital className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-base leading-tight">{h.nombre}</h4>
+                        <span className="text-[10px] font-semibold uppercase" style={{ color: primaryColor }}>{h.tipo}</span>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-base">{h.nombre}</h4>
-                      <span className="text-[11px] font-semibold uppercase" style={{ color: primaryColor }}>{h.tipo}</span>
-                    </div>
+                    <p className="text-xs text-slate-600 flex items-start gap-1.5 mt-2">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                      <span>{h.sedes}</span>
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-2">
-                    <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Cobertura: {h.ciudad}</span>
-                  </p>
+
+                  <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                    <span className="font-semibold text-slate-500 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-slate-400" />
+                      {h.estado}
+                    </span>
+                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Pago Directo $0
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
+
+            {filteredHospitales.length === 0 && (
+              <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200">
+                <p className="text-sm font-semibold text-slate-700">No encontramos coincidencias para "{hospitalSearch}".</p>
+                <p className="text-xs text-slate-500 mt-1">Tenemos convenios en los 32 estados de México. Contáctanos para consultar tu hospital.</p>
+              </div>
+            )}
 
             <div className="mt-10 p-6 rounded-2xl bg-[#EFF6FF] border border-blue-200/60 text-center max-w-2xl mx-auto">
               <p className="text-xs sm:text-sm text-slate-700">
@@ -1341,7 +1417,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     className="inline-block px-2.5 py-1 rounded-full bg-white/10 text-[10px] font-bold border border-white/10"
                     style={{ color: accentColor }}
                   >
-                    Promotor Oficial Grupo JIRO / Movi Digital
+                    Promotor Oficial Grupo JIRO / MOVI Digital
                   </span>
                 </div>
               </div>
@@ -1349,7 +1425,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               <div className="space-y-2">
                 <p className="font-bold text-white text-sm">Secciones</p>
                 <ul className="space-y-1.5 text-white/70">
-                  <li><a href="#porque-mutuus" className="hover:text-white transition-colors">¿Por qué Mutuus?</a></li>
+                  <li><a href="#porque-mutuus" className="hover:text-white transition-colors">Simulador de Ahorro</a></li>
                   <li><a href="#planes" className="hover:text-white transition-colors">Planes UNO, DOS y PLUS</a></li>
                   <li><a href="#red-hospitalaria" className="hover:text-white transition-colors">Red de Hospitales</a></li>
                   <li><a href="#coberturas" className="hover:text-white transition-colors">Tabulador de Coberturas</a></li>
@@ -1494,7 +1570,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           </div>
         )}
 
-        {/* ─── BOTÓN FLOTANTE WHATSAPP FIJO ───────────────────────────────── */}
+        {/* ─── BOTÓN FLOTANTE WHATSAPP ────────────────────────────────────── */}
         <a
           href={`https://wa.me/${whatsappNumber}?text=Hola,%20deseo%20cotizar%20la%20membresia%20Mutuus.`}
           target="_blank"
