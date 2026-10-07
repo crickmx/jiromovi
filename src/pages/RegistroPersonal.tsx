@@ -40,7 +40,6 @@ export default function RegistroPersonal() {
     equipo_celular: '',
     cedula_cnsf: '',
     celular_personal: '',
-    email_personal: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -144,23 +143,21 @@ export default function RegistroPersonal() {
     if (!formData.apellidos.trim()) newErrors.apellidos = 'Los apellidos son obligatorios';
     if (!formData.oficina_id) newErrors.oficina_id = 'La oficina es obligatoria';
     if (!formData.fecha_nacimiento) newErrors.fecha_nacimiento = 'La fecha de nacimiento es obligatoria';
+
+    // El correo laboral es obligatorio y es la llave de acceso principal para ambos roles
+    if (!formData.email_laboral.trim()) {
+      newErrors.email_laboral = 'El correo electrónico es obligatorio';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_laboral)) {
+      newErrors.email_laboral = 'El correo electrónico no es válido';
+    }
+
     if (formData.rol === 'Empleado') {
       if (!formData.puesto.trim()) newErrors.puesto = 'El puesto es obligatorio';
       if (!formData.fecha_ingreso) newErrors.fecha_ingreso = 'La fecha de ingreso es obligatoria';
       if (!formData.celular_laboral.trim()) newErrors.celular_laboral = 'El celular laboral es obligatorio';
-      if (!formData.email_laboral.trim()) {
-        newErrors.email_laboral = 'El email laboral es obligatorio';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_laboral)) {
-        newErrors.email_laboral = 'El email no es válido';
-      }
     } else {
       if (!formData.cedula_cnsf.trim()) newErrors.cedula_cnsf = 'La cédula CNSF es obligatoria';
-      if (!formData.celular_personal.trim()) newErrors.celular_personal = 'El celular personal es obligatorio';
-      if (!formData.email_personal.trim()) {
-        newErrors.email_personal = 'El email personal es obligatorio';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_personal)) {
-        newErrors.email_personal = 'El email no es válido';
-      }
+      if (!formData.celular_personal.trim()) newErrors.celular_personal = 'El celular de contacto es obligatorio';
     }
 
     setErrors(newErrors);
@@ -200,6 +197,7 @@ export default function RegistroPersonal() {
 
     try {
       const contraseñaAleatoria = generarContraseñaSegura();
+      const emailNormalizado = formData.email_laboral.trim().toLowerCase();
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-employee`,
@@ -215,15 +213,15 @@ export default function RegistroPersonal() {
               nombre: formData.nombre.trim().toUpperCase(),
               apellidos: formData.apellidos.trim().toUpperCase(),
               rol: formData.rol,
-              email_laboral: formData.rol === 'Empleado' ? formData.email_laboral.trim().toLowerCase() : '',
-              email_personal: formData.rol === 'Agente' ? formData.email_personal.trim().toLowerCase() : '',
-              puesto: formData.puesto.trim(),
+              email_laboral: emailNormalizado,
+              email_personal: null,
+              puesto: formData.rol === 'Empleado' ? formData.puesto.trim() : 'Agente de Seguros',
               oficina_id: formData.oficina_id,
               fecha_nacimiento: formData.fecha_nacimiento,
-              fecha_ingreso: formData.rol === 'Empleado' ? formData.fecha_ingreso : '',
-              celular_laboral: formData.rol === 'Empleado' ? formData.celular_laboral.trim() : '',
+              fecha_ingreso: formData.rol === 'Empleado' ? formData.fecha_ingreso : null,
+              celular_laboral: formData.rol === 'Empleado' ? formData.celular_laboral.trim() : formData.celular_personal.trim(),
               celular_personal: formData.rol === 'Agente' ? formData.celular_personal.trim() : '',
-              cedula_cnsf: formData.rol === 'Agente' ? formData.cedula_cnsf.trim() : '',
+              cedula_cnsf: formData.rol === 'Agente' ? formData.cedula_cnsf.trim() : null,
               extension_telefonica: formData.extension_telefonica.trim(),
               imagen_perfil_url: formData.imagen_perfil_url || '/display-avatar.png',
               equipo_computo: formData.equipo_computo.trim(),
@@ -236,14 +234,14 @@ export default function RegistroPersonal() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Error al registrar empleado');
+        throw new Error(result.error || 'Error al registrar usuario');
       }
 
       setSuccess(true);
 
     } catch (err: any) {
-      console.error('Error al registrar empleado:', err);
-      setError(err.message || 'Error al registrar empleado');
+      console.error('Error al registrar usuario:', err);
+      setError(err.message || 'Error al registrar usuario');
     } finally {
       setLoading(false);
     }
@@ -331,7 +329,7 @@ export default function RegistroPersonal() {
                       <p className="text-sm text-neutral-500 dark:text-white/60 mt-1">
                         {rol === 'Empleado'
                           ? 'Personal interno con correo y línea laboral JIRO.'
-                          : 'Agente de seguros con cédula CNSF y datos personales.'}
+                          : 'Agente de seguros con cédula CNSF.'}
                       </p>
                     </div>
                     {formData.rol === rol && <CheckCircle className="w-6 h-6 text-primary shrink-0" />}
@@ -401,16 +399,18 @@ export default function RegistroPersonal() {
               {formData.rol === 'Empleado' ? 'Datos Laborales' : 'Datos del Agente'}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {formData.rol === 'Empleado' && <div>
-                <Label htmlFor="puesto">Puesto *</Label>
-                <Input
-                  id="puesto"
-                  value={formData.puesto}
-                  onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
-                  className={errors.puesto ? 'border-red-500' : ''}
-                />
-                {errors.puesto && <p className="text-sm text-red-500 mt-1">{errors.puesto}</p>}
-              </div>}
+              {formData.rol === 'Empleado' && (
+                <div>
+                  <Label htmlFor="puesto">Puesto *</Label>
+                  <Input
+                    id="puesto"
+                    value={formData.puesto}
+                    onChange={(e) => setFormData({ ...formData, puesto: e.target.value })}
+                    className={errors.puesto ? 'border-red-500' : ''}
+                  />
+                  {errors.puesto && <p className="text-sm text-red-500 mt-1">{errors.puesto}</p>}
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="oficina_id">Oficina *</Label>
@@ -432,43 +432,45 @@ export default function RegistroPersonal() {
                 {errors.oficina_id && <p className="text-sm text-red-500 mt-1">{errors.oficina_id}</p>}
               </div>
 
-              {formData.rol === 'Empleado' && <div>
-                <Label htmlFor="celular_laboral">Celular Laboral (Línea JIRO) *</Label>
-                <Input
-                  id="celular_laboral"
-                  type="tel"
-                  placeholder="5512345678"
-                  value={formData.celular_laboral}
-                  onChange={(e) => setFormData({ ...formData, celular_laboral: e.target.value })}
-                  className={errors.celular_laboral ? 'border-red-500' : ''}
-                />
-                {errors.celular_laboral && <p className="text-sm text-red-500 mt-1">{errors.celular_laboral}</p>}
-              </div>}
+              {formData.rol === 'Empleado' ? (
+                <>
+                  <div>
+                    <Label htmlFor="celular_laboral">Celular Laboral (Línea JIRO) *</Label>
+                    <Input
+                      id="celular_laboral"
+                      type="tel"
+                      placeholder="5512345678"
+                      value={formData.celular_laboral}
+                      onChange={(e) => setFormData({ ...formData, celular_laboral: e.target.value })}
+                      className={errors.celular_laboral ? 'border-red-500' : ''}
+                    />
+                    {errors.celular_laboral && <p className="text-sm text-red-500 mt-1">{errors.celular_laboral}</p>}
+                  </div>
 
-              {formData.rol === 'Empleado' && <div>
-                <Label htmlFor="email_laboral">E-Mail Laboral (JIRO) *</Label>
-                <Input
-                  id="email_laboral"
-                  type="email"
-                  placeholder="nombre.apellido@jiro.mx"
-                  value={formData.email_laboral}
-                  onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
-                  className={errors.email_laboral ? 'border-red-500' : ''}
-                />
-                {errors.email_laboral && <p className="text-sm text-red-500 mt-1">{errors.email_laboral}</p>}
-              </div>}
+                  <div>
+                    <Label htmlFor="email_laboral">E-Mail Laboral (JIRO) *</Label>
+                    <Input
+                      id="email_laboral"
+                      type="email"
+                      placeholder="nombre.apellido@jiro.mx"
+                      value={formData.email_laboral}
+                      onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
+                      className={errors.email_laboral ? 'border-red-500' : ''}
+                    />
+                    {errors.email_laboral && <p className="text-sm text-red-500 mt-1">{errors.email_laboral}</p>}
+                  </div>
 
-              {formData.rol === 'Empleado' && <div>
-                <Label htmlFor="extension_telefonica">Extensión Telefónica</Label>
-                <Input
-                  id="extension_telefonica"
-                  placeholder="Ej: 123"
-                  value={formData.extension_telefonica}
-                  onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
-                />
-              </div>}
-
-              {formData.rol === 'Agente' && (
+                  <div>
+                    <Label htmlFor="extension_telefonica">Extensión Telefónica</Label>
+                    <Input
+                      id="extension_telefonica"
+                      placeholder="Ej: 123"
+                      value={formData.extension_telefonica}
+                      onChange={(e) => setFormData({ ...formData, extension_telefonica: e.target.value })}
+                    />
+                  </div>
+                </>
+              ) : (
                 <>
                   <div>
                     <Label htmlFor="cedula_cnsf">Cédula CNSF *</Label>
@@ -481,8 +483,9 @@ export default function RegistroPersonal() {
                     />
                     {errors.cedula_cnsf && <p className="text-sm text-red-500 mt-1">{errors.cedula_cnsf}</p>}
                   </div>
+
                   <div>
-                    <Label htmlFor="celular_personal">Celular Personal *</Label>
+                    <Label htmlFor="celular_personal">Celular de Contacto *</Label>
                     <Input
                       id="celular_personal"
                       type="tel"
@@ -493,55 +496,58 @@ export default function RegistroPersonal() {
                     />
                     {errors.celular_personal && <p className="text-sm text-red-500 mt-1">{errors.celular_personal}</p>}
                   </div>
+
                   <div className="md:col-span-2">
-                    <Label htmlFor="email_personal">E-Mail Personal *</Label>
+                    <Label htmlFor="email_laboral">E-Mail (para acceso a la plataforma) *</Label>
                     <Input
-                      id="email_personal"
+                      id="email_laboral"
                       type="email"
-                      placeholder="nombre@correo.com"
-                      value={formData.email_personal}
-                      onChange={(e) => setFormData({ ...formData, email_personal: e.target.value })}
-                      className={errors.email_personal ? 'border-red-500' : ''}
+                      placeholder="agente@correo.com"
+                      value={formData.email_laboral}
+                      onChange={(e) => setFormData({ ...formData, email_laboral: e.target.value })}
+                      className={errors.email_laboral ? 'border-red-500' : ''}
                     />
-                    {errors.email_personal && <p className="text-sm text-red-500 mt-1">{errors.email_personal}</p>}
+                    {errors.email_laboral && <p className="text-sm text-red-500 mt-1">{errors.email_laboral}</p>}
                   </div>
                 </>
               )}
             </div>
           </Card>
 
-          {formData.rol === 'Empleado' && <Card className="p-6">
-            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
-              Equipos Asignados
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="equipo_computo">Equipo de Cómputo</Label>
-                <Input
-                  id="equipo_computo"
-                  placeholder="Ej: Dell Latitude 5420"
-                  value={formData.equipo_computo}
-                  onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
-                />
-                <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
-                  Modelo y detalles del equipo de cómputo asignado
-                </p>
-              </div>
+          {formData.rol === 'Empleado' && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
+                Equipos Asignados
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="equipo_computo">Equipo de Cómputo</Label>
+                  <Input
+                    id="equipo_computo"
+                    placeholder="Ej: Dell Latitude 5420"
+                    value={formData.equipo_computo}
+                    onChange={(e) => setFormData({ ...formData, equipo_computo: e.target.value })}
+                  />
+                  <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
+                    Modelo y detalles del equipo de cómputo asignado
+                  </p>
+                </div>
 
-              <div>
-                <Label htmlFor="equipo_celular">Equipo Celular</Label>
-                <Input
-                  id="equipo_celular"
-                  placeholder="Ej: iPhone 13 Pro"
-                  value={formData.equipo_celular}
-                  onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
-                />
-                <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
-                  Modelo y detalles del equipo celular asignado
-                </p>
+                <div>
+                  <Label htmlFor="equipo_celular">Equipo Celular</Label>
+                  <Input
+                    id="equipo_celular"
+                    placeholder="Ej: iPhone 13 Pro"
+                    value={formData.equipo_celular}
+                    onChange={(e) => setFormData({ ...formData, equipo_celular: e.target.value })}
+                  />
+                  <p className="text-sm text-neutral-500 dark:text-white/50 mt-1">
+                    Modelo y detalles del equipo celular asignado
+                  </p>
+                </div>
               </div>
-            </div>
-          </Card>}
+            </Card>
+          )}
 
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-4">
