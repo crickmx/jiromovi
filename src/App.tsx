@@ -11,6 +11,9 @@ import MoviLogin from './pages/MoviLogin';
 import { useAppUpdate } from './lib/useAppUpdate';
 import { AppUpdateBanner } from './components/AppUpdateBanner';
 
+// ── Landings (lazy) ────────────────────────────────────────────────────────
+const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
+
 // ── Seguwallet pages (lazy) ────────────────────────────────────────────────
 import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
 import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
@@ -55,6 +58,9 @@ const isEducationSite  = HOST === 'seguros.education' || HOST.endsWith('.seguros
 const isExpressSite    = HOST === 'seguros.express'
   || HOST.endsWith('.seguros.express')
   || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'express');
+const isLandingsSite   = HOST === 'landings.movi.digital'
+  || HOST.endsWith('.landings.movi.digital')
+  || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'landings');
 const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
@@ -84,6 +90,21 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 }
 
 // ── Per-domain apps ───────────────────────────────────────────────────────
+
+function LandingsApp() {
+  return (
+    <HelmetProvider>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/mutuus" element={<MutuusLanding />} />
+            <Route path="/*" element={<MutuusLanding />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </HelmetProvider>
+  );
+}
 
 function AgenteWebsiteApp() {
   return (
@@ -298,8 +319,9 @@ function PageLoader() {
 }
 
 function App() {
-  if (isAgenteSite) return <AgenteWebsiteApp />;
-  if (isChavaSite)  return <ChavaAIApp />;
+  if (isLandingsSite) return <LandingsApp />;
+  if (isAgenteSite)   return <AgenteWebsiteApp />;
+  if (isChavaSite)    return <ChavaAIApp />;
   if (isSeguwalletSite) return <SeguwalletApp />;
   if (isEducationSite)  return <SegurosEducationApp />;
   if (isExpressSite)    return <SegurosExpressApp />;
