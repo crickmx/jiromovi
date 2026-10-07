@@ -2,62 +2,32 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <!-- Favicon Oficial — MOVI Digital -->
     <link rel="icon" type="image/png" href="/movirecurso_7.png" />
     <link rel="apple-touch-icon" href="/movirecurso_7.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#ffffff" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Precarga de las variantes de Gotham más usadas (Book 400 / Medium 500) para evitar
-         el parpadeo de la fuente de sistema en el primer render. -->
     <link rel="preload" href="/fonts/gotham/gotham-book.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/gotham/gotham-medium.woff2" as="font" type="font/woff2" crossorigin />
     <title>MOVI Digital</title>
-    <meta name="description" content="La plataforma digital que impulsa a los agentes de seguros: trámites, comisiones, CRM, producción y cotizaciones en un solo lugar." />
-    <!-- Open Graph / imagen social al compartir enlaces — MOVI Digital -->
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="MOVI Digital" />
-    <meta property="og:title" content="MOVI Digital — Toda tu operación de seguros, en un solo lugar" />
-    <meta property="og:description" content="Trámites, comisiones, CRM, producción y cotizaciones. La plataforma digital que impulsa a los agentes de seguros MOVI." />
-    <meta property="og:url" content="https://app.movi.digital/" />
-    <meta property="og:image" content="https://app.movi.digital/og-movi.jpg?v=1" />
-    <meta property="og:image:secure_url" content="https://app.movi.digital/og-movi.jpg?v=1" />
-    <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="MOVI Digital — plataforma para agentes de seguros" />
-    <meta property="og:locale" content="es_MX" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="MOVI Digital — Toda tu operación de seguros, en un solo lugar" />
-    <meta name="twitter:description" content="Trámites, comisiones, CRM, producción y cotizaciones. La plataforma digital que impulsa a los agentes de seguros MOVI." />
-    <meta name="twitter:image" content="https://app.movi.digital/og-movi.jpg?v=1" />
-    <meta name="twitter:image:alt" content="MOVI Digital — plataforma para agentes de seguros" />
 </head>
   <body>
     <div id="root"></div>
     <script>
-      // Migrate old "system" default → "light"
       (function() {
+        var h = window.location.hostname || '';
+        if (h.indexOf('landing') !== -1) {
+          document.documentElement.classList.add('dark');
+          document.title = 'Mutuus Salud Inteligente | Membresía Médica';
+          var r = document.getElementById('root');
+          if (r) r.className = 'public-page';
+          return;
+        }
         var saved = localStorage.getItem('movi-theme-mode');
         if (!saved || saved === 'system') {
           localStorage.setItem('movi-theme-mode', 'light');
           document.documentElement.classList.remove('dark');
         }
       })();
-      // Unregister old caching service workers but keep push-sw.js
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) {
-            if (r.active && r.active.scriptURL && r.active.scriptURL.includes('push-sw.js')) return;
-            r.unregister();
-          });
-        });
-      }
-      if ('caches' in window) {
-        caches.keys().then(function(keys) {
-          keys.forEach(function(k) { caches.delete(k); });
-        });
-      }
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
