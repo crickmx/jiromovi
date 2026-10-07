@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 42" fill="none">
+  <rect width="140" height="42" rx="8" fill="#000000"/>
+  <path d="M12.5 10.2L22.8 20.5L12.5 30.8C12.2 30.4 12 29.8 12 29V12C12 11.2 12.2 10.6 12.5 10.2Z" fill="#00D2FF"/>
+  <path d="M26.2 23.9L22.8 20.5L12.5 10.2C13 9.7 13.8 9.5 14.7 10L27.1 17.2L26.2 23.9Z" fill="#00F076"/>
+  <path d="M12.5 30.8L22.8 20.5L26.2 23.9L14.7 30.5C13.8 31 13 30.8 12.5 30.8Z" fill="#FF3A44"/>
+  <path d="M26.2 23.9L30.2 21.6C31.3 21 31.3 20 30.2 19.4L27.1 17.2L22.8 20.5L26.2 23.9Z" fill="#FFC400"/>
+  <text x="38" y="16" font-family="system-ui, sans-serif" font-size="8" fill="#FFFFFF" font-weight="400">DISPONIBLE EN</text>
+  <text x="38" y="28" font-family="system-ui, sans-serif" font-size="13" fill="#FFFFFF" font-weight="700">Google Play</text>
+</svg>
