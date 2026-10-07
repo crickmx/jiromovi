@@ -12,6 +12,7 @@ import { useAppUpdate } from './lib/useAppUpdate';
 import { AppUpdateBanner } from './components/AppUpdateBanner';
 
 // ── Landings (lazy) ────────────────────────────────────────────────────────
+const LandingsStudio = lazy(() => import('./landings/LandingsStudio'));
 const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
 
 // ── Seguwallet pages (lazy) ────────────────────────────────────────────────
@@ -97,8 +98,18 @@ function LandingsApp() {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
+            {/* Hermes Landing Studio (tipo Bolt/Lovable con autenticacion Marsella14$) */}
+            <Route path="/" element={<LandingsStudio />} />
+            <Route path="/studio" element={<LandingsStudio />} />
+
+            {/* Landings individuales para acceso y vista previa */}
             <Route path="/mutuus" element={<MutuusLanding />} />
-            <Route path="/*" element={<MutuusLanding />} />
+            <Route path="/seguros-express" element={<SegurosExpressLanding />} />
+            <Route path="/seguros-education" element={<SegurosEducationLanding />} />
+            <Route path="/chava-agente" element={<ChavaAgenteLanding />} />
+
+            {/* Fallback al Studio */}
+            <Route path="/*" element={<LandingsStudio />} />
           </Routes>
         </Suspense>
       </BrowserRouter>
