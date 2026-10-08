@@ -50,6 +50,9 @@ export function Directorio() {
   const [bulkEquiposResultado, setBulkEquiposResultado] = useState<string | null>(null);
   const [bulkCelularOpen, setBulkCelularOpen] = useState(false);
   const [bulkCelularSaving, setBulkCelularSaving] = useState(false);
+  const [bulkActivarOpen, setBulkActivarOpen] = useState(false);
+  const [bulkActivarSaving, setBulkActivarSaving] = useState(false);
+  const [bulkActivarResultado, setBulkActivarResultado] = useState<string | null>(null);
   const { startImpersonation } = useImpersonation();
 
   const isAdmin = currentUser?.rol === 'Administrador';
@@ -327,6 +330,7 @@ export function Directorio() {
   const selectedConCelularFaltante = selectedUsuarios.filter(
     (u) => (u.celular_personal || '').trim() !== '' && (u.celular_laboral || '').trim() === ''
   );
+  const selectedInactivos = selectedUsuarios.filter((u) => !u.activo);
 
   const toggleSelectAllFiltered = () => {
     setSelectedIds((prev) => {
@@ -399,6 +403,58 @@ export function Directorio() {
       loadData();
     } finally {
       setBulkCelularSaving(false);
+    }
+  };
+
+  const handleBulkActivar = async () => {
+    if (selectedInactivos.length === 0) return;
+    setBulkActivarSaving(true);
+    setBulkActivarResultado(null);
+    try {
+      // Mismo requisito que al activar uno por uno: un Agente necesita todas
+      // sus categorías de equipo cubiertas antes de poder activarse.
+      const hayAgentes = selectedInactivos.some((u) => u.rol === 'Agente');
+      const teams = hayAgentes ? await loadActiveTramiteTeams() : [];
+
+      let ok = 0;
+      const bloqueados: string[] = [];
+      let fail = 0;
+
+      for (const user of selectedInactivos) {
+        if (user.rol === 'Agente') {
+          try {
+            const ids = await loadUserTramiteTeamIds(user.id);
+            const { valid } = validateTramiteTeamSelection(teams, ids);
+            if (!valid) {
+              bloqueados.push(`${user.nombre} ${user.apellidos}`);
+              continue;
+            }
+          } catch (err) {
+            console.error('Error validando equipos de', user.id, err);
+          }
+        }
+        try {
+          const { data, error } = await supabase.rpc('toggle_user_active_status', {
+            p_user_id: user.id,
+            p_activo: true,
+          });
+          if (error) throw error;
+          const result = data as { success: boolean; error?: string };
+          if (!result.success) throw new Error(result.error || 'Error desconocido');
+          ok++;
+        } catch (err) {
+          console.error(`Error activando a ${user.nombre} ${user.apellidos}:`, err);
+          fail++;
+        }
+      }
+
+      const partes = [`${ok} activado(s)`];
+      if (bloqueados.length > 0) partes.push(`${bloqueados.length} con equipos incompletos: ${bloqueados.join(', ')}`);
+      if (fail > 0) partes.push(`${fail} con error (ver consola)`);
+      setBulkActivarResultado(partes.join(' · '));
+      if (ok > 0) loadData();
+    } finally {
+      setBulkActivarSaving(false);
     }
   };
 
@@ -513,6 +569,16 @@ export function Directorio() {
                 >
                   <Users className="w-3.5 h-3.5 mr-1.5" />
                   Editar equipos ({selectedConEquipos.length})
+                </Button>
+              )}
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setBulkActivarResultado(null); setBulkActivarOpen(true); }}
+                >
+                  <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                  Activar ({selectedInactivos.length})
                 </Button>
               )}
               <Button size="sm" variant="outline" onClick={() => setBulkCelularOpen(true)}>
@@ -839,6 +905,53 @@ export function Directorio() {
               >
                 {bulkCelularSaving && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
                 Copiar en {selectedConCelularFaltante.length} usuario{selectedConCelularFaltante.length !== 1 ? 's' : ''}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkActivarOpen && (
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full p-6 animate-scale-in">
+            <h3 className="text-xl font-bold text-neutral-900 mb-2">Activar usuarios</h3>
+            {selectedInactivos.length === 0 ? (
+              <p className="text-sm text-neutral-600 mb-6">
+                Ninguno de los {selectedIds.size} usuarios seleccionados está inactivo.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Se activarán {selectedInactivos.length} de los {selectedIds.size} seleccionados que están inactivos.
+                  A los que tengan rol Agente con equipos de trámite incompletos se les saltará, igual que al activar uno por uno.
+                </p>
+                <div className="bg-neutral-50 rounded-lg p-3 mb-6 max-h-48 overflow-y-auto text-sm space-y-1">
+                  {selectedInactivos.map((u) => (
+                    <div key={u.id} className="flex justify-between gap-2">
+                      <span className="text-neutral-700 truncate">{u.nombre} {u.apellidos}</span>
+                      <span className="text-neutral-500 flex-shrink-0">{u.rol}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {bulkActivarResultado && (
+              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                {bulkActivarResultado}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setBulkActivarOpen(false)} disabled={bulkActivarSaving}>
+                Cerrar
+              </Button>
+              <Button
+                onClick={handleBulkActivar}
+                disabled={bulkActivarSaving || selectedInactivos.length === 0}
+              >
+                {bulkActivarSaving && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                Activar {selectedInactivos.length} usuario{selectedInactivos.length !== 1 ? 's' : ''}
               </Button>
             </div>
           </div>
