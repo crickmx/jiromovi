@@ -1,8 +1,42 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-08)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-08, sesión tarde)
 
-### 🟡 SIGUIENTE — Bitácora compartida MOVI Store + Marketing Premium, falta correr migraciones y probar
+### 🟡 SIGUIENTE — Bloque de Usuarios/Trámites del 2026-10-08 (tarde): bugs de oficina/equipos + bulk actions, falta correr 1 migración
+
+Todo en `origin/main` (`beta.movi.digital`), commits `f7166c77`→`ec29dbfb`. No se tocó `produccion` en este bloque.
+
+**1. `register-employee` — investigado a fondo, NO era el bug que parecía:**
+El wizard público "Pre-Registro" seguía rechazando el alta de una colaboradora ya depurada ("Ya existe un usuario con ese email"). Se encontró y corrigió un bug real: la auto-recuperación usaba `auth.admin.listUsers()` **sin paginar** (solo trae los primeros 50 usuarios de `auth.users`, nunca encontraba cuentas viejas) — se reemplazó por el RPC `quien_ocupa_correo()` (del 2026-10-06, sin límite) + liberación automática vía `correo_liberado()` + `auth.admin.updateUserById()` cuando la cuenta retenedora está eliminada/huérfana. Código entregado a Ricardo para pegar manualmente en Supabase Dashboard (sin credenciales de deploy en este entorno — ver nota de abajo), **ya desplegado y confirmado funcionando**: el caso puntual que seguía fallando después del fix resultó ser un usuario genuinamente activo con ese correo (Ricardo lo confirmó viendo el error correcto `"Ya existe un usuario activo..."`), no un bug — se resuelve dándolo de baja correctamente desde Admin → Usuarios (o reactivándolo), no es código.
+
+**2. `RegistroPersonal.tsx`:** selector de Fecha de Nacimiento/Ingreso cambiado de `<input type="date">` (mostraba mm/dd/yyyy según el idioma del NAVEGADOR del usuario, no se puede forzar con `lang` en la página) a un selector de 3 `<Select>` día/mes/año (componente local `SelectorFechaDMA`, con clamp de día al cambiar de mes). Etiquetas de correo/celular aclaradas a "de trabajo" (ya se guardaban bien en `email_laboral`/`celular_laboral`, solo el texto era ambiguo).
+
+**3. `Tramites.tsx`:** botón "Catálogos" ahora es `canManageCatalogs = esRolSistemaAdmin` (antes también lo veía Gerente).
+
+**4. `SearchableSelect.tsx`** (usado en Solicitante de `NuevoTramiteModal` y en `TramiteDetalle`): el dropdown vivía dentro del flujo normal del DOM, así que el `overflow-y-auto` del cuerpo de `BaseModal` lo recortaba a 1-2 opciones visibles cuando el campo quedaba cerca del borde del modal. Se renderiza ahora en un portal a `document.body` con posición `fixed` calculada desde el botón disparador (mismo patrón que `NotificationBell.tsx`).
+
+**5. `PanelLider.tsx` ("Mi equipo"):** solo buscaba `rol_en_equipo = 'lider'` exacto y su `ROL_CONFIG` no tenía 'director'/'supervisor' (roles superiores a líder, ya usados en `GestionGruposVisualizacion.tsx` — este último SIEMPRE es la fuente de verdad del set completo de 5 roles si algo más toca `rol_en_equipo`). Ya replica el config completo y el criterio `ROLES_LIDERAZGO = ['director','supervisor','lider']`.
+
+**6. Oficinas múltiples para Gerente (alcance confirmado por Ricardo: SOLO `usuarios.rol = 'Gerente'`, no el rol de equipo "ejecutivo" ni el rol de catálogo "Ejecutivo Comercial"):**
+- Tabla nueva `usuario_oficinas_adicionales` (mismo molde que `tramites_grupos_oficinas`), migración `20261008160617_usuario_oficinas_adicionales_gerente.sql` — **❌ pendiente que Ricardo la corra en el SQL Editor de Supabase**, no está probada en vivo.
+- `src/lib/oficinasUtils.ts::getOficinasDeGerente(usuario)` — oficina principal + adicionales, `[]` para cualquier otro rol.
+- `UserModal.tsx` — sección "Oficinas Adicionales" (checkboxes), solo Admin editando a un Gerente.
+- Bug de fondo corregido en 2 pantallas que asumían una sola oficina por Gerente: `NuevoTramiteModal.tsx::loadUsuarios()` (el selector de Solicitante traía TODOS los agentes de JIRO) y `Directorio.tsx::loadData()`. **`TramitesReportes.tsx` quedó sin tocar a propósito** — su filtro de oficina es un `<select>` de una sola opción, no una lista de visibilidad; extenderlo a multi-oficina implica rediseñar ese control.
+
+**7. Auto-asignación de equipo cuando solo hay 1 opción por área** (`AgentTramiteTeamsSection.tsx`): si una categoría de área solo tiene un equipo activo, se asigna solo (ya no hace falta que el admin lo marque a mano). Aplica tanto en edición individual como en el bulk nuevo (punto 8).
+
+**8. Bulk actions en `Directorio.tsx` ("Usuarios"):** checkboxes por fila + "seleccionar todos (filtrados)" (respeta búsqueda/rol/oficina/estado activos). Tres acciones sobre la selección:
+   - **Editar equipos** (solo Admin): abre el mismo selector de equipos por área para aplicar a varios a la vez. Las categorías que el admin NO toca en ese modal se dejan como ya las tenía cada usuario — `syncUserTramiteTeamAssignments` reemplaza TODAS las categorías no incluidas en lo que se le pasa, así que el bulk hace merge con lo existente por usuario antes de llamarla (si no, hubiera borrado equipos de categorías que el admin no quiso tocar).
+   - **Activar** (solo Admin): mismo requisito que activar uno por uno (Agente necesita todas sus categorías de equipo cubiertas) — salta y reporta a quien no cumple en vez de bloquear todo el lote.
+   - **Copiar celular personal → trabajo** (Admin o Gerente): solo a los seleccionados que tengan personal lleno y trabajo vacío.
+
+**Nota recurrente — sin credenciales de deploy en este entorno:** no hay Supabase CLI logueado ni `SUPABASE_ACCESS_TOKEN`, así que migraciones nuevas y Edge Functions se entregan como código para que Ricardo las corra/pegue manualmente (SQL Editor / Dashboard Edge Functions). Avisarle explícitamente qué falta correr en cada sesión.
+
+**Patrón a recordar:** cuando un campo tipo "rol_en_equipo" gana valores nuevos con el tiempo, buscar TODOS los `.eq('campo', 'valorViejo')` y los `CONFIG[valor]` que lo indexen — quedan huérfanos para los valores nuevos (filtran de más o truenan con `undefined`). `GestionGruposVisualizacion.tsx` ya tenía el set completo de 5 roles de `rol_en_equipo`; revisarlo primero antes de tocar cualquier archivo que use ese campo.
+
+---
+
+### 🟡 Bitácora compartida MOVI Store + Marketing Premium, falta correr migraciones y probar
 
 Ricardo pidió una bitácora para ambos módulos, compartiendo el mismo motor y mostrándose en secciones distintas, visible al equipo de Marketing con los permisos que ya existen, con folio/fecha/solicitante/responsable/cantidad/forma de pago/plazo/pagos aplicados, exportable a Excel y CSV (Google Sheets queda pospuesto, decisión de Ricardo — requeriría cuenta de servicio de Google, infraestructura nueva).
 
