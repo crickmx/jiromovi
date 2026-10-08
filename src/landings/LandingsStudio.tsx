@@ -24,11 +24,7 @@ import {
   Maximize2,
   Minimize2,
   Bot,
-  User,
-  Sliders,
-  FolderOpen,
-  Search,
-  Code2
+  User
 } from 'lucide-react';
 import MutuusLanding from './mutuus/MutuusLanding';
 import SegurosExpressLanding from '../seguros-express/SegurosExpressLanding';
@@ -41,7 +37,6 @@ import {
   INITIAL_HERMES_PROJECTS
 } from './hermesLandingService';
 
-// ─── CREDENCIALES Y CONSTANTES ───────────────────────────────────────────────
 const STUDIO_PASSWORD = 'Marsella14$';
 const STORAGE_AUTH_KEY = 'hermes_studio_auth_v1';
 
@@ -83,7 +78,7 @@ export default function LandingsStudio() {
   const [deploySuccess, setDeploySuccess] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  // Cargar proyectos iniciales de hermesLandingService / Supabase
+  // Cargar proyectos iniciales
   useEffect(() => {
     hermesLandingService.getProjects().then((loadedProjects) => {
       if (loadedProjects && loadedProjects.length > 0) {
@@ -138,7 +133,6 @@ export default function LandingsStudio() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    // Actualizar UI y guardar en Supabase
     setChats(prev => ({
       ...prev,
       [selectedProjectId]: [...(prev[selectedProjectId] || []), userMessage]
@@ -148,24 +142,21 @@ export default function LandingsStudio() {
     setInputPrompt('');
     setIsGenerating(true);
 
-    // Animación de pasos de razonamiento
-    setGeneratingStep('Analizando arquitectura de componentes y CSS...');
-    await new Promise(r => setTimeout(r, 500));
+    setGeneratingStep('Analizando arquitectura de componentes y diseño responsive...');
+    await new Promise(r => setTimeout(r, 450));
 
-    setGeneratingStep('Sintetizando cambios y procesando diseño con Hermes AI...');
-    await new Promise(r => setTimeout(r, 600));
+    setGeneratingStep('Procesando instrucciones de UI/UX, copy y estilos con Hermes AI...');
+    await new Promise(r => setTimeout(r, 550));
 
-    // Procesar cambios con el motor de Hermes
     const result = await hermesLandingService.processDesignInstruction(
       selectedProjectId,
       msg,
       selectedProject.designConfig
     );
 
-    setGeneratingStep('Inyectando estilos dinámicos en el Canvas en tiempo real...');
+    setGeneratingStep('Aplicando modificaciones en tiempo real al Canvas...');
     await new Promise(r => setTimeout(r, 400));
 
-    // Aplicar patch de diseño al proyecto en tiempo real
     const updatedProjects = projects.map(p => {
       if (p.id === selectedProjectId) {
         return {
@@ -206,20 +197,20 @@ export default function LandingsStudio() {
     setPreviewKey(k => k + 1);
   };
 
-  // ─── Manejador de Publicación (Deploy a Live) ──────────────────────────────
+  // ─── Manejador de Publicación ─────────────────────────────────────────────
   const handleDeployToLive = async () => {
     setShowDeployModal(true);
     setDeployStep(0);
     setDeploySuccess(false);
 
     setDeployStep(1);
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 500));
 
     setDeployStep(2);
-    await new Promise(r => setTimeout(r, 700));
+    await new Promise(r => setTimeout(r, 600));
 
     setDeployStep(3);
-    await new Promise(r => setTimeout(r, 700));
+    await new Promise(r => setTimeout(r, 600));
 
     setDeployStep(4);
     setDeploySuccess(true);
@@ -309,7 +300,7 @@ export default function LandingsStudio() {
   // ─── PANTALLA DE ACCESO / PASSWORD GATE ────────────────────────────────────
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
+      <div className="h-screen w-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
         <Helmet>
           <title>Hermes Landing Studio | Acceso Seguro</title>
         </Helmet>
@@ -317,8 +308,7 @@ export default function LandingsStudio() {
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-100/60 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-xl p-8 sm:p-10 relative z-10">
-          
+        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-xl p-8 sm:p-10 relative z-10">
           <div className="text-center space-y-3 mb-8">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center mx-auto shadow-md shadow-blue-500/20">
               <Sparkles className="w-7 h-7 text-white" />
@@ -369,7 +359,7 @@ export default function LandingsStudio() {
               </div>
 
               {authError && (
-                <div className="flex items-center gap-1.5 text-xs text-rose-600 font-semibold mt-2 animate-in fade-in duration-150">
+                <div className="flex items-center gap-1.5 text-xs text-rose-600 font-semibold mt-2">
                   <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>Contraseña incorrecta. Intenta nuevamente.</span>
                 </div>
@@ -402,48 +392,47 @@ export default function LandingsStudio() {
               Hermes AI Designer · MOVI Digital Ecosystem
             </p>
           </div>
-
         </div>
       </div>
     );
   }
 
-  // ─── INTERFAZ PRINCIPAL DE HERMES STUDIO (BOLT / LOVABLE LOOK) ────────────
+  // ─── INTERFAZ PRINCIPAL DE HERMES STUDIO ──────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="h-screen max-h-screen w-screen overflow-hidden bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       <Helmet>
         <title>Hermes Landing Studio · {selectedProject.name}</title>
       </Helmet>
 
       {/* ─── 1. TOP NAVIGATION BAR ───────────────────────────────────────── */}
-      <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+      <header className="h-14 flex-shrink-0 bg-white border-b border-slate-200 px-4 flex items-center justify-between z-30 shadow-xs">
         
         {/* Izquierda: Logo y Selector de Proyecto */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-blue-500/30">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-blue-500/30">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-sm text-slate-900 tracking-tight">
                   Hermes Studio
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
+                <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-bold">
                   Bolt/Lovable
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
+          <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
 
           {/* Selector de Proyecto Activo */}
           <div className="relative group">
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-1.5 pr-8 text-xs font-bold text-slate-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5 pr-8 text-xs font-bold text-slate-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -454,7 +443,6 @@ export default function LandingsStudio() {
             <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Botón para Iniciar Nuevo Proyecto */}
           <button
             onClick={() => setShowNewProjectModal(true)}
             className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
@@ -464,8 +452,7 @@ export default function LandingsStudio() {
             <span className="hidden md:inline">Nuevo Proyecto</span>
           </button>
 
-          {/* Badge de Estatus */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-[10px] font-medium text-slate-600">
             <span
               className={`w-2 h-2 rounded-full ${
                 selectedProject.status === 'live'
@@ -482,16 +469,13 @@ export default function LandingsStudio() {
           </div>
         </div>
 
-        {/* Centro: Controles de Vista y Dispositivo */}
-        <div className="hidden lg:flex items-center gap-3">
-          
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80">
+        {/* Centro: Modos de Vista y Selector de Dispositivo */}
+        <div className="hidden lg:flex items-center gap-2.5">
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
             <button
               onClick={() => setViewMode('split')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                viewMode === 'split'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'split' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Layers className="w-3.5 h-3.5 text-blue-600" />
@@ -499,21 +483,17 @@ export default function LandingsStudio() {
             </button>
             <button
               onClick={() => setViewMode('chat')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                viewMode === 'chat'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'chat' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Bot className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Chat Hermes</span>
+              <span>Chat</span>
             </button>
             <button
               onClick={() => setViewMode('preview')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                viewMode === 'preview'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                viewMode === 'preview' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Eye className="w-3.5 h-3.5 text-emerald-600" />
@@ -522,11 +502,11 @@ export default function LandingsStudio() {
           </div>
 
           {viewMode !== 'chat' && (
-            <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80">
+            <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
               <button
                 onClick={() => setDevice('desktop')}
                 title="Vista Desktop (100%)"
-                className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                className={`p-1 rounded-lg text-xs transition-all cursor-pointer ${
                   device === 'desktop' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -535,7 +515,7 @@ export default function LandingsStudio() {
               <button
                 onClick={() => setDevice('tablet')}
                 title="Vista Tablet (768px)"
-                className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                className={`p-1 rounded-lg text-xs transition-all cursor-pointer ${
                   device === 'tablet' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -544,7 +524,7 @@ export default function LandingsStudio() {
               <button
                 onClick={() => setDevice('mobile')}
                 title="Vista Mobile (390px)"
-                className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                className={`p-1 rounded-lg text-xs transition-all cursor-pointer ${
                   device === 'mobile' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -552,16 +532,14 @@ export default function LandingsStudio() {
               </button>
             </div>
           )}
-
         </div>
 
-        {/* Derecha: Botón Publicar en Vivo y Acciones */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          
+        {/* Derecha: Acciones y Publicar */}
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setPreviewKey(k => k + 1)}
             title="Recargar vista previa"
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <RotateCw className="w-4 h-4" />
           </button>
@@ -571,27 +549,26 @@ export default function LandingsStudio() {
             target="_blank"
             rel="noopener noreferrer"
             title="Abrir URL pública en nueva pestaña"
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors hidden sm:flex items-center gap-1.5 text-xs font-semibold"
+            className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors hidden sm:flex items-center gap-1.5 text-xs font-semibold"
           >
             <ExternalLink className="w-4 h-4" />
             <span className="hidden xl:inline">{selectedProject.slug}</span>
           </a>
 
-          {/* Botón Principal: PUBLICAR */}
           <button
             onClick={handleDeployToLive}
-            className="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/25 flex items-center gap-2 cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl font-bold text-xs text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/25 flex items-center gap-1.5 cursor-pointer"
           >
-            <Rocket className="w-4 h-4" />
+            <Rocket className="w-3.5 h-3.5" />
             <span>Publicar</span>
           </button>
 
-          <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
+          <div className="h-5 w-[1px] bg-slate-200 hidden sm:block" />
 
           <button
             onClick={handleLogout}
             title="Cerrar sesión protegida"
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
           >
             <Lock className="w-4 h-4" />
           </button>
@@ -600,46 +577,44 @@ export default function LandingsStudio() {
       </header>
 
       {/* ─── 2. CUERPO PRINCIPAL DEL STUDIO ──────────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         
-        {/* ─── COLUMNA IZQUIERDA: HERMES COPILOT CHAT (BOLT STYLE) ────────── */}
+        {/* ─── COLUMNA IZQUIERDA: HERMES COPILOT CHAT ──────────────────────── */}
         {(viewMode === 'split' || viewMode === 'chat') && (
           <div
-            className={`flex flex-col bg-white border-r border-slate-200/80 transition-all ${
-              viewMode === 'chat' ? 'w-full' : 'w-full lg:w-[480px] xl:w-[520px]'
+            className={`flex flex-col h-full min-h-0 bg-white border-r border-slate-200 transition-all ${
+              viewMode === 'chat' ? 'w-full' : 'w-full lg:w-[460px] xl:w-[500px]'
             }`}
           >
             
             {/* Header del Chat */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+            <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <span className="font-bold text-xs text-slate-900">Hermes Designer</span>
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
                   <p className="text-[10px] text-slate-500">
-                    Copilot de diseño conectado a <span className="font-semibold text-blue-600">{selectedProject.name}</span>
+                    Copilot de diseño para <span className="font-semibold text-blue-600">{selectedProject.name}</span>
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
-                  Supabase Live Sync
-                </span>
-              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                Supabase Sync
+              </span>
             </div>
 
             {/* Mensajes del Chat */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#FAFAFA]">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-[#FAFAFA]">
               {currentChatList.map((m) => (
                 <div
                   key={m.id}
-                  className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex gap-2.5 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {m.sender === 'hermes' && (
                     <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-xs shadow-xs">
@@ -648,28 +623,28 @@ export default function LandingsStudio() {
                   )}
 
                   <div
-                    className={`max-w-[88%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
+                    className={`max-w-[88%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed ${
                       m.sender === 'user'
                         ? 'bg-blue-600 text-white shadow-xs rounded-tr-xs'
-                        : 'bg-white border border-slate-200/90 text-slate-800 shadow-xs rounded-tl-xs'
+                        : 'bg-white border border-slate-200 text-slate-800 shadow-xs rounded-tl-xs'
                     }`}
                   >
-                    <div className="whitespace-pre-line space-y-2">
+                    <div className="whitespace-pre-line space-y-1.5">
                       {m.text}
                     </div>
 
                     {m.diffPreview && (
-                      <div className="mt-3 pt-3 border-t border-slate-100 bg-slate-50 -mx-4 -mb-4 p-3 rounded-b-2xl flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span className="font-semibold">{m.diffPreview.details}</span>
+                      <div className="mt-2.5 pt-2.5 border-t border-slate-100 bg-slate-50 -mx-3.5 -mb-3.5 p-3 rounded-b-2xl flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 text-slate-600">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                          <span className="font-semibold text-[11px] truncate">{m.diffPreview.details}</span>
                         </div>
                         <button
                           onClick={() => {
                             setViewMode('preview');
                             setPreviewKey(k => k + 1);
                           }}
-                          className="text-blue-600 font-bold hover:underline cursor-pointer"
+                          className="text-blue-600 font-bold hover:underline cursor-pointer text-xs ml-2 flex-shrink-0"
                         >
                           Ver Canvas
                         </button>
@@ -677,12 +652,12 @@ export default function LandingsStudio() {
                     )}
 
                     {m.actions && m.actions.length > 0 && (
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap gap-1.5">
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap gap-1">
                         {m.actions.map((act, i) => (
                           <button
                             key={i}
                             onClick={() => handleSendMessage(act)}
-                            className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 text-[11px] font-medium transition-colors cursor-pointer text-left"
+                            className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 text-[10px] font-medium transition-colors cursor-pointer text-left"
                           >
                             ⚡ {act}
                           </button>
@@ -690,7 +665,7 @@ export default function LandingsStudio() {
                       </div>
                     )}
 
-                    <div className="mt-2 text-[10px] text-right opacity-60">
+                    <div className="mt-1 text-[9px] text-right opacity-60">
                       {m.timestamp}
                     </div>
                   </div>
@@ -704,9 +679,9 @@ export default function LandingsStudio() {
               ))}
 
               {isGenerating && (
-                <div className="flex items-center gap-3 bg-white p-3.5 rounded-2xl border border-blue-200/80 shadow-xs max-w-sm animate-in fade-in">
-                  <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center animate-spin">
-                    <RotateCw className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2.5 bg-white p-3 rounded-2xl border border-blue-200 shadow-xs max-w-sm">
+                  <div className="w-5 h-5 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center animate-spin">
+                    <RotateCw className="w-3 h-3" />
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-900">Hermes Copilot</p>
@@ -719,36 +694,36 @@ export default function LandingsStudio() {
             </div>
 
             {/* Pastillas de Prompts Rápidos Sugeridos */}
-            <div className="px-4 py-2 border-t border-slate-100 bg-white flex items-center gap-1.5 overflow-x-auto text-[11px]">
+            <div className="px-3 py-1.5 border-t border-slate-100 bg-white flex items-center gap-1.5 overflow-x-auto text-[10px] flex-shrink-0">
               <span className="text-slate-400 font-bold flex-shrink-0">Sugerencias:</span>
               <button
-                onClick={() => handleSendMessage("Cambiar título a Membresía Médica con Cero Deducible")}
-                className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
+                onClick={() => handleSendMessage("Rediseñar Hero con badge de Cero Deducible y CTA llamativo")}
+                className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                🎨 Título Hero
+                🎨 Rediseñar Hero
               </button>
               <button
                 onClick={() => handleSendMessage("Ajustar precios: Plan UNO a $1,199 y Plan DOS a $1,799 mensual")}
-                className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
+                className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
                 💳 Ajustar Tarifas
               </button>
               <button
-                onClick={() => handleSendMessage("Cambiar botón CTA a 'Cotizar por WhatsApp con un Asesor'")}
-                className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
+                onClick={() => handleSendMessage("Actualizar listado de 115+ hospitales con insignias de red directa")}
+                className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                📲 CTA WhatsApp
+                🏥 Hospitales
               </button>
               <button
-                onClick={() => handleSendMessage("Cambiar paleta a azul marino con acento verde esmeralda")}
-                className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
+                onClick={() => handleSendMessage("Optimizar formulario de cotización y botón flotante de WhatsApp")}
+                className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                🎨 Paleta de Color
+                📲 WhatsApp CTA
               </button>
             </div>
 
             {/* Input del Chat */}
-            <div className="p-4 bg-white border-t border-slate-200/80">
+            <div className="p-3 bg-white border-t border-slate-200 flex-shrink-0">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -760,14 +735,14 @@ export default function LandingsStudio() {
                   type="text"
                   value={inputPrompt}
                   onChange={(e) => setInputPrompt(e.target.value)}
-                  placeholder={`Indica un cambio en lenguaje natural para ${selectedProject.name}...`}
-                  className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  placeholder={`Indica un cambio de diseño para ${selectedProject.name}...`}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                   disabled={isGenerating}
                 />
                 <button
                   type="submit"
                   disabled={!inputPrompt.trim() || isGenerating}
-                  className="p-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex-shrink-0"
+                  className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex-shrink-0"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -779,13 +754,14 @@ export default function LandingsStudio() {
 
         {/* ─── COLUMNA DERECHA: CANVAS / VISTA PREVIA EN VIVO ─────────────── */}
         {(viewMode === 'split' || viewMode === 'preview') && (
-          <div className="flex-1 bg-slate-100/70 flex flex-col overflow-hidden relative">
+          <div className="flex-1 min-h-0 bg-slate-100 flex flex-col overflow-hidden relative">
             
-            <div className="h-11 bg-white border-b border-slate-200/80 px-4 flex items-center justify-between text-xs">
+            {/* Toolbar del Canvas */}
+            <div className="h-9 bg-white border-b border-slate-200 px-4 flex items-center justify-between text-xs flex-shrink-0">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="font-bold text-slate-700">Preview:</span>
-                <span className="font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="font-bold text-slate-700 text-[11px]">Preview:</span>
+                <span className="font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
                   https://landings.movi.digital{selectedProject.slug}
                 </span>
               </div>
@@ -793,31 +769,33 @@ export default function LandingsStudio() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsFullPreviewModal(true)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer"
                 >
-                  <Maximize2 className="w-3.5 h-3.5" />
+                  <Maximize2 className="w-3 h-3" />
                   <span className="hidden sm:inline">Pantalla Completa</span>
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 md:p-8 flex items-start justify-center">
+            {/* Contenedor del Dispositivo Responsivo con Scroll Aislado */}
+            <div className="flex-1 min-h-0 overflow-hidden p-2 sm:p-4 flex items-center justify-center bg-slate-100/90">
               <div
-                className={`transition-all duration-300 bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden ${
+                className={`transition-all duration-300 bg-white shadow-xl border border-slate-200 flex flex-col overflow-hidden ${
                   device === 'desktop'
-                    ? 'w-full max-w-7xl min-h-[800px]'
+                    ? 'w-full h-full rounded-xl'
                     : device === 'tablet'
-                    ? 'w-[768px] min-h-[900px] border-4 border-slate-800 rounded-3xl'
-                    : 'w-[390px] min-h-[844px] border-8 border-slate-800 rounded-[40px]'
+                    ? 'w-[768px] h-full max-h-[920px] rounded-2xl border-4 border-slate-800'
+                    : 'w-[390px] h-full max-h-[820px] rounded-[38px] border-8 border-slate-800'
                 }`}
               >
                 {device === 'mobile' && (
-                  <div className="h-6 bg-slate-800 flex items-center justify-center">
-                    <div className="w-20 h-3.5 bg-black rounded-full" />
+                  <div className="h-5 bg-slate-800 flex items-center justify-center flex-shrink-0">
+                    <div className="w-16 h-3 bg-black rounded-full" />
                   </div>
                 )}
 
-                <div className="overflow-y-auto max-h-[calc(100vh-160px)]">
+                {/* Contenido con Scroll fluido independiente */}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative">
                   {renderLiveComponent()}
                 </div>
               </div>
@@ -941,7 +919,7 @@ export default function LandingsStudio() {
       {/* ─── MODAL VISTA PREVIA COMPLETA ──────────────────────────────────── */}
       {isFullPreviewModal && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col">
-          <div className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between">
+          <div className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <span className="font-extrabold text-sm text-slate-900">
                 Vista Previa Completa · {selectedProject.name}
@@ -968,7 +946,7 @@ export default function LandingsStudio() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {renderLiveComponent()}
           </div>
         </div>
