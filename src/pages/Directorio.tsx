@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical } from 'lucide-react';
+import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical, Phone, Loader2 } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import type { Database } from '../lib/database.types';
-import { loadActiveTramiteTeams, loadUserTramiteTeamIds, validateTramiteTeamSelection } from '../lib/tramiteTeamAssignments';
+import {
+  loadActiveTramiteTeams, loadUserTramiteTeamIds, validateTramiteTeamSelection,
+  syncUserTramiteTeamAssignments, puedeTenerEquiposTramite, normalizeCategory,
+} from '../lib/tramiteTeamAssignments';
+import AgentTramiteTeamsSection from '../components/tramites/AgentTramiteTeamsSection';
 import { SolicitudesAltaPanel } from '../components/admin/SolicitudesAltaPanel';
 import { getOficinasDeGerente } from '../lib/oficinasUtils';
 
@@ -39,6 +43,13 @@ export function Directorio() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [betaIds, setBetaIds] = useState<Set<string>>(new Set());
   const [togglingBetaId, setTogglingBetaId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkEquiposOpen, setBulkEquiposOpen] = useState(false);
+  const [bulkEquiposTeamIds, setBulkEquiposTeamIds] = useState<string[]>([]);
+  const [bulkEquiposSaving, setBulkEquiposSaving] = useState(false);
+  const [bulkEquiposResultado, setBulkEquiposResultado] = useState<string | null>(null);
+  const [bulkCelularOpen, setBulkCelularOpen] = useState(false);
+  const [bulkCelularSaving, setBulkCelularSaving] = useState(false);
   const { startImpersonation } = useImpersonation();
 
   const isAdmin = currentUser?.rol === 'Administrador';
@@ -309,6 +320,88 @@ export function Directorio() {
     return matchesSearch && matchesRol && matchesOficina && matchesEstado;
   });
 
+  const puedeBulkEditar = isAdmin || isGerente;
+  const allFilteredSelected = filteredUsuarios.length > 0 && filteredUsuarios.every((u) => selectedIds.has(u.id));
+  const selectedUsuarios = usuarios.filter((u) => selectedIds.has(u.id));
+  const selectedConEquipos = selectedUsuarios.filter((u) => puedeTenerEquiposTramite(u.rol));
+  const selectedConCelularFaltante = selectedUsuarios.filter(
+    (u) => (u.celular_personal || '').trim() !== '' && (u.celular_laboral || '').trim() === ''
+  );
+
+  const toggleSelectAllFiltered = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filteredUsuarios.forEach((u) => next.delete(u.id));
+      } else {
+        filteredUsuarios.forEach((u) => next.add(u.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectedUser = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkApplyEquipos = async () => {
+    if (bulkEquiposTeamIds.length === 0 || selectedConEquipos.length === 0) return;
+    setBulkEquiposSaving(true);
+    setBulkEquiposResultado(null);
+    try {
+      const allTeams = await loadActiveTramiteTeams();
+      const bulkTeams = allTeams.filter((t) => bulkEquiposTeamIds.includes(t.id));
+      const bulkCategories = new Set(bulkTeams.map((t) => normalizeCategory(t.area_categoria)));
+
+      let ok = 0;
+      let fail = 0;
+      for (const user of selectedConEquipos) {
+        try {
+          const existingIds = await loadUserTramiteTeamIds(user.id);
+          // Las categorías que el admin SÍ tocó en este bulk reemplazan lo que
+          // tuviera el usuario; las que no tocó se quedan como estaban.
+          const existingKept = allTeams
+            .filter((t) => existingIds.includes(t.id) && !bulkCategories.has(normalizeCategory(t.area_categoria)))
+            .map((t) => t.id);
+          await syncUserTramiteTeamAssignments(user.id, [...existingKept, ...bulkEquiposTeamIds]);
+          ok++;
+        } catch (err) {
+          console.error(`Error asignando equipos a ${user.nombre} ${user.apellidos}:`, err);
+          fail++;
+        }
+      }
+      setBulkEquiposResultado(
+        fail === 0 ? `Listo: ${ok} usuario(s) actualizados.` : `${ok} actualizados, ${fail} con error (ver consola).`
+      );
+      if (fail === 0) {
+        loadData();
+      }
+    } finally {
+      setBulkEquiposSaving(false);
+    }
+  };
+
+  const handleBulkCopiarCelular = async () => {
+    if (selectedConCelularFaltante.length === 0) return;
+    setBulkCelularSaving(true);
+    try {
+      await Promise.all(
+        selectedConCelularFaltante.map((u) =>
+          supabase.from('usuarios').update({ celular_laboral: u.celular_personal }).eq('id', u.id)
+        )
+      );
+      setBulkCelularOpen(false);
+      setSelectedIds(new Set());
+      loadData();
+    } finally {
+      setBulkCelularSaving(false);
+    }
+  };
+
   if (loading) {
     return <LoadingState text="Cargando directorio..." />;
   }
@@ -406,12 +499,48 @@ export function Directorio() {
               {filteredUsuarios.length} de {usuarios.length} usuarios
             </p>
           </div>
+
+          {puedeBulkEditar && selectedIds.size > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 bg-accent/5 border border-accent/20 rounded-lg px-3 py-2">
+              <span className="text-xs font-semibold text-neutral-700 dark:text-white/80">
+                {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+              </span>
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setBulkEquiposTeamIds([]); setBulkEquiposResultado(null); setBulkEquiposOpen(true); }}
+                >
+                  <Users className="w-3.5 h-3.5 mr-1.5" />
+                  Editar equipos ({selectedConEquipos.length})
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={() => setBulkCelularOpen(true)}>
+                <Phone className="w-3.5 h-3.5 mr-1.5" />
+                Copiar celular personal → trabajo ({selectedConCelularFaltante.length})
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                Quitar selección
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="overflow-auto max-h-[65vh]">
           <table className="w-full min-w-[760px]">
             <thead className="bg-neutral-50 border-b border-neutral-200 sticky top-0 z-10">
               <tr>
+                {puedeBulkEditar && (
+                  <th className="px-3 py-3 text-left w-10">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAllFiltered}
+                      className="h-4 w-4 rounded border-neutral-300 text-accent-ink focus:ring-accent"
+                      aria-label="Seleccionar todos los filtrados"
+                    />
+                  </th>
+                )}
                 <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Usuario
                 </th>
@@ -432,6 +561,17 @@ export function Directorio() {
             <tbody className="bg-white divide-y divide-neutral-200">
               {filteredUsuarios.map((usuario) => (
                 <tr key={usuario.id} className="hover:bg-slate-50 transition">
+                  {puedeBulkEditar && (
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(usuario.id)}
+                        onChange={() => toggleSelectedUser(usuario.id)}
+                        className="h-4 w-4 rounded border-neutral-300 text-accent-ink focus:ring-accent"
+                        aria-label={`Seleccionar ${usuario.nombre} ${usuario.apellidos}`}
+                      />
+                    </td>
+                  )}
                   <td className="px-3 py-3 whitespace-nowrap">
                     <div className="flex items-center">
                       {usuario.imagen_perfil_url ? (
@@ -623,6 +763,86 @@ export function Directorio() {
             loadData();
           }}
         />
+      )}
+
+      {bulkEquiposOpen && (
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-lg w-full p-6 animate-scale-in max-h-[85vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-neutral-900 mb-1">Editar equipos en bulk</h3>
+            <p className="text-sm text-neutral-600 mb-4">
+              Se aplicará a {selectedConEquipos.length} de los {selectedIds.size} usuarios seleccionados (solo Agente/Administrador pueden tener equipos de trámite). Las categorías que NO toques aquí se dejan como ya las tenía cada usuario.
+            </p>
+
+            {selectedConEquipos.length === 0 ? (
+              <p className="text-sm text-neutral-500 italic mb-4">Ninguno de los seleccionados puede tener equipos de trámite.</p>
+            ) : (
+              <AgentTramiteTeamsSection
+                selectedIds={bulkEquiposTeamIds}
+                onSelectedIdsChange={setBulkEquiposTeamIds}
+                disabled={bulkEquiposSaving}
+              />
+            )}
+
+            {bulkEquiposResultado && (
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                {bulkEquiposResultado}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setBulkEquiposOpen(false)} disabled={bulkEquiposSaving}>
+                Cerrar
+              </Button>
+              <Button
+                onClick={handleBulkApplyEquipos}
+                disabled={bulkEquiposSaving || bulkEquiposTeamIds.length === 0 || selectedConEquipos.length === 0}
+              >
+                {bulkEquiposSaving && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                Aplicar a {selectedConEquipos.length} usuario{selectedConEquipos.length !== 1 ? 's' : ''}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkCelularOpen && (
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full p-6 animate-scale-in">
+            <h3 className="text-xl font-bold text-neutral-900 mb-2">Copiar celular personal → trabajo</h3>
+            {selectedConCelularFaltante.length === 0 ? (
+              <p className="text-sm text-neutral-600 mb-6">
+                Ninguno de los {selectedIds.size} usuarios seleccionados tiene celular personal sin celular de trabajo.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-neutral-600 mb-4">
+                  De los {selectedIds.size} seleccionados, {selectedConCelularFaltante.length} tienen celular personal
+                  capturado y el celular de trabajo vacío. Se copiará su celular personal al campo de trabajo:
+                </p>
+                <div className="bg-neutral-50 rounded-lg p-3 mb-6 max-h-48 overflow-y-auto text-sm space-y-1">
+                  {selectedConCelularFaltante.map((u) => (
+                    <div key={u.id} className="flex justify-between gap-2">
+                      <span className="text-neutral-700 truncate">{u.nombre} {u.apellidos}</span>
+                      <span className="font-mono text-neutral-500 flex-shrink-0">{u.celular_personal}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setBulkCelularOpen(false)} disabled={bulkCelularSaving}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleBulkCopiarCelular}
+                disabled={bulkCelularSaving || selectedConCelularFaltante.length === 0}
+              >
+                {bulkCelularSaving && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                Copiar en {selectedConCelularFaltante.length} usuario{selectedConCelularFaltante.length !== 1 ? 's' : ''}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deleteModalOpen && userToDelete && (
