@@ -1,6 +1,28 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-05)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-08)
+
+### 🟡 SIGUIENTE — Bitácora compartida MOVI Store + Marketing Premium, falta correr migraciones y probar
+
+Ricardo pidió una bitácora para ambos módulos, compartiendo el mismo motor y mostrándose en secciones distintas, visible al equipo de Marketing con los permisos que ya existen, con folio/fecha/solicitante/responsable/cantidad/forma de pago/plazo/pagos aplicados, exportable a Excel y CSV (Google Sheets queda pospuesto, decisión de Ricardo — requeriría cuenta de servicio de Google, infraestructura nueva).
+
+**Investigado antes de tocar nada** (3 agentes en paralelo): Store y Marketing ya comparten motor real desde la sesión del 2026-10-02 (`triggersConfig.ts` + `TriggersPanel.tsx` — un componente, un objeto de config por módulo). Se repitió exactamente ese molde para la bitácora. Hallazgo importante que cambió el alcance: **Marketing Premium no guarda historial de periodos** — `usuarios.mkt_premium_folio` se sobreescribe en cada reactivación, así que mostrar "historial completo" (decisión de Ricardo) requería una tabla nueva, no solo una vista. Los periodos ya desactivados antes de esta migración **no se pueden recuperar** — ese dato nunca existió.
+
+**Implementado:**
+- `supabase/migrations/20261008000001_mkt_premium_periodos_historial.sql` — tabla nueva `mkt_premium_periodos` (un periodo = una contratación, `fecha_fin NULL` = activo). Trigger en `usuarios` que abre un periodo al activar y cierra el abierto al desactivar. Backfill: captura a quien tiene Premium activo HOY (no reconstruye el pasado).
+- `supabase/migrations/20261008000002_bitacora_store_mkt_views.sql` — dos vistas (`store_bitacora_view`, `mkt_premium_bitacora_view`) con `security_invoker = true`: no crean ninguna regla de permisos, heredan la RLS real de cada tabla (`store_pedidos`/`store_pedido_pagos`/`mkt_premium_pagos`/`mkt_premium_periodos`). Cada fila ya trae cantidad/monto sumado, pagos aplicados sumados, saldo y un `estado_pago` con el mismo criterio de tolerancia (±0.01) que `saldoPremium()` en `mktPremiumPagos.ts`.
+- `src/lib/bitacoraConfig.ts` — el objeto de configuración por módulo (mismo molde que `triggersConfig.ts`): qué vista consultar, el mismo chequeo de acceso que ya usa cada admin (`tienePermisoAdminEnModulo(MODULOS.STORE)` / `tieneAccesoEquipoMkt` — ninguno nuevo), labels de columnas.
+- `src/components/admin/BitacoraComercial.tsx` — el componente único (mismo molde que `TriggersPanel.tsx`): tabla con buscador (folio/solicitante/responsable), exporta a XLSX y CSV con `xlsx` (SheetJS, ya era dependencia, mismo patrón usado en ~9 pantallas más).
+- Montado como pestaña nueva "Bitácora" en `StoreAdmin.tsx` y en `MarketingPremiumAdmin.tsx` — ninguna de las dos pantallas vive en el sidebar (se entra por botón desde cada módulo), así que no hizo falta tocar `workspaceConfig.ts`.
+
+**❌ Falta que Ricardo:**
+1. Corra las dos migraciones (`20261008000001` y `20261008000002`) en el SQL Editor de Supabase, en ese orden.
+2. Abra la pestaña "Bitácora" en Store Admin y en Marketing Premium Admin, confirme que los montos/pagos/responsables salen bien, y pruebe exportar Excel y CSV.
+3. Active/desactive un Premium de prueba y confirme que aparece un periodo nuevo en la bitácora de Marketing (el trigger de `mkt_premium_periodos` nunca se probó en vivo).
+
+**Nota para la próxima sesión en esta máquina:** `node_modules` estaba desactualizado frente al `package-lock.json` (faltaba `@fontsource-variable/sora`, de las landing pages de Hermes) — hubo que correr `npm install` antes de poder buildear. Si el build falla con un import no resuelto justo después de actualizar desde GitHub, es casi siempre esto.
+
+---
 
 ### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-05
 
