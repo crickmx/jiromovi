@@ -27,6 +27,7 @@ import {
   type UsuarioOficina
 } from '../../lib/registroActividadesTypes';
 import { SearchableSelect } from './catalogos/SearchableSelect';
+import { getOficinasDeGerente } from '../../lib/oficinasUtils';
 import { useTiposTramite } from '../../hooks/useTiposTramite';
 import { calcularDeadline } from '../../lib/diasHabiles';
 
@@ -657,12 +658,21 @@ export function NuevoTramiteModal({
     // NO filtrar por `username`: esa columna se eliminó y se recreó como nullable
     // (20251028185230 / 20251029201356), y un `neq` contra NULL no es verdadero en
     // SQL — excluiría a casi todos los usuarios.
-    const { data } = await supabase
+    let query = supabase
       .from('usuarios')
       .select('id, nombre_completo, rol, oficina_id')
       .eq('activo', true)
       .is('deleted_at', null)
       .order('nombre_completo');
+
+    // Un Gerente solo debe ver solicitantes de su(s) propia(s) oficina(s), no
+    // de todo JIRO.
+    if (usuario) {
+      const oficinas = await getOficinasDeGerente(usuario);
+      if (oficinas.length > 0) query = query.in('oficina_id', oficinas);
+    }
+
+    const { data } = await query;
 
     if (data) setUsuariosDisponibles(data as Usuario[]);
   };

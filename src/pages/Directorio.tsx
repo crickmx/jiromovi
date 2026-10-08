@@ -10,6 +10,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import type { Database } from '../lib/database.types';
 import { loadActiveTramiteTeams, loadUserTramiteTeamIds, validateTramiteTeamSelection } from '../lib/tramiteTeamAssignments';
 import { SolicitudesAltaPanel } from '../components/admin/SolicitudesAltaPanel';
+import { getOficinasDeGerente } from '../lib/oficinasUtils';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
@@ -85,8 +86,9 @@ export function Directorio() {
         .order('nombre')
         .limit(2000);
 
-      if (isGerente && currentUser?.oficina_id) {
-        usersQuery.eq('oficina_id', currentUser.oficina_id);
+      if (currentUser) {
+        const oficinasGerente = await getOficinasDeGerente(currentUser);
+        if (oficinasGerente.length > 0) usersQuery.in('oficina_id', oficinasGerente);
       }
 
       const [usuariosRes, oficinasRes, betaRes] = await Promise.all([
