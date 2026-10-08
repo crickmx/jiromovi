@@ -23,6 +23,72 @@ type RolRegistro = 'Empleado' | 'Agente';
 
 const STORAGE_DRAFT_KEY = 'movi_registro_personal_wizard_draft_v3';
 
+const MESES = [
+  { value: '01', label: 'Enero' }, { value: '02', label: 'Febrero' }, { value: '03', label: 'Marzo' },
+  { value: '04', label: 'Abril' }, { value: '05', label: 'Mayo' }, { value: '06', label: 'Junio' },
+  { value: '07', label: 'Julio' }, { value: '08', label: 'Agosto' }, { value: '09', label: 'Septiembre' },
+  { value: '10', label: 'Octubre' }, { value: '11', label: 'Noviembre' }, { value: '12', label: 'Diciembre' },
+];
+
+function diasEnMes(mes: number, anio: number): number {
+  return new Date(anio, mes, 0).getDate();
+}
+
+interface SelectorFechaDMAProps {
+  value: string;
+  onChange: (iso: string) => void;
+  anioInicio: number;
+  anioFin: number;
+  hasError?: boolean;
+}
+
+// Selector de fecha en día/mes/año -- el <input type="date"> nativo muestra
+// mm/dd/yyyy u otro orden según el idioma del navegador del usuario, no de la
+// página, así que no se puede forzar con el atributo lang.
+function SelectorFechaDMA({ value, onChange, anioInicio, anioFin, hasError }: SelectorFechaDMAProps) {
+  const [anio, mes, dia] = value ? value.split('-') : ['', '', ''];
+
+  const actualizar = (nuevoDia: string, nuevoMes: string, nuevoAnio: string) => {
+    if (!nuevoDia || !nuevoMes || !nuevoAnio) {
+      onChange('');
+      return;
+    }
+    const maxDia = diasEnMes(parseInt(nuevoMes, 10), parseInt(nuevoAnio, 10));
+    const diaFinal = parseInt(nuevoDia, 10) > maxDia ? String(maxDia).padStart(2, '0') : nuevoDia;
+    onChange(`${nuevoAnio}-${nuevoMes}-${diaFinal}`);
+  };
+
+  const maxDia = mes && anio ? diasEnMes(parseInt(mes, 10), parseInt(anio, 10)) : 31;
+  const dias = Array.from({ length: maxDia }, (_, i) => String(i + 1).padStart(2, '0'));
+  const anios = Array.from({ length: anioFin - anioInicio + 1 }, (_, i) => String(anioFin - i));
+  const triggerClass = `rounded-xl h-10 text-xs bg-[#0A1628]/80 border-blue-500/25 text-white ${hasError ? 'border-red-500 ring-1 ring-red-500' : ''}`;
+  const contentClass = 'rounded-xl bg-[#0F1E36] border-blue-500/30 text-white max-h-60';
+  const itemClass = 'text-xs text-white hover:bg-blue-600/30';
+
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      <Select value={dia} onValueChange={(v) => actualizar(v, mes, anio)}>
+        <SelectTrigger className={triggerClass}><SelectValue placeholder="Día" /></SelectTrigger>
+        <SelectContent className={contentClass}>
+          {dias.map((d) => <SelectItem key={d} value={d} className={itemClass}>{d}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Select value={mes} onValueChange={(v) => actualizar(dia, v, anio)}>
+        <SelectTrigger className={triggerClass}><SelectValue placeholder="Mes" /></SelectTrigger>
+        <SelectContent className={contentClass}>
+          {MESES.map((m) => <SelectItem key={m.value} value={m.value} className={itemClass}>{m.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Select value={anio} onValueChange={(v) => actualizar(dia, mes, v)}>
+        <SelectTrigger className={triggerClass}><SelectValue placeholder="Año" /></SelectTrigger>
+        <SelectContent className={contentClass}>
+          {anios.map((a) => <SelectItem key={a} value={a} className={itemClass}>{a}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 export default function RegistroPersonal() {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
@@ -595,26 +661,30 @@ export default function RegistroPersonal() {
                     </div>
 
                     <div>
-                      <Label htmlFor="fecha_nacimiento" className="text-xs font-semibold text-blue-100">Fecha de Nacimiento *</Label>
-                      <Input
-                        id="fecha_nacimiento"
-                        type="date"
-                        value={formData.fecha_nacimiento}
-                        onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
-                        className={`mt-1 rounded-xl h-10 text-xs bg-[#0A1628]/80 border-blue-500/25 text-white ${errors.fecha_nacimiento ? 'border-red-500 ring-1 ring-red-500' : ''}`}
-                      />
+                      <Label htmlFor="fecha_nacimiento" className="text-xs font-semibold text-blue-100">Fecha de Nacimiento (Día/Mes/Año) *</Label>
+                      <div className="mt-1">
+                        <SelectorFechaDMA
+                          value={formData.fecha_nacimiento}
+                          onChange={(iso) => setFormData({ ...formData, fecha_nacimiento: iso })}
+                          anioInicio={new Date().getFullYear() - 90}
+                          anioFin={new Date().getFullYear() - 14}
+                          hasError={!!errors.fecha_nacimiento}
+                        />
+                      </div>
                       {errors.fecha_nacimiento && <p className="text-[10px] text-red-400 mt-0.5">{errors.fecha_nacimiento}</p>}
                     </div>
 
                     <div>
-                      <Label htmlFor="fecha_ingreso" className="text-xs font-semibold text-blue-100">Fecha de Ingreso a JIRO *</Label>
-                      <Input
-                        id="fecha_ingreso"
-                        type="date"
-                        value={formData.fecha_ingreso}
-                        onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
-                        className={`mt-1 rounded-xl h-10 text-xs bg-[#0A1628]/80 border-blue-500/25 text-white ${errors.fecha_ingreso ? 'border-red-500 ring-1 ring-red-500' : ''}`}
-                      />
+                      <Label htmlFor="fecha_ingreso" className="text-xs font-semibold text-blue-100">Fecha de Ingreso a JIRO (Día/Mes/Año) *</Label>
+                      <div className="mt-1">
+                        <SelectorFechaDMA
+                          value={formData.fecha_ingreso}
+                          onChange={(iso) => setFormData({ ...formData, fecha_ingreso: iso })}
+                          anioInicio={new Date().getFullYear() - 50}
+                          anioFin={new Date().getFullYear() + 1}
+                          hasError={!!errors.fecha_ingreso}
+                        />
+                      </div>
                       {errors.fecha_ingreso && <p className="text-[10px] text-red-400 mt-0.5">{errors.fecha_ingreso}</p>}
                     </div>
                   </div>
@@ -686,7 +756,7 @@ export default function RegistroPersonal() {
                     <div>
                       <Label htmlFor="email_laboral" className="text-xs font-semibold text-blue-100 flex items-center gap-1">
                         <Mail className="w-3.5 h-3.5 text-blue-400" />
-                        E-Mail (Acceso a MOVI) *
+                        E-Mail de Trabajo (Acceso a MOVI) *
                       </Label>
                       <Input
                         id="email_laboral"
@@ -702,7 +772,7 @@ export default function RegistroPersonal() {
                     <div>
                       <Label htmlFor="celular_laboral" className="text-xs font-semibold text-blue-100 flex items-center gap-1">
                         <Phone className="w-3.5 h-3.5 text-blue-400" />
-                        Celular / WhatsApp *
+                        Celular de Trabajo / WhatsApp *
                       </Label>
                       <Input
                         id="celular_laboral"
@@ -933,11 +1003,11 @@ export default function RegistroPersonal() {
 
                     <div className="grid grid-cols-2 gap-2.5 mt-3 pt-3 border-t border-blue-500/20 text-[11px]">
                       <div>
-                        <span className="text-blue-300/50 block text-[10px]">Correo de Acceso:</span>
+                        <span className="text-blue-300/50 block text-[10px]">Correo de Trabajo (Acceso):</span>
                         <span className="font-mono text-blue-300 font-medium truncate block">{formData.email_laboral}</span>
                       </div>
                       <div>
-                        <span className="text-blue-300/50 block text-[10px]">Celular / WhatsApp:</span>
+                        <span className="text-blue-300/50 block text-[10px]">Celular de Trabajo / WhatsApp:</span>
                         <span className="text-white/90 truncate block">{formData.celular_laboral}</span>
                       </div>
                     </div>
