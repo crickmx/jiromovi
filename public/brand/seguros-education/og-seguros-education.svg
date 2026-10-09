@@ -1,39 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
-  <!-- Background with dark indigo gradient -->
-  <rect width="1200" height="630" fill="#040C1F" />
-  <circle cx="1050" cy="180" r="400" fill="#0D6EFD" opacity="0.35" filter="blur(90px)" />
-  <circle cx="200" cy="500" r="300" fill="#00C8E0" opacity="0.2" filter="blur(80px)" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#040C1F"/>
+      <stop offset="50%" stop-color="#061428"/>
+      <stop offset="100%" stop-color="#081A38"/>
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D6EFD"/>
+      <stop offset="100%" stop-color="#00C8E0"/>
+    </linearGradient>
+  </defs>
 
-  <!-- Badge Top -->
-  <g transform="translate(80, 70)">
-    <rect width="400" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.08" stroke="#0D6EFD" stroke-opacity="0.4" />
-    <circle cx="24" cy="21" r="5" fill="#0D6EFD" />
-    <text x="40" y="27" font-family="'Inter', sans-serif" font-size="14" font-weight="800" fill="#FFFFFF" letter-spacing="1">ACADEMIA Y CERTIFICACIÓN DE SEGUROS</text>
-  </g>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1050" cy="180" r="280" fill="#0D6EFD" opacity="0.25"/>
 
-  <!-- Wordmark -->
-  <g transform="translate(80, 160)">
-    <text x="0" y="60" font-family="'Inter', sans-serif" font-size="62" font-weight="900" fill="#FFFFFF">Seguros <tspan fill="#0D6EFD">Education</tspan></text>
+  <!-- Logo -->
+  <g transform="translate(80, 80)">
+    <text x="0" y="45" font-family="'Inter', sans-serif" font-size="40" font-weight="900" fill="#FFFFFF">seguros<tspan fill="#00C8E0">.education</tspan></text>
   </g>
 
   <!-- Headline -->
-  <text x="80" y="320" font-family="'Inter', sans-serif" font-size="46" font-weight="900" fill="#FFFFFF">Capacitación continua para</text>
-  <text x="80" y="375" font-family="'Inter', sans-serif" font-size="46" font-weight="900" fill="#00C8E0">agentes de seguros de alto nivel.</text>
+  <text x="80" y="270" font-family="'Inter', sans-serif" font-size="52" font-weight="900" fill="#FFFFFF">
+    Capacitación Continua para
+  </text>
+  <text x="80" y="340" font-family="'Inter', sans-serif" font-size="52" font-weight="900" fill="url(#blueGrad)">
+    Agentes de Seguros y Fianzas
+  </text>
 
-  <!-- Subtitle -->
-  <text x="80" y="435" font-family="'Inter', sans-serif" font-size="20" font-weight="400" fill="#94A3B8">Cursos On Demand 24/7, Aula Virtual en vivo, Cédula A y Alianzas Académicas.</text>
+  <text x="80" y="410" font-family="'Inter', sans-serif" font-size="22" font-weight="400" fill="#94A3B8">
+    Cursos On Demand 24/7, Aula Virtual en vivo, Curso Cédula A y Alianzas Académicas.
+  </text>
 
-  <!-- Feature Pills Footer -->
-  <g transform="translate(80, 500)">
-    <rect width="200" height="50" rx="25" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" />
-    <text x="25" y="32" font-family="'Inter', sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">🎓 Cédula A</text>
+  <!-- Badges -->
+  <g transform="translate(80, 470)">
+    <rect x="0" y="0" width="280" height="54" rx="27" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+    <text x="40" y="34" font-family="'Inter', sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">Certificación Cédula A</text>
 
-    <rect x="220" width="220" height="50" rx="25" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" />
-    <text x="245" y="32" font-family="'Inter', sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">💻 On Demand 24/7</text>
-
-    <rect x="460" width="220" height="50" rx="25" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" />
-    <text x="485" y="32" font-family="'Inter', sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">📹 Aula Virtual</text>
-
-    <text x="960" y="32" font-family="'Inter', sans-serif" font-size="18" font-weight="800" fill="#0D6EFD" text-anchor="end">seguros.education</text>
+    <rect x="300" y="0" width="290" height="54" rx="27" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+    <text x="330" y="34" font-family="'Inter', sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">Universidad Quálitas & UTEL</text>
   </g>
 </svg>
