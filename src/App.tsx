@@ -66,7 +66,7 @@ const isLandingsSite   = HOST === 'landings.movi.digital'
 const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
-// Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
+// Everything else (app.movi.digital, beta.movi.digital, localhost, etc.) is MOVI
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
 function AgenteRootRedirect() {
@@ -99,7 +99,7 @@ function LandingsApp() {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Hermes Landing Studio (tipo Bolt/Lovable con autenticacion Marsella14$) */}
+            {/* Hermes Landing Studio con autenticacion Marsella14$ */}
             <Route path="/" element={<LandingsStudio />} />
             <Route path="/studio" element={<LandingsStudio />} />
 
