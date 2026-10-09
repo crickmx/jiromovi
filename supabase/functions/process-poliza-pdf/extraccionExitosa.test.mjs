@@ -23,9 +23,22 @@ assert.equal(datosUtilesExtraidos({ documento: 'AUIN-049998-37' }), true);
 assert.equal(datosUtilesExtraidos({ rfc: 'RORJ800505N19' }), true);
 assert.equal(datosUtilesExtraidos({ nombre_cliente: 'MARIA DE JESUS RODRIGUEZ' }), true);
 assert.equal(datosUtilesExtraidos({ prima_total: 8844.74 }), true, 'un número tambien cuenta');
-assert.equal(datosUtilesExtraidos({ placas: 'GVC677C' }), true);
+assert.equal(datosUtilesExtraidos({ serie: '3VW1M1AJ2GM269028' }), true);
 // Una póliza de vida no trae placas ni serie, pero sí vigencia.
 assert.equal(datosUtilesExtraidos({ desde: '2026-01-13', hasta: '2027-01-13' }), true);
+
+// ── Que falte un campo opcional NO es una falla ───────────────────────────
+// Lo que decide es que llegue AL MENOS UNO de los identificadores, no que
+// esten todos. Una poliza bien leida sin placas, motor ni renovacion pasa.
+assert.equal(
+  datosUtilesExtraidos({ documento: 'VI-998', nombre_cliente: 'GABRIELA DOMINGUEZ', desde: '2019-12-27' }),
+  true,
+  'sin placas, motor, renovacion ni ejecutivo de cuenta, pero leida',
+);
+// Y esos campos sueltos no alcanzan para dar por buena una extraccion vacia.
+assert.equal(datosUtilesExtraidos({ placas: 'GVC677C' }), false);
+assert.equal(datosUtilesExtraidos({ motor: 'CBP713281', renovacion: '0' }), false);
+assert.equal(datosUtilesExtraidos({ ejecutivo_cuenta: 'JUAN', grupo: 'X' }), false);
 
 // ── Marcado de la fila del Excel ──────────────────────────────────────────
 const H = ['Documento', 'Prima Neta', 'Nombre Archivo', 'Observaciones'];

@@ -20,17 +20,26 @@
  * porque traía "Sub Ramo: Automóviles".
  */
 export const CAMPOS_QUE_PRUEBAN_EXTRACCION = [
-  'documento',      // número de póliza
+  'documento',       // número de póliza
   'rfc',
-  'nombre_cliente',
+  'nombre_cliente',  // guarda también la razón social cuando es persona moral
   'prima_neta',
   'prima_total',
   'desde',
   'hasta',
   'serie',
-  'placas',
-  'agente_clave',
 ];
+
+/**
+ * OJO con cómo se lee esta lista: que un campo falte NUNCA marca una falla.
+ * La extracción se da por buena si llega **al menos uno** de estos. Se marca
+ * solo cuando no llegó ninguno.
+ *
+ * Fuera quedan a propósito los campos que no toda póliza tiene — motor, placas,
+ * fecha de antigüedad, renovación, ejecutivo de cuenta, grupo —: no prueban
+ * nada por sí solos y su ausencia no significa que algo falló. Una póliza de
+ * vida no trae placas y está perfectamente leída.
+ */
 
 export const AVISO_SIN_EXTRACCION = 'Datos no extraídos, se envía a entrenamiento';
 
