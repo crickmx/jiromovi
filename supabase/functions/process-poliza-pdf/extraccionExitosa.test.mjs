@@ -10,7 +10,7 @@ import { datosUtilesExtraidos, marcarSiNoSeExtrajo, AVISO_SIN_EXTRACCION } from 
 // Caso real (TK0F7A2-A): respondió estado "ok" con solo la clasificación.
 assert.equal(datosUtilesExtraidos({ sub_ramo: 'Automóviles' }), false,
   'el sub ramo lo acierta cualquiera por el formato, no prueba que se leyó');
-assert.equal(datosUtilesExtraidos({ ramo: 'Autos', aseguradora: 'GNP', moneda: 'PESOS', forma_pago: 'ANUAL' }), false);
+assert.equal(datosUtilesExtraidos({ ramo: 'Autos', aseguradora: 'GNP' }), false);
 assert.equal(datosUtilesExtraidos({}), false);
 assert.equal(datosUtilesExtraidos(null), false);
 assert.equal(datosUtilesExtraidos(undefined), false);
@@ -36,10 +36,19 @@ assert.equal(
   true,
   'sin placas, motor, renovacion ni ejecutivo de cuenta, pero leida',
 );
-// Y esos campos sueltos no alcanzan para dar por buena una extraccion vacia.
+// Y los campos que NO toda poliza tiene no alcanzan solos.
 assert.equal(datosUtilesExtraidos({ placas: 'GVC677C' }), false);
 assert.equal(datosUtilesExtraidos({ motor: 'CBP713281', renovacion: '0' }), false);
 assert.equal(datosUtilesExtraidos({ ejecutivo_cuenta: 'JUAN', grupo: 'X' }), false);
+assert.equal(datosUtilesExtraidos({ fecha_antiguedad: '2019-01-01' }), false);
+
+// ── Todo lo demas SI cuenta ───────────────────────────────────────────────
+for (const campo of ['forma_pago', 'moneda', 'concepto', 'descripcion_veh', 'modelo']) {
+  assert.equal(datosUtilesExtraidos({ [campo]: 'algo' }), true, `${campo} deberia contar`);
+}
+// Los importes cuentan aunque valgan cero: un cero extraido es un dato.
+assert.equal(datosUtilesExtraidos({ recargos: 0 }), true);
+assert.equal(datosUtilesExtraidos({ iva: 1204.45 }), true);
 
 // ── Marcado de la fila del Excel ──────────────────────────────────────────
 const H = ['Documento', 'Prima Neta', 'Nombre Archivo', 'Observaciones'];

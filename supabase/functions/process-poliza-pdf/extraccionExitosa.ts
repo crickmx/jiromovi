@@ -23,12 +23,22 @@ export const CAMPOS_QUE_PRUEBAN_EXTRACCION = [
   'documento',       // número de póliza
   'rfc',
   'nombre_cliente',  // guarda también la razón social cuando es persona moral
-  'prima_neta',
-  'prima_total',
+  'agente_clave',
+  'forma_pago',
+  'moneda',
   'desde',
   'hasta',
+  'prima_neta',
+  'descuento',
+  'recargos',
+  'derechos',
+  'sub_total',
+  'iva',
+  'prima_total',
+  'concepto',
   'serie',
-  'agente_clave',  // obligatorio en toda póliza
+  'descripcion_veh',
+  'modelo',
 ];
 
 /**
@@ -36,10 +46,19 @@ export const CAMPOS_QUE_PRUEBAN_EXTRACCION = [
  * La extracción se da por buena si llega **al menos uno** de estos. Se marca
  * solo cuando no llegó ninguno.
  *
- * Fuera quedan a propósito los campos que no toda póliza tiene — motor, placas,
- * fecha de antigüedad, renovación, ejecutivo de cuenta, grupo —: no prueban
- * nada por sí solos y su ausencia no significa que algo falló. Una póliza de
- * vida no trae placas y está perfectamente leída.
+ * Fuera quedan únicamente tres grupos:
+ *
+ *  1. Los que se arman solos o salen del ticket, no del PDF (los enumeró
+ *     Ricardo): Nombre de Archivo, Estatus, Vendedor, Tipo Documento, Despacho.
+ *  2. Los que no toda póliza tiene, también suyos: Motor, Placas, Fecha de
+ *     Antigüedad, Renovación, Ejecutivo de Cuenta, Grupo y Razón Social — esta
+ *     última ya viaja dentro de `nombre_cliente`.
+ *  3. `ramo`, `sub_ramo` y `aseguradora`. No estaban en sus listas, pero su
+ *     propio reporte los descartó: una póliza que llegó con "Sub Ramo:
+ *     Automóviles" y nada más salió por buena, y no estaba leída. Se aciertan
+ *     por el formato del documento sin leer una línea.
+ *
+ * Todo lo demás cuenta.
  */
 
 export const AVISO_SIN_EXTRACCION = 'Datos no extraídos, se envía a entrenamiento';
