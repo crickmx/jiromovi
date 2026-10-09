@@ -16,9 +16,17 @@ import {
   Send, 
   Loader2, 
   CheckCircle2,
-  Tag
+  Tag,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  LogIn,
+  Zap,
+  Lock
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+
+export const MUTUUS_PORTAL_URL = 'https://selfservice.psmutuus.com/agente/A-3522/promo/A-3522';
 
 export interface LandingCustomization {
   heroTitle?: string;
@@ -37,6 +45,10 @@ export interface LandingCustomization {
 
 // ─── FAQ Data with Rich SEO Content ──────────────────────────────────────────
 const DEFAULT_FAQS = [
+  {
+    q: '¿Dónde y cómo realizo el registro o emisión de mi membresía Mutuus?',
+    a: 'Puedes realizar tu cotización, registro y emisión inmediata 100% digital a través de nuestro portal oficial de autoservicio de Mutuus (código de promotor A-3522). Solo necesitas tus datos básicos y el pago en línea para recibir tu credencial y póliza de inmediato.'
+  },
   {
     q: '¿Qué es exactamente Mutuus y cómo funciona la membresía de salud?',
     a: 'Mutuus es un esquema integral de salud privada que combina una membresía médica digital (telemedicina 24/7 ilimitada, consultas de especialidad a precio preferencial y red de asistencias) con el respaldo de una póliza de seguro de Gastos Médicos Mayores con $0 deducible y $0 coaseguro en su red hospitalaria autorizada.'
@@ -67,7 +79,7 @@ const DEFAULT_FAQS = [
   },
   {
     q: '¿Cómo es el proceso de contratación y activación?',
-    a: 'El trámite es 100% digital. Completas tu solicitud, realizas el pago en línea y recibes tu credencial digital y póliza en tu correo y en tu app en menos de 24 horas hábiles.'
+    a: 'El trámite es 100% digital en nuestro portal de autoservicio. Completas tu solicitud, realizas el pago en línea y recibes tu credencial digital y póliza en tu correo y en tu app en menos de 24 horas hábiles.'
   }
 ];
 
@@ -239,7 +251,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
   const badgeText = customization?.badgeText || 'Cero Deducible · Cero Coaseguro en Red';
   const primaryColor = customization?.primaryColor || '#003896';
   const accentColor = customization?.accentColor || '#9CD41C';
-  const ctaText = customization?.ctaText || 'Ver Planes y Precios';
+  const ctaText = customization?.ctaText || 'Contratar en Línea (Portal Autoservicio)';
   const whatsappNumber = customization?.whatsappNumber || '525540001234';
   const promoBanner = customization?.promoBanner;
   
@@ -297,7 +309,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         />
         <meta 
           name="keywords" 
-          content="Mutuus seguro gastos medicos, seguro sin deducible, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguros metlife mutuus, promotor autorizado mutuus, hospital pago directo" 
+          content="Mutuus seguro gastos medicos, seguro sin deducible, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguros metlife mutuus, promotor autorizado mutuus, hospital pago directo, contratacion mutuus selfservice" 
         />
         <link rel="canonical" href="https://landings.movi.digital/mutuus" />
         <meta name="geo.region" content="MX" />
@@ -323,13 +335,30 @@ export default function MutuusLanding({ customization }: { customization?: Landi
       >
 
         {/* ─── PROMO BANNER DINÁMICO ────────────────────────────────────── */}
-        {promoBanner && (
+        {promoBanner ? (
           <div 
             className="text-white py-2 px-4 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-inner"
             style={{ backgroundColor: primaryColor }}
           >
             <Tag className="w-3.5 h-3.5" style={{ color: accentColor }} />
             <span>{promoBanner}</span>
+          </div>
+        ) : (
+          <div 
+            className="text-white py-1.5 px-4 text-center text-xs font-semibold flex items-center justify-center gap-2 border-b border-white/10"
+            style={{ backgroundColor: '#002666' }}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-300" />
+            <span>Portal de Registro y Emisión Inmediata 100% Digital · Promotor <strong>A-3522</strong></span>
+            <a 
+              href={MUTUUS_PORTAL_URL} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="ml-2 font-bold underline hover:text-white/80 inline-flex items-center gap-1"
+            >
+              <span>Acceder al Portal</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
         )}
 
@@ -365,12 +394,12 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 style={{ backgroundColor: '#EFF6FF', borderColor: '#CBD5E1', color: primaryColor }}
               >
                 <ShieldCheck className="w-3.5 h-3.5" style={{ color: primaryColor }} />
-                <span>Promotor Autorizado</span>
+                <span>Promotor Autorizado A-3522</span>
               </div>
             </div>
 
             {/* Menú de Navegación Desktop */}
-            <nav className="hidden lg:flex items-center gap-7 text-sm font-semibold text-slate-700">
+            <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold text-slate-700">
               <a href="#porque-mutuus" className="hover:opacity-80 transition-opacity">¿Por qué Mutuus?</a>
               <a href="#planes" className="hover:opacity-80 transition-opacity">Planes y Precios</a>
               <a href="#red-hospitalaria" className="hover:opacity-80 transition-opacity">Red de Hospitales</a>
@@ -379,24 +408,40 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             </nav>
 
             {/* Acciones */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => handleOpenLeadModal('Plan DOS')}
-                className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs md:text-sm font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer"
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Botón Ingresar / Portal */}
+              <a
+                href={MUTUUS_PORTAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold border border-slate-300 text-slate-700 hover:bg-slate-50 transition-all cursor-pointer active:scale-95"
+                title="Acceso al portal de clientes y registro"
+              >
+                <LogIn className="w-3.5 h-3.5 text-blue-600" />
+                <span>Ingresar / Portal</span>
+              </a>
+
+              {/* Botón Contratar / Emitir Directo */}
+              <a
+                href={MUTUUS_PORTAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold text-white transition-all shadow-md active:scale-95 cursor-pointer"
                 style={{ backgroundColor: primaryColor }}
               >
-                <span>Cotizar Plan</span>
+                <span>Emitir en Línea</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </a>
 
               <a
                 href={`https://wa.me/${whatsappNumber}?text=Hola,%20deseo%20asesoria%20sobre%20los%20planes%20Mutuus.`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold text-slate-900 bg-[#25D366] hover:bg-[#20ba5a] transition-all shadow-sm active:scale-95"
+                className="hidden md:inline-flex items-center gap-2 px-3.5 py-2.5 rounded-full text-xs font-bold text-slate-900 bg-[#25D366] hover:bg-[#20ba5a] transition-all shadow-sm active:scale-95"
+                title="Atención por WhatsApp"
               >
                 <MessageSquare className="w-4 h-4 fill-slate-900 text-slate-900" />
-                <span className="hidden md:inline">WhatsApp Asesor</span>
+                <span>WhatsApp</span>
               </a>
             </div>
           </div>
@@ -437,29 +482,42 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   {heroSubtitle}
                 </p>
 
-                {/* Nota Legal visible */}
-                <p className="text-xs text-slate-400 italic">
-                  * Aplican términos, condiciones y periodos de espera estipulados en la póliza.
-                </p>
+                {/* Nota Legal y Promotor visible */}
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md">
+                    <Lock className="w-3 h-3 text-emerald-600" />
+                    Portal Oficial de Emisión · Código A-3522
+                  </span>
+                  <span className="italic">* Aplican términos y condiciones estipulados en la póliza.</span>
+                </div>
 
                 {/* Botones de Acción (CTA) */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
                   <a
-                    href="#planes"
-                    className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full text-base font-bold text-white transition-all shadow-lg active:scale-98 text-center cursor-pointer"
+                    href={MUTUUS_PORTAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full text-base font-bold text-white transition-all shadow-xl hover:opacity-95 active:scale-98 text-center cursor-pointer"
                     style={{ backgroundColor: primaryColor }}
                   >
-                    <span>{ctaText}</span>
+                    <span>Contratar y Emitir en Línea</span>
                     <ArrowRight className="w-5 h-5" />
+                  </a>
+
+                  <a
+                    href="#planes"
+                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full text-base font-bold bg-white border-2 hover:bg-[#EFF6FF] transition-all text-center cursor-pointer"
+                    style={{ borderColor: primaryColor, color: primaryColor }}
+                  >
+                    <span>Ver Planes y Precios</span>
                   </a>
 
                   <button
                     onClick={() => handleOpenLeadModal('Plan DOS')}
-                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full text-base font-bold bg-white border-2 hover:bg-[#EFF6FF] transition-all text-center cursor-pointer"
-                    style={{ borderColor: primaryColor, color: primaryColor }}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-4 rounded-full text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all text-center cursor-pointer"
                   >
-                    <Phone className="w-4 h-4" />
-                    <span>Hablar con un Asesor</span>
+                    <Phone className="w-4 h-4 text-slate-500" />
+                    <span>Hablar con Asesor</span>
                   </button>
                 </div>
 
@@ -475,7 +533,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-[#22C55E] stroke-[3]" />
-                    <span>Trámite 100% digital</span>
+                    <span>Emisión 100% digital</span>
                   </div>
                 </div>
 
@@ -493,12 +551,17 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   />
                   
                   <div className="relative z-10 space-y-6">
-                    <div 
-                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold border border-white/10"
-                      style={{ color: accentColor }}
-                    >
-                      <Hospital className="w-4 h-4" />
-                      <span>Pago Directo al Hospital</span>
+                    <div className="flex items-center justify-between">
+                      <div 
+                        className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold border border-white/10"
+                        style={{ color: accentColor }}
+                      >
+                        <Hospital className="w-4 h-4" />
+                        <span>Pago Directo al Hospital</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-white/80 bg-white/10 px-2.5 py-0.5 rounded-full">
+                        Promo A-3522
+                      </span>
                     </div>
 
                     <h3 className="text-2xl font-black text-white leading-snug">
@@ -530,13 +593,16 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       Sin trámites engorrosos de reembolso ni desembolsos iniciales que desestabilicen tu patrimonio familiar.
                     </p>
 
-                    <button
-                      onClick={() => handleOpenLeadModal('Plan DOS')}
-                      className="w-full py-3.5 px-6 rounded-full font-extrabold text-sm text-slate-900 transition-all shadow-md active:scale-95 cursor-pointer text-center block"
+                    <a
+                      href={MUTUUS_PORTAL_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-4 px-6 rounded-full font-extrabold text-sm text-slate-900 transition-all shadow-md active:scale-95 cursor-pointer text-center flex items-center justify-center gap-2"
                       style={{ backgroundColor: accentColor }}
                     >
-                      Cotizar mi Membresía Ahora
-                    </button>
+                      <span>Contratar y Emitir en Línea</span>
+                      <ExternalLink className="w-4 h-4 text-slate-900" />
+                    </a>
                   </div>
                 </div>
               </div>
@@ -555,13 +621,25 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               >
                 <ShieldCheck className="w-9 h-9" style={{ color: accentColor }} />
               </div>
-              <div className="space-y-2 text-center md:text-left">
+              <div className="space-y-2 text-center md:text-left flex-1">
                 <h2 className="text-xl sm:text-2xl font-extrabold" style={{ color: primaryColor }}>
                   ¿Qué es Mutuus?
                 </h2>
                 <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-normal">
                   Mutuus es el ecosistema de salud privada que elimina las barreras económicas tradicionales: combina consultas médicas ilimitadas por videollamada 24/7 y una póliza hospitalaria que te garantiza <strong className="font-bold" style={{ color: primaryColor }}>cero deducible y cero coaseguro</strong> al atenderte en su red nacional de hospitales certificados.
                 </p>
+              </div>
+              <div className="flex-shrink-0">
+                <a
+                  href={MUTUUS_PORTAL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-3 rounded-full text-xs font-bold text-white transition-all shadow-sm active:scale-95 inline-flex items-center gap-1.5"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <span>Ir al Registro</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
               </div>
             </div>
           </div>
@@ -625,7 +703,18 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 <div className="mt-8 pt-4 border-t-2 border-slate-100 bg-[#EFF6FF] -mx-6 -mb-6 p-6 rounded-b-3xl">
                   <p className="text-xs font-bold uppercase" style={{ color: primaryColor }}>Pago Final de tu Bolsillo:</p>
                   <p className="text-3xl font-black mt-1" style={{ color: primaryColor }}>$0 MXN</p>
-                  <p className="text-[11px] text-slate-500 mt-1">Condonación total cumpliendo protocolo en red.</p>
+                  <p className="text-[11px] text-slate-500 mt-1 mb-4">Condonación total cumpliendo protocolo en red.</p>
+                  
+                  <a
+                    href={MUTUUS_PORTAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white text-center flex items-center justify-center gap-1.5 shadow-sm"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <span>Emitir con $0 Deducible</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </a>
                 </div>
               </div>
 
@@ -790,12 +879,22 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 </div>
 
                 <div className="pt-4 flex flex-wrap gap-4">
-                  <button
-                    onClick={() => handleOpenLeadModal('Plan DOS')}
-                    className="px-6 py-3 rounded-full text-white font-bold text-xs sm:text-sm hover:opacity-90 transition-all shadow-md cursor-pointer"
+                  <a
+                    href={MUTUUS_PORTAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-7 py-3.5 rounded-full text-white font-bold text-xs sm:text-sm hover:opacity-95 transition-all shadow-md cursor-pointer flex items-center gap-2"
                     style={{ backgroundColor: primaryColor }}
                   >
-                    Contratar y Activar App
+                    <span>Contratar y Activar en Línea</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+
+                  <button
+                    onClick={() => handleOpenLeadModal('Plan DOS')}
+                    className="px-6 py-3.5 rounded-full text-slate-700 bg-slate-100 hover:bg-slate-200 font-semibold text-xs sm:text-sm transition cursor-pointer"
+                  >
+                    Solicitar Asesoría
                   </button>
                 </div>
               </div>
@@ -816,7 +915,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 Elige el plan diseñado para tu estilo de vida
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
-                Precios claros, sin costos ocultos ni letras pequeñas. Respaldo asegurador oficial en moneda nacional (MXN).
+                Precios claros, sin costos ocultos ni letras pequeñas. Emisión digital directa en el portal oficial con código de promotor <strong>A-3522</strong>.
               </p>
 
               <div className="pt-4 flex items-center justify-center">
@@ -903,23 +1002,36 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   </div>
 
                   <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
-                    <button
-                      onClick={() => handleOpenLeadModal(p.nombre)}
-                      className="w-full py-3.5 px-6 rounded-full font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 cursor-pointer text-center block text-white"
-                      style={{ backgroundColor: p.popular ? primaryColor : '#0f172a' }}
-                    >
-                      Solicitar {p.nombre}
-                    </button>
-                    
+                    {/* Botón principal de contratación que lleva directo al portal selfservice */}
                     <a
-                      href={`https://wa.me/${whatsappNumber}?text=Hola,%20deseo%20cotizar%20el%20${encodeURIComponent(p.nombre)}%20de%20Mutuus.`}
+                      href={MUTUUS_PORTAL_URL}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full py-2.5 px-4 rounded-full font-semibold text-xs text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-all text-center flex items-center justify-center gap-1.5"
+                      className="w-full py-3.5 px-6 rounded-full font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 cursor-pointer text-center flex items-center justify-center gap-2 text-white"
+                      style={{ backgroundColor: p.popular ? primaryColor : '#0f172a' }}
                     >
-                      <MessageSquare className="w-3.5 h-3.5 text-[#25D366]" />
-                      <span>Cotizar por WhatsApp</span>
+                      <span>Contratar {p.nombre} en Línea</span>
+                      <ArrowRight className="w-4 h-4" />
                     </a>
+                    
+                    <div className="flex gap-2">
+                      <a
+                        href={`https://wa.me/${whatsappNumber}?text=Hola,%20deseo%20cotizar%20el%20${encodeURIComponent(p.nombre)}%20de%20Mutuus.`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2 px-3 rounded-full font-semibold text-xs text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-all text-center flex items-center justify-center gap-1.5"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-[#25D366]" />
+                        <span>WhatsApp</span>
+                      </a>
+
+                      <button
+                        onClick={() => handleOpenLeadModal(p.nombre)}
+                        className="py-2 px-3 rounded-full font-semibold text-xs text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-all text-center cursor-pointer"
+                      >
+                        Cotizar
+                      </button>
+                    </div>
                   </div>
 
                 </div>
@@ -975,18 +1087,25 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               ))}
             </div>
 
-            <div className="mt-10 p-6 rounded-2xl bg-[#EFF6FF] border border-blue-200/60 text-center max-w-2xl mx-auto">
-              <p className="text-xs sm:text-sm text-slate-700">
-                ¿Buscas un hospital específico en tu ciudad o municipio? Nuestro equipo te comparte la lista completa actualizada.
-              </p>
-              <button
-                onClick={() => handleOpenLeadModal('Consulta Red Hospitalaria')}
-                className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold hover:underline cursor-pointer"
-                style={{ color: primaryColor }}
+            <div className="mt-10 p-6 rounded-2xl bg-[#EFF6FF] border border-blue-200/60 text-center max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-left">
+                <p className="text-xs sm:text-sm font-bold text-slate-900">
+                  ¿Listo para activar tu protección en red hospitalaria?
+                </p>
+                <p className="text-xs text-slate-600">
+                  Emisión en menos de 5 minutos desde el portal de autoservicio.
+                </p>
+              </div>
+              <a
+                href={MUTUUS_PORTAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2.5 rounded-full text-xs font-bold text-white transition-all shadow-sm active:scale-95 inline-flex items-center gap-1.5 flex-shrink-0"
+                style={{ backgroundColor: primaryColor }}
               >
-                <span>Consultar directorio médico completo</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+                <span>Emitir en Línea</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
             </div>
 
           </div>
@@ -1030,6 +1149,16 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>Chat de Asistencia</span>
+                </a>
+
+                <a
+                  href={MUTUUS_PORTAL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-6 py-4 rounded-full font-bold text-sm text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-all text-center flex items-center gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Ingresar al Portal</span>
                 </a>
               </div>
 
@@ -1207,9 +1336,40 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           </div>
         </section>
 
-        {/* ─── 12. CTA FINAL CON FORMULARIO ──────────────────────────────── */}
+        {/* ─── 12. CTA FINAL CON ENLACE AL PORTAL Y FORMULARIO ────────────── */}
         <section id="contacto" className="py-20 text-white" style={{ backgroundColor: primaryColor }}>
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            {/* Tarjeta Destacada de Emisión Directa en Autoservicio */}
+            <div className="mb-12 p-8 sm:p-10 rounded-3xl bg-white text-slate-900 shadow-2xl border-4 border-emerald-400 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-2 text-center md:text-left">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider">
+                  <Zap className="w-3.5 h-3.5 text-emerald-700" />
+                  Emisión 100% Digital en Autoservicio
+                </span>
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900">
+                  ¿Listo para emitir tu póliza ahora mismo?
+                </h3>
+                <p className="text-sm text-slate-600 max-w-xl">
+                  Accede al portal oficial de registro de Mutuus con el código de promotor <strong className="text-slate-900 font-bold">A-3522</strong> para cotizar, llenar tu solicitud y activar tu cobertura de inmediato.
+                </p>
+              </div>
+
+              <div className="flex-shrink-0">
+                <a
+                  href={MUTUUS_PORTAL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-8 py-4 rounded-full font-black text-sm text-slate-900 transition-all shadow-xl hover:scale-105 active:scale-95 text-center flex items-center justify-center gap-2 cursor-pointer"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  <span>Ingresar al Portal de Registro</span>
+                  <ExternalLink className="w-4 h-4 text-slate-900" />
+                </a>
+              </div>
+            </div>
+
+            {/* Formulario de Asesoría Personalizada */}
             <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 sm:p-12 border border-white/20 shadow-2xl">
               
               <div className="text-center max-w-2xl mx-auto space-y-3 mb-8">
@@ -1217,13 +1377,13 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   className="px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider"
                   style={{ color: accentColor }}
                 >
-                  Cotización Inmediata
+                  Asesoría Personalizada
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
-                  Protege tu salud y la de tu familia hoy
+                  ¿Prefieres que un asesor te acompañe en el proceso?
                 </h2>
                 <p className="text-white/80 text-sm">
-                  Déjanos tus datos y un asesor certificado te enviará tu cotización personalizada sin compromiso.
+                  Déjanos tus datos y te enviaremos una propuesta personalizada por WhatsApp sin costo ni compromiso.
                 </p>
               </div>
 
@@ -1234,6 +1394,18 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   <p className="text-xs sm:text-sm text-white/90 max-w-md mx-auto">
                     Un asesor especializado te contactará en breve por WhatsApp o teléfono con el desglose de tu membresía.
                   </p>
+                  <div className="pt-3">
+                    <a
+                      href={MUTUUS_PORTAL_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-xs text-slate-900"
+                      style={{ backgroundColor: accentColor }}
+                    >
+                      <span>O continúa directo al portal oficial Mutuus</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </a>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleLeadSubmit} className="space-y-4 max-w-xl mx-auto">
@@ -1336,13 +1508,24 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 <p className="text-white/70 text-xs leading-relaxed">
                   Promotoría Autorizada de Mutuus. Distribución y asesoría certificada de membresías de salud y pólizas de gastos médicos.
                 </p>
-                <div className="pt-1">
+                <div className="pt-1 space-y-1.5">
                   <span 
                     className="inline-block px-2.5 py-1 rounded-full bg-white/10 text-[10px] font-bold border border-white/10"
                     style={{ color: accentColor }}
                   >
-                    Promotor Oficial Grupo JIRO / Movi Digital
+                    Promotor Oficial Grupo JIRO / Movi Digital · A-3522
                   </span>
+                  <div>
+                    <a
+                      href={MUTUUS_PORTAL_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-white underline hover:text-white/80 inline-flex items-center gap-1"
+                    >
+                      <LogIn className="w-3 h-3" />
+                      <span>Portal de Registro y Autoservicio</span>
+                    </a>
+                  </div>
                 </div>
               </div>
 
@@ -1358,8 +1541,13 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               </div>
 
               <div className="space-y-2">
-                <p className="font-bold text-white text-sm">Documentos Oficiales</p>
+                <p className="font-bold text-white text-sm">Portal & Documentos</p>
                 <ul className="space-y-1.5 text-white/70">
+                  <li>
+                    <a href={MUTUUS_PORTAL_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1 text-emerald-300 font-bold">
+                      <ExternalLink className="w-3.5 h-3.5" /> Portal de Emisión (A-3522)
+                    </a>
+                  </li>
                   <li><a href="#" className="hover:text-white transition-colors flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Condiciones Generales Póliza</a></li>
                   <li><a href="#" className="hover:text-white transition-colors flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Manual de Membresía Salud</a></li>
                   <li><a href="#" className="hover:text-white transition-colors flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Términos y Condiciones</a></li>
@@ -1387,7 +1575,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-between pt-4 text-white/40">
                 <p>© {new Date().getFullYear()} landings.movi.digital/mutuus · Todos los derechos reservados.</p>
-                <p>Cumplimiento WCAG 2.1 AA · Optimizado para SEO & GEO México</p>
+                <p>Promotor Autorizado A-3522 · Optimizado para SEO & GEO México</p>
               </div>
             </div>
           </div>
@@ -1420,10 +1608,22 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               </div>
 
               {leadSuccess ? (
-                <div className="p-6 rounded-2xl bg-emerald-50 text-center space-y-2">
+                <div className="p-6 rounded-2xl bg-emerald-50 text-center space-y-3">
                   <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
                   <p className="font-bold text-emerald-900 text-sm">¡Datos enviados con éxito!</p>
                   <p className="text-xs text-emerald-700">Te estamos abriendo WhatsApp para darte atención inmediata.</p>
+                  <div className="pt-2">
+                    <a
+                      href={MUTUUS_PORTAL_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      <span>Ir al portal de registro en línea</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleLeadSubmit} className="space-y-3.5">
@@ -1488,23 +1688,51 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     )}
                     <span>Recibir Asesoría y Cotización</span>
                   </button>
+
+                  <div className="text-center pt-2">
+                    <a
+                      href={MUTUUS_PORTAL_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-blue-600 hover:underline inline-flex items-center gap-1"
+                    >
+                      <span>¿Prefieres emitir tú mismo en línea? Accede al portal</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </form>
               )}
             </div>
           </div>
         )}
 
-        {/* ─── BOTÓN FLOTANTE WHATSAPP FIJO ───────────────────────────────── */}
-        <a
-          href={`https://wa.me/${whatsappNumber}?text=Hola,%20deseo%20cotizar%20la%20membresia%20Mutuus.`}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Cotizar por WhatsApp"
-          className="fixed bottom-6 right-6 z-40 p-4 rounded-full bg-[#25D366] text-slate-900 shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border-2 border-white"
-        >
-          <MessageSquare className="w-6 h-6 fill-slate-900 text-slate-900" />
-          <span className="font-extrabold text-xs hidden sm:inline text-slate-900">Cotizar por WhatsApp</span>
-        </a>
+        {/* ─── BARRA FLOTANTE DE ACCIÓN RÁPIDA ────────────────────────────── */}
+        <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+          {/* Botón flotante al portal de emisión */}
+          <a
+            href={MUTUUS_PORTAL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Emitir en Línea"
+            className="px-4 py-3 rounded-full text-white font-black text-xs shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border-2 border-white"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <LogIn className="w-4 h-4" />
+            <span className="hidden sm:inline">Portal / Emitir (A-3522)</span>
+          </a>
+
+          {/* Botón flotante WhatsApp */}
+          <a
+            href={`https://wa.me/${whatsappNumber}?text=Hola,%20deseo%20cotizar%20la%20membresia%20Mutuus.`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Cotizar por WhatsApp"
+            className="p-3.5 sm:px-4 sm:py-3 rounded-full bg-[#25D366] text-slate-900 shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border-2 border-white"
+          >
+            <MessageSquare className="w-5 h-5 fill-slate-900 text-slate-900" />
+            <span className="font-extrabold text-xs hidden sm:inline text-slate-900">WhatsApp Asesor</span>
+          </a>
+        </div>
 
       </div>
     </>
