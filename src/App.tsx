@@ -11,6 +11,9 @@ import MoviLogin from './pages/MoviLogin';
 import { useAppUpdate } from './lib/useAppUpdate';
 import { AppUpdateBanner } from './components/AppUpdateBanner';
 
+// ── Master Ecosystem Landing ───────────────────────────────────────────────
+const MoviMasterLanding = lazy(() => import('./pages/MoviMasterLanding'));
+
 // ── Landings (lazy) ────────────────────────────────────────────────────────
 const LandingsStudio = lazy(() => import('./landings/LandingsStudio'));
 const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
@@ -53,6 +56,7 @@ const TiendaCatalogo = lazy(() => import('./movistore/TiendaCatalogo').then(m =>
 
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const isMoviWebsite   = HOST === 'movi.digital' || HOST === 'www.movi.digital';
 const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
 const isChavaSite     = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
 const isSeguwalletSite = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
@@ -66,7 +70,7 @@ const isLandingsSite   = HOST === 'landings.movi.digital'
 const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
-// Everything else (app.movi.digital, beta.movi.digital, localhost, etc.) is MOVI
+// Everything else (app.movi.digital, beta.movi.digital, localhost, etc.) is MOVI App
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
 function AgenteRootRedirect() {
@@ -93,6 +97,20 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 
 // ── Per-domain apps ───────────────────────────────────────────────────────
 
+function MoviWebsiteApp() {
+  return (
+    <HelmetProvider>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/*" element={<MoviMasterLanding />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </HelmetProvider>
+  );
+}
+
 function LandingsApp() {
   return (
     <HelmetProvider>
@@ -104,6 +122,7 @@ function LandingsApp() {
             <Route path="/studio" element={<LandingsStudio />} />
 
             {/* Landings individuales para acceso y vista previa */}
+            <Route path="/movi" element={<MoviMasterLanding />} />
             <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
             <Route path="/mutuus" element={<MutuusLanding />} />
             <Route path="/seguros-express" element={<SegurosExpressLanding />} />
@@ -269,6 +288,12 @@ function MoviApp() {
                 {/* MOVI login (passwordless) */}
                 <Route path="/login" element={<MoviLogin />} />
 
+                {/* MOVI Master Ecosystem presentation landing */}
+                <Route path="/landing" element={<MoviMasterLanding />} />
+                <Route path="/home" element={<MoviMasterLanding />} />
+                <Route path="/movi" element={<MoviMasterLanding />} />
+                <Route path="/nosotros" element={<MoviMasterLanding />} />
+
                 {/* Seguwallet product landing page (standalone on beta.movi.digital / movi.digital) */}
                 <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
                 <Route path="/seguwallet/home" element={<SeguwalletProductLanding />} />
@@ -345,9 +370,10 @@ function PageLoader() {
 }
 
 function App() {
-  if (isLandingsSite) return <LandingsApp />;
-  if (isAgenteSite)   return <AgenteWebsiteApp />;
-  if (isChavaSite)    return <ChavaAIApp />;
+  if (isMoviWebsite)    return <MoviWebsiteApp />;
+  if (isLandingsSite)   return <LandingsApp />;
+  if (isAgenteSite)     return <AgenteWebsiteApp />;
+  if (isChavaSite)      return <ChavaAIApp />;
   if (isSeguwalletSite) return <SeguwalletApp />;
   if (isEducationSite)  return <SegurosEducationApp />;
   if (isExpressSite)    return <SegurosExpressApp />;

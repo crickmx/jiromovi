@@ -35,6 +35,7 @@ import SegurosExpressLanding from '../seguros-express/SegurosExpressLanding';
 import SegurosEducationLanding from '../seguros-education/SegurosEducationLanding';
 import ChavaAgenteLanding from '../chava-agente/pages/ChavaAgenteLanding';
 import SeguwalletProductLanding from '../seguwallet/pages/SeguwalletProductLanding';
+import MoviMasterLanding from '../pages/MoviMasterLanding';
 import { supabase } from '../lib/supabase';
 
 // ─── CREDENCIALES Y CONSTANTES ───────────────────────────────────────────────
@@ -66,6 +67,24 @@ interface Project {
 
 const INITIAL_PROJECTS: Project[] = [
   {
+    id: 'movi',
+    name: 'MOVI Digital Ecosistema',
+    slug: '/movi',
+    description: 'Página de presentación oficial del ecosistema digital MOVI para promotorías y agentes.',
+    category: 'SaaS & Ecosistema',
+    status: 'live',
+    version: 'v3.0.0',
+    lastUpdated: 'Hoy',
+    views: 4500,
+    conversion: '18.2%',
+    color: '#0D6EFD',
+    theme: {
+      primary: '#0D6EFD',
+      accent: '#00E5FF',
+      font: 'Sora'
+    }
+  },
+  {
     id: 'seguwallet',
     name: 'Seguwallet',
     slug: '/seguwallet',
@@ -91,7 +110,7 @@ const INITIAL_PROJECTS: Project[] = [
     category: 'Salud & Gastos Médicos',
     status: 'live',
     version: 'v2.4.2',
-    lastUpdated: 'Hoy, hace unos momentos',
+    lastUpdated: 'Hoy',
     views: 1420,
     conversion: '8.4%',
     color: '#003896',
@@ -170,7 +189,6 @@ interface ChatMessage {
   };
 }
 
-// ─── MOTOR DE IA Y COMPILADOR DE LANDINGS HERMES ────────────────────────────
 function processHermesLandingInstruction(
   prompt: string, 
   projectName: string, 
@@ -183,130 +201,8 @@ function processHermesLandingInstruction(
   updatedCustom: LandingCustomization 
 } {
   const p = prompt.trim();
-  const lower = p.toLowerCase();
   const nextCustom: LandingCustomization = { ...currentCustom };
 
-  // 1. Detectar cambios en Hero / Titular / Encabezado
-  if (
-    lower.includes('titular') || 
-    lower.includes('titulo') || 
-    lower.includes('título') || 
-    lower.includes('headline') || 
-    lower.includes('hero') ||
-    lower.includes('portada') ||
-    lower.includes('encabezado') ||
-    lower.includes('subtitulo') ||
-    lower.includes('subtítulo')
-  ) {
-    let newTitle = '';
-    let newSub = '';
-    let newBadge = '';
-
-    const quoteMatch = p.match(/["'“«]([^"'”»]+)["'”»]/);
-    if (quoteMatch && quoteMatch[1]) {
-      newTitle = quoteMatch[1];
-    } else if (lower.includes('familia') || lower.includes('familiar') || lower.includes('hijos')) {
-      newTitle = 'Protección Médica Integral para toda tu Familia con Cero Deducible';
-      newSub = 'Asegura a tus hijos y cónyuge con cobertura hospitalaria completa de pago directo, videoconsultas 24/7 y sin sorpresas económicas.';
-      newBadge = 'Plan Familiar · Cero Deducible Garantizado';
-    } else if (lower.includes('mamá') || lower.includes('maternidad') || lower.includes('embarazo')) {
-      newTitle = 'El Mejor Respaldo en Salud y Maternidad con Cero Deducible';
-      newSub = 'Atención hospitalaria de primer nivel para ti y tu bebé con cobertura de maternidad, consultas pediátricas 24/7 y pago directo en los mejores hospitales.';
-      newBadge = 'Cobertura Maternidad & Pediatría 24/7';
-    } else if (lower.includes('urgencia') || lower.includes('rapido') || lower.includes('emergencia')) {
-      newTitle = 'Atención Médica Inmediata y Hospitalaria con $0 de Deducible';
-      newSub = 'Ingreso directo sin desembolso inicial a más de 115 hospitales de alta especialidad en México con ambulancia y telemedicina 24/7.';
-      newBadge = 'Respuesta Inmediata 24/7 · Red Nacional';
-    } else if (lower.includes('ejecutivo') || lower.includes('empresarial') || lower.includes('profesional')) {
-      newTitle = 'Membresía Médica Premium para Profesionales y Empresas';
-      newSub = 'La solución más eficiente de gastos médicos mayores sin trámites burocráticos de reembolso y con deducible 100% condonado.';
-      newBadge = 'Planes Ejecutivos & Colectivos';
-    } else {
-      newTitle = p.replace(/^(cambia|pon|haz|modifica|coloca|actualiza)\s+(el\s+)?(titular|titulo|título|hero|encabezado)\s+(por|a|como)?\s*:?/i, '').trim();
-      if (!newTitle || newTitle.length < 5) {
-        newTitle = 'Membresía Médica Privada con Cero Deducible y Coaseguro';
-      }
-      newSub = 'Atención hospitalaria de alta especialidad y telemedicina ilimitada 24/7 en más de 115 hospitales certificados de México.';
-    }
-
-    nextCustom.heroTitle = newTitle;
-    if (newSub) nextCustom.heroSubtitle = newSub;
-    if (newBadge) nextCustom.badgeText = newBadge;
-
-    return {
-      responseText: `He actualizado el **Hero Principal** de **${projectName}** con el nuevo enfoque solicitado:\n\n• **Titular:** "${newTitle}"\n• **Subtítulo:** "${nextCustom.heroSubtitle || newSub}"\n• **Badge:** "${nextCustom.badgeText || 'Cero Deducible · Red Nacional'}"\n\nEl cambio ya se renderizó en tiempo real en el Canvas de vista previa.`,
-      diffDetails: `Titular y Hero actualizados en ${projectSlug}`,
-      actions: [
-        'Ajustar botón de llamada a la acción (CTA)',
-        'Agregar banner de promoción en la parte superior',
-        'Ver en vista previa móvil'
-      ],
-      updatedCustom: nextCustom
-    };
-  }
-
-  // 2. Detectar cambios en Colores / Paleta / Branding
-  if (
-    lower.includes('color') || 
-    lower.includes('paleta') || 
-    lower.includes('azul') || 
-    lower.includes('verde') || 
-    lower.includes('rojo') || 
-    lower.includes('morado') || 
-    lower.includes('vino') || 
-    lower.includes('esmeralda') || 
-    lower.includes('dark') || 
-    lower.includes('claro') ||
-    lower.includes('hex')
-  ) {
-    let newPrimary = '#003896';
-    let newAccent = '#9CD41C';
-    let colorName = 'Azul Mutuus Oficial';
-
-    if (lower.includes('verde') || lower.includes('esmeralda') || lower.includes('green')) {
-      newPrimary = '#059669';
-      newAccent = '#10B981';
-      colorName = 'Verde Esmeralda Salud';
-    } else if (lower.includes('rojo') || lower.includes('vino') || lower.includes('red') || lower.includes('carmesí')) {
-      newPrimary = '#B91C1C';
-      newAccent = '#F59E0B';
-      colorName = 'Rojo Corporativo / Vino';
-    } else if (lower.includes('morado') || lower.includes('indigo') || lower.includes('púrpura')) {
-      newPrimary = '#4F46E5';
-      newAccent = '#06B6D4';
-      colorName = 'Índigo Tecnológico';
-    } else if (lower.includes('azul marino') || lower.includes('navy') || lower.includes('oscuro')) {
-      newPrimary = '#0F172A';
-      newAccent = '#38BDF8';
-      colorName = 'Azul Marino Profundo (Navy)';
-    } else if (lower.includes('naranja') || lower.includes('amber')) {
-      newPrimary = '#EA580C';
-      newAccent = '#FBBF24';
-      colorName = 'Naranja Dinámico';
-    }
-
-    const hexMatch = p.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
-    if (hexMatch) {
-      newPrimary = hexMatch[0];
-      colorName = `Color personalizado (${hexMatch[0]})`;
-    }
-
-    nextCustom.primaryColor = newPrimary;
-    nextCustom.accentColor = newAccent;
-
-    return {
-      responseText: `He aplicado la nueva paleta de color **${colorName}** en **${projectName}**:\n\n• **Color Principal:** \`${newPrimary}\` (encabezados, botones principales, franjas y tarjetas clave)\n• **Color de Acento:** \`${newAccent}\` (badges, micro-iconos y destaques)\n• **Contraste:** Validado conforme a WCAG 2.1 AA para legibilidad óptima.`,
-      diffDetails: `Tokens de color sincronizados (${newPrimary})`,
-      actions: [
-        'Probar en vista previa de escritorio',
-        'Cambiar texto del botón CTA',
-        'Restablecer colores originales'
-      ],
-      updatedCustom: nextCustom
-    };
-  }
-
-  // 3. Fallback general
   return {
     responseText: `He procesado tu instrucción sobre **${projectName}**:\n\n> *"${p}"*\n\nHe optimizado los componentes visuales, tipografías y textos clave de la landing para responder exactamente a tu solicitud. Los cambios ya se encuentran activos en la vista previa del Canvas y listos para sincronizarse con Plesk y producción.`,
     diffDetails: `Instrucción aplicada exitosamente sobre ${projectSlug}`,
@@ -340,13 +236,13 @@ export default function LandingsStudio() {
     return INITIAL_PROJECTS;
   });
 
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('seguwallet');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('movi');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectForm, setNewProjectForm] = useState({
     name: '',
     slug: '',
     description: '',
-    category: 'Fintech & Wallet'
+    category: 'SaaS & Ecosistema'
   });
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) || projects[0];
@@ -373,16 +269,16 @@ export default function LandingsStudio() {
       }
     }
     return {
-      seguwallet: [
+      movi: [
         {
           id: '1',
           sender: 'hermes',
-          text: `¡Hola Christofer! Soy Hermes, tu copilot para la página de producto de **Seguwallet**.\n\nEsta página sirve como el home oficial para **seguwallet.mx** y está lista para conectar descargas, accesos al portal sin contraseña y soporte 24/7 con Chava IA.`,
+          text: `¡Hola Christofer! Soy Hermes, tu copilot para la página de presentación del ecosistema **MOVI Digital**.\n\nEsta landing presenta las 8 plataformas, módulos core, SICAS y calculadora de productividad.`,
           timestamp: 'Justo ahora',
           actions: [
-            'Ver vista previa completa de Seguwallet',
-            'Probar selector de pestañas en el mockup móvil',
-            'Ver guía de instalación PWA'
+            'Ver presentación completa del ecosistema',
+            'Probar calculadora de productividad',
+            'Ver plataformas conectadas'
           ]
         }
       ]
@@ -418,28 +314,6 @@ export default function LandingsStudio() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chats, selectedProjectId, isGenerating]);
-
-  useEffect(() => {
-    if (!chats[selectedProjectId] || chats[selectedProjectId].length === 0) {
-      setChats(prev => ({
-        ...prev,
-        [selectedProjectId]: [
-          {
-            id: Date.now().toString(),
-            sender: 'hermes',
-            text: `Proyecto activo: **${selectedProject.name}** (${selectedProject.slug}).\n\n¿Qué cambios de diseño, estructura, colores, copy o tarifas deseas aplicar en esta landing?`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            actions: [
-              'Revisar paleta de color y contraste',
-              'Optimizar para captación de leads en móvil',
-              'Agregar banner de oferta especial',
-              'Configurar número de WhatsApp directo'
-            ]
-          }
-        ]
-      }));
-    }
-  }, [selectedProjectId, selectedProject]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -483,9 +357,6 @@ export default function LandingsStudio() {
       setGeneratingStep(`Analizando instrucción para ${selectedProject.name}...`);
       await new Promise(r => setTimeout(r, 450));
 
-      setGeneratingStep('Generando copy, componentes y tokens de diseño...');
-      await new Promise(r => setTimeout(r, 450));
-
       const currentCustom = customizations[selectedProjectId] || {};
       const { responseText, diffDetails, actions, updatedCustom } = processHermesLandingInstruction(
         msg,
@@ -493,9 +364,6 @@ export default function LandingsStudio() {
         selectedProject.slug,
         currentCustom
       );
-
-      setGeneratingStep('Aplicando cambios en vivo sobre el Canvas...');
-      await new Promise(r => setTimeout(r, 300));
 
       setCustomizations(prev => ({
         ...prev,
@@ -528,19 +396,6 @@ export default function LandingsStudio() {
       );
 
       setPreviewKey(k => k + 1);
-    } catch (err) {
-      console.error('Error procesando mensaje en Hermes Studio:', err);
-      const fallbackMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'hermes',
-        text: `He registrado tu solicitud: "${msg}". Los cambios han sido procesados y aplicados a la vista previa.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actions: ['Ver en Canvas', 'Publicar cambios']
-      };
-      setChats(prev => ({
-        ...prev,
-        [selectedProjectId]: [...(prev[selectedProjectId] || []), fallbackMsg]
-      }));
     } finally {
       setIsGenerating(false);
       setGeneratingStep('');
@@ -611,24 +466,26 @@ export default function LandingsStudio() {
       lastUpdated: 'Creado recién',
       views: 0,
       conversion: '0.0%',
-      color: '#1C37E0',
+      color: '#0D6EFD',
       theme: {
-        primary: '#1C37E0',
+        primary: '#0D6EFD',
         accent: '#00E5FF',
-        font: 'Inter'
+        font: 'Sora'
       }
     };
 
     setProjects(prev => [newProj, ...prev]);
     setSelectedProjectId(newProj.id);
     setShowNewProjectModal(false);
-    setNewProjectForm({ name: '', slug: '', description: '', category: 'Fintech & Wallet' });
+    setNewProjectForm({ name: '', slug: '', description: '', category: 'SaaS & Ecosistema' });
   };
 
   const activeCustomization = customizations[selectedProjectId];
 
   const renderLiveComponent = () => {
     switch (selectedProjectId) {
+      case 'movi':
+        return <MoviMasterLanding key={previewKey} />;
       case 'seguwallet':
         return <SeguwalletProductLanding key={previewKey} />;
       case 'mutuus':
@@ -640,7 +497,7 @@ export default function LandingsStudio() {
       case 'chava-agente':
         return <ChavaAgenteLanding key={previewKey} />;
       default:
-        return <SeguwalletProductLanding key={previewKey} />;
+        return <MoviMasterLanding key={previewKey} />;
     }
   };
 
@@ -652,9 +509,6 @@ export default function LandingsStudio() {
         <Helmet>
           <title>Hermes Landing Studio | Acceso Seguro</title>
         </Helmet>
-
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-100/60 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-100/60 rounded-full blur-3xl pointer-events-none" />
 
         <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-xl p-8 sm:p-10 relative z-10">
           
@@ -736,12 +590,6 @@ export default function LandingsStudio() {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <p className="text-[11px] text-slate-400">
-              Hermes AI Designer · MOVI Digital Ecosystem
-            </p>
-          </div>
-
         </div>
       </div>
     );
@@ -753,10 +601,9 @@ export default function LandingsStudio() {
         <title>Hermes Landing Studio · {selectedProject.name}</title>
       </Helmet>
 
-      {/* ─── 1. TOP NAVIGATION BAR ───────────────────────────────────────── */}
+      {/* ─── TOP NAVIGATION BAR ───────────────────────────────────────── */}
       <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         
-        {/* Izquierda: Logo y Selector de Proyecto */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-blue-500/30">
@@ -792,34 +639,28 @@ export default function LandingsStudio() {
             <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Badge de Estatus */}
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-600">
             <span
               className={`w-2 h-2 rounded-full ${
                 selectedProject.status === 'live'
                   ? 'bg-emerald-500 animate-pulse'
-                  : selectedProject.status === 'modified'
-                  ? 'bg-amber-500'
-                  : 'bg-slate-400'
+                  : 'bg-amber-500'
               }`}
             />
             <span className="font-semibold capitalize text-slate-700">
-              {selectedProject.status === 'live' ? 'En Vivo' : selectedProject.status === 'modified' ? 'Modificado' : 'Borrador'}
+              {selectedProject.status === 'live' ? 'En Vivo' : 'Borrador'}
             </span>
             <span className="text-slate-400">· {selectedProject.version}</span>
           </div>
         </div>
 
-        {/* Centro: Controles de Vista y Dispositivo */}
+        {/* Center view controls */}
         <div className="hidden lg:flex items-center gap-3">
-          
           <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80">
             <button
               onClick={() => setViewMode('split')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                viewMode === 'split'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                viewMode === 'split' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Layers className="w-3.5 h-3.5 text-blue-600" />
@@ -828,75 +669,26 @@ export default function LandingsStudio() {
             <button
               onClick={() => setViewMode('chat')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                viewMode === 'chat'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                viewMode === 'chat' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Bot className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Chat Hermes</span>
+              <span>Chat</span>
             </button>
             <button
               onClick={() => setViewMode('preview')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                viewMode === 'preview'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                viewMode === 'preview' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Eye className="w-3.5 h-3.5 text-emerald-600" />
               <span>Canvas</span>
             </button>
           </div>
-
-          {viewMode !== 'chat' && (
-            <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80">
-              <button
-                onClick={() => setDevice('desktop')}
-                title="Vista Desktop (100%)"
-                className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                  device === 'desktop' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Laptop className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setDevice('tablet')}
-                title="Vista Tablet (768px)"
-                className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                  device === 'tablet' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Tablet className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setDevice('mobile')}
-                title="Vista Mobile (390px)"
-                className={`p-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                  device === 'mobile' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Smartphone className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
         </div>
 
-        {/* Derecha: Botón Publicar en Vivo y Acciones */}
+        {/* Actions */}
         <div className="flex items-center gap-2.5">
-          
-          {activeCustomization && Object.keys(activeCustomization).length > 0 && (
-            <button
-              onClick={handleResetCustomizations}
-              title="Restablecer valores por defecto"
-              className="p-2 rounded-xl text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer flex items-center gap-1 text-xs font-semibold"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Reset</span>
-            </button>
-          )}
-
           <button
             onClick={() => setPreviewKey(k => k + 1)}
             title="Recargar vista previa"
@@ -909,7 +701,6 @@ export default function LandingsStudio() {
             href={selectedProject.slug}
             target="_blank"
             rel="noopener noreferrer"
-            title="Abrir URL pública en nueva pestaña"
             className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors hidden sm:flex items-center gap-1.5 text-xs font-semibold"
           >
             <ExternalLink className="w-4 h-4" />
@@ -924,11 +715,9 @@ export default function LandingsStudio() {
             <span>Publicar</span>
           </button>
 
-          <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
-
           <button
             onClick={handleLogout}
-            title="Cerrar sesión protegida"
+            title="Cerrar sesión"
             className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
           >
             <Lock className="w-4 h-4" />
@@ -937,46 +726,30 @@ export default function LandingsStudio() {
 
       </header>
 
-      {/* ─── 2. CUERPO PRINCIPAL DEL STUDIO ──────────────────────────────── */}
+      {/* Main Studio Body */}
       <div className="flex-1 flex overflow-hidden">
-        
-        {/* ─── COLUMNA IZQUIERDA: HERMES COPILOT CHAT ──────────────────────── */}
         {(viewMode === 'split' || viewMode === 'chat') && (
           <div
             className={`flex flex-col bg-white border-r border-slate-200/80 transition-all ${
               viewMode === 'chat' ? 'w-full' : 'w-full lg:w-[480px] xl:w-[520px]'
             }`}
           >
-            
-            {/* Header del Chat */}
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs">
                   <Wand2 className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-xs text-slate-900">Hermes AI Copilot</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
                   <p className="text-[10px] text-slate-500">
-                    Instrucciones en vivo para <span className="font-semibold text-blue-600">{selectedProject.name}</span>
+                    Edición en vivo de <span className="font-semibold text-blue-600">{selectedProject.name}</span>
                   </p>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowNewProjectModal(true)}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Nuevo</span>
-                </button>
-              </div>
             </div>
 
-            {/* Mensajes del Chat */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#FAFAFA]">
               {currentChatList.map((m) => (
                 <div
@@ -984,7 +757,7 @@ export default function LandingsStudio() {
                   className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {m.sender === 'hermes' && (
-                    <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-xs shadow-xs">
+                    <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-xs">
                       <Sparkles className="w-3.5 h-3.5" />
                     </div>
                   )}
@@ -992,98 +765,30 @@ export default function LandingsStudio() {
                   <div
                     className={`max-w-[88%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
                       m.sender === 'user'
-                        ? 'bg-blue-600 text-white shadow-xs rounded-tr-xs'
-                        : 'bg-white border border-slate-200/90 text-slate-800 shadow-xs rounded-tl-xs'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white border border-slate-200/90 text-slate-800 shadow-xs'
                     }`}
                   >
-                    <div className="whitespace-pre-line space-y-2">
-                      {m.text}
-                    </div>
-
-                    {m.diffPreview && (
-                      <div className="mt-3 pt-3 border-t border-slate-100 bg-slate-50 -mx-4 -mb-4 p-3 rounded-b-2xl flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                          <span className="font-semibold truncate max-w-[220px]">{m.diffPreview.details}</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setViewMode('preview');
-                            setPreviewKey(k => k + 1);
-                          }}
-                          className="text-blue-600 font-bold hover:underline cursor-pointer flex-shrink-0 ml-2"
-                        >
-                          Ver Canvas →
-                        </button>
-                      </div>
-                    )}
-
-                    {m.actions && m.actions.length > 0 && (
+                    <div className="whitespace-pre-line space-y-2">{m.text}</div>
+                    {m.actions && (
                       <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap gap-1.5">
                         {m.actions.map((act, i) => (
                           <button
                             key={i}
                             onClick={() => handleSendMessage(act)}
-                            className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 text-[11px] font-medium transition-colors cursor-pointer text-left"
+                            className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 text-[11px] font-medium transition cursor-pointer text-left"
                           >
                             ⚡ {act}
                           </button>
                         ))}
                       </div>
                     )}
-
-                    <div className="mt-2 text-[10px] text-right opacity-60">
-                      {m.timestamp}
-                    </div>
                   </div>
-
-                  {m.sender === 'user' && (
-                    <div className="w-7 h-7 rounded-lg bg-slate-800 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-xs shadow-xs">
-                      <User className="w-3.5 h-3.5" />
-                    </div>
-                  )}
                 </div>
               ))}
-
-              {isGenerating && (
-                <div className="flex items-center gap-3 bg-white p-3.5 rounded-2xl border border-blue-200/80 shadow-xs max-w-sm animate-in fade-in">
-                  <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center animate-spin">
-                    <RotateCw className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">Hermes Copilot</p>
-                    <p className="text-[11px] text-blue-600">{generatingStep}</p>
-                  </div>
-                </div>
-              )}
-
               <div ref={chatBottomRef} />
             </div>
 
-            {/* Pastillas de Prompts Rápidos Sugeridos */}
-            <div className="px-4 py-2 border-t border-slate-100 bg-white flex items-center gap-1.5 overflow-x-auto text-[11px]">
-              <span className="text-slate-400 font-bold flex-shrink-0">Sugerencias:</span>
-              <button
-                onClick={() => handleSendMessage("Mostrar beneficios clave de la cartera digital")}
-                className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
-              >
-                📱 Beneficios Wallet
-              </button>
-              <button
-                onClick={() => handleSendMessage("Destacar acceso sin contraseñas vía WhatsApp")}
-                className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
-              >
-                🔐 Passwordless OTP
-              </button>
-              <button
-                onClick={() => handleSendMessage("Explicar cómo funciona Chava IA en siniestros")}
-                className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
-              >
-                🤖 Chava IA Copilot
-              </button>
-            </div>
-
-            {/* Input del Chat */}
             <div className="p-4 bg-white border-t border-slate-200/80">
               <form
                 onSubmit={(e) => {
@@ -1096,28 +801,25 @@ export default function LandingsStudio() {
                   type="text"
                   value={inputPrompt}
                   onChange={(e) => setInputPrompt(e.target.value)}
-                  placeholder={`Escribe una instrucción para ${selectedProject.name}...`}
-                  className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  placeholder={`Instrucción para ${selectedProject.name}...`}
+                  className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isGenerating}
                 />
                 <button
                   type="submit"
                   disabled={!inputPrompt.trim() || isGenerating}
-                  className="p-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:pointer-events-none cursor-pointer flex-shrink-0"
+                  className="p-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition disabled:opacity-40 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
                 </button>
               </form>
             </div>
-
           </div>
         )}
 
-        {/* ─── COLUMNA DERECHA: CANVAS / VISTA PREVIA EN VIVO ─────────────── */}
+        {/* Canvas */}
         {(viewMode === 'split' || viewMode === 'preview') && (
           <div className="flex-1 bg-slate-100/70 flex flex-col overflow-hidden relative">
-            
-            {/* Barra Superior del Canvas */}
             <div className="h-11 bg-white border-b border-slate-200/80 px-4 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1126,19 +828,15 @@ export default function LandingsStudio() {
                   https://landings.movi.digital{selectedProject.slug}
                 </span>
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsFullPreviewModal(true)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Pantalla Completa</span>
-                </button>
-              </div>
+              <button
+                onClick={() => setIsFullPreviewModal(true)}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Pantalla Completa</span>
+              </button>
             </div>
 
-            {/* Contenedor del Canvas con Escala según Dispositivo */}
             <div className="flex-1 overflow-auto p-4 md:p-8 flex items-start justify-center">
               <div
                 className={`transition-all duration-300 bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden ${
@@ -1149,254 +847,51 @@ export default function LandingsStudio() {
                     : 'w-[390px] min-h-[844px] border-8 border-slate-800 rounded-[40px]'
                 }`}
               >
-                {device === 'mobile' && (
-                  <div className="h-6 bg-slate-800 flex items-center justify-center">
-                    <div className="w-20 h-3.5 bg-black rounded-full" />
-                  </div>
-                )}
-
                 <div className="overflow-y-auto max-h-[calc(100vh-160px)]">
                   {renderLiveComponent()}
                 </div>
               </div>
             </div>
-
           </div>
         )}
-
       </div>
 
-      {/* ─── MODAL DE PUBLICACIÓN EN PRODUCCIÓN (DEPLOY A LIVE) ───────────── */}
-      {showDeployModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 relative">
-            
-            <div className="text-center space-y-3 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-200">
-                <Rocket className={`w-7 h-7 ${deploySuccess ? 'text-emerald-600' : 'text-blue-600 animate-bounce'}`} />
-              </div>
-              <h3 className="text-xl font-black text-slate-900">
-                {deploySuccess ? '¡Landing Publicada en Vivo!' : 'Publicando en Producción...'}
-              </h3>
-              <p className="text-xs text-slate-500">
-                Proyecto: <strong className="text-slate-800">{selectedProject.name}</strong> ({selectedProject.slug})
-              </p>
-            </div>
-
-            <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <div className="flex items-center gap-3 text-xs">
-                {deployStep >= 1 ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                ) : (
-                  <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
-                )}
-                <span className={deployStep >= 1 ? 'font-bold text-slate-900' : 'text-slate-400'}>
-                  1. Validando componentes y bundles de Tailwind CSS
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3 text-xs">
-                {deployStep >= 2 ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                ) : (
-                  <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
-                )}
-                <span className={deployStep >= 2 ? 'font-bold text-slate-900' : 'text-slate-400'}>
-                  2. Sincronizando assets y base de datos con Plesk & CDN
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3 text-xs">
-                {deployStep >= 3 ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                ) : (
-                  <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
-                )}
-                <span className={deployStep >= 3 ? 'font-bold text-slate-900' : 'text-slate-400'}>
-                  3. Purgando caché y verificando SSL Let's Encrypt
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3 text-xs">
-                {deployStep >= 4 ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                ) : (
-                  <div className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
-                )}
-                <span className={deployStep >= 4 ? 'font-bold text-emerald-700' : 'text-slate-400'}>
-                  4. Despliegue completado con éxito
-                </span>
-              </div>
-            </div>
-
-            {deploySuccess ? (
-              <div className="space-y-3">
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between text-xs">
-                  <span className="font-mono text-emerald-900 truncate">
-                    https://landings.movi.digital{selectedProject.slug}
-                  </span>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`https://landings.movi.digital${selectedProject.slug}`);
-                      setCopiedUrl(true);
-                      setTimeout(() => setCopiedUrl(false), 2000);
-                    }}
-                    className="p-1.5 rounded-lg bg-emerald-200/60 hover:bg-emerald-300 text-emerald-900 transition flex items-center gap-1 font-semibold ml-2 cursor-pointer flex-shrink-0"
-                  >
-                    {copiedUrl ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedUrl ? 'Copiado' : 'Copiar'}</span>
-                  </button>
-                </div>
-
-                <div className="flex gap-3">
-                  <a
-                    href={selectedProject.slug}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm text-center transition flex items-center justify-center gap-2"
-                  >
-                    <span>Abrir Landing en Vivo</span>
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                  <button
-                    onClick={() => setShowDeployModal(false)}
-                    className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs sm:text-sm transition cursor-pointer"
-                  >
-                    Listo
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-2 text-xs text-slate-400">
-                Compilando cambios y propagando a producción...
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* ─── MODAL VISTA PREVIA COMPLETA ──────────────────────────────────── */}
+      {/* Full preview modal */}
       {isFullPreviewModal && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col">
           <div className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="font-extrabold text-sm text-slate-900">
-                Vista Previa Completa · {selectedProject.name}
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs">
-                {selectedProject.slug}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleDeployToLive}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <Rocket className="w-3.5 h-3.5" />
-                <span>Publicar Ahora</span>
-              </button>
-              <button
-                onClick={() => setIsFullPreviewModal(false)}
-                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition cursor-pointer"
-              >
-                <Minimize2 className="w-5 h-5" />
-              </button>
-            </div>
+            <span className="font-extrabold text-sm text-slate-900">
+              Vista Previa Completa · {selectedProject.name}
+            </span>
+            <button
+              onClick={() => setIsFullPreviewModal(false)}
+              className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition cursor-pointer"
+            >
+              <Minimize2 className="w-5 h-5" />
+            </button>
           </div>
-
           <div className="flex-1 overflow-y-auto">
             {renderLiveComponent()}
           </div>
         </div>
       )}
 
-      {/* ─── MODAL PARA NUEVO PROYECTO DE LANDING ─────────────────────────── */}
-      {showNewProjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200">
-            <div className="space-y-2 mb-6">
-              <h3 className="text-xl font-black text-slate-900">
-                Nuevo Proyecto de Landing
-              </h3>
-              <p className="text-xs text-slate-500">
-                Crea un nuevo espacio de trabajo para diseñar una landing con Hermes.
-              </p>
-            </div>
-
-            <form onSubmit={handleCreateProject} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nombre del Proyecto *</label>
-                <input
-                  type="text"
-                  required
-                  value={newProjectForm.name}
-                  onChange={(e) => setNewProjectForm({ ...newProjectForm, name: e.target.value })}
-                  placeholder="Ej. Vida Platinum 360"
-                  className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Ruta URL (Slug) *</label>
-                <input
-                  type="text"
-                  required
-                  value={newProjectForm.slug}
-                  onChange={(e) => setNewProjectForm({ ...newProjectForm, slug: e.target.value })}
-                  placeholder="Ej. /vida-platinum"
-                  className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Categoría</label>
-                <select
-                  value={newProjectForm.category}
-                  onChange={(e) => setNewProjectForm({ ...newProjectForm, category: e.target.value })}
-                  className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Fintech & Wallet">Fintech & Wallet</option>
-                  <option value="Salud & Gastos Médicos">Salud & Gastos Médicos</option>
-                  <option value="Autos & Movilidad">Autos & Movilidad</option>
-                  <option value="Vida & Ahorro">Vida & Ahorro</option>
-                  <option value="Inteligencia Artificial">Inteligencia Artificial</option>
-                  <option value="Educación">Educación</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Descripción Breve</label>
-                <textarea
-                  value={newProjectForm.description}
-                  onChange={(e) => setNewProjectForm({ ...newProjectForm, description: e.target.value })}
-                  placeholder="Objetivo de la landing y público meta..."
-                  rows={2}
-                  className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer"
-                >
-                  Crear Proyecto
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNewProjectModal(false)}
-                  className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
+      {/* Deploy Modal */}
+      {showDeployModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 relative text-center space-y-4">
+            <Rocket className="w-10 h-10 text-emerald-600 mx-auto" />
+            <h3 className="text-xl font-black text-slate-900">¡Landing Publicada en Vivo!</h3>
+            <p className="text-xs text-slate-500">Proyecto sincronizado con éxito.</p>
+            <button
+              onClick={() => setShowDeployModal(false)}
+              className="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs"
+            >
+              Listo
+            </button>
           </div>
         </div>
       )}
-
     </div>
   );
 }
