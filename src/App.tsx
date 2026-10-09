@@ -94,6 +94,13 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 // ── Per-domain apps ───────────────────────────────────────────────────────
 
 function LandingsApp() {
+  useEffect(() => { 
+    document.getElementById('root')?.classList.add('public-page'); 
+    return () => {
+      document.getElementById('root')?.classList.remove('public-page');
+    };
+  }, []);
+
   return (
     <HelmetProvider>
       <BrowserRouter>
@@ -106,6 +113,7 @@ function LandingsApp() {
             {/* Landings individuales para acceso y vista previa */}
             <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
             <Route path="/mutuus" element={<MutuusLanding />} />
+            <Route path="/landings/mutuus" element={<MutuusLanding />} />
             <Route path="/seguros-express" element={<SegurosExpressLanding />} />
             <Route path="/seguros-education" element={<SegurosEducationLanding />} />
             <Route path="/chava-agente" element={<ChavaAgenteLanding />} />
