@@ -24,6 +24,7 @@ assert.equal(datosUtilesExtraidos({ rfc: 'RORJ800505N19' }), true);
 assert.equal(datosUtilesExtraidos({ nombre_cliente: 'MARIA DE JESUS RODRIGUEZ' }), true);
 assert.equal(datosUtilesExtraidos({ prima_total: 8844.74 }), true, 'un número tambien cuenta');
 assert.equal(datosUtilesExtraidos({ serie: '3VW1M1AJ2GM269028' }), true);
+assert.equal(datosUtilesExtraidos({ agente_clave: '370551' }), true);
 // Una póliza de vida no trae placas ni serie, pero sí vigencia.
 assert.equal(datosUtilesExtraidos({ desde: '2026-01-13', hasta: '2027-01-13' }), true);
 

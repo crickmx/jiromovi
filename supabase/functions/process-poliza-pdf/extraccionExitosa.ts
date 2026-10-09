@@ -28,6 +28,7 @@ export const CAMPOS_QUE_PRUEBAN_EXTRACCION = [
   'desde',
   'hasta',
   'serie',
+  'agente_clave',  // obligatorio en toda póliza
 ];
 
 /**
