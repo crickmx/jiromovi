@@ -1,5 +1,10 @@
 # ---------------------------------------------------------------------------
-# MOVI — Apache/Plesk config para el SPA (beta.movi.digital, mutuus.mx y producción)
+# MOVI — Apache/Plesk config para el SPA (beta.movi.digital y producción)
+#
+# Plesk IGNORA vercel.json y netlify.toml. Todo lo que necesita el servidor
+# Apache (compresión, caché, y el fallback del SPA) tiene que vivir aquí.
+# Cada bloque va protegido con <IfModule> para que, si un módulo no está
+# habilitado en el servidor, Apache lo salte en vez de tirar un 500.
 # ---------------------------------------------------------------------------
 
 Options -MultiViews
@@ -42,20 +47,17 @@ Options -MultiViews
   </FilesMatch>
 </IfModule>
 
-# --- 3. Redirecciones y Fallback del SPA (React Router) ---------------------
+# --- 3. Redirección 301 de landings.movi.digital/mutuus a https://mutuus.mx/ ---
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} ^(www\.)?landings\.movi\.digital$ [NC]
+  RewriteRule ^mutuus(/.*)?$ https://mutuus.mx/ [R=301,L]
+</IfModule>
+
+# --- 4. Fallback del SPA (React Router) ------------------------------------
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-
-  # 3a. Redirección 301 de landings.movi.digital/mutuus hacia mutuus.mx
-  RewriteCond %{HTTP_HOST} ^(landings\.)?movi\.digital$ [NC]
-  RewriteRule ^mutuus(/.*)?$ https://mutuus.mx/ [R=301,L]
-
-  # 3b. Redirección 301 de www.mutuus.mx hacia https://mutuus.mx/
-  RewriteCond %{HTTP_HOST} ^www\.mutuus\.mx$ [NC]
-  RewriteRule ^(.*)$ https://mutuus.mx/$1 [R=301,L]
-
-  # 3c. Fallback de React Router
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
