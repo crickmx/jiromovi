@@ -1,36 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 120" fill="none">
-  <!-- Mutuus Cross with Stethoscope Icon -->
-  <g id="mutuus-icon">
-    <!-- Green Cross Background -->
-    <path d="M48 10 H72 V38 H100 V62 H72 V90 H48 V62 H20 V38 H48 Z" fill="#8DC63F" rx="2" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" fill="none">
+  <!-- Symbol: Green Cross + Stethoscope -->
+  <g id="mutuus-symbol">
+    <!-- Green Cross Main Shape -->
+    <path d="M42 6 H66 V34 H94 V58 H66 V86 H42 V58 H14 V34 H42 Z" fill="#8DC63F" rx="3"/>
     
-    <!-- Organic Stethoscope Leaf Overlay & Tube -->
-    <path d="M48 10 C38 30 35 50 30 65 C25 78 18 90 28 102 C38 112 58 112 68 100 C74 92 72 82 64 80 C56 78 50 85 48 90 C45 96 38 98 32 94 C26 88 28 78 35 62 C40 50 44 32 48 10 Z" fill="#78B02A" />
+    <!-- Stethoscope overlay inside cross -->
+    <path d="M42 6 C32 26 28 44 24 58 C20 72 14 84 22 96 C30 106 48 108 58 98 C64 90 62 80 55 77 C48 74 42 80 40 85 C38 90 32 92 27 88 C22 82 24 73 30 58 C35 46 38 26 42 6 Z" fill="#75A826"/>
     
-    <!-- Stethoscope Tube Line -->
-    <path d="M52 14 Q32 55 24 82 Q18 102 38 106 Q58 108 68 96 Q78 84 66 76" stroke="#8DC63F" stroke-width="4.5" stroke-linecap="round" fill="none" />
+    <!-- Stethoscope tube line curving out to bottom-right -->
+    <path d="M43 10 Q26 50 20 76 Q14 96 32 100 Q50 102 59 90 Q66 78 57 71" stroke="#8DC63F" stroke-width="4.5" stroke-linecap="round" fill="none"/>
     
-    <!-- Stethoscope Chestpiece / Bell -->
-    <circle cx="68" cy="74" r="7.5" fill="#8DC63F" stroke="#003896" stroke-width="2.5" />
-    <circle cx="68" cy="74" r="3.5" fill="#FFFFFF" />
+    <!-- Chestpiece / Bell -->
+    <circle cx="57" cy="71" r="7.5" fill="#8DC63F" stroke="#003896" stroke-width="2.5"/>
+    <circle cx="57" cy="71" r="3" fill="#FFFFFF"/>
   </g>
 
   <!-- Wordmark MUTUUS -->
-  <g id="mutuus-wordmark" fill="#003896">
+  <g id="mutuus-text" fill="#003896">
     <!-- M -->
-    <path d="M125 72 V22 H141 L153 50 L165 22 H181 V72 H167 V42 L157 65 H149 L139 42 V72 H125 Z" />
+    <path d="M120 68 V18 H137 L149 46 L161 18 H178 V68 H164 V36 L154 59 H144 L134 36 V68 H120 Z"/>
     <!-- U -->
-    <path d="M195 22 H210 V52 C210 59 214 62 220 62 C226 62 230 59 230 52 V22 H245 V52 C245 66 235 74 220 74 C205 74 195 66 195 52 V22 Z" />
+    <path d="M192 18 H207 V48 C207 55 211 58 217 58 C223 58 227 55 227 48 V18 H242 V48 C242 62 232 70 217 70 C202 70 192 62 192 48 V18 Z"/>
     <!-- T -->
-    <path d="M255 34 V22 H295 V34 H282 V72 H267 V34 H255 Z" />
+    <path d="M252 30 V18 H294 V30 H281 V68 H265 V30 H252 Z"/>
     <!-- U -->
-    <path d="M305 22 H320 V52 C320 59 324 62 330 62 C336 62 340 59 340 52 V22 H355 V52 C355 66 345 74 330 74 C315 74 305 66 305 52 V22 Z" />
+    <path d="M304 18 H319 V48 C319 55 323 58 329 58 C335 58 339 55 339 48 V18 H354 V48 C354 62 344 70 329 70 C314 70 304 62 304 48 V18 Z"/>
     <!-- U -->
-    <path d="M365 22 H380 V52 C380 59 384 62 390 62 C396 62 400 59 400 52 V22 H415 V52 C415 66 405 74 390 74 C375 74 365 66 365 52 V22 Z" />
+    <path d="M366 18 H381 V48 C381 55 385 58 391 58 C397 58 401 55 401 48 V18 H416 V48 C416 62 406 70 391 70 C376 70 366 62 366 48 V18 Z"/>
     <!-- S -->
-    <path d="M425 61 C426 66 430 73 440 73 C447 73 451 69 451 64 C451 55 435 54 427 47 C423 43 422 36 424 30 C427 24 435 20 445 20 C457 20 464 27 465 33 L452 37 C451 34 448 31 443 31 C438 31 435 34 435 37 C435 44 452 45 460 53 C464 57 465 64 463 70 C460 78 450 84 438 84 C425 84 416 77 413 65 L425 61 Z" />
+    <path d="M428 58 C429 63 433 69 443 69 C450 69 454 65 454 61 C454 52 438 51 430 44 C425 40 424 34 426 29 C429 23 437 18 447 18 C459 18 467 24 468 31 L455 34 C454 30 451 28 446 28 C441 28 438 30 438 33 C438 40 455 42 463 49 C467 53 468 59 466 65 C463 73 453 79 442 79 C429 79 419 72 416 61 L428 58 Z"/>
   </g>
 
-  <!-- Tagline: SALUD INTELIGENTE. -->
-  <text x="126" y="102" font-family="'Montserrat', 'Arial', sans-serif" font-size="14.5" font-weight="800" fill="#003896" letter-spacing="4.5">SALUD INTELIGENTE.</text>
+  <!-- Subtitle: SALUD INTELIGENTE. -->
+  <text x="122" y="98" font-family="'Montserrat', 'Arial Black', sans-serif" font-size="14.5" font-weight="900" fill="#003896" letter-spacing="4.8">SALUD INTELIGENTE.</text>
 </svg>

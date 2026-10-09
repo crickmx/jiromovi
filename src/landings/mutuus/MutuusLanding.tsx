@@ -32,32 +32,35 @@ import {
 
 export const MUTUUS_PORTAL_URL = 'https://selfservice.psmutuus.com/agente/A-3522/promo/A-3522';
 
-// ─── LOGO MUTUUS OFICIAL SVG VECTORIAL ──────────────────────────────────────
+// ─── LOGO MUTUUS OFICIAL SVG VECTORIAL EXACTO ───────────────────────────────
 export function MutuusOfficialLogo({ className = "h-11 w-auto", dark = false }: { className?: string; dark?: boolean }) {
   const blueColor = dark ? "#FFFFFF" : "#003896";
   const greenColor = "#8DC63F";
-  const taglineColor = dark ? "#9CD41C" : "#003896";
+  const taglineColor = dark ? "#8DC63F" : "#003896";
 
   return (
-    <svg className={className} viewBox="0 0 465 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g id="cross-stethoscope">
-        <path d="M40 8 H64 V36 H92 V60 H64 V88 H40 V60 H12 V36 H40 Z" fill={greenColor} rx="3" />
-        <path d="M40 8 C30 28 26 48 22 62 C18 74 12 86 22 97 C32 107 50 107 60 96 C66 88 64 78 57 76 C50 74 44 80 42 85 C40 91 33 93 28 89 C23 83 25 74 31 59 C36 47 38 28 40 8 Z" fill="#75A826" />
-        <path d="M42 12 Q24 52 18 78 Q12 98 30 102 Q48 104 58 92 Q66 80 56 73" stroke={greenColor} strokeWidth="4.5" strokeLinecap="round" fill="none" />
-        <circle cx="58" cy="71" r="7.5" fill={greenColor} stroke={blueColor} strokeWidth="2.5" />
-        <circle cx="58" cy="71" r="3" fill="#FFFFFF" />
+    <svg className={className} viewBox="0 0 520 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Símbolo: Cruz Verde + Estetoscopio */}
+      <g id="mutuus-symbol">
+        <path d="M42 6 H66 V34 H94 V58 H66 V86 H42 V58 H14 V34 H42 Z" fill={greenColor} rx="3"/>
+        <path d="M42 6 C32 26 28 44 24 58 C20 72 14 84 22 96 C30 106 48 108 58 98 C64 90 62 80 55 77 C48 74 42 80 40 85 C38 90 32 92 27 88 C22 82 24 73 30 58 C35 46 38 26 42 6 Z" fill="#75A826"/>
+        <path d="M43 10 Q26 50 20 76 Q14 96 32 100 Q50 102 59 90 Q66 78 57 71" stroke={greenColor} strokeWidth="4.5" strokeLinecap="round" fill="none"/>
+        <circle cx="57" cy="71" r="7.5" fill={greenColor} stroke={blueColor} strokeWidth="2.5"/>
+        <circle cx="57" cy="71" r="3" fill="#FFFFFF"/>
       </g>
-      <g id="wordmark" fill={blueColor}>
-        <path d="M115 68 V20 H130 L141 46 L152 20 H167 V68 H154 V38 L145 61 H137 L128 38 V68 H115 Z" />
-        <path d="M180 20 H194 V49 C194 55 198 58 203 58 C208 58 212 55 212 49 V20 H226 V49 C226 62 216 70 203 70 C190 70 180 62 180 49 V20 Z" />
-        <path d="M236 31 V20 H274 V31 H262 V68 H248 V31 H236 Z" />
-        <path d="M284 20 H298 V49 C298 55 302 58 307 58 C312 58 316 55 316 49 V20 H330 V49 C330 62 320 70 307 70 C294 70 284 62 284 49 V20 Z" />
-        <path d="M340 20 H354 V49 C354 55 358 58 363 58 C368 58 372 55 372 49 V20 H386 V49 C386 62 376 70 363 70 C350 70 340 62 340 49 V20 Z" />
-        <path d="M396 58 C397 63 401 69 410 69 C416 69 420 65 420 61 C420 52 406 51 398 44 C394 40 393 34 395 29 C398 23 405 19 414 19 C425 19 432 25 433 31 L421 34 C420 31 418 29 413 29 C409 29 406 31 406 34 C406 41 422 42 429 49 C433 53 434 59 432 65 C429 73 420 78 409 78 C397 78 388 71 385 61 L396 58 Z" />
+
+      {/* Tipografía MUTUUS */}
+      <g id="mutuus-text" fill={blueColor}>
+        <path d="M120 68 V18 H137 L149 46 L161 18 H178 V68 H164 V36 L154 59 H144 L134 36 V68 H120 Z"/>
+        <path d="M192 18 H207 V48 C207 55 211 58 217 58 C223 58 227 55 227 48 V18 H242 V48 C242 62 232 70 217 70 C202 70 192 62 192 48 V18 Z"/>
+        <path d="M252 30 V18 H294 V30 H281 V68 H265 V30 H252 Z"/>
+        <path d="M304 18 H319 V48 C319 55 323 58 329 58 C335 58 339 55 339 48 V18 H354 V48 C354 62 344 70 329 70 C314 70 304 62 304 48 V18 Z"/>
+        <path d="M366 18 H381 V48 C381 55 385 58 391 58 C397 58 401 55 401 48 V18 H416 V48 C416 62 406 70 391 70 C376 70 366 62 366 48 V18 Z"/>
+        <path d="M428 58 C429 63 433 69 443 69 C450 69 454 65 454 61 C454 52 438 51 430 44 C425 40 424 34 426 29 C429 23 437 18 447 18 C459 18 467 24 468 31 L455 34 C454 30 451 28 446 28 C441 28 438 30 438 33 C438 40 455 42 463 49 C467 53 468 59 466 65 C463 73 453 79 442 79 C429 79 419 72 416 61 L428 58 Z"/>
       </g>
-      <text x="116" y="96" fontFamily="'Montserrat', sans-serif" fontSize="13.5" fontWeight="800" fill={taglineColor} letterSpacing="4.2">
-        SALUD INTELIGENTE.
-      </text>
+
+      {/* Subtítulo: SALUD INTELIGENTE. */}
+      <text x="122" y="98" fontFamily="'Montserrat', 'Arial Black', sans-serif" fontSize="14.5" fontWeight="900" fill={taglineColor} letterSpacing="4.8">SALUD INTELIGENTE.</text>
     </svg>
   );
 }
@@ -302,7 +305,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <title>Mutuus Salud Inteligente | Membresía Médica y Gastos Médicos con $0 Deducible</title>
         <meta name="description" content="Atención médica privada de primer nivel, videoconsultas 24/7 ilimitadas y cobertura en más de 115 hospitales en México con pago directo y $0 deducible garantizado." />
         <meta name="keywords" content="Mutuus seguro gastos medicos, seguro cero deducible mexico, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguro hospitalario pago directo, membresia de salud mutuus" />
-        <link rel="canonical" href="https://mutuus.mx/" />
+        <link rel="canonical" href="https://landings.movi.digital/mutuus" />
         
         {/* Open Graph Social Card */}
         <meta property="og:type" content="website" />
@@ -310,8 +313,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <meta property="og:site_name" content="Mutuus Salud Inteligente" />
         <meta property="og:title" content="Mutuus Salud Inteligente | Membresía Médica con $0 Deducible" />
         <meta property="og:description" content="Atención médica privada 24/7, videollamadas ilimitadas con doctores y pediatras y respaldo hospitalario nacional con $0 deducible y $0 coaseguro." />
-        <meta property="og:url" content="https://mutuus.mx/" />
-        <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
+        <meta property="og:url" content="https://landings.movi.digital/mutuus" />
+        <meta property="og:image" content="https://landings.movi.digital/brand/mutuus/og-mutuus.svg" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         
@@ -319,7 +322,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Mutuus Salud Inteligente | Gastos Médicos con $0 Deducible" />
         <meta name="twitter:description" content="Cero deducible y cero coaseguro en red de pago directo en más de 115 hospitales de México. Emisión 100% digital." />
-        <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
+        <meta name="twitter:image" content="https://landings.movi.digital/brand/mutuus/og-mutuus.svg" />
         
         {/* Schema.org JSON-LD */}
         <script type="application/ld+json">
@@ -328,7 +331,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             "@type": "Product",
             "name": "Membresía de Salud y Gastos Médicos Mutuus",
             "description": "Atención médica privada de primer nivel, telemedicina 24/7 y cobertura hospitalaria nacional con $0 deducible.",
-            "image": "https://mutuus.mx/brand/mutuus/og-mutuus.svg",
+            "image": "https://landings.movi.digital/brand/mutuus/og-mutuus.svg",
             "brand": {
               "@type": "Brand",
               "name": "Mutuus Salud Inteligente"
@@ -383,7 +386,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
             
-            {/* Logotipo Oficial Mutuus */}
+            {/* Logotipo Oficial Mutuus Exacto */}
             <a href="#inicio" className="flex items-center group py-1" aria-label="Mutuus Salud Inteligente Inicio">
               <MutuusOfficialLogo className="h-10 sm:h-12 w-auto transition-transform group-hover:scale-102" />
             </a>
@@ -1302,7 +1305,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           </div>
         </section>
 
-        {/* ─── 10. FOOTER CON DOCUMENTOS OFICIALES Y AVISO DE PRIVACIDAD JIRO ─ */}
+        {/* ─── 10. FOOTER CON CRÉDITOS JIRO Y DOCUMENTOS OFICIALES ────────── */}
         <footer className="bg-[#001738] text-white/80 text-xs py-14 border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -1326,6 +1329,25 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 </div>
               </div>
 
+              {/* Créditos de Operación JIRO.MX (Exclusivo en el Footer) */}
+              <div className="space-y-3">
+                <p className="font-bold text-white text-sm">Operación & Tecnología</p>
+                <p className="text-white/70 text-xs leading-relaxed">
+                  Este sitio web y portal son operados por <a href="https://jiro.mx" target="_blank" rel="noopener noreferrer" className="text-white font-bold underline hover:text-[#8DC63F]">JIRO y Asociados (jiro.mx)</a>.
+                </p>
+                <div className="flex items-center gap-2.5 pt-1">
+                  <img 
+                    src="/logojiro.png" 
+                    alt="JIRO y Asociados" 
+                    className="h-6 w-auto object-contain brightness-0 invert opacity-90"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                  <span className="text-xs font-bold text-white/90">JIRO y Asociados</span>
+                </div>
+              </div>
+
               {/* Secciones */}
               <div className="space-y-2">
                 <p className="font-bold text-white text-sm">Navegación</p>
@@ -1339,7 +1361,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 </ul>
               </div>
 
-              {/* Documentos Oficiales ps-mutuus.com */}
+              {/* Documentos Oficiales ps-mutuus.com y jiro.mx */}
               <div className="space-y-2">
                 <p className="font-bold text-white text-sm">Documentos Oficiales</p>
                 <ul className="space-y-1.5 text-white/70">
@@ -1375,25 +1397,6 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   </li>
                 </ul>
               </div>
-
-              {/* Portal & Cobertura */}
-              <div className="space-y-2">
-                <p className="font-bold text-white text-sm">Emisión & Soporte</p>
-                <p className="text-white/70 text-xs">
-                  Atención médica 24/7 y coordinación hospitalaria nacional.
-                </p>
-                <div className="pt-2">
-                  <a
-                    href={MUTUUS_PORTAL_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition"
-                  >
-                    <span>Emisión Inmediata en Línea</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </div>
             </div>
 
             <div className="pt-8 border-t border-white/10 space-y-2 text-[11px] text-white/50 leading-relaxed">
@@ -1401,7 +1404,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 * Mutuus es una marca registrada. La condonación del deducible y coaseguro opera bajo el estricto cumplimiento del protocolo de atención en la red de pago directo y reporte previo del evento médico. Cobertura de maternidad sujeta a 10 meses continuos de antigüedad.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-between pt-4 text-white/40">
-                <p>© {new Date().getFullYear()} Mutuus Salud Inteligente · Todos los derechos reservados.</p>
+                <p>© {new Date().getFullYear()} Mutuus Salud Inteligente · Portal operado por JIRO y Asociados (jiro.mx)</p>
                 <p>Aviso de Privacidad protegido por Ley Federal de Protección de Datos Personales (LFPDPPP)</p>
               </div>
             </div>
