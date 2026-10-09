@@ -19,7 +19,6 @@ import {
   Zap, 
   Lock, 
   CreditCard, 
-  Play, 
   Search, 
   Menu, 
   HeartHandshake, 
@@ -27,10 +26,58 @@ import {
   Calculator,
   Pill,
   Award,
-  PhoneCall
+  PhoneCall,
+  Activity,
+  UserCheck,
+  ShieldAlert
 } from 'lucide-react';
 
 export const MUTUUS_PORTAL_URL = 'https://selfservice.psmutuus.com/agente/A-3522/promo/A-3522';
+
+// ─── LOGO MUTUUS OFICIAL SVG (VECTORIAL DE ALTA DEFINICIÓN) ─────────────────
+export function MutuusOfficialLogo({ className = "h-11 w-auto", dark = false }: { className?: string; dark?: boolean }) {
+  const blueColor = dark ? "#FFFFFF" : "#003896";
+  const greenColor = "#8DC63F";
+  const taglineColor = dark ? "#9CD41C" : "#003896";
+
+  return (
+    <svg className={className} viewBox="0 0 465 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Símbolo Cruz con Estetoscopio */}
+      <g id="cross-stethoscope">
+        {/* Cruz Verde */}
+        <path d="M40 8 H64 V36 H92 V60 H64 V88 H40 V60 H12 V36 H40 Z" fill={greenColor} rx="3" />
+        {/* Hoja / Lazo orgánico del estetoscopio */}
+        <path d="M40 8 C30 28 26 48 22 62 C18 74 12 86 22 97 C32 107 50 107 60 96 C66 88 64 78 57 76 C50 74 44 80 42 85 C40 91 33 93 28 89 C23 83 25 74 31 59 C36 47 38 28 40 8 Z" fill="#75A826" />
+        {/* Tubo del estetoscopio */}
+        <path d="M42 12 Q24 52 18 78 Q12 98 30 102 Q48 104 58 92 Q66 80 56 73" stroke={greenColor} strokeWidth="4.5" strokeLinecap="round" fill="none" />
+        {/* Campana / Diafragma */}
+        <circle cx="58" cy="71" r="7.5" fill={greenColor} stroke={blueColor} strokeWidth="2.5" />
+        <circle cx="58" cy="71" r="3" fill="#FFFFFF" />
+      </g>
+
+      {/* Tipografía MUTUUS */}
+      <g id="wordmark" fill={blueColor}>
+        {/* M */}
+        <path d="M115 68 V20 H130 L141 46 L152 20 H167 V68 H154 V38 L145 61 H137 L128 38 V68 H115 Z" />
+        {/* U */}
+        <path d="M180 20 H194 V49 C194 55 198 58 203 58 C208 58 212 55 212 49 V20 H226 V49 C226 62 216 70 203 70 C190 70 180 62 180 49 V20 Z" />
+        {/* T */}
+        <path d="M236 31 V20 H274 V31 H262 V68 H248 V31 H236 Z" />
+        {/* U */}
+        <path d="M284 20 H298 V49 C298 55 302 58 307 58 C312 58 316 55 316 49 V20 H330 V49 C330 62 320 70 307 70 C294 70 284 62 284 49 V20 Z" />
+        {/* U */}
+        <path d="M340 20 H354 V49 C354 55 358 58 363 58 C368 58 372 55 372 49 V20 H386 V49 C386 62 376 70 363 70 C350 70 340 62 340 49 V20 Z" />
+        {/* S */}
+        <path d="M396 58 C397 63 401 69 410 69 C416 69 420 65 420 61 C420 52 406 51 398 44 C394 40 393 34 395 29 C398 23 405 19 414 19 C425 19 432 25 433 31 L421 34 C420 31 418 29 413 29 C409 29 406 31 406 34 C406 41 422 42 429 49 C433 53 434 59 432 65 C429 73 420 78 409 78 C397 78 388 71 385 61 L396 58 Z" />
+      </g>
+
+      {/* Subtítulo: SALUD INTELIGENTE. */}
+      <text x="116" y="96" fontFamily="'Montserrat', sans-serif" fontSize="13.5" fontWeight="800" fill={taglineColor} letterSpacing="4.2">
+        SALUD INTELIGENTE.
+      </text>
+    </svg>
+  );
+}
 
 export interface LandingCustomization {
   heroTitle?: string;
@@ -50,11 +97,11 @@ export interface LandingCustomization {
 const DEFAULT_FAQS = [
   {
     q: '¿Cómo funciona la membresía de salud y seguro de Mutuus?',
-    a: 'Mutuus combina atención médica preventiva digital (videoconsultas ilimitadas 24/7 con médicos generales, pediatras y psicólogos) con una póliza de seguro de Gastos Médicos Mayores respaldada por aseguradoras líderes en México que te otorga $0 deducible y $0 coaseguro al atenderte dentro de su red hospitalaria autorizada.'
+    a: 'Mutuus combina atención médica preventiva digital (videoconsultas ilimitadas 24/7 con médicos generales, pediatras y psicólogos) con una póliza de seguro de Gastos Médicos Mayores con $0 deducible y $0 coaseguro al atenderte dentro de su red hospitalaria autorizada en México.'
   },
   {
     q: '¿Por qué no pago deducible ni coaseguro en el hospital?',
-    a: 'Gracias al modelo de pago directo y convenios institucionales de Mutuus, al reportar tu evento médico antes o al momento de tu ingreso a un hospital de la red, los gastos médicos cubiertos son cubiertos de forma directa, eliminando el desembolso inicial de deducible y coaseguro de tu bolsillo.'
+    a: 'Gracias al modelo de pago directo de Mutuus, al reportar tu evento médico antes o al momento de tu ingreso a un hospital de la red, los gastos médicos cubiertos son liquidados de forma directa, eliminando el desembolso inicial de deducible y coaseguro de tu bolsillo.'
   },
   {
     q: '¿Cuáles son los hospitales en convenio de pago directo?',
@@ -226,10 +273,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
   const [tabCobertura, setTabCobertura] = useState<'cubierto' | 'no_cubierto'>('cubierto');
   const [selectedEstado, setSelectedEstado] = useState<string>('Todos');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [videoModalOpen, setVideoModalOpen] = useState(false);
 
   // Simulador de Ahorro
-  const [edadSimulador, setEdadSimulador] = useState<number>(35);
   const [montoCuentaHospital, setMontoCuentaHospital] = useState<number>(350000);
 
   // Asegurar scroll completo en el documento sin bloqueos
@@ -246,8 +291,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
   const heroSubtitle = customization?.heroSubtitle || 'Accede a la mejor atención médica privada, telemedicina 24/7 ilimitada y respaldo hospitalario nacional sin pagar deducibles sorpresa al momento de una emergencia.';
   const badgeText = customization?.badgeText || 'Cero Deducible · Cero Coaseguro en Red de Pago Directo';
   const primaryColor = customization?.primaryColor || '#003896';
-  const accentColor = customization?.accentColor || '#9CD41C';
-  const promoBanner = customization?.promoBanner;
+  const accentColor = customization?.accentColor || '#8DC63F';
 
   const allFaqs = customization?.customFaqs && customization.customFaqs.length > 0 
     ? [...customization.customFaqs, ...DEFAULT_FAQS] 
@@ -260,7 +304,6 @@ export default function MutuusLanding({ customization }: { customization?: Landi
   const deducibleTradicional = 25000;
   const coaseguroTradicional = Math.min(montoCuentaHospital * 0.10, 45000);
   const gastoTradicional = deducibleTradicional + coaseguroTradicional;
-  const gastoMutuus = 0;
   const ahorroTotal = gastoTradicional;
 
   // Filtrado de hospitales
@@ -273,18 +316,18 @@ export default function MutuusLanding({ customization }: { customization?: Landi
     <>
       <Helmet>
         <html lang="es-MX" />
-        <title>{heroTitle.length > 60 ? heroTitle.slice(0, 57) + '...' : heroTitle} | Mutuus Salud</title>
+        <title>{heroTitle.length > 60 ? heroTitle.slice(0, 57) + '...' : heroTitle} | Mutuus Salud Inteligente</title>
         <meta name="description" content={heroSubtitle} />
-        <meta name="keywords" content="Mutuus seguro gastos medicos, seguro cero deducible mexico, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguro hospitalario pago directo, membresia de salud mutuus jiro" />
+        <meta name="keywords" content="Mutuus seguro gastos medicos, seguro cero deducible mexico, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguro hospitalario pago directo, membresia de salud mutuus" />
         <link rel="canonical" href="https://landings.movi.digital/mutuus" />
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="es_MX" />
-        <meta property="og:site_name" content="Mutuus Salud · En Alianza con JIRO y Asociados" />
+        <meta property="og:site_name" content="Mutuus Salud Inteligente" />
         <meta property="og:title" content={heroTitle} />
         <meta property="og:description" content={heroSubtitle} />
         <meta property="og:url" content="https://landings.movi.digital/mutuus" />
         
-        {/* Schema.org JSON-LD para SEO y GEO México */}
+        {/* Schema.org JSON-LD */}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
@@ -293,7 +336,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             "description": heroSubtitle,
             "brand": {
               "@type": "Brand",
-              "name": "Mutuus"
+              "name": "Mutuus Salud Inteligente"
             },
             "offers": {
               "@type": "AggregateOffer",
@@ -301,11 +344,6 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               "lowPrice": "1299",
               "highPrice": "26990",
               "offerCount": "6"
-            },
-            "provider": {
-              "@type": "Organization",
-              "name": "JIRO y Asociados",
-              "url": "https://jiro.mx"
             }
           })}
         </script>
@@ -321,16 +359,16 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         } as React.CSSProperties}
       >
 
-        {/* ─── TOP BAR: CO-BRANDING SUTIL JIRO & PORTAL OFICIAL ──────────── */}
+        {/* ─── TOP BAR MINIMALISTA Y PROFESIONAL ─────────────────────────── */}
         <div 
-          className="text-white py-2 px-4 text-xs font-semibold flex flex-wrap items-center justify-between gap-3 border-b border-white/10"
+          className="text-white py-2 px-4 text-xs font-semibold flex items-center justify-between border-b border-white/10"
           style={{ backgroundColor: '#002666' }}
         >
           <div className="max-w-7xl mx-auto w-full flex items-center justify-between text-[11px] sm:text-xs">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#9CD41C] animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#8DC63F] animate-pulse" />
               <span className="text-white/90">
-                Plataforma de Salud Digital & Seguro Hospitalario · <strong>Operado en alianza con JIRO y Asociados</strong>
+                Plataforma Oficial de Salud Digital & Seguro Hospitalario con Cero Deducible
               </span>
             </div>
             
@@ -338,64 +376,35 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               href={MUTUUS_PORTAL_URL} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="hidden md:inline-flex items-center gap-1.5 font-bold text-white hover:text-[#9CD41C] transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 font-bold text-white hover:text-[#8DC63F] transition-colors"
             >
-              <span>Acceso al Portal de Clientes</span>
+              <span>Portal de Clientes y Emisión</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
         </div>
 
-        {/* ─── 1. HEADER STICKY (LOGOS OFICIALES Y NAVEGACIÓN) ───────────── */}
+        {/* ─── 1. HEADER STICKY (LOGOTIPO OFICIAL MUTUUS & MENÚ ELEGANTE) ── */}
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
             
-            {/* Logos Oficiales: Mutuus + Co-branding JIRO */}
-            <div className="flex items-center gap-3 sm:gap-4">
-              <a href="#inicio" className="flex items-center gap-2 group" aria-label="Mutuus Inicio">
-                {/* Isotipo Mutuus SVG Oficial */}
-                <div 
-                  className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-xl tracking-tighter shadow-md transition-transform group-hover:scale-105"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <svg className="w-6 h-6 fill-current text-white" viewBox="0 0 24 24">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                  </svg>
-                </div>
-                <div>
-                  <span 
-                    className="font-black text-2xl tracking-tighter block leading-none"
-                    style={{ color: primaryColor }}
-                  >
-                    mutuus
-                  </span>
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mt-0.5">
-                    Salud Inteligente
-                  </span>
-                </div>
-              </a>
+            {/* Logotipo Oficial Mutuus */}
+            <a href="#inicio" className="flex items-center group py-1" aria-label="Mutuus Salud Inteligente Inicio">
+              <MutuusOfficialLogo className="h-10 sm:h-12 w-auto transition-transform group-hover:scale-102" />
+            </a>
 
-              <div className="h-7 w-[1px] bg-slate-200 hidden sm:block" />
-
-              {/* Badge Alianza JIRO */}
-              <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 border border-slate-200 text-slate-700">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
-                <span>Alianza JIRO y Asociados</span>
-              </div>
-            </div>
-
-            {/* Menú de Navegación Desktop */}
-            <nav className="hidden lg:flex items-center gap-6 text-xs xl:text-sm font-bold text-slate-700">
+            {/* Menú de Navegación Desktop con UX Pulida */}
+            <nav className="hidden lg:flex items-center gap-7 text-xs xl:text-sm font-extrabold text-slate-700">
               <a href="#porque-mutuus" className="hover:text-[#003896] transition-colors">¿Por qué Mutuus?</a>
               <a href="#simulador" className="hover:text-[#003896] transition-colors">Simulador</a>
               <a href="#planes" className="hover:text-[#003896] transition-colors">Planes y Precios</a>
-              <a href="#red-hospitalaria" className="hover:text-[#003896] transition-colors">Red Hospitales</a>
+              <a href="#red-hospitalaria" className="hover:text-[#003896] transition-colors">Red de Hospitales</a>
               <a href="#coberturas" className="hover:text-[#003896] transition-colors">Coberturas</a>
               <a href="#faq" className="hover:text-[#003896] transition-colors">Preguntas</a>
             </nav>
 
             {/* Acciones Header: 100% Directo a Portal */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               <a
                 href={MUTUUS_PORTAL_URL}
                 target="_blank"
@@ -410,7 +419,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 href={MUTUUS_PORTAL_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-extrabold text-white transition-all shadow-md active:scale-95 hover:opacity-95"
+                className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-black text-white transition-all shadow-md active:scale-95 hover:opacity-95"
                 style={{ backgroundColor: primaryColor }}
               >
                 <span>Contratar en Línea</span>
@@ -420,7 +429,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               {/* Botón Móvil Menú */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors"
+                className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                 aria-label="Abrir Menú"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -431,53 +440,53 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
           {/* Menú Móvil Desplegable */}
           {mobileMenuOpen && (
-            <div className="lg:hidden border-t border-slate-100 bg-white px-4 pt-3 pb-6 space-y-3 shadow-xl animate-in slide-in-from-top-2">
+            <div className="lg:hidden border-t border-slate-100 bg-white px-4 pt-4 pb-6 space-y-4 shadow-xl animate-in slide-in-from-top-2">
               <nav className="flex flex-col space-y-2 text-sm font-bold text-slate-800">
                 <a 
                   href="#porque-mutuus" 
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-slate-50"
+                  className="p-2.5 rounded-xl hover:bg-slate-50 transition"
                 >
                   ¿Por qué Mutuus?
                 </a>
                 <a 
                   href="#simulador" 
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-slate-50"
+                  className="p-2.5 rounded-xl hover:bg-slate-50 transition"
                 >
                   Simulador de Ahorro
                 </a>
                 <a 
                   href="#planes" 
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-slate-50"
+                  className="p-2.5 rounded-xl hover:bg-slate-50 transition"
                 >
                   Planes y Tarifas
                 </a>
                 <a 
                   href="#red-hospitalaria" 
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-slate-50"
+                  className="p-2.5 rounded-xl hover:bg-slate-50 transition"
                 >
                   Red Médica Nacional
                 </a>
                 <a 
                   href="#coberturas" 
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-slate-50"
+                  className="p-2.5 rounded-xl hover:bg-slate-50 transition"
                 >
                   Tabulador de Coberturas
                 </a>
                 <a 
                   href="#faq" 
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-slate-50"
+                  className="p-2.5 rounded-xl hover:bg-slate-50 transition"
                 >
                   Preguntas Frecuentes
                 </a>
               </nav>
 
-              <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+              <div className="pt-2 border-t border-slate-100 flex flex-col gap-2.5">
                 <a
                   href={MUTUUS_PORTAL_URL}
                   target="_blank"
@@ -536,11 +545,11 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   {heroSubtitle}
                 </p>
 
-                {/* Sellos de Confianza y Respaldo Institucional */}
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs font-semibold text-slate-500 pt-1">
+                {/* Sellos de Confianza Institucional */}
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 text-xs font-semibold text-slate-500 pt-1">
                   <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full">
-                    <Award className="w-3.5 h-3.5 text-blue-700" />
-                    Respaldo Institucional en México
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
+                    Póliza de Gastos Médicos Mayores
                   </span>
                   <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full">
                     <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
@@ -604,7 +613,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     <div className="flex items-center justify-between">
                       <div 
                         className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold border border-white/10"
-                        style={{ color: accentColor }}
+                        style={{ color: '#8DC63F' }}
                       >
                         <Hospital className="w-4 h-4" />
                         <span>Pago Directo al Hospital</span>
@@ -629,7 +638,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
                       <div 
                         className="p-4 rounded-2xl text-slate-900 border flex items-center justify-between shadow-xl"
-                        style={{ backgroundColor: accentColor, borderColor: accentColor }}
+                        style={{ backgroundColor: '#8DC63F', borderColor: '#8DC63F' }}
                       >
                         <div>
                           <p className="text-xs font-bold text-slate-800">Con Membresía Mutuus</p>
@@ -648,7 +657,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-4 px-6 rounded-full font-black text-sm text-slate-900 transition-all shadow-xl hover:scale-102 active:scale-98 cursor-pointer text-center flex items-center justify-center gap-2"
-                      style={{ backgroundColor: accentColor }}
+                      style={{ backgroundColor: '#8DC63F' }}
                     >
                       <span>Contratar Membresía en Línea</span>
                       <ExternalLink className="w-4 h-4 text-slate-900" />
@@ -719,7 +728,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   <div className="py-6 space-y-4">
                     <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Stethoscope className="w-7 h-7 text-[#9CD41C]" />
+                        <Stethoscope className="w-7 h-7 text-[#8DC63F]" />
                         <div>
                           <p className="text-xs text-white/70">Consulta en Vivo</p>
                           <p className="text-sm font-bold text-white">Médico General y Pediatría 24/7</p>
@@ -741,7 +750,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
                     <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <CreditCard className="w-7 h-7 text-[#9CD41C]" />
+                        <CreditCard className="w-7 h-7 text-[#8DC63F]" />
                         <div>
                           <p className="text-xs text-white/70">Credencial Digital</p>
                           <p className="text-sm font-bold text-white">Pase Inmediato en Admisión</p>
@@ -758,7 +767,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-5 py-2.5 rounded-full text-xs font-black text-slate-900 transition-all shadow-md active:scale-95"
-                      style={{ backgroundColor: accentColor }}
+                      style={{ backgroundColor: '#8DC63F' }}
                     >
                       Empezar Registro
                     </a>
@@ -880,7 +889,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto px-7 py-3 rounded-full text-xs font-black text-slate-900 transition-all shadow-md active:scale-95 text-center flex-shrink-0"
-                  style={{ backgroundColor: accentColor }}
+                  style={{ backgroundColor: '#8DC63F' }}
                 >
                   Contratar este Plan en Línea
                 </a>
@@ -1241,7 +1250,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         {/* ─── 9. CTA FINAL CON ENLACE DIRECTO AL PORTAL DE REGISTRO ───────── */}
         <section id="contacto" className="py-20 text-white" style={{ backgroundColor: primaryColor }}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-3xl p-8 sm:p-14 text-slate-900 shadow-2xl border-4 border-emerald-400 text-center space-y-8">
+            <div className="bg-white rounded-3xl p-8 sm:p-14 text-slate-900 shadow-2xl border-4 border-[#8DC63F] text-center space-y-8">
               
               <div className="space-y-3 max-w-2xl mx-auto">
                 <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black uppercase tracking-wider">
@@ -1282,7 +1291,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-5 rounded-full font-black text-base text-slate-900 transition-all shadow-xl hover:scale-105 active:scale-95 cursor-pointer"
-                  style={{ backgroundColor: accentColor }}
+                  style={{ backgroundColor: '#8DC63F' }}
                 >
                   <CreditCard className="w-5 h-5 text-slate-900" />
                   <span>Ingresar al Portal y Contratar Ahora</span>
@@ -1290,7 +1299,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 </a>
                 <p className="text-xs text-slate-500 mt-3 flex items-center justify-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Conexión cifrada SSL directa con Mutuus Seguros</span>
+                  <span>Conexión cifrada SSL directa con Mutuus</span>
                 </p>
               </div>
 
@@ -1298,17 +1307,15 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           </div>
         </section>
 
-        {/* ─── 10. FOOTER CON CO-BRANDING JIRO ─────────────────────────────── */}
+        {/* ─── 10. FOOTER LIMPIO Y OFICIAL ─────────────────────────────────── */}
         <footer className="bg-[#001738] text-white/80 text-xs py-14 border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               
               {/* Mutuus Col */}
               <div className="space-y-3">
-                <span className="font-black text-2xl text-white tracking-tight block">
-                  mutuus
-                </span>
-                <p className="text-white/70 text-xs leading-relaxed">
+                <MutuusOfficialLogo className="h-10 w-auto" dark={true} />
+                <p className="text-white/70 text-xs leading-relaxed mt-2">
                   Membresía médica integral y seguro de gastos médicos mayores con $0 deducible en red de pago directo en todo México.
                 </p>
                 <div className="pt-1">
@@ -1316,30 +1323,11 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     href={MUTUUS_PORTAL_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] font-bold text-[#9CD41C] underline hover:text-white inline-flex items-center gap-1"
+                    className="text-[11px] font-bold text-[#8DC63F] underline hover:text-white inline-flex items-center gap-1"
                   >
                     <LogIn className="w-3 h-3" />
                     <span>Portal Oficial de Registro y Emisión</span>
                   </a>
-                </div>
-              </div>
-
-              {/* JIRO Cobranding Col */}
-              <div className="space-y-3">
-                <p className="font-bold text-white text-sm">Operación & Asesoría</p>
-                <p className="text-white/70 text-xs leading-relaxed">
-                  Sitio web y plataforma digital operados en alianza con <strong className="text-white">JIRO y Asociados</strong> (jiro.mx).
-                </p>
-                <div className="inline-flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/10">
-                  <img 
-                    src="/logojiro.png" 
-                    alt="JIRO y Asociados" 
-                    className="h-6 w-auto object-contain brightness-0 invert opacity-90"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                  <span className="text-[11px] font-bold text-white/90">JIRO y Asociados</span>
                 </div>
               </div>
 
@@ -1361,7 +1349,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 <p className="font-bold text-white text-sm">Portal & Documentos</p>
                 <ul className="space-y-1.5 text-white/70">
                   <li>
-                    <a href={MUTUUS_PORTAL_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1 text-[#9CD41C] font-bold">
+                    <a href={MUTUUS_PORTAL_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1 text-[#8DC63F] font-bold">
                       <ExternalLink className="w-3.5 h-3.5" /> Portal de Autoservicio
                     </a>
                   </li>
@@ -1371,6 +1359,17 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   <li><a href="#" className="hover:text-white transition-colors flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Aviso de Privacidad Integral</a></li>
                 </ul>
               </div>
+
+              {/* Contacto / Soporte */}
+              <div className="space-y-2">
+                <p className="font-bold text-white text-sm">Atención Continua</p>
+                <p className="text-white/70 text-xs">
+                  Atención médica 24/7 y coordinación hospitalaria nacional.
+                </p>
+                <p className="text-white font-bold text-xs pt-1">
+                  México · Cobertura a nivel nacional
+                </p>
+              </div>
             </div>
 
             <div className="pt-8 border-t border-white/10 space-y-2 text-[11px] text-white/50 leading-relaxed">
@@ -1378,8 +1377,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 * Mutuus es una marca registrada. La condonación del deducible y coaseguro opera bajo el estricto cumplimiento del protocolo de atención en la red de pago directo y reporte previo del evento médico. Cobertura de maternidad sujeta a 10 meses continuos de antigüedad.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-between pt-4 text-white/40">
-                <p>© {new Date().getFullYear()} landings.movi.digital/mutuus · Todos los derechos reservados.</p>
-                <p>En alianza con JIRO y Asociados (jiro.mx) · Optimizado para SEO & GEO México</p>
+                <p>© {new Date().getFullYear()} Mutuus Salud Inteligente · Todos los derechos reservados.</p>
+                <p>Optimizado para SEO & GEO México</p>
               </div>
             </div>
           </div>
@@ -1393,7 +1392,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             rel="noopener noreferrer"
             aria-label="Contratar en Línea"
             className="px-6 py-4 rounded-full text-slate-900 font-black text-sm shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 border-2 border-white"
-            style={{ backgroundColor: accentColor }}
+            style={{ backgroundColor: '#8DC63F' }}
           >
             <CreditCard className="w-5 h-5 text-slate-900" />
             <span>Contratar en Línea</span>
