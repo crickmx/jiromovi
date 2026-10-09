@@ -20,6 +20,7 @@ import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
 import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
 import { AgentBrandProvider } from './seguwallet/lib/AgentBrandContext';
 import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
+const SeguwalletProductLanding = lazy(() => import('./seguwallet/pages/SeguwalletProductLanding'));
 const SeguwalletLogin     = lazy(() => import('./seguwallet/pages/SeguwalletLogin').then(m => ({ default: m.SeguwalletLogin })));
 const SeguwalletDashboard = lazy(() => import('./seguwallet/pages/SeguwalletDashboard').then(m => ({ default: m.SeguwalletDashboard })));
 const SeguwalletPolizas   = lazy(() => import('./seguwallet/pages/SeguwalletPolizas').then(m => ({ default: m.SeguwalletPolizas })));
@@ -103,6 +104,7 @@ function LandingsApp() {
             <Route path="/studio" element={<LandingsStudio />} />
 
             {/* Landings individuales para acceso y vista previa */}
+            <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
             <Route path="/mutuus" element={<MutuusLanding />} />
             <Route path="/seguros-express" element={<SegurosExpressLanding />} />
             <Route path="/seguros-education" element={<SegurosEducationLanding />} />
@@ -155,44 +157,51 @@ function ChavaAIApp() {
 
 function SeguwalletApp() {
   return (
-    <BrowserRouter>
-      <SeguwalletStack>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<SeguwalletLogin />} />
-            <Route path="/completa-perfil" element={
-              <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <SeguwalletProtectedRoute><SeguwalletDashboard /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/polizas" element={
-              <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/polizas/:id" element={
-              <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/chava" element={
-              <SeguwalletProtectedRoute><SeguwalletChava /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/perfil" element={
-              <SeguwalletProtectedRoute><SeguwalletPerfil /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/cotizar" element={
-              <SeguwalletProtectedRoute><SeguwalletCotizar /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/descargas" element={
-              <SeguwalletProtectedRoute><SeguwalletDescargas /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/aseguradoras" element={
-              <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </Suspense>
-      </SeguwalletStack>
-    </BrowserRouter>
+    <HelmetProvider>
+      <BrowserRouter>
+        <SeguwalletStack>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Product Landing / Home for seguwallet.mx */}
+              <Route path="/" element={<SeguwalletProductLanding />} />
+              <Route path="/home" element={<SeguwalletProductLanding />} />
+              <Route path="/landing" element={<SeguwalletProductLanding />} />
+
+              {/* Portal login & protected app routes */}
+              <Route path="/login" element={<SeguwalletLogin />} />
+              <Route path="/completa-perfil" element={
+                <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <SeguwalletProtectedRoute><SeguwalletDashboard /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/polizas" element={
+                <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/polizas/:id" element={
+                <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/chava" element={
+                <SeguwalletProtectedRoute><SeguwalletChava /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/perfil" element={
+                <SeguwalletProtectedRoute><SeguwalletPerfil /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/cotizar" element={
+                <SeguwalletProtectedRoute><SeguwalletCotizar /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/descargas" element={
+                <SeguwalletProtectedRoute><SeguwalletDescargas /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/aseguradoras" element={
+                <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
+              } />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </SeguwalletStack>
+      </BrowserRouter>
+    </HelmetProvider>
   );
 }
 
@@ -260,7 +269,13 @@ function MoviApp() {
                 {/* MOVI login (passwordless) */}
                 <Route path="/login" element={<MoviLogin />} />
 
-                {/* Seguwallet customer sub-app under /seguwallet/* */}
+                {/* Seguwallet product landing page (standalone on beta.movi.digital / movi.digital) */}
+                <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
+                <Route path="/seguwallet/home" element={<SeguwalletProductLanding />} />
+                <Route path="/seguwallet/landing" element={<SeguwalletProductLanding />} />
+                <Route path="/seguwallet-landing" element={<SeguwalletProductLanding />} />
+
+                {/* Seguwallet customer portal sub-app under /seguwallet/* */}
                 <Route path="/seguwallet/login" element={
                   <SeguwalletStack><SeguwalletLogin /></SeguwalletStack>
                 } />

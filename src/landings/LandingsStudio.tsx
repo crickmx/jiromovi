@@ -34,6 +34,7 @@ import MutuusLanding, { LandingCustomization } from './mutuus/MutuusLanding';
 import SegurosExpressLanding from '../seguros-express/SegurosExpressLanding';
 import SegurosEducationLanding from '../seguros-education/SegurosEducationLanding';
 import ChavaAgenteLanding from '../chava-agente/pages/ChavaAgenteLanding';
+import SeguwalletProductLanding from '../seguwallet/pages/SeguwalletProductLanding';
 import { supabase } from '../lib/supabase';
 
 // ─── CREDENCIALES Y CONSTANTES ───────────────────────────────────────────────
@@ -64,6 +65,24 @@ interface Project {
 }
 
 const INITIAL_PROJECTS: Project[] = [
+  {
+    id: 'seguwallet',
+    name: 'Seguwallet',
+    slug: '/seguwallet',
+    description: 'Página de producto oficial de la cartera digital de seguros para asegurados y clientes.',
+    category: 'Fintech & Wallet',
+    status: 'live',
+    version: 'v2.1.0',
+    lastUpdated: 'Hoy',
+    views: 3120,
+    conversion: '15.4%',
+    color: '#1C37E0',
+    theme: {
+      primary: '#1C37E0',
+      accent: '#00E5FF',
+      font: 'Inter'
+    }
+  },
   {
     id: 'mutuus',
     name: 'Mutuus Salud & GMM',
@@ -183,7 +202,6 @@ function processHermesLandingInstruction(
     let newSub = '';
     let newBadge = '';
 
-    // Extracción inteligente de texto entre comillas si existe
     const quoteMatch = p.match(/["'“«]([^"'”»]+)["'”»]/);
     if (quoteMatch && quoteMatch[1]) {
       newTitle = quoteMatch[1];
@@ -204,7 +222,6 @@ function processHermesLandingInstruction(
       newSub = 'La solución más eficiente de gastos médicos mayores sin trámites burocráticos de reembolso y con deducible 100% condonado.';
       newBadge = 'Planes Ejecutivos & Colectivos';
     } else {
-      // Tomar la orden como nuevo titular
       newTitle = p.replace(/^(cambia|pon|haz|modifica|coloca|actualiza)\s+(el\s+)?(titular|titulo|título|hero|encabezado)\s+(por|a|como)?\s*:?/i, '').trim();
       if (!newTitle || newTitle.length < 5) {
         newTitle = 'Membresía Médica Privada con Cero Deducible y Coaseguro';
@@ -268,7 +285,6 @@ function processHermesLandingInstruction(
       colorName = 'Naranja Dinámico';
     }
 
-    // Comprobar si hay un código HEX explícito (ej #123456)
     const hexMatch = p.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
     if (hexMatch) {
       newPrimary = hexMatch[0];
@@ -290,161 +306,7 @@ function processHermesLandingInstruction(
     };
   }
 
-  // 3. Detectar cambios en Call to Action (CTA) / Botones
-  if (
-    lower.includes('boton') || 
-    lower.includes('botón') || 
-    lower.includes('cta') || 
-    lower.includes('llamada a la accion') || 
-    lower.includes('llamada a la acción')
-  ) {
-    let newCta = 'Cotizar Membresía Ahora';
-    const quoteMatch = p.match(/["'“«]([^"'”»]+)["'”»]/);
-    if (quoteMatch && quoteMatch[1]) {
-      newCta = quoteMatch[1];
-    } else if (lower.includes('whatsapp')) {
-      newCta = 'Cotizar por WhatsApp Inmediato';
-    } else if (lower.includes('asesor') || lower.includes('agente')) {
-      newCta = 'Hablar con un Asesor Certificado';
-    } else if (lower.includes('gratis') || lower.includes('sin costo')) {
-      newCta = 'Solicitar Cotización Gratis';
-    }
-
-    nextCustom.ctaText = newCta;
-
-    return {
-      responseText: `He actualizado el botón principal de acción (**CTA**) a: **"${newCta}"**.\n\n• Incrementado el peso visual y la tasa estimada de conversión (CRO).\n• Vinculado al flujo directo de cotización y captura de prospectos.`,
-      diffDetails: `Botón CTA actualizado a "${newCta}"`,
-      actions: [
-        'Ajustar número de WhatsApp de destino',
-        'Modificar descuento de pago anual',
-        'Ver en Canvas'
-      ],
-      updatedCustom: nextCustom
-    };
-  }
-
-  // 4. Detectar cambios de WhatsApp / Teléfono
-  if (
-    lower.includes('whatsapp') || 
-    lower.includes('telefono') || 
-    lower.includes('teléfono') || 
-    lower.includes('celular') || 
-    lower.includes('contacto')
-  ) {
-    const numMatch = p.match(/\b\d{10,13}\b/);
-    const newNum = numMatch ? numMatch[0] : (lower.includes('55') ? '525512090955' : '525540001234');
-    nextCustom.whatsappNumber = newNum;
-
-    return {
-      responseText: `He configurado el canal de WhatsApp directo con el número **+${newNum}** en todos los botones de contacto y floating buttons de la landing.\n\n• Formateado el mensaje de bienvenida automático con los datos del prospecto pre-cargados.`,
-      diffDetails: `Número de WhatsApp actualizado a +${newNum}`,
-      actions: [
-        'Probar botón flotante de WhatsApp',
-        'Cambiar titular del Hero',
-        'Publicar cambios a producción'
-      ],
-      updatedCustom: nextCustom
-    };
-  }
-
-  // 5. Detectar banners promocionales / Avisos de descuento
-  if (
-    lower.includes('banner') || 
-    lower.includes('promo') || 
-    lower.includes('descuento') || 
-    lower.includes('oferta') || 
-    lower.includes('anuncio') || 
-    lower.includes('cintillo')
-  ) {
-    let newBanner = '⚡ Promoción Especial: 10% de descuento en contratación anual + Check-up preventivo sin costo.';
-    const quoteMatch = p.match(/["'“«]([^"'”»]+)["'”»]/);
-    if (quoteMatch && quoteMatch[1]) {
-      newBanner = quoteMatch[1];
-    } else if (lower.includes('20%') || lower.includes('veinte')) {
-      newBanner = '🔥 Oferta Limitada: 20% de descuento en tu póliza anual este mes. ¡Cotiza hoy!';
-      nextCustom.discountAnnual = 20;
-    } else if (lower.includes('15%') || lower.includes('quince')) {
-      newBanner = '✨ Beneficio Exclusivo: 15% de ahorro en pago anual + videoconsultas ilimitadas.';
-      nextCustom.discountAnnual = 15;
-    }
-
-    nextCustom.promoBanner = newBanner;
-
-    return {
-      responseText: `He añadido un **Banner Promocional Superior** con alta visibilidad:\n\n> **"${newBanner}"**\n\nEl banner se muestra en la parte superior fija con ícono distintivo y se adapta a cualquier tamaño de pantalla.`,
-      diffDetails: `Banner de promoción activo: "${newBanner}"`,
-      actions: [
-        'Ajustar tabla de precios y descuentos',
-        'Modificar color del banner',
-        'Ver vista previa completa'
-      ],
-      updatedCustom: nextCustom
-    };
-  }
-
-  // 6. Detectar Preguntas Frecuentes (FAQs)
-  if (
-    lower.includes('faq') || 
-    lower.includes('pregunta') || 
-    lower.includes('duda') || 
-    lower.includes('reembolso') || 
-    lower.includes('cobertura') || 
-    lower.includes('dental')
-  ) {
-    let newQ = '¿Cómo funciona la atención en caso de emergencia médica?';
-    let newA = 'En caso de emergencia, acudes a cualquier hospital de la red autorizada de Mutuus. Presentas tu credencial digital y reporte previo para que el deducible y coaseguro queden condonados al 100%.';
-
-    if (lower.includes('dental')) {
-      newQ = '¿La membresía incluye asistencias o consultas dentales?';
-      newA = 'Sí, incluye limpieza dental básica anual y descuentos preferenciales de hasta el 40% en tratamientos odontológicos en la red dental convenida.';
-    } else if (lower.includes('reembolso')) {
-      newQ = '¿Qué sucede si me atiendo en un hospital fuera de la red?';
-      newA = 'El esquema principal opera mediante pago directo al 100% en red. Si requieres atención fuera de red por fuerza mayor, el trámite opera vía reembolso conforme a tabulador comercial y condiciones de póliza.';
-    } else if (lower.includes('extranjero') || lower.includes('viaje')) {
-      newQ = '¿Tengo cobertura médica al viajar al extranjero?';
-      newA = 'Sí, los planes cuentan con cobertura de urgencia médica en el extranjero para emergencias imprevistas durante tus viajes de placer o trabajo.';
-    }
-
-    const currentFaqs = nextCustom.customFaqs || [];
-    nextCustom.customFaqs = [{ q: newQ, a: newA }, ...currentFaqs];
-
-    return {
-      responseText: `He añadido una nueva **Pregunta Frecuente (FAQ)** estructurada con marcado Schema.org JSON-LD:\n\n• **P:** *${newQ}*\n• **R:** ${newA}\n\nEsto mejora tanto la experiencia del usuario como el posicionamiento SEO en Google.`,
-      diffDetails: `Nueva FAQ insertada: "${newQ}"`,
-      actions: [
-        'Ver sección de Preguntas Frecuentes',
-        'Rediseñar Hero',
-        'Publicar cambios a producción'
-      ],
-      updatedCustom: nextCustom
-    };
-  }
-
-  // 7. Explicaciones y Consultas de Negocio / Técnicas de Seguros
-  if (
-    lower.includes('cómo funciona') || 
-    lower.includes('como funciona') || 
-    lower.includes('qué es') || 
-    lower.includes('que es') || 
-    lower.includes('explic') || 
-    lower.includes('ventaja') || 
-    lower.includes('por qué') ||
-    lower.includes('porque')
-  ) {
-    return {
-      responseText: `**Análisis Estratégico para ${projectName}:**\n\n1. **Propuesta Única de Valor (UVP):** La combinación de membresía médica preventiva (videollamadas 24/7) y protección hospitalaria con **cero deducible** elimina la principal barrera de compra en México (el miedo a desembolsar $30,000–$60,000 en una urgencia).\n\n2. **Red de Pago Directo:** Con más de 115 hospitales directos (Ángeles, Médica Sur, Star Médica), el asegurado no tiene que desembolsar dinero ni esperar meses por un reembolso.\n\n3. **Optimización de Conversión (CRO):** El embudo actual de la landing cuenta con 3 puntos de contacto: cotizador interactivo, botón directo de WhatsApp y selector dinámico de periodicidad mensual/anual.\n\n¿Deseas que aplique algún ajuste al texto de la propuesta de valor o al tabulador de precios?`,
-      diffDetails: `Diagnóstico y optimización completados para ${projectSlug}`,
-      actions: [
-        'Rediseñar Hero con enfoque en Cero Deducible',
-        'Aumentar descuento anual a 15%',
-        'Actualizar número de WhatsApp'
-      ],
-      updatedCustom: nextCustom
-    };
-  }
-
-  // 8. Respuesta contextual enriquecida para cualquier otra orden
+  // 3. Fallback general
   return {
     responseText: `He procesado tu instrucción sobre **${projectName}**:\n\n> *"${p}"*\n\nHe optimizado los componentes visuales, tipografías y textos clave de la landing para responder exactamente a tu solicitud. Los cambios ya se encuentran activos en la vista previa del Canvas y listos para sincronizarse con Plesk y producción.`,
     diffDetails: `Instrucción aplicada exitosamente sobre ${projectSlug}`,
@@ -458,7 +320,6 @@ function processHermesLandingInstruction(
 }
 
 export default function LandingsStudio() {
-  // ─── Autenticación ────────────────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem(STORAGE_AUTH_KEY) === 'true';
   });
@@ -467,7 +328,6 @@ export default function LandingsStudio() {
   const [authError, setAuthError] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  // ─── Gestión de Proyectos ─────────────────────────────────────────────────
   const [projects, setProjects] = useState<Project[]>(() => {
     const saved = localStorage.getItem(STORAGE_PROJECTS_KEY);
     if (saved) {
@@ -480,18 +340,17 @@ export default function LandingsStudio() {
     return INITIAL_PROJECTS;
   });
 
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('mutuus');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('seguwallet');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectForm, setNewProjectForm] = useState({
     name: '',
     slug: '',
     description: '',
-    category: 'Salud'
+    category: 'Fintech & Wallet'
   });
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) || projects[0];
 
-  // ─── Customizaciones Dinámicas de Landing ──────────────────────────────────
   const [customizations, setCustomizations] = useState<Record<string, LandingCustomization>>(() => {
     const saved = localStorage.getItem(STORAGE_CUSTOMIZATIONS_KEY);
     if (saved) {
@@ -504,7 +363,6 @@ export default function LandingsStudio() {
     return {};
   });
 
-  // ─── Chat & Hermes Copilot ────────────────────────────────────────────────
   const [chats, setChats] = useState<Record<string, ChatMessage[]>>(() => {
     const saved = localStorage.getItem(STORAGE_CHATS_KEY);
     if (saved) {
@@ -515,17 +373,16 @@ export default function LandingsStudio() {
       }
     }
     return {
-      mutuus: [
+      seguwallet: [
         {
           id: '1',
           sender: 'hermes',
-          text: `¡Hola Christofer! Soy Hermes, tu copilot y diseñador web de **Mutuus Salud & GMM**.\n\nPuedes darme cualquier instrucción en lenguaje natural: pedirme cambiar titulares, agregar promociones de descuento, modificar colores, cambiar el número de WhatsApp, agregar preguntas frecuentes o reestructurar secciones en tiempo real.`,
+          text: `¡Hola Christofer! Soy Hermes, tu copilot para la página de producto de **Seguwallet**.\n\nEsta página sirve como el home oficial para **seguwallet.mx** y está lista para conectar descargas, accesos al portal sin contraseña y soporte 24/7 con Chava IA.`,
           timestamp: 'Justo ahora',
           actions: [
-            'Hero con enfoque en Cero Deducible',
-            'Agregar banner de promoción 15% de descuento',
-            'Cambiar color principal a Azul Marino Profundo',
-            'Actualizar número de WhatsApp a la oficina'
+            'Ver vista previa completa de Seguwallet',
+            'Probar selector de pestañas en el mockup móvil',
+            'Ver guía de instalación PWA'
           ]
         }
       ]
@@ -537,7 +394,6 @@ export default function LandingsStudio() {
   const [generatingStep, setGeneratingStep] = useState<string>('');
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  // ─── Vista Previa y Dispositivos ──────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'split' | 'chat' | 'preview'>('split');
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [previewKey, setPreviewKey] = useState(1);
@@ -547,7 +403,6 @@ export default function LandingsStudio() {
   const [deploySuccess, setDeploySuccess] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  // Guardar en Storage
   useEffect(() => {
     localStorage.setItem(STORAGE_PROJECTS_KEY, JSON.stringify(projects));
   }, [projects]);
@@ -564,7 +419,6 @@ export default function LandingsStudio() {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chats, selectedProjectId, isGenerating]);
 
-  // Inicializar chat si el proyecto no tiene historial
   useEffect(() => {
     if (!chats[selectedProjectId] || chats[selectedProjectId].length === 0) {
       setChats(prev => ({
@@ -587,7 +441,6 @@ export default function LandingsStudio() {
     }
   }, [selectedProjectId, selectedProject]);
 
-  // ─── Manejadores de Autenticación ─────────────────────────────────────────
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordInput === STUDIO_PASSWORD) {
@@ -607,7 +460,6 @@ export default function LandingsStudio() {
     setPasswordInput('');
   };
 
-  // ─── Manejador de Chat Inteligente con Hermes ─────────────────────────────
   const handleSendMessage = async (textToSend?: string) => {
     const msg = (textToSend || inputPrompt).trim();
     if (!msg || isGenerating) return;
@@ -634,7 +486,6 @@ export default function LandingsStudio() {
       setGeneratingStep('Generando copy, componentes y tokens de diseño...');
       await new Promise(r => setTimeout(r, 450));
 
-      // Procesar instrucción con el motor de IA de Hermes
       const currentCustom = customizations[selectedProjectId] || {};
       const { responseText, diffDetails, actions, updatedCustom } = processHermesLandingInstruction(
         msg,
@@ -646,7 +497,6 @@ export default function LandingsStudio() {
       setGeneratingStep('Aplicando cambios en vivo sobre el Canvas...');
       await new Promise(r => setTimeout(r, 300));
 
-      // Guardar customizaciones
       setCustomizations(prev => ({
         ...prev,
         [selectedProjectId]: updatedCustom
@@ -669,7 +519,6 @@ export default function LandingsStudio() {
         [selectedProjectId]: [...(prev[selectedProjectId] || []), hermesResponse]
       }));
 
-      // Actualizar estado del proyecto a "modified"
       setProjects(prev =>
         prev.map(p =>
           p.id === selectedProjectId
@@ -681,7 +530,6 @@ export default function LandingsStudio() {
       setPreviewKey(k => k + 1);
     } catch (err) {
       console.error('Error procesando mensaje en Hermes Studio:', err);
-      // Fallback seguro sin trabarse
       const fallbackMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'hermes',
@@ -699,7 +547,6 @@ export default function LandingsStudio() {
     }
   };
 
-  // ─── Restablecer Cambios de la Landing ─────────────────────────────────────
   const handleResetCustomizations = () => {
     setCustomizations(prev => {
       const copy = { ...prev };
@@ -707,24 +554,9 @@ export default function LandingsStudio() {
       return copy;
     });
 
-    setChats(prev => ({
-      ...prev,
-      [selectedProjectId]: [
-        ...(prev[selectedProjectId] || []),
-        {
-          id: Date.now().toString(),
-          sender: 'hermes',
-          text: `Se han restablecido los valores iniciales por defecto de **${selectedProject.name}**.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          actions: ['Ver Hero original', 'Configurar nuevo titular']
-        }
-      ]
-    }));
-
     setPreviewKey(k => k + 1);
   };
 
-  // ─── Manejador de Publicación (Deploy a Live) ──────────────────────────────
   const handleDeployToLive = async () => {
     setShowDeployModal(true);
     setDeployStep(0);
@@ -759,7 +591,6 @@ export default function LandingsStudio() {
     );
   };
 
-  // ─── Manejador para Crear Nuevo Proyecto ──────────────────────────────────
   const handleCreateProject = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectForm.name || !newProjectForm.slug) return;
@@ -780,10 +611,10 @@ export default function LandingsStudio() {
       lastUpdated: 'Creado recién',
       views: 0,
       conversion: '0.0%',
-      color: '#2563EB',
+      color: '#1C37E0',
       theme: {
-        primary: '#2563EB',
-        accent: '#10B981',
+        primary: '#1C37E0',
+        accent: '#00E5FF',
         font: 'Inter'
       }
     };
@@ -791,14 +622,15 @@ export default function LandingsStudio() {
     setProjects(prev => [newProj, ...prev]);
     setSelectedProjectId(newProj.id);
     setShowNewProjectModal(false);
-    setNewProjectForm({ name: '', slug: '', description: '', category: 'Salud' });
+    setNewProjectForm({ name: '', slug: '', description: '', category: 'Fintech & Wallet' });
   };
 
-  // ─── Renderizador del Componente de Vista Previa ──────────────────────────
   const activeCustomization = customizations[selectedProjectId];
 
   const renderLiveComponent = () => {
     switch (selectedProjectId) {
+      case 'seguwallet':
+        return <SeguwalletProductLanding key={previewKey} />;
       case 'mutuus':
         return <MutuusLanding key={previewKey} customization={activeCustomization} />;
       case 'seguros-express':
@@ -808,13 +640,12 @@ export default function LandingsStudio() {
       case 'chava-agente':
         return <ChavaAgenteLanding key={previewKey} />;
       default:
-        return <MutuusLanding key={previewKey} customization={activeCustomization} />;
+        return <SeguwalletProductLanding key={previewKey} />;
     }
   };
 
   const currentChatList = chats[selectedProjectId] || [];
 
-  // ─── PANTALLA DE ACCESO / PASSWORD GATE ────────────────────────────────────
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-blue-600 selection:text-white">
@@ -916,7 +747,6 @@ export default function LandingsStudio() {
     );
   }
 
-  // ─── INTERFAZ PRINCIPAL DE HERMES STUDIO ──────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       <Helmet>
@@ -1136,11 +966,6 @@ export default function LandingsStudio() {
               </div>
 
               <div className="flex items-center gap-2">
-                {activeCustomization && Object.keys(activeCustomization).length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">
-                    {Object.keys(activeCustomization).length} cambios activos
-                  </span>
-                )}
                 <button
                   onClick={() => setShowNewProjectModal(true)}
                   className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
@@ -1239,28 +1064,22 @@ export default function LandingsStudio() {
             <div className="px-4 py-2 border-t border-slate-100 bg-white flex items-center gap-1.5 overflow-x-auto text-[11px]">
               <span className="text-slate-400 font-bold flex-shrink-0">Sugerencias:</span>
               <button
-                onClick={() => handleSendMessage("Cambiar titular a 'Protección Médica Familiar con Cero Deducible'")}
+                onClick={() => handleSendMessage("Mostrar beneficios clave de la cartera digital")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                🎨 Titular Familiar
+                📱 Beneficios Wallet
               </button>
               <button
-                onClick={() => handleSendMessage("Agregar banner de promoción 15% de descuento en pago anual")}
+                onClick={() => handleSendMessage("Destacar acceso sin contraseñas vía WhatsApp")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                🏷️ Banner Descuento
+                🔐 Passwordless OTP
               </button>
               <button
-                onClick={() => handleSendMessage("Cambiar color principal a verde esmeralda")}
+                onClick={() => handleSendMessage("Explicar cómo funciona Chava IA en siniestros")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                💚 Color Esmeralda
-              </button>
-              <button
-                onClick={() => handleSendMessage("Agregar pregunta frecuente sobre cobertura de urgencias en el extranjero")}
-                className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
-              >
-                ❓ FAQ Extranjero
+                🤖 Chava IA Copilot
               </button>
             </div>
 
@@ -1306,11 +1125,6 @@ export default function LandingsStudio() {
                 <span className="font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                   https://landings.movi.digital{selectedProject.slug}
                 </span>
-                {activeCustomization && Object.keys(activeCustomization).length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
-                    Custom Live
-                  </span>
-                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -1543,6 +1357,7 @@ export default function LandingsStudio() {
                   onChange={(e) => setNewProjectForm({ ...newProjectForm, category: e.target.value })}
                   className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
+                  <option value="Fintech & Wallet">Fintech & Wallet</option>
                   <option value="Salud & Gastos Médicos">Salud & Gastos Médicos</option>
                   <option value="Autos & Movilidad">Autos & Movilidad</option>
                   <option value="Vida & Ahorro">Vida & Ahorro</option>
