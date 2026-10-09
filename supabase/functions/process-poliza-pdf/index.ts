@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as XLSX from "npm:xlsx";
+import { marcarSiNoSeExtrajo } from "../_shared/extraccionExitosa.ts";
 
 const LECTOR_URL = "https://lector.movi.digital";
 const MOVI_BETA_API_KEY = Deno.env.get("MOVI_BETA_API_KEY")!;
@@ -301,11 +302,18 @@ Deno.serve(async (req: Request) => {
         .not("archivo_id", "is", null); // excluir filas huérfanas de archivos borrados
       if (qErr) throw new Error(`Query extraídos: ${qErr.message}`);
 
+      // Una póliza que no se pudo leer salía con una fila de aspecto normal: con
+      // el archivo, el vendedor, el despacho y "Vigente" puestos. Nada de eso lo
+      // extrajo el lector, así que esa fila está vacía y el Excel tiene que
+      // decirlo en vez de dejar que parezca buena.
       const filas = (todosExtraidos ?? []).map((d: any) =>
-        buildSicasRow(
-          { ...d, vendedor: agenteSicasNombre },
-          despacho,
-          d.archivo?.nombre ?? ""
+        marcarSiNoSeExtrajo(
+          SICAS_HEADERS,
+          buildSicasRow(
+            { ...d, vendedor: agenteSicasNombre },
+            despacho,
+            d.archivo?.nombre ?? ""
+          ),
         )
       );
 
