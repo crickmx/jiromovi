@@ -302,7 +302,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <title>Mutuus Salud Inteligente | Membresía Médica y Gastos Médicos con $0 Deducible</title>
         <meta name="description" content="Atención médica privada de primer nivel, videoconsultas 24/7 ilimitadas y cobertura en más de 115 hospitales en México con pago directo y $0 deducible garantizado." />
         <meta name="keywords" content="Mutuus seguro gastos medicos, seguro cero deducible mexico, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguro hospitalario pago directo, membresia de salud mutuus" />
-        <link rel="canonical" href="https://landings.movi.digital/mutuus" />
+        <link rel="canonical" href="https://mutuus.mx/" />
         
         {/* Open Graph Social Card */}
         <meta property="og:type" content="website" />
@@ -310,8 +310,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <meta property="og:site_name" content="Mutuus Salud Inteligente" />
         <meta property="og:title" content="Mutuus Salud Inteligente | Membresía Médica con $0 Deducible" />
         <meta property="og:description" content="Atención médica privada 24/7, videollamadas ilimitadas con doctores y pediatras y respaldo hospitalario nacional con $0 deducible y $0 coaseguro." />
-        <meta property="og:url" content="https://landings.movi.digital/mutuus" />
-        <meta property="og:image" content="https://landings.movi.digital/brand/mutuus/og-mutuus.svg" />
+        <meta property="og:url" content="https://mutuus.mx/" />
+        <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         
@@ -319,7 +319,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Mutuus Salud Inteligente | Gastos Médicos con $0 Deducible" />
         <meta name="twitter:description" content="Cero deducible y cero coaseguro en red de pago directo en más de 115 hospitales de México. Emisión 100% digital." />
-        <meta name="twitter:image" content="https://landings.movi.digital/brand/mutuus/og-mutuus.svg" />
+        <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
         
         {/* Schema.org JSON-LD */}
         <script type="application/ld+json">
@@ -328,7 +328,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             "@type": "Product",
             "name": "Membresía de Salud y Gastos Médicos Mutuus",
             "description": "Atención médica privada de primer nivel, telemedicina 24/7 y cobertura hospitalaria nacional con $0 deducible.",
-            "image": "https://landings.movi.digital/brand/mutuus/og-mutuus.svg",
+            "image": "https://mutuus.mx/brand/mutuus/og-mutuus.svg",
             "brand": {
               "@type": "Brand",
               "name": "Mutuus Salud Inteligente"
