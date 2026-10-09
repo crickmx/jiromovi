@@ -34,7 +34,7 @@ import {
 
 export const MUTUUS_PORTAL_URL = 'https://selfservice.psmutuus.com/agente/A-3522/promo/A-3522';
 
-// ─── LOGO MUTUUS OFICIAL SVG (VECTORIAL DE ALTA DEFINICIÓN) ─────────────────
+// ─── LOGO MUTUUS OFICIAL SVG ─────────────────────────────────────────────────
 export function MutuusOfficialLogo({ className = "h-11 w-auto", dark = false }: { className?: string; dark?: boolean }) {
   const blueColor = dark ? "#FFFFFF" : "#003896";
   const greenColor = "#8DC63F";
@@ -42,36 +42,21 @@ export function MutuusOfficialLogo({ className = "h-11 w-auto", dark = false }: 
 
   return (
     <svg className={className} viewBox="0 0 465 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Símbolo Cruz con Estetoscopio */}
       <g id="cross-stethoscope">
-        {/* Cruz Verde */}
         <path d="M40 8 H64 V36 H92 V60 H64 V88 H40 V60 H12 V36 H40 Z" fill={greenColor} rx="3" />
-        {/* Hoja / Lazo orgánico del estetoscopio */}
         <path d="M40 8 C30 28 26 48 22 62 C18 74 12 86 22 97 C32 107 50 107 60 96 C66 88 64 78 57 76 C50 74 44 80 42 85 C40 91 33 93 28 89 C23 83 25 74 31 59 C36 47 38 28 40 8 Z" fill="#75A826" />
-        {/* Tubo del estetoscopio */}
         <path d="M42 12 Q24 52 18 78 Q12 98 30 102 Q48 104 58 92 Q66 80 56 73" stroke={greenColor} strokeWidth="4.5" strokeLinecap="round" fill="none" />
-        {/* Campana / Diafragma */}
         <circle cx="58" cy="71" r="7.5" fill={greenColor} stroke={blueColor} strokeWidth="2.5" />
         <circle cx="58" cy="71" r="3" fill="#FFFFFF" />
       </g>
-
-      {/* Tipografía MUTUUS */}
       <g id="wordmark" fill={blueColor}>
-        {/* M */}
         <path d="M115 68 V20 H130 L141 46 L152 20 H167 V68 H154 V38 L145 61 H137 L128 38 V68 H115 Z" />
-        {/* U */}
         <path d="M180 20 H194 V49 C194 55 198 58 203 58 C208 58 212 55 212 49 V20 H226 V49 C226 62 216 70 203 70 C190 70 180 62 180 49 V20 Z" />
-        {/* T */}
         <path d="M236 31 V20 H274 V31 H262 V68 H248 V31 H236 Z" />
-        {/* U */}
         <path d="M284 20 H298 V49 C298 55 302 58 307 58 C312 58 316 55 316 49 V20 H330 V49 C330 62 320 70 307 70 C294 70 284 62 284 49 V20 Z" />
-        {/* U */}
         <path d="M340 20 H354 V49 C354 55 358 58 363 58 C368 58 372 55 372 49 V20 H386 V49 C386 62 376 70 363 70 C350 70 340 62 340 49 V20 Z" />
-        {/* S */}
         <path d="M396 58 C397 63 401 69 410 69 C416 69 420 65 420 61 C420 52 406 51 398 44 C394 40 393 34 395 29 C398 23 405 19 414 19 C425 19 432 25 433 31 L421 34 C420 31 418 29 413 29 C409 29 406 31 406 34 C406 41 422 42 429 49 C433 53 434 59 432 65 C429 73 420 78 409 78 C397 78 388 71 385 61 L396 58 Z" />
       </g>
-
-      {/* Subtítulo: SALUD INTELIGENTE. */}
       <text x="116" y="96" fontFamily="'Montserrat', sans-serif" fontSize="13.5" fontWeight="800" fill={taglineColor} letterSpacing="4.2">
         SALUD INTELIGENTE.
       </text>
@@ -319,13 +304,24 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <title>{heroTitle.length > 60 ? heroTitle.slice(0, 57) + '...' : heroTitle} | Mutuus Salud Inteligente</title>
         <meta name="description" content={heroSubtitle} />
         <meta name="keywords" content="Mutuus seguro gastos medicos, seguro cero deducible mexico, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguro hospitalario pago directo, membresia de salud mutuus" />
-        <link rel="canonical" href="https://landings.movi.digital/mutuus" />
+        <link rel="canonical" href="https://mutuus.mx/" />
+        
+        {/* Open Graph / Social Image Dedicada */}
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="es_MX" />
         <meta property="og:site_name" content="Mutuus Salud Inteligente" />
-        <meta property="og:title" content={heroTitle} />
+        <meta property="og:title" content={`${heroTitle} | Mutuus`} />
         <meta property="og:description" content={heroSubtitle} />
-        <meta property="og:url" content="https://landings.movi.digital/mutuus" />
+        <meta property="og:url" content="https://mutuus.mx/" />
+        <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${heroTitle} | Mutuus Salud Inteligente`} />
+        <meta name="twitter:description" content={heroSubtitle} />
+        <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
         
         {/* Schema.org JSON-LD */}
         <script type="application/ld+json">
@@ -334,6 +330,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             "@type": "Product",
             "name": "Membresía de Salud y Gastos Médicos Mutuus",
             "description": heroSubtitle,
+            "url": "https://mutuus.mx/",
+            "image": "https://mutuus.mx/brand/mutuus/og-mutuus.svg",
             "brand": {
               "@type": "Brand",
               "name": "Mutuus Salud Inteligente"
