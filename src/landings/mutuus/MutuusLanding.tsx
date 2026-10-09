@@ -359,57 +359,31 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         } as React.CSSProperties}
       >
 
-        {/* ─── TOP BAR MINIMALISTA Y PROFESIONAL ─────────────────────────── */}
-        <div 
-          className="text-white py-2 px-4 text-xs font-semibold flex items-center justify-between border-b border-white/10"
-          style={{ backgroundColor: '#002666' }}
-        >
-          <div className="max-w-7xl mx-auto w-full flex items-center justify-between text-[11px] sm:text-xs">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#8DC63F] animate-pulse" />
-              <span className="text-white/90">
-                Plataforma Oficial de Salud Digital & Seguro Hospitalario · Operado por Grupo JIRO
-              </span>
-            </div>
-            
-            <a 
-              href={MUTUUS_PORTAL_URL} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="hidden md:inline-flex items-center gap-1.5 font-bold text-white hover:text-[#8DC63F] transition-colors"
-            >
-              <span>Portal de Clientes y Emisión</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
-        </div>
-
         {/* ─── 1. HEADER STICKY (LOGOTIPO OFICIAL MUTUUS & MENÚ ELEGANTE) ── */}
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
             
             {/* Logotipo Oficial Mutuus */}
-            <a href="#inicio" className="flex items-center group py-1" aria-label="Mutuus Salud Inteligente Inicio">
-              <MutuusOfficialLogo className="h-10 sm:h-12 w-auto transition-transform group-hover:scale-102" />
+            <a href="#inicio" className="flex items-center group py-1 flex-shrink-0" aria-label="Mutuus Salud Inteligente Inicio">
+              <MutuusOfficialLogo className="h-9 sm:h-11 w-auto transition-transform group-hover:scale-102" />
             </a>
 
-            {/* Menú de Navegación Desktop con UX Pulida */}
-            <nav className="hidden lg:flex items-center gap-7 text-xs xl:text-sm font-extrabold text-slate-700">
-              <a href="#porque-mutuus" className="hover:text-[#0047BA] transition-colors">¿Por qué Mutuus?</a>
+            {/* Menú de Navegación Desktop con UX Pulida y Espaciada */}
+            <nav className="hidden lg:flex items-center gap-8 text-xs xl:text-sm font-bold text-slate-600">
               <a href="#simulador" className="hover:text-[#0047BA] transition-colors">Simulador</a>
               <a href="#planes" className="hover:text-[#0047BA] transition-colors">Planes y Precios</a>
               <a href="#red-hospitalaria" className="hover:text-[#0047BA] transition-colors">Red de Hospitales</a>
               <a href="#coberturas" className="hover:text-[#0047BA] transition-colors">Coberturas</a>
-              <a href="#faq" className="hover:text-[#0047BA] transition-colors">Preguntas</a>
+              <a href="#faq" className="hover:text-[#0047BA] transition-colors">Preguntas Frecuentes</a>
             </nav>
 
             {/* Acciones Header: 100% Directo a Portal */}
-            <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-3 flex-shrink-0">
               <a
                 href={MUTUUS_PORTAL_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold border border-slate-300 text-slate-700 hover:bg-slate-50 transition-all cursor-pointer active:scale-95"
+                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all cursor-pointer active:scale-95"
               >
                 <LogIn className="w-3.5 h-3.5 text-blue-700" />
                 <span>Ingresar</span>
@@ -442,13 +416,6 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           {mobileMenuOpen && (
             <div className="lg:hidden border-t border-slate-100 bg-white px-4 pt-4 pb-6 space-y-4 shadow-xl animate-in slide-in-from-top-2">
               <nav className="flex flex-col space-y-2 text-sm font-bold text-slate-800">
-                <a 
-                  href="#porque-mutuus" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2.5 rounded-xl hover:bg-slate-50 transition"
-                >
-                  ¿Por qué Mutuus?
-                </a>
                 <a 
                   href="#simulador" 
                   onClick={() => setMobileMenuOpen(false)}
@@ -677,7 +644,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         </section>
 
         {/* ─── 3. VIDEO TOUR INTERACTIVO Y CÓMO FUNCIONA ───────────────────── */}
-        <section className="py-16 bg-white border-y border-slate-100">
+        <section id="como-funciona" className="py-16 bg-white border-y border-slate-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               
@@ -686,7 +653,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   Experiencia Digital
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
-                  ¿Cómo funciona tu membresía en una urgencia o consulta?
+                  ¿Cómo funciona tu seguro médico en una urgencia o consulta?
                 </h2>
                 <p className="text-sm text-slate-600 leading-relaxed">
                   Mutuus digitaliza todo el camino de atención médica: desde que sientes un malestar hasta que ingresas a un hospital sin pagar deducibles.
@@ -859,7 +826,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   style={{ backgroundColor: '#F4F9FF', borderColor: primaryColor }}
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>Con Membresía Mutuus</p>
+                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>Con Mutuus Inteligente</p>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">Cero Gasto Sorpresa</span>
                   </div>
                   <div className="space-y-1.5 text-xs text-slate-700">
@@ -1373,7 +1340,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               <div className="space-y-2">
                 <p className="font-bold text-white text-sm">Navegación</p>
                 <ul className="space-y-1.5 text-white/70">
-                  <li><a href="#porque-mutuus" className="hover:text-white transition-colors">¿Por qué Mutuus?</a></li>
+                  <li><a href="#como-funciona" className="hover:text-white transition-colors">¿Cómo Funciona?</a></li>
                   <li><a href="#simulador" className="hover:text-white transition-colors">Simulador de Ahorro</a></li>
                   <li><a href="#planes" className="hover:text-white transition-colors">Planes y Precios</a></li>
                   <li><a href="#red-hospitalaria" className="hover:text-white transition-colors">Red de Hospitales</a></li>
