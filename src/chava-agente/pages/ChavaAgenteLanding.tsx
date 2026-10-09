@@ -34,9 +34,6 @@ function AuthenticatedLayout({
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#0A183D' }}>
-      <Helmet>
-        <title>Chava AI | Copiloto Inteligente de Seguros</title>
-      </Helmet>
       <div className="hidden lg:flex flex-col w-72 flex-shrink-0 border-r overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
         <div className="h-full flex flex-col" style={{ background: 'rgba(255,255,255,0.03)' }}>
           <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -119,7 +116,7 @@ function PlatformCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col rounded-2xl p-4 transition-all duration-200 text-left w-full cursor-pointer"
+      className="group flex flex-col rounded-2xl p-4 transition-all duration-200 text-left w-full"
       style={{
         background: `rgba(${accentRgb},0.06)`,
         border: `1px solid rgba(${accentRgb},0.18)`,
@@ -198,37 +195,19 @@ export default function ChavaAgenteLanding() {
   return (
     <>
       <Helmet>
-        <html lang="es-MX" />
         <title>Chava AI | El Copiloto Inteligente para Agentes de Seguros</title>
-        <meta
-          name="description"
-          content="Acelera tus ventas, dictamen de pólizas, comparativos de cobertura y atención a clientes con el primer asistente de inteligencia artificial entrenado para el mercado asegurador."
-        />
-        <meta
-          name="keywords"
-          content="Chava AI, copiloto de seguros, IA para agentes de seguros, dictamen de pólizas con IA, asistente virtual seguros, Grupo JIRO, MOVI Digital"
-        />
+        <meta name="description" content="Resuelve dudas, compara coberturas y dictamina pólizas de seguros 24/7 con el primer asistente de inteligencia artificial especializado." />
         <link rel="canonical" href="https://landings.movi.digital/chava-agente" />
-        
-        {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:locale" content="es_MX" />
-        <meta property="og:site_name" content="Chava AI · Inteligencia Artificial para Seguros" />
+        <meta property="og:site_name" content="Chava AI" />
         <meta property="og:title" content="Chava AI | El Copiloto Inteligente para Agentes de Seguros" />
-        <meta
-          property="og:description"
-          content="Dictamina pólizas, compara coberturas y resuelve consultas de clientes en segundos con inteligencia artificial."
-        />
+        <meta property="og:description" content="Dictamen de pólizas, comparativos de coberturas y resolución de dudas 24/7 con IA especializada." />
         <meta property="og:url" content="https://landings.movi.digital/chava-agente" />
-        <meta property="og:image" content="https://landings.movi.digital/brand/chava-agente/og-chava-agente.svg" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-
-        {/* Twitter */}
+        <meta property="og:image" content="https://landings.movi.digital/brand/chava/og-chava.svg" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Chava AI | Copiloto Inteligente para Agentes de Seguros" />
-        <meta name="twitter:description" content="Inteligencia artificial especializada en seguros disponible 24/7." />
-        <meta name="twitter:image" content="https://landings.movi.digital/brand/chava-agente/og-chava-agente.svg" />
+        <meta name="twitter:title" content="Chava AI | Inteligencia Artificial para Seguros" />
+        <meta name="twitter:description" content="Tu asistente experto en seguros disponible 24/7." />
+        <meta name="twitter:image" content="https://landings.movi.digital/brand/chava/og-chava.svg" />
       </Helmet>
 
       {/* Root — full viewport, no scroll */}
@@ -236,12 +215,10 @@ export default function ChavaAgenteLanding() {
         className="h-screen overflow-hidden flex flex-col"
         style={{ background: 'linear-gradient(160deg, #060f25 0%, #091730 55%, #071020 100%)' }}
       >
-        {/* Subtle grid background */}
         <div className="fixed inset-0 pointer-events-none" style={{
           backgroundImage: 'linear-gradient(rgba(0,229,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.012) 1px, transparent 1px)',
           backgroundSize: '72px 72px', zIndex: 0,
         }} />
-        {/* Top glow blob */}
         <div className="fixed top-0 left-1/3 w-[600px] h-[300px] pointer-events-none" style={{
           background: 'radial-gradient(ellipse at 40% 0%, rgba(13,110,253,0.09) 0%, transparent 65%)', zIndex: 0,
         }} />
@@ -267,12 +244,9 @@ export default function ChavaAgenteLanding() {
             className="w-full lg:w-[42%] xl:w-[38%] flex-shrink-0 flex flex-col overflow-hidden border-b lg:border-b-0 lg:border-r"
             style={{ borderColor: 'rgba(255,255,255,0.06)' }}
           >
-            {/* Inner: flex column that fills height and distributes space */}
             <div className="flex-1 flex flex-col overflow-y-auto px-7 lg:px-9 xl:px-10 py-6 lg:py-0 chava-left-scroll">
 
-              {/* ── BLOQUE 1+2+3: Brand hero ─────────────────────────── */}
               <div className="lg:pt-8 xl:pt-10 mb-5">
-                {/* Avatar + wordmark */}
                 <div className="flex items-center gap-4 mb-5">
                   <ChavaAvatar size="xl" animate className="flex-shrink-0" />
                   <div>
@@ -282,7 +256,6 @@ export default function ChavaAgenteLanding() {
                       className="h-10 w-auto object-contain mb-1"
                       onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     />
-                    {/* Live badge */}
                     <div className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
                       <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.38)' }}>
@@ -292,19 +265,16 @@ export default function ChavaAgenteLanding() {
                   </div>
                 </div>
 
-                {/* Headline */}
                 <h1 className="text-[22px] lg:text-2xl xl:text-[26px] font-extrabold text-white leading-[1.2] mb-2">
                   Tu experto en seguros,{' '}
                   <span style={{ color: '#00E5FF' }}>disponible 24/7</span>
                 </h1>
 
-                {/* Subtitle */}
                 <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.42)' }}>
                   Resuelve dudas, compara coberturas y entiende tus pólizas con inteligencia artificial especializada.
                 </p>
               </div>
 
-              {/* ── BLOQUE 4: Benefits ───────────────────────────────── */}
               <div className="mb-5">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                   {COMPACT_BENEFITS.map(b => (
@@ -318,10 +288,8 @@ export default function ChavaAgenteLanding() {
                 </div>
               </div>
 
-              {/* Divider */}
               <div className="mb-5" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
 
-              {/* ── BLOQUE 5: Platform access ────────────────────────── */}
               <div className="mb-4">
                 <p className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.22)' }}>
                   Accede con tu plataforma
@@ -375,7 +343,6 @@ export default function ChavaAgenteLanding() {
                 </div>
               </div>
 
-              {/* ── BLOQUE 6: Register CTA ───────────────────────────── */}
               <div
                 className="rounded-2xl p-4 mb-5"
                 style={{
@@ -392,7 +359,7 @@ export default function ChavaAgenteLanding() {
                 </p>
                 <button
                   onClick={openRegister}
-                  className="w-full flex items-center justify-center gap-2 text-sm font-bold text-white py-2.5 rounded-xl transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 text-sm font-bold text-white py-2.5 rounded-xl transition-all hover:opacity-90 active:scale-[0.98]"
                   style={{ background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}
                 >
                   Crear cuenta gratis
@@ -400,10 +367,8 @@ export default function ChavaAgenteLanding() {
                 </button>
               </div>
 
-              {/* Spacer — pushes footer to bottom */}
               <div className="flex-1" />
 
-              {/* ── BLOQUE 7: Institutional footer ──────────────────── */}
               <div
                 className="flex items-center gap-3 py-4 lg:pb-6"
                 style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
@@ -467,7 +432,7 @@ export default function ChavaAgenteLanding() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={openLogin}
-                  className="hidden sm:block text-xs font-medium px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                  className="hidden sm:block text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
                   style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.09)' }}
                   onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
                   onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}
@@ -476,7 +441,7 @@ export default function ChavaAgenteLanding() {
                 </button>
                 <button
                   onClick={openRegister}
-                  className="flex items-center gap-1.5 text-xs font-bold text-white px-3.5 py-1.5 rounded-lg transition-all hover:opacity-90 active:scale-95 cursor-pointer"
+                  className="flex items-center gap-1.5 text-xs font-bold text-white px-3.5 py-1.5 rounded-lg transition-all hover:opacity-90 active:scale-95"
                   style={{ background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}
                 >
                   Crear cuenta
