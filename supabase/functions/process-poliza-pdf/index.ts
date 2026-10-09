@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as XLSX from "npm:xlsx";
-import { marcarSiNoSeExtrajo } from "../_shared/extraccionExitosa.ts";
+import { marcarSiNoSeExtrajo } from "./extraccionExitosa.ts";
 
 const LECTOR_URL = "https://lector.movi.digital";
 const MOVI_BETA_API_KEY = Deno.env.get("MOVI_BETA_API_KEY")!;

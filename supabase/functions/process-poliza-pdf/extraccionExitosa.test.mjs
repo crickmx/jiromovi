@@ -1,4 +1,4 @@
-// npx tsx supabase/functions/_shared/extraccionExitosa.test.mjs
+// npx tsx supabase/functions/process-poliza-pdf/extraccionExitosa.test.mjs
 //
 // Lo que se comprueba: que una fila "vacía" no se cuele como buena por culpa de
 // las columnas que se llenan solas. Un fallo aquí no se ve — la fila del Excel
