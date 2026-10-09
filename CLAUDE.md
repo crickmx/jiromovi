@@ -8,9 +8,9 @@ Todo en **`origin/main`** (beta), árbol limpio. **`produccion` NO se tocó** y 
 
 **Todas las migraciones están corridas**, incluidas las del 2026-10-08 y la `20261009000001`. La edge function `process-poliza-pdf` está redesplegada con sus dos archivos.
 
-#### ❌ Lo único pendiente: probar la extracción de pólizas
+#### ✅ Extracción de pólizas: probada por Ricardo el 2026-10-09, funciona
 
-Subir a un trámite de prueba varios PDFs a la vez, unos que el lector lea (GNP/Qualitas autos) y otros que no (ANA, Mapfre, vida/GMM), y confirmar **cuatro** cosas:
+Quedó confirmado en vivo. Si alguna vez hay que volver a comprobarlo —o al abrir otro ramo— la prueba es subir varios PDFs a la vez, unos que el lector lea (GNP/Qualitas autos) y otros que no (ANA, Mapfre, vida/GMM), y mirar **cuatro** cosas:
 
 1. Queda **un solo** `*-SICAS.xlsx` adjunto, no uno por PDF.
 2. En el Excel, las que no se leyeron dicen en Observaciones: `Datos no extraídos, se envía a entrenamiento`.
@@ -23,6 +23,8 @@ from lector_cola_entrenamiento c
 join ticket_archivos a on a.id = c.archivo_id
 order by c.creado_en desc limit 10;
 ```
+
+**No queda nada pendiente de probar de la sesión del 09.**
 
 #### Hilos que siguen abiertos
 - **Ningún modal soporta modo oscuro** (`BaseModal.tsx`, 0 clases `dark:`). Empezar por ahí cubre todos.
