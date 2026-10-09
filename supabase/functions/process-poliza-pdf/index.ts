@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import * as XLSX from "npm:xlsx";
-import { marcarSiNoSeExtrajo } from "./extraccionExitosa.ts";
+import { marcarSiNoSeExtrajo, datosUtilesExtraidos } from "./extraccionExitosa.ts";
 
 const LECTOR_URL = "https://lector.movi.digital";
 const MOVI_BETA_API_KEY = Deno.env.get("MOVI_BETA_API_KEY")!;
@@ -222,9 +222,15 @@ Deno.serve(async (req: Request) => {
     const rfc = campos.rfc;
     const entidad = rfc ? (rfc.length <= 12 ? 1 : 0) : null;
 
-    // El extractor es la única autoridad sobre si reconoció la póliza. Conforme
-    // lector.movi.digital soporte más aseguradoras/ramos, MOVI las acepta solo.
-    const extraccionOk = !extraccionError && extracted.estado === "ok";
+    // El extractor responde `estado: "ok"` incluso cuando no reconoció casi
+    // nada: devuelve la clasificación y los campos vacíos. Creerle tenía tres
+    // consecuencias, las tres vistas en el trámite TK0F7A2-A: el Excel sacaba
+    // una fila de aspecto normal, el archivo decía "Datos extraídos" en
+    // pantalla, y el PDF NO se mandaba a entrenamiento — justo el que más falta
+    // hacía entrenar. Ahora además tiene que haber llegado algo con qué
+    // trabajar; la lista de lo que cuenta está en extraccionExitosa.ts.
+    const extraccionOk =
+      !extraccionError && extracted.estado === "ok" && datosUtilesExtraidos(campos);
     const observaciones = extraccionOk
       ? null
       : "El sistema no pudo extraer de forma automática los datos para este archivo, favor de capturar manualmente";
@@ -314,6 +320,7 @@ Deno.serve(async (req: Request) => {
             despacho,
             d.archivo?.nombre ?? ""
           ),
+          d.estado === "ok",
         )
       );
 

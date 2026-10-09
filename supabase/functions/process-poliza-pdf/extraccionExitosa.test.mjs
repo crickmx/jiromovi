@@ -1,53 +1,50 @@
 // npx tsx supabase/functions/process-poliza-pdf/extraccionExitosa.test.mjs
 //
-// Lo que se comprueba: que una fila "vacía" no se cuele como buena por culpa de
-// las columnas que se llenan solas. Un fallo aquí no se ve — la fila del Excel
-// se ve igual de normal.
+// Un error aquí no da ningún síntoma visible: la fila del Excel se ve normal,
+// el archivo dice "Datos extraídos" y el PDF no se manda a entrenamiento.
 
 import assert from 'node:assert/strict';
-import { huboExtraccion, marcarSiNoSeExtrajo, AVISO_SIN_EXTRACCION } from './extraccionExitosa.ts';
+import { datosUtilesExtraidos, marcarSiNoSeExtrajo, AVISO_SIN_EXTRACCION } from './extraccionExitosa.ts';
 
-// Mismo orden que SICAS_HEADERS, recortado a lo que hace falta para probar.
-const H = ['Entidad', 'Nombre', 'Despacho', 'Tipo Documento', 'Vendedor', 'Prima Neta', 'Estatus', 'Nombre Archivo', 'Observaciones'];
+// ── Lo que el extractor devuelve cuando NO leyó la póliza ──────────────────
+// Caso real (TK0F7A2-A): respondió estado "ok" con solo la clasificación.
+assert.equal(datosUtilesExtraidos({ sub_ramo: 'Automóviles' }), false,
+  'el sub ramo lo acierta cualquiera por el formato, no prueba que se leyó');
+assert.equal(datosUtilesExtraidos({ ramo: 'Autos', aseguradora: 'GNP', moneda: 'PESOS', forma_pago: 'ANUAL' }), false);
+assert.equal(datosUtilesExtraidos({}), false);
+assert.equal(datosUtilesExtraidos(null), false);
+assert.equal(datosUtilesExtraidos(undefined), false);
 
-/** Fila con solo lo que el sistema pone solo: despacho, tipo, vendedor, estatus y archivo. */
-const soloAutomaticas = ['', '', 'LEON', 'Póliza', 'JUAN PEREZ', '', 'Vigente', 'poliza.pdf', ''];
+// Vacíos y espacios no son datos.
+assert.equal(datosUtilesExtraidos({ documento: '', rfc: '   ', nombre_cliente: null }), false);
 
-assert.equal(huboExtraccion(H, soloAutomaticas), false,
-  'una fila con solo los datos que se arman solos NO es una extracción');
+// ── Basta UN identificador para que cuente ────────────────────────────────
+assert.equal(datosUtilesExtraidos({ documento: 'AUIN-049998-37' }), true);
+assert.equal(datosUtilesExtraidos({ rfc: 'RORJ800505N19' }), true);
+assert.equal(datosUtilesExtraidos({ nombre_cliente: 'MARIA DE JESUS RODRIGUEZ' }), true);
+assert.equal(datosUtilesExtraidos({ prima_total: 8844.74 }), true, 'un número tambien cuenta');
+assert.equal(datosUtilesExtraidos({ placas: 'GVC677C' }), true);
+// Una póliza de vida no trae placas ni serie, pero sí vigencia.
+assert.equal(datosUtilesExtraidos({ desde: '2026-01-13', hasta: '2027-01-13' }), true);
 
-// Basta UN dato real del lector para que cuente.
-assert.equal(huboExtraccion(H, [...soloAutomaticas.slice(0, 5), '1500.00', 'Vigente', 'poliza.pdf', '']), true);
-assert.equal(huboExtraccion(H, ['Física', ...soloAutomaticas.slice(1)]), true);
+// ── Marcado de la fila del Excel ──────────────────────────────────────────
+const H = ['Documento', 'Prima Neta', 'Nombre Archivo', 'Observaciones'];
+const filaVacia = ['', '', 'poliza.pdf', ''];
 
-// Los espacios en blanco no son un dato.
-assert.equal(huboExtraccion(H, ['   ', '', 'LEON', 'Póliza', 'JUAN PEREZ', '  ', 'Vigente', 'x.pdf', '']), false);
-// Ni los nulos.
-assert.equal(huboExtraccion(H, [null, undefined, 'LEON', 'Póliza', 'JUAN PEREZ', null, 'Vigente', 'x.pdf', '']), false);
-
-// La observación es NUESTRA nota: no puede dar por buena la fila ella sola.
-const conObservacion = [...soloAutomaticas];
-conObservacion[8] = 'Aseguradora no reconocida';
-assert.equal(huboExtraccion(H, conObservacion), false,
-  'la observación no es un dato extraído');
-
-// Marcado
-const marcada = marcarSiNoSeExtrajo(H, soloAutomaticas);
-assert.equal(marcada[8], AVISO_SIN_EXTRACCION);
-assert.notEqual(marcada, soloAutomaticas, 'no se modifica la fila original');
-assert.equal(soloAutomaticas[8], '', 'la fila original queda intacta');
+assert.equal(marcarSiNoSeExtrajo(H, filaVacia, false)[3], AVISO_SIN_EXTRACCION);
+assert.equal(filaVacia[3], '', 'la fila original no se toca');
 
 // Si ya había una observación, se conserva el motivo.
 assert.equal(
-  marcarSiNoSeExtrajo(H, conObservacion)[8],
+  marcarSiNoSeExtrajo(H, ['', '', 'x.pdf', 'Aseguradora no reconocida'], false)[3],
   `${AVISO_SIN_EXTRACCION} — Aseguradora no reconocida`,
 );
 
-// Una fila buena no se toca.
-const buena = ['Física', 'JUAN', 'LEON', 'Póliza', 'JUAN PEREZ', '1500.00', 'Vigente', 'x.pdf', ''];
-assert.deepEqual(marcarSiNoSeExtrajo(H, buena), buena);
+// Una extracción buena no se marca.
+const buena = ['AUIN-049998-37', '6790.29', 'x.pdf', ''];
+assert.deepEqual(marcarSiNoSeExtrajo(H, buena, true), buena);
 
-// Headers y fila desparejos no deben leer una columna por otra.
-assert.equal(huboExtraccion(H, ['', '', 'LEON']), false);
+// Sin columna de observaciones no truena, solo no marca.
+assert.deepEqual(marcarSiNoSeExtrajo(['Documento'], ['x'], false), ['x']);
 
-console.log('✓ extraccionExitosa: una póliza que no se pudo leer no pasa por buena');
+console.log('✓ extraccionExitosa: una póliza que solo trajo su clasificación no pasa por extraída');

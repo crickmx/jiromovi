@@ -1,25 +1,35 @@
 // ¿El lector sacó algo de verdad de este PDF?
 //
-// El Excel para SICAS se arma igual para todos los archivos, así que una póliza
-// que no se pudo leer salía con una fila de aspecto normal: con el nombre del
-// archivo, el vendedor, el despacho y "Vigente" puestos. Nada de eso lo extrajo
-// el lector —sale del ticket o es un valor fijo— así que una fila con solo eso
-// está vacía y hay que decirlo en el documento, no dejar que parezca buena.
+// El extractor responde `estado: "ok"` incluso cuando no reconoció casi nada:
+// devuelve la clasificación (ramo, sub ramo, aseguradora) y los campos vacíos.
+// Creerle a esa respuesta tenía tres consecuencias, todas vistas en producción:
+// el Excel sacaba una fila de aspecto normal, el archivo decía "Datos
+// extraídos" en pantalla, y el PDF NO se mandaba a entrenamiento — justo el que
+// más falta hacía entrenar.
+//
+// Por eso la respuesta del extractor no basta: hace falta que haya llegado algo
+// con lo que se pueda trabajar.
 
 /**
- * Columnas que NO prueban que la extracción funcionó.
+ * Campos que prueban que la póliza se leyó de verdad.
  *
- * Las cinco primeras las pidió Ricardo: se arman solas o vienen del ticket.
- * `Observaciones` se suma porque es nuestra propia nota —si contara, el aviso
- * que escribimos aquí haría que la fila se diera por buena a sí misma.
+ * Es una lista de lo que SÍ cuenta, no de lo que se ignora: la clasificación
+ * (`ramo`, `sub_ramo`, `aseguradora`) y los valores genéricos (`moneda`,
+ * `forma_pago`) los acierta cualquiera por el formato del documento, sin haber
+ * leído una sola línea. Pasó: una póliza sin un solo dato salió por buena
+ * porque traía "Sub Ramo: Automóviles".
  */
-export const COLUMNAS_QUE_NO_CUENTAN = [
-  'Nombre Archivo',
-  'Estatus',
-  'Vendedor',
-  'Tipo Documento',
-  'Despacho',
-  'Observaciones',
+export const CAMPOS_QUE_PRUEBAN_EXTRACCION = [
+  'documento',      // número de póliza
+  'rfc',
+  'nombre_cliente',
+  'prima_neta',
+  'prima_total',
+  'desde',
+  'hasta',
+  'serie',
+  'placas',
+  'agente_clave',
 ];
 
 export const AVISO_SIN_EXTRACCION = 'Datos no extraídos, se envía a entrenamiento';
@@ -27,33 +37,22 @@ export const AVISO_SIN_EXTRACCION = 'Datos no extraídos, se envía a entrenamie
 const vacio = (v: unknown) =>
   v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 
-/**
- * `true` si alguna columna que SÍ depende del lector trae algo.
- *
- * `headers` y `fila` van en el mismo orden; si llegaran desparejos se compara
- * contra el más corto, que es preferible a leer una columna por otra.
- */
-export function huboExtraccion(
-  headers: string[],
-  fila: unknown[],
-  ignoradas: string[] = COLUMNAS_QUE_NO_CUENTAN,
+/** `true` si al menos un campo identificador de la póliza trae algo. */
+export function datosUtilesExtraidos(
+  campos: Record<string, unknown> | null | undefined,
+  cuentan: string[] = CAMPOS_QUE_PRUEBAN_EXTRACCION,
 ): boolean {
-  const fuera = new Set(ignoradas);
-  const hasta = Math.min(headers.length, fila.length);
-  for (let i = 0; i < hasta; i++) {
-    if (fuera.has(headers[i])) continue;
-    if (!vacio(fila[i])) return true;
-  }
-  return false;
+  if (!campos) return false;
+  return cuentan.some(k => !vacio(campos[k]));
 }
 
-/** Deja la fila lista para el Excel, marcada si no se extrajo nada. */
+/** Deja la fila del Excel marcada cuando la extracción no sirvió. */
 export function marcarSiNoSeExtrajo(
   headers: string[],
   fila: unknown[],
-  ignoradas: string[] = COLUMNAS_QUE_NO_CUENTAN,
+  extraccionOk: boolean,
 ): unknown[] {
-  if (huboExtraccion(headers, fila, ignoradas)) return fila;
+  if (extraccionOk) return fila;
 
   const i = headers.indexOf('Observaciones');
   if (i < 0) return fila;
