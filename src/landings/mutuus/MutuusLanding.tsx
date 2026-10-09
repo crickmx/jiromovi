@@ -32,38 +32,19 @@ import {
 
 export const MUTUUS_PORTAL_URL = 'https://selfservice.psmutuus.com/agente/A-3522/promo/A-3522';
 
-// ─── LOGO MUTUUS OFICIAL SVG VECTORIAL EXACTO 1:1 ───────────────────────────
+// ─── LOGO MUTUUS OFICIAL (https://ps-mutuus.com/icons/logo.svg) ──────────────
 export function MutuusOfficialLogo({ className = "h-11 w-auto", dark = false }: { className?: string; dark?: boolean }) {
-  const blueColor = dark ? "#FFFFFF" : "#0047BA";
-  const greenColor = "#8DC63F";
-  const taglineColor = dark ? "#8DC63F" : "#0047BA";
-
   return (
-    <svg className={className} viewBox="0 0 450 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g id="cross-stethoscope">
-        {/* Cruz verde base */}
-        <path d="M38 14 H62 V38 H86 V62 H62 V86 H38 V62 H14 V38 H38 Z" fill={greenColor} rx="2" />
-        {/* Hoja / curva superior */}
-        <path d="M38 14 C36 4 44 -2 50 0 C46 6 42 16 38 32 Z" fill={greenColor} />
-        <path d="M48 2 C38 12 32 30 24 50 C18 64 12 78 22 88 C32 98 48 98 58 88 C64 80 62 72 55 69 C48 66 42 72 40 76 C38 80 32 82 28 78 C24 73 26 64 32 50 C37 38 42 20 48 2 Z" fill="#75A826" opacity="0.3" />
-        {/* Línea estetoscopio */}
-        <path d="M48 2 C36 28 26 56 18 72 C10 88 24 96 36 94 C48 92 58 82 56 72" stroke={greenColor} strokeWidth="4" strokeLinecap="round" fill="none" />
-        {/* Campana estetoscopio */}
-        <circle cx="56" cy="72" r="8" fill={greenColor} stroke={blueColor} strokeWidth="2.5" />
-        <circle cx="56" cy="72" r="3" fill="#FFFFFF" />
-      </g>
-      <g id="wordmark" fill={blueColor}>
-        <path d="M115 68 V20 H128 L141 46 L154 20 H167 V68 H155 V36 L145 56 H137 L127 36 V68 Z" />
-        <path d="M178 20 H191 V50 C191 57 195 60 202 60 C209 60 213 57 213 50 V20 H226 V50 C226 63 216 70 202 70 C188 70 178 63 178 50 Z" />
-        <path d="M236 30 V20 H272 V30 H260 V68 H248 V30 Z" />
-        <path d="M282 20 H295 V50 C295 57 299 60 306 60 C313 60 317 57 317 50 V20 H330 V50 C330 63 320 70 306 70 C292 70 282 63 282 50 Z" />
-        <path d="M340 20 H353 V50 C353 57 357 60 364 60 C371 60 375 57 375 50 V20 H388 V50 C388 63 378 70 364 70 C350 70 340 63 340 50 Z" />
-        <path d="M398 56 C400 62 405 66 413 66 C419 66 423 63 423 59 C423 52 408 51 400 44 C395 39 394 33 396 28 C399 22 406 18 415 18 C426 18 433 24 434 30 L422 33 C421 29 418 27 414 27 C409 27 406 29 406 32 C406 38 422 40 430 46 C435 51 436 57 434 62 C431 70 422 74 411 74 C399 74 390 68 387 58 Z" />
-      </g>
-      <text x="115" y="94" fontFamily="'Montserrat', 'Arial Black', sans-serif" fontSize="13" fontWeight="900" fill={taglineColor} letterSpacing="4.8">
-        SALUD INTELIGENTE.
-      </text>
-    </svg>
+    <img
+      src="https://ps-mutuus.com/icons/logo.svg"
+      alt="Mutuus Salud Inteligente"
+      className={className}
+      style={{
+        objectFit: 'contain',
+        filter: dark ? 'brightness(0) invert(1)' : 'none'
+      }}
+      loading="eager"
+    />
   );
 }
 
@@ -363,7 +344,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
             
-            {/* Logotipo Oficial Mutuus */}
+            {/* Logotipo Oficial Mutuus desde CDN Oficial */}
             <a href="#inicio" className="flex items-center group py-1 flex-shrink-0" aria-label="Mutuus Salud Inteligente Inicio">
               <MutuusOfficialLogo className="h-9 sm:h-11 w-auto transition-transform group-hover:scale-102" />
             </a>
@@ -1284,33 +1265,36 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <footer className="bg-[#001738] text-white/80 text-xs py-14 border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
             
-            {/* Banner Destacado de Operación por Grupo JIRO */}
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#0047BA] flex items-center justify-center font-black text-lg text-white shadow-md">
-                  JIRO
-                </div>
+            {/* Banner Destacado de Operación por Grupo JIRO con Logo Oficial Blanco */}
+            <div className="p-6 sm:p-8 rounded-2xl bg-white/5 border border-white/10 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                <img
+                  src="https://jiro.mx/wp-content/uploads/2021/10/Grupo-Jiro-Logo-Blanco-01.png"
+                  alt="Grupo JIRO"
+                  className="h-10 sm:h-12 w-auto object-contain flex-shrink-0"
+                  loading="lazy"
+                />
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center sm:justify-start gap-2">
                     <p className="text-white font-black text-sm">Operado y Distribuido por Grupo JIRO</p>
                     <span className="px-2 py-0.5 rounded-full bg-[#8DC63F]/20 text-[#8DC63F] text-[10px] font-black uppercase">
                       Promotoría A-3522
                     </span>
                   </div>
-                  <p className="text-white/70 text-xs mt-0.5">
+                  <p className="text-white/70 text-xs mt-1">
                     JIRO Agente de Seguros y Fianzas S.A. de C.V. · Socio Comercial y Distribuidor Oficial de Mutuus Salud Inteligente.
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <a
                   href="https://www.grupojiro.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition inline-flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition inline-flex items-center gap-1.5 border border-white/10"
                 >
                   <span>Conocer Grupo JIRO</span>
-                  <ExternalLink className="w-3 h-3 text-[#8DC63F]" />
+                  <ExternalLink className="w-3.5 h-3.5 text-[#8DC63F]" />
                 </a>
               </div>
             </div>
