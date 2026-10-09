@@ -11,11 +11,16 @@ import MoviLogin from './pages/MoviLogin';
 import { useAppUpdate } from './lib/useAppUpdate';
 import { AppUpdateBanner } from './components/AppUpdateBanner';
 
+// ── Landings (lazy) ────────────────────────────────────────────────────────
+const LandingsStudio = lazy(() => import('./landings/LandingsStudio'));
+const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
+
 // ── Seguwallet pages (lazy) ────────────────────────────────────────────────
 import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
 import { SeguwalletProvider } from './seguwallet/lib/SeguwalletContext';
 import { AgentBrandProvider } from './seguwallet/lib/AgentBrandContext';
 import { SeguwalletProtectedRoute } from './seguwallet/components/SeguwalletProtectedRoute';
+const SeguwalletProductLanding = lazy(() => import('./seguwallet/pages/SeguwalletProductLanding'));
 const SeguwalletLogin     = lazy(() => import('./seguwallet/pages/SeguwalletLogin').then(m => ({ default: m.SeguwalletLogin })));
 const SeguwalletDashboard = lazy(() => import('./seguwallet/pages/SeguwalletDashboard').then(m => ({ default: m.SeguwalletDashboard })));
 const SeguwalletPolizas   = lazy(() => import('./seguwallet/pages/SeguwalletPolizas').then(m => ({ default: m.SeguwalletPolizas })));
@@ -55,6 +60,9 @@ const isEducationSite  = HOST === 'seguros.education' || HOST.endsWith('.seguros
 const isExpressSite    = HOST === 'seguros.express'
   || HOST.endsWith('.seguros.express')
   || (import.meta.env.DEV && new URLSearchParams(window.location.search).get('site') === 'express');
+const isLandingsSite   = HOST === 'landings.movi.digital'
+  || HOST.endsWith('.landings.movi.digital')
+  || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'landings');
 const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
@@ -84,6 +92,40 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 }
 
 // ── Per-domain apps ───────────────────────────────────────────────────────
+
+function LandingsApp() {
+  useEffect(() => { 
+    document.getElementById('root')?.classList.add('public-page'); 
+    return () => {
+      document.getElementById('root')?.classList.remove('public-page');
+    };
+  }, []);
+
+  return (
+    <HelmetProvider>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Hermes Landing Studio (tipo Bolt/Lovable con autenticacion Marsella14$) */}
+            <Route path="/" element={<LandingsStudio />} />
+            <Route path="/studio" element={<LandingsStudio />} />
+
+            {/* Landings individuales para acceso y vista previa */}
+            <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
+            <Route path="/mutuus" element={<MutuusLanding />} />
+            <Route path="/landings/mutuus" element={<MutuusLanding />} />
+            <Route path="/seguros-express" element={<SegurosExpressLanding />} />
+            <Route path="/seguros-education" element={<SegurosEducationLanding />} />
+            <Route path="/chava-agente" element={<ChavaAgenteLanding />} />
+
+            {/* Fallback al Studio */}
+            <Route path="/*" element={<LandingsStudio />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </HelmetProvider>
+  );
+}
 
 function AgenteWebsiteApp() {
   return (
@@ -123,44 +165,51 @@ function ChavaAIApp() {
 
 function SeguwalletApp() {
   return (
-    <BrowserRouter>
-      <SeguwalletStack>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<SeguwalletLogin />} />
-            <Route path="/completa-perfil" element={
-              <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <SeguwalletProtectedRoute><SeguwalletDashboard /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/polizas" element={
-              <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/polizas/:id" element={
-              <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/chava" element={
-              <SeguwalletProtectedRoute><SeguwalletChava /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/perfil" element={
-              <SeguwalletProtectedRoute><SeguwalletPerfil /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/cotizar" element={
-              <SeguwalletProtectedRoute><SeguwalletCotizar /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/descargas" element={
-              <SeguwalletProtectedRoute><SeguwalletDescargas /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/aseguradoras" element={
-              <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
-            } />
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </Suspense>
-      </SeguwalletStack>
-    </BrowserRouter>
+    <HelmetProvider>
+      <BrowserRouter>
+        <SeguwalletStack>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Product Landing / Home for seguwallet.mx */}
+              <Route path="/" element={<SeguwalletProductLanding />} />
+              <Route path="/home" element={<SeguwalletProductLanding />} />
+              <Route path="/landing" element={<SeguwalletProductLanding />} />
+
+              {/* Portal login & protected app routes */}
+              <Route path="/login" element={<SeguwalletLogin />} />
+              <Route path="/completa-perfil" element={
+                <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <SeguwalletProtectedRoute><SeguwalletDashboard /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/polizas" element={
+                <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/polizas/:id" element={
+                <SeguwalletProtectedRoute><SeguwalletPolizas /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/chava" element={
+                <SeguwalletProtectedRoute><SeguwalletChava /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/perfil" element={
+                <SeguwalletProtectedRoute><SeguwalletPerfil /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/cotizar" element={
+                <SeguwalletProtectedRoute><SeguwalletCotizar /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/descargas" element={
+                <SeguwalletProtectedRoute><SeguwalletDescargas /></SeguwalletProtectedRoute>
+              } />
+              <Route path="/aseguradoras" element={
+                <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
+              } />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </SeguwalletStack>
+      </BrowserRouter>
+    </HelmetProvider>
   );
 }
 
@@ -228,7 +277,13 @@ function MoviApp() {
                 {/* MOVI login (passwordless) */}
                 <Route path="/login" element={<MoviLogin />} />
 
-                {/* Seguwallet customer sub-app under /seguwallet/* */}
+                {/* Seguwallet product landing page (standalone on beta.movi.digital / movi.digital) */}
+                <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
+                <Route path="/seguwallet/home" element={<SeguwalletProductLanding />} />
+                <Route path="/seguwallet/landing" element={<SeguwalletProductLanding />} />
+                <Route path="/seguwallet-landing" element={<SeguwalletProductLanding />} />
+
+                {/* Seguwallet customer portal sub-app under /seguwallet/* */}
                 <Route path="/seguwallet/login" element={
                   <SeguwalletStack><SeguwalletLogin /></SeguwalletStack>
                 } />
@@ -298,8 +353,9 @@ function PageLoader() {
 }
 
 function App() {
-  if (isAgenteSite) return <AgenteWebsiteApp />;
-  if (isChavaSite)  return <ChavaAIApp />;
+  if (isLandingsSite) return <LandingsApp />;
+  if (isAgenteSite)   return <AgenteWebsiteApp />;
+  if (isChavaSite)    return <ChavaAIApp />;
   if (isSeguwalletSite) return <SeguwalletApp />;
   if (isEducationSite)  return <SegurosEducationApp />;
   if (isExpressSite)    return <SegurosExpressApp />;
