@@ -1,8 +1,144 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-08, sesión tarde)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-09)
 
-### 🟡 SIGUIENTE — Bloque de Usuarios/Trámites del 2026-10-08 (tarde): bugs de oficina/equipos + bulk actions, falta correr 1 migración
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-09
+
+Todo en **`origin/main`** (beta), árbol limpio. **`produccion` NO se tocó** y lleva días separada: 5 commits propios y le faltan 26 de main, con **conflicto real** en `src/landings/mutuus/MutuusLanding.tsx` (add/add — el archivo nació por separado en cada rama). Decisión de Ricardo: main es beta y no le corre prisa empatarlas.
+
+**Todas las migraciones están corridas**, incluidas las del 2026-10-08 y la `20261009000001`. La edge function `process-poliza-pdf` está redesplegada con sus dos archivos.
+
+#### ❌ Lo único pendiente: probar la extracción de pólizas
+
+Subir a un trámite de prueba varios PDFs a la vez, unos que el lector lea (GNP/Qualitas autos) y otros que no (ANA, Mapfre, vida/GMM), y confirmar **cuatro** cosas:
+
+1. Queda **un solo** `*-SICAS.xlsx` adjunto, no uno por PDF.
+2. En el Excel, las que no se leyeron dicen en Observaciones: `Datos no extraídos, se envía a entrenamiento`.
+3. Esas mismas **no** muestran el badge verde "Datos extraídos · Excel generado".
+4. Y sí llegaron a la cola del lector:
+
+```sql
+select a.nombre, c.estado, c.aseguradora, c.creado_en
+from lector_cola_entrenamiento c
+join ticket_archivos a on a.id = c.archivo_id
+order by c.creado_en desc limit 10;
+```
+
+#### Hilos que siguen abiertos
+- **Ningún modal soporta modo oscuro** (`BaseModal.tsx`, 0 clases `dark:`). Empezar por ahí cubre todos.
+- **SICAS pausado** a propósito (4 crons apagados); el filtro de fecha de "efectuada" sigue roto.
+- **~65 ramas muertas** del remoto, pendiente del visto bueno de Ricardo.
+- **No mergear la rama de dependabot** (ver ⛔ más abajo).
+- `produccion` vs `main`, con el conflicto de MutuusLanding.
+
+**🔑 Dos cosas que ahorran tiempo al arrancar:**
+1. **Hay más gente trabajando en el repo.** `git fetch` y mirar `origin/main` antes de nada; hoy hubo que rebasar tres veces.
+2. **El número de errores del `tsc` no es fijo** (hoy 238). Medir siempre contra `git stash`, no contra lo que diga esta bitácora.
+
+---
+
+### 🔴 2026-10-09 — el lector decía "ok" con los campos vacíos y el sistema le creía
+
+Ricardo subió 9 PDFs a un trámite de Registro de Póliza. Tres no se leyeron, y aun así: el Excel les sacó una fila de aspecto normal, la pantalla decía "Datos extraídos · Excel generado", y **ninguna se mandó a `lector.movi.digital`** — justo las que más falta hacía entrenar.
+
+**Los tres síntomas eran el mismo bug.** `extraccionOk` se calculaba solo con `extracted.estado === "ok"`, y el extractor responde `ok` aunque devuelva la pura clasificación con los campos vacíos. De ese único booleano cuelgan las tres cosas: la marca del Excel, el `estado` que ve la pantalla y el envío a entrenamiento.
+
+Ahora además tiene que haber llegado **al menos un** campo identificador. Vive en `supabase/functions/process-poliza-pdf/extraccionExitosa.ts`, con autocomprobación (`npx tsx .../extraccionExitosa.test.mjs`) porque un error ahí **no da ningún síntoma**: la fila del Excel se ve igual de normal.
+
+**La lista es de lo que SÍ cuenta, no de lo que se ignora.** Quedan fuera solo tres grupos:
+1. Lo que se arma solo o sale del ticket (lo enumeró Ricardo): Nombre de Archivo, Estatus, Vendedor, Tipo Documento, Despacho.
+2. Lo que no toda póliza tiene (también suyo): Motor, Placas, Fecha de Antigüedad, Renovación, Ejecutivo de Cuenta, Grupo, Razón Social — esta última ya viaja dentro de `nombre_cliente`.
+3. `ramo`, `sub_ramo` y `aseguradora`. No estaban en sus listas, pero su propio reporte los descartó: una póliza llegó con `Sub Ramo: Automóviles` y nada más, salió por buena, y no estaba leída.
+
+**⚠️ Las reglas están pensadas para pólizas de AUTOS**, lo único que se extrae hoy (decisión de Ricardo). Vida y GMM no traen serie, concepto ni descripción del vehículo: al empezar con otros ramos hay que revisar la lista, puede quedar corta o larga.
+
+**Que un campo falte NUNCA marca una falla** — se marca solo cuando no llegó ninguno. Está escrito en el archivo porque se presta a leerse al revés; de hecho se leyó al revés dos veces durante la sesión.
+
+---
+
+### ✅ 2026-10-09 — tres Excel de SICAS en el mismo trámite
+
+`process-poliza-pdf` corre **una vez por PDF** y rehace el Excel entero en cada corrida: borra el anterior e inserta el nuevo. Con un archivo funciona; con nueve subidos de golpe las corridas se solapan, varias borran cuando todavía no hay nada, y cada una inserta lo suyo.
+
+**No se arregla dentro de la función**: siempre cabe otra corrida entre el borrado y el alta. Lo cierra un trigger (`20261009000001_un_solo_excel_sicas_por_tramite.sql`): al entrar un `*-SICAS.xlsx` se van los anteriores del mismo trámite, comparando `(created_at, id)` para que si dos entran a la vez sobreviva uno y nunca se borren los dos. Incluye la limpieza de los que ya quedaron duplicados.
+
+---
+
+### 🔴 2026-10-09 — desplegar desde el dashboard empaqueta SOLO la carpeta de la función
+
+Al desplegar `process-poliza-pdf` con un `import` a `../_shared/`:
+
+```
+Failed to bundle the function (reason: Module not found
+"file:///tmp/user_fn_.../_shared/extraccionExitosa.ts" at source/index.ts:4)
+```
+
+El dashboard de Supabase sube **únicamente la carpeta de esa función**. `_shared` es hermana, no hija, así que no viaja. `alta-guardar` se sale con la suya porque se desplegó de otra forma — **no es prueba de que funcione desde el dashboard**.
+
+**Regla:** un módulo que vaya a usar una edge function desplegada a mano va **dentro de su propia carpeta** y se importa con `./`, no con `../_shared/`. Su autocomprobación `.test.mjs` se va con él y sigue corriendo igual con `npx tsx`.
+
+---
+
+### ✅ 2026-10-09 — lo adjuntado al crear el trámite ya cuenta como el documento que es
+
+Ricardo adjuntó las carátulas al crear el trámite padre y, al cambiar el estatus a "Póliza Emitida", el sistema le exigió adjuntar los documentos de emisión **que ya estaban ahí**.
+
+La validación del cambio de estatus busca archivos con la **categoría** exacta marcada como requerida. El alta y el detalle no la guardaban igual:
+
+| | Al crear | En el detalle |
+|---|---|---|
+| Cuántas categorías | **una** para todo el campo | una **por archivo** |
+| Qué ofrecía | **todo** el catálogo | solo los tipos del campo |
+| ¿Obligatoria? | no, decía "(opcional)" | sí |
+
+Sin elegir nada, el archivo entraba **sin categoría** y la validación no lo contaba. Ahora el alta se comporta como el detalle: una categoría por archivo, solo los tipos configurados, obligatoria si el campo los tiene, y **puesta sola** cuando el campo solo acepta un tipo. Crear el trámite sigue sin exigir adjuntos: lo que se exige es que lo adjuntado diga qué es.
+
+**Y el hueco contrario:** la validación contaba también los archivos **borrados** (no filtraba `eliminado_at`), así que quitar un documento dejaba el requisito cumplido y el estatus avanzaba sin nada adjunto. Corregido.
+
+**Para los trámites viejos con archivos sin categoría:** se arregla a mano desde el detalle, cada archivo tiene su selector. Decisión de Ricardo: nadie puede adivinar de qué tipo es cada PDF.
+
+---
+
+### 🔴 2026-10-06 — el equipo de Mercadotecnia no veía "Nueva Plantilla": faltaban las DOS mitades
+
+El panel "Equipos con acceso a Marketing Admin" promete que sus miembros administran *"igual que un Administrador"*. No era cierto.
+
+1. **La pantalla**: `Publicidad.tsx` decidía con `tienePermisoAdminEnModulo`, que **solo mira el rol** (Administrador, o Gerente con permiso de módulo) y nunca consultó `mkt_equipos_acceso`.
+2. **La base**: aunque el botón hubiera salido, crear una plantilla escribe en **tres** lugares —la imagen al storage, `publicidad_plantillas` y `publicidad_plantilla_oficinas`— y los tres estaban limitados a Administrador. Subir la imagen **ni un Gerente** podía, así que el alta se habría roto a media operación.
+
+Migración `20261006000004_equipo_mkt_puede_crear_plantillas.sql`, reutilizando `mkt_puede_administrar()` que ya existía.
+
+**🔑 Es el patrón #1 del proyecto** y aquí apareció completo. Al dar acceso por equipo a algo, revisar SIEMPRE las dos mitades **y todas las tablas que toca la operación**, no solo la principal.
+
+**Dónde se configura cada permiso especial** (pregunta recurrente de Ricardo):
+
+| Mecanismo | Para quién | Dónde se configura | Tabla |
+|---|---|---|---|
+| Permisos adicionales por módulo | **solo Gerente** | Admin › Usuarios › editar › pestaña General | `permisos_adicionales_gerente` |
+| Equipos con acceso | **cualquier rol** | Store Admin › Equipos · Marketing Admin › Equipos | `store_equipos_acceso`, `mkt_equipos_acceso` |
+
+A un Empleado o Agente el primero **no le sirve**: `tienePermisoAdminEnModulo` devuelve `false` para cualquier rol que no sea Administrador o Gerente, aunque se le metan filas a mano. No confundir con Admin › Control de Módulos, que decide **quién ve** una sección, no quién la administra.
+
+---
+
+### 🔴 2026-10-06 — no se podía dar de alta a alguien que ya existió
+
+La causa no estaba en `public.usuarios` sino en **`auth.users`**: el alta llama a `auth.admin.createUser`, que rechaza un correo ya registrado. **Borrar la ficha de MOVI no libera nada por sí solo.**
+
+Dos casos retenían un correo sin que nadie los viera: usuarios con `is_deleted` que nunca lo soltaron (marcados por un camino que no pasó por `safe_delete_user`), y cuentas **sin ficha en MOVI**, invisibles en todas las pantallas.
+
+**Hallazgo de paso, y gordo:** `vendor_mappings.source_type` solo admite `'email'` y `'name'`, pero la migración `20260908120000` escribe `'id'` en **cuatro** lugares, incluido `link_vendor_to_user`. Nadie extendió el CHECK. **Desde el 8 de septiembre, enlazar un vendedor con ID de SICAS tronaba** — muy probablemente la razón de fondo de que "Enlazar usuario SICAS" no sirviera.
+
+**Lo hecho** (`20261006000001` a `20261006000003`):
+- Los eliminados sueltan su correo. El historial no se toca.
+- `vista_correos_bloqueados` dice qué correos están retenidos y por quién.
+- Al dar de alta con un correo ocupado: **Administrador** ve de quién es y puede liberarlo (si el dueño sigue visible hay que forzarlo expresamente, porque lo deja sin poder entrar; queda constancia en `audit_logs`). **Cualquier otro** deja una solicitud en `usuarios_solicitudes_alta`: el usuario NO se crea, pero lo capturado se guarda entero y el Admin lo crea de un clic desde el banner ámbar del directorio.
+
+**⚠️ `auth.users` NO es solo de MOVI.** `purgar_huerfanos_auth` borraba cualquier cuenta sin fila en `usuarios` — pero **SeguWallet** (`seguwallet_customers`) y **Chava** (`chava_agente_users`) guardan ahí a su gente. De ocho "huérfanos" revisados, **tres eran correos de seguwallet**: borrarlos habría dado de baja a clientes. Y decenas de tablas de `public` referencian `auth.users`, varias con `ON DELETE CASCADE`. Ahora `referencias_de_cuenta()` recorre las llaves foráneas reales y la purga conserva todo lo que tenga algo colgando. **Ricardo decidió no purgar** — son pocas y ninguna le estorba.
+
+---
+
+### 🟡 Bloque de Usuarios/Trámites del 2026-10-08 (tarde): bugs de oficina/equipos + bulk actions — migración ya corrida, falta probar en vivo
 
 Todo en `origin/main` (`beta.movi.digital`), commits `f7166c77`→`ec29dbfb`. No se tocó `produccion` en este bloque.
 
@@ -18,7 +154,7 @@ El wizard público "Pre-Registro" seguía rechazando el alta de una colaboradora
 **5. `PanelLider.tsx` ("Mi equipo"):** solo buscaba `rol_en_equipo = 'lider'` exacto y su `ROL_CONFIG` no tenía 'director'/'supervisor' (roles superiores a líder, ya usados en `GestionGruposVisualizacion.tsx` — este último SIEMPRE es la fuente de verdad del set completo de 5 roles si algo más toca `rol_en_equipo`). Ya replica el config completo y el criterio `ROLES_LIDERAZGO = ['director','supervisor','lider']`.
 
 **6. Oficinas múltiples para Gerente (alcance confirmado por Ricardo: SOLO `usuarios.rol = 'Gerente'`, no el rol de equipo "ejecutivo" ni el rol de catálogo "Ejecutivo Comercial"):**
-- Tabla nueva `usuario_oficinas_adicionales` (mismo molde que `tramites_grupos_oficinas`), migración `20261008160617_usuario_oficinas_adicionales_gerente.sql` — **❌ pendiente que Ricardo la corra en el SQL Editor de Supabase**, no está probada en vivo.
+- Tabla nueva `usuario_oficinas_adicionales` (mismo molde que `tramites_grupos_oficinas`), migración `20261008160617_usuario_oficinas_adicionales_gerente.sql` — **✅ corrida el 2026-10-09**, pero sigue sin probarse en vivo.
 - `src/lib/oficinasUtils.ts::getOficinasDeGerente(usuario)` — oficina principal + adicionales, `[]` para cualquier otro rol.
 - `UserModal.tsx` — sección "Oficinas Adicionales" (checkboxes), solo Admin editando a un Gerente.
 - Bug de fondo corregido en 2 pantallas que asumían una sola oficina por Gerente: `NuevoTramiteModal.tsx::loadUsuarios()` (el selector de Solicitante traía TODOS los agentes de JIRO) y `Directorio.tsx::loadData()`. **`TramitesReportes.tsx` quedó sin tocar a propósito** — su filtro de oficina es un `<select>` de una sola opción, no una lista de visibilidad; extenderlo a multi-oficina implica rediseñar ese control.
@@ -36,7 +172,7 @@ El wizard público "Pre-Registro" seguía rechazando el alta de una colaboradora
 
 ---
 
-### 🟡 Bitácora compartida MOVI Store + Marketing Premium, falta correr migraciones y probar
+### 🟡 Bitácora compartida MOVI Store + Marketing Premium — migraciones corridas, falta probar
 
 Ricardo pidió una bitácora para ambos módulos, compartiendo el mismo motor y mostrándose en secciones distintas, visible al equipo de Marketing con los permisos que ya existen, con folio/fecha/solicitante/responsable/cantidad/forma de pago/plazo/pagos aplicados, exportable a Excel y CSV (Google Sheets queda pospuesto, decisión de Ricardo — requeriría cuenta de servicio de Google, infraestructura nueva).
 
@@ -50,7 +186,7 @@ Ricardo pidió una bitácora para ambos módulos, compartiendo el mismo motor y 
 - Montado como pestaña nueva "Bitácora" en `StoreAdmin.tsx` y en `MarketingPremiumAdmin.tsx` — ninguna de las dos pantallas vive en el sidebar (se entra por botón desde cada módulo), así que no hizo falta tocar `workspaceConfig.ts`.
 
 **❌ Falta que Ricardo:**
-1. Corra las dos migraciones (`20261008000001` y `20261008000002`) en el SQL Editor de Supabase, en ese orden.
+1. ~~Corra las dos migraciones (`20261008000001` y `20261008000002`)~~ — **✅ corridas el 2026-10-09**.
 2. Abra la pestaña "Bitácora" en Store Admin y en Marketing Premium Admin, confirme que los montos/pagos/responsables salen bien, y pruebe exportar Excel y CSV.
 3. Active/desactive un Premium de prueba y confirme que aparece un periodo nuevo en la bitácora de Marketing (el trigger de `mkt_premium_periodos` nunca se probó en vivo).
 
