@@ -10,7 +10,6 @@
 Options -MultiViews
 
 # --- 1. Compresión (gzip / brotli) -----------------------------------------
-# El bundle JS es grande; sin esto se manda sin comprimir = carga lenta.
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/plain text/css \
     text/javascript application/javascript application/x-javascript \
@@ -26,21 +25,14 @@ Options -MultiViews
 
 # --- 2. Caché ---------------------------------------------------------------
 <IfModule mod_headers.c>
-  # 2a. Assets con hash de contenido (/_static/*) → cachear duro 1 año.
-  #     El nombre cambia en cada build, así que "immutable" es seguro.
   <FilesMatch "\.(js|mjs|css|woff2|woff|ttf|otf|eot)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
 
-  # 2b. Imágenes/íconos (no siempre llevan hash) → caché moderada (7 días).
   <FilesMatch "\.(png|jpg|jpeg|gif|svg|webp|avif|ico)$">
     Header set Cache-Control "public, max-age=604800"
   </FilesMatch>
 
-  # 2c. El "shell" y los marcadores de versión → NUNCA cachear.
-  #     Esto evita el bug documentado (useAppUpdate.ts): un index.html viejo
-  #     en caché apunta a chunks de un build anterior que ya no existen →
-  #     pantalla en blanco / "no carga bien". Va al final para ganarle a 2a.
   <FilesMatch "(^|/)(index\.html|version\.json|manifest\.webmanifest|push-sw\.js)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
@@ -50,14 +42,19 @@ Options -MultiViews
     Header set Cache-Control "no-cache, no-store, must-revalidate"
   </FilesMatch>
 
-  # El service worker de push tiene que poder controlar todo el scope.
   <FilesMatch "push-sw\.js$">
     Header set Service-Worker-Allowed "/"
   </FilesMatch>
 </IfModule>
 
-# --- 3. Fallback del SPA (React Router) ------------------------------------
-# Cualquier ruta que no sea un archivo/carpeta real sirve index.html.
+# --- 3. Redirección 301 de landings.movi.digital/mutuus a https://mutuus.mx/ ---
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} ^(www\.)?landings\.movi\.digital$ [NC]
+  RewriteRule ^mutuus(/.*)?$ https://mutuus.mx/ [R=301,L]
+</IfModule>
+
+# --- 4. Fallback del SPA (React Router) ------------------------------------
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /

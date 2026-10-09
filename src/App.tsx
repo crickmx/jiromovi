@@ -46,13 +46,15 @@ const SegurosEducationLanding = lazy(() => import('./seguros-education/SegurosEd
 const SegurosExpressLanding = lazy(() => import('./seguros-express/SegurosExpressLanding'));
 const SegurosExpressCotizar = lazy(() => import('./seguros-express/CotizarPage'));
 
-// ── MOVI Tienda pública (lazy) ────────────────────────────────────────────
+// ── MOVI Tienda pública (lazy) ────────────────────────────────────
 const TiendaHome     = lazy(() => import('./movistore/TiendaHome').then(m => ({ default: m.TiendaHome })));
 const TiendaProducto = lazy(() => import('./movistore/TiendaProducto').then(m => ({ default: m.TiendaProducto })));
 const TiendaCatalogo = lazy(() => import('./movistore/TiendaCatalogo').then(m => ({ default: m.TiendaCatalogo })));
 
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const isMutuusSite    = HOST === 'mutuus.mx' || HOST.endsWith('.mutuus.mx')
+  || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'mutuus');
 const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
 const isChavaSite     = HOST === 'agentedeseguros.ai'      || HOST.endsWith('.agentedeseguros.ai');
 const isSeguwalletSite = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
@@ -67,6 +69,16 @@ const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
 // Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
+
+// ── Redirect helper for landings.movi.digital/mutuus -> mutuus.mx ──────────
+function RedirectToMutuusMx() {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.location.replace('https://mutuus.mx/');
+    }
+  }, []);
+  return null;
+}
 
 // ── Redirect to grupojiro.com for bare agentedeseguros.website root ────────
 function AgenteRootRedirect() {
@@ -93,6 +105,30 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 
 // ── Per-domain apps ───────────────────────────────────────────────────────
 
+function MutuusApp() {
+  useEffect(() => { 
+    document.getElementById('root')?.classList.add('public-page'); 
+    return () => {
+      document.getElementById('root')?.classList.remove('public-page');
+    };
+  }, []);
+
+  return (
+    <HelmetProvider>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<MutuusLanding />} />
+            <Route path="/mutuus" element={<Navigate to="/" replace />} />
+            <Route path="/landings/mutuus" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </HelmetProvider>
+  );
+}
+
 function LandingsApp() {
   useEffect(() => { 
     document.getElementById('root')?.classList.add('public-page'); 
@@ -106,14 +142,18 @@ function LandingsApp() {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Hermes Landing Studio (tipo Bolt/Lovable con autenticacion Marsella14$) */}
+            {/* Hermes Landing Studio */}
             <Route path="/" element={<LandingsStudio />} />
             <Route path="/studio" element={<LandingsStudio />} />
 
+            {/* Redirección 301 de mutuus a su propio dominio mutuus.mx */}
+            <Route path="/mutuus" element={<RedirectToMutuusMx />} />
+            <Route path="/mutuus/*" element={<RedirectToMutuusMx />} />
+            <Route path="/landings/mutuus" element={<RedirectToMutuusMx />} />
+            <Route path="/landings/mutuus/*" element={<RedirectToMutuusMx />} />
+
             {/* Landings individuales para acceso y vista previa */}
             <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
-            <Route path="/mutuus" element={<MutuusLanding />} />
-            <Route path="/landings/mutuus" element={<MutuusLanding />} />
             <Route path="/seguros-express" element={<SegurosExpressLanding />} />
             <Route path="/seguros-education" element={<SegurosEducationLanding />} />
             <Route path="/chava-agente" element={<ChavaAgenteLanding />} />
@@ -132,9 +172,7 @@ function AgenteWebsiteApp() {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Root with no slug → redirect to grupojiro.com */}
           <Route path="/" element={<RootToGrupoJiro />} />
-          {/* Any slug → public advisor page */}
           <Route path="/:slug/agenda" element={<AgendaPublica />} />
           <Route path="/:slug" element={<PaginaPublicaAsesor />} />
           <Route path="*" element={<RootToGrupoJiro />} />
@@ -170,12 +208,9 @@ function SeguwalletApp() {
         <SeguwalletStack>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* Product Landing / Home for seguwallet.mx */}
               <Route path="/" element={<SeguwalletProductLanding />} />
               <Route path="/home" element={<SeguwalletProductLanding />} />
               <Route path="/landing" element={<SeguwalletProductLanding />} />
-
-              {/* Portal login & protected app routes */}
               <Route path="/login" element={<SeguwalletLogin />} />
               <Route path="/completa-perfil" element={
                 <SeguwalletProtectedRoute><SeguwalletCompleteProfile /></SeguwalletProtectedRoute>
@@ -274,16 +309,12 @@ function MoviApp() {
             <LoadingOverlay />
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                {/* MOVI login (passwordless) */}
                 <Route path="/login" element={<MoviLogin />} />
-
-                {/* Seguwallet product landing page (standalone on beta.movi.digital / movi.digital) */}
+                <Route path="/mutuus" element={<RedirectToMutuusMx />} />
                 <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
                 <Route path="/seguwallet/home" element={<SeguwalletProductLanding />} />
                 <Route path="/seguwallet/landing" element={<SeguwalletProductLanding />} />
                 <Route path="/seguwallet-landing" element={<SeguwalletProductLanding />} />
-
-                {/* Seguwallet customer portal sub-app under /seguwallet/* */}
                 <Route path="/seguwallet/login" element={
                   <SeguwalletStack><SeguwalletLogin /></SeguwalletStack>
                 } />
@@ -332,8 +363,6 @@ function MoviApp() {
                     <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
                   </SeguwalletStack>
                 } />
-
-                {/* Full MOVI platform routes */}
                 <Route path="/*" element={<MoviFullRoutes />} />
               </Routes>
             </Suspense>
@@ -353,9 +382,10 @@ function PageLoader() {
 }
 
 function App() {
-  if (isLandingsSite) return <LandingsApp />;
-  if (isAgenteSite)   return <AgenteWebsiteApp />;
-  if (isChavaSite)    return <ChavaAIApp />;
+  if (isMutuusSite)     return <MutuusApp />;
+  if (isLandingsSite)   return <LandingsApp />;
+  if (isAgenteSite)     return <AgenteWebsiteApp />;
+  if (isChavaSite)      return <ChavaAIApp />;
   if (isSeguwalletSite) return <SeguwalletApp />;
   if (isEducationSite)  return <SegurosEducationApp />;
   if (isExpressSite)    return <SegurosExpressApp />;

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 120" fill="none">
+  <!-- Mutuus Cross with Stethoscope Icon -->
+  <g id="mutuus-icon">
+    <!-- Green Cross Background -->
+    <path d="M48 10 H72 V38 H100 V62 H72 V90 H48 V62 H20 V38 H48 Z" fill="#8DC63F" rx="2" />
+    
+    <!-- Organic Stethoscope Leaf Overlay & Tube -->
+    <path d="M48 10 C38 30 35 50 30 65 C25 78 18 90 28 102 C38 112 58 112 68 100 C74 92 72 82 64 80 C56 78 50 85 48 90 C45 96 38 98 32 94 C26 88 28 78 35 62 C40 50 44 32 48 10 Z" fill="#78B02A" />
+    
+    <!-- Stethoscope Tube Line -->
+    <path d="M52 14 Q32 55 24 82 Q18 102 38 106 Q58 108 68 96 Q78 84 66 76" stroke="#8DC63F" stroke-width="4.5" stroke-linecap="round" fill="none" />
+    
+    <!-- Stethoscope Chestpiece / Bell -->
+    <circle cx="68" cy="74" r="7.5" fill="#8DC63F" stroke="#003896" stroke-width="2.5" />
+    <circle cx="68" cy="74" r="3.5" fill="#FFFFFF" />
+  </g>
+
+  <!-- Wordmark MUTUUS -->
+  <g id="mutuus-wordmark" fill="#003896">
+    <!-- M -->
+    <path d="M125 72 V22 H141 L153 50 L165 22 H181 V72 H167 V42 L157 65 H149 L139 42 V72 H125 Z" />
+    <!-- U -->
+    <path d="M195 22 H210 V52 C210 59 214 62 220 62 C226 62 230 59 230 52 V22 H245 V52 C245 66 235 74 220 74 C205 74 195 66 195 52 V22 Z" />
+    <!-- T -->
+    <path d="M255 34 V22 H295 V34 H282 V72 H267 V34 H255 Z" />
+    <!-- U -->
+    <path d="M305 22 H320 V52 C320 59 324 62 330 62 C336 62 340 59 340 52 V22 H355 V52 C355 66 345 74 330 74 C315 74 305 66 305 52 V22 Z" />
+    <!-- U -->
+    <path d="M365 22 H380 V52 C380 59 384 62 390 62 C396 62 400 59 400 52 V22 H415 V52 C415 66 405 74 390 74 C375 74 365 66 365 52 V22 Z" />
+    <!-- S -->
+    <path d="M425 61 C426 66 430 73 440 73 C447 73 451 69 451 64 C451 55 435 54 427 47 C423 43 422 36 424 30 C427 24 435 20 445 20 C457 20 464 27 465 33 L452 37 C451 34 448 31 443 31 C438 31 435 34 435 37 C435 44 452 45 460 53 C464 57 465 64 463 70 C460 78 450 84 438 84 C425 84 416 77 413 65 L425 61 Z" />
+  </g>
+
+  <!-- Tagline: SALUD INTELIGENTE. -->
+  <text x="126" y="102" font-family="'Montserrat', 'Arial', sans-serif" font-size="14.5" font-weight="800" fill="#003896" letter-spacing="4.5">SALUD INTELIGENTE.</text>
+</svg>
