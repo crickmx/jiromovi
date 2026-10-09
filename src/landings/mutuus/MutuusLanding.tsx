@@ -84,7 +84,7 @@ export interface LandingCustomization {
 // ─── FAQ Data ────────────────────────────────────────────────────────────────
 const DEFAULT_FAQS = [
   {
-    q: '¿Cómo funciona la membresía de salud y seguro de Mutuus?',
+    q: '¿Cómo funciona el Seguro Médico Inteligente Mutuus?',
     a: 'Mutuus combina atención médica preventiva digital (videoconsultas ilimitadas 24/7 con médicos generales, pediatras y psicólogos) con una póliza de seguro de Gastos Médicos Mayores con $0 deducible y $0 coaseguro al atenderte dentro de su red hospitalaria autorizada en México.'
   },
   {
@@ -105,7 +105,7 @@ const DEFAULT_FAQS = [
   },
   {
     q: '¿Cómo es el proceso de contratación y cuánto tarda?',
-    a: 'El trámite es 100% digital e inmediato a través de nuestro portal de autoservicio en línea. Solo ingresas tus datos, realizas tu pago seguro y recibes tu póliza y credencial digital en minutos.'
+    a: 'El trámite es 100% digital e inmediato a través de nuestro portal de autoservicio en línea operado por Grupo JIRO. Solo ingresas tus datos, realizas tu pago seguro y recibes tu póliza y credencial digital en minutos.'
   }
 ];
 
@@ -275,7 +275,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
   }, []);
 
   // Dynamic overrides
-  const heroTitle = customization?.heroTitle || 'Membresía de salud y gastos médicos con cero deducible';
+  const heroTitle = customization?.heroTitle || 'Seguro Médico Inteligente Mutuus';
   const heroSubtitle = customization?.heroSubtitle || 'Accede a la mejor atención médica privada, telemedicina 24/7 ilimitada y respaldo hospitalario nacional sin pagar deducibles sorpresa al momento de una emergencia.';
   const badgeText = customization?.badgeText || 'Cero Deducible · Cero Coaseguro en Red de Pago Directo';
   const primaryColor = customization?.primaryColor || '#0047BA';
@@ -304,17 +304,17 @@ export default function MutuusLanding({ customization }: { customization?: Landi
     <>
       <Helmet>
         <html lang="es-MX" />
-        <title>Mutuus Salud Inteligente | Membresía Médica y Gastos Médicos con $0 Deducible</title>
-        <meta name="description" content="Atención médica privada de primer nivel, videoconsultas 24/7 ilimitadas y cobertura en más de 115 hospitales en México con pago directo y $0 deducible garantizado." />
-        <meta name="keywords" content="Mutuus seguro gastos medicos, seguro cero deducible mexico, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguro hospitalario pago directo, membresia de salud mutuus" />
+        <title>Seguro Médico Inteligente Mutuus | Cobertura de Gastos Médicos Mayores y Menores sin Deducible</title>
+        <meta name="description" content="Seguro Médico Inteligente Mutuus: Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Atención médica privada de primer nivel y 115+ hospitales en México." />
+        <meta name="keywords" content="Mutuus seguro gastos medicos, seguro cero deducible mexico, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguro hospitalario pago directo, membresia de salud mutuus, seguro medico inteligente mutuus" />
         <link rel="canonical" href="https://mutuus.mx/" />
         
         {/* Open Graph Social Card */}
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="es_MX" />
         <meta property="og:site_name" content="Mutuus Salud Inteligente" />
-        <meta property="og:title" content="Mutuus Salud Inteligente | Membresía Médica con $0 Deducible" />
-        <meta property="og:description" content="Atención médica privada 24/7, videollamadas ilimitadas con doctores y pediatras y respaldo hospitalario nacional con $0 deducible y $0 coaseguro." />
+        <meta property="og:title" content="Seguro Médico Inteligente Mutuus | Sin Deducible ni Coaseguro" />
+        <meta property="og:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Atención médica privada 24/7 y respaldo hospitalario nacional." />
         <meta property="og:url" content="https://mutuus.mx/" />
         <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
         <meta property="og:image:width" content="1200" />
@@ -322,8 +322,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Mutuus Salud Inteligente | Gastos Médicos con $0 Deducible" />
-        <meta name="twitter:description" content="Cero deducible y cero coaseguro en red de pago directo en más de 115 hospitales de México. Emisión 100% digital." />
+        <meta name="twitter:title" content="Seguro Médico Inteligente Mutuus | Gastos Médicos Mayores y Menores" />
+        <meta name="twitter:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro en red de pago directo en más de 115 hospitales de México." />
         <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
         
         {/* Schema.org JSON-LD */}
@@ -331,8 +331,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Product",
-            "name": "Membresía de Salud y Gastos Médicos Mutuus",
-            "description": "Atención médica privada de primer nivel, telemedicina 24/7 y cobertura hospitalaria nacional con $0 deducible.",
+            "name": "Seguro Médico Inteligente Mutuus",
+            "description": "Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Operado por Grupo JIRO.",
             "image": "https://mutuus.mx/brand/mutuus/og-mutuus.svg",
             "brand": {
               "@type": "Brand",
@@ -368,7 +368,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#8DC63F] animate-pulse" />
               <span className="text-white/90">
-                Plataforma Oficial de Salud Digital & Seguro Hospitalario con Cero Deducible
+                Plataforma Oficial de Salud Digital & Seguro Hospitalario · Operado por Grupo JIRO
               </span>
             </div>
             
@@ -528,30 +528,36 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   <span>{badgeText}</span>
                 </div>
 
-                {/* H1 Principal con SEO Keyword */}
-                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-[#2B2A2A] tracking-tight leading-[1.12]">
-                  Membresía de salud y gastos médicos con{' '}
-                  <span className="relative inline-block" style={{ color: primaryColor }}>
-                    cero deducible
-                    <span 
-                      className="absolute left-0 bottom-1 w-full h-2.5 opacity-20 -z-10 rounded-sm"
-                      style={{ backgroundColor: accentColor }}
-                    />
-                  </span>
-                </h1>
+                {/* H1 Principal Actualizado */}
+                <div className="space-y-3">
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-[#2B2A2A] tracking-tight leading-[1.12]">
+                    Seguro Médico Inteligente{' '}
+                    <span className="relative inline-block" style={{ color: primaryColor }}>
+                      Mutuus
+                      <span 
+                        className="absolute left-0 bottom-1 w-full h-2.5 opacity-20 -z-10 rounded-sm"
+                        style={{ backgroundColor: accentColor }}
+                      />
+                    </span>
+                  </h1>
 
-                {/* Subtítulo */}
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-[#003896] leading-snug">
+                    Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro
+                  </h2>
+                </div>
+
+                {/* Subtítulo Detallado */}
                 <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal max-w-2xl mx-auto lg:mx-0">
                   {heroSubtitle}
                 </p>
 
                 {/* Sellos de Confianza Institucional */}
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 text-xs font-semibold text-slate-500 pt-1">
-                  <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full">
+                  <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full font-bold">
                     <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
-                    Póliza de Gastos Médicos Mayores
+                    Operado por Grupo JIRO (Promotoría Oficial)
                   </span>
-                  <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full">
+                  <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full font-bold">
                     <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
                     Pago Directo 115+ Hospitales
                   </span>
@@ -587,12 +593,12 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     <p className="text-[11px] text-slate-500 leading-tight">En red de pago directo</p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="font-black text-lg sm:text-xl text-slate-900">24/7 Video</p>
-                    <p className="text-[11px] text-slate-500 leading-tight">Médicos y pediatras</p>
+                    <p className="font-black text-lg sm:text-xl text-slate-900">Mayores & Menores</p>
+                    <p className="text-[11px] text-slate-500 leading-tight">Telemedicina + Hospital</p>
                   </div>
                   <div className="space-y-0.5">
-                    <p className="font-black text-lg sm:text-xl text-slate-900">100% Digital</p>
-                    <p className="text-[11px] text-slate-500 leading-tight">Emisión en minutos</p>
+                    <p className="font-black text-lg sm:text-xl text-slate-900">Grupo JIRO</p>
+                    <p className="text-[11px] text-slate-500 leading-tight">Asesoría y respaldo A-3522</p>
                   </div>
                 </div>
 
@@ -641,7 +647,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                         style={{ backgroundColor: '#8DC63F', borderColor: '#8DC63F' }}
                       >
                         <div>
-                          <p className="text-xs font-bold text-slate-800">Con Membresía Mutuus</p>
+                          <p className="text-xs font-bold text-slate-800">Con Mutuus Inteligente</p>
                           <p className="text-base font-black text-slate-900">Pago en Red de Convenio</p>
                         </div>
                         <span className="text-3xl font-black text-slate-900">$0 MXN</span>
@@ -881,7 +887,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     ¡Ahorras aproximadamente ${ahorroTotal.toLocaleString('es-MX')} MXN en este evento!
                   </p>
                   <p className="text-xs text-emerald-800">
-                    Emite tu membresía en línea y queda protegido desde hoy.
+                    Emite tu membresía en línea y queda protegido desde hoy con el respaldo de Grupo JIRO.
                   </p>
                 </div>
                 <a
@@ -912,7 +918,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 Elige el plan diseñado para tu estilo de vida
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
-                Precios claros, sin costos ocultos ni letras pequeñas. Emisión digital directa en el portal oficial.
+                Precios claros, sin costos ocultos ni letras pequeñas. Emisión digital directa en el portal oficial operado por Grupo JIRO.
               </p>
 
               {/* Selector Anual / Mensual */}
@@ -1090,7 +1096,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   ¿Listo para proteger a tu familia con la red hospitalaria?
                 </p>
                 <p className="text-xs text-slate-500">
-                  Emisión en menos de 5 minutos desde el portal oficial de autoservicio.
+                  Emisión en menos de 5 minutos desde el portal oficial de autoservicio de Grupo JIRO.
                 </p>
               </div>
               <a
@@ -1117,10 +1123,10 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 Transparencia Total
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
-                Claridad en lo que cubre tu membresía
+                Claridad en lo que cubre tu seguro médico
               </h2>
               <p className="text-slate-600 text-sm">
-                Sin letras chiquitas. Conoce con total exactitud el alcance de tu protección médica.
+                Sin letras chiquitas. Conoce con total exactitud el alcance de tu protección médica en gastos mayores y menores.
               </p>
 
               <div className="pt-4 flex justify-center">
@@ -1155,7 +1161,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   { t: 'Hospitalización y Cuidados Intensivos', d: 'Habitación estándar, estancia hospitalaria y terapia intensiva por enfermedad o accidente.' },
                   { t: 'Honorarios Quirúrgicos y Médicos', d: 'Cirujano, anestesiólogo, ayudantes y médicos interconsultantes de la red autorizada.' },
                   { t: 'Medicamentos Intrahospitalarios', d: 'Fármacos administrados durante la estancia hospitalaria cubierta.' },
-                  { t: 'Telemedicina Ilimitada 24/7', d: 'Consultas médicas por video y chat sin costo adicional en cualquier momento.' },
+                  { t: 'Telemedicina Ilimitada 24/7 (Gastos Menores)', d: 'Consultas médicas por video y chat sin costo adicional en cualquier momento para toda la familia.' },
                   { t: 'Ambulancia Terrestre de Urgencia', d: 'Traslados de emergencia hacia el hospital de la red en eventos calificados.' },
                   { t: 'Maternidad (Parto / Cesárea)', d: 'Ayuda por maternidad tras cumplir 10 meses continuos de antigüedad con la póliza.' },
                   { t: 'Estudios de Laboratorio y Gabinete', d: 'Rayos X, tomografías, resonancias y análisis clínicos intrahospitalarios.' },
@@ -1210,7 +1216,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 Preguntas Frecuentes
               </h2>
               <p className="text-slate-600 text-sm">
-                Todo lo que necesitas saber antes de contratar tu membresía de salud.
+                Todo lo que necesitas saber antes de contratar tu seguro médico inteligente.
               </p>
             </div>
 
@@ -1255,13 +1261,13 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               <div className="space-y-3 max-w-2xl mx-auto">
                 <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black uppercase tracking-wider">
                   <Zap className="w-4 h-4 text-emerald-700" />
-                  Emisión 100% Digital en Autoservicio
+                  Emisión 100% Digital en Autoservicio · Promotoría A-3522
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
                   Comienza tu Contratación Digital Inmediata
                 </h2>
                 <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-                  Ingresa al portal oficial de registro y autoservicio Mutuus. Elige tu plan, llena tus datos y recibe tu póliza y credencial digital en minutos.
+                  Ingresa al portal oficial de registro y autoservicio Mutuus con el respaldo de Grupo JIRO. Elige tu plan, llena tus datos y recibe tu póliza y credencial digital en minutos.
                 </p>
               </div>
 
@@ -1299,7 +1305,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 </a>
                 <p className="text-xs text-slate-500 mt-3 flex items-center justify-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Conexión cifrada SSL directa con Mutuus</span>
+                  <span>Conexión cifrada SSL directa con Mutuus & Grupo JIRO</span>
                 </p>
               </div>
 
@@ -1307,16 +1313,48 @@ export default function MutuusLanding({ customization }: { customization?: Landi
           </div>
         </section>
 
-        {/* ─── 10. FOOTER CON DOCUMENTOS OFICIALES Y AVISO DE PRIVACIDAD JIRO ─ */}
+        {/* ─── 10. FOOTER CON CRÉDITOS CLAROS DE OPERACIÓN POR JIRO ───────── */}
         <footer className="bg-[#001738] text-white/80 text-xs py-14 border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+            
+            {/* Banner Destacado de Operación por Grupo JIRO */}
+            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#0047BA] flex items-center justify-center font-black text-lg text-white shadow-md">
+                  JIRO
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-white font-black text-sm">Operado y Distribuido por Grupo JIRO</p>
+                    <span className="px-2 py-0.5 rounded-full bg-[#8DC63F]/20 text-[#8DC63F] text-[10px] font-black uppercase">
+                      Promotoría A-3522
+                    </span>
+                  </div>
+                  <p className="text-white/70 text-xs mt-0.5">
+                    JIRO Agente de Seguros y Fianzas S.A. de C.V. · Socio Comercial y Distribuidor Oficial de Mutuus Salud Inteligente.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <a
+                  href="https://www.grupojiro.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition inline-flex items-center gap-1.5"
+                >
+                  <span>Conocer Grupo JIRO</span>
+                  <ExternalLink className="w-3 h-3 text-[#8DC63F]" />
+                </a>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               
               {/* Mutuus Col */}
               <div className="space-y-3">
                 <MutuusOfficialLogo className="h-10 w-auto" dark={true} />
                 <p className="text-white/70 text-xs leading-relaxed mt-2">
-                  Membresía médica integral y seguro de gastos médicos mayores con $0 deducible en red de pago directo en todo México.
+                  Seguro Médico Inteligente: Cobertura de Gastos Médicos Mayores y Menores con $0 deducible en red de pago directo en todo México.
                 </p>
                 <div className="pt-1">
                   <a
@@ -1346,7 +1384,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
               {/* Documentos Oficiales ps-mutuus.com */}
               <div className="space-y-2">
-                <p className="font-bold text-white text-sm">Documentos Oficiales</p>
+                <p className="font-bold text-white text-sm">Documentos y Legal</p>
                 <ul className="space-y-1.5 text-white/70">
                   <li>
                     <a 
@@ -1375,7 +1413,17 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       rel="noopener noreferrer" 
                       className="hover:text-white transition-colors flex items-center gap-1 text-emerald-300 font-bold"
                     >
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Aviso de Privacidad Integral (JIRO)
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Aviso de Privacidad Integral (Grupo JIRO)
+                    </a>
+                  </li>
+                  <li>
+                    <a 
+                      href="https://www.grupojiro.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="hover:text-white transition-colors flex items-center gap-1 text-white/90"
+                    >
+                      <Building2 className="w-3.5 h-3.5 text-[#8DC63F]" /> Corporativo Grupo JIRO (jiro.mx)
                     </a>
                   </li>
                 </ul>
@@ -1383,9 +1431,9 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
               {/* Portal & Cobertura */}
               <div className="space-y-2">
-                <p className="font-bold text-white text-sm">Emisión & Soporte</p>
+                <p className="font-bold text-white text-sm">Emisión & Respaldo JIRO</p>
                 <p className="text-white/70 text-xs">
-                  Atención médica 24/7 y coordinación hospitalaria nacional.
+                  Atención médica 24/7 y asesoría especializada de agentes autorizados.
                 </p>
                 <div className="pt-2">
                   <a
@@ -1403,10 +1451,10 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
             <div className="pt-8 border-t border-white/10 space-y-2 text-[11px] text-white/50 leading-relaxed">
               <p>
-                * Mutuus es una marca registrada. La condonación del deducible y coaseguro opera bajo el estricto cumplimiento del protocolo de atención en la red de pago directo y reporte previo del evento médico. Cobertura de maternidad sujeta a 10 meses continuos de antigüedad.
+                * Mutuus es una marca registrada. Comercialización y distribución autorizada a través de JIRO Agente de Seguros y Fianzas S.A. de C.V. (Clave Promotoría A-3522). La condonación del deducible y coaseguro opera bajo el estricto cumplimiento del protocolo de atención en la red de pago directo y reporte previo del evento médico. Cobertura de maternidad sujeta a 10 meses continuos de antigüedad.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-between pt-4 text-white/40">
-                <p>© {new Date().getFullYear()} Mutuus Salud Inteligente · Todos los derechos reservados.</p>
+                <p>© {new Date().getFullYear()} Mutuus Salud Inteligente · Operado y Distribuido por Grupo JIRO (<a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">jiro.mx</a>). Todos los derechos reservados.</p>
                 <p>Aviso de Privacidad protegido por Ley Federal de Protección de Datos Personales (LFPDPPP)</p>
               </div>
             </div>
