@@ -34,28 +34,33 @@ export const MUTUUS_PORTAL_URL = 'https://selfservice.psmutuus.com/agente/A-3522
 
 // ─── LOGO MUTUUS OFICIAL SVG VECTORIAL EXACTO 1:1 ───────────────────────────
 export function MutuusOfficialLogo({ className = "h-11 w-auto", dark = false }: { className?: string; dark?: boolean }) {
-  const blueColor = dark ? "#FFFFFF" : "#0043A8";
+  const blueColor = dark ? "#FFFFFF" : "#0047BA";
   const greenColor = "#8DC63F";
-  const taglineColor = dark ? "#8DC63F" : "#0043A8";
+  const taglineColor = dark ? "#8DC63F" : "#0047BA";
 
   return (
-    <svg className={className} viewBox="0 0 465 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg className={className} viewBox="0 0 450 100" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g id="cross-stethoscope">
-        <path d="M40 8 H64 V36 H92 V60 H64 V88 H40 V60 H12 V36 H40 Z" fill={greenColor} rx="3" />
-        <path d="M40 8 C30 28 26 48 22 62 C18 74 12 86 22 97 C32 107 50 107 60 96 C66 88 64 78 57 76 C50 74 44 80 42 85 C40 91 33 93 28 89 C23 83 25 74 31 59 C36 47 38 28 40 8 Z" fill="#75A826" />
-        <path d="M42 12 Q24 52 18 78 Q12 98 30 102 Q48 104 58 92 Q66 80 56 73" stroke={greenColor} strokeWidth="4.5" strokeLinecap="round" fill="none" />
-        <circle cx="58" cy="71" r="7.5" fill={greenColor} stroke={blueColor} strokeWidth="2.5" />
-        <circle cx="58" cy="71" r="3" fill="#FFFFFF" />
+        {/* Cruz verde base */}
+        <path d="M38 14 H62 V38 H86 V62 H62 V86 H38 V62 H14 V38 H38 Z" fill={greenColor} rx="2" />
+        {/* Hoja / curva superior */}
+        <path d="M38 14 C36 4 44 -2 50 0 C46 6 42 16 38 32 Z" fill={greenColor} />
+        <path d="M48 2 C38 12 32 30 24 50 C18 64 12 78 22 88 C32 98 48 98 58 88 C64 80 62 72 55 69 C48 66 42 72 40 76 C38 80 32 82 28 78 C24 73 26 64 32 50 C37 38 42 20 48 2 Z" fill="#75A826" opacity="0.3" />
+        {/* Línea estetoscopio */}
+        <path d="M48 2 C36 28 26 56 18 72 C10 88 24 96 36 94 C48 92 58 82 56 72" stroke={greenColor} strokeWidth="4" strokeLinecap="round" fill="none" />
+        {/* Campana estetoscopio */}
+        <circle cx="56" cy="72" r="8" fill={greenColor} stroke={blueColor} strokeWidth="2.5" />
+        <circle cx="56" cy="72" r="3" fill="#FFFFFF" />
       </g>
       <g id="wordmark" fill={blueColor}>
-        <path d="M115 68 V20 H130 L141 46 L152 20 H167 V68 H154 V38 L145 61 H137 L128 38 V68 H115 Z" />
-        <path d="M180 20 H194 V49 C194 55 198 58 203 58 C208 58 212 55 212 49 V20 H226 V49 C226 62 216 70 203 70 C190 70 180 62 180 49 V20 Z" />
-        <path d="M236 31 V20 H274 V31 H262 V68 H248 V31 H236 Z" />
-        <path d="M284 20 H298 V49 C298 55 302 58 307 58 C312 58 316 55 316 49 V20 H330 V49 C330 62 320 70 307 70 C294 70 284 62 284 49 V20 Z" />
-        <path d="M340 20 H354 V49 C354 55 358 58 363 58 C368 58 372 55 372 49 V20 H386 V49 C386 62 376 70 363 70 C350 70 340 62 340 49 V20 Z" />
-        <path d="M396 58 C397 63 401 69 410 69 C416 69 420 65 420 61 C420 52 406 51 398 44 C394 40 393 34 395 29 C398 23 405 19 414 19 C425 19 432 25 433 31 L421 34 C420 31 418 29 413 29 C409 29 406 31 406 34 C406 41 422 42 429 49 C433 53 434 59 432 65 C429 73 420 78 409 78 C397 78 388 71 385 61 L396 58 Z" />
+        <path d="M115 68 V20 H128 L141 46 L154 20 H167 V68 H155 V36 L145 56 H137 L127 36 V68 Z" />
+        <path d="M178 20 H191 V50 C191 57 195 60 202 60 C209 60 213 57 213 50 V20 H226 V50 C226 63 216 70 202 70 C188 70 178 63 178 50 Z" />
+        <path d="M236 30 V20 H272 V30 H260 V68 H248 V30 Z" />
+        <path d="M282 20 H295 V50 C295 57 299 60 306 60 C313 60 317 57 317 50 V20 H330 V50 C330 63 320 70 306 70 C292 70 282 63 282 50 Z" />
+        <path d="M340 20 H353 V50 C353 57 357 60 364 60 C371 60 375 57 375 50 V20 H388 V50 C388 63 378 70 364 70 C350 70 340 63 340 50 Z" />
+        <path d="M398 56 C400 62 405 66 413 66 C419 66 423 63 423 59 C423 52 408 51 400 44 C395 39 394 33 396 28 C399 22 406 18 415 18 C426 18 433 24 434 30 L422 33 C421 29 418 27 414 27 C409 27 406 29 406 32 C406 38 422 40 430 46 C435 51 436 57 434 62 C431 70 422 74 411 74 C399 74 390 68 387 58 Z" />
       </g>
-      <text x="116" y="96" fontFamily="'Montserrat', 'Arial Black', sans-serif" fontSize="13.5" fontWeight="900" fill={taglineColor} letterSpacing="4.2">
+      <text x="115" y="94" fontFamily="'Montserrat', 'Arial Black', sans-serif" fontSize="13" fontWeight="900" fill={taglineColor} letterSpacing="4.8">
         SALUD INTELIGENTE.
       </text>
     </svg>
@@ -273,7 +278,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
   const heroTitle = customization?.heroTitle || 'Membresía de salud y gastos médicos con cero deducible';
   const heroSubtitle = customization?.heroSubtitle || 'Accede a la mejor atención médica privada, telemedicina 24/7 ilimitada y respaldo hospitalario nacional sin pagar deducibles sorpresa al momento de una emergencia.';
   const badgeText = customization?.badgeText || 'Cero Deducible · Cero Coaseguro en Red de Pago Directo';
-  const primaryColor = customization?.primaryColor || '#0043A8';
+  const primaryColor = customization?.primaryColor || '#0047BA';
   const accentColor = customization?.accentColor || '#8DC63F';
 
   const allFaqs = customization?.customFaqs && customization.customFaqs.length > 0 
@@ -346,7 +351,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
       {/* ─── CONTENEDOR PRINCIPAL CON SCROLL NATIVO ──────────────────────── */}
       <div 
-        className="w-full bg-white text-[#2B2A2A] font-sans antialiased selection:bg-[#0043A8] selection:text-white"
+        className="w-full bg-white text-[#2B2A2A] font-sans antialiased selection:bg-[#0047BA] selection:text-white"
         style={{ 
           fontFamily: 'Montserrat, system-ui, -apple-system, sans-serif',
           '--primary-brand': primaryColor,
@@ -390,12 +395,12 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
             {/* Menú de Navegación Desktop con UX Pulida */}
             <nav className="hidden lg:flex items-center gap-7 text-xs xl:text-sm font-extrabold text-slate-700">
-              <a href="#porque-mutuus" className="hover:text-[#0043A8] transition-colors">¿Por qué Mutuus?</a>
-              <a href="#simulador" className="hover:text-[#0043A8] transition-colors">Simulador</a>
-              <a href="#planes" className="hover:text-[#0043A8] transition-colors">Planes y Precios</a>
-              <a href="#red-hospitalaria" className="hover:text-[#0043A8] transition-colors">Red de Hospitales</a>
-              <a href="#coberturas" className="hover:text-[#0043A8] transition-colors">Coberturas</a>
-              <a href="#faq" className="hover:text-[#0043A8] transition-colors">Preguntas</a>
+              <a href="#porque-mutuus" className="hover:text-[#0047BA] transition-colors">¿Por qué Mutuus?</a>
+              <a href="#simulador" className="hover:text-[#0047BA] transition-colors">Simulador</a>
+              <a href="#planes" className="hover:text-[#0047BA] transition-colors">Planes y Precios</a>
+              <a href="#red-hospitalaria" className="hover:text-[#0047BA] transition-colors">Red de Hospitales</a>
+              <a href="#coberturas" className="hover:text-[#0047BA] transition-colors">Coberturas</a>
+              <a href="#faq" className="hover:text-[#0047BA] transition-colors">Preguntas</a>
             </nav>
 
             {/* Acciones Header: 100% Directo a Portal */}
@@ -810,7 +815,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   step="25000"
                   value={montoCuentaHospital}
                   onChange={(e) => setMontoCuentaHospital(Number(e.target.value))}
-                  className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0043A8]"
+                  className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0047BA]"
                 />
                 
                 <div className="flex justify-between text-[11px] font-bold text-slate-400">
@@ -1043,7 +1048,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   onClick={() => setSelectedEstado(est)}
                   className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                     selectedEstado === est
-                      ? 'bg-[#0043A8] text-white shadow-sm'
+                      ? 'bg-[#0047BA] text-white shadow-sm'
                       : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
                   }`}
                 >
@@ -1061,7 +1066,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 >
                   <div className="flex items-center gap-3">
                     <div 
-                      className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-lg group-hover:bg-[#0043A8] group-hover:text-white transition-colors"
+                      className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-lg group-hover:bg-[#0047BA] group-hover:text-white transition-colors"
                       style={{ color: primaryColor }}
                     >
                       <Hospital className="w-5 h-5" />
