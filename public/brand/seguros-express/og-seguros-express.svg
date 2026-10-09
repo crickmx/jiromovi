@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <!-- Background with dark vibrant red gradient -->
+  <rect width="1200" height="630" fill="#0B132B" />
+  <circle cx="1050" cy="180" r="400" fill="#D92F3C" opacity="0.3" filter="blur(90px)" />
+  <circle cx="200" cy="500" r="300" fill="#2563EB" opacity="0.2" filter="blur(80px)" />
+
+  <!-- Badge Top -->
+  <g transform="translate(80, 70)">
+    <rect width="360" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.08" stroke="#D92F3C" stroke-opacity="0.4" />
+    <circle cx="24" cy="21" r="5" fill="#D92F3C" />
+    <text x="40" y="27" font-family="'Sora', sans-serif" font-size="14" font-weight="800" fill="#FFFFFF" letter-spacing="1">COTIZADOR DIGITAL DE AUTOS</text>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(80, 160)">
+    <text x="0" y="60" font-family="'Sora', sans-serif" font-size="64" font-weight="900" fill="#FFFFFF">seguros<tspan fill="#D92F3C">.express</tspan></text>
+  </g>
+
+  <!-- Headline -->
+  <text x="80" y="320" font-family="'Sora', sans-serif" font-size="46" font-weight="900" fill="#FFFFFF">Tu seguro de auto con un asesor</text>
+  <text x="80" y="375" font-family="'Sora', sans-serif" font-size="46" font-weight="900" fill="#D92F3C">cercano, real y al instante.</text>
+
+  <!-- Subtitle -->
+  <text x="80" y="435" font-family="'Sora', sans-serif" font-size="20" font-weight="400" fill="#94A3B8">Comparamos las mejores aseguradoras de México para darte el mejor precio y cobertura.</text>
+
+  <!-- Feature Pills Footer -->
+  <g transform="translate(80, 500)">
+    <rect width="210" height="50" rx="25" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" />
+    <text x="25" y="32" font-family="'Sora', sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">⚡ Emisión Digital</text>
+
+    <rect x="230" width="220" height="50" rx="25" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" />
+    <text x="255" y="32" font-family="'Sora', sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">🛡️ Cobertura Amplia</text>
+
+    <rect x="470" width="220" height="50" rx="25" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" />
+    <text x="495" y="32" font-family="'Sora', sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">📍 Asesor Local</text>
+
+    <text x="960" y="32" font-family="'Sora', sans-serif" font-size="18" font-weight="800" fill="#D92F3C" text-anchor="end">seguros.express</text>
+  </g>
+</svg>

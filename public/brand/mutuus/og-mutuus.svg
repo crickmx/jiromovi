@@ -1,113 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#001B47"/>
-      <stop offset="50%" stop-color="#003896"/>
-      <stop offset="100%" stop-color="#001433"/>
-    </linearGradient>
-    <linearGradient id="green" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#9CD41C"/>
-      <stop offset="100%" stop-color="#78B02A"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="80%" cy="20%" r="50%">
-      <stop offset="0%" stop-color="#9CD41C" stop-opacity="0.25"/>
-      <stop offset="100%" stop-color="#003896" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-
-  <!-- Background -->
-  <rect width="1200" height="630" fill="url(#bg)"/>
-  <rect width="1200" height="630" fill="url(#glow)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <!-- Background with subtle glow -->
+  <rect width="1200" height="630" fill="#001844" />
+  <circle cx="1000" cy="150" r="350" fill="#003896" opacity="0.6" filter="blur(80px)" />
+  <circle cx="200" cy="500" r="300" fill="#8DC63F" opacity="0.15" filter="blur(90px)" />
+  <circle cx="600" cy="300" r="250" fill="#004CB7" opacity="0.25" filter="blur(70px)" />
 
   <!-- Grid overlay -->
-  <g opacity="0.06" stroke="#FFFFFF" stroke-width="1">
-    <line x1="100" y1="0" x2="100" y2="630"/>
-    <line x1="300" y1="0" x2="300" y2="630"/>
-    <line x1="500" y1="0" x2="500" y2="630"/>
-    <line x1="700" y1="0" x2="700" y2="630"/>
-    <line x1="900" y1="0" x2="900" y2="630"/>
-    <line x1="1100" y1="0" x2="1100" y2="630"/>
-    <line x1="0" y1="100" x2="1200" y2="100"/>
-    <line x1="0" y1="250" x2="1200" y2="250"/>
-    <line x1="0" y1="400" x2="1200" y2="400"/>
-    <line x1="0" y1="550" x2="1200" y2="550"/>
+  <path d="M0 100 H1200 M0 200 H1200 M0 300 H1200 M0 400 H1200 M0 500 H1200" stroke="#FFFFFF" stroke-opacity="0.03" stroke-width="1" />
+  <path d="M200 0 V630 M400 0 V630 M600 0 V630 M800 0 V630 M1000 0 V630" stroke="#FFFFFF" stroke-opacity="0.03" stroke-width="1" />
+
+  <!-- Badge top -->
+  <g transform="translate(80, 70)">
+    <rect width="440" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.1" stroke="#FFFFFF" stroke-opacity="0.2" />
+    <circle cx="24" cy="21" r="5" fill="#8DC63F" />
+    <text x="40" y="27" font-family="'Montserrat', sans-serif" font-size="14" font-weight="800" fill="#8DC63F" letter-spacing="1">MEMBRESÍA DE SALUD Y SEGURO HOSPITALARIO</text>
   </g>
 
-  <!-- Mutuus Official Logo Vector (White & Lime) -->
-  <g transform="translate(100, 70)">
-    <!-- Cross -->
-    <path d="M30 6 H48 V27 H69 V45 H48 V66 H30 V45 H9 V27 H30 Z" fill="#9CD41C" rx="2"/>
-    <path d="M30 6 C22 21 19 36 16 46 C13 55 9 64 16 72 C24 80 37 80 45 72 C49 66 48 58 43 57 C37 55 33 60 31 64 C30 68 25 70 21 67 C17 62 19 55 23 44 C27 35 29 21 30 6 Z" fill="#78B02A"/>
-    <path d="M31 9 Q18 39 13 58 Q9 73 22 76 Q36 78 43 69 Q49 60 42 55" stroke="#9CD41C" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-    <circle cx="43" cy="53" r="5.5" fill="#9CD41C" stroke="#003896" stroke-width="2"/>
-    <circle cx="43" cy="53" r="2.5" fill="#FFFFFF"/>
+  <!-- Mutuus Official Logo (Large on OG Card) -->
+  <g transform="translate(80, 140) scale(1.35)">
+    <!-- Cross with Stethoscope -->
+    <path d="M40 8 H64 V36 H92 V60 H64 V88 H40 V60 H12 V36 H40 Z" fill="#8DC63F" rx="3" />
+    <path d="M40 8 C30 28 26 48 22 62 C18 74 12 86 22 97 C32 107 50 107 60 96 C66 88 64 78 57 76 C50 74 44 80 42 85 C40 91 33 93 28 89 C23 83 25 74 31 59 C36 47 38 28 40 8 Z" fill="#75A826" />
+    <path d="M42 12 Q24 52 18 78 Q12 98 30 102 Q48 104 58 92 Q66 80 56 73" stroke="#8DC63F" stroke-width="4.5" stroke-linecap="round" fill="none" />
+    <circle cx="58" cy="71" r="7.5" fill="#8DC63F" stroke="#FFFFFF" stroke-width="2.5" />
+    <circle cx="58" cy="71" r="3" fill="#FFFFFF" />
 
-    <!-- Wordmark -->
-    <text x="88" y="52" font-family="'Montserrat', system-ui, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" letter-spacing="-1">mutuus</text>
-    <text x="89" y="74" font-family="'Montserrat', system-ui, sans-serif" font-size="11" font-weight="800" fill="#9CD41C" letter-spacing="3.5">SALUD INTELIGENTE.</text>
-  </g>
-
-  <!-- Tag Pill -->
-  <g transform="translate(100, 200)">
-    <rect width="420" height="36" rx="18" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-    <circle cx="20" cy="18" r="5" fill="#9CD41C"/>
-    <text x="36" y="23" font-family="'Montserrat', system-ui, sans-serif" font-size="13" font-weight="800" fill="#FFFFFF" letter-spacing="0.5">CERO DEDUCIBLE · CERO COASEGURO</text>
+    <!-- Typography MUTUUS -->
+    <g fill="#FFFFFF">
+      <path d="M115 68 V20 H130 L141 46 L152 20 H167 V68 H154 V38 L145 61 H137 L128 38 V68 H115 Z" />
+      <path d="M180 20 H194 V49 C194 55 198 58 203 58 C208 58 212 55 212 49 V20 H226 V49 C226 62 216 70 203 70 C190 70 180 62 180 49 V20 Z" />
+      <path d="M236 31 V20 H274 V31 H262 V68 H248 V31 H236 Z" />
+      <path d="M284 20 H298 V49 C298 55 302 58 307 58 C312 58 316 55 316 49 V20 H330 V49 C330 62 320 70 307 70 C294 70 284 62 284 49 V20 Z" />
+      <path d="M340 20 H354 V49 C354 55 358 58 363 58 C368 58 372 55 372 49 V20 H386 V49 C386 62 376 70 363 70 C350 70 340 62 340 49 V20 Z" />
+      <path d="M396 58 C397 63 401 69 410 69 C416 69 420 65 420 61 C420 52 406 51 398 44 C394 40 393 34 395 29 C398 23 405 19 414 19 C425 19 432 25 433 31 L421 34 C420 31 418 29 413 29 C409 29 406 31 406 34 C406 41 422 42 429 49 C433 53 434 59 432 65 C429 73 420 78 409 78 C397 78 388 71 385 61 L396 58 Z" />
+    </g>
+    <text x="116" y="96" font-family="'Montserrat', sans-serif" font-size="13.5" font-weight="800" fill="#8DC63F" letter-spacing="4.2">SALUD INTELIGENTE.</text>
   </g>
 
   <!-- Main Headline -->
-  <text x="100" y="300" font-family="'Montserrat', system-ui, sans-serif" font-size="52" font-weight="900" fill="#FFFFFF" letter-spacing="-1.5">
-    Membresía Médica y
-  </text>
-  <text x="100" y="365" font-family="'Montserrat', system-ui, sans-serif" font-size="52" font-weight="900" fill="#9CD41C" letter-spacing="-1.5">
-    Gastos Médicos Mayores
-  </text>
+  <text x="80" y="340" font-family="'Montserrat', sans-serif" font-size="44" font-weight="900" fill="#FFFFFF">Gastos Médicos con</text>
+  <text x="80" y="395" font-family="'Montserrat', sans-serif" font-size="44" font-weight="900" fill="#8DC63F">$0 Deducible y $0 Coaseguro</text>
 
   <!-- Subtitle -->
-  <text x="100" y="420" font-family="'Montserrat', system-ui, sans-serif" font-size="20" font-weight="400" fill="rgba(255,255,255,0.8)" width="680">
-    Atención médica privada 24/7 y cobertura hospitalaria nacional
-  </text>
-  <text x="100" y="450" font-family="'Montserrat', system-ui, sans-serif" font-size="20" font-weight="400" fill="rgba(255,255,255,0.8)">
-    con pago directo en más de 115 hospitales de México.
-  </text>
+  <text x="80" y="445" font-family="'Montserrat', sans-serif" font-size="20" font-weight="500" fill="#CBD5E1">Atención médica 24/7 y respaldo en más de 115 hospitales de pago directo en México.</text>
 
-  <!-- Key Value Props Bar -->
-  <g transform="translate(100, 500)">
-    <rect width="180" height="60" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)"/>
-    <text x="24" y="28" font-family="'Montserrat', sans-serif" font-size="11" font-weight="700" fill="rgba(255,255,255,0.6)">Deducible en Red</text>
-    <text x="24" y="49" font-family="'Montserrat', sans-serif" font-size="20" font-weight="900" fill="#9CD41C">$0 MXN</text>
+  <!-- Feature Pills Footer -->
+  <g transform="translate(80, 500)">
+    <!-- Pill 1 -->
+    <rect width="210" height="50" rx="25" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" />
+    <text x="25" y="32" font-family="'Montserrat', sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">✓ Cero Deducible</text>
 
-    <rect x="200" width="180" height="60" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)"/>
-    <text x="224" y="28" font-family="'Montserrat', sans-serif" font-size="11" font-weight="700" fill="rgba(255,255,255,0.6)">Videoconsulta</text>
-    <text x="224" y="49" font-family="'Montserrat', sans-serif" font-size="18" font-weight="900" fill="#FFFFFF">Ilimitada 24/7</text>
+    <!-- Pill 2 -->
+    <rect x="230" width="220" height="50" rx="25" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" />
+    <text x="255" y="32" font-family="'Montserrat', sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">✓ Médico Video 24/7</text>
 
-    <rect x="400" width="200" height="60" rx="16" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)"/>
-    <text x="424" y="28" font-family="'Montserrat', sans-serif" font-size="11" font-weight="700" fill="rgba(255,255,255,0.6)">Red Hospitales</text>
-    <text x="424" y="49" font-family="'Montserrat', sans-serif" font-size="18" font-weight="900" fill="#FFFFFF">+115 Directos</text>
-  </g>
+    <!-- Pill 3 -->
+    <rect x="470" width="230" height="50" rx="25" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" />
+    <text x="495" y="32" font-family="'Montserrat', sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">✓ 115+ Hospitales Red</text>
 
-  <!-- Right Visual 3D Card Mockup -->
-  <g transform="translate(740, 160)">
-    <!-- Back Glow -->
-    <rect width="360" height="380" rx="32" fill="#001433" stroke="rgba(255,255,255,0.2)" stroke-width="2" opacity="0.95"/>
-    <rect x="20" y="20" width="320" height="340" rx="24" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)"/>
-    
-    <text x="45" y="65" font-family="'Montserrat', sans-serif" font-size="13" font-weight="800" fill="#9CD41C" letter-spacing="1">PAGO DIRECTO EN RED</text>
-    <text x="45" y="105" font-family="'Montserrat', sans-serif" font-size="22" font-weight="900" fill="#FFFFFF">Cuenta Hospitalaria</text>
-    <text x="45" y="135" font-family="'Montserrat', sans-serif" font-size="15" font-weight="600" fill="rgba(255,255,255,0.6)">Ejemplo real $705,500 MXN</text>
-
-    <!-- Traditional comparison -->
-    <rect x="45" y="160" width="270" height="58" rx="14" fill="rgba(255,255,255,0.08)"/>
-    <text x="60" y="184" font-family="'Montserrat', sans-serif" font-size="11" fill="rgba(255,255,255,0.6)">Seguro Tradicional</text>
-    <text x="60" y="204" font-family="'Montserrat', sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">Deducible + Coaseguro</text>
-    <text x="235" y="196" font-family="'Montserrat', sans-serif" font-size="15" font-weight="900" fill="#FCA5A5">$60,000</text>
-
-    <!-- Mutuus Card -->
-    <rect x="45" y="232" width="270" height="74" rx="16" fill="#9CD41C"/>
-    <text x="60" y="258" font-family="'Montserrat', sans-serif" font-size="11" font-weight="800" fill="#001B47">Con Membresía Mutuus</text>
-    <text x="60" y="282" font-family="'Montserrat', sans-serif" font-size="14" font-weight="900" fill="#001B47">Pago en Red de Convenio</text>
-    <text x="230" y="280" font-family="'Montserrat', sans-serif" font-size="28" font-weight="900" fill="#001B47">$0</text>
-
-    <!-- Badge -->
-    <text x="80" y="335" font-family="'Montserrat', sans-serif" font-size="11" font-weight="700" fill="rgba(255,255,255,0.7)">✓ 100% Digital · Emisión Inmediata</text>
+    <!-- URL on Right -->
+    <text x="960" y="32" font-family="'Montserrat', sans-serif" font-size="18" font-weight="800" fill="#8DC63F" text-anchor="end">landings.movi.digital/mutuus</text>
   </g>
 </svg>
