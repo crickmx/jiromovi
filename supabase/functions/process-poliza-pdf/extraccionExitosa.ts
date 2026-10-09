@@ -59,6 +59,12 @@ export const CAMPOS_QUE_PRUEBAN_EXTRACCION = [
  *     por el formato del documento sin leer una línea.
  *
  * Todo lo demás cuenta.
+ *
+ * ⚠️ Esta lista está pensada para pólizas de AUTOS, que es lo único que se
+ * extrae hoy (decisión de Ricardo, 2026-10-09). Al empezar con otros ramos hay
+ * que revisarla: Vida y GMM no traen serie, concepto ni descripción del
+ * vehículo, así que una póliza de esos ramos tiene menos campos con los que
+ * demostrar que se leyó, y el criterio puede quedar corto o largo.
  */
 
 export const AVISO_SIN_EXTRACCION = 'Datos no extraídos, se envía a entrenamiento';
