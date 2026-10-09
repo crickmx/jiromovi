@@ -13,78 +13,52 @@ import {
   ArrowRight,
   ChevronRight,
   ChevronDown,
-  Calendar,
-  Zap,
   Car,
   HeartPulse,
-  Building2,
   Menu,
   X,
-  ExternalLink,
-  MessageSquare,
-  Clock,
   Laptop,
   Check,
   AlertTriangle,
-  Info,
   HelpCircle,
   FileCheck,
-  QrCode,
   Share2,
   Plus,
-  Send,
   UserCheck,
   FolderOpen
 } from 'lucide-react';
 
 // ─── ASSETS & CONSTANTS ──────────────────────────────────────────────────────
 const SEGUWALLET_LOGO = '/seguwallet-logo.png';
-const LOGO_JIRO = '/logojiro.png';
-const MOVI_LOGO = '/movirecurso_2.png';
 
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
 const isSeguwalletDomain = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
 const LOGIN_PATH = isSeguwalletDomain ? '/login' : '/seguwallet/login';
 
-const CARRIERS = [
-  { name: 'GNP Seguros', logo: '/gnp-logo-png_seeklogo-61558.png' },
-  { name: 'Quálitas', logo: '/qualitas-compania-de-seguros-logo-png_seeklogo-329374-2.png' },
-  { name: 'Chubb', logo: '/chubb-logo-png_seeklogo-299281.png' },
-  { name: 'Zurich', logo: '/zurich-logo-png_seeklogo-156664.png' },
-  { name: 'MAPFRE', logo: '/mapfre-seguros-logo-png_seeklogo-225013.png' },
-  { name: 'ANA Seguros', logo: '/ana-seguros-logo-png_seeklogo-187684.png' },
-  { name: 'Afirme', logo: '/afirme-logo-png_seeklogo-4173.png' },
-  { name: 'BX+', logo: '/logo-bx.png' },
-  { name: 'Seguros Atlas', logo: '/seguros-atlas-logo-png_seeklogo-251455.png' },
-  { name: 'Allianz', logo: '/allianz-seguros-logo-png_seeklogo-179147.png' },
-  { name: 'Inbursa', logo: '/inbursa-logo-png_seeklogo-403106.png' },
-  { name: 'Bupa', logo: '/logo-bupa.png' },
-];
-
 const FAQS = [
   {
     q: '¿Qué es Seguwallet y para qué sirve?',
-    a: 'Seguwallet es la cartera digital inteligente para asegurados. Te permite reunir, consultar y gestionar todas tus pólizas de seguros (autos, gastos médicos, vida, hogar y empresas) en un solo lugar seguro, descargar pólizas y recibos en PDF, reportar siniestros con marcación directa y resolver dudas 24/7 con Chava IA.'
+    a: 'Seguwallet es la cartera digital para asegurados provista por tu asesor de seguros. Te permite consultar tus pólizas vigentes, descargar tus documentos y recibos en PDF, acceder a las líneas directas de siniestro y consultar dudas con Chava IA desde tu celular o computadora.'
   },
   {
     q: '¿Tiene algún costo para mí como cliente?',
-    a: 'No. Seguwallet es un servicio 100% gratuito proporcionado por tu asesor de seguros de confianza y la Red Nacional de Grupo JIRO para ofrecerte la mejor experiencia y acceso inmediato a tu protección patrimonial.'
+    a: 'No. Seguwallet es un servicio gratuito proporcionado por tu asesor de seguros de confianza para que tengas acceso inmediato a la información de tus pólizas.'
   },
   {
     q: '¿Cómo inicio sesión si no tengo una contraseña?',
-    a: 'Seguwallet utiliza tecnología de acceso sin contraseñas (Passwordless). Solo necesitas ingresar el correo electrónico o número de WhatsApp registrado en tu póliza. Recibirás un código seguro de 6 dígitos que te dará acceso inmediato en segundos.'
+    a: 'Seguwallet no utiliza contraseñas fijas. Solo ingresas el correo electrónico o número de WhatsApp registrado con tu asesor y recibes un código seguro de 6 dígitos de un solo uso para ingresar al instante.'
   },
   {
-    q: '¿Puedo tener pólizas de diferentes aseguradoras en la misma cuenta?',
-    a: '¡Sí! Esa es una de las grandes ventajas de Seguwallet. Puedes tener una póliza de auto con Quálitas, tu seguro de gastos médicos con GNP y tu seguro de vida con Allianz o Seguros Monterrey; todas estarán sincronizadas y organizadas cronológicamente en tu misma cartera.'
+    q: '¿Qué tipo de pólizas puedo consultar?',
+    a: 'Puedes consultar las pólizas administradas por tu asesor de seguros (Autos, Gastos Médicos Mayores, Vida, Hogar, Empresa y Fianzas) con su vigencia, número de póliza y estatus de recibos.'
   },
   {
-    q: '¿Cómo reporto un siniestro o solicito asistencia en caso de emergencia?',
-    a: 'Dentro de Seguwallet cuentas con el botón directo de "Reportar Siniestro" y "Directorio de Aseguradoras". Con un solo toque accedes al número telefónico de emergencia 800 de tu aseguradora con tu número de póliza e inciso listos en pantalla para brindárselos al operador.'
+    q: '¿Cómo reporto un siniestro en caso de emergencia?',
+    a: 'Dentro de Seguwallet tienes la sección de Siniestros y Emergencias con los números telefónicos directos de cabina de asistencia y tu número de póliza visible para proporcionarlo al operador.'
   },
   {
     q: '¿Cómo puedo instalar Seguwallet en mi celular?',
-    a: 'Seguwallet funciona como una Progressive Web App (PWA) de última generación. Puedes abrirla en Safari (iPhone) o Chrome (Android) y seleccionar "Agregar a la pantalla de inicio" para tenerla como una app nativa, rápida y sin ocupar almacenamiento en tu teléfono.'
+    a: 'Seguwallet funciona como una Progressive Web App (PWA). Puedes abrirla en Safari (iPhone) o Chrome (Android) y seleccionar "Agregar a la pantalla de inicio" para tenerla en tu teléfono sin ocupar espacio.'
   }
 ];
 
@@ -119,11 +93,11 @@ export default function SeguwalletProductLanding() {
         <title>Seguwallet | Tu Cartera Digital de Seguros</title>
         <meta
           name="description"
-          content="Consulta tus pólizas, vigencias, recibos y asistencias al instante. Reporta siniestros con un clic y resuelve dudas 24/7 con Chava IA. La wallet de seguros inteligente."
+          content="Consulta tus pólizas, vigencias, recibos y asistencias. Reporta siniestros con un clic y resuelve dudas con Chava IA. Tu wallet de seguros."
         />
         <meta
           name="keywords"
-          content="Seguwallet, cartera digital de seguros, app de seguros, consultar póliza, recibos de seguros, Chava IA, Grupo JIRO, MOVI Digital, asistencia en siniestros, seguros México"
+          content="Seguwallet, cartera digital de seguros, app de seguros, consultar póliza, recibos de seguros, Chava IA, Grupo JIRO, asistencia en siniestros"
         />
         <link rel="canonical" href="https://seguwallet.mx/" />
 
@@ -132,10 +106,10 @@ export default function SeguwalletProductLanding() {
         <meta property="og:title" content="Seguwallet | Tu Cartera Digital de Seguros" />
         <meta
           property="og:description"
-          content="Todas tus pólizas en un solo lugar. Consulta vigencias, descarga documentos y reporta siniestros en segundos."
+          content="Tus pólizas en un solo lugar. Consulta vigencias, descarga documentos y reporta siniestros en segundos."
         />
         <meta property="og:url" content="https://seguwallet.mx/" />
-        <meta property="og:image" content="https://seguwallet.mx/seguwallet-logo.png" />
+        <meta property="og:image" content="/seguwallet-logo.png" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -144,34 +118,11 @@ export default function SeguwalletProductLanding() {
           name="twitter:description"
           content="Tu cartera digital de seguros. Accede sin contraseñas con OTP por WhatsApp y correo."
         />
-
-        {/* Schema.org */}
-        <script type="application/ld+json">
-          {JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'SoftwareApplication',
-            name: 'Seguwallet',
-            applicationCategory: 'FinanceApplication',
-            operatingSystem: 'iOS, Android, Web',
-            offers: {
-              '@type': 'Offer',
-              price: '0',
-              priceCurrency: 'MXN'
-            },
-            description:
-              'Plataforma y cartera digital para asegurados con gestión de pólizas, centro de descargas, reporte de siniestros e inteligencia artificial.',
-            url: 'https://seguwallet.mx',
-            publisher: {
-              '@type': 'Organization',
-              name: 'Grupo JIRO / MOVI Digital'
-            }
-          })}
-        </script>
       </Helmet>
 
       <div className="min-h-screen bg-[#040C1F] text-white selection:bg-[#1C37E0] selection:text-white font-sans antialiased">
 
-        {/* ─── 1. NAVBAR SUPERIOR FIJO ─────────────────────────────────────── */}
+        {/* ─── NAVBAR SUPERIOR ─────────────────────────────────────── */}
         <header
           className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
           style={{
@@ -198,7 +149,7 @@ export default function SeguwalletProductLanding() {
                   onClick={() => scrollTo('beneficios')}
                   className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
                 >
-                  Características
+                  Funciones
                 </button>
                 <button
                   onClick={() => scrollTo('como-funciona')}
@@ -207,22 +158,10 @@ export default function SeguwalletProductLanding() {
                   ¿Cómo funciona?
                 </button>
                 <button
-                  onClick={() => scrollTo('experiencia')}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
-                >
-                  Experiencia App
-                </button>
-                <button
-                  onClick={() => scrollTo('aseguradoras')}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
-                >
-                  Aseguradoras
-                </button>
-                <button
                   onClick={() => scrollTo('descargas')}
                   className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
                 >
-                  Descargar
+                  Instalar App
                 </button>
                 <button
                   onClick={() => scrollTo('faq')}
@@ -264,11 +203,9 @@ export default function SeguwalletProductLanding() {
             <div className="lg:hidden border-t border-white/10 bg-[#06142F]/98 px-5 py-6 space-y-4 backdrop-blur-2xl">
               <div className="space-y-2">
                 {[
-                  { label: 'Características', id: 'beneficios' },
+                  { label: 'Funciones', id: 'beneficios' },
                   { label: '¿Cómo funciona?', id: 'como-funciona' },
-                  { label: 'Experiencia App', id: 'experiencia' },
-                  { label: 'Aseguradoras', id: 'aseguradoras' },
-                  { label: 'Descargar App', id: 'descargas' },
+                  { label: 'Instalar App', id: 'descargas' },
                   { label: 'Preguntas Frecuentes', id: 'faq' }
                 ].map((item) => (
                   <button
@@ -296,15 +233,14 @@ export default function SeguwalletProductLanding() {
           )}
         </header>
 
-        {/* ─── 2. HERO PRINCIPAL ───────────────────────────────────────────── */}
+        {/* ─── HERO PRINCIPAL ─────────────────────────────────────── */}
         <section
           id="inicio"
-          className="relative min-h-[92vh] flex items-center pt-24 pb-16 lg:pt-32 lg:pb-24 overflow-hidden"
+          className="relative min-h-[90vh] flex items-center pt-24 pb-16 lg:pt-32 lg:pb-24 overflow-hidden"
           style={{
             background: 'radial-gradient(circle at 50% 20%, #0A2260 0%, #050E24 45%, #040C1F 100%)'
           }}
         >
-          {/* Subtle geometric pattern & glow orbs */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
@@ -321,30 +257,20 @@ export default function SeguwalletProductLanding() {
               filter: 'blur(60px)'
             }}
           />
-          <div
-            className="absolute bottom-10 left-10 w-[450px] h-[450px] rounded-full pointer-events-none"
-            style={{
-              background: 'radial-gradient(circle, #00E5FF 0%, transparent 70%)',
-              opacity: 0.08,
-              filter: 'blur(50px)'
-            }}
-          />
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-center">
               
-              {/* Columna Izquierda: Copy y CTAs */}
+              {/* Copy */}
               <div className="lg:col-span-7 space-y-7 text-center lg:text-left">
                 
-                {/* Badge Superior */}
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.12] backdrop-blur-md">
                   <span className="w-2 h-2 rounded-full bg-[#00E5FF] animate-pulse" />
                   <span className="text-xs font-semibold text-[#00E5FF] tracking-wide uppercase">
-                    La Cartera Digital de Tus Seguros
+                    Portal de Clientes y Asegurados
                   </span>
                 </div>
 
-                {/* Titular Principal */}
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.08] tracking-tight">
                   Tus pólizas en un solo lugar.{' '}
                   <span
@@ -357,12 +283,10 @@ export default function SeguwalletProductLanding() {
                   </span>
                 </h1>
 
-                {/* Subtítulo */}
                 <p className="text-base sm:text-lg text-white/70 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                  Consulta tus pólizas, vigencias, recibos y asistencias en cualquier momento. Reporta siniestros con un clic y resuelve dudas 24/7 con Chava IA. Acceso rápido y seguro sin contraseñas.
+                  Consulta tus pólizas, vigencias, recibos y asistencias administradas por tu asesor. Reporta siniestros y resuelve dudas con Chava IA. Acceso rápido sin contraseñas.
                 </p>
 
-                {/* Botones de Acción */}
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 pt-2">
                   <a
                     href={LOGIN_PATH}
@@ -377,41 +301,36 @@ export default function SeguwalletProductLanding() {
                   </a>
 
                   <button
-                    onClick={() => scrollTo('experiencia')}
+                    onClick={() => scrollTo('beneficios')}
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl font-semibold text-sm text-white/85 bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.12] transition-colors cursor-pointer"
                   >
                     <Smartphone className="w-4 h-4 text-[#00E5FF]" />
-                    <span>Explorar Funciones</span>
+                    <span>Conocer Funciones</span>
                   </button>
                 </div>
 
-                {/* Badges de Confianza / Quick Stats */}
-                <div className="pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
-                  <div className="space-y-1">
-                    <p className="text-xl sm:text-2xl font-black text-white">+12</p>
-                    <p className="text-xs text-white/50 leading-tight">Aseguradoras en una sola app</p>
-                  </div>
+                {/* Quick Stats */}
+                <div className="pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-4 text-left">
                   <div className="space-y-1">
                     <p className="text-xl sm:text-2xl font-black text-[#00E5FF]">100%</p>
-                    <p className="text-xs text-white/50 leading-tight">Sin contraseñas (OTP seguro)</p>
+                    <p className="text-xs text-white/50 leading-tight">Acceso seguro con código OTP</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-xl sm:text-2xl font-black text-white">24/7</p>
-                    <p className="text-xs text-white/50 leading-tight">Chava IA & Asistencia inmediata</p>
+                    <p className="text-xs text-white/50 leading-tight">Chava IA y líneas de emergencia</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xl sm:text-2xl font-black text-emerald-400">$0</p>
-                    <p className="text-xs text-white/50 leading-tight">Gratuito para clientes</p>
+                    <p className="text-xl sm:text-2xl font-black text-emerald-400">Sin costo</p>
+                    <p className="text-xs text-white/50 leading-tight">Para clientes de tu asesor</p>
                   </div>
                 </div>
 
               </div>
 
-              {/* Columna Derecha: Mockup 3D Interactivo de la App */}
+              {/* Mockup Interactivo */}
               <div className="lg:col-span-5 flex justify-center lg:justify-end">
                 <div className="relative w-full max-w-[360px] sm:max-w-[390px]">
                   
-                  {/* Glow detrás del teléfono */}
                   <div
                     className="absolute -inset-4 rounded-[48px] pointer-events-none"
                     style={{
@@ -420,10 +339,9 @@ export default function SeguwalletProductLanding() {
                     }}
                   />
 
-                  {/* Frame del Dispositivo Móvil */}
+                  {/* Frame */}
                   <div className="relative rounded-[40px] border-[6px] border-[#1C2A4D] bg-[#0A1633] shadow-2xl overflow-hidden text-neutral-900 font-sans">
                     
-                    {/* Notch Superior / Dynamic Island */}
                     <div className="bg-[#0A1633] pt-3 pb-2 px-6 flex items-center justify-between text-white/60 text-[11px] font-medium border-b border-white/5">
                       <span>9:41</span>
                       <div className="w-20 h-4 bg-black rounded-full mx-auto" />
@@ -432,21 +350,18 @@ export default function SeguwalletProductLanding() {
                       </div>
                     </div>
 
-                    {/* Header interno de la App */}
                     <div className="p-4 bg-gradient-to-b from-[#0C1E4A] to-[#0A1633] border-b border-white/10 text-white flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <img src={SEGUWALLET_LOGO} alt="Seguwallet" className="h-7 w-auto object-contain" />
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[11px] font-semibold text-white/80">3 Pólizas Activas</span>
+                        <span className="text-[11px] font-semibold text-white/80">Pólizas Activas</span>
                       </div>
                     </div>
 
-                    {/* Pantalla Dinámica según tab seleccionado */}
-                    <div className="p-4 space-y-3.5 bg-[#071026] text-white min-h-[460px] flex flex-col justify-between">
+                    <div className="p-4 space-y-3.5 bg-[#071026] text-white min-h-[440px] flex flex-col justify-between">
                       
-                      {/* Tarjeta de Bienvenida */}
                       <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#1C37E0] to-[#1228B8] shadow-md space-y-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-white/80 font-medium">Mi Cartera Digital</span>
@@ -454,11 +369,11 @@ export default function SeguwalletProductLanding() {
                         </div>
                         <div>
                           <p className="text-base font-extrabold text-white">Carlos Mendoza Ruiz</p>
-                          <p className="text-[11px] text-white/70">Asesor: Roberto J. (Oficina CDMX)</p>
+                          <p className="text-[11px] text-white/70">Atendido por tu asesor de seguros</p>
                         </div>
                       </div>
 
-                      {/* Selector de Pestañas Interactivo dentro del Mockup */}
+                      {/* Tab buttons */}
                       <div className="grid grid-cols-4 gap-1 p-1 bg-white/[0.05] rounded-xl border border-white/[0.08] text-[10.5px] font-bold text-center">
                         <button
                           onClick={() => setActiveTab('polizas')}
@@ -494,19 +409,18 @@ export default function SeguwalletProductLanding() {
                         </button>
                       </div>
 
-                      {/* Contenido Dinámico del Mockup */}
+                      {/* Tab contents */}
                       <div className="space-y-2.5 flex-1">
                         
                         {activeTab === 'polizas' && (
                           <div className="space-y-2 animate-in fade-in duration-200">
-                            {/* Póliza 1 */}
-                            <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-blue-400/40 transition-colors">
+                            <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
                               <div className="flex items-center justify-between mb-1.5">
                                 <div className="flex items-center gap-2">
                                   <div className="w-6 h-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
                                     <Car className="w-3.5 h-3.5 text-blue-400" />
                                   </div>
-                                  <span className="text-xs font-bold text-white">Auto · GNP Cobertura Amplia</span>
+                                  <span className="text-xs font-bold text-white">Auto · Cobertura Amplia</span>
                                 </div>
                                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Vigente</span>
                               </div>
@@ -516,14 +430,13 @@ export default function SeguwalletProductLanding() {
                               </div>
                             </div>
 
-                            {/* Póliza 2 */}
                             <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
                               <div className="flex items-center justify-between mb-1.5">
                                 <div className="flex items-center gap-2">
                                   <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center">
                                     <HeartPulse className="w-3.5 h-3.5 text-emerald-400" />
                                   </div>
-                                  <span className="text-xs font-bold text-white">GMM · Quálitas Salud</span>
+                                  <span className="text-xs font-bold text-white">GMM · Plan Familiar</span>
                                 </div>
                                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Vigente</span>
                               </div>
@@ -533,14 +446,13 @@ export default function SeguwalletProductLanding() {
                               </div>
                             </div>
 
-                            {/* Póliza 3 */}
                             <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
                               <div className="flex items-center justify-between mb-1.5">
                                 <div className="flex items-center gap-2">
                                   <div className="w-6 h-6 rounded-lg bg-purple-500/20 flex items-center justify-center">
                                     <Shield className="w-3.5 h-3.5 text-purple-400" />
                                   </div>
-                                  <span className="text-xs font-bold text-white">Vida · Respaldo Patrimonial</span>
+                                  <span className="text-xs font-bold text-white">Vida · Protección Temporal</span>
                                 </div>
                                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Vigente</span>
                               </div>
@@ -561,17 +473,13 @@ export default function SeguwalletProductLanding() {
                               <div className="space-y-1">
                                 <p className="text-[11px] font-bold text-[#00E5FF]">Chava IA · Tu Copiloto</p>
                                 <p className="text-[11.5px] text-white/80 leading-snug">
-                                  "¡Hola Carlos! Tu póliza de auto GNP cubre rotura de cristales con un deducible preferente del 20%. ¿Necesitas solicitar asistencia vial o una grúa?"
+                                  "¡Hola Carlos! Tu póliza de auto cubre asistencia vial y grúa. ¿Deseas consultar tu deducible o llamar a la cabina de siniestro?"
                                 </p>
                               </div>
                             </div>
 
                             <div className="p-2.5 rounded-xl bg-[#1C37E0]/15 border border-[#1C37E0]/30 text-[11px] text-white/70 flex items-center justify-between">
-                              <span>¿Cuánto debo de deducible en GMM?</span>
-                              <ChevronRight className="w-3.5 h-3.5 text-[#5B78FF]" />
-                            </div>
-                            <div className="p-2.5 rounded-xl bg-[#1C37E0]/15 border border-[#1C37E0]/30 text-[11px] text-white/70 flex items-center justify-between">
-                              <span>¿Cómo programar una cirugía hospitalaria?</span>
+                              <span>¿Cómo solicitar un reembolso médico?</span>
                               <ChevronRight className="w-3.5 h-3.5 text-[#5B78FF]" />
                             </div>
                           </div>
@@ -582,22 +490,18 @@ export default function SeguwalletProductLanding() {
                             <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 space-y-2">
                               <div className="flex items-center gap-2 text-rose-400 font-bold text-xs">
                                 <AlertTriangle className="w-4 h-4" />
-                                <span>Reporte Inmediato de Siniestro</span>
+                                <span>Reporte de Siniestro</span>
                               </div>
                               <p className="text-[11px] text-white/70">
-                                En caso de choque o urgencia médica, presiona el botón para llamar directo a cabina con tu póliza en mano.
+                                En caso de emergencia o accidente, consulta los números directos de atención y ten tu póliza visible.
                               </p>
                               <a
-                                href="tel:8004009000"
+                                href={LOGIN_PATH}
                                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-colors"
                               >
                                 <PhoneCall className="w-3.5 h-3.5" />
-                                <span>Llamar a GNP (800 400 9000)</span>
+                                <span>Ver Directorio en mi Wallet</span>
                               </a>
-                            </div>
-
-                            <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/60">
-                              💡 <strong>Consejo rápido:</strong> No te muevas del lugar del accidente hasta que llegue el ajustador oficial.
                             </div>
                           </div>
                         )}
@@ -608,8 +512,8 @@ export default function SeguwalletProductLanding() {
                               <div className="flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-blue-400" />
                                 <div className="text-left">
-                                  <p className="text-xs font-semibold text-white">Carátula GNP Auto.pdf</p>
-                                  <p className="text-[10px] text-white/40">1.4 MB · Vigente</p>
+                                  <p className="text-xs font-semibold text-white">Carátula de Póliza.pdf</p>
+                                  <p className="text-[10px] text-white/40">Descarga oficial</p>
                                 </div>
                               </div>
                               <span className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-bold">
@@ -621,24 +525,11 @@ export default function SeguwalletProductLanding() {
                               <div className="flex items-center gap-2">
                                 <FileCheck className="w-4 h-4 text-emerald-400" />
                                 <div className="text-left">
-                                  <p className="text-xs font-semibold text-white">Recibo Fiscal Q3 2026.pdf</p>
-                                  <p className="text-[10px] text-white/40">820 KB · Pagado</p>
+                                  <p className="text-xs font-semibold text-white">Recibo de Pago.pdf</p>
+                                  <p className="text-[10px] text-white/40">Vigente</p>
                                 </div>
                               </div>
                               <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-bold">
-                                <Download className="w-3.5 h-3.5" />
-                              </span>
-                            </div>
-
-                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
-                              <div className="flex items-center gap-2">
-                                <FolderOpen className="w-4 h-4 text-purple-400" />
-                                <div className="text-left">
-                                  <p className="text-xs font-semibold text-white">Condiciones Generales.pdf</p>
-                                  <p className="text-[10px] text-white/40">3.2 MB · Oficial</p>
-                                </div>
-                              </div>
-                              <span className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 text-xs font-bold">
                                 <Download className="w-3.5 h-3.5" />
                               </span>
                             </div>
@@ -647,12 +538,11 @@ export default function SeguwalletProductLanding() {
 
                       </div>
 
-                      {/* Botón inferior simulado */}
                       <a
                         href={LOGIN_PATH}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-[#1C37E0] to-[#3B58F0] text-white font-bold text-xs shadow-md transition-all active:scale-95"
                       >
-                        <span>Entrar a mi Seguwallet real</span>
+                        <span>Entrar a mi Seguwallet</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </a>
 
@@ -660,17 +550,6 @@ export default function SeguwalletProductLanding() {
 
                   </div>
 
-                  {/* Floating Notification Badge */}
-                  <div className="absolute -bottom-4 -left-4 sm:-left-8 bg-white/95 text-slate-900 rounded-2xl p-3 shadow-2xl border border-white/20 backdrop-blur-xl flex items-center gap-3 animate-bounce">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold flex-shrink-0">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-extrabold leading-tight">Póliza Actualizada</p>
-                      <p className="text-[11px] text-slate-500 leading-tight">Vigencia sincronizada con tu aseguradora</p>
-                    </div>
-                  </div>
-
                 </div>
               </div>
 
@@ -678,121 +557,81 @@ export default function SeguwalletProductLanding() {
           </div>
         </section>
 
-        {/* ─── 3. MARQUEE DE ASEGURADORAS ALIADAS ─────────────────────────── */}
-        <section
-          id="aseguradoras"
-          className="py-12 bg-[#030917] border-y border-white/[0.08] relative overflow-hidden"
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 text-center">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/40">
-              Conectado y compatible con las principales aseguradoras de México
-            </p>
-          </div>
-
-          <div className="flex overflow-x-auto no-scrollbar gap-8 sm:gap-12 py-2 px-6 items-center justify-center flex-wrap opacity-80 hover:opacity-100 transition-opacity">
-            {CARRIERS.map((c, i) => (
-              <div
-                key={i}
-                className="h-10 sm:h-12 px-4 py-2 bg-white/[0.04] rounded-xl border border-white/[0.06] flex items-center justify-center transition-all hover:bg-white/[0.08] hover:scale-105"
-              >
-                <img
-                  src={c.logo}
-                  alt={c.name}
-                  className="max-h-6 sm:max-h-7 max-w-[110px] w-auto object-contain filter brightness-110"
-                  onError={(e) => {
-                    const span = document.createElement('span');
-                    span.textContent = c.name;
-                    span.className = 'text-xs font-bold text-white/80';
-                    e.currentTarget.parentElement?.appendChild(span);
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ─── 4. PILARES Y BENEFICIOS CLAVE (BENTO GRID) ─────────────────── */}
+        {/* ─── PILARES Y BENEFICIOS CLAVE ─────────────────── */}
         <section id="beneficios" className="py-24 bg-[#040C1F] relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center space-y-4 max-w-3xl mx-auto mb-16">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[#5B78FF] text-xs font-bold uppercase tracking-wide">
-                <Sparkles className="w-3.5 h-3.5" /> Todo lo que necesitas
+                <Sparkles className="w-3.5 h-3.5" /> Funciones Principales
               </span>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
-                Diseñado para darte el control total de tu tranquilidad
+                El control de tus pólizas en la palma de tu mano
               </h2>
               <p className="text-base text-white/60 leading-relaxed">
-                Olvídate de buscar papeles en cajones o perder pólizas en correos antiguos. Seguwallet reúne tu información aseguradora con la máxima seguridad y rapidez.
+                Toda la información de tus seguros organizada y accesible en cualquier momento.
               </p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               
-              {/* Card 1: Centralización */}
               <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-blue-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1C37E0] to-[#3B58F0] flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Todas tus Pólizas Centralizadas</h3>
+                <h3 className="text-xl font-bold text-white">Pólizas Organizadas</h3>
                 <p className="text-sm text-white/60 leading-relaxed">
-                  Autos, Gastos Médicos, Vida, Casa, Negocio y Fianzas. Cada seguro organizado con su número de póliza, vigencia, estatus de recibos y cobertura detallada.
+                  Consulta tus pólizas individuales o familiares con su vigencia, número, estatus y coberturas.
                 </p>
               </div>
 
-              {/* Card 2: Passwordless */}
               <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-[#00E5FF]/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00E5FF]/20 to-[#1C37E0]/30 border border-[#00E5FF]/40 flex items-center justify-center text-[#00E5FF]">
                   <Lock className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Acceso Seguro sin Contraseñas</h3>
+                <h3 className="text-xl font-bold text-white">Acceso sin Contraseña</h3>
                 <p className="text-sm text-white/60 leading-relaxed">
-                  Nunca más recordarás contraseñas complicadas. Ingresa en un clic con código seguro OTP enviado a tu WhatsApp o correo electrónico verificado.
+                  Ingresa con un código seguro enviado a tu WhatsApp o correo verificado.
                 </p>
               </div>
 
-              {/* Card 3: Chava IA */}
               <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-purple-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/30">
                   <Sparkles className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Chava IA: Experto en Seguros 24/7</h3>
+                <h3 className="text-xl font-bold text-white">Chava IA</h3>
                 <p className="text-sm text-white/60 leading-relaxed">
-                  ¿Tienes dudas de qué cubre tu póliza o cómo usar tu deducible? Pregúntale a Chava IA en lenguaje natural y recibe respuestas exactas basadas en tus condiciones.
+                  Resuelve dudas sobre coberturas, deducibles y procesos ante cualquier situación.
                 </p>
               </div>
 
-              {/* Card 4: Siniestros y Emergencias */}
               <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-rose-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-600 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-rose-600/30">
                   <PhoneCall className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Botón de Siniestro & Emergencias</h3>
+                <h3 className="text-xl font-bold text-white">Líneas de Emergencia</h3>
                 <p className="text-sm text-white/60 leading-relaxed">
-                  En momentos de tensión, cada segundo cuenta. Accede a la marcación telefónica directa de la cabina de tu aseguradora con tu póliza e inciso a la vista.
+                  Directorio de teléfonos de asistencia y reporte de siniestros al alcance de un clic.
                 </p>
               </div>
 
-              {/* Card 5: Bóveda de Documentos */}
               <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-emerald-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
                   <Download className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Bóveda de Documentos & PDFs</h3>
+                <h3 className="text-xl font-bold text-white">Centro de Descargas</h3>
                 <p className="text-sm text-white/60 leading-relaxed">
-                  Descarga tus carátulas oficiales, condiciones generales, recibos fiscales y constancias vigentes en PDF cuando realices trámites o viajes.
+                  Descarga tus carátulas, recibos y condiciones generales en PDF cuando lo requieras.
                 </p>
               </div>
 
-              {/* Card 6: Asesor Personal Vinculado */}
               <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-blue-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-700 to-cyan-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
                   <UserCheck className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Tu Asesor Personal Siempre Cerca</h3>
+                <h3 className="text-xl font-bold text-white">Contacto con tu Asesor</h3>
                 <p className="text-sm text-white/60 leading-relaxed">
-                  Seguwallet está conectado con tu agente de seguros. Con un solo clic puedes abrir su WhatsApp, llamarle por teléfono o solicitar nuevas cotizaciones.
+                  Comunícate directamente por WhatsApp o teléfono con tu agente de seguros.
                 </p>
               </div>
 
@@ -801,55 +640,43 @@ export default function SeguwalletProductLanding() {
           </div>
         </section>
 
-        {/* ─── 5. CÓMO FUNCIONA EN 3 PASOS ───────────────────────────────── */}
+        {/* ─── CÓMO FUNCIONA EN 3 PASOS ───────────────────────────────── */}
         <section id="como-funciona" className="py-24 bg-[#06142F] border-y border-white/[0.08] relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center space-y-4 max-w-2xl mx-auto mb-16">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.12] text-xs font-bold uppercase tracking-wide text-[#00E5FF]">
-                Simple y sin fricción
+                Fácil y Rápido
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
-                Comienza a usar tu Seguwallet en 3 simples pasos
+                Accede a tu Seguwallet en 3 pasos
               </h2>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 relative">
               
-              {/* Paso 1 */}
               <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/[0.08] relative space-y-4">
                 <span className="text-5xl font-black text-[#1C37E0]/40">01</span>
-                <h3 className="text-xl font-bold text-white">Ingresa tu dato de contacto</h3>
+                <h3 className="text-xl font-bold text-white">Ingresa tu dato</h3>
                 <p className="text-sm text-white/60 leading-relaxed">
-                  Introduce tu correo electrónico o tu número de WhatsApp registrado en tu póliza con tu asesor de seguros.
+                  Coloca tu correo electrónico o número de WhatsApp registrado con tu asesor.
                 </p>
-                <div className="pt-2 flex items-center gap-2 text-xs font-semibold text-[#00E5FF]">
-                  <Check className="w-4 h-4" /> Sin formularios eternos
-                </div>
               </div>
 
-              {/* Paso 2 */}
               <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/[0.08] relative space-y-4">
                 <span className="text-5xl font-black text-[#00E5FF]/40">02</span>
-                <h3 className="text-xl font-bold text-white">Recibe tu código seguro</h3>
+                <h3 className="text-xl font-bold text-white">Recibe tu código</h3>
                 <p className="text-sm text-white/60 leading-relaxed">
-                  Te enviamos un código de un solo uso de 6 dígitos instantáneamente a tu WhatsApp o correo para autenticarte.
+                  Te llega un código seguro de 6 dígitos por WhatsApp o correo electrónico.
                 </p>
-                <div className="pt-2 flex items-center gap-2 text-xs font-semibold text-[#00E5FF]">
-                  <Check className="w-4 h-4" /> 100% libre de contraseñas
-                </div>
               </div>
 
-              {/* Paso 3 */}
               <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/[0.08] relative space-y-4">
                 <span className="text-5xl font-black text-emerald-400/40">03</span>
-                <h3 className="text-xl font-bold text-white">¡Listo! Accede a tu cartera</h3>
+                <h3 className="text-xl font-bold text-white">Consulta tus pólizas</h3>
                 <p className="text-sm text-white/60 leading-relaxed">
-                  Visualiza todas tus pólizas, descarga tus documentos en PDF, solicita asistencias y chatea con Chava IA en cualquier momento.
+                  Revisa vigencias, descarga documentos y gestiona tus seguros de forma inmediata.
                 </p>
-                <div className="pt-2 flex items-center gap-2 text-xs font-semibold text-emerald-400">
-                  <Check className="w-4 h-4" /> Disponible 24/7 en móvil y PC
-                </div>
               </div>
 
             </div>
@@ -861,7 +688,7 @@ export default function SeguwalletProductLanding() {
                 style={{ background: 'linear-gradient(135deg, #1C37E0 0%, #3B58F0 100%)' }}
               >
                 <Lock className="w-4 h-4" />
-                <span>Ingresar ahora a mi Seguwallet</span>
+                <span>Ingresar a mi Seguwallet</span>
                 <ArrowRight className="w-4 h-4" />
               </a>
             </div>
@@ -869,7 +696,7 @@ export default function SeguwalletProductLanding() {
           </div>
         </section>
 
-        {/* ─── 6. SECCIÓN DE DESCARGAS & MULTIPLATAFORMA ──────────────────── */}
+        {/* ─── DESCARGAS & PWA ──────────────────── */}
         <section id="descargas" className="py-24 bg-[#040C1F] relative overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="rounded-3xl p-8 sm:p-14 bg-gradient-to-br from-[#0A2260] via-[#0D2E80] to-[#06142F] border border-blue-500/30 shadow-2xl relative overflow-hidden">
@@ -877,15 +704,15 @@ export default function SeguwalletProductLanding() {
               <div className="grid lg:grid-cols-2 gap-10 items-center relative z-10">
                 <div className="space-y-6">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-bold uppercase tracking-wide">
-                    <Smartphone className="w-3.5 h-3.5 text-[#00E5FF]" /> PWA de Última Generación
+                    <Smartphone className="w-3.5 h-3.5 text-[#00E5FF]" /> Acceso Móvil y Web
                   </span>
                   
                   <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
-                    Lleva Seguwallet en la pantalla de inicio de tu celular
+                    Agrega Seguwallet a la pantalla de tu celular
                   </h2>
 
                   <p className="text-base text-white/75 leading-relaxed">
-                    Instala Seguwallet directamente en tu iPhone o dispositivo Android como una app nativa sin ocupar memoria ni descargas pesadas. Tus pólizas siempre a un toque de distancia.
+                    Instala Seguwallet en tu iPhone o Android como acceso directo en tu pantalla de inicio para entrar rápidamente sin descargas pesadas.
                   </p>
 
                   <div className="flex flex-wrap gap-4 pt-2">
@@ -896,7 +723,7 @@ export default function SeguwalletProductLanding() {
                       <span className="text-lg">🍎</span>
                       <div className="text-left leading-tight">
                         <span className="block text-[10px] text-slate-500 font-bold uppercase">Instalar en</span>
-                        <span>iPhone (iOS Safari)</span>
+                        <span>iPhone (Safari)</span>
                       </div>
                     </button>
 
@@ -916,17 +743,17 @@ export default function SeguwalletProductLanding() {
                 <div className="space-y-4 bg-white/[0.05] p-6 rounded-2xl border border-white/10 backdrop-blur-md">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <Laptop className="w-5 h-5 text-[#00E5FF]" />
-                    <span>También accesible desde tu computadora</span>
+                    <span>Acceso desde computadora</span>
                   </h3>
                   <p className="text-sm text-white/70 leading-relaxed">
-                    Accede desde cualquier navegador web en tu laptop o tablet. Toda la información se mantiene sincronizada en la nube en tiempo real.
+                    También puedes acceder a través de cualquier navegador web en tu laptop o tablet.
                   </p>
                   <div className="pt-2">
                     <a
                       href={LOGIN_PATH}
                       className="inline-flex items-center gap-2 text-sm font-bold text-[#00E5FF] hover:underline"
                     >
-                      Abrir portal web de clientes <ArrowRight className="w-4 h-4" />
+                      Ingresar al portal web <ArrowRight className="w-4 h-4" />
                     </a>
                   </div>
                 </div>
@@ -936,16 +763,16 @@ export default function SeguwalletProductLanding() {
           </div>
         </section>
 
-        {/* ─── 7. PREGUNTAS FRECUENTES (FAQ ACCORDION) ────────────────────── */}
+        {/* ─── PREGUNTAS FRECUENTES ────────────────────── */}
         <section id="faq" className="py-24 bg-[#030917] border-t border-white/[0.08]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center space-y-4 mb-16">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[#5B78FF] text-xs font-bold uppercase tracking-wide">
-                <HelpCircle className="w-3.5 h-3.5" /> Resolvemos tus dudas
+                <HelpCircle className="w-3.5 h-3.5" /> Dudas Comunes
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-white">
-                Preguntas Frecuentes sobre Seguwallet
+                Preguntas Frecuentes
               </h2>
             </div>
 
@@ -984,7 +811,7 @@ export default function SeguwalletProductLanding() {
           </div>
         </section>
 
-        {/* ─── 8. CTA FINAL ───────────────────────────────────────────────── */}
+        {/* ─── CTA FINAL ───────────────────────────────────────────────── */}
         <section className="py-20 bg-gradient-to-b from-[#030917] to-[#040C1F] relative">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
             
@@ -994,10 +821,10 @@ export default function SeguwalletProductLanding() {
 
             <div className="space-y-4 max-w-2xl mx-auto">
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
-                Tu tranquilidad respaldada en cada momento
+                Tus pólizas siempre contigo
               </h2>
               <p className="text-base sm:text-lg text-white/70">
-                Ingresa hoy a Seguwallet y lleva todas tus pólizas organizadas en la palma de tu mano.
+                Ingresa a Seguwallet y consulta tu información en cualquier momento.
               </p>
             </div>
 
@@ -1016,7 +843,7 @@ export default function SeguwalletProductLanding() {
           </div>
         </section>
 
-        {/* ─── 9. FOOTER INSTITUCIONAL ─────────────────────────────────────── */}
+        {/* ─── FOOTER ─────────────────────────────────────── */}
         <footer className="border-t border-white/[0.08] bg-[#020612] py-14">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
             
@@ -1025,20 +852,16 @@ export default function SeguwalletProductLanding() {
               <div className="md:col-span-2 space-y-4">
                 <img src={SEGUWALLET_LOGO} alt="Seguwallet" className="h-10 w-auto object-contain" />
                 <p className="text-sm text-white/50 leading-relaxed max-w-sm">
-                  Seguwallet es la cartera digital inteligente para asegurados. Un servicio oficial respaldado por la Red Nacional de Grupo JIRO y el ecosistema MOVI Digital.
+                  Seguwallet es la cartera digital para asegurados de Grupo JIRO y MOVI Digital.
                 </p>
-                <div className="flex items-center gap-4 pt-2 text-xs text-white/40">
-                  <span>Protegido con encriptación SSL de 256 bits</span>
-                </div>
               </div>
 
               <div className="space-y-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-white">Navegación</p>
                 <ul className="space-y-2 text-sm text-white/60">
-                  <li><button onClick={() => scrollTo('beneficios')} className="hover:text-white transition-colors cursor-pointer">Características</button></li>
+                  <li><button onClick={() => scrollTo('beneficios')} className="hover:text-white transition-colors cursor-pointer">Funciones</button></li>
                   <li><button onClick={() => scrollTo('como-funciona')} className="hover:text-white transition-colors cursor-pointer">¿Cómo funciona?</button></li>
-                  <li><button onClick={() => scrollTo('aseguradoras')} className="hover:text-white transition-colors cursor-pointer">Aseguradoras</button></li>
-                  <li><button onClick={() => scrollTo('descargas')} className="hover:text-white transition-colors cursor-pointer">Descargar App</button></li>
+                  <li><button onClick={() => scrollTo('descargas')} className="hover:text-white transition-colors cursor-pointer">Instalar App</button></li>
                   <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Preguntas Frecuentes</button></li>
                 </ul>
               </div>
@@ -1057,11 +880,6 @@ export default function SeguwalletProductLanding() {
 
             <div className="pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/40">
               <p>© {new Date().getFullYear()} Seguwallet · Grupo JIRO. Todos los derechos reservados.</p>
-              <div className="flex items-center gap-4">
-                <a href="https://movi.digital" target="_blank" rel="noopener noreferrer" className="hover:text-white/70 transition-colors">Aviso de Privacidad</a>
-                <span>·</span>
-                <a href="https://movi.digital" target="_blank" rel="noopener noreferrer" className="hover:text-white/70 transition-colors">Términos de Servicio</a>
-              </div>
             </div>
 
           </div>
@@ -1087,7 +905,7 @@ export default function SeguwalletProductLanding() {
                 {pwaPlatform === 'ios' ? 'Instalar en iPhone (Safari)' : 'Instalar en Android (Chrome)'}
               </h3>
               <p className="text-xs text-white/60">
-                Sigue estos 3 pasos rápidos para tener Seguwallet como app nativa:
+                Sigue estos pasos para agregar Seguwallet a tu pantalla de inicio:
               </p>
             </div>
 
@@ -1096,30 +914,30 @@ export default function SeguwalletProductLanding() {
                 <>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center flex-shrink-0">1</span>
-                    <p className="text-white/80">Abre <strong>https://seguwallet.mx</strong> en el navegador <strong>Safari</strong> de tu iPhone.</p>
+                    <p className="text-white/80">Abre <strong>https://seguwallet.mx</strong> en <strong>Safari</strong>.</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center flex-shrink-0">2</span>
-                    <p className="text-white/80">Toca el botón <strong>Compartir</strong> <Share2 className="inline w-3.5 h-3.5 mx-1" /> en la barra inferior de Safari.</p>
+                    <p className="text-white/80">Toca el botón <strong>Compartir</strong> <Share2 className="inline w-3.5 h-3.5 mx-1" />.</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center flex-shrink-0">3</span>
-                    <p className="text-white/80">Desplázate hacia abajo y selecciona <strong>"Agregar al inicio"</strong> <Plus className="inline w-3.5 h-3.5 mx-1" />.</p>
+                    <p className="text-white/80">Selecciona <strong>"Agregar al inicio"</strong> <Plus className="inline w-3.5 h-3.5 mx-1" />.</p>
                   </div>
                 </>
               ) : (
                 <>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center flex-shrink-0">1</span>
-                    <p className="text-white/80">Abre <strong>https://seguwallet.mx</strong> en <strong>Google Chrome</strong> en tu Android.</p>
+                    <p className="text-white/80">Abre <strong>https://seguwallet.mx</strong> en <strong>Google Chrome</strong>.</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center flex-shrink-0">2</span>
-                    <p className="text-white/80">Toca el menú de <strong>tres puntos (⋮)</strong> en la esquina superior derecha.</p>
+                    <p className="text-white/80">Toca el menú de <strong>tres puntos (⋮)</strong> arriba a la derecha.</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center flex-shrink-0">3</span>
-                    <p className="text-white/80">Selecciona <strong>"Instalar aplicación"</strong> o <strong>"Agregar a la pantalla principal"</strong>.</p>
+                    <p className="text-white/80">Selecciona <strong>"Instalar aplicación"</strong> o <strong>"Agregar a pantalla principal"</strong>.</p>
                   </div>
                 </>
               )}
@@ -1131,7 +949,7 @@ export default function SeguwalletProductLanding() {
                 className="flex-1 py-3 px-4 rounded-xl font-bold text-xs text-white text-center shadow-md shadow-blue-600/30"
                 style={{ background: 'linear-gradient(135deg, #1C37E0 0%, #3B58F0 100%)' }}
               >
-                Abrir Seguwallet ahora
+                Abrir Seguwallet
               </a>
               <button
                 onClick={() => setShowPwaModal(false)}
