@@ -1,6 +1,84 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-09)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-12)
+
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-12
+
+| Rama | Commit | Qué sirve |
+|---|---|---|
+| `origin/main` | `bdc76fe4` | beta.movi.digital |
+| `origin/produccion` | `8728154e` | app.movi.digital — **se le subieron 51 commits hoy** |
+
+**Producción recibió dos semanas de trabajo de golpe.** Falta que Ricardo confirme que el Pull + Deploy en Plesk salió bien. Dos cosas que delatan si el build no corrió:
+- El menú de Herramientas debe salir con los **nombres nuevos** (Mis Contactos, Espacio JIRO, Centro Digital, Vacaciones, Mi Progreso). Si salen los viejos **con el orden nuevo**, el código no llegó: la migración del menú sí está corrida.
+- Y lo que hay que vigilar de los usuarios: un **Gerente** ya solo ve solicitantes de su oficina al crear un trámite (antes veía a todos los agentes de JIRO). Es lo más probable que reporten.
+
+**`main` va 2 commits adelante** (`ee9d6fb2` + su merge): unificación visual de los `PageHeader` de Hermes. No entraron a producción, quedan para el siguiente merge.
+
+#### Hilos que siguen abiertos
+- **La landing de Mutuus está bifurcada a propósito.** Producción conserva la suya; main tiene 5 commits más (dominio mutuus.mx, og-image, links legales, cobranding, simulador). **Alguien tiene que decidir cuál gana** antes del próximo merge, o el conflicto se repite igual.
+- **Ningún modal soporta modo oscuro** (`BaseModal.tsx`, 0 clases `dark:`).
+- **SICAS pausado** a propósito; el filtro de "efectuada" sigue roto.
+- **~65 ramas muertas** del remoto.
+- Falta probar en vivo lo del 2026-10-08: oficinas múltiples de Gerente y la bitácora de Store/Marketing.
+
+---
+
+### 🔴 2026-10-12 — LA BASE DE DATOS ES UNA SOLA: beta y producción comparten Supabase
+
+Salió al revisar si el merge era seguro, y **cambia cómo hay que pensar los despliegues**. No estaba escrito en ningún lado.
+
+Los dos sitios apuntan al mismo proyecto (`qhwvuuyjhcennqccgvse`). Consecuencias que conviene tener presentes SIEMPRE:
+
+- **Correr una migración afecta a producción en el acto**, aunque el código siga sin desplegarse. No existe "probarla en beta primero".
+- **Las edge functions también son una sola.** Desplegar `process-poliza-pdf` cambia lo que producción está llamando ahora mismo.
+- Por eso producción llevaba dos semanas corriendo contra una base **por delante de su código**. El merge de hoy cerró ese desfase, no lo creó.
+- Al correr una migración que va en pareja con código (como la del menú de Christofer), el sitio que no tenga ese código queda **a medias**: orden nuevo con nombres viejos.
+
+**🔑 Regla:** antes de correr una migración, preguntarse qué le hace al sitio que todavía NO tiene el código. Si la respuesta es fea, primero el deploy.
+
+---
+
+### 🔴 2026-10-12 — `produccion` llevaba días sin poder compilar
+
+Al preparar el merge resultó que `origin/produccion` **no construía**. Su `App.tsx` hacía `lazy(() => import(...))` de dos archivos que en esa rama no existían:
+
+```
+src/landings/LandingsStudio.tsx
+src/seguwallet/pages/SeguwalletProductLanding.tsx
+```
+
+El trabajo de landings se portó a mano a `produccion` en vez de mergearse, y se quedó a medias: entraron las rutas del `App.tsx`, no los componentes. Un `npm run build` ahí falla con *"Rollup failed to resolve import"*. O sea que lo que servía `app.movi.digital` era un build anterior a `e7bfb327`, y nadie se enteró.
+
+**🔑 Dos cosas que esto enseña:**
+1. **Portar commits a mano entre ramas deja agujeros.** Si hay que llevar algo a producción sin el resto, es un cherry-pick del commit completo, no copiar archivos.
+2. **Un deploy que falla no avisa.** El sitio se queda sirviendo el build viejo y se ve normal. La barra de beta muestra `Commit:`/`Build:` desde `/version.json`; producción no tiene esa barra, así que ahí hay que mirar el log de Plesk o `curl https://app.movi.digital/version.json`.
+
+---
+
+### ✅ 2026-10-12 — merge de `main` a `produccion` conservando la landing de Mutuus
+
+Ricardo pidió mergear **sin lo de Hermes**, para no esperar a que alguien decidiera qué versión de la landing de Mutuus gana.
+
+**Cómo se hizo:** merge normal y los dos conflictos (`App.tsx` y `MutuusLanding.tsx`) resueltos **a favor de producción** (`git checkout --ours`). Los dos archivos quedaron idénticos bit por bit a lo que producción ya tenía — se verificó con `git diff --stat origin/produccion HEAD` sobre ellos (vacío).
+
+**Los conflictos eran de ese trabajo portado a mano**, no de código del core: las dos ramas habían escrito las mismas rutas de landings por su cuenta. Los hunks del `App.tsx` eran comentarios, espacios y rutas duplicadas.
+
+**Lo que sí entró a producción:** todo lo de trámites, usuarios, bitácora, permisos y correos de las últimas dos semanas, **más los dos archivos que faltaban** para que la rama compilara. Build verificado antes de subir.
+
+**🔑 Antes de decir que un merge es seguro:** `git merge-tree` solo dice si hay choque de TEXTO. Lo que de verdad hay que mirar es (a) qué migraciones trae y qué le hacen al otro sitio, (b) si la rama destino compila HOY, y (c) qué cambios de comportamiento van a notar los usuarios. Aquí las tres cosas dieron sorpresas.
+
+---
+
+### ✅ 2026-10-12 — la categoría del adjunto vuelve a ser opcional
+
+El 09 la dejé obligatoria para cualquier campo que tuviera tipos configurados, y eso estorba a quien solo quiere subir un archivo. Ricardo lo acotó: **opcional, salvo que la configuración del trámite diga lo contrario.**
+
+Ahora solo se exige cuando el FormBuilder marcó algún tipo como **requerido** (`tipos_config[].requerido`). Ahí sí hace falta: sin la categoría, la validación del cambio de estatus no tiene cómo saber si el documento ya está — que es justo el caso que él reportó con "Documentos de emisión".
+
+En los demás campos el selector sigue ahí, como **"(opcional)"**, para quien quiera clasificar.
+
+---
 
 ### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-09
 
@@ -1231,6 +1309,8 @@ Visto repetidamente: alguien agrega una tabla + política RLS para dar acceso a 
 |---|---|
 | `beta.movi.digital` (**donde Ricardo prueba todo**) | `origin/main` |
 | `movi.digital` (producción) | `origin/produccion` |
+
+⚠️ **Dos ramas, pero UNA SOLA base de datos.** Los dos sitios apuntan al mismo proyecto de Supabase (`qhwvuuyjhcennqccgvse`), así que **correr una migración o desplegar una edge function afecta a producción en el acto**, aunque su código siga sin desplegarse. No existe "probarlo en beta primero" para nada que viva en la base. Antes de correr una migración, preguntarse qué le hace al sitio que todavía NO tiene el código que la acompaña.
 
 ```bash
 git push origin HEAD:main         # para que llegue a BETA
