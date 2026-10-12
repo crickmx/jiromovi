@@ -104,6 +104,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [modulosSistema, setModulosSistema] = useState<ModuloSistema[]>([]);
   const [permisosAdicionales, setPermisosAdicionales] = useState<string[]>([]);
+  const [oficinasAdicionales, setOficinasAdicionales] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sendingAccess, setSendingAccess] = useState(false);
@@ -182,6 +183,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         metodo: editableUser.ubicacion_metodo ?? null,
       });
       loadPermisosAdicionales(editableUser.id);
+      loadOficinasAdicionales(editableUser.id);
 
       // Prellenar el chip de enlace SICAS si el usuario ya tiene id_sicas.
       const existingIdSicas = editableUser.id_sicas;
@@ -268,6 +270,45 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         return [...prev, moduloId];
       }
     });
+  };
+
+  const loadOficinasAdicionales = async (userId: string) => {
+    const { data } = await supabase
+      .from('usuario_oficinas_adicionales')
+      .select('oficina_id')
+      .eq('usuario_id', userId);
+    if (data) {
+      setOficinasAdicionales(data.map(o => o.oficina_id));
+    }
+  };
+
+  const toggleOficinaAdicional = (oficinaId: string) => {
+    setOficinasAdicionales(prev =>
+      prev.includes(oficinaId) ? prev.filter(id => id !== oficinaId) : [...prev, oficinaId]
+    );
+  };
+
+  const saveOficinasAdicionales = async (userId: string) => {
+    try {
+      await supabase
+        .from('usuario_oficinas_adicionales')
+        .delete()
+        .eq('usuario_id', userId);
+
+      if (oficinasAdicionales.length > 0) {
+        const { error: insertError } = await supabase
+          .from('usuario_oficinas_adicionales')
+          .insert(oficinasAdicionales.map(oficina_id => ({
+            usuario_id: userId,
+            oficina_id,
+            created_by: currentUser?.id,
+          })));
+        if (insertError) throw insertError;
+      }
+    } catch (err) {
+      console.error('Error saving additional oficinas:', err);
+      throw err;
+    }
   };
 
   const savePermisosAdicionales = async (userId: string) => {
@@ -564,9 +605,10 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
 
         await persistSicasLink(user.id);
 
-        // Guardar permisos adicionales si es Gerente
+        // Guardar permisos y oficinas adicionales si es Gerente
         if (formData.rol === 'Gerente' && isAdmin) {
           await savePermisosAdicionales(user.id);
+          await saveOficinasAdicionales(user.id);
         }
 
         if (puedeAsignarEquiposTramite) {
@@ -750,9 +792,10 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             }
           }
 
-          // Guardar permisos adicionales si es Gerente
+          // Guardar permisos y oficinas adicionales si es Gerente
           if (formData.rol === 'Gerente' && isAdmin) {
             await savePermisosAdicionales(result.userId);
+            await saveOficinasAdicionales(result.userId);
           }
 
           // Enlace SICAS del usuario recién creado
@@ -1150,6 +1193,40 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                 )}
               </div>
             </div>
+
+            {/* Oficinas Adicionales - Solo para Gerentes y solo si el usuario actual es Admin */}
+            {isAdmin && formData.rol === 'Gerente' && (
+              <div className="bg-gradient-to-br from-blue-50 to-primary-50 border-2 border-blue-200 rounded-xl p-6">
+                <h3 className="text-sm font-semibold text-neutral-900 mb-2 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-accent-ink" />
+                  Oficinas Adicionales
+                </h3>
+                <p className="text-xs text-neutral-600 mb-4">
+                  Además de su oficina principal ({oficinas.find(o => o.id === formData.oficina_id)?.nombre || 'sin asignar'}), este Gerente también verá y gestionará los agentes y trámites de las oficinas que marques aquí.
+                </p>
+
+                {oficinas.length === 0 ? (
+                  <p className="text-sm text-neutral-500 italic">Cargando oficinas...</p>
+                ) : (
+                  <div className="bg-surface-card rounded-2xl p-4 border border-soft grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {oficinas.filter(o => o.id !== formData.oficina_id).map(oficina => (
+                      <label
+                        key={oficina.id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={oficinasAdicionales.includes(oficina.id)}
+                          onChange={() => toggleOficinaAdicional(oficina.id)}
+                          className="h-4 w-4 text-accent-ink border-neutral-300 rounded focus:ring-2 focus:ring-accent"
+                        />
+                        <span className="text-sm font-medium text-neutral-900">{oficina.nombre}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Permisos Adicionales - Solo para Gerentes y solo si el usuario actual es Admin */}
             {isAdmin && formData.rol === 'Gerente' && (

@@ -5,6 +5,9 @@ import { Layout } from '../components/Layout';
 import { AssistantProvider } from '../contexts/AssistantContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 
+// Landings públicas
+const MutuusLanding = lazy(() => import('../landings/mutuus/MutuusLanding'));
+
 // Top-level MOVI pages
 const MoviDashboard = lazy(() => import('./Dashboard'));
 const Chava = lazy(() => import('./Chava'));
@@ -20,7 +23,8 @@ const ComunicadoDetalle = lazy(() => import('./ComunicadoDetalle'));
 const ComunicadoEditor = lazy(() => import('./ComunicadoEditor'));
 const ComunicadoCategorias = lazy(() => import('./ComunicadoCategorias'));
 
-// Comercial
+// Herramientas & Comercial
+const HerramientasHub = lazy(() => import('./HerramientasHub'));
 const Contactos = lazy(() => import('./ContactosCRM'));
 const MiCRM = lazy(() => import('./MiCRM'));
 const CRMContactoPerfil = lazy(() => import('./CRMContactoPerfil'));
@@ -98,6 +102,7 @@ const ManualViewer = lazy(() => import('./ManualViewer'));
 const SegurosEducationAnalytics = lazy(() => import('./SegurosEducationAnalytics'));
 
 // Admin
+const AdminHub = lazy(() => import('./AdminHub'));
 const Directorio = lazy(() => import('./Directorio'));
 const PerfilUsuario = lazy(() => import('./PerfilUsuario'));
 const Configuracion = lazy(() => import('./Configuracion'));
@@ -169,6 +174,10 @@ export default function MoviFullRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
+        {/* Landings públicas */}
+        <Route path="/mutuus" element={<MutuusLanding />} />
+        <Route path="/landings/mutuus" element={<MutuusLanding />} />
+
         {/* Public / no-layout routes */}
         <Route path="/alta" element={<Alta brand="movi" />} />
         <Route path="/registro-at" element={<Alta brand="agente_total" />} />
@@ -196,7 +205,8 @@ export default function MoviFullRoutes() {
           <Route path="/comunicados/categorias" element={<ProtectedRoute><ComunicadoCategorias /></ProtectedRoute>} />
           <Route path="/comunicados/:id" element={<ProtectedRoute><ComunicadoDetalle /></ProtectedRoute>} />
 
-          {/* Comercial */}
+          {/* Herramientas Hub & Submódulos */}
+          <Route path="/herramientas" element={<ProtectedRoute><HerramientasHub /></ProtectedRoute>} />
           <Route path="/contactos" element={<ProtectedRoute><Contactos /></ProtectedRoute>} />
           <Route path="/contactos/:id" element={<ProtectedRoute><CRMContactoPerfil /></ProtectedRoute>} />
           <Route path="/mi-crm" element={<ProtectedRoute><MiCRM /></ProtectedRoute>} />
@@ -263,6 +273,7 @@ export default function MoviFullRoutes() {
           <Route path="/accesos-nacional" element={<ProtectedRoute><AccesosNacional /></ProtectedRoute>} />
 
           {/* Mercadotecnia */}
+          <Route path="/mercadotecnia" element={<ProtectedRoute><Navigate to="/mercadotecnia/publicidad" replace /></ProtectedRoute>} />
           <Route path="/mercadotecnia/publicidad" element={<ProtectedRoute><Mercadotecnia section="publicidad" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/mis-disenos" element={<ProtectedRoute><Mercadotecnia section="mis-disenos" /></ProtectedRoute>} />
           <Route path="/mercadotecnia/mi-pagina-web" element={<ProtectedRoute><Mercadotecnia section="mi-pagina-web" /></ProtectedRoute>} />
@@ -294,6 +305,7 @@ export default function MoviFullRoutes() {
           <Route path="/seguros-education/analytics" element={<ProtectedRoute><SegurosEducationAnalytics /></ProtectedRoute>} />
 
           {/* Admin */}
+          <Route path="/admin" element={<ProtectedRoute requireAdminOrGerente><AdminHub /></ProtectedRoute>} />
           <Route path="/directorio" element={<ProtectedRoute requireAdminOrGerente><Directorio /></ProtectedRoute>} />
           <Route path="/directorio/:id" element={<ProtectedRoute requireAdminOrGerente><PerfilUsuario /></ProtectedRoute>} />
           <Route path="/configuracion" element={<ProtectedRoute requireAdmin><Configuracion /></ProtectedRoute>} />

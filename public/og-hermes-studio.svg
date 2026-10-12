@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="50%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Logo -->
+  <g transform="translate(100, 80)">
+    <rect width="52" height="52" rx="16" fill="url(#bg)" stroke="#3B82F6" stroke-width="2"/>
+    <path d="M26 14 L34 26 L26 38 L18 26 Z" fill="#3B82F6"/>
+    <text x="68" y="38" font-family="'Inter', sans-serif" font-size="34" font-weight="900" fill="#FFFFFF">Hermes <tspan fill="#3B82F6">Studio</tspan></text>
+  </g>
+
+  <!-- Tag Pill -->
+  <g transform="translate(100, 185)">
+    <rect width="380" height="34" rx="17" fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.4)"/>
+    <text x="24" y="22" font-family="'Inter', sans-serif" font-size="12" font-weight="800" fill="#93C5FD">LANDING BUILDER &amp; COPILOT IA</text>
+  </g>
+
+  <!-- Headline -->
+  <text x="100" y="285" font-family="'Inter', sans-serif" font-size="50" font-weight="900" fill="#FFFFFF" letter-spacing="-1">
+    Diseño y publicación de
+  </text>
+  <text x="100" y="350" font-family="'Inter', sans-serif" font-size="50" font-weight="900" fill="#3B82F6" letter-spacing="-1">
+    landings de alta conversión.
+  </text>
+
+  <text x="100" y="410" font-family="'Inter', sans-serif" font-size="20" fill="rgba(255,255,255,0.75)">
+    Genera, edita y publica páginas web optimizadas para el ecosistema MOVI.
+  </text>
+</svg>

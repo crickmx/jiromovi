@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Crown, Zap, Eye, Users, Shuffle, X, Plus, Trash2, ChevronDown,
   Check, Loader2, AlertTriangle, CheckCircle2, Search, ArrowRight,
+  Star, ShieldAlert,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -34,10 +35,17 @@ interface Props { onClose: () => void }
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ROL_CONFIG = {
-  lider:     { label: 'Líder',     bg: 'bg-amber-100',   text: 'text-amber-800',   icon: Crown },
-  ejecutivo: { label: 'Ejecutivo', bg: 'bg-blue-100',    text: 'text-blue-700',    icon: Zap   },
-  miembro:   { label: 'Miembro',   bg: 'bg-neutral-100', text: 'text-neutral-600', icon: Eye   },
+  director:   { label: 'Director',   bg: 'bg-purple-100',  text: 'text-purple-800',  icon: Star       },
+  supervisor: { label: 'Supervisor', bg: 'bg-rose-100',    text: 'text-rose-700',    icon: ShieldAlert },
+  lider:      { label: 'Líder',      bg: 'bg-amber-100',   text: 'text-amber-800',   icon: Crown       },
+  ejecutivo:  { label: 'Ejecutivo',  bg: 'bg-blue-100',    text: 'text-blue-700',    icon: Zap         },
+  miembro:    { label: 'Miembro',    bg: 'bg-neutral-100', text: 'text-neutral-600', icon: Eye         },
 } as const;
+
+// Roles de equipo con jerarquía igual o superior a "líder" -- quien tenga
+// cualquiera de estos puede gestionar el equipo desde "Mi equipo", igual que
+// en Gestión de Equipos (GestionGruposVisualizacion.tsx).
+const ROLES_LIDERAZGO = ['director', 'supervisor', 'lider'] as const;
 
 function showToast(msg: string, type: 'ok' | 'err' = 'ok') {
   const el = document.createElement('div');
@@ -108,7 +116,7 @@ export function PanelLider({ onClose }: Props) {
       .from('tramites_grupos_miembros')
       .select('grupo_id, tramites_grupos_visualizacion!inner(id, nombre, color, area_categoria, activo, member_count:tramites_grupos_miembros(count))')
       .eq('usuario_id', usuario.id)
-      .eq('rol_en_equipo', 'lider');
+      .in('rol_en_equipo', ROLES_LIDERAZGO);
 
     if (data) {
       type Row = {
@@ -201,7 +209,7 @@ export function PanelLider({ onClose }: Props) {
   }, [selectedId, tab, loadMiembros, loadReglas]);
 
   useEffect(() => {
-    setEjecutivosEquipo(miembros.filter(m => m.rol_en_equipo === 'lider' || m.rol_en_equipo === 'ejecutivo'));
+    setEjecutivosEquipo(miembros.filter(m => ['director', 'supervisor', 'lider', 'ejecutivo'].includes(m.rol_en_equipo)));
   }, [miembros]);
 
   // ── Member actions ────────────────────────────────────────────────────────────
@@ -216,7 +224,7 @@ export function PanelLider({ onClose }: Props) {
     setAddingUser(null);
   };
 
-  const handleChangeRol = async (userId: string, nuevoRol: 'lider' | 'ejecutivo' | 'miembro') => {
+  const handleChangeRol = async (userId: string, nuevoRol: Miembro['rol_en_equipo']) => {
     if (!selectedId) return;
     setChangingRol(userId);
     await supabase.from('tramites_grupos_miembros')

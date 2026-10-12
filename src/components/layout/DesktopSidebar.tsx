@@ -35,8 +35,18 @@ const BADGE_COLORS: Record<string, string> = {
 };
 
 const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-2.5 py-1.5";
-const MAX_SIDEBAR_ITEMS = 8;
+const MAX_SIDEBAR_ITEMS = 12;
 const PINNED_KEY = 'movi:sidebar_pinned';
+
+const WORKSPACE_HUB_ROUTES: Record<string, string> = {
+  herramientas: '/herramientas',
+  'centro-contacto': '/centro-contacto',
+  cotizar: '/cotizar',
+  produccion: '/produccion',
+  administracion: '/admin',
+  mercadotecnia: '/mercadotecnia/publicidad',
+  'seguros-education': '/seguros-education',
+};
 
 interface DesktopSidebarProps {
   isPinned: boolean;
@@ -142,10 +152,6 @@ export function DesktopSidebar({
 
   return (
     <TooltipProvider delayDuration={200}>
-      {/* 
-        Contenedor exterior: Mantiene el ancho base de 72px en el flujo de la página
-        mientras que el sidebar expandido por hover flota limpiamente por encima sin mover el contenido.
-      */}
       <div
         className={cn(
           'hidden md:block shrink-0 relative transition-[width] duration-200 ease-out z-40 select-none',
@@ -166,17 +172,17 @@ export function DesktopSidebar({
         >
           {/* Velo de marca muy sutil (decorativo) */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(120%_100%_at_0%_0%,rgb(var(--movi-accent-rgb)/0.08),transparent_70%)]" />
+          
           {/* ── TOP: Logo Oficial + Botón Pin / Fijar ── */}
           <div className="relative h-[60px] px-3.5 flex items-center justify-between border-b border-soft shrink-0">
             {isExpanded ? (
               <>
-                {/* Logo MOVI Expandido */}
                 <button
                   onClick={() => handleNav('/dashboard')}
                   className="flex items-center gap-2.5 py-1 px-1 rounded-xl hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
                   title="Ir al Dashboard"
                 >
-<span
+                  <span
                     className="grid place-items-center w-9 h-9 rounded-xl shadow-accent group-hover:scale-105 transition-transform"
                     style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-text-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
                   >
@@ -196,7 +202,6 @@ export function DesktopSidebar({
                   </div>
                 </button>
 
-                {/* Botón Fijar / Desfijar */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -207,7 +212,7 @@ export function DesktopSidebar({
                           ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
                           : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
                       )}
-                      aria-label={isPinned ? 'Desfijar menú (hover automático)' : 'Fijar menú abierto'}
+                      aria-label={isPinned ? 'Desfijar menú (hover automático)' : 'Fijar menú siempre abierto'}
                     >
                       {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
                     </button>
@@ -218,14 +223,13 @@ export function DesktopSidebar({
                 </Tooltip>
               </>
             ) : (
-              /* Logo MOVI Colapsado */
               <div className="w-full flex items-center justify-center">
                 <button
                   onClick={() => handleNav('/dashboard')}
                   className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
                   title="MOVI Digital"
                 >
-<span
+                  <span
                     className="grid place-items-center w-9 h-9 rounded-xl shadow-accent group-hover:scale-105 transition-transform"
                     style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-text-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
                   >
@@ -338,7 +342,8 @@ export function DesktopSidebar({
               }
 
               const Icon = ws.icon;
-              const isWsActive = ws.id === (workspace?.id ?? null);
+              const hubRoute = WORKSPACE_HUB_ROUTES[ws.id] || ws.items[0]?.path || '/dashboard';
+              const isWsActive = ws.id === (workspace?.id ?? null) || location.pathname === hubRoute;
               const isOpen = openWorkspaces[ws.id] ?? isWsActive;
 
               // Sub-items del workspace
@@ -358,7 +363,6 @@ export function DesktopSidebar({
                 }
               }
 
-              const firstPath = allWsItems[0]?.path || '/dashboard';
               const isExtensive = allWsItems.length > MAX_SIDEBAR_ITEMS;
               const visibleSubItems = isExtensive ? allWsItems.slice(0, MAX_SIDEBAR_ITEMS) : allWsItems;
 
@@ -369,7 +373,7 @@ export function DesktopSidebar({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
-                          onClick={() => handleNav(firstPath)}
+                          onClick={() => handleNav(hubRoute)}
                           className={cn(
                             'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
                             isWsActive
@@ -395,9 +399,9 @@ export function DesktopSidebar({
                 <div key={ws.id} className="space-y-0.5">
                   {separadorAntes && <div className="h-px bg-neutral-100 dark:bg-white/5 my-1.5 mx-2" />}
 
-                  {/* Encabezado Acordeón */}
+                  {/* Encabezado Acordeón: Clic navega a la página de sección (Hub) */}
                   <div
-                    onClick={() => handleNav(firstPath)}
+                    onClick={() => handleNav(hubRoute)}
                     className={cn(
                       'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group cursor-pointer active:scale-[0.98]',
                       isWsActive
@@ -430,7 +434,7 @@ export function DesktopSidebar({
                     )}
                   </div>
 
-                  {/* Sub-Items Expandidos con Sangría Moderada */}
+                  {/* Sub-Items Expandidos */}
                   {isOpen && allWsItems.length > 0 && (
                     <div className="pl-6 pr-1 py-0.5 space-y-0.5 border-l-2 border-neutral-100 dark:border-white/5 ml-4">
                       {visibleSubItems.map(item => {
@@ -463,7 +467,6 @@ export function DesktopSidebar({
                         );
                       })}
 
-                      {/* Botón "Ver todas las opciones" para menús extensos */}
                       {isExtensive && (
                         <button
                           onClick={() => setPanelWorkspace(ws)}
@@ -480,9 +483,8 @@ export function DesktopSidebar({
             })}
           </div>
 
-          {/* ── FOOTER: Perfil del Usuario + Acciones Globales ── */}
+          {/* ── FOOTER: Perfil + Utilidades ── */}
           <div className="p-3 border-t border-soft bg-surface-muted/60 dark:bg-white/[0.015] shrink-0 space-y-2">
-            {/* Perfil del Usuario */}
             {isExpanded ? (
               <button
                 onClick={() => handleNav('/perfil')}
@@ -524,12 +526,10 @@ export function DesktopSidebar({
               </Tooltip>
             )}
 
-            {/* Fila de Utilidades: Chava IA, Campana, Tema, Logout */}
             <div className={cn(
               'flex items-center gap-1.5',
               isExpanded ? 'justify-between px-1' : 'flex-col justify-center'
             )}>
-              {/* Chava IA — Solo Administrador */}
               {userRole === 'Administrador' && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -546,13 +546,9 @@ export function DesktopSidebar({
                 </Tooltip>
               )}
 
-              {/* Notificaciones */}
               <NotificationBell compact fixedPanel />
-
-              {/* Toggle Tema */}
               <ThemeToggle compact />
 
-              {/* Cerrar Sesión */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -570,7 +566,6 @@ export function DesktopSidebar({
           </div>
         </aside>
 
-        {/* Flyout Panel para Módulos Extensos (ej. Admin) */}
         {panelWorkspace && (
           <NavigationPanel
             workspace={panelWorkspace}

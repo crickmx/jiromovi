@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Inicio', href: '/dashboard' },
   { icon: ClipboardList, label: 'Trámites', href: '/tramites' },
   { icon: PlusCircle, label: 'Nuevo', href: '/tramites?nuevo=1', isAction: true },
-  { icon: Search, label: 'Contactos', href: '/contactos' },
+  { icon: Search, label: 'Mis Contactos', href: '/contactos' },
 ];
 
 export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }: MobileNavProps) {

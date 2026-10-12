@@ -64,14 +64,14 @@ const WORKSPACE_HERRAMIENTAS: WorkspaceDefinition = {
   visibleTo: ALL_ROLES,
   items: [
     { path: '/mi-crm', label: 'Mi CRM', icon: Users, visibleTo: ALL_ROLES, matchPrefix: true },
-    { path: '/contactos', label: 'Contactos', icon: BookUser, visibleTo: ALL_ROLES, matchPrefix: true },
+    { path: '/contactos', label: 'Mis Contactos', icon: BookUser, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/accesos-nacional', label: 'Accesos Nacional', icon: Key, visibleTo: NOT_AGENT },
+    { path: '/espacio-jiro', label: 'Espacio JIRO', icon: Landmark, visibleTo: ALL_ROLES },
     { path: '/centro-digital', label: 'Centro Digital', icon: Monitor, visibleTo: ALL_ROLES },
+    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, visibleTo: NOT_AGENT },
+    { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
     { path: '/entrega-polizas', label: 'Entrega Pólizas', icon: PackageCheck, visibleTo: NOT_AGENT },
     { path: '/lector-qualitas', label: 'Lector Qualitas', icon: FileSearch, visibleTo: NOT_AGENT },
-    { path: '/mi-progreso', label: 'Mi Progreso', icon: Trophy, visibleTo: NO_EMPLEADO_AGENTE },
-    { path: '/espacio-jiro', label: 'Espacio JIRO', icon: Landmark, visibleTo: ALL_ROLES },
-    { path: '/vacaciones', label: 'Vacaciones', icon: Calendar, visibleTo: NOT_AGENT },
   ],
 };
 
@@ -309,7 +309,8 @@ export function resolveWorkspaceItems(
     return {
       kind: 'item',
       item,
-      orden: cfg?.orden ?? idx,
+      // Si el workspace es 'herramientas', respetar estrictamente el orden idx definido en workspace.items
+      orden: workspace.id === 'herramientas' ? idx : (cfg?.orden ?? idx),
       grupoId,
       badge: cfg?.badge_texto ? { texto: cfg.badge_texto, color: cfg.badge_color } : null,
     };
