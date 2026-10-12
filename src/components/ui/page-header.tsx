@@ -53,18 +53,11 @@ export function PageHeader({
   const desc = description ?? subtitle;
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-4 sm:gap-5 animate-rise",
-        sticky &&
-          "sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-3 border-b border-[color:var(--color-border-subtle)] bg-[var(--color-surface-overlay)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface-overlay)]",
-        className
-      )}
-    >
+    <div className={cn("flex flex-col gap-3.5 animate-fade-in", className)}>
       {breadcrumb && (
         <nav
           aria-label="Ruta de navegación"
-          className="flex items-center gap-1.5 text-caption font-medium text-neutral-500 dark:text-white/50 -mb-1"
+          className="flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 px-1"
         >
           {breadcrumb}
         </nav>
@@ -73,54 +66,81 @@ export function PageHeader({
       {showBack && (
         <button
           onClick={handleBack}
-          className="group inline-flex items-center gap-1.5 -ml-2 px-2 py-1 rounded-lg text-sm font-medium text-neutral-600 dark:text-white/60 hover:text-accent-ink hover:bg-accent-softer dark:hover:text-white dark:hover:bg-white/8 transition-colors w-fit -mb-2"
+          className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:text-accent hover:bg-surface-muted dark:hover:bg-white/5 transition-colors w-fit -mb-1"
         >
           <ArrowLeft className="w-4 h-4 transition-transform duration-fast group-hover:-translate-x-0.5" />
           <span>{backLabel || 'Regresar'}</span>
         </button>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-1.5">
+      {/* ── Tarjeta de Encabezado Premium Unificada para Todo el Sistema ── */}
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-3xl bg-surface-card dark:bg-neutral-900/90 border border-soft dark:border-white/10 p-6 sm:p-7 shadow-card backdrop-blur-xl",
+          sticky && "sticky top-0 z-30"
+        )}
+      >
+        {/* Luces sutiles de fondo (glow) */}
+        <div className="pointer-events-none absolute -right-12 -top-12 w-64 h-64 rounded-full bg-accent/10 dark:bg-accent/15 blur-3xl" />
+        <div className="pointer-events-none absolute right-40 -bottom-10 w-48 h-48 rounded-full bg-blue-500/10 blur-2xl" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          {/* Lado Izquierdo: Icono + Título + Badge + Descripción */}
+          <div className="flex items-start sm:items-center gap-4 min-w-0 flex-1">
             {Icon && (
               <div
-                className="flex-shrink-0 grid place-items-center w-10 h-10 rounded-2xl text-accent-foreground shadow-accent"
-                style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-rgb)) 0%, rgb(var(--movi-accent-2-rgb)) 140%)' }}
+                className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-white shadow-lg flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
                 aria-hidden="true"
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-6 h-6 sm:w-7 sm:h-7" />
               </div>
             )}
-            <h1 className="font-display text-title sm:text-title-lg font-semibold text-neutral-900 dark:text-white min-w-0 break-words">
-              {title}
-            </h1>
-            {badge && badge}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-bold text-neutral-900 dark:text-white tracking-tight break-words">
+                  {title}
+                </h1>
+                {badge && (
+                  typeof badge === 'string' ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-accent-soft text-accent-ink dark:bg-accent/20">
+                      {badge}
+                    </span>
+                  ) : badge
+                )}
+              </div>
+              {desc && (
+                <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 max-w-2xl leading-relaxed">
+                  {desc}
+                </p>
+              )}
+            </div>
           </div>
-          {desc && (
-            <p className={cn(
-              "text-sm text-neutral-600 dark:text-white/60 leading-relaxed max-w-3xl",
-              Icon && "sm:ml-[52px]"
-            )}>
-              {desc}
-            </p>
+
+          {/* Lado Derecho: Botones / Acciones */}
+          {(actions || action) && (
+            <div className="flex-shrink-0 flex flex-wrap items-center gap-2.5">
+              {action && typeof action === 'object' && 'label' in action ? (
+                <button
+                  onClick={action.onClick}
+                  className={buttonVariants({ variant: action.variant === 'outline' ? 'outline' : 'default', size: 'sm' })}
+                >
+                  {action.icon && <action.icon className="w-4 h-4" />}
+                  <span>{action.label}</span>
+                </button>
+              ) : action}
+              {actions}
+            </div>
           )}
         </div>
 
-        {(actions || action) && (
-          <div className="flex-shrink-0 flex flex-wrap items-center gap-2">
-            {action && typeof action === 'object' && 'label' in action ? (
-              <button onClick={action.onClick} className={buttonVariants({ variant: action.variant === 'outline' ? 'outline' : 'default', size: 'sm' })}>
-                {action.icon && <action.icon className="w-4 h-4" />}
-                <span>{action.label}</span>
-              </button>
-            ) : action}
-            {actions}
+        {/* Pestañas o navegación secundaria dentro de la tarjeta */}
+        {children && (
+          <div className="relative z-10 mt-5 pt-4 border-t border-neutral-100 dark:border-white/5">
+            {children}
           </div>
         )}
       </div>
-
-      {children}
     </div>
   );
 }

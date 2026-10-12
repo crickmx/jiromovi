@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -35,11 +35,11 @@ import {
   Brain,
   Settings,
   ChevronRight,
-  ShieldAlert,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { isItemVisible, WORKSPACES, type UserRole } from '../lib/workspaceConfig';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
+import { PageHeader } from '../components/ui/page-header';
 
 interface AdminModule {
   path: string;
@@ -114,37 +114,14 @@ export default function AdminHub() {
     : visibleModules.filter(m => m.category === selectedCategory);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
-      {/* ── Header ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-surface-card dark:bg-neutral-900/90 border border-soft dark:border-white/10 p-6 sm:p-8 shadow-card backdrop-blur-xl">
-        <div className="pointer-events-none absolute -right-12 -top-12 w-64 h-64 rounded-full bg-accent/10 dark:bg-accent/15 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-          <div className="flex items-center gap-4">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
-            >
-              <Settings className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 dark:text-white tracking-tight">
-                  Panel de Administración
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-accent-soft text-accent-ink dark:bg-accent/20">
-                  {visibleModules.length} herramientas
-                </span>
-              </div>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 max-w-xl">
-                Configuración global, permisos, inteligencia artificial, despliegues y control operativo de MOVI.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Categories Bar */}
-        <div className="flex items-center gap-2 mt-6 overflow-x-auto pb-1 scrollbar-none">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+      <PageHeader
+        title="Panel de Administración"
+        badge={`${visibleModules.length} herramientas`}
+        description="Configuración global, permisos, inteligencia artificial, despliegues y control operativo de MOVI."
+        icon={Settings}
+      >
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {categories.map((cat) => (
             <button
               key={cat}
@@ -159,9 +136,8 @@ export default function AdminHub() {
             </button>
           ))}
         </div>
-      </div>
+      </PageHeader>
 
-      {/* ── Grid ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredModules.map((mod) => {
           const Icon = mod.icon;
