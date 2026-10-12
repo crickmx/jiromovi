@@ -309,7 +309,8 @@ export function resolveWorkspaceItems(
     return {
       kind: 'item',
       item,
-      orden: cfg?.orden ?? idx,
+      // Si el workspace es 'herramientas', respetar estrictamente el orden idx definido en workspace.items
+      orden: workspace.id === 'herramientas' ? idx : (cfg?.orden ?? idx),
       grupoId,
       badge: cfg?.badge_texto ? { texto: cfg.badge_texto, color: cfg.badge_color } : null,
     };
