@@ -91,6 +91,19 @@ export function AgentTramiteTeamsSection({
     });
   }, [loading, onStateChange, selectionState]);
 
+  // Si una categoría solo tiene un equipo posible, no tiene caso pedirle al
+  // admin que lo marque a mano -- se asigna solo.
+  useEffect(() => {
+    if (loading || disabled) return;
+    const faltantes = grouped
+      .filter((category) => category.teams.length === 1)
+      .map((category) => category.teams[0].id)
+      .filter((id) => !selectedIds.includes(id));
+    if (faltantes.length > 0) {
+      onSelectedIdsChange([...selectedIds, ...faltantes]);
+    }
+  }, [grouped, selectedIds, loading, disabled, onSelectedIdsChange]);
+
   const toggleTeam = (teamId: string) => {
     if (disabled) return;
     const team = teams.find((item) => item.id === teamId);

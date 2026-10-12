@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B0F19"/>
+      <stop offset="50%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#DC2626"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1050" cy="180" r="280" fill="#DC2626" opacity="0.2"/>
+  <circle cx="150" cy="500" r="200" fill="#2563EB" opacity="0.2"/>
+
+  <!-- Logo -->
+  <g transform="translate(80, 80)">
+    <text x="0" y="45" font-family="'Sora', sans-serif" font-size="42" font-weight="900" fill="#FFFFFF">seguros<tspan fill="#DC2626">.express</tspan></text>
+  </g>
+
+  <!-- Headline -->
+  <text x="80" y="270" font-family="'Sora', sans-serif" font-size="52" font-weight="900" fill="#FFFFFF">
+    Cotiza tu Seguro de Auto
+  </text>
+  <text x="80" y="340" font-family="'Sora', sans-serif" font-size="52" font-weight="900" fill="#DC2626">
+    con Asesoría Real y Cercana
+  </text>
+
+  <text x="80" y="410" font-family="'Sora', sans-serif" font-size="22" font-weight="400" fill="#94A3B8">
+    Comparamos las mejores aseguradoras de México para darte el mejor precio y cobertura.
+  </text>
+
+  <!-- Badges -->
+  <g transform="translate(80, 470)">
+    <rect x="0" y="0" width="280" height="54" rx="27" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+    <text x="40" y="34" font-family="'Sora', sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">Emisión 100% Digital</text>
+
+    <rect x="300" y="0" width="310" height="54" rx="27" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+    <text x="330" y="34" font-family="'Sora', sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">+320 Asesores en México</text>
+  </g>
+</svg>

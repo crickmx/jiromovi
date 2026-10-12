@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useChavaAgente } from '../lib/ChavaAgenteContext';
 import ChatInterface from '../components/ChatInterface';
 import ConversationSidebar from '../components/ConversationSidebar';
@@ -33,6 +34,9 @@ function AuthenticatedLayout({
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#0A183D' }}>
+      <Helmet>
+        <title>Chava AI | Copiloto Inteligente de Seguros</title>
+      </Helmet>
       <div className="hidden lg:flex flex-col w-72 flex-shrink-0 border-r overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
         <div className="h-full flex flex-col" style={{ background: 'rgba(255,255,255,0.03)' }}>
           <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -115,7 +119,7 @@ function PlatformCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col rounded-2xl p-4 transition-all duration-200 text-left w-full"
+      className="group flex flex-col rounded-2xl p-4 transition-all duration-200 text-left w-full cursor-pointer"
       style={{
         background: `rgba(${accentRgb},0.06)`,
         border: `1px solid rgba(${accentRgb},0.18)`,
@@ -131,7 +135,6 @@ function PlatformCard({
         e.currentTarget.style.transform = 'translateY(0)';
       }}
     >
-      {/* Icon + title row */}
       <div className="flex items-center gap-3 mb-3">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -144,7 +147,6 @@ function PlatformCard({
           <p className="text-[11px] leading-tight mt-0.5" style={{ color: 'rgba(255,255,255,0.42)' }}>{subtitle}</p>
         </div>
       </div>
-      {/* CTA row */}
       <div
         className="flex items-center justify-between w-full rounded-xl px-3 py-2"
         style={{ background: `rgba(${accentRgb},0.1)` }}
@@ -161,7 +163,6 @@ function PlatformCard({
 // ─── Landing page ─────────────────────────────────────────────────────────────
 
 export default function ChavaAgenteLanding() {
-  useEffect(() => { document.title = 'Chava AI — Tu experto en seguros'; }, []);
   const { chavaUser, loading, logout } = useChavaAgente();
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -196,6 +197,40 @@ export default function ChavaAgenteLanding() {
 
   return (
     <>
+      <Helmet>
+        <html lang="es-MX" />
+        <title>Chava AI | El Copiloto Inteligente para Agentes de Seguros</title>
+        <meta
+          name="description"
+          content="Acelera tus ventas, dictamen de pólizas, comparativos de cobertura y atención a clientes con el primer asistente de inteligencia artificial entrenado para el mercado asegurador."
+        />
+        <meta
+          name="keywords"
+          content="Chava AI, copiloto de seguros, IA para agentes de seguros, dictamen de pólizas con IA, asistente virtual seguros, Grupo JIRO, MOVI Digital"
+        />
+        <link rel="canonical" href="https://landings.movi.digital/chava-agente" />
+        
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="es_MX" />
+        <meta property="og:site_name" content="Chava AI · Inteligencia Artificial para Seguros" />
+        <meta property="og:title" content="Chava AI | El Copiloto Inteligente para Agentes de Seguros" />
+        <meta
+          property="og:description"
+          content="Dictamina pólizas, compara coberturas y resuelve consultas de clientes en segundos con inteligencia artificial."
+        />
+        <meta property="og:url" content="https://landings.movi.digital/chava-agente" />
+        <meta property="og:image" content="https://landings.movi.digital/brand/chava-agente/og-chava-agente.svg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Chava AI | Copiloto Inteligente para Agentes de Seguros" />
+        <meta name="twitter:description" content="Inteligencia artificial especializada en seguros disponible 24/7." />
+        <meta name="twitter:image" content="https://landings.movi.digital/brand/chava-agente/og-chava-agente.svg" />
+      </Helmet>
+
       {/* Root — full viewport, no scroll */}
       <div
         className="h-screen overflow-hidden flex flex-col"
@@ -296,7 +331,6 @@ export default function ChavaAgenteLanding() {
                     onClick={openLogin}
                     accentRgb="13,110,253"
                     icon={
-                      /* movirecurso_2 = white MOVI logo, perfect for dark bg */
                       <img
                         src="/movirecurso_2.png"
                         alt="MOVI Digital"
@@ -304,7 +338,6 @@ export default function ChavaAgenteLanding() {
                         onError={e => {
                           const img = e.currentTarget as HTMLImageElement;
                           img.style.display = 'none';
-                          // Fallback: show M letter
                           const span = document.createElement('span');
                           span.textContent = 'M';
                           span.style.cssText = 'color:#7ab4ff;font-weight:900;font-size:14px';
@@ -359,7 +392,7 @@ export default function ChavaAgenteLanding() {
                 </p>
                 <button
                   onClick={openRegister}
-                  className="w-full flex items-center justify-center gap-2 text-sm font-bold text-white py-2.5 rounded-xl transition-all hover:opacity-90 active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-2 text-sm font-bold text-white py-2.5 rounded-xl transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
                   style={{ background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}
                 >
                   Crear cuenta gratis
@@ -378,7 +411,6 @@ export default function ChavaAgenteLanding() {
                 <span className="text-[10.5px] uppercase tracking-widest font-semibold flex-shrink-0" style={{ color: 'rgba(255,255,255,0.16)' }}>
                   Desarrollado por
                 </span>
-                {/* JIRO logo: has white bg, use screen blend */}
                 <img
                   src="/logojiro.png"
                   alt="Grupo JIRO"
@@ -387,7 +419,6 @@ export default function ChavaAgenteLanding() {
                   onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
                 <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '10px' }}>·</span>
-                {/* MOVI icon only for footer — transparent bg, no blend needed */}
                 <img
                   src="/movirecurso_7.png"
                   alt="MOVI Digital"
@@ -404,7 +435,6 @@ export default function ChavaAgenteLanding() {
             className="relative z-10 flex-1 flex flex-col overflow-hidden min-w-0"
             style={{ background: 'rgba(255,255,255,0.005)' }}
           >
-            {/* Chat topbar — desktop only */}
             <div
               className="hidden lg:flex items-center gap-3 px-6 py-3 border-b flex-shrink-0"
               style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
@@ -418,7 +448,6 @@ export default function ChavaAgenteLanding() {
               </span>
             </div>
 
-            {/* Chat area */}
             <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <ChatInterface
                 conversationId={null}
@@ -427,7 +456,6 @@ export default function ChavaAgenteLanding() {
               />
             </div>
 
-            {/* Conversion bar — bottom of chat */}
             <div
               className="border-t px-4 py-2.5 flex items-center gap-3 flex-shrink-0"
               style={{ borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(0,229,255,0.018)' }}
@@ -439,7 +467,7 @@ export default function ChavaAgenteLanding() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={openLogin}
-                  className="hidden sm:block text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
+                  className="hidden sm:block text-xs font-medium px-3 py-1.5 rounded-lg transition-all cursor-pointer"
                   style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.09)' }}
                   onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
                   onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}
@@ -448,7 +476,7 @@ export default function ChavaAgenteLanding() {
                 </button>
                 <button
                   onClick={openRegister}
-                  className="flex items-center gap-1.5 text-xs font-bold text-white px-3.5 py-1.5 rounded-lg transition-all hover:opacity-90 active:scale-95"
+                  className="flex items-center gap-1.5 text-xs font-bold text-white px-3.5 py-1.5 rounded-lg transition-all hover:opacity-90 active:scale-95 cursor-pointer"
                   style={{ background: 'linear-gradient(135deg, #0D6EFD, #00c8e0)' }}
                 >
                   Crear cuenta

@@ -9,6 +9,8 @@ import { EventosPremiumPanel } from '../components/marketing/EventosPremiumPanel
 import { PagosPremiumPanel } from '../components/marketing/PagosPremiumPanel';
 import { TriggersPanel } from '../components/admin/TriggersPanel';
 import { CONFIG_TRIGGERS_PREMIUM } from '../lib/triggersConfig';
+import { BitacoraComercial } from '../components/admin/BitacoraComercial';
+import { CONFIG_BITACORA_MKT } from '../lib/bitacoraConfig';
 import type { PlanPremium } from '../lib/mktPremiumPagos';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -140,7 +142,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   const [mostrarNuevoAgente, setMostrarNuevoAgente] = useState(false);
-  const [vista, setVista] = useState<'agentes' | 'triggers' | 'eventos'>('agentes');
+  const [vista, setVista] = useState<'agentes' | 'triggers' | 'eventos' | 'bitacora'>('agentes');
 
   const [disenosAgente, setDisenosAgente] = useState<DisenoAgente[]>([]);
   const [cargandoDisenos, setCargandoDisenos] = useState(false);
@@ -899,6 +901,7 @@ ALTER TABLE usuarios
           { key: 'agentes' as const, label: 'Agentes' },
           { key: 'triggers' as const, label: 'Reglas de tickets' },
           { key: 'eventos' as const, label: 'Eventos' },
+          { key: 'bitacora' as const, label: 'Bitácora' },
         ]).map(t => (
           <button
             key={t.key}
@@ -918,6 +921,8 @@ ALTER TABLE usuarios
         <EventosPremiumPanel />
       ) : vista === 'triggers' ? (
         <TriggersPanel config={CONFIG_TRIGGERS_PREMIUM} />
+      ) : vista === 'bitacora' ? (
+        <BitacoraComercial config={CONFIG_BITACORA_MKT} />
       ) : (
         <>
           {/* Estadísticas */}

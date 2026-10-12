@@ -27,6 +27,7 @@ import {
   type UsuarioOficina
 } from '../../lib/registroActividadesTypes';
 import { SearchableSelect } from './catalogos/SearchableSelect';
+import { getOficinasDeGerente } from '../../lib/oficinasUtils';
 import { useTiposTramite } from '../../hooks/useTiposTramite';
 import { calcularDeadline } from '../../lib/diasHabiles';
 
@@ -121,6 +122,17 @@ export function NuevoTramiteModal({
   const [archivos, setArchivos] = useState<File[]>([]);
   const [adjuntosTemporales, setAdjuntosTemporales] = useState<Record<string, File[]>>({});
   const [adjuntoCategoriasIds, setAdjuntoCategoriasIds] = useState<Record<string, string>>({});
+  // Categoría de CADA archivo, en el mismo orden que `adjuntosTemporales`.
+  // El detalle siempre la pidió por archivo; el alta pedía una sola para todo
+  // el campo y encima como "(opcional)", así que lo que se adjuntaba al crear
+  // quedaba sin categoría — y la validación del cambio de estatus, que busca
+  // justo esa categoría, no lo contaba y exigía volver a subirlo.
+  const [adjuntoCatsArchivo, setAdjuntoCatsArchivo] = useState<Record<string, string[]>>({});
+
+  /** Los tipos que el admin configuró para un campo adjunto, si configuró alguno. */
+  const tiposDelCampoAdjunto = (campo: CampoDinamico): { categoria_id: string; requerido?: boolean }[] =>
+    ((campo.config?.tipos_config as { categoria_id: string; requerido?: boolean }[] | undefined) ?? [])
+      .filter(tc => tc.categoria_id);
   const [adjuntoCategorias, setAdjuntoCategorias] = useState<{id: string; nombre: string}[]>([]);
   const [archivoCategoriaId, setArchivoCategoriaId] = useState('');
 
@@ -657,12 +669,21 @@ export function NuevoTramiteModal({
     // NO filtrar por `username`: esa columna se eliminó y se recreó como nullable
     // (20251028185230 / 20251029201356), y un `neq` contra NULL no es verdadero en
     // SQL — excluiría a casi todos los usuarios.
-    const { data } = await supabase
+    let query = supabase
       .from('usuarios')
       .select('id, nombre_completo, rol, oficina_id')
       .eq('activo', true)
       .is('deleted_at', null)
       .order('nombre_completo');
+
+    // Un Gerente solo debe ver solicitantes de su(s) propia(s) oficina(s), no
+    // de todo JIRO.
+    if (usuario) {
+      const oficinas = await getOficinasDeGerente(usuario);
+      if (oficinas.length > 0) query = query.in('oficina_id', oficinas);
+    }
+
+    const { data } = await query;
 
     if (data) setUsuariosDisponibles(data as Usuario[]);
   };
@@ -1081,6 +1102,21 @@ export function NuevoTramiteModal({
       if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
       if (!isCampoRespondido(campo)) {
         setError(`El campo "${campo.label}" es obligatorio`);
+        return false;
+      }
+    }
+
+    // Cada archivo tiene que decir qué documento es. Crear el trámite no exige
+    // adjuntar nada, pero lo que se adjunte sin categoría después no cuenta
+    // para la validación del cambio de estatus, y el sistema lo vuelve a pedir
+    // teniéndolo enfrente.
+    for (const campo of camposDinamicos.filter(c => c.tipo === 'adjunto')) {
+      if (campo.config?.categoria_id) continue;
+      if (tiposDelCampoAdjunto(campo).length === 0) continue;
+      const archivosDelCampo = adjuntosTemporales[campo.id] || [];
+      const cats = adjuntoCatsArchivo[campo.id] || [];
+      if (archivosDelCampo.some((_, i) => !cats[i])) {
+        setError(`En "${campo.label}" falta indicar qué documento es cada archivo`);
         return false;
       }
     }
@@ -1610,10 +1646,14 @@ export function NuevoTramiteModal({
           const maxMb = campo.config.max_mb || 10;
           const accept = (campo.config.tipos_mime || []).join(',') || undefined;
           const categoriaFija = campo.config.categoria_id as string | undefined;
+          const tiposCampo = tiposDelCampoAdjunto(campo);
+          const catsDeArchivo = adjuntoCatsArchivo[campo.id] || [];
+          // Con un solo tipo configurado no hay nada que preguntar.
+          const tipoUnico = tiposCampo.length === 1 ? tiposCampo[0].categoria_id : '';
           return (
             <div className="space-y-2">
               {/* Selector de categoría cuando el admin no pre-configuró una */}
-              {!categoriaFija && adjuntoCategorias.length > 0 && (
+              {!categoriaFija && tiposCampo.length === 0 && adjuntoCategorias.length > 0 && (
                 <select
                   value={adjuntoCategoriasIds[campo.id] || ''}
                   onChange={e => setAdjuntoCategoriasIds(prev => ({ ...prev, [campo.id]: e.target.value }))}
@@ -1642,21 +1682,55 @@ export function NuevoTramiteModal({
                       if (tooBig.length) { setError(`El archivo excede el límite de ${maxMb} MB.`); return; }
                       const merged = [...files, ...selected].slice(0, maxFiles);
                       setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: merged }));
+                      setAdjuntoCatsArchivo(prev => {
+                        const previas = prev[campo.id] || [];
+                        const porDefecto = categoriaFija || tipoUnico || '';
+                        return {
+                          ...prev,
+                          [campo.id]: merged.map((_, i) => previas[i] ?? porDefecto),
+                        };
+                      });
                       e.target.value = '';
                     }}
                   />
                 </label>
               )}
               {files.map((f, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
-                  <FileText className="w-4 h-4 text-neutral-500 shrink-0" />
-                  <span className="text-sm flex-1 truncate">{f.name}</span>
-                  <span className="text-xs text-neutral-500 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
-                  <button type="button"
-                    onClick={() => setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: files.filter((_, j) => j !== i) }))}
-                    className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                <div key={i} className="px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-neutral-500 shrink-0" />
+                    <span className="text-sm flex-1 truncate">{f.name}</span>
+                    <span className="text-xs text-neutral-500 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                    <button type="button"
+                      onClick={() => {
+                        setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: files.filter((_, j) => j !== i) }));
+                        setAdjuntoCatsArchivo(prev => ({ ...prev, [campo.id]: catsDeArchivo.filter((_, j) => j !== i) }));
+                      }}
+                      className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {/* De qué tipo es ESTE archivo. Sin esto el documento se sube
+                      sin categoría y después el sistema lo vuelve a pedir. */}
+                  {!categoriaFija && tiposCampo.length > 0 && (
+                    <select
+                      value={catsDeArchivo[i] ?? ''}
+                      onChange={e => setAdjuntoCatsArchivo(prev => {
+                        const copia = [...(prev[campo.id] || [])];
+                        copia[i] = e.target.value;
+                        return { ...prev, [campo.id]: copia };
+                      })}
+                      className={`w-full px-3 py-2 text-sm rounded-lg border bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent ${
+                        catsDeArchivo[i] ? 'border-neutral-300' : 'border-amber-400'
+                      }`}
+                    >
+                      <option value="">¿Qué documento es? — requerido</option>
+                      {tiposCampo.map(tc => {
+                        const cat = adjuntoCategorias.find(c => c.id === tc.categoria_id);
+                        return cat ? <option key={tc.categoria_id} value={tc.categoria_id}>{cat.nombre}</option> : null;
+                      })}
+                    </select>
+                  )}
                 </div>
               ))}
               {maxFiles > 1 && (
@@ -2214,9 +2288,14 @@ export function NuevoTramiteModal({
           const files = adjuntosTemporales[campo.id] || [];
           if (files.length === 0) continue;
           // Categoría: fija del config (admin la preconfiguró) o elegida por el usuario en el selector
-          const categoriaIdAdjunto = (campo.config.categoria_id as string | undefined) || adjuntoCategoriasIds[campo.id] || null;
+          // Fija del config, la que se eligió POR ARCHIVO, o la del selector
+          // único del campo (el camino viejo, cuando no hay tipos configurados).
+          const categoriaFijaCampo = campo.config.categoria_id as string | undefined;
+          const catsPorArchivo = adjuntoCatsArchivo[campo.id] || [];
           const fileData: { id: string; nombre: string; url: string; tipo: string; tamano: number }[] = [];
-          for (const file of files) {
+          for (const [indiceArchivo, file] of files.entries()) {
+            const categoriaIdAdjunto =
+              categoriaFijaCampo || catsPorArchivo[indiceArchivo] || adjuntoCategoriasIds[campo.id] || null;
             const ext = file.name.split('.').pop();
             const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
             const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(fileName, file);

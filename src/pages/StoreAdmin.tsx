@@ -25,6 +25,8 @@ import type { ResultadoCargaMasiva } from '../lib/storeUtils';
 import { supabase } from '../lib/supabase';
 import { EquiposAccesoPanel } from '../components/admin/EquiposAccesoPanel';
 import { TriggersPanel } from '../components/admin/TriggersPanel';
+import { BitacoraComercial } from '../components/admin/BitacoraComercial';
+import { CONFIG_BITACORA_STORE } from '../lib/bitacoraConfig';
 import { CONFIG_TRIGGERS_STORE } from '../lib/triggersConfig';
 import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProductoAtributo, StoreProductoAtributoOpcion, TipoItem, Disponibilidad } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
@@ -37,7 +39,7 @@ export default function StoreAdmin() {
   const [productos, setProductos] = useState<StoreProducto[]>([]);
   const [categorias, setCategorias] = useState<StoreCategoria[]>([]);
   const [loading, setLoading] = useState(true);
-  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias' | 'equipos' | 'triggers' | 'logos' | 'catalogos'>('productos');
+  const [vistaActual, setVistaActual] = useState<'productos' | 'categorias' | 'equipos' | 'triggers' | 'logos' | 'catalogos' | 'bitacora'>('productos');
 
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [productoEditando, setProductoEditando] = useState<StoreProducto | null>(null);
@@ -386,6 +388,18 @@ export default function StoreAdmin() {
           >
             <BookOpen className="w-5 h-5 inline mr-2" />
             Catálogos
+          </button>
+
+          <button
+            onClick={() => setVistaActual('bitacora')}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              vistaActual === 'bitacora'
+                ? 'bg-accent text-accent-foreground'
+                : 'bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 hover:bg-neutral-200 dark:hover:bg-white/15'
+            }`}
+          >
+            <Download className="w-5 h-5 inline mr-2" />
+            Bitácora
           </button>
         </div>
 
@@ -754,6 +768,8 @@ export default function StoreAdmin() {
           <LogosAsesoresPanel />
         ) : vistaActual === 'catalogos' ? (
           <CatalogosAdminPanel />
+        ) : vistaActual === 'bitacora' ? (
+          <BitacoraComercial config={CONFIG_BITACORA_STORE} />
         ) : (
           <TriggersPanel config={CONFIG_TRIGGERS_STORE} />
         )}

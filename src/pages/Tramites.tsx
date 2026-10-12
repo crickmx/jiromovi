@@ -249,7 +249,7 @@ export function Tramites() {
   const esRolSistemaAdmin = usuario?.rol === 'Administrador';
   const esRolSistemaGerente = usuario?.rol === 'Gerente';
   const esRolSistemaAgente = usuario?.rol === 'Agente'; // cliente externo, no confundir con rol de equipo 'ejecutivo'
-  const canManageCatalogs = esRolSistemaAdmin || esRolSistemaGerente;
+  const canManageCatalogs = esRolSistemaAdmin;
 
   // Assignment UI state
   const [myOperacionesRole, setMyOperacionesRole] = useState<'lider' | 'supervisor' | 'director' | 'ejecutivo' | 'miembro' | null>(null);

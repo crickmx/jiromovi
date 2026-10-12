@@ -833,10 +833,15 @@ export function TramiteDetalle() {
       (c.config?.tipos_config as any[] | undefined)?.some((tc: any) => tc.requerido)
     );
     if (adjuntosConReq.length > 0) {
+      // Cuenta lo que YA está adjunto en el trámite, venga de donde venga: si el
+      // documento está, no se vuelve a pedir. Los borrados no cuentan — si no,
+      // un archivo que alguien quitó seguía dando por cumplido el requisito y
+      // el estatus avanzaba sin nada adjunto.
       const { data: archivosSubidos } = await supabase
         .from('ticket_archivos')
         .select('categoria_id')
-        .eq('ticket_id', tramite.id);
+        .eq('ticket_id', tramite.id)
+        .is('eliminado_at', null);
       const categoriasSubidas = new Set((archivosSubidos || []).map((a: any) => a.categoria_id).filter(Boolean));
       for (const campo of adjuntosConReq) {
         const faltantes = (campo.config.tipos_config as { categoria_id: string; requerido: boolean }[])

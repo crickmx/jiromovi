@@ -5,6 +5,9 @@ import { Layout } from '../components/Layout';
 import { AssistantProvider } from '../contexts/AssistantContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 
+// Landings públicas
+const MutuusLanding = lazy(() => import('../landings/mutuus/MutuusLanding'));
+
 // Top-level MOVI pages
 const MoviDashboard = lazy(() => import('./Dashboard'));
 const Chava = lazy(() => import('./Chava'));
@@ -169,6 +172,10 @@ export default function MoviFullRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
+        {/* Landings públicas */}
+        <Route path="/mutuus" element={<MutuusLanding />} />
+        <Route path="/landings/mutuus" element={<MutuusLanding />} />
+
         {/* Public / no-layout routes */}
         <Route path="/alta" element={<Alta brand="movi" />} />
         <Route path="/registro-at" element={<Alta brand="agente_total" />} />
