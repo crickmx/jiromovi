@@ -105,6 +105,12 @@ export default function BonosPage() {
   const [showTramiteModal, setShowTramiteModal] = useState(false);
   const [tramitePreload, setTramitePreload] = useState<{ tipoTramite?: string; agenteId?: string; instrucciones?: string; prioridad?: string } | null>(null);
   const [estatusList, setEstatusList] = useState<{ id: string; nombre: string; color: string; orden: number; tipo_aplicable: string[] | null }[]>([]);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaError, setMfaError] = useState<string | null>(null);
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const mfaFactorId = useRef<string | null>(null);
+  const mfaChallengeId = useRef<string | null>(null);
 
   useEffect(() => {
     supabase.from('ticket_estatus').select('*').eq('activo', true).order('orden').then(({ data }) => {
@@ -226,6 +232,11 @@ export default function BonosPage() {
         setActivePath(path);
       }
 
+      if (type === 'cp_needs_mfa') {
+        initiateMfa();
+        return;
+      }
+
       if (type === 'cp_crear_tramite') {
         const tipoTramite = event.data.tipo_tramite || '';
         if (!tipoTramite) return; // sin tipo configurado en CP — no abrir modal vacío
@@ -255,7 +266,7 @@ export default function BonosPage() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [clearSsoTimeout]);
+  }, [clearSsoTimeout, initiateMfa]);
 
   useEffect(() => {
     iframeRef.current?.contentWindow?.postMessage(
@@ -263,6 +274,48 @@ export default function BonosPage() {
       BONOS_URL
     );
   }, [isDarkEffective, usuario?.oficina?.accent_color]);
+
+  const initiateMfa = useCallback(async () => {
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const totp = factors?.totp?.[0];
+    if (!totp) {
+      setMfaError('No tienes un factor de autenticación configurado. Configúralo en la app MOVI.');
+      setMfaRequired(true);
+      return;
+    }
+    const { data: challenge, error } = await supabase.auth.mfa.challenge({ factorId: totp.id });
+    if (error || !challenge) {
+      setMfaError('No se pudo iniciar la verificación. Intenta de nuevo.');
+      setMfaRequired(true);
+      return;
+    }
+    mfaFactorId.current = totp.id;
+    mfaChallengeId.current = challenge.id;
+    setMfaCode('');
+    setMfaError(null);
+    setMfaRequired(true);
+  }, []);
+
+  const handleMfaSubmit = useCallback(async () => {
+    if (!mfaFactorId.current || !mfaChallengeId.current) return;
+    if (mfaCode.length !== 6) { setMfaError('Ingresa el código de 6 dígitos.'); return; }
+    setMfaLoading(true);
+    setMfaError(null);
+    const { error } = await supabase.auth.mfa.verify({
+      factorId: mfaFactorId.current,
+      challengeId: mfaChallengeId.current,
+      code: mfaCode,
+    });
+    setMfaLoading(false);
+    if (error) {
+      setMfaError('Código incorrecto. Intenta de nuevo.');
+      return;
+    }
+    setMfaRequired(false);
+    setMfaCode('');
+    clearSsoCacheStorage();
+    setRetryCount(c => c + 1);
+  }, [mfaCode]);
 
   function navigateTo(path: string) {
     setActivePath(path);
@@ -493,6 +546,44 @@ export default function BonosPage() {
         estatusList={estatusList}
         preloadedData={tramitePreload ?? undefined}
       />
+
+      {mfaRequired && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 flex flex-col items-center gap-5">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#164281,#1e60b8)' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+            </div>
+            <div className="text-center">
+              <h3 className="font-bold text-neutral-800 dark:text-neutral-100 text-lg">Verificación en dos pasos</h3>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Ingresa el código de la aplicación de autenticación</p>
+            </div>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={mfaCode}
+              onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onKeyDown={e => e.key === 'Enter' && handleMfaSubmit()}
+              placeholder="000000"
+              className="w-full text-center text-2xl font-mono tracking-[0.4em] border-2 rounded-xl px-4 py-3 outline-none transition-colors border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white focus:border-blue-500"
+              autoFocus
+            />
+            {mfaError && (
+              <p className="text-sm text-red-500 text-center -mt-2">{mfaError}</p>
+            )}
+            <button
+              onClick={handleMfaSubmit}
+              disabled={mfaLoading || mfaCode.length !== 6}
+              className="w-full py-3 rounded-xl font-semibold text-white transition-colors disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg,#164281,#1e60b8)' }}
+            >
+              {mfaLoading ? 'Verificando…' : 'Verificar'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
