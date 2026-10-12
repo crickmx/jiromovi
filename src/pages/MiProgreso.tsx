@@ -83,15 +83,15 @@ export default function MiProgreso() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent" />
       </div>
     );
   }
 
   if (!perfil) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="space-y-6">
         <Card className="p-8 text-center">
           <Trophy className="w-16 h-16 mx-auto mb-4 text-neutral-500" />
           <h2 className="text-2xl font-bold mb-2">Bienvenido al Sistema de Gamificación</h2>
@@ -110,7 +110,7 @@ export default function MiProgreso() {
   const rangoConfig = RANGOS_CONFIG[perfil.rango_actual] || RANGOS_CONFIG['Agente Base'];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="space-y-6">
       <PageHeader
         title="Mi Progreso"
         description="Sigue tu evolución como agente Jiro"
@@ -118,7 +118,7 @@ export default function MiProgreso() {
       />
 
       {/* Resumen Principal */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* XP Total */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -176,7 +176,7 @@ export default function MiProgreso() {
       </div>
 
       {/* Progreso de Nivel */}
-      <Card className="p-6 mb-8">
+      <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold mb-1">

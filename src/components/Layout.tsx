@@ -85,8 +85,6 @@ export function Layout({ children }: LayoutProps) {
     const el = contentRef.current;
     if (!el || typeof el.animate !== 'function') return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    // Solo opacidad: un transform convertiría al contenedor en containing block
-    // de los elementos `position: fixed` de la página durante la animación.
     el.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 240, easing: 'cubic-bezier(0.16,1,0.3,1)' });
   }, [location.pathname]);
 
@@ -122,10 +120,8 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className={`app-shell min-h-screen flex overflow-hidden ${bannerPt}`}>
-      {/* Formas orgánicas de marca detrás del contenido (decorativo) */}
       <AmbientBackdrop />
 
-      {/* Impersonation banner & Beta Banner */}
       <ImpersonationBanner />
       {isBeta && <BetaBanner />}
       {!isBeta && esUsuarioBeta && <BackToBetaBanner />}
@@ -145,7 +141,7 @@ export function Layout({ children }: LayoutProps) {
         topLevelBadges={topLevelBadges}
       />
 
-      {/* ── Área de Contenido Principal (Aprovecha el 100% del alto y ancho) ── */}
+      {/* ── Área de Contenido Principal (Margen y Ancho Unificados) ── */}
       {isFullHeight ? (
         <main className="flex-1 flex flex-col overflow-hidden min-w-0 mobile-page-content md:!pb-0">
           <div ref={contentRef} className="flex-1 min-h-0 flex flex-col">
@@ -159,14 +155,14 @@ export function Layout({ children }: LayoutProps) {
             <Breadcrumbs workspace={workspace} activeItem={activeItem} />
           </div>
 
-          {/* Contenedor de Página */}
-          <div ref={contentRef} className="flex-1 p-4 md:p-6 lg:p-8 max-w-screen-2xl mx-auto w-full">
+          {/* Contenedor de Página Estándar Unificado */}
+          <div ref={contentRef} className="flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7 max-w-7xl mx-auto w-full">
             {children}
           </div>
         </main>
       )}
 
-      {/* Mobile right-side drawer (Intacto para teléfonos) */}
+      {/* Mobile right-side drawer */}
       <MobileDrawer
         open={mobileDrawerOpen}
         onClose={() => setMobileDrawerOpen(false)}
@@ -181,7 +177,7 @@ export function Layout({ children }: LayoutProps) {
         topLevelBadges={topLevelBadges}
       />
 
-      {/* Mobile bottom navigation (Intacto para teléfonos) */}
+      {/* Mobile bottom navigation */}
       <MobileNav onOpenDrawer={() => setMobileDrawerOpen(true)} />
 
       {usuario && bugReportActivo && <FloatingBugReportButton />}

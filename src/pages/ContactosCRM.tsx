@@ -137,15 +137,15 @@ export default function ContactosCRM() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="space-y-6">
       <PageHeader
         title="Mis Contactos"
-        description={`${stats.total} contactos`}
+        description={`${stats.total} contactos registrados`}
         icon={Users}
         actions={
           <button
             onClick={() => setShowContactoModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition text-sm font-medium shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-foreground rounded-xl hover:bg-accent/90 transition text-sm font-medium shadow-sm"
           >
             <UserPlus className="h-4 w-4" />
             Nuevo Contacto
@@ -154,7 +154,7 @@ export default function ContactosCRM() {
       />
 
       {/* Stats strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total', value: stats.total, Icon: Users, color: 'text-neutral-600 dark:text-white/70', bg: 'bg-neutral-50 dark:bg-neutral-800' },
           { label: 'Prospectos', value: stats.prospectos, Icon: Clock, color: 'text-accent-ink dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
@@ -174,7 +174,7 @@ export default function ContactosCRM() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-neutral-700 p-3 mb-4">
+      <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-neutral-700 p-3">
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 pointer-events-none" />

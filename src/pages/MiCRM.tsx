@@ -108,7 +108,7 @@ export default function MiCRM() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* Header */}
       <PageHeader
         title="Mi CRM"
@@ -118,7 +118,7 @@ export default function MiCRM() {
           <button
             onClick={() => cargarDatos(true)}
             disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-600 dark:text-white/60 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-neutral-600 dark:text-white/60 bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-700 transition disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Actualizar</span>
@@ -127,7 +127,7 @@ export default function MiCRM() {
       />
 
       {/* Navigation Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 mt-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <Link
           to="/contactos"
           className="group flex flex-col items-center p-3 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-2xl hover:border-blue-300 hover:shadow-card-hover transition-all"
@@ -203,7 +203,7 @@ export default function MiCRM() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <KPICard
           label="Leads Nuevos"
           value={kpis?.leadsNuevos || 0}
@@ -247,7 +247,7 @@ export default function MiCRM() {
       </div>
 
       {/* Que hacer hoy + Embudo */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Que hacer hoy - 2/3 */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-surface-card dark:bg-neutral-900 rounded-xl border border-soft dark:border-neutral-700 overflow-hidden">
@@ -443,8 +443,6 @@ export default function MiCRM() {
     </div>
   );
 }
-
-// ─── Sub-components ─────────────────────────────────────────────────────────────
 
 function KPICard({
   label, value, icon, color, onClick, subtitle, urgent,
