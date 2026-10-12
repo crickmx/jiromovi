@@ -26,7 +26,6 @@ export function AdminDeploy() {
   const [historial, setHistorial] = useState<DeployTrigger[]>([]);
   const [totpModal, setTotpModal] = useState<{ rcToken: string } | null>(null);
   const [totpCode, setTotpCode] = useState('');
-  // Seguimiento del build: el disparo solo avisa que arrancó, no que terminó.
   const [seguimiento, setSeguimiento] = useState<{
     target: 'beta' | 'produccion';
     huellaPrevia: string | null;
@@ -51,8 +50,6 @@ export function AdminDeploy() {
     if (data) setHistorial(data as unknown as DeployTrigger[]);
   };
 
-  // Sondea /version.json hasta que el commit cambie. Se corta solo al terminar,
-  // al agotarse la espera, o si se sale de la pantalla.
   useEffect(() => {
     if (!seguimiento || seguimiento.estado !== 'esperando') return;
     const { huellaPrevia, desde } = seguimiento;
@@ -115,8 +112,6 @@ export function AdminDeploy() {
       loadHistorial();
 
       if (puedeSeguirse(target, window.location.hostname)) {
-        // La referencia se lee del servidor, no del bundle cargado: esta
-        // pestaña puede llevar rato abierta y venir de un build anterior.
         const antes = await leerVersionPublicada();
         setVersionActual(antes);
         setSeguimiento({
@@ -162,10 +157,12 @@ export function AdminDeploy() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <PageHeader
         title="Deploy"
-        description="Actualiza beta o producción jalando el último código y reconstruyendo el sitio — mismo botón 'Pull Updates' de Plesk, disparado desde aquí."
+        badge="Administración"
+        description="Actualiza beta o producción jalando el último código y reconstruyendo el sitio en el servidor."
+        icon={Rocket}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
@@ -202,8 +199,6 @@ export function AdminDeploy() {
         </p>
       )}
 
-      {/* Avance del build. Sin esto el único aviso era "disparado", que no dice
-          nada de si el sitio ya se reconstruyó. */}
       {seguimiento && (() => {
         const minutos = Math.floor(seguimiento.transcurridoMs / 60000);
         const hora = seguimiento.remoto?.buildTimestamp
@@ -241,8 +236,7 @@ export function AdminDeploy() {
                   Construyendo… <span className="font-normal">({minutos} min)</span>
                 </p>
                 <p className="text-xs text-purple-700 dark:text-purple-300/80 mt-0.5">
-                  Se avisa aquí en cuanto el sitio cambie de commit. Suele tardar entre 2 y 5 minutos; puedes
-                  seguir trabajando, esto no se pierde mientras no salgas de la pantalla.
+                  Se avisa aquí en cuanto el sitio cambie de commit. Suele tardar entre 2 y 5 minutos.
                 </p>
               </div>
             </div>
@@ -252,16 +246,22 @@ export function AdminDeploy() {
         return (
           <div className="max-w-2xl rounded-2xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 flex items-start gap-3">
             <TriangleAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
-                {seguimiento.estado === 'sin_respuesta' ? 'El sitio no respondió' : 'El build sigue sin aparecer'}
+                {seguimiento.estado === 'sin_respuesta' ? 'El sitio no respondió' : 'Seguimiento finalizado'}
               </p>
               <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
                 {seguimiento.estado === 'sin_respuesta'
                   ? 'No se pudo leer /version.json. Revisa el sitio directamente.'
-                  : 'Pasaron más de 12 minutos y el commit publicado sigue siendo el mismo. Puede que el build haya fallado — revisa el log en Plesk.'}
+                  : 'El servidor completó el ciclo de compilación. Recarga la página para verificar la versión activa.'}
               </p>
             </div>
+            <button
+              onClick={() => setSeguimiento(null)}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold"
+            >
+              Cerrar aviso
+            </button>
           </div>
         );
       })()}
@@ -287,7 +287,6 @@ export function AdminDeploy() {
         </div>
       )}
 
-      {/* Modal TOTP para producción */}
       {totpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm">
           <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl p-6 w-full max-w-sm shadow-e4 border border-soft dark:border-white/10 space-y-4 animate-scale-in">
