@@ -35,7 +35,7 @@ const BADGE_COLORS: Record<string, string> = {
 };
 
 const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-2.5 py-1.5";
-const MAX_SIDEBAR_ITEMS = 8;
+const MAX_SIDEBAR_ITEMS = 12;
 const PINNED_KEY = 'movi:sidebar_pinned';
 
 interface DesktopSidebarProps {
@@ -207,7 +207,7 @@ export function DesktopSidebar({
                           ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
                           : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
                       )}
-                      aria-label={isPinned ? 'Desfijar menú (hover automático)' : 'Fijar menú abierto'}
+                      aria-label={isPinned ? 'Desfijar menú (hover automático)' : 'Fijar menú siempre abierto'}
                     >
                       {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
                     </button>
