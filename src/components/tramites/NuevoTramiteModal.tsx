@@ -1112,7 +1112,8 @@ export function NuevoTramiteModal({
     // teniéndolo enfrente.
     for (const campo of camposDinamicos.filter(c => c.tipo === 'adjunto')) {
       if (campo.config?.categoria_id) continue;
-      if (tiposDelCampoAdjunto(campo).length === 0) continue;
+      // Solo se exige si el FormBuilder marcó algún tipo como requerido.
+      if (!tiposDelCampoAdjunto(campo).some(tc => tc.requerido)) continue;
       const archivosDelCampo = adjuntosTemporales[campo.id] || [];
       const cats = adjuntoCatsArchivo[campo.id] || [];
       if (archivosDelCampo.some((_, i) => !cats[i])) {
@@ -1650,6 +1651,11 @@ export function NuevoTramiteModal({
           const catsDeArchivo = adjuntoCatsArchivo[campo.id] || [];
           // Con un solo tipo configurado no hay nada que preguntar.
           const tipoUnico = tiposCampo.length === 1 ? tiposCampo[0].categoria_id : '';
+          // Decir qué documento es cada archivo solo se EXIGE cuando el
+          // FormBuilder marcó algún tipo como requerido — sin eso, la validación
+          // del cambio de estatus no tendría cómo saber si ya está. En los demás
+          // campos se puede clasificar, pero no estorba a quien solo quiere subir.
+          const exigeCategoria = tiposCampo.some(tc => tc.requerido);
           return (
             <div className="space-y-2">
               {/* Selector de categoría cuando el admin no pre-configuró una */}
@@ -1721,10 +1727,12 @@ export function NuevoTramiteModal({
                         return { ...prev, [campo.id]: copia };
                       })}
                       className={`w-full px-3 py-2 text-sm rounded-lg border bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent ${
-                        catsDeArchivo[i] ? 'border-neutral-300' : 'border-amber-400'
+                        catsDeArchivo[i] || !exigeCategoria ? 'border-neutral-300' : 'border-amber-400'
                       }`}
                     >
-                      <option value="">¿Qué documento es? — requerido</option>
+                      <option value="">
+                        {exigeCategoria ? '¿Qué documento es? — requerido' : '¿Qué documento es? (opcional)'}
+                      </option>
                       {tiposCampo.map(tc => {
                         const cat = adjuntoCategorias.find(c => c.id === tc.categoria_id);
                         return cat ? <option key={tc.categoria_id} value={tc.categoria_id}>{cat.nombre}</option> : null;
