@@ -11,11 +11,11 @@ import {
   FileSearch,
   Wrench,
   ChevronRight,
-  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { isItemVisible, WORKSPACES, type UserRole } from '../lib/workspaceConfig';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
+import { PageHeader } from '../components/ui/page-header';
 
 interface ModuleCardConfig {
   path: string;
@@ -27,8 +27,6 @@ interface ModuleCardConfig {
   iconColor: string;
   borderHover: string;
   shadowHover: string;
-  badge?: string;
-  badgeColor?: string;
 }
 
 const HERRAMIENTAS_MODULES: ModuleCardConfig[] = [
@@ -151,38 +149,14 @@ export default function HerramientasHub() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
-      {/* ── Section Header ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-surface-card dark:bg-neutral-900/90 border border-soft dark:border-white/10 p-6 sm:p-8 shadow-card backdrop-blur-xl">
-        <div className="pointer-events-none absolute -right-12 -top-12 w-64 h-64 rounded-full bg-accent/10 dark:bg-accent/15 blur-3xl" />
-        <div className="pointer-events-none absolute right-40 -bottom-10 w-48 h-48 rounded-full bg-blue-500/10 blur-2xl" />
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+      <PageHeader
+        title="Herramientas"
+        badge={`${visibleModules.length} módulos`}
+        description="Centro de utilidades operativas y comerciales para agilizar tu gestión diaria, clientes, reservas y progreso."
+        icon={Wrench}
+      />
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-          <div className="flex items-center gap-4">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
-            >
-              <Wrench className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 dark:text-white tracking-tight">
-                  Herramientas
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-accent-soft text-accent-ink dark:bg-accent/20">
-                  {visibleModules.length} módulos
-                </span>
-              </div>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 max-w-xl">
-                Centro de utilidades operativas y comerciales para agilizar tu gestión diaria, clientes, reservas y progreso.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Module Grid ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {visibleModules.map((mod, idx) => {
           const Icon = mod.icon;
@@ -192,11 +166,9 @@ export default function HerramientasHub() {
               onClick={() => navigate(mod.path)}
               className={`group relative text-left rounded-2xl bg-surface-card dark:bg-neutral-900/80 border border-soft dark:border-white/[0.08] p-5 sm:p-6 overflow-hidden transition-all duration-300 hover:-translate-y-1 ${mod.shadowHover} ${mod.borderHover} focus:outline-none focus-visible:ring-2 focus-visible:ring-accent flex flex-col justify-between`}
             >
-              {/* Subtle top indicator bar */}
               <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${mod.gradient} opacity-80 group-hover:opacity-100 transition-opacity`} />
 
               <div>
-                {/* Top row: Icon + Number Badge */}
                 <div className="flex items-center justify-between mb-4">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-sm ${mod.bgLight}`}>
                     <Icon className="w-6 h-6" />
@@ -206,7 +178,6 @@ export default function HerramientasHub() {
                   </span>
                 </div>
 
-                {/* Title & Description */}
                 <h3 className="text-base font-bold text-neutral-900 dark:text-white mb-2 tracking-tight group-hover:text-accent transition-colors flex items-center gap-1.5">
                   {mod.label}
                 </h3>
@@ -215,7 +186,6 @@ export default function HerramientasHub() {
                 </p>
               </div>
 
-              {/* Bottom CTA */}
               <div className="pt-4 mt-4 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between">
                 <span className={`text-xs font-semibold ${mod.iconColor} inline-flex items-center gap-1 group-hover:gap-2 transition-all`}>
                   Ingresar al módulo

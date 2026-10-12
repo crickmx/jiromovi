@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { isItemVisible, WORKSPACES, type UserRole } from '../lib/workspaceConfig';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
+import { PageHeader } from '../components/ui/page-header';
 
 interface ModuleCardConfig {
   path: string;
@@ -22,7 +23,6 @@ interface ModuleCardConfig {
   iconColor: string;
   borderHover: string;
   shadowHover: string;
-  badge?: string;
 }
 
 const CONTACT_MODULES: ModuleCardConfig[] = [
@@ -101,38 +101,14 @@ export default function CentroContactoHub() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
-      {/* ── Section Header ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-surface-card dark:bg-neutral-900/90 border border-soft dark:border-white/10 p-6 sm:p-8 shadow-card backdrop-blur-xl">
-        <div className="pointer-events-none absolute -right-12 -top-12 w-64 h-64 rounded-full bg-accent/10 dark:bg-accent/15 blur-3xl" />
-        <div className="pointer-events-none absolute right-40 -bottom-10 w-48 h-48 rounded-full bg-emerald-500/10 blur-2xl" />
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+      <PageHeader
+        title="Centro de Contacto"
+        badge={`${visibleModules.length} canales`}
+        description="Comunícate con clientes y equipo a través de WhatsApp, correo corporativo, chat interno y telefonía."
+        icon={Headphones}
+      />
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-          <div className="flex items-center gap-4">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
-            >
-              <Headphones className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 dark:text-white tracking-tight">
-                  Centro de Contacto
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-accent-soft text-accent-ink dark:bg-accent/20">
-                  {visibleModules.length} canales
-                </span>
-              </div>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 max-w-xl">
-                Comunícate con clientes y equipo a través de WhatsApp, correo corporativo, chat interno y telefonía.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Channels Grid ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {visibleModules.map((mod, idx) => {
           const Icon = mod.icon;
