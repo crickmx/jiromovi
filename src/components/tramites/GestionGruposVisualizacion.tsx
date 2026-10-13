@@ -113,6 +113,7 @@ export function GestionGruposVisualizacion() {
   // Members panel
   const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [searchMiembro, setSearchMiembro] = useState('');
+  const [filtroMiembroOficina, setFiltroMiembroOficina] = useState('');
   const [pendingAdd, setPendingAdd] = useState<{ userId: string; rol: 'lider' | 'supervisor' | 'director' | 'ejecutivo' | 'miembro' } | null>(null);
   const [editingRolMiembro, setEditingRolMiembro] = useState<string | null>(null);
 
@@ -334,6 +335,7 @@ export function GestionGruposVisualizacion() {
     setFormError('');
     setFormTab('general');
     setSearchMiembro('');
+    setFiltroMiembroOficina('');
     setSearchOficina('');
     setSearchReglaOficina('');
     setFilterReglaOficinaId('');
@@ -496,6 +498,7 @@ export function GestionGruposVisualizacion() {
   const openMembers = async (g: Grupo) => {
     setSelectedGrupo(g);
     setSearchMiembro('');
+    setFiltroMiembroOficina('');
     await loadMiembros(g.id);
     setPanel('members');
   };
@@ -657,7 +660,8 @@ export function GestionGruposVisualizacion() {
 
   const miembrosDisponibles = usuarios.filter(
     u => !miembros.some(m => m.usuario_id === u.id) &&
-      u.nombre_completo.toLowerCase().includes(searchMiembro.toLowerCase())
+      u.nombre_completo.toLowerCase().includes(searchMiembro.toLowerCase()) &&
+      (!filtroMiembroOficina || u.oficina_id === filtroMiembroOficina)
   );
 
   const oficinasDisponibles = oficinas.filter(
@@ -1242,14 +1246,24 @@ export function GestionGruposVisualizacion() {
                   <h4 className="font-bold text-sm text-neutral-700 flex items-center gap-2"><UserPlus className="w-4 h-4" /> Agregar miembros</h4>
                 </div>
                 <div className="p-4 space-y-3">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                    <input type="text" placeholder="Buscar por nombre..." value={searchMiembro} onChange={e => setSearchMiembro(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+                      <input type="text" placeholder="Buscar por nombre..." value={searchMiembro} onChange={e => setSearchMiembro(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                    </div>
+                    <select
+                      value={filtroMiembroOficina}
+                      onChange={e => setFiltroMiembroOficina(e.target.value)}
+                      className="border border-neutral-200 rounded-xl text-sm px-2 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    >
+                      <option value="">Todas las oficinas</option>
+                      {oficinas.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                    </select>
                   </div>
                   <div className="max-h-64 overflow-y-auto space-y-1">
                     {miembrosDisponibles.length === 0 ? (
-                      <p className="text-sm text-neutral-500 text-center py-4">{searchMiembro ? 'Sin resultados' : 'Todos ya están asignados'}</p>
+                      <p className="text-sm text-neutral-500 text-center py-4">{searchMiembro || filtroMiembroOficina ? 'Sin resultados' : 'Todos ya están asignados'}</p>
                     ) : (
                       miembrosDisponibles.map(u => (
                         <div key={u.id} className="border border-neutral-100 rounded-xl overflow-hidden">
@@ -1741,15 +1755,25 @@ export function GestionGruposVisualizacion() {
               </h4>
             </div>
             <div className="p-4 space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-                <input type="text" placeholder="Buscar por nombre..." value={searchMiembro} onChange={e => setSearchMiembro(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+                  <input type="text" placeholder="Buscar por nombre..." value={searchMiembro} onChange={e => setSearchMiembro(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-900 outline-none" />
+                </div>
+                <select
+                  value={filtroMiembroOficina}
+                  onChange={e => setFiltroMiembroOficina(e.target.value)}
+                  className="border border-neutral-200 rounded-xl text-sm px-2 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                >
+                  <option value="">Todas las oficinas</option>
+                  {oficinas.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                </select>
               </div>
               <div className="max-h-72 overflow-y-auto space-y-1">
                 {miembrosDisponibles.length === 0 ? (
                   <p className="text-sm text-neutral-500 text-center py-4">
-                    {searchMiembro ? 'Sin resultados' : 'Todos los usuarios ya están asignados'}
+                    {searchMiembro || filtroMiembroOficina ? 'Sin resultados' : 'Todos los usuarios ya están asignados'}
                   </p>
                 ) : (
                   miembrosDisponibles.map(u => (
