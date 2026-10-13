@@ -46,9 +46,28 @@ interface SelectorFechaDMAProps {
 // mm/dd/yyyy u otro orden según el idioma del navegador del usuario, no de la
 // página, así que no se puede forzar con el atributo lang.
 function SelectorFechaDMA({ value, onChange, anioInicio, anioFin, hasError }: SelectorFechaDMAProps) {
-  const [anio, mes, dia] = value ? value.split('-') : ['', '', ''];
+  // Estado propio para día/mes/año: `value` solo trae un ISO completo (o ''),
+  // así que si se deriva directo de ahí, elegir nada más el día (con mes/año
+  // todavía vacíos) producía un ISO incompleto, `onChange` lo mandaba como ''
+  // y en el siguiente render el día elegido se veía como si nunca se hubiera
+  // marcado. El estado local sí recuerda cada pieza aunque la fecha completa
+  // todavía no sea válida.
+  const [anio, setAnio] = useState(() => (value ? value.split('-')[0] : ''));
+  const [mes, setMes] = useState(() => (value ? value.split('-')[1] : ''));
+  const [dia, setDia] = useState(() => (value ? value.split('-')[2] : ''));
+
+  useEffect(() => {
+    if (!value) return;
+    const [a, m, d] = value.split('-');
+    setAnio(a);
+    setMes(m);
+    setDia(d);
+  }, [value]);
 
   const actualizar = (nuevoDia: string, nuevoMes: string, nuevoAnio: string) => {
+    setDia(nuevoDia);
+    setMes(nuevoMes);
+    setAnio(nuevoAnio);
     if (!nuevoDia || !nuevoMes || !nuevoAnio) {
       onChange('');
       return;
