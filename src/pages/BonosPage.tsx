@@ -85,9 +85,11 @@ export default function BonosPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState(false);
-  const [activePath, setActivePath] = useState(
-    location.pathname === '/produccion/reportes-sicas-ccj' ? SICAS_CCJ_REPORTS_PATH : '/',
-  );
+  const CP_PATH_KEY = 'cp_last_path';
+  const [activePath, setActivePath] = useState(() => {
+    if (location.pathname === '/produccion/reportes-sicas-ccj') return SICAS_CCJ_REPORTS_PATH;
+    try { return sessionStorage.getItem(CP_PATH_KEY) || '/'; } catch { return '/'; }
+  });
   const activePathRef = useRef(activePath);
   activePathRef.current = activePath;
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
@@ -226,6 +228,11 @@ export default function BonosPage() {
         setActivePath(path);
       }
 
+      if (type === 'cp_open_store') {
+        navigate('/store');
+        return;
+      }
+
       if (type === 'cp_crear_tramite') {
         const tipoTramite = event.data.tipo_tramite || '';
         if (!tipoTramite) return; // sin tipo configurado en CP — no abrir modal vacío
@@ -256,6 +263,13 @@ export default function BonosPage() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [clearSsoTimeout]);
+
+  // Persiste la última sección visitada del CP para restaurarla al volver
+  useEffect(() => {
+    if (activePath && activePath !== SICAS_CCJ_REPORTS_PATH) {
+      try { sessionStorage.setItem(CP_PATH_KEY, activePath); } catch {}
+    }
+  }, [activePath]);
 
   useEffect(() => {
     iframeRef.current?.contentWindow?.postMessage(
