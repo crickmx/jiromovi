@@ -35,6 +35,7 @@ import SegurosExpressLanding from '../seguros-express/SegurosExpressLanding';
 import SegurosEducationLanding from '../seguros-education/SegurosEducationLanding';
 import ChavaAgenteLanding from '../chava-agente/pages/ChavaAgenteLanding';
 import SeguwalletProductLanding from '../seguwallet/pages/SeguwalletProductLanding';
+import MoviProductLanding from './movi/MoviProductLanding';
 import { supabase } from '../lib/supabase';
 
 // ─── CREDENCIALES Y CONSTANTES ───────────────────────────────────────────────
@@ -65,6 +66,24 @@ interface Project {
 }
 
 const INITIAL_PROJECTS: Project[] = [
+  {
+    id: 'movi',
+    name: 'MOVI Digital Ecosistema',
+    slug: '/movi',
+    description: 'Página de producto oficial de MOVI Digital: Hub Insurtech 8-en-1 para promotorías y agentes.',
+    category: 'Insurtech & SaaS',
+    status: 'live',
+    version: 'v3.0.0',
+    lastUpdated: 'Hoy',
+    views: 4520,
+    conversion: '18.2%',
+    color: '#1C37E0',
+    theme: {
+      primary: '#1C37E0',
+      accent: '#00E5FF',
+      font: 'Inter'
+    }
+  },
   {
     id: 'seguwallet',
     name: 'Seguwallet',
@@ -340,13 +359,13 @@ export default function LandingsStudio() {
     return INITIAL_PROJECTS;
   });
 
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('seguwallet');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('movi');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectForm, setNewProjectForm] = useState({
     name: '',
     slug: '',
     description: '',
-    category: 'Fintech & Wallet'
+    category: 'Insurtech & SaaS'
   });
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) || projects[0];
@@ -373,16 +392,16 @@ export default function LandingsStudio() {
       }
     }
     return {
-      seguwallet: [
+      movi: [
         {
           id: '1',
           sender: 'hermes',
-          text: `¡Hola Christofer! Soy Hermes, tu copilot para la página de producto de **Seguwallet**.\n\nEsta página sirve como el home oficial para **seguwallet.mx** y está lista para conectar descargas, accesos al portal sin contraseña y soporte 24/7 con Chava IA.`,
+          text: `¡Hola Christofer! Soy Hermes, tu copilot para la página de producto de **MOVI Digital**.\n\nEsta página presenta el ecosistema insurtech 8-en-1: Mesa de trámites, comisiones automáticas, SICAS REST, Seguwallet, Chava IA y herramientas para promotorías.`,
           timestamp: 'Justo ahora',
           actions: [
-            'Ver vista previa completa de Seguwallet',
-            'Probar selector de pestañas en el mockup móvil',
-            'Ver guía de instalación PWA'
+            'Ver vista previa completa de MOVI',
+            'Probar simulador de dashboard',
+            'Ver calculadora de ROI'
           ]
         }
       ]
@@ -629,6 +648,8 @@ export default function LandingsStudio() {
 
   const renderLiveComponent = () => {
     switch (selectedProjectId) {
+      case 'movi':
+        return <MoviProductLanding key={previewKey} />;
       case 'seguwallet':
         return <SeguwalletProductLanding key={previewKey} />;
       case 'mutuus':
@@ -640,7 +661,7 @@ export default function LandingsStudio() {
       case 'chava-agente':
         return <ChavaAgenteLanding key={previewKey} />;
       default:
-        return <SeguwalletProductLanding key={previewKey} />;
+        return <MoviProductLanding key={previewKey} />;
     }
   };
 
@@ -1064,22 +1085,22 @@ export default function LandingsStudio() {
             <div className="px-4 py-2 border-t border-slate-100 bg-white flex items-center gap-1.5 overflow-x-auto text-[11px]">
               <span className="text-slate-400 font-bold flex-shrink-0">Sugerencias:</span>
               <button
-                onClick={() => handleSendMessage("Mostrar beneficios clave de la cartera digital")}
+                onClick={() => handleSendMessage("Mostrar beneficios del SaaS operativo MOVI")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                📱 Beneficios Wallet
+                🏢 SaaS Operativo
               </button>
               <button
-                onClick={() => handleSendMessage("Destacar acceso sin contraseñas vía WhatsApp")}
+                onClick={() => handleSendMessage("Destacar conciliación automática de comisiones")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                🔐 Passwordless OTP
+                💰 Comisiones SICAS
               </button>
               <button
-                onClick={() => handleSendMessage("Explicar cómo funciona Chava IA en siniestros")}
+                onClick={() => handleSendMessage("Explicar la integración del ecosistema 8 en 1")}
                 className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap cursor-pointer transition"
               >
-                🤖 Chava IA Copilot
+                🌐 Ecosistema 8-en-1
               </button>
             </div>
 
@@ -1357,6 +1378,7 @@ export default function LandingsStudio() {
                   onChange={(e) => setNewProjectForm({ ...newProjectForm, category: e.target.value })}
                   className="w-full text-xs border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
+                  <option value="Insurtech & SaaS">Insurtech & SaaS</option>
                   <option value="Fintech & Wallet">Fintech & Wallet</option>
                   <option value="Salud & Gastos Médicos">Salud & Gastos Médicos</option>
                   <option value="Autos & Movilidad">Autos & Movilidad</option>
