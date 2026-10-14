@@ -400,6 +400,21 @@ export default function BonosPage() {
           </button>
         );
       })}
+      {/* Botón secreto del minijuego — casi invisible, igual que en CP */}
+      <button
+        onClick={() => {
+          iframeRef.current?.contentWindow?.postMessage({ type: 'cp_show_game' }, BONOS_URL);
+          onSelect?.();
+        }}
+        title="🎮 Crane Blocks"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left w-full transition-all"
+        style={{ opacity: 0.06, color: 'inherit' }}
+        onMouseEnter={e => (e.currentTarget.style.opacity = '0.45')}
+        onMouseLeave={e => (e.currentTarget.style.opacity = '0.06')}
+      >
+        <span style={{ fontSize: '1rem' }}>🎮</span>
+        <span className="truncate">Crane Blocks</span>
+      </button>
     </>
   );
 
