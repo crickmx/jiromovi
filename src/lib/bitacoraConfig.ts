@@ -30,6 +30,8 @@ export interface BitacoraRow {
   pagado: number;
   saldo: number;
   activo: boolean;
+  /** Solo Premium: 'mensual' | 'anual'. Lo necesita el modal para calcular el saldo igual que la app. */
+  plan: string | null;
   estado_pago: 'al_corriente' | 'debe' | 'a_favor' | 'sin_plan' | 'sin_monto';
 }
 

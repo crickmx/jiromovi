@@ -5,7 +5,6 @@
 // debe y poder ir a cobrarlo sin buscarlo a mano en otra pantalla.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { Search, FileSpreadsheet, Download, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -13,16 +12,20 @@ import { useAuth } from '../../contexts/AuthContext';
 import { normalizarTexto } from '../../lib/utils';
 import {
   VISTA_BITACORA, ETIQUETA_MODULO, ETIQUETA_ESTADO,
-  modulosVisibles, rutaDePagos,
+  modulosVisibles,
   type BitacoraRow, type ModuloBitacora,
 } from '../../lib/bitacoraConfig';
+import { ModalPagosBitacora } from './ModalPagosBitacora';
 
 const pesos = (n: number) =>
   `$${(n ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function BitacoraComercial() {
   const { usuario } = useAuth();
-  const navigate = useNavigate();
+  // El control de pagos se abre ENCIMA de la bitácora: navegar a otra pantalla
+  // perdía la lista, los filtros y el lugar donde ibas, y revisar la cartera es
+  // ir fila por fila.
+  const [filaAbierta, setFilaAbierta] = useState<BitacoraRow | null>(null);
 
   const [filas, setFilas] = useState<BitacoraRow[]>([]);
   const [permitidos, setPermitidos] = useState<ModuloBitacora[]>([]);
@@ -222,7 +225,7 @@ export function BitacoraComercial() {
                 return (
                   <tr
                     key={`${f.modulo}-${f.id}`}
-                    onClick={() => navigate(rutaDePagos(f))}
+                    onClick={() => setFilaAbierta(f)}
                     className="hover:bg-neutral-50 dark:hover:bg-white/5 cursor-pointer"
                   >
                     <td className="px-5 py-3">
@@ -253,6 +256,12 @@ export function BitacoraComercial() {
             </tbody>
           </table>
         </div>
+      )}
+      {filaAbierta && (
+        <ModalPagosBitacora
+          row={filaAbierta}
+          onCerrar={() => { setFilaAbierta(null); cargar(); }}
+        />
       )}
     </div>
   );
