@@ -325,7 +325,7 @@ export default function MoviLogin() {
           {/* LEFT COLUMN */}
           <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col items-start justify-between px-16 xl:px-24 py-14">
             <div>
-              <img src="/movirecurso_1.png" alt="MOVI Digital" className="h-10 w-auto" />
+              <img src="/logo_color.svg" alt="MOVI Digital" className="h-10 w-auto" />
             </div>
 
             <div className="max-w-md">
@@ -373,7 +373,7 @@ export default function MoviLogin() {
 
             {/* Mobile logo */}
             <div className="lg:hidden mb-10 text-center">
-              <img src="/movirecurso_1.png" alt="MOVI Digital" className="h-10 w-auto mx-auto mb-2" />
+              <img src="/logo_color.svg" alt="MOVI Digital" className="h-10 w-auto mx-auto mb-2" />
               <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'rgba(13,110,253,0.7)' }}>MOVI Mi Oficina Virtual</p>
             </div>
 
