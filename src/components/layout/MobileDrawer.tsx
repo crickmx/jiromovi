@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, LogOut, User, ChevronRight, ChevronDown } from 'lucide-react';
+import { X, LogOut, User, ChevronRight, ChevronDown, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isWorkspaceVisible, isTopLevelItemVisible, isItemVisible } from '@/lib/workspaceConfig';
 import type { WorkspaceDefinition, WorkspaceNavItem, UserRole } from '@/lib/workspaceConfig';
@@ -11,6 +11,7 @@ import { ThemeToggle } from '../ThemeToggle';
 import { getForegroundColor, hexToRgb } from '@/lib/themeUtils';
 import { useSidebarConfig } from '../../hooks/useSidebarConfig';
 import { useSidebarItemsConfig } from '../../hooks/useSidebarItemsConfig';
+import { useMenuFavoritos } from '../../hooks/useMenuFavoritos';
 
 // Mismos colores de badge de texto que PrimarySidebar / SecondarySidebar (Editor de Sidebar)
 const BADGE_COLORS: Record<string, string> = {
@@ -65,6 +66,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
   const { resolved } = useSidebarConfig();
   const { getResolvedItems } = useSidebarItemsConfig();
   const [gruposColapsados, setGruposColapsados] = useState<Record<string, boolean>>({});
+  const { favoritos, esFavorito, alternarFavorito } = useMenuFavoritos();
 
   // Touch-to-swipe-right-to-close
   const touchStartX = useRef(0);
@@ -122,6 +124,67 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
   const handleNav = (path: string) => {
     navigate(path);
     onClose();
+  };
+
+  const itemVisible = (item: WorkspaceNavItem) =>
+    isItemVisible(item, userRole) && (isModuleVisible ? isModuleVisible(item.path, userRole, oficinaId) : true);
+
+  // Favoritos del usuario (los mismos que en escritorio), solo los que puede ver, en su orden.
+  const itemsFavoritos = useMemo(() => {
+    if (favoritos.length === 0) return [];
+    const porPath = new Map<string, WorkspaceNavItem>();
+    for (const { entry } of resolved) {
+      if (entry.type !== 'workspace' || !isWorkspaceVisible(entry.workspace, userRole)) continue;
+      for (const item of entry.workspace.items) {
+        if (itemVisible(item) && !porPath.has(item.path)) porPath.set(item.path, item);
+      }
+    }
+    return favoritos.map(p => porPath.get(p)).filter((x): x is WorkspaceNavItem => !!x);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [favoritos, resolved, userRole, isModuleVisible, oficinaId]);
+
+  const botonEstrella = (item: WorkspaceNavItem) => {
+    const fav = esFavorito(item.path);
+    return (
+      <button
+        onClick={() => alternarFavorito(item.path)}
+        aria-label={fav ? `Quitar ${item.label} de favoritos` : `Agregar ${item.label} a favoritos`}
+        aria-pressed={fav}
+        className={cn(
+          'flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors active:scale-90',
+          fav ? 'text-amber-500' : 'text-neutral-300 dark:text-white/25'
+        )}
+      >
+        <Star className={cn('w-4 h-4', fav && 'fill-amber-400')} />
+      </button>
+    );
+  };
+
+  const renglonItem = (item: WorkspaceNavItem, customBadge: { texto: string; color: string } | null, key: string) => {
+    const active = isActive(item);
+    const fav = esFavorito(item.path);
+    const Icon = item.icon;
+    return (
+      <div key={key} className="flex items-center gap-1">
+        <button
+          onClick={() => handleNav(item.path)}
+          aria-current={active ? 'page' : undefined}
+          className={cn(
+            'flex-1 min-w-0 flex items-center gap-2.5 px-3 py-3 rounded-xl text-[14px] font-medium transition-colors text-left active:scale-[0.98]',
+            active
+              ? 'bg-accent-soft text-accent-ink dark:bg-accent/15 font-semibold'
+              : 'text-neutral-700 dark:text-white/70 hover:bg-surface-muted dark:hover:bg-white/[0.05] hover:text-neutral-900 dark:hover:text-white'
+          )}
+        >
+          <Icon className={cn('w-4 h-4 flex-shrink-0', active ? 'text-accent-ink' : fav ? 'text-amber-500' : 'text-neutral-500 dark:text-white/45')} />
+          <span className="flex-1 min-w-0 truncate">{item.label}</span>
+          <TextBadge badge={customBadge} />
+          <CountBadge n={badgeCounts?.[item.path] ?? 0} />
+          {active && <ChevronRight className="w-3.5 h-3.5 text-accent-ink/60 flex-shrink-0" />}
+        </button>
+        {botonEstrella(item)}
+      </div>
+    );
   };
 
   // Prevent body scroll when open
@@ -227,6 +290,24 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
 
         {/* ── Navigation ── */}
         <div className="flex-1 overflow-y-auto">
+          {/* Favoritos del usuario (se guardan por usuario y se ven igual en cualquier dispositivo) */}
+          {itemsFavoritos.length > 0 && (
+            <>
+              <div className="px-3 pt-4 pb-2">
+                <div className="flex items-center gap-2 px-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/15 flex items-center justify-center">
+                    <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                  </div>
+                  <p className="movi-eyebrow text-neutral-600 dark:text-white/60">Favoritos</p>
+                </div>
+                <div className="space-y-0.5">
+                  {itemsFavoritos.map(item => renglonItem(item, null, `fav-${item.path}`))}
+                </div>
+              </div>
+              <div className="mx-4 h-px bg-[var(--border-soft)] my-1" />
+            </>
+          )}
+
           {/* Current workspace items */}
           {workspace && (
             <div className="px-3 pt-4 pb-2">
@@ -267,28 +348,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                           if (entry.kind === 'separador') {
                             return <div key={`sep-${entry.id}`} className="my-2 mx-3 border-t border-soft" />;
                           }
-                          const { item, badge: customBadge } = entry;
-                          const active = isActive(item);
-                          const Icon = item.icon;
-                          return (
-                            <button
-                              key={item.path}
-                              onClick={() => handleNav(item.path)}
-                              aria-current={active ? 'page' : undefined}
-                              className={cn(
-                                'w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-[14px] font-medium transition-colors text-left active:scale-[0.98]',
-                                active
-                                  ? 'bg-accent-soft text-accent-ink dark:bg-accent/15 font-semibold'
-                                  : 'text-neutral-700 dark:text-white/70 hover:bg-surface-muted dark:hover:bg-white/[0.05] hover:text-neutral-900 dark:hover:text-white'
-                              )}
-                            >
-                              <Icon className={cn('w-4 h-4 flex-shrink-0', active ? 'text-accent-ink' : 'text-neutral-500 dark:text-white/45')} />
-                              <span className="flex-1 min-w-0 truncate">{item.label}</span>
-                              <TextBadge badge={customBadge} />
-                              <CountBadge n={badgeCounts?.[item.path] ?? 0} />
-                              {active && <ChevronRight className="w-3.5 h-3.5 text-accent-ink/60 flex-shrink-0" />}
-                            </button>
-                          );
+                          return renglonItem(entry.item, entry.badge, entry.item.path);
                         })}
                       </div>
                     );
