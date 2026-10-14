@@ -289,7 +289,7 @@ export function PerfilUsuario() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div>
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={handleBackClick}

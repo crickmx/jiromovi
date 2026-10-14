@@ -390,7 +390,7 @@ export default function MulticotizadorGMM() {
   const visibleTabs = TABS.filter(t => t.id !== 'tarifas' || isAdmin);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div>
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800/30">

@@ -119,7 +119,7 @@ export default function StoreCarrito() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <div>
         <PageHeader
           title="Mi Carrito"
           description="Revisa y confirma los productos de tu pedido"

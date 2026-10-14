@@ -161,14 +161,14 @@ export default function DiasNoHabiles() {
   const grupos = agrupar();
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col gap-6 h-full">
       <PageHeader
         title="Días No Hábiles"
         description="Festivos oficiales (Art. 74 LFT) y excepciones personalizadas de la empresa"
         icon={Calendar}
       />
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto">
         <div className="max-w-3xl space-y-6">
 
           {/* Selector de año + botón fines de semana */}

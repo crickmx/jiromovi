@@ -363,7 +363,7 @@ export default function SaludToday() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 via-slate-50/80 to-white pb-16">
+    <div className="space-y-6">
       {/* Cobranding Header Banner */}
       <div className="bg-white border-b border-slate-200/80 sticky top-0 z-20 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
@@ -424,7 +424,7 @@ export default function SaludToday() {
       </div>
 
       {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+      <div>
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-emerald-950 text-white p-6 sm:p-10 shadow-xl border border-neutral-800">
           <div className="relative z-10 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-medium backdrop-blur-xs mb-4 border border-emerald-500/30">
@@ -462,7 +462,7 @@ export default function SaludToday() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div>
         {/* Alertas */}
         {error && (
           <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-3 text-red-700 text-sm shadow-xs">

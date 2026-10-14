@@ -255,7 +255,7 @@ export default function ManualViewer() {
 
   if (!manual) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center dark:bg-neutral-900 px-4">
+      <div className="min-h-screen flex flex-col items-center justify-center dark:bg-neutral-900">
         <div className="text-center max-w-sm space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto">
             <BookOpen className="w-8 h-8 text-red-400" />

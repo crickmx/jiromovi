@@ -21,7 +21,7 @@ export default function AlaMedida() {
   const navigate = useNavigate();
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-7">
+    <div>
       {/* Section header — unified Cotizar style */}
       <div className="flex items-center gap-4 mb-8">
         <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 flex-shrink-0">

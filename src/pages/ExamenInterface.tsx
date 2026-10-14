@@ -142,7 +142,7 @@ export default function ExamenInterface() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900 flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <LoadingState text="Cargando examen..." />
       </div>
     );
@@ -150,7 +150,7 @@ export default function ExamenInterface() {
 
   if (!examen || preguntas.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900 flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <p className="text-neutral-600 dark:text-white/60 mb-4">No se encontró el examen</p>
           <button
@@ -166,8 +166,8 @@ export default function ExamenInterface() {
 
   if (resultado) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900">
-        <div className="max-w-5xl mx-auto px-4 py-8">
+      <div>
+        <div>
           <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-ios-lg p-8 mb-6">
             <div className="text-center mb-8">
               <div className={`w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center ${
@@ -308,7 +308,7 @@ export default function ExamenInterface() {
   const progresoRespuestas = Math.round((respondidas / preguntas.length) * 100);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900 flex flex-col">
+    <div className="flex flex-col">
       <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-200/50 dark:border-white/10 px-4 sm:px-6 py-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto">
           <button
@@ -345,7 +345,7 @@ export default function ExamenInterface() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="pt-4 sm:pt-8">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
             <div className="lg:col-span-3">
               <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-ios p-5 sm:p-8 mb-4 sm:mb-6">

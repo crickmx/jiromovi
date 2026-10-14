@@ -55,7 +55,7 @@ export default function CertificadoCedulaA() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando certificado...</p>
@@ -66,7 +66,7 @@ export default function CertificadoCedulaA() {
 
   if (!certificado) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <p className="text-neutral-600 mb-4">No se encontró el certificado</p>
           <button
@@ -81,8 +81,8 @@ export default function CertificadoCedulaA() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div>
+      <div>
         <div className="bg-white rounded-ios-2xl shadow-ios-xl p-8 md:p-12 mb-6">
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">

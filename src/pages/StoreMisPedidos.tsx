@@ -61,7 +61,7 @@ export default function StoreMisPedidos() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         <PageHeader
           title="Mis Pedidos"
           description="Consulta el historial y estatus de tus pedidos"

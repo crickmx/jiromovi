@@ -171,7 +171,7 @@ export function CentroNotificacionesContent() {
   }
 
   return (
-    <div className="space-y-6 p-6 overflow-y-auto h-full">
+    <div className="space-y-6 overflow-y-auto h-full">
       {/* Header */}
       <PageHeader
         title="Centro de Notificaciones Global"

@@ -114,7 +114,7 @@ export default function AdminHub() {
     : visibleModules.filter(m => m.category === selectedCategory);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Panel de Administración"
         badge={`${visibleModules.length} herramientas`}

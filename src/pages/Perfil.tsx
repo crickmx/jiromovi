@@ -411,7 +411,7 @@ function PasswordSection() {
 }
 
 export default function Perfil() {
-  useEffect(() => { document.title = 'Mi Perfil · MOVI Digital'; }, []);
+  useEffect(() => { document.title = 'Mi Perfil · MOVI Mi Oficina Virtual'; }, []);
   const { usuario, reloadUsuario } = useMoviAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -561,7 +561,7 @@ export default function Perfil() {
   const rolBadgeCls = rolColor[rol] || 'bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-white/60';
 
   return (
-    <div className="pb-10">
+    <div>
       {/* Page title row */}
       <div className="flex items-center justify-between mb-6">
         <div>

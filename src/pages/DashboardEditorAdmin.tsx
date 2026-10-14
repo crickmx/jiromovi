@@ -108,7 +108,7 @@ export default function DashboardEditorAdmin() {
   const notify = (m: string, t: 'success' | 'error' = 'success') => showToast(setToast, m, t);
 
   return (
-    <div className="flex flex-col gap-8 pb-16">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Editor de Dashboard"
         description="Reordena y configura las tarjetas de acceso y widgets del Dashboard. La visibilidad por rol, oficina y usuario se controla desde Control de Módulos."

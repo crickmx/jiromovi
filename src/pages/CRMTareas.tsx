@@ -241,7 +241,7 @@ export default function CRMTareas() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div>
       <div className="mb-6">
         <PageHeader
           title={boardInfo ? boardInfo.name : 'Mis Tareas'}

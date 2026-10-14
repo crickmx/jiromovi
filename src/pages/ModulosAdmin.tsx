@@ -308,7 +308,7 @@ export default function ModulosAdmin() {
   }
 
   return (
-    <div className="flex flex-col gap-6 pb-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Visibilidad de MOVI"
         description="Controla qué secciones y subsecciones ve cada rol, oficina o usuario, sin tocar código ni Supabase."

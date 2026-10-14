@@ -266,7 +266,7 @@ export default function StorePedidos() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         <PageHeader
           title="Gestión de Pedidos"
           description={`Administra todos los pedidos de MOVI Store${pedidos.length > 0 ? ` — ${pedidos.length} pedidos de ${new Set(pedidos.map(p => p.usuario_id)).size} usuarios` : ''}`}

@@ -143,7 +143,7 @@ export default function Comunicados() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto">
+      <div>
         <PageHeader
           title="Comunicados"
           description="Mantente informado con las últimas noticias y anuncios de la organización"

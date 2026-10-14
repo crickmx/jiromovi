@@ -144,7 +144,7 @@ export default function AdminSegurosExpress() {
 
   if (!isAdmin) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+      <div className="text-center">
         <ShieldAlert className="mx-auto h-12 w-12 text-neutral-500" />
         <h1 className="mt-4 text-xl font-bold text-neutral-900 dark:text-white">Acceso restringido</h1>
         <p className="mt-2 text-neutral-500 dark:text-white/50">Sólo administradores pueden acceder a seguros.express.</p>
@@ -165,7 +165,7 @@ export default function AdminSegurosExpress() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div>
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">

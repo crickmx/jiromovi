@@ -248,7 +248,7 @@ export default function TareaReportePage() {
   );
 
   if (fase === 'error') return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 dark:bg-neutral-900 p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 dark:bg-neutral-900">
       <AlertTriangle className="w-8 h-8 text-red-500" />
       <p className="text-neutral-700 dark:text-neutral-300 text-center">{errMsg}</p>
       <button onClick={() => navigate(-1)} className="text-sm text-accent-ink hover:underline">Volver</button>
@@ -256,7 +256,7 @@ export default function TareaReportePage() {
   );
 
   if (fase === 'enviado') return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 dark:bg-neutral-900">
+    <div className="min-h-screen flex flex-col items-center justify-center dark:bg-neutral-900">
       <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card border border-soft dark:border-neutral-700 p-8 max-w-md w-full text-center space-y-4">
         <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto" />
         <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Reporte enviado</h2>
@@ -269,7 +269,7 @@ export default function TareaReportePage() {
   );
 
   if (fase === 'instrucciones') return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 dark:bg-neutral-900">
+    <div className="min-h-screen flex flex-col items-center justify-center dark:bg-neutral-900">
       <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card border border-soft dark:border-neutral-700 p-8 max-w-lg w-full space-y-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">

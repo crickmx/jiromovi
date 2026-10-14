@@ -180,7 +180,7 @@ export default function AdminDigital() {
       : 'bg-accent';
 
   return (
-    <div className="min-h-screen dark:bg-gray-900">
+    <div>
       {/* Module Header */}
       <div className="bg-gradient-to-r from-neutral-900 to-neutral-800 px-6 py-5 border-b border-neutral-700">
         <div className="max-w-7xl mx-auto">
@@ -245,7 +245,7 @@ export default function AdminDigital() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <div className="pt-6">
         {activeModule === 'monitor' ? (
           <WebMonitorTab />
         ) : activeModule === 'multiautos' ? (

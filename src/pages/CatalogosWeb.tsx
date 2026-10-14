@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Container } from '../components/ui/container';
 import { PageHeader } from '../components/ui/page-header';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -275,18 +274,18 @@ export default function CatalogosWeb() {
 
   if (loading) {
     return (
-      <Container>
+      <div>
         <PageHeader
           title="Catálogos Web"
           description="Gestiona aseguradoras y ramos para páginas web públicas"
         />
         <div className="text-center py-12">Cargando catálogos...</div>
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container>
+    <div>
       <PageHeader
         title="Catálogos Web"
         description="Gestiona el contenido base para páginas web de asesores"
@@ -649,6 +648,6 @@ export default function CatalogosWeb() {
           </div>
         </DialogContent>
       </Dialog>
-    </Container>
+    </div>
   );
 }

@@ -90,7 +90,7 @@ export default function SidebarEditorAdmin() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   return (
-    <div className="flex flex-col gap-6 pb-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Editor de Sidebar"
         description="Reordena los íconos de la barra lateral y los menús que se abren al hacer clic. Los cambios se guardan solos y aplican para todos los usuarios."

@@ -21,13 +21,21 @@ import { AmbientBackdrop } from './layout/AmbientBackdrop';
 
 const PINNED_KEY = 'movi:sidebar_pinned';
 
-// Routes that need full-height layout (no padding, overflow-hidden)
+// Rutas que son "apps" de alto completo (sin margen, overflow-hidden).
+// Ojo: el hub /centro-contacto y su pantalla de notificaciones son páginas
+// normales y llevan el mismo margen que todas — solo los canales son de alto completo.
 const FULL_HEIGHT_PREFIXES = [
-  '/centro-contacto/',
-  '/centro-contacto',
+  '/centro-contacto/whatsapp',
+  '/centro-contacto/email',
+  '/centro-contacto/chat',
   '/chat',
   '/produccion',
 ];
+
+// Margen ÚNICO de todas las páginas. Ninguna página debe agregar su propio
+// padding exterior, max-w-* ni mx-auto: el espacio entre el menú y el
+// contenido lo decide solo este contenedor, para que sea igual en todas.
+const PAGE_CONTAINER = 'flex-1 w-full max-w-screen-2xl mx-auto px-4 py-4 md:px-6 md:py-6 lg:px-8';
 
 interface LayoutProps {
   children: ReactNode;
@@ -160,7 +168,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
 
           {/* Contenedor de Página */}
-          <div ref={contentRef} className="flex-1 p-4 md:p-6 lg:p-8 max-w-screen-2xl mx-auto w-full">
+          <div ref={contentRef} className={PAGE_CONTAINER}>
             {children}
           </div>
         </main>

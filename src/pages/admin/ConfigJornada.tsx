@@ -61,14 +61,14 @@ export default function ConfigJornada() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col gap-6 h-full">
       <PageHeader
         title="Configuración de Jornada"
         description="Define el horario laboral para el cálculo de días hábiles y SLA"
         icon={Clock}
       />
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto">
         {loading ? (
           <div className="space-y-3 max-w-lg">
             {[1, 2, 3].map(i => (

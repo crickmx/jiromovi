@@ -507,7 +507,7 @@ function renderWidget(key: string, usuario: Usuario, navigate: (route: string) =
 
 export default function Dashboard() {
   useEffect(() => {
-    document.title = 'Dashboard · MOVI Digital';
+    document.title = 'Dashboard · MOVI Mi Oficina Virtual';
   }, []);
 
   const { usuario } = useMoviAuth();
@@ -538,7 +538,7 @@ export default function Dashboard() {
   const esDireccion = usuario.rol === 'Administrador';
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6">
       {/* 1. Encabezado Personal y Contexto */}
       <WelcomeHero usuario={usuario} />
 

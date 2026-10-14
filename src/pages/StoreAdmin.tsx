@@ -305,7 +305,7 @@ export default function StoreAdmin() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         <PageHeader
           title="Administración de MOVI Store"
           description="Gestiona productos, servicios y categorías"

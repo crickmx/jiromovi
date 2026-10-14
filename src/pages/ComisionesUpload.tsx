@@ -336,7 +336,7 @@ export default function ComisionesUpload() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen dark:bg-neutral-900 flex items-center justify-center p-6">
+      <div className="flex items-center justify-center">
         <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 p-12 text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Container } from '../components/ui/container';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, Download, Pin, Pencil as Edit, Trash2, FileText, Newspaper } from 'lucide-react';
@@ -69,11 +68,11 @@ export default function ComunicadoDetalle() {
   if (loading) {
     return (
       <>
-        <Container size="lg">
+        <div>
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-3 border-accent border-t-transparent"></div>
           </div>
-        </Container>
+        </div>
       </>
     );
   }
@@ -81,7 +80,7 @@ export default function ComunicadoDetalle() {
   if (!puedeVer) {
     return (
       <>
-        <Container size="lg">
+        <div>
           <div className="bg-surface-card rounded-2xl border border-soft shadow-ios p-8 sm:p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
               <FileText className="w-8 h-8 text-neutral-500" />
@@ -96,7 +95,7 @@ export default function ComunicadoDetalle() {
               Volver a Comunicados
             </Button>
           </div>
-        </Container>
+        </div>
       </>
     );
   }
@@ -104,7 +103,7 @@ export default function ComunicadoDetalle() {
   if (!comunicado) {
     return (
       <>
-        <Container size="lg">
+        <div>
           <div className="bg-surface-card rounded-2xl border border-soft shadow-ios p-8 sm:p-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
               <FileText className="w-8 h-8 text-neutral-500" />
@@ -116,7 +115,7 @@ export default function ComunicadoDetalle() {
               Volver a Comunicados
             </Button>
           </div>
-        </Container>
+        </div>
       </>
     );
   }
@@ -126,7 +125,7 @@ export default function ComunicadoDetalle() {
 
   return (
     <>
-      <Container size="lg">
+      <div>
         {/* Navegación y acciones */}
         <PageHeader
           title={comunicado.titulo}
@@ -271,7 +270,7 @@ export default function ComunicadoDetalle() {
             )}
           </div>
         </article>
-      </Container>
+      </div>
     </>
   );
 }

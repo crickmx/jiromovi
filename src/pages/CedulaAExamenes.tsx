@@ -68,7 +68,7 @@ export default function CedulaAExamenes() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando exámenes...</p>
@@ -78,8 +78,8 @@ export default function CedulaAExamenes() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+    <div>
+      <div>
         <PageHeader
           title="Exámenes de Cédula A"
           description="Pon a prueba tus conocimientos"

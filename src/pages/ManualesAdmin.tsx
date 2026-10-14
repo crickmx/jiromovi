@@ -449,7 +449,7 @@ export default function ManualesAdmin() {
   const showForm = isCreating || editingManual;
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Administrar Manuales"
         description="Gestiona los manuales y su contenido de navegacion"

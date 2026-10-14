@@ -948,7 +948,7 @@ export default function SicasSaludAdmin() {
   const [activeTab, setActiveTab] = useState('salud');
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div>
       <PageHeader
         title="SICAS — Panel de Salud"
         description="Integración, mapeo de vendedores, calidad de datos y catálogos"

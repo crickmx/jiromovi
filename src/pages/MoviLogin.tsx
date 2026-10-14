@@ -55,7 +55,7 @@ function BackgroundLayer() {
 type Step = 'main' | 'express-code';
 
 export default function MoviLogin() {
-  useEffect(() => { document.title = 'MOVI Digital'; }, []);
+  useEffect(() => { document.title = 'MOVI Mi Oficina Virtual'; }, []);
 
   const navigate = useNavigate();
   const isBeta = isBetaHost();
@@ -181,7 +181,7 @@ export default function MoviLogin() {
         return;
       }
       if (!data.email_sent && !data.whatsapp_sent) {
-        setError('No encontramos una cuenta activa con este dato en MOVI Digital.');
+        setError('No encontramos una cuenta activa con este dato en MOVI.');
         return;
       }
       setMaskedEmail(data.masked_email || trimmed);
@@ -329,14 +329,10 @@ export default function MoviLogin() {
             </div>
 
             <div className="max-w-md">
-              <p className="text-[11px] font-semibold tracking-[0.22em] uppercase mb-4"
-                style={{ color: 'rgba(13,110,253,0.8)' }}>
-                Plataforma de gestión
-              </p>
               <h1 className="font-display text-4xl xl:text-5xl font-semibold text-white leading-[1.08] tracking-[-0.03em]">
-                Tu<br />
+                MOVI<br />
                 <span style={{ background: 'linear-gradient(90deg, #0D6EFD, #00c8e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  oficina virtual
+                  Mi Oficina Virtual
                 </span>
               </h1>
               <p className="mt-5 text-base leading-relaxed max-w-sm"
@@ -378,7 +374,7 @@ export default function MoviLogin() {
             {/* Mobile logo */}
             <div className="lg:hidden mb-10 text-center">
               <img src="/movirecurso_1.png" alt="MOVI Digital" className="h-10 w-auto mx-auto mb-2" />
-              <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'rgba(13,110,253,0.7)' }}>MOVI Digital</p>
+              <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'rgba(13,110,253,0.7)' }}>MOVI Mi Oficina Virtual</p>
             </div>
 
             <div className="w-full max-w-[380px]">
