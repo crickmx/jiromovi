@@ -67,8 +67,8 @@ import {
   Phone
 } from 'lucide-react';
 
-// ─── RECURSOS LOCALES Y LOGOS ──────────────────────────────────────────────
-const LOGO_MOVI = '/movirecurso_2.png';
+// ─── RECURSOS LOCALES Y LOGOS OFICIALES DE ALTO CONTRASTE ───────────────────
+const LOGO_MOVI = '/logo_color.svg';
 const LOGO_JIRO = '/logojiro.png';
 const LOGO_SEGUWALLET = '/seguwallet-logo.png';
 const LOGO_EDUCATION = '/og-seguros-education.svg';
@@ -118,7 +118,7 @@ export default function MoviProductLanding() {
           content="La plataforma digital exclusiva para agentes de seguros de Grupo JIRO. Trámites, CRM, comisiones, tu web personalizada y automatización."
         />
         <meta property="og:url" content="https://movi.digital/" />
-        <meta property="og:image" content="https://movi.digital/movirecurso_2.png" />
+        <meta property="og:image" content="https://movi.digital/logo_color.svg" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -136,7 +136,7 @@ export default function MoviProductLanding() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16 sm:h-20">
               
-              {/* Logos Institucionales: MOVI + Grupo JIRO */}
+              {/* Logos Institucionales: MOVI (Vector Nítido) + Grupo JIRO */}
               <div className="flex items-center gap-3.5">
                 <a
                   href="#inicio"
@@ -146,7 +146,7 @@ export default function MoviProductLanding() {
                   <img
                     src={LOGO_MOVI}
                     alt="MOVI Digital"
-                    className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
+                    className="h-9 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105"
                   />
                 </a>
                 <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
@@ -248,7 +248,7 @@ export default function MoviProductLanding() {
           )}
         </header>
 
-        {/* ─── 2. HERO PRINCIPAL: INSTITUCIONAL Y COMERCIAL CON LOGO MOVI ──── */}
+        {/* ─── 2. HERO PRINCIPAL: INSTITUCIONAL Y COMERCIAL CON LOGO VECTOR MOVI ─── */}
         <section
           id="inicio"
           className="relative pt-24 pb-16 lg:pt-36 lg:pb-24 bg-gradient-to-b from-blue-50/70 via-white to-[#F8FAFC] overflow-hidden"
@@ -259,12 +259,12 @@ export default function MoviProductLanding() {
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-4xl mx-auto space-y-6">
               
-              {/* Logo Oficial de MOVI Digital en el Hero */}
+              {/* Logo Oficial de MOVI Digital Nítido de Alto Contraste */}
               <div className="flex justify-center mb-2 animate-in fade-in duration-300">
                 <img
                   src={LOGO_MOVI}
                   alt="MOVI Digital"
-                  className="h-14 sm:h-18 w-auto object-contain drop-shadow-md"
+                  className="h-16 sm:h-20 w-auto object-contain drop-shadow-sm"
                 />
               </div>
 
@@ -1145,7 +1145,7 @@ export default function MoviProductLanding() {
               {/* Columna 1: MOVI + Grupo JIRO */}
               <div className="md:col-span-2 space-y-4">
                 <div className="flex items-center gap-3">
-                  <img src={LOGO_MOVI} alt="MOVI Digital" className="h-8 w-auto object-contain" />
+                  <img src={LOGO_MOVI} alt="MOVI Digital" className="h-9 w-auto object-contain" />
                   <div className="h-5 w-[1px] bg-slate-200" />
                   <a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer">
                     <img src={LOGO_JIRO} alt="Grupo JIRO" className="h-6 w-auto object-contain" />
