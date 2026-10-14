@@ -577,10 +577,23 @@ export function Tramites() {
     e.stopPropagation();
     if (!usuario) return;
     if (!confirm('¿Mover este trámite a la papelera? Podrás restaurarlo desde la pestaña Papelera.')) return;
-    await supabase.from('tickets').update({
+    // Antes no se revisaba el resultado y la tarjeta se quitaba de la pantalla
+    // igual: quien la mandaba a la papelera la veía desaparecer, pero si la
+    // escritura fallaba el trámite seguía ahí para todos los demás.
+    const { error, count } = await supabase.from('tickets').update({
       eliminado_at: new Date().toISOString(),
       eliminado_por: usuario.id,
-    }).eq('id', tramiteId);
+    }, { count: 'exact' }).eq('id', tramiteId);
+
+    if (error) {
+      alert(`No se pudo mover a la papelera: ${error.message}`);
+      return;
+    }
+    if (count === 0) {
+      alert('No se pudo mover a la papelera: no tienes permiso para modificar este trámite.');
+      return;
+    }
+
     invalidateCacheByPrefix('tramites_');
     setTramites(prev => prev.filter(t => t.id !== tramiteId));
     loadPapelera();
@@ -605,10 +618,16 @@ export function Tramites() {
   };
 
   const handleRestore = async (tramiteId: string) => {
-    await supabase.from('tickets').update({
+    const { error, count } = await supabase.from('tickets').update({
       eliminado_at: null,
       eliminado_por: null,
-    }).eq('id', tramiteId);
+    }, { count: 'exact' }).eq('id', tramiteId);
+
+    if (error || count === 0) {
+      alert(`No se pudo restaurar: ${error?.message ?? 'no tienes permiso para modificar este trámite.'}`);
+      return;
+    }
+
     invalidateCacheByPrefix('tramites_');
     setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
     loadTramites(true);
@@ -616,7 +635,11 @@ export function Tramites() {
 
   const handlePermanentDelete = async (tramiteId: string) => {
     if (!confirm('¿Eliminar definitivamente este trámite? Esta acción no se puede deshacer.')) return;
-    await supabase.from('tickets').delete().eq('id', tramiteId);
+    const { error, count } = await supabase.from('tickets').delete({ count: 'exact' }).eq('id', tramiteId);
+    if (error || count === 0) {
+      alert(`No se pudo eliminar: ${error?.message ?? 'no tienes permiso para borrar este trámite.'}`);
+      return;
+    }
     setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
   };
 

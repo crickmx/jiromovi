@@ -196,11 +196,15 @@ export function TramiteDetalles({
           .in('grupo_id', grupos.map((g: Grupo) => g.id))
           .in('rol_en_equipo', ['lider', 'ejecutivo']);
         if (miembros) {
-          type Row = { usuario_id: string; usuarios: { id: string; nombre_completo: string }[] };
+          // El usuario embebido llega como OBJETO: la relación miembro → usuario
+          // es de uno. Leerlo con `[0]` daba `undefined` y la lista de miembros
+          // del equipo salía vacía. Mismo despiste que tenía PanelLider.
+          type UsuarioEmbebido = { id: string; nombre_completo: string };
+          type Row = { usuario_id: string; usuarios: UsuarioEmbebido | UsuarioEmbebido[] };
           const seen = new Set<string>();
           const members: TeamMember[] = [];
-          for (const m of miembros as Row[]) {
-            const u = m.usuarios?.[0];
+          for (const m of miembros as unknown as Row[]) {
+            const u = Array.isArray(m.usuarios) ? m.usuarios[0] : m.usuarios;
             if (!seen.has(m.usuario_id) && u) {
               seen.add(m.usuario_id);
               members.push({ id: u.id, nombre_completo: u.nombre_completo });
