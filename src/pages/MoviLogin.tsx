@@ -27,27 +27,21 @@ function isPhoneInput(value: string): boolean {
   return digits.length >= 10 && /^\d+$/.test(value.replace(/[\s\-+()]/g, ''));
 }
 
+// Mismo lenguaje visual que la landing de movi.digital: fondo claro, halos azules sutiles y retícula.
 function BackgroundLayer() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      <div className="absolute inset-0" style={{
-        background: 'linear-gradient(135deg, #040c1f 0%, #061428 40%, #081a38 60%, #04101f 100%)',
-      }} />
-      <div className="absolute -top-56 -right-56 w-[700px] h-[700px] rounded-full" style={{
-        background: 'radial-gradient(circle, #0D6EFD 0%, transparent 65%)',
-        opacity: 0.12,
-        animation: 'movi-pulse 10s ease-in-out infinite',
-      }} />
-      <div className="absolute bottom-0 -left-40 w-[500px] h-[500px] rounded-full" style={{
-        background: 'radial-gradient(circle, #0047bb 0%, transparent 65%)',
-        opacity: 0.1,
-        animation: 'movi-pulse 14s ease-in-out infinite 3s',
-      }} />
-      <div className="absolute inset-0" style={{
-        backgroundImage: `linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)`,
-        backgroundSize: '80px 80px',
-      }} />
+      <div className="absolute inset-0 bg-[#F8FAFC]" />
+      <div className="absolute -top-56 -right-56 w-[700px] h-[700px] rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.14)_0%,transparent_65%)]" />
+      <div className="absolute bottom-0 -left-40 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,rgba(28,55,224,0.10)_0%,transparent_65%)]" />
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `linear-gradient(rgba(15,23,42,0.035) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(15,23,42,0.035) 1px, transparent 1px)`,
+          backgroundSize: '80px 80px',
+        }}
+      />
     </div>
   );
 }
@@ -297,46 +291,40 @@ export default function MoviLogin() {
     }
   }
 
-  const inputBase: React.CSSProperties = {
-    background: 'rgba(255,255,255,0.07)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    color: 'white',
-  };
-  const inputFocusOn = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.border = '1px solid rgba(13,110,253,0.6)';
-    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(13,110,253,0.15)';
-  };
-  const inputFocusOff = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.border = inputBase.border as string;
-    e.currentTarget.style.background = inputBase.background as string;
-    e.currentTarget.style.boxShadow = 'none';
-  };
-  const inputCls = 'w-full h-12 rounded-2xl text-sm outline-none transition-all duration-200 placeholder:text-white/20';
+  const inputCls = 'w-full h-12 rounded-xl text-sm outline-none transition-all duration-200 bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100';
+  const labelCls = 'block text-xs font-semibold tracking-wide uppercase text-slate-600';
+  const iconCls = 'absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-slate-400';
+  const btnPrimario = 'w-full flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none mt-1';
+  const btnSecundario = 'w-full flex items-center justify-center gap-2 h-12 px-3 rounded-xl text-[13px] sm:text-sm font-semibold whitespace-nowrap bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-[0.98]';
+  const avisoError = 'mb-4 px-4 py-3 rounded-xl text-sm font-medium bg-red-50 border border-red-200 text-red-700';
 
   return (
     <>
       {isBeta && <BetaBanner />}
-      <div className={`relative min-h-screen flex flex-col overflow-hidden ${isBeta ? 'pt-9' : ''}`}>
+      <div className={`relative min-h-screen flex flex-col overflow-hidden text-slate-900 ${isBeta ? 'pt-9' : ''}`}>
         <BackgroundLayer />
 
         <div className="relative z-10 flex flex-1 min-h-screen">
 
           {/* LEFT COLUMN */}
           <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col items-start justify-between px-16 xl:px-24 py-14">
-            <div>
-              <img src="/movirecurso_2.png" alt="movi.digital" className="h-10 w-auto object-contain" />
+            <div className="flex items-center gap-4">
+              <img src="/movirecurso_1.png" alt="movi.digital" className="h-10 w-auto object-contain" />
+              <div className="h-8 w-px bg-slate-200" />
+              <img src="/logojiro.png" alt="JIRO y Asociados" className="h-10 w-auto object-contain" />
             </div>
 
             <div className="max-w-md">
-              <h1 className="font-display text-4xl xl:text-5xl font-semibold text-white leading-[1.08] tracking-[-0.03em]">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-[11px] font-extrabold uppercase tracking-wide">
+                Plataforma exclusiva Grupo JIRO
+              </span>
+              <h1 className="mt-5 font-display text-4xl xl:text-5xl font-semibold text-slate-900 leading-[1.08] tracking-[-0.03em]">
                 MOVI<br />
-                <span style={{ background: 'linear-gradient(90deg, #0D6EFD, #00c8e0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                <span className="bg-gradient-to-r from-[#1C37E0] via-blue-600 to-cyan-500 bg-clip-text text-transparent">
                   Mi Oficina Virtual
                 </span>
               </h1>
-              <p className="mt-5 text-base leading-relaxed max-w-sm"
-                style={{ color: 'rgba(255,255,255,0.72)' }}>
+              <p className="mt-5 text-base leading-relaxed max-w-sm text-slate-600">
                 Gestiona pólizas, comisiones, clientes y producción desde un solo lugar.
               </p>
 
@@ -348,72 +336,60 @@ export default function MoviLogin() {
                   'Sincronización con SICAS en tiempo real',
                 ].map((label, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#0D6EFD' }} />
-                    <span className="text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>{label}</span>
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                    </span>
+                    <span className="text-sm text-slate-700">{label}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="flex items-center gap-5 text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            <div className="flex items-center gap-5 text-[11px] text-slate-500">
               <a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer"
-                className="hover:text-white/60 transition-colors">grupojiro.com</a>
-              <span className="w-px h-3" style={{ background: 'rgba(255,255,255,0.15)' }} />
+                className="hover:text-blue-600 transition-colors">grupojiro.com</a>
+              <span className="w-px h-3 bg-slate-300" />
               <span>© {new Date().getFullYear()} MOVI Digital</span>
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="hidden lg:block w-px self-stretch my-12" style={{
-            background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.08) 20%, rgba(255,255,255,0.08) 80%, transparent)',
-          }} />
-
           {/* RIGHT COLUMN */}
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 lg:px-14 xl:px-20">
+          <div className="flex-1 flex flex-col items-center justify-center px-5 py-12 lg:px-14 xl:px-20">
 
             {/* Mobile logo */}
-            <div className="lg:hidden mb-10 text-center">
-              <img src="/movirecurso_2.png" alt="movi.digital" className="h-10 w-auto mx-auto mb-2 object-contain" />
-              <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'rgba(13,110,253,0.7)' }}>MOVI Mi Oficina Virtual</p>
+            <div className="lg:hidden mb-8 text-center">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <img src="/movirecurso_1.png" alt="movi.digital" className="h-10 w-auto object-contain" />
+                <div className="h-7 w-px bg-slate-200" />
+                <img src="/logojiro.png" alt="JIRO y Asociados" className="h-9 w-auto object-contain" />
+              </div>
+              <p className="text-xs font-semibold tracking-widest uppercase text-blue-600">MOVI Mi Oficina Virtual</p>
             </div>
 
-            <div className="w-full max-w-[380px]">
+            <div className="w-full max-w-[420px] bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-900/[0.06] p-6 sm:p-9">
 
               {/* ── STEP: MAIN (password or express input) ── */}
               {step === 'main' && (
                 <>
                   <div className="mb-7">
-                    <h2 className="font-display text-2xl font-semibold text-white tracking-[-0.025em]">Iniciar sesión</h2>
-                    <p className="mt-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                    <h2 className="font-display text-2xl font-semibold text-slate-900 tracking-[-0.025em]">Iniciar sesión</h2>
+                    <p className="mt-1.5 text-sm text-slate-500">
                       {mode === 'password' ? 'Ingresa con tu contraseña' : 'Recibe un código de acceso'}
                     </p>
                   </div>
 
-                  {error && (
-                    <div className="mb-4 px-4 py-3 rounded-2xl text-sm font-medium" style={{
-                      background: 'rgba(239,68,68,0.12)',
-                      border: '1px solid rgba(239,68,68,0.25)',
-                      color: '#fca5a5',
-                    }}>
-                      {error}
-                    </div>
-                  )}
+                  {error && <div className={avisoError}>{error}</div>}
 
                   {noPasswordMsg && (
-                    <div className="mb-4 px-4 py-3 rounded-2xl text-sm" style={{
-                      background: 'rgba(13,110,253,0.1)',
-                      border: '1px solid rgba(13,110,253,0.25)',
-                      color: 'rgba(147,197,253,0.9)',
-                    }}>
+                    <div className="mb-4 px-4 py-3 rounded-xl text-sm bg-blue-50 border border-blue-200 text-blue-900">
                       <p className="font-medium mb-1">Contraseña no configurada</p>
-                      <p className="text-xs" style={{ color: 'rgba(147,197,253,0.7)' }}>
+                      <p className="text-xs text-blue-800/80">
                         Aún no tienes una contraseña. Utiliza Ingreso Express y después podrás crear tu contraseña desde tu perfil.
                       </p>
                       <button
                         type="button"
                         onClick={() => { setMode('express'); setNoPasswordMsg(false); setError(''); }}
-                        className="mt-2 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                        style={{ color: '#60a5fa' }}
+                        className="mt-2 text-xs font-semibold flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors"
                       >
                         <Zap className="w-3.5 h-3.5" />
                         Ir a Ingreso Express
@@ -425,24 +401,15 @@ export default function MoviLogin() {
                   {mode === 'password' && (
                     <form onSubmit={handlePasswordLogin} className="space-y-4" noValidate>
                       <div className="space-y-1.5">
-                        <label className="block text-xs font-semibold tracking-wide uppercase"
-                          style={{ color: 'rgba(255,255,255,0.72)' }}>
-                          Correo electrónico o celular
-                        </label>
+                        <label className={labelCls}>Correo electrónico o celular</label>
                         <div className="relative">
-                          {isPhoneInput(identifier)
-                            ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.6)' }} />
-                            : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.6)' }} />
-                          }
+                          {isPhoneInput(identifier) ? <Phone className={iconCls} /> : <Mail className={iconCls} />}
                           <input
                             type="text"
                             value={identifier}
                             onChange={e => { setIdentifier(e.target.value); setNoPasswordMsg(false); }}
                             placeholder="tu@correo.com o 10 dígitos"
                             className={`${inputCls} pl-10 pr-4`}
-                            style={inputBase}
-                            onFocus={inputFocusOn}
-                            onBlur={inputFocusOff}
                             autoComplete="email"
                             autoFocus
                           />
@@ -450,45 +417,30 @@ export default function MoviLogin() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="block text-xs font-semibold tracking-wide uppercase"
-                          style={{ color: 'rgba(255,255,255,0.72)' }}>
-                          Contraseña
-                        </label>
+                        <label className={labelCls}>Contraseña</label>
                         <div className="relative">
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                            style={{ color: 'rgba(255,255,255,0.6)' }} />
+                          <Lock className={iconCls} />
                           <input
                             type={showPassword ? 'text' : 'password'}
                             value={password}
                             onChange={e => { setPassword(e.target.value); setNoPasswordMsg(false); }}
                             placeholder="Tu contraseña"
                             className={`${inputCls} pl-10 pr-11`}
-                            style={inputBase}
-                            onFocus={inputFocusOn}
-                            onBlur={inputFocusOff}
                             autoComplete="current-password"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 p-0.5 rounded transition-colors"
-                            style={{ color: 'rgba(255,255,255,0.72)' }}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-slate-400 hover:text-slate-700 transition-colors"
                             tabIndex={-1}
+                            aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                           >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
 
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl text-sm font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-1"
-                        style={{
-                          background: loading ? 'rgba(13,110,253,0.5)' : 'linear-gradient(135deg, #0D6EFD, #0047bb)',
-                          boxShadow: loading ? 'none' : '0 4px 20px rgba(13,110,253,0.35)',
-                        }}
-                      >
+                      <button type="submit" disabled={loading} className={btnPrimario}>
                         {loading ? (
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
@@ -505,39 +457,22 @@ export default function MoviLogin() {
                   {mode === 'express' && (
                     <form onSubmit={handleExpressSend} className="space-y-4" noValidate>
                       <div className="space-y-1.5">
-                        <label className="block text-xs font-semibold tracking-wide uppercase"
-                          style={{ color: 'rgba(255,255,255,0.72)' }}>
-                          Correo electrónico o celular
-                        </label>
+                        <label className={labelCls}>Correo electrónico o celular</label>
                         <div className="relative">
-                          {isPhoneInput(identifier)
-                            ? <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.6)' }} />
-                            : <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.6)' }} />
-                          }
+                          {isPhoneInput(identifier) ? <Phone className={iconCls} /> : <Mail className={iconCls} />}
                           <input
                             type="text"
                             value={identifier}
                             onChange={e => setIdentifier(e.target.value)}
                             placeholder="tu@correo.com o 10 dígitos"
                             className={`${inputCls} pl-10 pr-4`}
-                            style={inputBase}
-                            onFocus={inputFocusOn}
-                            onBlur={inputFocusOff}
                             autoComplete="email"
                             autoFocus
                           />
                         </div>
                       </div>
 
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl text-sm font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-1"
-                        style={{
-                          background: loading ? 'rgba(13,110,253,0.5)' : 'linear-gradient(135deg, #0D6EFD, #0047bb)',
-                          boxShadow: loading ? 'none' : '0 4px 20px rgba(13,110,253,0.35)',
-                        }}
-                      >
+                      <button type="submit" disabled={loading} className={btnPrimario}>
                         {loading ? (
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
@@ -553,12 +488,10 @@ export default function MoviLogin() {
                   {/* ── MODE SWITCH SEPARATOR ── */}
                   <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+                      <div className="w-full border-t border-slate-200" />
                     </div>
                     <div className="relative flex justify-center">
-                      <span className="px-3 text-xs font-medium" style={{ background: '#050e20', color: 'rgba(255,255,255,0.6)' }}>
-                        O bien
-                      </span>
+                      <span className="px-3 text-xs font-medium bg-white text-slate-400">O bien</span>
                     </div>
                   </div>
 
@@ -567,37 +500,23 @@ export default function MoviLogin() {
                     <button
                       type="button"
                       onClick={() => { setMode('express'); setError(''); setNoPasswordMsg(false); }}
-                      className="w-full flex items-center justify-center gap-2.5 h-12 rounded-2xl text-sm font-semibold transition-all duration-200 active:scale-[0.98]"
-                      style={{
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'rgba(255,255,255,0.8)',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
+                      className={btnSecundario}
                     >
-                      <Zap className="w-4 h-4" />
+                      <Zap className="w-4 h-4 text-blue-600" />
                       <span>Ingreso Express (código sin contraseña)</span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => { setMode('password'); setError(''); setNoPasswordMsg(false); }}
-                      className="w-full flex items-center justify-center gap-2.5 h-12 rounded-2xl text-sm font-semibold transition-all duration-200 active:scale-[0.98]"
-                      style={{
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'rgba(255,255,255,0.8)',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
+                      className={btnSecundario}
                     >
-                      <Lock className="w-4 h-4" />
+                      <Lock className="w-4 h-4 text-blue-600" />
                       <span>Iniciar sesión con contraseña</span>
                     </button>
                   )}
 
-                  <p className="mt-5 text-xs text-center" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                  <p className="mt-5 text-xs text-center text-slate-500">
                     {mode === 'password'
                       ? '¿No tienes contraseña? Usa Ingreso Express.'
                       : 'Recibirás un código de 6 dígitos por correo y WhatsApp'
@@ -612,39 +531,25 @@ export default function MoviLogin() {
                   <div className="mb-8">
                     <button
                       onClick={() => { setStep('main'); setError(''); setCode(''); }}
-                      className="flex items-center gap-1.5 text-xs font-semibold mb-4 transition-colors"
-                      style={{ color: 'rgba(255,255,255,0.72)' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
-                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+                      className="flex items-center gap-1.5 text-xs font-semibold mb-4 text-slate-500 hover:text-slate-800 transition-colors"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       Volver
                     </button>
-                    <h2 className="font-display text-2xl font-semibold text-white tracking-[-0.025em]">Verifica tu acceso</h2>
-                    <p className="mt-1.5 text-sm" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                    <h2 className="font-display text-2xl font-semibold text-slate-900 tracking-[-0.025em]">Verifica tu acceso</h2>
+                    <p className="mt-1.5 text-sm text-slate-500">
                       Te enviamos un código a tu correo y WhatsApp registrados
                     </p>
-                    <p className="mt-0.5 text-sm font-semibold" style={{ color: 'rgba(13,110,253,0.9)' }}>
+                    <p className="mt-0.5 text-sm font-semibold text-blue-600">
                       {maskedEmail}
                     </p>
                   </div>
 
-                  {error && (
-                    <div className="mb-5 px-4 py-3 rounded-2xl text-sm font-medium" style={{
-                      background: 'rgba(239,68,68,0.12)',
-                      border: '1px solid rgba(239,68,68,0.25)',
-                      color: '#fca5a5',
-                    }}>
-                      {error}
-                    </div>
-                  )}
+                  {error && <div className={avisoError}>{error}</div>}
 
                   <form onSubmit={handleCodeSubmit} className="space-y-4" noValidate>
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold tracking-wide uppercase"
-                        style={{ color: 'rgba(255,255,255,0.72)' }}>
-                        Código de acceso
-                      </label>
+                      <label className={labelCls}>Código de acceso</label>
                       <input
                         ref={codeInputRef}
                         type="text"
@@ -652,29 +557,18 @@ export default function MoviLogin() {
                         onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="123456"
                         className={`${inputCls} px-4 text-center text-2xl font-bold tracking-[0.35em] font-mono`}
-                        style={{ ...inputBase, letterSpacing: '0.35em' }}
-                        onFocus={inputFocusOn}
-                        onBlur={inputFocusOff}
                         autoComplete="one-time-code"
                         inputMode="numeric"
                         pattern="[0-9]*"
                         maxLength={6}
                         autoFocus
                       />
-                      <p className="text-xs text-center mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                      <p className="text-xs text-center mt-1 text-slate-500">
                         El código vence en 10 minutos
                       </p>
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={loading || code.length < 6}
-                      className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl text-sm font-bold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed mt-1"
-                      style={{
-                        background: (loading || code.length < 6) ? 'rgba(13,110,253,0.4)' : 'linear-gradient(135deg, #0D6EFD, #0047bb)',
-                        boxShadow: (loading || code.length < 6) ? 'none' : '0 4px 20px rgba(13,110,253,0.35)',
-                      }}
-                    >
+                    <button type="submit" disabled={loading || code.length < 6} className={btnPrimario}>
                       {loading ? (
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
@@ -690,10 +584,7 @@ export default function MoviLogin() {
                         type="button"
                         onClick={handleResend}
                         disabled={resendCooldown > 0 || loading}
-                        className="flex items-center gap-1.5 text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{ color: resendCooldown > 0 ? 'rgba(255,255,255,0.3)' : 'rgba(13,110,253,0.85)' }}
-                        onMouseEnter={e => { if (resendCooldown === 0) e.currentTarget.style.color = '#0D6EFD'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = resendCooldown > 0 ? 'rgba(255,255,255,0.3)' : 'rgba(13,110,253,0.85)'; }}
+                        className="flex items-center gap-1.5 text-xs font-semibold transition-colors text-blue-600 hover:text-blue-700 disabled:text-slate-400 disabled:cursor-not-allowed"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                         {resendCooldown > 0
@@ -707,19 +598,12 @@ export default function MoviLogin() {
             </div>
 
             {/* Mobile footer */}
-            <div className="lg:hidden mt-12 text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            <div className="lg:hidden mt-10 text-[11px] text-slate-500">
               © {new Date().getFullYear()} MOVI Digital · Grupo JIRO
             </div>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes movi-pulse {
-          0%, 100% { opacity: 0.12; transform: scale(1); }
-          50%       { opacity: 0.2;  transform: scale(1.08); }
-        }
-      `}</style>
     </>
   );
 }
