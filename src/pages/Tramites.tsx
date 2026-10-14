@@ -797,8 +797,20 @@ export function Tramites() {
   };
 
   // Mover a mano entre "En Proceso" y "Requiere Atención": solo Admin o el responsable asignado.
-  const puedeMoverAtencion = (t: TramiteItem) =>
-    esRolSistemaAdmin || (!!usuario && t.assigned_to_user_id === usuario.id);
+  /**
+   * Quién puede arrastrar una tarjeta entre columnas.
+   *
+   * Antes era solo el Admin o la persona asignada, y un trámite "Sin
+   * responsable" —que es como nacen casi todos— no lo podía mover nadie más
+   * que un Admin. Ahora también quien lleva el equipo al que está asignado.
+   */
+  const ROLES_QUE_MUEVEN = ['lider', 'supervisor', 'director', 'ejecutivo'];
+  const puedeMoverAtencion = (t: TramiteItem) => {
+    if (esRolSistemaAdmin) return true;
+    if (!!usuario && t.assigned_to_user_id === usuario.id) return true;
+    if (!t.grupo_asignado_id) return false;
+    return ROLES_QUE_MUEVEN.includes(myGrupoRoles.get(t.grupo_asignado_id) ?? '');
+  };
 
   const handleDropEnColumna = (destino: 'atencion' | 'proceso'): boolean => {
     const id = dragTramiteId.current;

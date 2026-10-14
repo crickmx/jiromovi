@@ -3,6 +3,7 @@ import { X, Upload, User, Users, CircleAlert as AlertCircle, FileText, Package, 
 import { supabase } from '../../lib/supabase';
 import { puedeVerCampo, puedeEditarCampo } from '../../lib/rolCampos';
 import { crearNotificacion } from '../../lib/notificationHelpers';
+import { mensajeNuevoTramite } from '../../lib/tramiteAviso';
 import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
@@ -2400,12 +2401,26 @@ export function NuevoTramiteModal({
         }
       }
 
+      // El aviso llega por WhatsApp tal cual se escribe aquí, así que lleva con
+      // qué decidir: de quién es, de dónde y qué pide. Antes era solo el folio
+      // y el tipo, y había que entrar a MOVI para enterarse de algo.
+      const solicitanteId = ticketData.agente_id as string | null;
+      const solicitante = usuariosDisponibles.find(u => u.id === solicitanteId);
+      const avisoTramite = mensajeNuevoTramite({
+        folio: ticket.folio,
+        tipoLabel: tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite,
+        solicitante: solicitante?.nombre_completo,
+        oficina: oficinas.find(o => o.id === solicitante?.oficina_id)?.nombre,
+        prioridad,
+        instrucciones: ticketData.instrucciones as string | null,
+      });
+
       // Notificar al responsable asignado o al líder del equipo
       if (responsableId) {
         await crearNotificacion({
           user_id: responsableId,
           titulo: 'Nuevo trámite asignado',
-          mensaje: `Se te asignó el trámite ${ticket.folio} (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}).`,
+          mensaje: avisoTramite,
           modulo: 'Tramites',
           icono: 'clipboard-list',
           accion_url: `/tramites/${ticket.id}`,
@@ -2418,7 +2433,7 @@ export function NuevoTramiteModal({
           await crearNotificacion({
             user_id: lider.id,
             titulo: 'Nuevo trámite en tu equipo',
-            mensaje: `Nuevo trámite ${ticket.folio} asignado a tu equipo (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}).`,
+            mensaje: avisoTramite,
             modulo: 'Tramites',
             icono: 'clipboard-list',
             accion_url: `/tramites/${ticket.id}`,
@@ -2434,7 +2449,9 @@ export function NuevoTramiteModal({
           await crearNotificacion({
             user_id: adm.id,
             titulo: 'Trámite sin equipo asignado',
-            mensaje: `El trámite ${ticket.folio} (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}) no se pudo asignar automáticamente a ningún equipo. Requiere asignación manual.`,
+            mensaje: `${avisoTramite}
+
+No cayó en ninguna regla de asignación. Requiere asignarlo a mano.`,
             modulo: 'Tramites',
             icono: 'alert-triangle',
             accion_url: `/tramites/${ticket.id}`,
