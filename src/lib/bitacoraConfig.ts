@@ -1,20 +1,27 @@
-// Lo que distingue a la bitácora de MOVI Store de la de Marketing Premium.
+// La bitácora comercial: pedidos de MOVI Store y periodos de Marketing Premium
+// en una sola tabla.
 //
-// Mismo criterio que triggersConfig.ts: un solo componente de tabla
-// (BitacoraComercial.tsx), un objeto de configuración por módulo. Si mañana
-// hay un tercer módulo con bitácora, lo que hace falta es otra entrada aquí.
+// Antes eran dos pantallas separadas, una por módulo, y para ver todo lo que un
+// agente debe había que entrar a las dos. Ahora es una sola con filtros — por
+// módulo, por oficina y por nombre.
 
 import { tienePermisoAdminEnModulo, MODULOS, type UsuarioConPermisos } from './permisosUtils';
 import { tieneAccesoEquipoStore } from './storeUtils';
 import { tieneAccesoEquipoMkt } from './mktUtils';
 
+export type ModuloBitacora = 'store' | 'premium';
+
 export interface BitacoraRow {
+  modulo: ModuloBitacora;
   id: string;
-  folio: string;
+  /** A dónde lleva el clic: el pedido en Store, la ficha del agente en Premium. */
+  destino_id: string;
+  folio: string | null;
   fecha: string;
   solicitante_id: string | null;
   solicitante_nombre: string | null;
-  responsable_id: string | null;
+  oficina_id: string | null;
+  oficina_nombre: string | null;
   responsable_nombre: string | null;
   cantidad: number;
   monto: number;
@@ -22,47 +29,50 @@ export interface BitacoraRow {
   metodo_pago: string | null;
   pagado: number;
   saldo: number;
+  activo: boolean;
   estado_pago: 'al_corriente' | 'debe' | 'a_favor' | 'sin_plan' | 'sin_monto';
-  // Solo Marketing Premium: un periodo puede seguir activo o ya haberse cerrado.
-  fecha_fin?: string | null;
-  activo?: boolean;
 }
 
-export interface ConfigBitacora {
-  vista: string;
-  titulo: string;
-  descripcion: string;
-  /** Mismo chequeo de acceso que ya usa el admin de ese módulo -- nada nuevo. */
-  tieneAcceso: (usuario: UsuarioConPermisos & { id: string }) => Promise<boolean>;
-  nombreArchivoExport: string;
-  labelFolio: string;
-  labelCantidad: string;
-  labelFormaPago: string;
-  /** Marketing muestra columna "Activo/Cerrado"; Store no la necesita (no tiene ese concepto). */
-  mostrarActivo?: boolean;
-}
+export const VISTA_BITACORA = 'bitacora_comercial_view';
 
-export const CONFIG_BITACORA_STORE: ConfigBitacora = {
-  vista: 'store_bitacora_view',
-  titulo: 'Bitácora de Pedidos — MOVI Store',
-  descripcion: 'Folio, solicitante, responsable y pagos aplicados de cada pedido.',
-  tieneAcceso: async (usuario) =>
-    tienePermisoAdminEnModulo(usuario, MODULOS.STORE) || tieneAccesoEquipoStore(usuario.id),
-  nombreArchivoExport: 'bitacora_store',
-  labelFolio: 'Folio OC',
-  labelCantidad: 'Cantidad',
-  labelFormaPago: 'Forma de pago',
+export const ETIQUETA_MODULO: Record<ModuloBitacora, string> = {
+  store: 'MOVI Store',
+  premium: 'Marketing Premium',
 };
 
-export const CONFIG_BITACORA_MKT: ConfigBitacora = {
-  vista: 'mkt_premium_bitacora_view',
-  titulo: 'Bitácora de Marketing Premium',
-  descripcion: 'Periodos contratados, folio, pagos aplicados y estatus de cada agente.',
-  tieneAcceso: async (usuario) =>
-    usuario.rol === 'Administrador' || tieneAccesoEquipoMkt(usuario.id),
-  nombreArchivoExport: 'bitacora_mkt_premium',
-  labelFolio: 'Folio Premium',
-  labelCantidad: 'Periodos',
-  labelFormaPago: 'Plan',
-  mostrarActivo: true,
+/**
+ * Qué módulos puede ver cada quien.
+ *
+ * No hay permiso nuevo: se reusa el mismo chequeo que ya usa el admin de cada
+ * módulo. Quien solo administra Store ve solo las filas de Store.
+ */
+export async function modulosVisibles(
+  usuario: UsuarioConPermisos & { id: string },
+): Promise<ModuloBitacora[]> {
+  const [store, premium] = await Promise.all([
+    Promise.resolve(tienePermisoAdminEnModulo(usuario, MODULOS.STORE)).then(
+      ok => ok || tieneAccesoEquipoStore(usuario.id),
+    ),
+    usuario.rol === 'Administrador' ? Promise.resolve(true) : tieneAccesoEquipoMkt(usuario.id),
+  ]);
+
+  const modulos: ModuloBitacora[] = [];
+  if (store) modulos.push('store');
+  if (premium) modulos.push('premium');
+  return modulos;
+}
+
+/** A dónde va el clic de una fila: siempre al control de pagos de ese registro. */
+export function rutaDePagos(row: BitacoraRow): string {
+  return row.modulo === 'store'
+    ? `/store/pedidos/${row.destino_id}`
+    : `/mercadotecnia/admin?tab=premium&agente=${row.destino_id}`;
+}
+
+export const ETIQUETA_ESTADO: Record<BitacoraRow['estado_pago'], { texto: string; clase: string }> = {
+  al_corriente: { texto: 'Al corriente', clase: 'bg-emerald-100 text-emerald-700' },
+  debe:         { texto: 'Debe',         clase: 'bg-amber-100 text-amber-700' },
+  a_favor:      { texto: 'A favor',      clase: 'bg-sky-100 text-sky-700' },
+  sin_plan:     { texto: 'Sin plan',     clase: 'bg-neutral-100 text-neutral-500' },
+  sin_monto:    { texto: 'Sin monto',    clase: 'bg-neutral-100 text-neutral-500' },
 };

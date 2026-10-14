@@ -26,7 +26,6 @@ import { supabase } from '../lib/supabase';
 import { EquiposAccesoPanel } from '../components/admin/EquiposAccesoPanel';
 import { TriggersPanel } from '../components/admin/TriggersPanel';
 import { BitacoraComercial } from '../components/admin/BitacoraComercial';
-import { CONFIG_BITACORA_STORE } from '../lib/bitacoraConfig';
 import { CONFIG_TRIGGERS_STORE } from '../lib/triggersConfig';
 import type { StoreProducto, StoreCategoria, StoreProductoCostoExtra, StoreProductoAtributo, StoreProductoAtributoOpcion, TipoItem, Disponibilidad } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS } from '../lib/storeTypes';
@@ -769,7 +768,7 @@ export default function StoreAdmin() {
         ) : vistaActual === 'catalogos' ? (
           <CatalogosAdminPanel />
         ) : vistaActual === 'bitacora' ? (
-          <BitacoraComercial config={CONFIG_BITACORA_STORE} />
+          <BitacoraComercial />
         ) : (
           <TriggersPanel config={CONFIG_TRIGGERS_STORE} />
         )}

@@ -1,195 +1,255 @@
-// Tabla de bitácora compartida entre MOVI Store y Marketing Premium.
+// Bitácora comercial: pedidos de MOVI Store y periodos de Marketing Premium.
 //
-// Mismo criterio que TriggersPanel.tsx: un solo componente, un objeto de
-// configuración por módulo (ver src/lib/bitacoraConfig.ts). El permiso de
-// quién la ve es el MISMO que ya usa el admin de cada módulo -- no se crea
-// ninguna regla nueva. Los datos salen de una vista de BD por módulo
-// (security_invoker=true), así que la RLS real de cada tabla sigue
-// aplicando tal cual.
+// Una sola tabla con filtros por módulo, oficina y nombre. Cada fila lleva al
+// control de pagos de ese registro — que es para lo que se consulta: ver quién
+// debe y poder ir a cobrarlo sin buscarlo a mano en otra pantalla.
 
-import { useState, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { Search, Download, FileSpreadsheet } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { Search, FileSpreadsheet, Download, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { pesos } from '../../lib/cobroDesglose';
-import { PageHeader } from '@/components/ui/page-header';
-import { LoadingState } from '@/components/ui/loading-state';
-import { EmptyState } from '@/components/ui/empty-state';
+import { useAuth } from '../../contexts/AuthContext';
 import { normalizarTexto } from '../../lib/utils';
-import type { ConfigBitacora, BitacoraRow } from '../../lib/bitacoraConfig';
+import {
+  VISTA_BITACORA, ETIQUETA_MODULO, ETIQUETA_ESTADO,
+  modulosVisibles, rutaDePagos,
+  type BitacoraRow, type ModuloBitacora,
+} from '../../lib/bitacoraConfig';
 
-const ESTADO_BADGE: Record<BitacoraRow['estado_pago'], { label: string; clase: string }> = {
-  al_corriente: { label: 'Al corriente', clase: 'bg-green-100 text-green-700' },
-  debe:         { label: 'Debe',         clase: 'bg-amber-100 text-amber-700' },
-  a_favor:      { label: 'A favor',      clase: 'bg-blue-100 text-blue-700' },
-  sin_plan:     { label: 'Sin plan',     clase: 'bg-neutral-100 text-neutral-500' },
-  sin_monto:    { label: 'Sin monto',    clase: 'bg-neutral-100 text-neutral-500' },
-};
+const pesos = (n: number) =>
+  `$${(n ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-function soloFecha(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-export function BitacoraComercial({ config }: { config: ConfigBitacora }) {
+export function BitacoraComercial() {
   const { usuario } = useAuth();
-  const [verificandoAcceso, setVerificandoAcceso] = useState(true);
-  const [tieneAcceso, setTieneAcceso] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
   const [filas, setFilas] = useState<BitacoraRow[]>([]);
+  const [permitidos, setPermitidos] = useState<ModuloBitacora[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [busqueda, setBusqueda] = useState('');
+  const [filtroModulo, setFiltroModulo] = useState<'' | ModuloBitacora>('');
+  const [filtroOficina, setFiltroOficina] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      if (!usuario) { setVerificandoAcceso(false); return; }
-      const acceso = await config.tieneAcceso(usuario);
-      setTieneAcceso(acceso);
-      setVerificandoAcceso(false);
-    })();
-  }, [usuario?.id, config]);
+  const cargar = useCallback(async () => {
+    if (!usuario?.id) return;
+    setCargando(true);
+    setError(null);
 
-  useEffect(() => {
-    if (!tieneAcceso) return;
-    setLoading(true);
-    supabase.from(config.vista).select('*').order('fecha', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) console.error(`[BitacoraComercial:${config.vista}]`, error);
-        setFilas((data ?? []) as BitacoraRow[]);
-        setLoading(false);
-      });
-  }, [tieneAcceso, config.vista]);
+    const modulos = await modulosVisibles(usuario as never);
+    setPermitidos(modulos);
+    if (modulos.length === 0) {
+      setFilas([]);
+      setCargando(false);
+      return;
+    }
 
-  const filasFiltradas = useMemo(() => {
-    const termino = normalizarTexto(busqueda);
-    if (!termino) return filas;
+    const { data, error: err } = await supabase
+      .from(VISTA_BITACORA)
+      .select('*')
+      .in('modulo', modulos)
+      .order('fecha', { ascending: false });
+
+    // Sin esto, un error de la consulta se ve igual que "no hay nada": la tabla
+    // sale vacía y manda a buscar el problema al lugar equivocado.
+    if (err) {
+      console.error('[Bitácora] no se pudo cargar:', err);
+      setError(err.message);
+      setFilas([]);
+    } else {
+      setFilas((data ?? []) as BitacoraRow[]);
+    }
+    setCargando(false);
+  }, [usuario]);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  const oficinas = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of filas) if (f.oficina_id && f.oficina_nombre) m.set(f.oficina_id, f.oficina_nombre);
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [filas]);
+
+  const visibles = useMemo(() => {
+    const q = normalizarTexto(busqueda);
     return filas.filter(f =>
-      normalizarTexto(f.folio ?? '').includes(termino) ||
-      normalizarTexto(f.solicitante_nombre ?? '').includes(termino) ||
-      normalizarTexto(f.responsable_nombre ?? '').includes(termino)
+      (!filtroModulo  || f.modulo === filtroModulo) &&
+      (!filtroOficina || f.oficina_id === filtroOficina) &&
+      (!filtroEstado  || f.estado_pago === filtroEstado) &&
+      (!q || [f.folio, f.solicitante_nombre, f.responsable_nombre, f.oficina_nombre]
+              .some(v => normalizarTexto(v).includes(q))),
     );
-  }, [filas, busqueda]);
+  }, [filas, busqueda, filtroModulo, filtroOficina, filtroEstado]);
 
-  const filasParaExportar = () => filasFiltradas.map(f => ({
-    [config.labelFolio]: f.folio,
-    'Fecha': soloFecha(f.fecha),
-    'Agente Solicitante': f.solicitante_nombre ?? '',
-    'Responsable': f.responsable_nombre ?? '',
-    [config.labelCantidad]: f.cantidad,
-    [config.labelFormaPago]: f.forma_pago ?? '',
+  const totales = useMemo(() => ({
+    monto:  visibles.reduce((s, f) => s + Number(f.monto ?? 0), 0),
+    pagado: visibles.reduce((s, f) => s + Number(f.pagado ?? 0), 0),
+    saldo:  visibles.reduce((s, f) => s + Number(f.saldo ?? 0), 0),
+  }), [visibles]);
+
+  const paraExportar = () => visibles.map(f => ({
+    Módulo: ETIQUETA_MODULO[f.modulo],
+    Folio: f.folio ?? '',
+    Fecha: new Date(f.fecha).toLocaleDateString('es-MX'),
+    Solicitante: f.solicitante_nombre ?? '',
+    Oficina: f.oficina_nombre ?? '',
+    Responsable: f.responsable_nombre ?? '',
+    Cantidad: f.cantidad,
+    'Forma de pago': f.forma_pago ?? '',
     'Método de pago': f.metodo_pago ?? '',
-    'Monto': f.monto,
-    'Pagado': f.pagado,
-    'Saldo': f.saldo,
-    'Estado': ESTADO_BADGE[f.estado_pago]?.label ?? f.estado_pago,
-    ...(config.mostrarActivo ? { 'Activo': f.activo ? 'Sí' : 'No' } : {}),
+    Monto: Number(f.monto ?? 0),
+    Pagado: Number(f.pagado ?? 0),
+    Saldo: Number(f.saldo ?? 0),
+    Estado: ETIQUETA_ESTADO[f.estado_pago]?.texto ?? f.estado_pago,
+    Activo: f.activo ? 'Sí' : 'No',
   }));
+
+  const nombreArchivo = `bitacora_comercial_${new Date().toISOString().slice(0, 10)}`;
 
   const exportarXlsx = () => {
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(filasParaExportar());
-    XLSX.utils.book_append_sheet(wb, ws, 'Bitácora');
-    XLSX.writeFile(wb, `${config.nombreArchivoExport}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(paraExportar()), 'Bitácora');
+    XLSX.writeFile(wb, `${nombreArchivo}.xlsx`);
   };
 
   const exportarCsv = () => {
-    const ws = XLSX.utils.json_to_sheet(filasParaExportar());
-    const csv = XLSX.utils.sheet_to_csv(ws);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    const csv = XLSX.utils.sheet_to_csv(XLSX.utils.json_to_sheet(paraExportar()));
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `${config.nombreArchivoExport}_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
+    a.href = url; a.download = `${nombreArchivo}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
-  if (verificandoAcceso) return null;
-  if (!tieneAcceso) return null;
+  if (permitidos.length === 0 && !cargando) {
+    return <p className="text-sm text-neutral-500 p-6">No tienes acceso a la bitácora.</p>;
+  }
+
+  const selectCls = 'px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-700 dark:text-white/80 focus:outline-none focus:ring-2 focus:ring-accent/20';
 
   return (
-    <div className="space-y-4">
-      <PageHeader title={config.titulo} description={config.descripcion} />
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-          <input
-            type="text"
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar folio, solicitante o responsable..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 dark:border-white/10 rounded-xl bg-white dark:bg-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
-          />
+    <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-white/10 overflow-hidden">
+      <div className="p-5 border-b border-neutral-100 dark:border-white/5">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Bitácora comercial</h2>
+            <p className="text-sm text-neutral-500 dark:text-white/50 mt-0.5">
+              Pedidos de MOVI Store y periodos de Marketing Premium. Haz clic en una fila para ir a su control de pagos.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={exportarXlsx} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/5">
+              <FileSpreadsheet className="w-4 h-4" /> Excel
+            </button>
+            <button onClick={exportarCsv} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/5">
+              <Download className="w-4 h-4" /> CSV
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={exportarXlsx}
-            disabled={filasFiltradas.length === 0}
-            className="flex items-center gap-2 text-xs px-3 py-2 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200 rounded-lg transition disabled:opacity-50"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
-          </button>
-          <button
-            onClick={exportarCsv}
-            disabled={filasFiltradas.length === 0}
-            className="flex items-center gap-2 text-xs px-3 py-2 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200 rounded-lg transition disabled:opacity-50"
-          >
-            <Download className="w-3.5 h-3.5" /> CSV
-          </button>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <input
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Folio, solicitante, responsable u oficina..."
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/20"
+            />
+          </div>
+
+          {/* El filtro de módulo solo aparece si de verdad se puede ver más de uno. */}
+          {permitidos.length > 1 && (
+            <select value={filtroModulo} onChange={e => setFiltroModulo(e.target.value as '' | ModuloBitacora)} className={selectCls}>
+              <option value="">Store y Marketing Premium</option>
+              <option value="store">Solo MOVI Store</option>
+              <option value="premium">Solo Marketing Premium</option>
+            </select>
+          )}
+
+          <select value={filtroOficina} onChange={e => setFiltroOficina(e.target.value)} className={selectCls}>
+            <option value="">Todas las oficinas</option>
+            {oficinas.map(([id, nombre]) => <option key={id} value={id}>{nombre}</option>)}
+          </select>
+
+          <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className={selectCls}>
+            <option value="">Cualquier estado de pago</option>
+            <option value="debe">Debe</option>
+            <option value="al_corriente">Al corriente</option>
+            <option value="a_favor">A favor</option>
+          </select>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-neutral-500 dark:text-white/50">
+          <span>{visibles.length} de {filas.length} registros</span>
+          <span>Monto: <strong className="text-neutral-700 dark:text-white/80">{pesos(totales.monto)}</strong></span>
+          <span>Pagado: <strong className="text-emerald-600">{pesos(totales.pagado)}</strong></span>
+          <span>Saldo: <strong className="text-amber-600">{pesos(totales.saldo)}</strong></span>
         </div>
       </div>
 
-      {loading ? (
-        <LoadingState />
-      ) : filasFiltradas.length === 0 ? (
-        <EmptyState title="Sin registros" description="No hay nada que mostrar con los filtros actuales." />
+      {error && (
+        <div className="m-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          No se pudo cargar la bitácora: {error}
+        </div>
+      )}
+
+      {cargando ? (
+        <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent" /></div>
       ) : (
-        <div className="overflow-x-auto border border-neutral-200 dark:border-white/10 rounded-xl">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 dark:bg-neutral-800 text-xs text-neutral-500 dark:text-white/55 uppercase tracking-wide">
-              <tr>
-                <th className="px-3 py-2.5 text-left">{config.labelFolio}</th>
-                <th className="px-3 py-2.5 text-left">Fecha</th>
-                <th className="px-3 py-2.5 text-left">Agente Solicitante</th>
-                <th className="px-3 py-2.5 text-left">Responsable</th>
-                <th className="px-3 py-2.5 text-right">{config.labelCantidad}</th>
-                <th className="px-3 py-2.5 text-left">{config.labelFormaPago}</th>
-                <th className="px-3 py-2.5 text-right">Pagado / Saldo</th>
-                <th className="px-3 py-2.5 text-left">Estado</th>
-                {config.mostrarActivo && <th className="px-3 py-2.5 text-left">Activo</th>}
+            <thead className="bg-neutral-50 dark:bg-white/5 border-b border-neutral-200 dark:border-white/10">
+              <tr className="text-left text-xs font-medium text-neutral-500 uppercase">
+                <th className="px-5 py-3">Módulo</th>
+                <th className="px-5 py-3">Folio</th>
+                <th className="px-5 py-3">Fecha</th>
+                <th className="px-5 py-3">Solicitante</th>
+                <th className="px-5 py-3">Oficina</th>
+                <th className="px-5 py-3 text-center">Cant.</th>
+                <th className="px-5 py-3">Forma de pago</th>
+                <th className="px-5 py-3 text-right">Monto</th>
+                <th className="px-5 py-3 text-right">Pagado / Saldo</th>
+                <th className="px-5 py-3">Estado</th>
+                <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-white/5">
-              {filasFiltradas.map(f => {
-                const badge = ESTADO_BADGE[f.estado_pago] ?? ESTADO_BADGE.sin_monto;
+              {visibles.map(f => {
+                const estado = ETIQUETA_ESTADO[f.estado_pago] ?? { texto: f.estado_pago, clase: 'bg-neutral-100 text-neutral-500' };
                 return (
-                  <tr key={f.id} className="hover:bg-neutral-50 dark:hover:bg-white/5">
-                    <td className="px-3 py-2.5 font-mono text-xs">{f.folio}</td>
-                    <td className="px-3 py-2.5 text-neutral-600 dark:text-white/70">{soloFecha(f.fecha)}</td>
-                    <td className="px-3 py-2.5">{f.solicitante_nombre ?? '—'}</td>
-                    <td className="px-3 py-2.5">{f.responsable_nombre ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-right">{f.cantidad}</td>
-                    <td className="px-3 py-2.5">{f.forma_pago ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-right">
-                      <span className="font-medium">{pesos(f.pagado)}</span>
-                      <span className="text-neutral-400"> / {pesos(f.saldo)}</span>
+                  <tr
+                    key={`${f.modulo}-${f.id}`}
+                    onClick={() => navigate(rutaDePagos(f))}
+                    className="hover:bg-neutral-50 dark:hover:bg-white/5 cursor-pointer"
+                  >
+                    <td className="px-5 py-3">
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${f.modulo === 'store' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
+                        {ETIQUETA_MODULO[f.modulo]}
+                      </span>
                     </td>
-                    <td className="px-3 py-2.5">
-                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${badge.clase}`}>{badge.label}</span>
+                    <td className="px-5 py-3 font-mono text-xs text-neutral-700 dark:text-white/80">{f.folio ?? '—'}</td>
+                    <td className="px-5 py-3 text-neutral-500 whitespace-nowrap">{new Date(f.fecha).toLocaleDateString('es-MX')}</td>
+                    <td className="px-5 py-3 text-neutral-800 dark:text-white/90">{f.solicitante_nombre ?? '—'}</td>
+                    <td className="px-5 py-3 text-neutral-500">{f.oficina_nombre ?? '—'}</td>
+                    <td className="px-5 py-3 text-center text-neutral-600">{f.cantidad}</td>
+                    <td className="px-5 py-3 text-neutral-600">{f.forma_pago ?? '—'}</td>
+                    <td className="px-5 py-3 text-right tabular-nums text-neutral-800 dark:text-white/90">{pesos(Number(f.monto ?? 0))}</td>
+                    <td className="px-5 py-3 text-right tabular-nums text-neutral-500">
+                      {pesos(Number(f.pagado ?? 0))} <span className="text-neutral-300">/</span> {pesos(Number(f.saldo ?? 0))}
                     </td>
-                    {config.mostrarActivo && (
-                      <td className="px-3 py-2.5">
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${f.activo ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
-                          {f.activo ? 'Activo' : 'Cerrado'}
-                        </span>
-                      </td>
-                    )}
+                    <td className="px-5 py-3">
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${estado.clase}`}>{estado.texto}</span>
+                    </td>
+                    <td className="px-5 py-3 text-neutral-300"><ChevronRight className="w-4 h-4" /></td>
                   </tr>
                 );
               })}
+              {visibles.length === 0 && !error && (
+                <tr><td colSpan={11} className="px-5 py-10 text-center text-neutral-400">Sin registros que coincidan con los filtros.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
