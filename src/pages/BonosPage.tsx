@@ -143,7 +143,7 @@ export default function BonosPage() {
     if (sessionError || !session?.access_token) return null;
     const url = new URL('/accounts/supabase/', BONOS_URL);
     url.searchParams.set('token', session.access_token);
-    url.searchParams.set('next', '/');
+    url.searchParams.set('next', activePathRef.current || '/');
     if (isImpersonating && impersonatedUser?.email_laboral) {
       url.searchParams.set('impersonate_email', impersonatedUser.email_laboral);
     }
