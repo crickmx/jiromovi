@@ -510,7 +510,7 @@ export function DesktopSidebar({
                 <button
                   onClick={() => handleNav('/dashboard')}
                   className="flex items-center gap-2.5 py-1 px-1 rounded-xl hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
-                  title="Ir al Dashboard"
+                  title="MOVI Mi Oficina Virtual · Ir al Dashboard"
                 >
                   <span
                     className="grid place-items-center w-9 h-9 rounded-xl shadow-accent group-hover:scale-105 transition-transform"
@@ -524,10 +524,10 @@ export function DesktopSidebar({
                   </span>
                   <div className="flex flex-col text-left">
                     <span className="font-display font-semibold text-[14px] tracking-[-0.01em] text-neutral-900 dark:text-white leading-tight">
-                      MOVI Digital
+                      MOVI
                     </span>
                     <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-                      Plataforma de gestión
+                      Mi Oficina Virtual
                     </span>
                   </div>
                 </button>
@@ -557,7 +557,7 @@ export function DesktopSidebar({
                 <button
                   onClick={() => handleNav('/dashboard')}
                   className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
-                  title="MOVI Digital"
+                  title="MOVI Mi Oficina Virtual"
                 >
                   <span
                     className="grid place-items-center w-9 h-9 rounded-xl shadow-accent group-hover:scale-105 transition-transform"

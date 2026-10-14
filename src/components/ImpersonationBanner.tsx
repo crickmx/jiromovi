@@ -18,7 +18,7 @@ export function ImpersonationBanner() {
     }
   };
 
-  const platformLabel = session.platform === 'seguwallet' ? 'Seguwallet' : 'MOVI Digital';
+  const platformLabel = session.platform === 'seguwallet' ? 'Seguwallet' : 'MOVI Mi Oficina Virtual';
   const roleLabel = session.impersonatedUser?.rol || (session.platform === 'seguwallet' ? 'Cliente' : '');
 
   return (
