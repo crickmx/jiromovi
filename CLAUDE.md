@@ -1,6 +1,127 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-12)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-14)
+
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-14
+
+**`origin/main`** (beta) tiene todo lo de hoy. **`produccion` NO se tocó** desde el merge del 12.
+
+#### Migraciones — correr las dos, en orden
+
+| Archivo | Qué hace |
+|---|---|
+| `20261014000001_bitacora_unificada.sql` | la bitácora de Store + Premium en una sola vista |
+| `20261014000002_pagos_premium_por_periodo.sql` | `mkt_premium_pagos.periodo_id` + backfill, y recrea la vista |
+
+Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
+
+#### Falta probar en navegador
+- **Bitácora**: el modal de pagos al hacer clic en una fila de cada módulo, los filtros, y que el Excel/CSV exporte lo filtrado.
+- **Papelera**: mandar un trámite a la papelera. Si sale un mensaje de error, **mandarlo** — es la causa de fondo de por qué no escribía, y todavía no la sabemos.
+- **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
+- **Trámite hijo repetido**: volver a aplicar el estatus que dispara un trigger y confirmar que ahora avisa.
+
+#### Pendiente de decisión
+- **Registrar pagos de Store desde el modal.** Hoy el modal de Store es de solo lectura: registrar un pago tiene validaciones de método/forma de pago que viven en `StorePedidoDetalle`. Hacerlo bien es sacar esa parte a su propio componente y usarlo en los dos lados; copiarla sería la segunda copia que se desincroniza.
+- **Notificaciones configurables.** Hoy el texto de los avisos de trámite está escrito a mano en el código (ya mejorado, ver abajo). Falta la pantalla de plantillas, como la de los triggers de Store.
+- **La landing de Mutuus sigue bifurcada** entre `main` y `produccion`: hay que decidir cuál gana antes del próximo merge.
+
+#### Hilos viejos
+Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### 🔴 2026-10-14 — un `[0]` sobre algo que no es arreglo: dos listas salían vacías
+
+"No tienes equipos asignados como líder" sobre un usuario que SÍ era líder de dos equipos activos.
+
+La consulta embebe el grupo (`tramites_grupos_visualizacion!inner(...)`). Como un miembro pertenece a **un** grupo, PostgREST devuelve un **objeto**, no un arreglo — y el código lo leía con `[0]`. Daba `undefined`, el filtro siguiente lo descartaba, y la lista salía vacía. Un `as unknown as Row[]` tapaba el error de tipo.
+
+**El mismo despiste estaba en `TramiteDetalles.tsx`** con el usuario embebido: la lista de miembros del equipo también salía vacía.
+
+**🔑 Regla:** en PostgREST, una relación *de uno* (el lado del FK) llega como objeto; una *de muchos* llega como arreglo. Si hay un `as unknown as` cerca de un `[0]`, revisar cuál de las dos es.
+
+---
+
+### 🔴 2026-10-14 — la papelera "no borraba": la pantalla mentía
+
+Ricardo: *"los trámites que mandé a la papelera siguen apareciéndoles a otros"*. Los cuatro folios tenían `eliminado_at` en **null**: nunca se borraron.
+
+`handleSoftDelete` hacía el `update` y **no revisaba el resultado**; luego quitaba la tarjeta de la pantalla igual. Quien borraba la veía desaparecer y para todos los demás seguía ahí, porque en la base no había pasado nada. Ahora se revisa `error` **y** `count`, y si no se escribió se dice por qué y la tarjeta no se mueve. Igual en restaurar y en el borrado definitivo.
+
+**La causa de fondo de por qué el update no escribía sigue sin saberse** — hace falta reintentarlo con el build nuevo y leer el mensaje.
+
+**🔑 Un `await supabase...update()` sin mirar su resultado es una mentira en pantalla.** Pasó también con `enviarAPapelera`, y es el mismo patrón que ya mordió en `handleGuardarPago` de Store (2026-07-04) y en el toggle de equipos de Marketing (2026-10-02).
+
+---
+
+### ✅ 2026-10-14 — los trámites repetidos: dos causas distintas
+
+Lo que parecía "la papelera no sirve" era en realidad **duplicados**: se borraban las copias y en el tablero quedaba el original. ABRILVACA CASIQUE llegó a tener **7** trámites idénticos; JUAN PABLO JIMENEZ, dos creados **con 11 segundos de diferencia**.
+
+**Causa 1 — Store/Marketing:** se cerró sola el 2026-10-02, cuando el motor compartido estrenó su guarda `yaExiste`. El duplicado más reciente por esa vía es de ese mismo día.
+
+**Causa 2 — trámite padre→hijo:** esa sigue viva hasta hoy. `TKCB783` generó `-A` a las 17:39 y `-B` a las 19:48.
+
+Dos fallas encadenadas en `TramiteDetalle`:
+1. La revisión de *"este padre ya tiene un hijo de esta regla"* **solo corría para los triggers con `requiere_confirmacion`**. Los silenciosos creaban otro hijo cada vez que se reaplicaba el estatus, sin mirar ni avisar.
+2. Esa revisión usaba `.maybeSingle()`, **que falla con más de una fila**, y el error se ignoraba. Con dos hijos ya creados el sistema concluía "no hay ninguno" y dejaba de avisar: **se agravaba solo**.
+
+Ahora se revisa para todas las reglas, con `.limit(1)`. Una regla silenciosa deja de serlo si ya tiene un hijo: sale la ventana con el folio existente. Y el default pasó a **"conservar"** — crear otro debe ser una decisión expresa, no lo que pasa al dar Guardar.
+
+El cálculo de la letra ya era correcto (toma la siguiente libre entre todos los hermanos), por eso salió `-B`.
+
+**🔑 `.maybeSingle()` solo sirve donde el dato es único POR DISEÑO.** Donde puede haber varios, falla justo cuando más falta hace el aviso.
+
+---
+
+### ✅ 2026-10-14 — Kanban: el equipo ya puede mover sus trámites
+
+Arrastrar una tarjeta era solo del Admin o de la persona asignada. Casi todos los trámites nacen **"Sin responsable"**, así que nadie del equipo podía moverlos. Ahora también quien lleva el equipo al que está asignado: líder, supervisor, director o ejecutivo. El mapa `myGrupoRoles` ya existía, no hizo falta otra consulta.
+
+**Ojo:** el arrastre sigue siendo **solo con mouse** (`e.pointerType !== 'mouse'` lo corta). En tableta no funciona.
+
+---
+
+### ✅ 2026-10-14 — bitácora única de Store y Premium, con el control de pagos encima
+
+Eran dos pantallas separadas y para ver todo lo que un agente debe había que entrar a las dos. Ahora es **una sola tabla** (`bitacora_comercial_view`) con filtros por módulo, oficina, estado de pago y nombre, totales de lo filtrado, y exportación a Excel/CSV de lo que se está viendo.
+
+**Dónde entrar:** Marketing Admin → pestaña **Bitácora** (subió al menú principal, junto a "Equipos con acceso", y la ve también el equipo con acceso) · MOVI Store → Admin → **Bitácora**. Es la misma tabla; quien solo administra un módulo solo ve sus filas, y el filtro de módulo ni le aparece.
+
+**Clic en una fila → modal con el control de pagos.** Navegar a otra pantalla perdía la lista, los filtros y el lugar donde ibas, y en la práctica no respondía hasta recargar. Al cerrar el modal la bitácora se recarga sola.
+
+En **Premium** el modal trae el control completo. En **Store** es de solo lectura con un botón para abrir el pedido: registrar un pago ahí tiene validaciones de método y forma de pago que viven en `StorePedidoDetalle`, y reimplementarlas sería la segunda copia que se desincroniza.
+
+#### 🔴 El hallazgo de fondo: un pago de Premium no sabía de qué contratación era
+
+| | A qué se ataba el pago |
+|---|---|
+| MOVI Store | `store_pedido_pagos.pedido_id` → **al pedido** |
+| Marketing Premium | `mkt_premium_pagos.usuario_id` → **al usuario, nada más** |
+
+La bitácora tenía que **deducir** el folio por rango de fechas. Un periodo con la fecha mal capturada —hay uno que dice **2050**— dejaba fuera todos sus pagos: el de Ricardo de $600 existía y la pantalla mostraba al agente como si no hubiera pagado nada. Y con dos contrataciones del mismo agente, los pagos de una y otra eran indistinguibles.
+
+`mkt_premium_pagos` ganó **`periodo_id`** — lo que en pantalla se llama **FOLIO**, palabra de Ricardo. Backfill con la misma regla que la bitácora usaba para adivinar (el periodo más reciente ya empezado; si el pago es anterior a todos, el primero), así ningún pago queda huérfano. La vista dejó de adivinar.
+
+**Y el precio estaba escrito a mano** como `200 / 2000`. Desde el 2026-10-02 el mensual son 12 cobros de $200 = **$2,400**, así que la bitácora decía "$0 de $200" mientras el panel de pagos decía $2,400. Ahora sale de `mkt_premium_monto_periodo()`, una sola definición en SQL — que sigue duplicando a `montoDelPlan()` en TS: **si cambia el precio, hay que cambiarlo en los dos lados**.
+
+#### 🔑 Tres cosas que costaron tiempo aquí
+1. **La ruta del detalle de pedido es `/store/pedido/:id`, en SINGULAR.** `/store/pedidos` es la lista; el enlace llevaba ahí sin abrir nada.
+2. **Una pantalla enlazada con query params tiene que leerlos.** `MktAdminDashboard` no leía `?tab=` y `MarketingPremiumAdmin` no leía `?agente=`: el clic cambiaba la URL y no pasaba nada visible.
+3. **Una consulta que se traga su error se ve igual que "no hay datos".** El primer síntoma de la vista faltante fue una tabla vacía; con el error a la vista, se resolvió en un minuto.
+
+---
+
+### ✅ 2026-10-14 — avisos de trámite con algo que leer, y el usuario duplicado
+
+**Notificaciones.** El aviso de nuevo trámite era *"Se te asignó el trámite TK571BB (Registro de Póliza)"* y nada más. Ese texto llega **tal cual a WhatsApp** — `enviar_notificacion_individual` manda título y mensaje sin plantilla— así que quien lo recibía tenía que entrar a MOVI para saber de quién era. Ahora lleva solicitante, oficina, prioridad y las instrucciones recortadas a 280 caracteres (`src/lib/tramiteAviso.ts`, con autocomprobación: omite las líneas sin dato y no muestra los rellenos que guarda el alta, como "Sin descripción").
+
+**Usuario duplicado.** Había dos cuentas de JUAN CARLOS DESIGAUD —`@jiro.mx` (abril, con todo el historial y la única que inicia sesión) y `@jiroseguros.com.mx` (junio, sin un solo trámite creado)— **las dos con `id_sicas = 67`, las dos con mapeo y con regla de asignación**. Ese es el escenario del bug TK37540 de agosto. Se movió lo poco que tenía la de junio a la de abril, se le quitaron equipos/regla/mapeo, se le soltó el ID de SICAS y se dio de baja desde la pantalla (no por SQL, para que quedara en `audit_logs` y se liberara el correo).
+
+**🔑 Al limpiar un usuario duplicado, el `id_sicas` se reafirma en la cuenta buena al final:** si las dos lo compartían, limpiarlo en la duplicada dispara el trigger de SICAS y puede desligar a la que se conserva.
+
+---
 
 ### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-12
 
