@@ -6,12 +6,12 @@
 
 **`origin/main`** (beta) tiene todo lo de hoy. **`produccion` NO se tocó** desde el merge del 12.
 
-#### Migraciones — correr las dos, en orden
+#### Migraciones — **las dos corridas**, no queda ninguna pendiente
 
-| Archivo | Qué hace |
-|---|---|
-| `20261014000001_bitacora_unificada.sql` | la bitácora de Store + Premium en una sola vista |
-| `20261014000002_pagos_premium_por_periodo.sql` | `mkt_premium_pagos.periodo_id` + backfill, y recrea la vista |
+| Archivo | Qué hace | Estado |
+|---|---|---|
+| `20261014000001_bitacora_unificada.sql` | la bitácora de Store + Premium en una sola vista | ✅ corrida |
+| `20261014000002_pagos_premium_por_periodo.sql` | `mkt_premium_pagos.periodo_id` + backfill, y recrea la vista | ✅ corrida |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
