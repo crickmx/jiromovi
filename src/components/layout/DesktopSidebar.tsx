@@ -39,7 +39,7 @@ const BADGE_COLORS: Record<string, string> = {
 const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-2.5 py-1.5";
 const MAX_SIDEBAR_ITEMS = 12;
 const PINNED_KEY = 'movi:sidebar_pinned';
-const FAVORITOS_KEY = '__favoritos__';
+const FAVORITOS_ABIERTO_KEY = 'movi:favoritos_abierto';
 
 const WORKSPACE_HUB_ROUTES: Record<string, string> = {
   herramientas: '/herramientas',
@@ -95,6 +95,11 @@ export function DesktopSidebar({
   const [openWorkspaces, setOpenWorkspaces] = useState<Record<string, boolean>>(() => {
     if (workspace) return { [workspace.id]: true };
     return {};
+  });
+
+  // Favoritos: abierto siempre por default; si el usuario lo cierra, se respeta hasta que lo reabra.
+  const [favoritosAbierto, setFavoritosAbierto] = useState<boolean>(() => {
+    try { return localStorage.getItem(FAVORITOS_ABIERTO_KEY) !== '0'; } catch { return true; }
   });
 
   // Modal flyout para módulos extensos (ej. Admin con 26 items)
@@ -237,27 +242,64 @@ export function DesktopSidebar({
     );
   };
 
-  const favoritosAbierto = openWorkspaces[FAVORITOS_KEY] ?? true;
+  const toggleFavoritos = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setFavoritosAbierto(prev => {
+      const next = !prev;
+      try { localStorage.setItem(FAVORITOS_ABIERTO_KEY, next ? '1' : '0'); } catch { /* sin almacenamiento */ }
+      return next;
+    });
+  };
 
   const seccionFavoritos = itemsFavoritos.length === 0 ? null : !isExpanded ? (
-    <Tooltip key="favoritos">
-      <TooltipTrigger asChild>
-        <button
-          onClick={() => { setIsHovered(true); setOpenWorkspaces(prev => ({ ...prev, [FAVORITOS_KEY]: true })); }}
-          className="w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10"
-          aria-label="Favoritos"
-        >
-          <Star className="w-4 h-4 fill-amber-400" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
-        Favoritos · {itemsFavoritos.length}
-      </TooltipContent>
-    </Tooltip>
+    // Menú angosto: la estrella abre/cierra, y abierto muestra el ícono de cada favorito.
+    <div key="favoritos" className="space-y-1">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => toggleFavoritos()}
+            className="w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+            aria-label={favoritosAbierto ? 'Cerrar favoritos' : 'Abrir favoritos'}
+            aria-expanded={favoritosAbierto}
+          >
+            <Star className="w-4 h-4 fill-amber-400" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
+          Favoritos · {itemsFavoritos.length}
+        </TooltipContent>
+      </Tooltip>
+      {favoritosAbierto && itemsFavoritos.map(item => {
+        const FavIcon = item.icon;
+        const active = isSubItemActive(item);
+        return (
+          <Tooltip key={`fav-rail-${item.path}`}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => handleNav(item.path)}
+                className={cn(
+                  'w-9 h-9 mx-auto rounded-lg flex items-center justify-center transition-all active:scale-95',
+                  active
+                    ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink'
+                    : 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+                )}
+                aria-label={item.label}
+              >
+                <FavIcon className="w-3.5 h-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </div>
   ) : (
     <div key="favoritos" className="space-y-0.5">
       <div
-        onClick={(e) => toggleAccordion(FAVORITOS_KEY, e)}
+        onClick={toggleFavoritos}
+        aria-expanded={favoritosAbierto}
         className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group cursor-pointer active:scale-[0.98] text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white"
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">

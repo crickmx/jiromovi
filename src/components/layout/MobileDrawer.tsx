@@ -67,6 +67,15 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
   const { getResolvedItems } = useSidebarItemsConfig();
   const [gruposColapsados, setGruposColapsados] = useState<Record<string, boolean>>({});
   const { favoritos, esFavorito, alternarFavorito } = useMenuFavoritos();
+  // Misma preferencia que el menú de escritorio: abierto por default, cerrado si el usuario lo cerró.
+  const [favoritosAbierto, setFavoritosAbierto] = useState<boolean>(() => {
+    try { return localStorage.getItem('movi:favoritos_abierto') !== '0'; } catch { return true; }
+  });
+  const toggleFavoritos = () => setFavoritosAbierto(prev => {
+    const next = !prev;
+    try { localStorage.setItem('movi:favoritos_abierto', next ? '1' : '0'); } catch { /* sin almacenamiento */ }
+    return next;
+  });
 
   // Touch-to-swipe-right-to-close
   const touchStartX = useRef(0);
@@ -294,15 +303,24 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
           {itemsFavoritos.length > 0 && (
             <>
               <div className="px-3 pt-4 pb-2">
-                <div className="flex items-center gap-2 px-2 mb-2">
+                <button
+                  onClick={toggleFavoritos}
+                  aria-expanded={favoritosAbierto}
+                  className="w-full flex items-center gap-2 px-2 mb-2 text-left"
+                >
                   <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/15 flex items-center justify-center">
                     <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
                   </div>
-                  <p className="movi-eyebrow text-neutral-600 dark:text-white/60">Favoritos</p>
-                </div>
-                <div className="space-y-0.5">
-                  {itemsFavoritos.map(item => renglonItem(item, null, `fav-${item.path}`))}
-                </div>
+                  <p className="movi-eyebrow text-neutral-600 dark:text-white/60 flex-1">Favoritos · {itemsFavoritos.length}</p>
+                  {favoritosAbierto
+                    ? <ChevronDown className="w-4 h-4 text-neutral-400" />
+                    : <ChevronRight className="w-4 h-4 text-neutral-400" />}
+                </button>
+                {favoritosAbierto && (
+                  <div className="space-y-0.5">
+                    {itemsFavoritos.map(item => renglonItem(item, null, `fav-${item.path}`))}
+                  </div>
+                )}
               </div>
               <div className="mx-4 h-px bg-[var(--border-soft)] my-1" />
             </>
