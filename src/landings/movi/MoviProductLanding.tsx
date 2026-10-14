@@ -64,11 +64,13 @@ import {
   Flame,
   LayoutDashboard,
   UserPlus,
-  Phone
+  Phone,
+  Activity,
+  Layers3
 } from 'lucide-react';
 
-// ─── RECURSOS LOCALES Y LOGOS ──────────────────────────────────────────────
-const LOGO_MOVI = '/movirecurso_2.png';
+// ─── LOGOS Y RECURSOS OFICIALES ──────────────────────────────────────────────
+const LOGO_MOVI = '/logo_color.svg';
 const LOGO_JIRO = '/logojiro.png';
 const LOGO_SEGUWALLET = '/seguwallet-logo.png';
 const LOGO_EDUCATION = '/og-seguros-education.svg';
@@ -102,7 +104,7 @@ export default function MoviProductLanding() {
         <title>MOVI Digital · Mi Oficina Virtual | Grupo JIRO</title>
         <meta
           name="description"
-          content="MOVI Digital es la plataforma exclusiva de gestión para los agentes y asesores de Grupo JIRO. Control de trámites, Mi CRM, Central de Producción, tu propia página web y notificaciones automáticas."
+          content="MOVI Digital es la plataforma tecnológica y comercial exclusiva de Grupo JIRO para sus agentes de seguros. Control de trámites, Mi CRM, Central de Producción, tu propia página web y notificaciones automáticas."
         />
         <meta
           name="keywords"
@@ -115,38 +117,65 @@ export default function MoviProductLanding() {
         <meta property="og:title" content="MOVI Digital · Mi Oficina Virtual | Grupo JIRO" />
         <meta
           property="og:description"
-          content="La plataforma digital exclusiva para agentes de seguros de Grupo JIRO. Trámites, CRM, comisiones, tu web personalizada y automatización."
+          content="La plataforma digital de vanguardia exclusiva para la red de agentes de Grupo JIRO."
         />
         <meta property="og:url" content="https://movi.digital/" />
-        <meta property="og:image" content="https://movi.digital/movirecurso_2.png" />
+        <meta property="og:image" content="https://movi.digital/logo_color.svg" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="MOVI Digital · Mi Oficina Virtual | Grupo JIRO" />
         <meta
           name="twitter:description"
-          content="La mejor herramienta de gestión comercial y operativa para nuestros agentes de seguros."
+          content="Tecnología de gestión comercial y operativa para nuestros agentes de seguros."
         />
       </Helmet>
 
-      <div className="min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-blue-600 selection:text-white font-sans antialiased">
+      {/* Estilos de Animación e Interactividad SaaS */}
+      <style>{`
+        @keyframes floatSlow {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .animate-float {
+          animation: floatSlow 4s ease-in-out infinite;
+        }
+        .animate-glow {
+          animation: pulseGlow 5s ease-in-out infinite;
+        }
+        .shimmer-badge {
+          background: linear-gradient(90deg, rgba(238,242,255,0.8) 0%, rgba(224,231,255,1) 50%, rgba(238,242,255,0.8) 100%);
+          background-size: 200% 100%;
+          animation: shimmer 3s infinite;
+        }
+      `}</style>
 
-        {/* ─── 1. NAVBAR SUPERIOR FIJO Y CLARO ─────────────────────────────── */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/90 transition-all duration-200">
+      <div className="min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-blue-600 selection:text-white font-sans antialiased overflow-x-hidden">
+
+        {/* ─── 1. NAVBAR SUPERIOR FIJO Y CLARO CON LOGO ALTO CONTRASTE ──────── */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all duration-200 shadow-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16 sm:h-20">
               
-              {/* Logos Institucionales: MOVI + Grupo JIRO */}
+              {/* Logos Institucionales: MOVI Digital + Grupo JIRO */}
               <div className="flex items-center gap-3.5">
                 <a
                   href="#inicio"
                   onClick={(e) => { e.preventDefault(); scrollTo('inicio'); }}
-                  className="flex items-center gap-2 group"
+                  className="flex items-center gap-2 group transition-transform duration-200 hover:scale-102"
                 >
                   <img
                     src={LOGO_MOVI}
                     alt="MOVI Digital"
-                    className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
+                    className="h-8 sm:h-10 w-auto object-contain"
                   />
                 </a>
                 <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
@@ -159,44 +188,44 @@ export default function MoviProductLanding() {
                   <img
                     src={LOGO_JIRO}
                     alt="Grupo JIRO"
-                    className="h-6 sm:h-7 w-auto object-contain"
+                    className="h-6 sm:h-7 w-auto object-contain hover:opacity-85 transition-opacity"
                   />
                 </a>
               </div>
 
-              {/* Menú de Navegación */}
+              {/* Menú de Navegación Interactivo */}
               <nav className="hidden lg:flex items-center gap-7">
                 <button
                   onClick={() => scrollTo('funciones')}
-                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-all cursor-pointer relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform"
                 >
                   Beneficios y Módulos
                 </button>
                 <button
                   onClick={() => scrollTo('mi-web')}
-                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-all cursor-pointer relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform"
                 >
                   Tu Página Web
                 </button>
                 <button
                   onClick={() => scrollTo('herramientas')}
-                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-all cursor-pointer relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform"
                 >
                   Herramientas
                 </button>
                 <button
                   onClick={() => scrollTo('faq')}
-                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-all cursor-pointer relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform"
                 >
                   Preguntas Frecuentes
                 </button>
               </nav>
 
-              {/* Botón de Ingreso al Portal */}
+              {/* Botón Ingresar */}
               <div className="hidden sm:flex items-center gap-3">
                 <a
                   href="https://app.movi.digital/login"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/25 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm text-white bg-blue-600 hover:bg-blue-700 active:scale-95 hover:shadow-lg hover:shadow-blue-600/30 transition-all cursor-pointer"
                 >
                   <Lock className="w-4 h-4" />
                   <span>Ingresar</span>
@@ -215,14 +244,14 @@ export default function MoviProductLanding() {
             </div>
           </div>
 
-          {/* Menú móvil */}
+          {/* Menú móvil animado */}
           {mobileMenuOpen && (
-            <div className="lg:hidden border-t border-slate-200 bg-white px-5 py-6 space-y-4 shadow-xl">
+            <div className="lg:hidden border-t border-slate-200 bg-white px-5 py-6 space-y-4 shadow-xl animate-in slide-in-from-top duration-200">
               <div className="space-y-2">
                 {[
                   { label: 'Beneficios y Módulos', id: 'funciones' },
                   { label: 'Tu Página Web (Ejemplo en Vivo)', id: 'mi-web' },
-                  { label: 'Herramientas (Seguwallet & Education)', id: 'herramientas' },
+                  { label: 'Herramientas', id: 'herramientas' },
                   { label: 'Preguntas Frecuentes', id: 'faq' }
                 ].map((item) => (
                   <button
@@ -248,50 +277,42 @@ export default function MoviProductLanding() {
           )}
         </header>
 
-        {/* ─── 2. HERO PRINCIPAL: INSTITUCIONAL Y COMERCIAL CON LOGO MOVI ──── */}
+        {/* ─── 2. HERO PRINCIPAL: SAAS TECH MODERNO CON LOGO DESTACADO ────── */}
         <section
           id="inicio"
-          className="relative pt-24 pb-16 lg:pt-36 lg:pb-24 bg-gradient-to-b from-blue-50/70 via-white to-[#F8FAFC] overflow-hidden"
+          className="relative pt-24 pb-16 lg:pt-36 lg:pb-28 bg-gradient-to-b from-blue-50/70 via-white to-[#F8FAFC] overflow-hidden"
         >
-          {/* Acentos de fondo */}
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-r from-blue-200/40 via-indigo-200/30 to-cyan-200/30 rounded-full blur-3xl pointer-events-none" />
+          {/* Acentos de fondo con efecto Glow animado */}
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[850px] h-[450px] bg-gradient-to-r from-blue-200/40 via-indigo-200/30 to-cyan-200/30 rounded-full blur-3xl pointer-events-none animate-glow" />
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-4xl mx-auto space-y-6">
+            <div className="text-center max-w-4xl mx-auto space-y-7">
               
-              {/* Logo Oficial de MOVI Digital en el Hero */}
-              <div className="flex justify-center mb-2 animate-in fade-in duration-300">
+              {/* Logo Oficial de MOVI Digital destacado (Sustituye al texto) */}
+              <div className="flex justify-center mb-2 animate-float">
                 <img
                   src={LOGO_MOVI}
                   alt="MOVI Digital"
-                  className="h-14 sm:h-18 w-auto object-contain drop-shadow-md"
+                  className="h-16 sm:h-20 lg:h-24 w-auto object-contain drop-shadow-md hover:scale-105 transition-transform duration-300"
                 />
               </div>
 
-              {/* Badge Oficial */}
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-100/90 border border-blue-200 text-blue-900 text-xs font-extrabold tracking-wide uppercase shadow-xs">
-                <Sparkles className="w-4 h-4 text-blue-600" />
+              {/* Badge Oficial Shimmer */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full shimmer-badge border border-blue-200/90 text-blue-900 text-xs font-extrabold tracking-wide uppercase shadow-xs">
+                <Sparkles className="w-4 h-4 text-blue-600 animate-spin" style={{ animationDuration: '8s' }} />
                 <span>Plataforma Digital Exclusiva para Asesores de Grupo JIRO</span>
               </div>
 
-              {/* Titular Principal */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 leading-[1.12] tracking-tight">
-                MOVI.Digital ·{' '}
-                <span className="text-blue-600">
-                  Mi Oficina Virtual
-                </span>
-              </h1>
-
-              {/* Subtítulo enfocado al agente */}
+              {/* Subtítulo enfocado en la plataforma */}
               <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto font-normal">
                 La herramienta tecnológica todo-en-uno creada exclusivamente para respaldar el éxito de nuestros agentes de seguros en <strong>Grupo JIRO</strong>. Controla tus trámites, atiende a tus prospectos en tu CRM, consulta tus comisiones y haz crecer tu cartera con tu propia página web personalizada.
               </p>
 
-              {/* Botones de Acción */}
+              {/* Botones de Acción Interactivos */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
                 <a
                   href="https://app.movi.digital/login"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-xl shadow-blue-600/30 hover:shadow-blue-600/40"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-xl shadow-blue-600/30 hover:shadow-blue-600/40 hover:-translate-y-0.5 cursor-pointer"
                 >
                   <Lock className="w-5 h-5" />
                   <span>Ingresar</span>
@@ -302,7 +323,7 @@ export default function MoviProductLanding() {
                   href="https://agentedeseguros.website/ejemplo"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 shadow-sm transition-all"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 shadow-sm transition-all hover:-translate-y-0.5"
                 >
                   <Globe className="w-4 h-4 text-blue-600" />
                   <span>Ver Página Web de Ejemplo</span>
@@ -310,27 +331,27 @@ export default function MoviProductLanding() {
                 </a>
               </div>
 
-              {/* 4 Pilares Rápidos */}
+              {/* 4 Métricas Clave con Hover Motion */}
               <div className="pt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 text-left border-t border-slate-200/80">
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md hover:border-blue-300 hover:-translate-y-1 transition-all duration-200">
                   <p className="text-2xl font-black text-blue-600">100%</p>
                   <p className="text-xs font-bold text-slate-800">Control de Trámites</p>
                   <p className="text-[11px] text-slate-500">Emisión y cotización en línea</p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md hover:border-emerald-300 hover:-translate-y-1 transition-all duration-200">
                   <p className="text-2xl font-black text-emerald-600">WhatsApp</p>
                   <p className="text-xs font-bold text-slate-800">Notificaciones en Vivo</p>
                   <p className="text-[11px] text-slate-500">Avisos automáticos a clientes</p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md hover:border-indigo-300 hover:-translate-y-1 transition-all duration-200">
                   <p className="text-2xl font-black text-indigo-600">Mi CRM</p>
                   <p className="text-xs font-bold text-slate-800">Cartera Centralizada</p>
                   <p className="text-[11px] text-slate-500">Historial y prospectos 360°</p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md hover:border-cyan-300 hover:-translate-y-1 transition-all duration-200">
                   <p className="text-2xl font-black text-cyan-600">Mi Web</p>
                   <p className="text-xs font-bold text-slate-800">Sitio Profesional Propio</p>
                   <p className="text-[11px] text-slate-500">Con cotizadores integrados</p>
@@ -339,9 +360,9 @@ export default function MoviProductLanding() {
 
             </div>
 
-            {/* Mockup Interactivo del SaaS MOVI */}
+            {/* Mockup Interactivo del SaaS MOVI con Transiciones Suaves */}
             <div className="mt-14 max-w-5xl mx-auto">
-              <div className="rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+              <div className="rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden hover:shadow-3xl transition-shadow duration-300">
                 
                 {/* Header de la ventana */}
                 <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
@@ -359,7 +380,7 @@ export default function MoviProductLanding() {
                   </div>
                 </div>
 
-                {/* Selector de Pestañas del Mockup */}
+                {/* Selector de Pestañas Interactivas */}
                 <div className="flex overflow-x-auto no-scrollbar gap-2 p-3 bg-slate-100/80 border-b border-slate-200 text-xs font-bold">
                   {[
                     { id: 'tramites', label: 'Control de Trámites', icon: FileText },
@@ -376,7 +397,7 @@ export default function MoviProductLanding() {
                         onClick={() => setActiveTab(tab.id as any)}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl whitespace-nowrap transition-all cursor-pointer ${
                           isSelected
-                            ? 'bg-blue-600 text-white shadow-sm'
+                            ? 'bg-blue-600 text-white shadow-md scale-102'
                             : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80'
                         }`}
                       >
@@ -387,11 +408,11 @@ export default function MoviProductLanding() {
                   })}
                 </div>
 
-                {/* Contenido Dinámico del Mockup */}
+                {/* Contenido Dinámico con Animación Fade */}
                 <div className="p-6 sm:p-8 min-h-[380px] bg-white">
                   
                   {activeTab === 'tramites' && (
-                    <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="space-y-4 animate-in fade-in duration-200">
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-base font-extrabold text-slate-900">Mesa de Control de Trámites</h3>
@@ -403,7 +424,7 @@ export default function MoviProductLanding() {
                       </div>
 
                       <div className="space-y-2.5">
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between">
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between hover:bg-slate-100/70 transition-colors">
                           <div className="space-y-1">
                             <p className="text-sm font-bold text-slate-900">Emisión Auto Cobertura Amplia · Folio #TR-8821</p>
                             <p className="text-xs text-slate-500">Cliente: Mariana Ríos · GNP Seguros · Póliza Anual</p>
@@ -413,7 +434,7 @@ export default function MoviProductLanding() {
                           </span>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between">
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between hover:bg-slate-100/70 transition-colors">
                           <div className="space-y-1">
                             <p className="text-sm font-bold text-slate-900">Endoso Aumento de Suma Asegurada · Folio #TR-8822</p>
                             <p className="text-xs text-slate-500">Cliente: Constructora del Centro · Quálitas Flotillas</p>
@@ -423,7 +444,7 @@ export default function MoviProductLanding() {
                           </span>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between">
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between hover:bg-slate-100/70 transition-colors">
                           <div className="space-y-1">
                             <p className="text-sm font-bold text-slate-900">Cotización Gastos Médicos Mayores · Folio #TR-8823</p>
                             <p className="text-xs text-slate-500">Cliente: Dr. Esteban Garza · Plan Familiar</p>
@@ -437,7 +458,7 @@ export default function MoviProductLanding() {
                   )}
 
                   {activeTab === 'crm' && (
-                    <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="space-y-4 animate-in fade-in duration-200">
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-base font-extrabold text-slate-900">Mi CRM de Asesor</h3>
@@ -449,7 +470,7 @@ export default function MoviProductLanding() {
                       </div>
 
                       <div className="grid sm:grid-cols-2 gap-3">
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-2">
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-2 hover:bg-slate-100/70 transition-colors">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-bold text-slate-900">Lic. Roberto Sánchez</p>
                             <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800 text-[11px] font-bold">Lead Web</span>
@@ -460,7 +481,7 @@ export default function MoviProductLanding() {
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-2">
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-2 hover:bg-slate-100/70 transition-colors">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-bold text-slate-900">Dra. Claudia Morales</p>
                             <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">Cliente Vigente</span>
@@ -475,8 +496,8 @@ export default function MoviProductLanding() {
                   )}
 
                   {activeTab === 'produccion' && (
-                    <div className="space-y-4 animate-in fade-in duration-150">
-                      <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white space-y-2">
+                    <div className="space-y-4 animate-in fade-in duration-200">
+                      <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white space-y-2 shadow-lg">
                         <div className="flex items-center justify-between">
                           <p className="text-xs font-bold text-blue-100 uppercase tracking-wider">Tus Comisiones Quincenales</p>
                           <span className="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold">Liquidación Lista</span>
@@ -503,7 +524,7 @@ export default function MoviProductLanding() {
                   )}
 
                   {activeTab === 'notificaciones' && (
-                    <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="space-y-4 animate-in fade-in duration-200">
                       <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center gap-3">
                         <MessageCircle className="w-6 h-6 text-emerald-600 flex-shrink-0" />
                         <div>
@@ -512,7 +533,7 @@ export default function MoviProductLanding() {
                         </div>
                       </div>
 
-                      <div className="p-5 rounded-2xl bg-slate-900 text-white space-y-3 font-mono text-xs">
+                      <div className="p-5 rounded-2xl bg-slate-900 text-white space-y-3 font-mono text-xs shadow-md">
                         <div className="flex items-center justify-between text-slate-400 text-[11px]">
                           <span>Mensaje WhatsApp automático enviado a cliente</span>
                           <span>Entregado ✓✓</span>
@@ -525,13 +546,13 @@ export default function MoviProductLanding() {
                   )}
 
                   {activeTab === 'comunicados' && (
-                    <div className="space-y-3 animate-in fade-in duration-150">
+                    <div className="space-y-3 animate-in fade-in duration-200">
                       <div className="flex items-center justify-between">
                         <h3 className="text-base font-extrabold text-slate-900">Comunicados y Campañas Grupo JIRO</h3>
                         <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">Oficial</span>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1.5">
+                      <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1.5 hover:bg-amber-50 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-amber-900">Campaña de Autos GNP & Quálitas 2026</span>
                           <span className="text-[11px] text-amber-700 font-semibold">Vigente este mes</span>
@@ -550,7 +571,7 @@ export default function MoviProductLanding() {
                   <span className="text-slate-500 font-medium">Acceso seguro exclusivo para agentes de Grupo JIRO</span>
                   <a
                     href="https://app.movi.digital/login"
-                    className="font-extrabold text-blue-600 hover:text-blue-800 flex items-center gap-1.5"
+                    className="font-extrabold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 transition-colors"
                   >
                     <span>Ingresar</span>
                     <ArrowRight className="w-4 h-4" />
@@ -582,7 +603,7 @@ export default function MoviProductLanding() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               
               {/* Feature 1 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-blue-300 hover:shadow-lg transition-all duration-300 space-y-4">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-blue-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
                   <FileText className="w-6 h-6" />
                 </div>
@@ -593,7 +614,7 @@ export default function MoviProductLanding() {
               </div>
 
               {/* Feature 2 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-emerald-300 hover:shadow-lg transition-all duration-300 space-y-4">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-emerald-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
                   <MessageCircle className="w-6 h-6" />
                 </div>
@@ -604,7 +625,7 @@ export default function MoviProductLanding() {
               </div>
 
               {/* Feature 3 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-indigo-300 hover:shadow-lg transition-all duration-300 space-y-4">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-indigo-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
                   <Users className="w-6 h-6" />
                 </div>
@@ -615,7 +636,7 @@ export default function MoviProductLanding() {
               </div>
 
               {/* Feature 4 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-cyan-300 hover:shadow-lg transition-all duration-300 space-y-4">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-cyan-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-cyan-600 text-white flex items-center justify-center shadow-md shadow-cyan-500/20">
                   <BarChart3 className="w-6 h-6" />
                 </div>
@@ -626,7 +647,7 @@ export default function MoviProductLanding() {
               </div>
 
               {/* Feature 5 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-rose-300 hover:shadow-lg transition-all duration-300 space-y-4">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-rose-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
                   <Globe className="w-6 h-6" />
                 </div>
@@ -637,7 +658,7 @@ export default function MoviProductLanding() {
               </div>
 
               {/* Feature 6 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-amber-300 hover:shadow-lg transition-all duration-300 space-y-4">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-amber-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
                   <Megaphone className="w-6 h-6" />
                 </div>
@@ -674,7 +695,7 @@ export default function MoviProductLanding() {
                   href="https://agentedeseguros.website/ejemplo"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-all"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-all hover:-translate-y-0.5"
                 >
                   <span>Abrir Página Web de Ejemplo en Vivo</span>
                   <ExternalLink className="w-4 h-4" />
@@ -683,7 +704,7 @@ export default function MoviProductLanding() {
             </div>
 
             {/* MOCKUP REAL EXACTO AL DISEÑO ADJUNTO */}
-            <div className="max-w-5xl mx-auto rounded-3xl border border-slate-200/90 bg-white shadow-2xl overflow-hidden text-slate-900">
+            <div className="max-w-5xl mx-auto rounded-3xl border border-slate-200/90 bg-white shadow-2xl overflow-hidden text-slate-900 hover:shadow-3xl transition-shadow duration-300">
               
               {/* Barra Superior del Navegador Simulado */}
               <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between text-xs">
@@ -754,7 +775,6 @@ export default function MoviProductLanding() {
                           alt="Agente Demo"
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            // Fallback cartoon avatar representation
                             e.currentTarget.style.display = 'none';
                             e.currentTarget.parentElement!.innerHTML = `
                               <div class="w-full h-full bg-amber-50 flex items-center justify-center text-4xl">
@@ -785,24 +805,24 @@ export default function MoviProductLanding() {
                   {/* 4 Botones de Acción (Pills) */}
                   <div className="space-y-2.5 pt-2">
                     <div className="grid grid-cols-2 gap-2.5">
-                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-800 text-white font-bold text-xs shadow-xs hover:bg-slate-900 transition">
+                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-800 text-white font-bold text-xs shadow-xs hover:bg-slate-900 hover:scale-102 transition">
                         <MessageCircle className="w-4 h-4 text-emerald-400" />
                         <span>Escribir por WhatsApp</span>
                       </button>
 
-                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs shadow-xs hover:bg-slate-50 transition">
+                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs shadow-xs hover:bg-slate-50 hover:scale-102 transition">
                         <Phone className="w-4 h-4 text-slate-600" />
                         <span>Llamar</span>
                       </button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2.5">
-                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#E5A823] hover:bg-[#D99A16] text-white font-bold text-xs shadow-xs transition">
+                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#E5A823] hover:bg-[#D99A16] hover:scale-102 text-white font-bold text-xs shadow-xs transition">
                         <Car className="w-4 h-4 text-white" />
                         <span>Multicotizador de Autos</span>
                       </button>
 
-                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs shadow-xs hover:bg-slate-50 transition">
+                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs shadow-xs hover:bg-slate-50 hover:scale-102 transition">
                         <UserPlus className="w-4 h-4 text-slate-600" />
                         <span>Guardar Contacto</span>
                       </button>
@@ -853,7 +873,7 @@ export default function MoviProductLanding() {
                             required
                             placeholder="Tu nombre completo"
                             defaultValue="María Elena Torres"
-                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                           />
                         </div>
 
@@ -864,7 +884,7 @@ export default function MoviProductLanding() {
                             required
                             placeholder="55 1234 5678"
                             defaultValue="55 4920 1823"
-                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                           />
                         </div>
 
@@ -875,7 +895,7 @@ export default function MoviProductLanding() {
                             required
                             placeholder="tu@email.com"
                             defaultValue="maria.torres@ejemplo.com"
-                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                           />
                         </div>
 
@@ -884,7 +904,7 @@ export default function MoviProductLanding() {
                           <select
                             value={selectedInsurance}
                             onChange={(e) => setSelectedInsurance(e.target.value)}
-                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                           >
                             <option value="Seguro de Auto">Seguro de Auto</option>
                             <option value="Gastos Médicos Mayores">Gastos Médicos Mayores</option>
@@ -896,7 +916,7 @@ export default function MoviProductLanding() {
 
                         <button
                           type="submit"
-                          className="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-md transition-all active:scale-98 cursor-pointer"
+                          className="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-900 active:scale-98 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
                         >
                           Solicitar Cotizacion Gratuita
                         </button>
@@ -911,7 +931,7 @@ export default function MoviProductLanding() {
                 </div>
 
                 {/* Burbuja flotante de WhatsApp en la esquina inferior derecha */}
-                <div className="absolute bottom-6 right-6 hidden sm:flex items-center justify-center w-12 h-12 rounded-full bg-slate-800 text-white shadow-xl cursor-pointer hover:scale-105 transition">
+                <div className="absolute bottom-6 right-6 hidden sm:flex items-center justify-center w-12 h-12 rounded-full bg-slate-800 text-white shadow-xl cursor-pointer hover:scale-110 transition-transform">
                   <MessageCircle className="w-6 h-6 text-emerald-400" />
                 </div>
 
@@ -940,8 +960,8 @@ export default function MoviProductLanding() {
 
             <div className="grid md:grid-cols-2 gap-8">
               
-              {/* Card Seguwallet */}
-              <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-[#06142F] to-[#0A2260] text-white space-y-6 shadow-xl flex flex-col justify-between">
+              {/* Card Seguwallet con Hover Zoom */}
+              <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-[#06142F] to-[#0A2260] text-white space-y-6 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <img
@@ -979,7 +999,7 @@ export default function MoviProductLanding() {
                     href="https://seguwallet.mx"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95"
                   >
                     <span>Conocer Seguwallet</span>
                     <ExternalLink className="w-4 h-4" />
@@ -987,8 +1007,8 @@ export default function MoviProductLanding() {
                 </div>
               </div>
 
-              {/* Card Seguros Education */}
-              <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-[#1E293B] to-[#0F172A] text-white space-y-6 shadow-xl flex flex-col justify-between">
+              {/* Card Seguros Education con Hover Zoom */}
+              <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-[#1E293B] to-[#0F172A] text-white space-y-6 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
@@ -1027,7 +1047,7 @@ export default function MoviProductLanding() {
                     href="https://seguros.education"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs sm:text-sm transition-all shadow-md"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs sm:text-sm transition-all shadow-md active:scale-95"
                   >
                     <span>Ir a Seguros Education</span>
                     <ExternalLink className="w-4 h-4" />
@@ -1076,11 +1096,11 @@ export default function MoviProductLanding() {
                 return (
                   <div
                     key={index}
-                    className="rounded-2xl bg-white border border-slate-200/90 overflow-hidden shadow-xs transition-all duration-200"
+                    className="rounded-2xl bg-white border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200"
                   >
                     <button
                       onClick={() => setOpenFaq(isOpen ? null : index)}
-                      className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-slate-50"
+                      className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-slate-50 transition-colors"
                     >
                       <span className="text-base sm:text-lg font-bold text-slate-900 pr-4">
                         {faq.q}
@@ -1093,7 +1113,7 @@ export default function MoviProductLanding() {
                     </button>
 
                     {isOpen && (
-                      <div className="px-6 pb-6 text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-4">
+                      <div className="px-6 pb-6 text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-4 animate-in fade-in duration-150">
                         {faq.a}
                       </div>
                     )}
@@ -1109,7 +1129,7 @@ export default function MoviProductLanding() {
         <section className="py-20 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white relative">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
             
-            <div className="w-16 h-16 rounded-3xl bg-white/10 border border-white/20 flex items-center justify-center text-white mx-auto shadow-xl backdrop-blur-md">
+            <div className="w-16 h-16 rounded-3xl bg-white/10 border border-white/20 flex items-center justify-center text-white mx-auto shadow-xl backdrop-blur-md animate-float">
               <ShieldCheck className="w-8 h-8" />
             </div>
 
@@ -1125,7 +1145,7 @@ export default function MoviProductLanding() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
                 href="https://app.movi.digital/login"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-base text-blue-700 bg-white hover:bg-blue-50 active:scale-95 transition-all shadow-xl"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-base text-blue-700 bg-white hover:bg-blue-50 active:scale-95 transition-all shadow-xl hover:-translate-y-0.5"
               >
                 <Lock className="w-5 h-5" />
                 <span>Ingresar</span>
@@ -1145,7 +1165,7 @@ export default function MoviProductLanding() {
               {/* Columna 1: MOVI + Grupo JIRO */}
               <div className="md:col-span-2 space-y-4">
                 <div className="flex items-center gap-3">
-                  <img src={LOGO_MOVI} alt="MOVI Digital" className="h-8 w-auto object-contain" />
+                  <img src={LOGO_MOVI} alt="MOVI Digital" className="h-9 w-auto object-contain" />
                   <div className="h-5 w-[1px] bg-slate-200" />
                   <a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer">
                     <img src={LOGO_JIRO} alt="Grupo JIRO" className="h-6 w-auto object-contain" />
