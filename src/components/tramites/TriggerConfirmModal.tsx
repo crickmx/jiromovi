@@ -31,7 +31,9 @@ export function TriggerConfirmModal({ triggers, existingChildren, fromStatusLabe
   const [decisions, setDecisions] = useState<Record<string, 'conservar' | 'nuevo'>>(() => {
     const init: Record<string, 'conservar' | 'nuevo'> = {};
     for (const t of triggers) {
-      init[t.id] = 'nuevo';
+      // Si ya hay un hijo de esta regla, lo seguro es conservarlo: crear otro
+      // tiene que ser una decisión expresa, no lo que pasa si le das Guardar.
+      init[t.id] = existingChildren[t.id] ? 'conservar' : 'nuevo';
     }
     return init;
   });

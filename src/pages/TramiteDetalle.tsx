@@ -875,23 +875,38 @@ export function TramiteDetalle() {
           .eq('activo', true);
 
         const activeTriggers = (trigData || []) as PendingTrigger[];
-        const confirmable    = activeTriggers.filter(t => t.requiere_confirmacion);
         silent               = activeTriggers.filter(t => !t.requiere_confirmacion);
 
-        if (confirmable.length > 0) {
-          const childChecks = await Promise.all(
-            confirmable.map(t =>
-              supabase.from('tickets').select('id, folio')
-                .eq('parent_ticket_id', tramite.id)
-                .eq('trigger_origen_id', t.id)
-                .maybeSingle()
-            )
-          );
-          const existingMap: Record<string, ExistingChild> = {};
-          confirmable.forEach((t, i) => {
-            if (childChecks[i].data) existingMap[t.id] = childChecks[i].data as ExistingChild;
-          });
-          setPendingTriggers(confirmable);
+        // Se revisa si YA hay un hijo de cada regla, incluidas las silenciosas:
+        // antes solo se miraba para las que piden confirmación, así que una regla
+        // silenciosa creaba otro hijo cada vez que se volvía a aplicar el estatus
+        // (así nacieron TKCB783-A y TKCB783-B el mismo día).
+        //
+        // `.limit(1)` y no `.maybeSingle()`: maybeSingle FALLA cuando encuentra
+        // más de una fila, y ese error se ignoraba — con dos hijos ya creados el
+        // sistema concluía "no hay ninguno" y dejaba de avisar para siempre.
+        const hijosExistentes = await Promise.all(
+          activeTriggers.map(t =>
+            supabase.from('tickets').select('id, folio')
+              .eq('parent_ticket_id', tramite.id)
+              .eq('trigger_origen_id', t.id)
+              .order('fecha_creacion', { ascending: true })
+              .limit(1)
+          )
+        );
+        const existingMap: Record<string, ExistingChild> = {};
+        activeTriggers.forEach((t, i) => {
+          const fila = hijosExistentes[i].data?.[0];
+          if (fila) existingMap[t.id] = fila as ExistingChild;
+        });
+
+        // Una regla silenciosa deja de serlo si ya tiene un hijo: hay que decirlo
+        // y dejar elegir. Si se crea otro, el folio toma la letra siguiente.
+        const necesitanConfirmar = activeTriggers.filter(t => t.requiere_confirmacion || existingMap[t.id]);
+        silent = activeTriggers.filter(t => !t.requiere_confirmacion && !existingMap[t.id]);
+
+        if (necesitanConfirmar.length > 0) {
+          setPendingTriggers(necesitanConfirmar);
           setSilentTriggers(silent);
           setExistingChildren(existingMap);
           setTriggerModalOpen(true);
