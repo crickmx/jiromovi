@@ -14,6 +14,7 @@ import { AppUpdateBanner } from './components/AppUpdateBanner';
 // ── Landings (lazy) ────────────────────────────────────────────────────────
 const LandingsStudio = lazy(() => import('./landings/LandingsStudio'));
 const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
+const MoviProductLanding = lazy(() => import('./landings/movi/MoviProductLanding'));
 
 // ── Seguwallet pages (lazy) ────────────────────────────────────────────────
 import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
@@ -153,6 +154,9 @@ function LandingsApp() {
             <Route path="/landings/mutuus/*" element={<RedirectToMutuusMx />} />
 
             {/* Landings individuales para acceso y vista previa */}
+            <Route path="/movi" element={<MoviProductLanding />} />
+            <Route path="/landing" element={<MoviProductLanding />} />
+            <Route path="/home" element={<MoviProductLanding />} />
             <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
             <Route path="/seguros-express" element={<SegurosExpressLanding />} />
             <Route path="/seguros-education" element={<SegurosEducationLanding />} />
@@ -311,6 +315,15 @@ function MoviApp() {
               <Routes>
                 <Route path="/login" element={<MoviLogin />} />
                 <Route path="/mutuus" element={<RedirectToMutuusMx />} />
+
+                {/* Landings públicas de Producto MOVI */}
+                <Route path="/landing" element={<MoviProductLanding />} />
+                <Route path="/home" element={<MoviProductLanding />} />
+                <Route path="/movi" element={<MoviProductLanding />} />
+                <Route path="/producto" element={<MoviProductLanding />} />
+                <Route path="/ecosistema" element={<MoviProductLanding />} />
+
+                {/* Landing y rutas de Seguwallet */}
                 <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
                 <Route path="/seguwallet/home" element={<SeguwalletProductLanding />} />
                 <Route path="/seguwallet/landing" element={<SeguwalletProductLanding />} />
