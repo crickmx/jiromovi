@@ -50,10 +50,20 @@ import {
   DollarSign,
   Compass,
   Award,
-  Globe
+  Globe,
+  Bell,
+  Mail,
+  MessageCircle,
+  Megaphone,
+  SlidersHorizontal,
+  Star,
+  CheckCircle,
+  ArrowUpRight,
+  Eye,
+  Settings
 } from 'lucide-react';
 
-// ─── ASSETS & CONSTANTES LOCALES ──────────────────────────────────────────────
+// ─── RECURSOS LOCALES ────────────────────────────────────────────────────────
 const LOGO_MOVI = '/movirecurso_2.png';
 const LOGO_JIRO = '/logojiro.png';
 const LOGO_SEGUWALLET = '/seguwallet-logo.png';
@@ -74,131 +84,27 @@ const CARRIERS = [
   { name: 'Bupa', logo: '/logo-bupa.png' },
 ];
 
-const ECOSYSTEM_PLATFORMS = [
-  {
-    id: 'core',
-    title: 'MOVI Core App',
-    category: 'SaaS Operativo & Mesa de Control',
-    description: 'Conciliación automatizada de comisiones, mesa de trámites, pipeline comercial y auditoría de cartera con sincronización nativa SICAS REST.',
-    url: 'https://app.movi.digital',
-    badge: 'Plataforma Central',
-    badgeColor: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    icon: Database,
-    color: '#1C37E0'
-  },
-  {
-    id: 'seguwallet',
-    title: 'Seguwallet',
-    category: 'Cartera Digital de Clientes',
-    description: 'Wallet móvil inteligente para tus asegurados. Consulta de pólizas, descarga de recibos y reporte de siniestros sin contraseñas (OTP vía WhatsApp).',
-    url: 'https://seguwallet.mx',
-    badge: 'App Clientes',
-    badgeColor: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-    icon: Smartphone,
-    color: '#00E5FF'
-  },
-  {
-    id: 'chava',
-    title: 'Chava IA Copilot',
-    category: 'Inteligencia Artificial Especializada',
-    description: 'El primer copiloto de IA entrenado en condiciones generales, deducibles, coaseguros y normativas de seguros en México disponible 24/7.',
-    url: 'https://agentedeseguros.ai',
-    badge: 'AI Engine',
-    badgeColor: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    icon: Cpu,
-    color: '#8B5CF6'
-  },
-  {
-    id: 'education',
-    title: 'Seguros Education',
-    category: 'Academia & Certificación de Asesores',
-    description: 'Campus virtual con cursos on-demand, preparación para Cédula A de la CNSF, Universidad Quálitas y diplomados universitarios con UTEL.',
-    url: 'https://seguros.education',
-    badge: 'Formación Continua',
-    badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    icon: GraduationCap,
-    color: '#F59E0B'
-  },
-  {
-    id: 'express',
-    title: 'Seguros Express',
-    category: 'Cotizador Público & Captación de Leads',
-    description: 'Motor ultrarrápido de cotización de autos con asignación inteligente y geolocalizada de prospectos hacia los asesores de la red.',
-    url: 'https://seguros.express',
-    badge: 'Leads & Cotización',
-    badgeColor: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-    icon: Zap,
-    color: '#E11D48'
-  },
-  {
-    id: 'website',
-    title: 'Tu Web de Asesor',
-    category: 'Marca Personal & Portal Profesional',
-    description: 'Página web personalizada para cada agente con agenda interactiva, cotizadores integrados, links de WhatsApp y presentación profesional.',
-    url: 'https://agentedeseguros.website',
-    badge: 'Marketing Digital',
-    badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    icon: Globe,
-    color: '#10B981'
-  },
-  {
-    id: 'tienda',
-    title: 'MOVI Tienda',
-    category: 'Merchandising & Recursos Corporativos',
-    description: 'Catálogo de recursos oficiales, uniformes, papelería personalizada y material de ventas para consolidar tu presencia de marca.',
-    url: 'https://tienda.movi.digital',
-    badge: 'Brand Assets',
-    badgeColor: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-    icon: Store,
-    color: '#6366F1'
-  },
-  {
-    id: 'landings',
-    title: 'Hermes Landing Studio',
-    category: 'Generador de Landings con IA',
-    description: 'Suite de diseño y publicación instantánea de páginas de producto de alta conversión para campañas específicas de seguros y salud.',
-    url: 'https://landings.movi.digital',
-    badge: 'No-Code / Low-Code',
-    badgeColor: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
-    icon: Palette,
-    color: '#EC4899'
-  }
-];
-
-const FAQS = [
-  {
-    q: '¿Qué es MOVI Digital y a quién está dirigido?',
-    a: 'MOVI Digital es el ecosistema Insurtech y SaaS integral diseñado específicamente para promotorías, agentes y asesores de seguros en México. Centraliza la operación administrativa, automatiza la conciliación de comisiones con aseguradoras, sincroniza en tiempo real con SICAS y entrega herramientas digitales de venta, capacitación y atención al cliente.'
-  },
-  {
-    q: '¿Cómo se integra MOVI con SICAS y las aseguradoras?',
-    a: 'MOVI cuenta con conectividad nativa vía APIs REST y microservicios sincronizados con el ERP SICAS. Esto permite consultar pólizas, vigencias, recibos y estatus de cobranza en tiempo real, además de procesar automáticamente las pólizas emitidas con las más de 12 aseguradoras de la red nacional.'
-  },
-  {
-    q: '¿Cómo funciona la conciliación automática de comisiones?',
-    a: 'El motor de MOVI procesa los estados de cuenta y layout de comisiones de las aseguradoras (GNP, Quálitas, Chubb, etc.), calcula comisiones directas, bonos y retenciones fiscales, y genera la dispersión y reportes de liquidación en segundos, reduciendo hasta un 90% el trabajo administrativo manual.'
-  },
-  {
-    q: '¿Mis clientes tienen acceso a una plataforma propia?',
-    a: 'Sí. A través de Seguwallet (seguwallet.mx), cada cliente asegurado por tu promotoría o despacho recibe una cartera digital donde puede consultar todas sus pólizas, descargar recibos en PDF, reportar siniestros con marcación directa y resolver dudas 24/7 con Chava IA sin necesidad de recordar contraseñas.'
-  },
-  {
-    q: '¿Qué seguridad y cumplimiento normativo tiene la plataforma?',
-    a: 'MOVI opera bajo estrictos protocolos de encriptación bancaria SSL de 256 bits, cumplimiento de la Ley Federal de Protección de Datos Personales (LFPDPPP), validaciones de Expediente 492 y lineamientos de la Comisión Nacional de Seguros y Fianzas (CNSF).'
-  }
-];
-
 export default function MoviProductLanding() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [dashboardTab, setDashboardTab] = useState<'tramites' | 'comisiones' | 'sicas' | 'expediente'>('tramites');
+  
+  // Tabs del Mockup Interactivo Principal
+  const [activeFeatureTab, setActiveFeatureTab] = useState<
+    'tramites' | 'crm' | 'produccion' | 'miweb' | 'notificaciones' | 'education' | 'comunicados'
+  >('tramites');
+
+  // Estado del simulador "Mi Página Web" (Agente Demo)
+  const [webColorTheme, setWebColorTheme] = useState<'blue' | 'emerald' | 'navy' | 'wine'>('blue');
+  const [leadSent, setLeadSent] = useState(false);
+  const [demoQuoteType, setDemoQuoteType] = useState<'auto' | 'gmm' | 'vida' | 'hogar'>('auto');
+
+  // Calculadora de Productividad y ROI
+  const [agentsCount, setAgentsCount] = useState<number>(20);
+  const [monthlyPolicies, setMonthlyPolicies] = useState<number>(120);
+
+  const hoursSavedPerMonth = Math.round(agentsCount * 14 + monthlyPolicies * 0.5);
+  const moneySavedEstimate = Math.round(hoursSavedPerMonth * 195).toLocaleString('es-MX');
+
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-  // Calculadora interactiva de ROI
-  const [agentsCount, setAgentsCount] = useState<number>(15);
-  const [policiesPerMonth, setPoliciesPerMonth] = useState<number>(80);
-
-  const hoursSavedPerMonth = Math.round(agentsCount * 12 + policiesPerMonth * 0.4);
-  const moneySavedPerMonth = Math.round(hoursSavedPerMonth * 180).toLocaleString('es-MX');
 
   useEffect(() => {
     const root = document.getElementById('root');
@@ -213,65 +119,51 @@ export default function MoviProductLanding() {
     setMobileMenuOpen(false);
   };
 
+  const getThemeColor = () => {
+    switch (webColorTheme) {
+      case 'emerald': return '#059669';
+      case 'navy': return '#0F172A';
+      case 'wine': return '#991B1B';
+      default: return '#1C37E0';
+    }
+  };
+
   return (
     <>
       <Helmet>
-        <title>MOVI Digital | El Ecosistema Insurtech para Promotorías y Agentes</title>
+        <title>MOVI Digital | Plataforma de Gestión de Grupo JIRO y Asociados</title>
         <meta
           name="description"
-          content="Centraliza tu operación, concilia comisiones en segundos, sincroniza con SICAS y ofrece a tus clientes una experiencia digital con Seguwallet y Chava IA."
+          content="MOVI Digital es la plataforma integral de gestión para agentes y promotorías de Grupo JIRO y Asociados. Control de trámites, Mi CRM, Central de Producción, Mi Página Web y notificaciones por WhatsApp y correo."
         />
         <meta
           name="keywords"
-          content="MOVI Digital, Insurtech México, SaaS seguros, promotoría de seguros, SICAS API, conciliación de comisiones, Seguwallet, Chava IA, Grupo JIRO"
+          content="MOVI Digital, Grupo JIRO, Grupo JIRO y Asociados, gestión de seguros, control de tramites, mi crm seguros, central de produccion, cotizador agentes, seguros education, comisiones aseguradoras, SICAS REST"
         />
         <link rel="canonical" href="https://movi.digital/" />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="MOVI Digital | El Ecosistema Insurtech para Promotorías y Agentes" />
+        <meta property="og:title" content="MOVI Digital | Plataforma de Gestión de Grupo JIRO y Asociados" />
         <meta
           property="og:description"
-          content="El SaaS operativo definitivo para agentes y promotorías. Sincronización SICAS, comisiones automáticas y herramientas 360°."
+          content="El SaaS operativo definitivo para la red de agentes de Grupo JIRO. Trámites, CRM, comisiones, web personalizada y automatización."
         />
         <meta property="og:url" content="https://movi.digital/" />
         <meta property="og:image" content="https://movi.digital/movirecurso_2.png" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="MOVI Digital | Ecosistema Insurtech" />
+        <meta name="twitter:title" content="MOVI Digital · Grupo JIRO y Asociados" />
         <meta
           name="twitter:description"
-          content="Tecnología de vanguardia para promotorías y asesores de seguros."
+          content="Plataforma de gestión tecnológica para asesores y promotorías de seguros."
         />
-
-        {/* Schema.org */}
-        <script type="application/ld+json">
-          {JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'SoftwareApplication',
-            name: 'MOVI Digital',
-            applicationCategory: 'BusinessApplication',
-            operatingSystem: 'Cloud, Web, Mobile',
-            offers: {
-              '@type': 'Offer',
-              price: '0',
-              priceCurrency: 'MXN'
-            },
-            description:
-              'Ecosistema Insurtech y SaaS operativo para agentes y promotorías de seguros con integración SICAS, conciliación de comisiones y CRM.',
-            url: 'https://movi.digital',
-            publisher: {
-              '@type': 'Organization',
-              name: 'Grupo JIRO / MOVI Digital'
-            }
-          })}
-        </script>
       </Helmet>
 
       <div className="min-h-screen bg-[#030917] text-white selection:bg-[#1C37E0] selection:text-white font-sans antialiased">
 
-        {/* ─── 1. NAVBAR SUPERIOR FLOTANTE ─────────────────────────────────── */}
+        {/* ─── 1. NAVBAR SUPERIOR FIJO ─────────────────────────────────────── */}
         <header
           className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
           style={{
@@ -283,64 +175,76 @@ export default function MoviProductLanding() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16 sm:h-20">
               
-              {/* Logo MOVI */}
-              <a
-                href="#inicio"
-                onClick={(e) => { e.preventDefault(); scrollTo('inicio'); }}
-                className="flex items-center gap-3 group"
-              >
-                <img
-                  src={LOGO_MOVI}
-                  alt="MOVI Digital"
-                  className="h-9 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105"
-                />
-              </a>
+              {/* Logo MOVI + Respaldo Grupo JIRO */}
+              <div className="flex items-center gap-3.5">
+                <a
+                  href="#inicio"
+                  onClick={(e) => { e.preventDefault(); scrollTo('inicio'); }}
+                  className="flex items-center gap-3 group"
+                >
+                  <img
+                    src={LOGO_MOVI}
+                    alt="MOVI Digital"
+                    className="h-8 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105"
+                  />
+                </a>
+                <div className="h-5 w-[1px] bg-white/20 hidden sm:block" />
+                <div className="hidden sm:flex items-center gap-2 text-xs text-white/60">
+                  <span className="font-semibold text-white/90">Grupo JIRO y Asociados</span>
+                </div>
+              </div>
 
               {/* Desktop Menu */}
-              <nav className="hidden lg:flex items-center gap-7">
+              <nav className="hidden lg:flex items-center gap-6 xl:gap-7">
                 <button
-                  onClick={() => scrollTo('plataforma')}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
+                  onClick={() => scrollTo('funciones')}
+                  className="text-xs xl:text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
                 >
-                  Plataforma SaaS
+                  Funciones Clave
                 </button>
                 <button
-                  onClick={() => scrollTo('ecosistema')}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
+                  onClick={() => scrollTo('mi-web')}
+                  className="text-xs xl:text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
                 >
-                  Ecosistema 8-en-1
+                  Mi Página Web
                 </button>
                 <button
-                  onClick={() => scrollTo('aseguradoras')}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
+                  onClick={() => scrollTo('central-produccion')}
+                  className="text-xs xl:text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
                 >
-                  Aseguradoras
+                  Central de Producción
+                </button>
+                <button
+                  onClick={() => scrollTo('education')}
+                  className="text-xs xl:text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
+                >
+                  Seguros Education
                 </button>
                 <button
                   onClick={() => scrollTo('roi')}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
+                  className="text-xs xl:text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
                 >
                   Calculadora ROI
                 </button>
                 <button
                   onClick={() => scrollTo('faq')}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
+                  className="text-xs xl:text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer"
                 >
-                  Preguntas Frecuentes
+                  FAQ
                 </button>
               </nav>
 
-              {/* Desktop CTAs */}
+              {/* CTAs */}
               <div className="hidden sm:flex items-center gap-3">
                 <a
                   href="https://app.movi.digital/login"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white transition-all duration-200 active:scale-95 shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white transition-all duration-200 active:scale-95 shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50"
                   style={{
                     background: 'linear-gradient(135deg, #1C37E0 0%, #3B58F0 100%)'
                   }}
                 >
                   <Lock className="w-4 h-4" />
-                  <span>Ingresar a MOVI App</span>
+                  <span>Ingresar a MOVI</span>
                   <ArrowRight className="w-4 h-4 ml-0.5" />
                 </a>
               </div>
@@ -362,9 +266,10 @@ export default function MoviProductLanding() {
             <div className="lg:hidden border-t border-white/10 bg-[#050F28]/98 px-5 py-6 space-y-4 backdrop-blur-2xl">
               <div className="space-y-2">
                 {[
-                  { label: 'Plataforma SaaS', id: 'plataforma' },
-                  { label: 'Ecosistema 8-en-1', id: 'ecosistema' },
-                  { label: 'Aseguradoras', id: 'aseguradoras' },
+                  { label: 'Funciones Clave', id: 'funciones' },
+                  { label: 'Mi Página Web (Agente Demo)', id: 'mi-web' },
+                  { label: 'Central de Producción', id: 'central-produccion' },
+                  { label: 'Seguros Education', id: 'education' },
                   { label: 'Calculadora ROI', id: 'roi' },
                   { label: 'Preguntas Frecuentes', id: 'faq' }
                 ].map((item) => (
@@ -393,15 +298,15 @@ export default function MoviProductLanding() {
           )}
         </header>
 
-        {/* ─── 2. HERO PRINCIPAL VANGUARDISTA AAA TECH ─────────────────────── */}
+        {/* ─── 2. HERO PRINCIPAL: AAA DEEP-TECH SAAS ───────────────────────── */}
         <section
           id="inicio"
-          className="relative min-h-[92vh] flex items-center pt-24 pb-16 lg:pt-32 lg:pb-24 overflow-hidden"
+          className="relative min-h-[94vh] flex items-center pt-24 pb-16 lg:pt-32 lg:pb-24 overflow-hidden"
           style={{
             background: 'radial-gradient(circle at 50% 15%, #0B2468 0%, #051028 45%, #030917 100%)'
           }}
         >
-          {/* Subtle grid pattern & glow orbs */}
+          {/* Geometría e iluminación de fondo */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
@@ -414,7 +319,7 @@ export default function MoviProductLanding() {
             className="absolute -top-32 right-1/4 w-[650px] h-[650px] rounded-full pointer-events-none"
             style={{
               background: 'radial-gradient(circle, #1C37E0 0%, transparent 70%)',
-              opacity: 0.22,
+              opacity: 0.25,
               filter: 'blur(70px)'
             }}
           />
@@ -422,7 +327,7 @@ export default function MoviProductLanding() {
             className="absolute bottom-10 left-10 w-[500px] h-[500px] rounded-full pointer-events-none"
             style={{
               background: 'radial-gradient(circle, #00E5FF 0%, transparent 70%)',
-              opacity: 0.10,
+              opacity: 0.12,
               filter: 'blur(60px)'
             }}
           />
@@ -430,20 +335,20 @@ export default function MoviProductLanding() {
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-center">
               
-              {/* Columna Izquierda: Copy Principal */}
+              {/* Columna Izquierda: Copy Hero */}
               <div className="lg:col-span-7 space-y-7 text-center lg:text-left">
                 
-                {/* Badge Superior */}
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.12] backdrop-blur-md">
+                {/* Badge Oficial */}
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.12] backdrop-blur-md">
                   <span className="w-2 h-2 rounded-full bg-[#00E5FF] animate-pulse" />
-                  <span className="text-xs font-semibold text-[#00E5FF] tracking-wide uppercase">
-                    Ecosistema Insurtech & SaaS Operativo
+                  <span className="text-xs font-bold text-[#00E5FF] tracking-wide uppercase">
+                    Plataforma Oficial de Grupo JIRO y Asociados
                   </span>
                 </div>
 
                 {/* Titular Principal */}
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.08] tracking-tight">
-                  La plataforma definitiva para{' '}
+                  El sistema operativo definitivo para{' '}
                   <span
                     className="bg-clip-text text-transparent"
                     style={{
@@ -454,9 +359,9 @@ export default function MoviProductLanding() {
                   </span>
                 </h1>
 
-                {/* Subtítulo */}
-                <p className="text-base sm:text-lg text-white/70 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                  Centraliza tu mesa de trámites, concilia comisiones con aseguradoras en segundos, sincroniza con SICAS en tiempo real y ofrece a tus clientes una cartera digital de última generación.
+                {/* Subtítulo descriptivo */}
+                <p className="text-base sm:text-lg text-white/75 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                  Control de trámites en tiempo real, notificaciones automáticas por WhatsApp y correo, tu CRM integrado, Central de Producción para conciliar comisiones y tu página web personalizable para captar más pólizas.
                 </p>
 
                 {/* Botones de Acción */}
@@ -469,46 +374,46 @@ export default function MoviProductLanding() {
                     }}
                   >
                     <Lock className="w-5 h-5" />
-                    <span>Ingresar a MOVI App</span>
+                    <span>Entrar a mi Portal MOVI</span>
                     <ArrowRight className="w-5 h-5" />
                   </a>
 
                   <button
-                    onClick={() => scrollTo('plataforma')}
+                    onClick={() => scrollTo('funciones')}
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl font-semibold text-sm text-white/85 bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.12] transition-colors cursor-pointer"
                   >
-                    <Layers className="w-4 h-4 text-[#00E5FF]" />
-                    <span>Conocer Módulos</span>
+                    <SlidersHorizontal className="w-4 h-4 text-[#00E5FF]" />
+                    <span>Explorar Funciones</span>
                   </button>
                 </div>
 
-                {/* Badges de Métricas Clave */}
+                {/* Badges de Métricas de Plataforma */}
                 <div className="pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
                   <div className="space-y-1">
-                    <p className="text-xl sm:text-2xl font-black text-white">+12</p>
-                    <p className="text-xs text-white/50 leading-tight">Aseguradoras integradas</p>
+                    <p className="text-xl sm:text-2xl font-black text-white">100%</p>
+                    <p className="text-xs text-white/50 leading-tight">Control de trámites y pólizas</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xl sm:text-2xl font-black text-[#00E5FF]">SICAS</p>
-                    <p className="text-xs text-white/50 leading-tight">Sincronización REST nativa</p>
+                    <p className="text-xl sm:text-2xl font-black text-[#00E5FF]">WhatsApp</p>
+                    <p className="text-xs text-white/50 leading-tight">Avisos automáticos en línea</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xl sm:text-2xl font-black text-emerald-400">90%</p>
-                    <p className="text-xs text-white/50 leading-tight">Menos tiempo en comisiones</p>
+                    <p className="text-xl sm:text-2xl font-black text-emerald-400">SICAS</p>
+                    <p className="text-xs text-white/50 leading-tight">Conciliación directa de comisiones</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xl sm:text-2xl font-black text-white">8 en 1</p>
-                    <p className="text-xs text-white/50 leading-tight">Plataformas interconectadas</p>
+                    <p className="text-xl sm:text-2xl font-black text-purple-400">Mi Web</p>
+                    <p className="text-xs text-white/50 leading-tight">Conectada directo a tu CRM</p>
                   </div>
                 </div>
 
               </div>
 
-              {/* Columna Derecha: Mockup Interactivo de la Plataforma SaaS */}
+              {/* Columna Derecha: Mockup Interactivo del SaaS MOVI */}
               <div className="lg:col-span-5 flex justify-center lg:justify-end">
                 <div className="relative w-full max-w-lg">
                   
-                  {/* Glow de fondo */}
+                  {/* Glow */}
                   <div
                     className="absolute -inset-4 rounded-[36px] pointer-events-none"
                     style={{
@@ -517,8 +422,8 @@ export default function MoviProductLanding() {
                     }}
                   />
 
-                  {/* Window frame glassmorphic */}
-                  <div className="relative rounded-3xl border border-white/15 bg-[#081638]/90 shadow-2xl overflow-hidden backdrop-blur-xl">
+                  {/* Ventana Glassmorphic del SaaS */}
+                  <div className="relative rounded-3xl border border-white/15 bg-[#081638]/95 shadow-2xl overflow-hidden backdrop-blur-xl">
                     
                     {/* Header de la ventana */}
                     <div className="px-5 py-3.5 bg-white/[0.04] border-b border-white/10 flex items-center justify-between">
@@ -528,173 +433,218 @@ export default function MoviProductLanding() {
                         <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
                         <span className="ml-2 text-xs font-mono text-white/50">app.movi.digital</span>
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-semibold">
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span>SICAS Online</span>
+                        <span>Grupo JIRO Online</span>
                       </div>
                     </div>
 
-                    {/* Selector de Pestañas del Simulador */}
-                    <div className="grid grid-cols-4 gap-1 p-2 bg-black/20 border-b border-white/10 text-xs font-bold text-center">
+                    {/* Selector de Pestañas del Mockup */}
+                    <div className="flex overflow-x-auto no-scrollbar gap-1 p-2 bg-black/25 border-b border-white/10 text-[11px] font-bold text-center">
                       <button
-                        onClick={() => setDashboardTab('tramites')}
-                        className={`py-2 rounded-xl transition-all ${
-                          dashboardTab === 'tramites' ? 'bg-[#1C37E0] text-white shadow-xs' : 'text-white/60 hover:text-white'
+                        onClick={() => setActiveFeatureTab('tramites')}
+                        className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all ${
+                          activeFeatureTab === 'tramites' ? 'bg-[#1C37E0] text-white shadow-xs' : 'text-white/60 hover:text-white'
                         }`}
                       >
                         Trámites
                       </button>
                       <button
-                        onClick={() => setDashboardTab('comisiones')}
-                        className={`py-2 rounded-xl transition-all ${
-                          dashboardTab === 'comisiones' ? 'bg-[#1C37E0] text-white shadow-xs' : 'text-white/60 hover:text-white'
+                        onClick={() => setActiveFeatureTab('crm')}
+                        className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all ${
+                          activeFeatureTab === 'crm' ? 'bg-[#1C37E0] text-white shadow-xs' : 'text-white/60 hover:text-white'
                         }`}
                       >
-                        Comisiones
+                        Mi CRM
                       </button>
                       <button
-                        onClick={() => setDashboardTab('sicas')}
-                        className={`py-2 rounded-xl transition-all ${
-                          dashboardTab === 'sicas' ? 'bg-[#1C37E0] text-white shadow-xs' : 'text-white/60 hover:text-white'
+                        onClick={() => setActiveFeatureTab('produccion')}
+                        className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all ${
+                          activeFeatureTab === 'produccion' ? 'bg-[#1C37E0] text-white shadow-xs' : 'text-white/60 hover:text-white'
                         }`}
                       >
-                        SICAS REST
+                        Producción
                       </button>
                       <button
-                        onClick={() => setDashboardTab('expediente')}
-                        className={`py-2 rounded-xl transition-all ${
-                          dashboardTab === 'expediente' ? 'bg-[#1C37E0] text-white shadow-xs' : 'text-white/60 hover:text-white'
+                        onClick={() => setActiveFeatureTab('notificaciones')}
+                        className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all ${
+                          activeFeatureTab === 'notificaciones' ? 'bg-[#1C37E0] text-white shadow-xs' : 'text-white/60 hover:text-white'
                         }`}
                       >
-                        Exp. 492
+                        WhatsApp / Email
+                      </button>
+                      <button
+                        onClick={() => setActiveFeatureTab('comunicados')}
+                        className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all ${
+                          activeFeatureTab === 'comunicados' ? 'bg-[#1C37E0] text-white shadow-xs' : 'text-white/60 hover:text-white'
+                        }`}
+                      >
+                        Comunicados
                       </button>
                     </div>
 
-                    {/* Contenido Dinámico del Simulador */}
+                    {/* Contenido Dinámico de la Pestaña Activa */}
                     <div className="p-5 space-y-4 min-h-[380px] bg-[#050F28]">
                       
-                      {dashboardTab === 'tramites' && (
+                      {/* Pestaña 1: Control de Trámites */}
+                      {activeFeatureTab === 'tramites' && (
                         <div className="space-y-3 animate-in fade-in duration-200">
-                          <div className="flex items-center justify-between text-xs text-white/70">
-                            <span className="font-bold text-white">Mesa de Control y Emisión</span>
-                            <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold">14 Trámites en Proceso</span>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-white flex items-center gap-1.5">
+                              <FileText className="w-4 h-4 text-blue-400" />
+                              Mesa de Control de Trámites
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold text-[10px]">
+                              18 Activos
+                            </span>
                           </div>
 
                           <div className="space-y-2">
                             <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
-                              <div className="space-y-0.5">
-                                <p className="text-xs font-bold text-white">Emisión Auto Cobertura Amplia</p>
-                                <p className="text-[11px] text-white/50">Cliente: Transportes del Bajío S.A. · GNP</p>
+                              <div className="space-y-0.5 text-left">
+                                <p className="text-xs font-bold text-white">Emisión Auto GNP · Folio #TR-4029</p>
+                                <p className="text-[11px] text-white/50">Cliente: Logística del Norte · Póliza Anual</p>
                               </div>
-                              <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Póliza Emitida</span>
+                              <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                                Póliza Emitida
+                              </span>
                             </div>
 
                             <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
-                              <div className="space-y-0.5">
-                                <p className="text-xs font-bold text-white">Endoso Cambio de Domicilio</p>
-                                <p className="text-[11px] text-white/50">Cliente: Dra. Sofía Valdés · Quálitas GMM</p>
+                              <div className="space-y-0.5 text-left">
+                                <p className="text-xs font-bold text-white">Endoso GMM Quálitas · Folio #TR-4030</p>
+                                <p className="text-[11px] text-white/50">Inclusión de dependiente · Alta médica</p>
                               </div>
-                              <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">En Revisión</span>
+                              <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">
+                                En Revisión JIRO
+                              </span>
                             </div>
 
                             <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
-                              <div className="space-y-0.5">
-                                <p className="text-xs font-bold text-white">Renovación Vida Individual</p>
-                                <p className="text-[11px] text-white/50">Cliente: Ing. Marco R. · Seguros Monterrey</p>
+                              <div className="space-y-0.5 text-left">
+                                <p className="text-xs font-bold text-white">Cotización Flotilla Chubb · Folio #TR-4031</p>
+                                <p className="text-[11px] text-white/50">12 Unidades Nissan NP300</p>
                               </div>
-                              <span className="px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">Cotizado</span>
+                              <span className="px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">
+                                Cotización Lista
+                              </span>
                             </div>
                           </div>
                         </div>
                       )}
 
-                      {dashboardTab === 'comisiones' && (
+                      {/* Pestaña 2: Mi CRM */}
+                      {activeFeatureTab === 'crm' && (
                         <div className="space-y-3 animate-in fade-in duration-200">
-                          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 border border-blue-500/30 space-y-1">
-                            <p className="text-xs text-blue-300 font-semibold">Liquidación Quincenal Procesada</p>
-                            <p className="text-2xl font-black text-white">$482,920.00 MXN</p>
-                            <p className="text-[11px] text-emerald-400 font-semibold">✓ 100% conciliado con estados de cuenta</p>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-white flex items-center gap-1.5">
+                              <Users className="w-4 h-4 text-purple-400" />
+                              Pipeline de Prospectos y Clientes
+                            </span>
+                            <span className="text-[10px] text-white/50">46 Contactos Activos</span>
                           </div>
 
-                          <div className="space-y-2 text-xs">
+                          <div className="space-y-2">
+                            <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
+                              <div className="text-left space-y-0.5">
+                                <p className="text-xs font-bold text-white">Ing. Roberto Sánchez</p>
+                                <p className="text-[11px] text-white/50">Lead captado desde Mi Página Web · Auto GNP</p>
+                              </div>
+                              <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px] font-bold">
+                                Lead Calificado
+                              </span>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
+                              <div className="text-left space-y-0.5">
+                                <p className="text-xs font-bold text-white">Dra. Claudia Morales</p>
+                                <p className="text-[11px] text-white/50">Gastos Médicos Mayores · Renovación Octubre</p>
+                              </div>
+                              <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                                Cliente Vigente
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Pestaña 3: Central de Producción */}
+                      {activeFeatureTab === 'produccion' && (
+                        <div className="space-y-3 animate-in fade-in duration-200">
+                          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 border border-blue-500/30 space-y-1 text-left">
+                            <p className="text-xs text-blue-300 font-semibold">Comisiones Conciliadas (Quincena 19)</p>
+                            <p className="text-2xl font-black text-white">$628,450.00 MXN</p>
+                            <p className="text-[11px] text-emerald-400 font-semibold">✓ Layout SICAS verificado con aseguradoras</p>
+                          </div>
+
+                          <div className="space-y-1.5 text-xs">
                             <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
-                              <span>GNP Seguros (Layout Oficial)</span>
-                              <span className="font-bold text-emerald-400">$218,400.00 ✓</span>
+                              <span>GNP Seguros (Emisión y Cobranza)</span>
+                              <span className="font-bold text-emerald-400">$294,100.00 ✓</span>
                             </div>
                             <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
                               <span>Quálitas Compañía de Seguros</span>
-                              <span className="font-bold text-emerald-400">$164,220.00 ✓</span>
-                            </div>
-                            <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
-                              <span>Chubb Seguros México</span>
-                              <span className="font-bold text-emerald-400">$100,300.00 ✓</span>
+                              <span className="font-bold text-emerald-400">$218,600.00 ✓</span>
                             </div>
                           </div>
                         </div>
                       )}
 
-                      {dashboardTab === 'sicas' && (
-                        <div className="space-y-3 animate-in fade-in duration-200">
-                          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
-                              <span className="text-xs font-bold text-emerald-300">Sincronización Bidireccional Activa</span>
+                      {/* Pestaña 4: Notificaciones WhatsApp / Email */}
+                      {activeFeatureTab === 'notificaciones' && (
+                        <div className="space-y-3 animate-in fade-in duration-200 text-left">
+                          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2.5">
+                            <MessageCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-bold text-emerald-300">WhatsApp Gateway JIRO</p>
+                              <p className="text-[10.5px] text-white/60">Disparo automático al cambiar estatus del trámite</p>
                             </div>
-                            <span className="text-[10px] text-emerald-400 font-mono">200 OK</span>
                           </div>
 
-                          <div className="p-3 rounded-xl bg-black/40 border border-white/10 font-mono text-[11px] text-white/80 space-y-1">
-                            <p className="text-blue-400">&gt; GET /api/v1/sicas/polizas_vigentes</p>
-                            <p className="text-emerald-400">&gt; Status: 200 (1,420 pólizas sincronizadas)</p>
-                            <p className="text-purple-400">&gt; POST /api/v1/sicas/conciliacion_recibos</p>
-                            <p className="text-white/50">&gt; Timestamp: {new Date().toLocaleTimeString()} (Latencia: 42ms)</p>
+                          <div className="p-3 rounded-2xl bg-[#0B1E40] border border-white/10 space-y-2 text-xs">
+                            <div className="flex items-center justify-between text-[10px] text-white/40">
+                              <span>Mensaje automático al cliente</span>
+                              <span>Entregado ✓✓</span>
+                            </div>
+                            <p className="text-white/80 leading-relaxed text-[11px]">
+                              "Hola <strong>Carlos</strong>, tu póliza de auto <strong>GNP #9281-9920</strong> ha sido emitida con éxito. Puedes descargar tu carátula y recibo directamente en tu Seguwallet."
+                            </p>
                           </div>
                         </div>
                       )}
 
-                      {dashboardTab === 'expediente' && (
-                        <div className="space-y-3 animate-in fade-in duration-200">
-                          <div className="flex items-center justify-between text-xs text-white/80">
-                            <span className="font-bold">Auditoría Regulatoria Art. 492</span>
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">100% Cumplimiento</span>
+                      {/* Pestaña 5: Comunicados y Circulares */}
+                      {activeFeatureTab === 'comunicados' && (
+                        <div className="space-y-2.5 animate-in fade-in duration-200 text-left">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-white flex items-center gap-1.5">
+                              <Megaphone className="w-4 h-4 text-amber-400" />
+                              Canal Institucional Grupo JIRO
+                            </span>
+                            <span className="text-[10px] text-amber-400 font-bold">Oficial</span>
                           </div>
 
-                          <div className="space-y-2 text-xs">
-                            <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
-                              <span className="flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                INE / Identificación Oficial Vigente
-                              </span>
-                              <span className="text-emerald-400 font-bold">Validado</span>
+                          <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] space-y-1">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">Campaña GNP</span>
+                              <span className="text-white/40">Hoy</span>
                             </div>
-                            <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
-                              <span className="flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                Comprobante de Domicilio &lt; 3 meses
-                              </span>
-                              <span className="text-emerald-400 font-bold">Validado</span>
-                            </div>
-                            <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
-                              <span className="flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                Cédula de Identificación Fiscal (RFC)
-                              </span>
-                              <span className="text-emerald-400 font-bold">Validado</span>
-                            </div>
+                            <p className="text-xs font-bold text-white">Bono Trimestral de Autos y Gastos Médicos 2026</p>
+                            <p className="text-[11px] text-white/60">Conoce los porcentajes adicionales por cumplimiento de meta mensual.</p>
                           </div>
                         </div>
                       )}
 
                     </div>
 
-                    {/* Footer del Simulador */}
+                    {/* Footer del Mockup */}
                     <div className="p-4 bg-white/[0.03] border-t border-white/10 flex items-center justify-between text-xs">
-                      <span className="text-white/50">Módulos nativos para promotorías</span>
+                      <span className="text-white/50">Plataforma MOVI · Grupo JIRO</span>
                       <a
                         href="https://app.movi.digital/login"
                         className="font-bold text-[#00E5FF] hover:underline flex items-center gap-1"
                       >
-                        <span>Abrir en MOVI</span>
+                        <span>Acceder al sistema</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </a>
                     </div>
@@ -708,14 +658,14 @@ export default function MoviProductLanding() {
           </div>
         </section>
 
-        {/* ─── 3. CARRUSEL DE ASEGURADORAS ALIADAS ─────────────────────────── */}
+        {/* ─── 3. CARROUSEL DE ASEGURADORAS ALIADAS ─────────────────────────── */}
         <section
           id="aseguradoras"
           className="py-12 bg-[#020714] border-y border-white/[0.08] relative overflow-hidden"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 text-center">
             <p className="text-xs font-bold uppercase tracking-widest text-white/40">
-              Conectado y compatible con las principales aseguradoras de México
+              Conectado y compatible con las principales aseguradoras de México a través de Grupo JIRO
             </p>
           </div>
 
@@ -742,92 +692,582 @@ export default function MoviProductLanding() {
           </div>
         </section>
 
-        {/* ─── 4. ECOSISTEMA 8-EN-1 DE PLATAFORMAS ──────────────────────────── */}
-        <section id="ecosistema" className="py-24 bg-[#030917] relative">
+        {/* ─── 4. SECCIÓN DE FUNCIONES PRINCIPALES (BENTO GRID) ─────────────── */}
+        <section id="funciones" className="py-24 bg-[#030917] relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center space-y-4 max-w-3xl mx-auto mb-16">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[#5B78FF] text-xs font-bold uppercase tracking-wide">
-                <Sparkles className="w-3.5 h-3.5" /> El Hub Insurtech Completo
+                <Sparkles className="w-3.5 h-3.5" /> Todo en una sola plataforma
               </span>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
-                8 plataformas especializadas en un solo ecosistema
+                Las herramientas que potencian tu despacho de seguros
               </h2>
               <p className="text-base text-white/60 leading-relaxed">
-                Cada herramienta de MOVI resuelve un eslabón crítico de tu cadena de valor: desde la captación del prospecto y la emisión hasta la postventa y la fidelización del asegurado.
+                Diseñado por y para asesores de seguros. Cada módulo resuelve de raíz la carga administrativa, la comunicación con clientes y el control de cartera.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {ECOSYSTEM_PLATFORMS.map((plat) => {
-                const IconComp = plat.icon;
-                return (
-                  <div
-                    key={plat.id}
-                    className="rounded-3xl p-6 bg-white/[0.03] border border-white/[0.07] hover:border-blue-500/40 hover:bg-white/[0.05] transition-all duration-300 flex flex-col justify-between space-y-4 group"
-                  >
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div
-                          className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg"
-                          style={{ background: plat.color }}
-                        >
-                          <IconComp className="w-6 h-6" />
-                        </div>
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${plat.badgeColor}`}>
-                          {plat.badge}
-                        </span>
-                      </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              
+              {/* Card 1: Control de Trámites */}
+              <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-blue-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1C37E0] to-[#3B58F0] flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Control de Trámites en Vivo</h3>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  Monitorea cotizaciones, emisiones, cancelaciones, siniestros y cobranza con folios únicos, asignación de responsables y estados transparentes.
+                </p>
+              </div>
 
-                      <div>
-                        <h3 className="text-lg font-bold text-white group-hover:text-[#00E5FF] transition-colors">
-                          {plat.title}
-                        </h3>
-                        <p className="text-xs text-white/40 font-semibold mb-2">
-                          {plat.category}
-                        </p>
-                        <p className="text-xs text-white/60 leading-relaxed">
-                          {plat.description}
-                        </p>
-                      </div>
-                    </div>
+              {/* Card 2: Notificaciones WhatsApp & Correo */}
+              <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-emerald-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
+                  <MessageCircle className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Notificaciones por WhatsApp y Correo</h3>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  Envía alertas inmediatas a tus clientes cuando su póliza es emitida, cuando vence un recibo o cuando hay un avance en su trámite.
+                </p>
+              </div>
 
-                    <div className="pt-2 border-t border-white/[0.06]">
-                      <a
-                        href={plat.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-white/80 group-hover:text-white transition-colors"
-                      >
-                        <span>Abrir plataforma</span>
-                        <ExternalLink className="w-3.5 h-3.5 text-[#00E5FF]" />
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
+              {/* Card 3: Mi CRM */}
+              <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-purple-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/30">
+                  <Users className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Mi CRM de Clientes y Prospectos</h3>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  Gestión integral de contactos, expedientes digitales, pólizas vinculadas, historial de cotizaciones y registro de llamadas o citas.
+                </p>
+              </div>
+
+              {/* Card 4: Central de Producción (CP) */}
+              <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-cyan-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-cyan-600/30">
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Central de Producción (CP)</h3>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  Conciliación de estados de cuenta de aseguradoras, cálculo automático de comisiones, bonos y dispersión precisa con base de datos SICAS.
+                </p>
+              </div>
+
+              {/* Card 5: Mi Página Web Personalizable */}
+              <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-rose-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-600 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-rose-600/30">
+                  <Globe className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Mi Página Web Conectada al CRM</h3>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  Tu sitio profesional con cotizadores de autos, GMM, vida y agenda online. Cada prospecto que cotiza entra directo a tu CRM.
+                </p>
+              </div>
+
+              {/* Card 6: Comunicados y Circulares */}
+              <div className="rounded-3xl p-8 bg-white/[0.03] border border-white/[0.07] hover:border-amber-500/40 hover:bg-white/[0.05] transition-all duration-300 space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-600/30">
+                  <Megaphone className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Comunicados y Campañas Grupo JIRO</h3>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  Accede a circulares oficiales, incentivos comerciales, políticas de suscripción y avisos prioritarios de todas las compañías.
+                </p>
+              </div>
+
             </div>
 
           </div>
         </section>
 
-        {/* ─── 5. CALCULADORA INTERACTIVA DE ROI & HORAS OPERATIVAS ─────────── */}
-        <section id="roi" className="py-24 bg-[#050F28] border-y border-white/[0.08] relative">
+        {/* ─── 5. INTERACTIVO: MI PÁGINA WEB (EJEMPLO AGENTE DEMO) ──────────── */}
+        <section id="mi-web" className="py-24 bg-[#050F28] border-y border-white/[0.08] relative">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            <div className="text-center space-y-4 max-w-3xl mx-auto mb-16">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wide">
+                <Globe className="w-3.5 h-3.5" /> Tu presencia digital profesional
+              </span>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
+                Mi Página Web: Captación 24/7 conectada a tu CRM
+              </h2>
+              <p className="text-base text-white/70 leading-relaxed">
+                Cada asesor de Grupo JIRO cuenta con su propia web profesional personalizada bajo su propio enlace. Prueba a continuación cómo se personaliza y funciona con el <strong>Agente Demo</strong>.
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-12 gap-8 items-start">
+              
+              {/* Columna Izquierda: Controles del Agente */}
+              <div className="lg:col-span-5 space-y-6">
+                
+                <div className="p-6 rounded-3xl bg-white/[0.04] border border-white/[0.10] space-y-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Settings className="w-5 h-5 text-blue-400" />
+                      <span>Personalizador de Marca</span>
+                    </h3>
+                    <span className="text-xs text-white/50">Módulo Mi Marca</span>
+                  </div>
+
+                  {/* Selector de Paleta de Color */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-white/80">Color Corporativo de tu Web:</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      <button
+                        onClick={() => setWebColorTheme('blue')}
+                        className={`p-3 rounded-xl border flex flex-col items-center gap-1 text-xs font-bold transition-all ${
+                          webColorTheme === 'blue' ? 'border-blue-400 bg-blue-500/20 text-white' : 'border-white/10 text-white/60'
+                        }`}
+                      >
+                        <span className="w-5 h-5 rounded-full bg-[#1C37E0]" />
+                        <span>Azul JIRO</span>
+                      </button>
+
+                      <button
+                        onClick={() => setWebColorTheme('emerald')}
+                        className={`p-3 rounded-xl border flex flex-col items-center gap-1 text-xs font-bold transition-all ${
+                          webColorTheme === 'emerald' ? 'border-emerald-400 bg-emerald-500/20 text-white' : 'border-white/10 text-white/60'
+                        }`}
+                      >
+                        <span className="w-5 h-5 rounded-full bg-[#059669]" />
+                        <span>Esmeralda</span>
+                      </button>
+
+                      <button
+                        onClick={() => setWebColorTheme('navy')}
+                        className={`p-3 rounded-xl border flex flex-col items-center gap-1 text-xs font-bold transition-all ${
+                          webColorTheme === 'navy' ? 'border-sky-400 bg-slate-700/50 text-white' : 'border-white/10 text-white/60'
+                        }`}
+                      >
+                        <span className="w-5 h-5 rounded-full bg-[#0F172A] border border-white/40" />
+                        <span>Navy</span>
+                      </button>
+
+                      <button
+                        onClick={() => setWebColorTheme('wine')}
+                        className={`p-3 rounded-xl border flex flex-col items-center gap-1 text-xs font-bold transition-all ${
+                          webColorTheme === 'wine' ? 'border-rose-400 bg-rose-900/30 text-white' : 'border-white/10 text-white/60'
+                        }`}
+                      >
+                        <span className="w-5 h-5 rounded-full bg-[#991B1B]" />
+                        <span>Vino</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Datos del Asesor Demo */}
+                  <div className="space-y-3 pt-3 border-t border-white/10 text-xs">
+                    <p className="font-bold text-white/90">Datos del Perfil (Agente Demo):</p>
+                    <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/05 space-y-1.5">
+                      <p className="text-white font-bold">Lic. Carlos Méndez · Asesor Patrimonial</p>
+                      <p className="text-white/60">Oficina: Grupo JIRO CDMX / Marsella</p>
+                      <p className="text-emerald-400 font-mono text-[11px]">agentedeseguros.website/agente-demo</p>
+                    </div>
+                  </div>
+
+                  {/* Ramos activos */}
+                  <div className="space-y-2 pt-2 text-xs">
+                    <label className="font-bold text-white/80">Ramos Destacados en Web:</label>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2 rounded-lg bg-white/[0.04] border border-white/10 flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Auto Individual</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white/[0.04] border border-white/10 flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Gastos Médicos Mayores</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white/[0.04] border border-white/10 flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Vida & Ahorro</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white/[0.04] border border-white/10 flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Hogar Seguro</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Badge de integración CRM */}
+                <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-200 flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-[#00E5FF] flex-shrink-0 mt-0.5" />
+                  <p>
+                    <strong>Conexión Total:</strong> Cada persona que llena una cotización o agenda una llamada en esta página web aparece automáticamente en tu pestaña <strong>Mi CRM</strong> con notificación por correo y WhatsApp.
+                  </p>
+                </div>
+
+              </div>
+
+              {/* Columna Derecha: Vista Previa en Vivo de la Web del Asesor */}
+              <div className="lg:col-span-7">
+                <div className="rounded-3xl border border-white/20 bg-white shadow-2xl overflow-hidden text-slate-900">
+                  
+                  {/* Browser Header Bar */}
+                  <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full bg-rose-400" />
+                      <span className="w-3 h-3 rounded-full bg-amber-400" />
+                      <span className="w-3 h-3 rounded-full bg-emerald-400" />
+                      <span className="ml-2 font-mono text-slate-600 bg-white px-3 py-1 rounded-md border border-slate-200 truncate">
+                        https://agentedeseguros.website/agente-demo
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                      En Línea
+                    </span>
+                  </div>
+
+                  {/* Cuerpo de la Página Web del Asesor Demo */}
+                  <div className="p-6 sm:p-8 space-y-6 max-h-[580px] overflow-y-auto">
+                    
+                    {/* Header de la Web del Asesor */}
+                    <div className="flex flex-col sm:flex-row items-center gap-5 pb-6 border-b border-slate-100">
+                      <div
+                        className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-md flex-shrink-0"
+                        style={{ background: getThemeColor() }}
+                      >
+                        CM
+                      </div>
+                      <div className="text-center sm:text-left space-y-1">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                          <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Asesor Certificado · Grupo JIRO</span>
+                        </div>
+                        <h4 className="text-xl font-black text-slate-900">Lic. Carlos Méndez</h4>
+                        <p className="text-xs text-slate-500">
+                          Especialista en Protección Patrimonial, Seguros de Autos y Gastos Médicos
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Selector de Cotizador en Vivo */}
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Selecciona el seguro que deseas cotizar:
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: 'auto', label: 'Seguro de Auto', icon: Car },
+                          { id: 'gmm', label: 'Gastos Médicos', icon: HeartPulse },
+                          { id: 'vida', label: 'Vida & Ahorro', icon: Shield },
+                          { id: 'hogar', label: 'Hogar / Casa', icon: Building2 }
+                        ].map((item) => {
+                          const IconC = item.icon;
+                          const isSel = demoQuoteType === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => { setDemoQuoteType(item.id as any); setLeadSent(false); }}
+                              className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                                isSel
+                                  ? 'text-white shadow-md'
+                                  : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                              }`}
+                              style={{
+                                background: isSel ? getThemeColor() : undefined,
+                                borderColor: isSel ? getThemeColor() : undefined
+                              }}
+                            >
+                              <IconC className="w-4 h-4" />
+                              <span>{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Formulario de Cotización Integrado */}
+                    <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-slate-800">
+                          Cotización Express · {demoQuoteType.toUpperCase()}
+                        </p>
+                        <span className="text-[11px] text-slate-500">Entrada directa a CRM</span>
+                      </div>
+
+                      {leadSent ? (
+                        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-2 animate-in fade-in">
+                          <CheckCircle className="w-8 h-8 text-emerald-600 mx-auto" />
+                          <p className="text-xs font-bold text-emerald-900">¡Cotización enviada al Asesor!</p>
+                          <p className="text-[11px] text-emerald-700">
+                            Se ha registrado en el CRM de Carlos Méndez y se disparó una alerta a su WhatsApp.
+                          </p>
+                          <button
+                            onClick={() => setLeadSent(false)}
+                            className="text-xs text-blue-600 font-bold hover:underline pt-1 cursor-pointer"
+                          >
+                            Probar otra cotización
+                          </button>
+                        </div>
+                      ) : (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            setLeadSent(true);
+                          }}
+                          className="space-y-3"
+                        >
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <input
+                              type="text"
+                              required
+                              placeholder="Nombre completo *"
+                              defaultValue="Ana Paula Gutiérrez"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <input
+                              type="tel"
+                              required
+                              placeholder="WhatsApp / Celular *"
+                              defaultValue="55 4920 1823"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <input
+                              type="email"
+                              required
+                              placeholder="Correo electrónico *"
+                              defaultValue="anapaula@empresa.com"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Código Postal / Ciudad"
+                              defaultValue="06600, CDMX"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="w-full py-3 rounded-xl text-white font-bold text-xs shadow-md transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                            style={{ background: getThemeColor() }}
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Solicitar Cotización Inmediata</span>
+                          </button>
+                        </form>
+                      )}
+                    </div>
+
+                    {/* Footer de la Web Asesor Demo */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                      <span>Respaldo Oficial Grupo JIRO y Asociados</span>
+                      <span>Protegido con SSL 256 bits</span>
+                    </div>
+
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+        {/* ─── 6. SECCIÓN: CENTRAL DE PRODUCCIÓN (CP) ───────────────────────── */}
+        <section id="central-produccion" className="py-24 bg-[#030917] relative">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            <div className="grid lg:grid-cols-12 gap-12 items-center">
+              
+              <div className="lg:col-span-6 space-y-6">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold uppercase tracking-wide">
+                  <BarChart3 className="w-3.5 h-3.5" /> Conciliación sin errores
+                </span>
+                
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
+                  Central de Producción (CP): Conciliación de comisiones con SICAS
+                </h2>
+
+                <p className="text-base text-white/70 leading-relaxed">
+                  Elimina los errores de cálculo y las hojas de cálculo manuales. La Central de Producción de MOVI procesa los layouts de todas las aseguradoras, coteja recibos pagados y genera el desglose de liquidación para cada agente con total transparencia.
+                </p>
+
+                <div className="space-y-3 pt-2">
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-white">Importación de Layouts Oficiales</p>
+                      <p className="text-xs text-white/60">Lectura automática de estados de cuenta de GNP, Quálitas, Chubb, Zurich, MAPFRE y más.</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-white">Cálculo de Bonos y Retenciones Fiscales</p>
+                      <p className="text-xs text-white/60">Desglose neto con impuestos, comisiones directas y bonos comerciales aplicados al instante.</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-white">Auditoría en Línea para el Asesor</p>
+                      <p className="text-xs text-white/60">Cada agente consulta en tiempo real sus recibos cobrados y fechas estimadas de dispersión.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mockup CP */}
+              <div className="lg:col-span-6">
+                <div className="rounded-3xl p-8 bg-gradient-to-br from-[#08183E] via-[#05112E] to-[#030917] border border-blue-500/30 shadow-2xl space-y-6">
+                  
+                  <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                    <div>
+                      <p className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Tablero de Liquidaciones</p>
+                      <h4 className="text-lg font-black text-white">Central de Producción JIRO</h4>
+                    </div>
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold">
+                      SICAS Conectado
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-left">
+                    <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/05 space-y-1">
+                      <p className="text-[11px] text-white/50">Total Comisiones Procesadas</p>
+                      <p className="text-2xl font-black text-white">$1,480,920</p>
+                      <p className="text-[10px] text-emerald-400">100% Conciliado</p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/05 space-y-1">
+                      <p className="text-[11px] text-white/50">Recibos Auditados</p>
+                      <p className="text-2xl font-black text-[#00E5FF]">842 Pólizas</p>
+                      <p className="text-[10px] text-white/50">Sin discrepancias</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/05 space-y-2 text-xs text-left">
+                    <p className="font-bold text-white/80">Desglose por Aseguradora:</p>
+                    <div className="space-y-1.5 text-[11.5px]">
+                      <div className="flex justify-between p-2 rounded-lg bg-black/20">
+                        <span>GNP Seguros</span>
+                        <span className="font-mono text-emerald-400 font-bold">$680,240.00 MXN</span>
+                      </div>
+                      <div className="flex justify-between p-2 rounded-lg bg-black/20">
+                        <span>Quálitas</span>
+                        <span className="font-mono text-emerald-400 font-bold">$490,120.00 MXN</span>
+                      </div>
+                      <div className="flex justify-between p-2 rounded-lg bg-black/20">
+                        <span>Chubb</span>
+                        <span className="font-mono text-emerald-400 font-bold">$310,560.00 MXN</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+        {/* ─── 7. SECCIÓN: SEGUROS EDUCATION ───────────────────────────────── */}
+        <section id="education" className="py-24 bg-[#050F28] border-y border-white/[0.08] relative">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            <div className="rounded-3xl p-8 sm:p-14 bg-gradient-to-br from-[#0B2468] via-[#08183E] to-[#040C1F] border border-blue-500/30 shadow-2xl relative overflow-hidden">
+              
+              <div className="grid lg:grid-cols-2 gap-10 items-center relative z-10">
+                <div className="space-y-6">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 text-xs font-bold uppercase tracking-wide border border-amber-500/20">
+                    <GraduationCap className="w-3.5 h-3.5 text-amber-400" /> Formación y Certificación Continua
+                  </span>
+                  
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
+                    Seguros Education: El Campus Virtual de Grupo JIRO
+                  </h2>
+
+                  <p className="text-base text-white/75 leading-relaxed">
+                    Capacitación de alto nivel para consolidar tu carrera como asesor profesional. Cursos on-demand, simuladores de examen para la Cédula A de la CNSF, certificaciones con aseguradoras (Universidad Quálitas) y convenios universitarios con UTEL.
+                  </p>
+
+                  <div className="grid sm:grid-cols-2 gap-3 pt-2 text-xs">
+                    <div className="p-3.5 rounded-xl bg-white/[0.06] border border-white/10 space-y-1">
+                      <p className="font-bold text-white">Preparación Cédula A</p>
+                      <p className="text-white/60">Simulador de reactivos y módulos normativos de la CNSF.</p>
+                    </div>
+                    <div className="p-3.5 rounded-xl bg-white/[0.06] border border-white/10 space-y-1">
+                      <p className="font-bold text-white">Convenios Universitarios</p>
+                      <p className="text-white/60">Licenciaturas y diplomados ejecutivos con UTEL.</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <a
+                      href="https://seguros.education"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-sm transition-all shadow-lg active:scale-95"
+                    >
+                      <span>Ir a Seguros Education</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="space-y-3 bg-white/[0.04] p-6 rounded-2xl border border-white/10 backdrop-blur-md">
+                  <p className="text-xs font-bold text-white/80 uppercase tracking-wider">Cursos Más Populares:</p>
+                  
+                  <div className="space-y-2.5 text-xs text-left">
+                    <div className="p-3 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-white">Estrategias de Venta en Gastos Médicos Mayores</p>
+                        <p className="text-[11px] text-white/50">4 Módulos · Certificado Digital</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold text-[10px]">On Demand</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-white">Suscripción y Cotización de Flotillas Pesadas</p>
+                        <p className="text-[11px] text-white/50">Impartido por Directores de Aseguradoras</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">Avanzado</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-white">Cumplimiento Art. 492 & Prevención de Lavado</p>
+                        <p className="text-[11px] text-white/50">Obligatorio CNSF · Validez Oficial</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-bold text-[10px]">Normativo</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ─── 8. CALCULADORA DE PRODUCTIVIDAD Y ROI ───────────────────────── */}
+        <section id="roi" className="py-24 bg-[#030917] relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="grid lg:grid-cols-12 gap-12 items-center">
               
               <div className="lg:col-span-6 space-y-6">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wide">
-                  <TrendingUp className="w-3.5 h-3.5" /> Eficiencia Comprobada
+                  <TrendingUp className="w-3.5 h-3.5" /> Retorno de Inversión
                 </span>
                 
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
-                  Calcula el impacto operativo de MOVI en tu promotoría
+                  Calcula el impacto operativo en tu promotoría o despacho
                 </h2>
 
                 <p className="text-base text-white/70 leading-relaxed">
-                  Automatizar la conciliación de comisiones, la carga de carátulas y el seguimiento de trámites libera cientos de horas hombre que tu equipo puede dedicar a reclutar agentes y cerrar nuevas ventas.
+                  Al automatizar el seguimiento de trámites, la emisión de notificaciones de cobranza y la conciliación de comisiones, liberas a tu equipo para cerrar más negocios.
                 </p>
 
                 <div className="space-y-6 pt-2 bg-white/[0.03] p-6 rounded-2xl border border-white/[0.08]">
@@ -836,12 +1276,12 @@ export default function MoviProductLanding() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-bold text-white">Número de Agentes / Asesores:</span>
-                      <span className="font-black text-[#00E5FF] text-base">{agentsCount} agentes</span>
+                      <span className="font-black text-[#00E5FF] text-base">{agentsCount} asesores</span>
                     </div>
                     <input
                       type="range"
                       min={1}
-                      max={100}
+                      max={150}
                       value={agentsCount}
                       onChange={(e) => setAgentsCount(Number(e.target.value))}
                       className="w-full accent-[#1C37E0] cursor-pointer"
@@ -852,15 +1292,15 @@ export default function MoviProductLanding() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-bold text-white">Pólizas Nuevas y Renovaciones / Mes:</span>
-                      <span className="font-black text-[#00E5FF] text-base">{policiesPerMonth} pólizas</span>
+                      <span className="font-black text-[#00E5FF] text-base">{monthlyPolicies} pólizas</span>
                     </div>
                     <input
                       type="range"
                       min={10}
-                      max={500}
+                      max={600}
                       step={10}
-                      value={policiesPerMonth}
-                      onChange={(e) => setPoliciesPerMonth(Number(e.target.value))}
+                      value={monthlyPolicies}
+                      onChange={(e) => setMonthlyPolicies(Number(e.target.value))}
                       className="w-full accent-[#1C37E0] cursor-pointer"
                     />
                   </div>
@@ -868,16 +1308,16 @@ export default function MoviProductLanding() {
                 </div>
               </div>
 
-              {/* Tarjeta de Resultados */}
+              {/* Tarjeta de Resultados ROI */}
               <div className="lg:col-span-6">
                 <div className="rounded-3xl p-8 sm:p-10 bg-gradient-to-br from-[#0A2260] via-[#0D2E80] to-[#06142F] border border-blue-500/30 shadow-2xl space-y-8">
                   
                   <div className="space-y-2">
                     <p className="text-xs uppercase font-extrabold tracking-wider text-blue-200">
-                      Ahorro Estimado con MOVI Digital
+                      Impacto Estimado con MOVI Digital
                     </p>
                     <h3 className="text-2xl font-black text-white">
-                      Mayor rentabilidad y control absoluto
+                      Ahorro en tiempo y costos administrativos
                     </h3>
                   </div>
 
@@ -885,13 +1325,13 @@ export default function MoviProductLanding() {
                     <div className="p-5 rounded-2xl bg-white/[0.08] border border-white/10 space-y-1">
                       <p className="text-xs text-white/70 font-medium">Horas operativas ahorradas / mes</p>
                       <p className="text-3xl sm:text-4xl font-black text-[#00E5FF]">{hoursSavedPerMonth} hrs</p>
-                      <p className="text-[11px] text-white/50">Equivalente a {Math.round(hoursSavedPerMonth / 8)} días laborales</p>
+                      <p className="text-[11px] text-white/50">Equivale a {Math.round(hoursSavedPerMonth / 8)} días de trabajo</p>
                     </div>
 
                     <div className="p-5 rounded-2xl bg-white/[0.08] border border-white/10 space-y-1">
-                      <p className="text-xs text-white/70 font-medium">Ahorro administrativo estimado</p>
-                      <p className="text-3xl sm:text-4xl font-black text-emerald-400">${moneySavedPerMonth}</p>
-                      <p className="text-[11px] text-white/50">MXN mensuales en carga operativa</p>
+                      <p className="text-xs text-white/70 font-medium">Ahorro operativo mensual estimado</p>
+                      <p className="text-3xl sm:text-4xl font-black text-emerald-400">${moneySavedEstimate}</p>
+                      <p className="text-[11px] text-white/50">MXN en optimización de procesos</p>
                     </div>
                   </div>
 
@@ -902,7 +1342,7 @@ export default function MoviProductLanding() {
                       style={{ background: 'linear-gradient(135deg, #1C37E0 0%, #3B58F0 100%)' }}
                     >
                       <Lock className="w-5 h-5" />
-                      <span>Comenzar a usar MOVI</span>
+                      <span>Ingresar a MOVI Digital</span>
                       <ArrowRight className="w-5 h-5" />
                     </a>
                   </div>
@@ -915,8 +1355,8 @@ export default function MoviProductLanding() {
           </div>
         </section>
 
-        {/* ─── 6. PREGUNTAS FRECUENTES (FAQ ACCORDION) ────────────────────── */}
-        <section id="faq" className="py-24 bg-[#030917]">
+        {/* ─── 9. PREGUNTAS FRECUENTES (FAQ) ───────────────────────────────── */}
+        <section id="faq" className="py-24 bg-[#050F28]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <div className="text-center space-y-4 mb-16">
@@ -929,7 +1369,24 @@ export default function MoviProductLanding() {
             </div>
 
             <div className="space-y-4">
-              {FAQS.map((faq, index) => {
+              {[
+                {
+                  q: '¿Qué es MOVI Digital y cuál es su relación con Grupo JIRO y Asociados?',
+                  a: 'MOVI Digital es la plataforma tecnológica propietaria desarrollada para la red nacional de promotorías, agentes y ejecutivos de Grupo JIRO y Asociados. Centraliza el control de trámites, cobranza, comisiones y herramientas de venta para asesores.'
+                },
+                {
+                  q: '¿Cómo funciona la asignación de prospectos desde Mi Página Web?',
+                  a: 'Cada asesor cuenta con su slug personalizado (ej. agentedeseguros.website/tu-nombre). Cuando un prospecto cotiza auto, gastos médicos o vida en tu web, el lead entra directamente a tu CRM con sus datos completos y recibes una alerta inmediata en tu WhatsApp.'
+                },
+                {
+                  q: '¿Cómo se concilian las comisiones con la Central de Producción?',
+                  a: 'El sistema importa los layouts de estados de cuenta de aseguradoras como GNP, Quálitas, Chubb, etc., y los cruza automáticamente con la base de datos de SICAS REST para generar los reportes y dispersiones quincenales exactas.'
+                },
+                {
+                  q: '¿Mis clientes pueden consultar sus pólizas?',
+                  a: 'Sí. A través de Seguwallet (seguwallet.mx), cada cliente de Grupo JIRO puede acceder a su cartera digital con código OTP sin contraseñas, descargar carátulas y reportar siniestros 24/7.'
+                }
+              ].map((faq, index) => {
                 const isOpen = openFaq === index;
                 return (
                   <div
@@ -963,8 +1420,8 @@ export default function MoviProductLanding() {
           </div>
         </section>
 
-        {/* ─── 7. CTA FINAL ───────────────────────────────────────────────── */}
-        <section className="py-20 bg-gradient-to-b from-[#030917] to-[#050F28] relative">
+        {/* ─── 10. CTA FINAL & ACCESO ──────────────────────────────────────── */}
+        <section className="py-20 bg-gradient-to-b from-[#050F28] to-[#02050E] relative">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
             
             <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#1C37E0] to-[#00E5FF] flex items-center justify-center text-white mx-auto shadow-2xl shadow-blue-500/30">
@@ -973,10 +1430,10 @@ export default function MoviProductLanding() {
 
             <div className="space-y-4 max-w-2xl mx-auto">
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
-                Transforma tu promotoría con tecnología Insurtech
+                Impulsa tu carrera con la tecnología de Grupo JIRO
               </h2>
               <p className="text-base sm:text-lg text-white/70">
-                Únete a la red nacional de promotorías y agentes que operan con MOVI Digital.
+                Ingresa hoy a tu portal MOVI Digital y gestiona tus trámites, clientes y comisiones desde un solo lugar.
               </p>
             </div>
 
@@ -995,50 +1452,52 @@ export default function MoviProductLanding() {
           </div>
         </section>
 
-        {/* ─── 8. FOOTER INSTITUCIONAL ─────────────────────────────────────── */}
+        {/* ─── 11. FOOTER INSTITUCIONAL ────────────────────────────────────── */}
         <footer className="border-t border-white/[0.08] bg-[#02050E] py-14">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
             
             <div className="grid md:grid-cols-4 gap-8">
               
               <div className="md:col-span-2 space-y-4">
-                <img src={LOGO_MOVI} alt="MOVI Digital" className="h-10 w-auto object-contain" />
+                <div className="flex items-center gap-3">
+                  <img src={LOGO_MOVI} alt="MOVI Digital" className="h-9 w-auto object-contain" />
+                </div>
                 <p className="text-sm text-white/50 leading-relaxed max-w-sm">
-                  MOVI Digital es el ecosistema Insurtech y SaaS operativo para agentes y promotorías de seguros en México. Un desarrollo oficial respaldado por la Red Nacional de Grupo JIRO.
+                  MOVI Digital es la plataforma de gestión operativa y comercial de <strong>Grupo JIRO y Asociados</strong> para asesores y promotorías de seguros en México.
                 </p>
                 <div className="flex items-center gap-4 pt-2 text-xs text-white/40">
-                  <span>Protegido con encriptación SSL de 256 bits · Conexión SICAS REST</span>
+                  <span>Protegido con encriptación SSL de 256 bits · Integración SICAS REST</span>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-white">Navegación</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-white">Funciones Principales</p>
                 <ul className="space-y-2 text-sm text-white/60">
-                  <li><button onClick={() => scrollTo('plataforma')} className="hover:text-white transition-colors cursor-pointer">Plataforma SaaS</button></li>
-                  <li><button onClick={() => scrollTo('ecosistema')} className="hover:text-white transition-colors cursor-pointer">Ecosistema 8-en-1</button></li>
-                  <li><button onClick={() => scrollTo('aseguradoras')} className="hover:text-white transition-colors cursor-pointer">Aseguradoras</button></li>
+                  <li><button onClick={() => scrollTo('funciones')} className="hover:text-white transition-colors cursor-pointer">Control de Trámites</button></li>
+                  <li><button onClick={() => scrollTo('mi-web')} className="hover:text-white transition-colors cursor-pointer">Mi Página Web (Agente Demo)</button></li>
+                  <li><button onClick={() => scrollTo('central-produccion')} className="hover:text-white transition-colors cursor-pointer">Central de Producción</button></li>
+                  <li><button onClick={() => scrollTo('education')} className="hover:text-white transition-colors cursor-pointer">Seguros Education</button></li>
                   <li><button onClick={() => scrollTo('roi')} className="hover:text-white transition-colors cursor-pointer">Calculadora ROI</button></li>
-                  <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Preguntas Frecuentes</button></li>
                 </ul>
               </div>
 
               <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-white">Ecosistema</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-white">Ecosistema JIRO</p>
                 <ul className="space-y-2 text-sm text-white/60">
                   <li><a href="https://app.movi.digital" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">MOVI Core App</a></li>
                   <li><a href="https://seguwallet.mx" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Seguwallet</a></li>
-                  <li><a href="https://agentedeseguros.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Chava AI</a></li>
                   <li><a href="https://seguros.education" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Seguros Education</a></li>
-                  <li><a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Grupo JIRO</a></li>
+                  <li><a href="https://agentedeseguros.ai" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Chava AI</a></li>
+                  <li><a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Grupo JIRO y Asociados</a></li>
                 </ul>
               </div>
 
             </div>
 
             <div className="pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/40">
-              <p>© {new Date().getFullYear()} MOVI Digital · Grupo JIRO. Todos los derechos reservados.</p>
+              <p>© {new Date().getFullYear()} MOVI Digital · Grupo JIRO y Asociados. Todos los derechos reservados.</p>
               <div className="flex items-center gap-4">
-                <a href="/login" className="hover:text-white/70 transition-colors">Acceso Operativo</a>
+                <a href="/login" className="hover:text-white/70 transition-colors">Acceso Asesores</a>
                 <span>·</span>
                 <a href="https://grupojiro.com" target="_blank" rel="noopener noreferrer" className="hover:text-white/70 transition-colors">Aviso de Privacidad</a>
               </div>
