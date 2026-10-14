@@ -1,77 +1,89 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {
-  Shield,
   ShieldCheck,
-  Smartphone,
   FileText,
-  Download,
-  PhoneCall,
-  Sparkles,
   Lock,
   CheckCircle2,
   ArrowRight,
-  ChevronRight,
   ChevronDown,
-  Calendar,
-  Zap,
   Car,
   HeartPulse,
   Building2,
   Menu,
   X,
   ExternalLink,
-  MessageSquare,
-  Clock,
-  Laptop,
-  Check,
-  AlertTriangle,
-  Info,
-  HelpCircle,
-  FileCheck,
-  QrCode,
-  Share2,
-  Plus,
-  Send,
-  UserCheck,
-  FolderOpen,
-  Layers,
-  Database,
-  RefreshCw,
-  TrendingUp,
-  Cpu,
-  BarChart3,
-  Users,
-  Briefcase,
-  GraduationCap,
-  Store,
-  Palette,
-  Sliders,
-  DollarSign,
-  Compass,
-  Award,
-  Globe,
-  Bell,
-  Mail,
   MessageCircle,
+  Users,
+  BarChart3,
+  GraduationCap,
   Megaphone,
-  SlidersHorizontal,
-  Star,
-  CheckCircle,
-  ArrowUpRight,
-  Eye,
-  Settings,
-  Flame,
-  LayoutDashboard,
+  Globe,
+  HelpCircle,
   UserPlus,
   Phone,
-  Activity,
-  Layers3
+  Sparkles,
+  Zap,
+  Check
 } from 'lucide-react';
 
-// ─── LOGOS Y RECURSOS OFICIALES ──────────────────────────────────────────────
-const LOGO_MOVI = '/logo_color.svg';
-const LOGO_JIRO = '/logojiro.png';
+// ─── LOGOTIPOS VECTORIALES OFICIALES DE ALTA DEFINICIÓN ─────────────────────
+
+export function MoviOfficialLogo({ className = "h-10 w-auto" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 420 150" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="moviW1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#1C37E0" />
+          <stop offset="100%" stopColor="#1228B8" />
+        </linearGradient>
+        <linearGradient id="moviW2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#2563EB" />
+          <stop offset="100%" stopColor="#1D4ED8" />
+        </linearGradient>
+        <linearGradient id="moviW3" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#3B82F6" />
+          <stop offset="100%" stopColor="#2563EB" />
+        </linearGradient>
+        <linearGradient id="moviW4" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#00E5FF" />
+          <stop offset="100%" stopColor="#38BDF8" />
+        </linearGradient>
+      </defs>
+      <g transform="translate(10, 8)">
+        <path d="M 10 32 A 70 70 0 0 1 150 32 L 132 50 A 46 46 0 0 0 28 50 Z" fill="url(#moviW1)" />
+        <path d="M 28 50 A 46 46 0 0 1 132 50 L 116 66 A 28 28 0 0 0 44 66 Z" fill="url(#moviW2)" />
+        <path d="M 44 66 A 28 28 0 0 1 116 66 L 101 81 A 14 14 0 0 0 59 81 Z" fill="url(#moviW3)" />
+        <path d="M 59 81 A 14 14 0 0 1 101 81 L 80 102 Z" fill="url(#moviW4)" />
+        <path d="M 12 90 L 38 126 C 42 132, 48 135, 54 135 L 72 135 L 50 104 C 44 95, 30 84, 12 90 Z" fill="#1C37E0" />
+        <path d="M 148 90 L 122 126 C 118 132, 112 135, 106 135 L 88 135 L 110 104 C 116 95, 130 84, 148 90 Z" fill="#1C37E0" />
+      </g>
+      <g fill="#1C37E0" transform="translate(180, 0)">
+        <text x="0" y="86" fontFamily="system-ui, -apple-system, sans-serif" fontSize="76" fontWeight="900" letterSpacing="-2px">movi</text>
+        <text x="2" y="130" fontFamily="system-ui, -apple-system, sans-serif" fontSize="42" fontWeight="800" letterSpacing="-1px">.digital</text>
+      </g>
+    </svg>
+  );
+}
+
+export function GrupoJiroLogo({ className = "h-8 w-auto" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 280 80" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Icon Triangle & Diamond */}
+      <g fill="#1C37E0" transform="translate(180, 6)">
+        <path d="M 48 0 L 60 18 L 48 36 L 36 18 Z" />
+        <path d="M 0 68 L 36 68 L 68 18 L 52 18 L 28 54 L 14 54 L 42 12 L 28 12 Z" />
+      </g>
+      {/* Text GRUPO JIRO */}
+      <g fill="#0A2540" transform="translate(0, 10)">
+        <text x="0" y="24" fontFamily="system-ui, -apple-system, sans-serif" fontSize="24" fontWeight="800" letterSpacing="2px">GRUPO</text>
+        <text x="0" y="60" fontFamily="system-ui, -apple-system, sans-serif" fontSize="42" fontWeight="900" letterSpacing="-1px">JIRO</text>
+      </g>
+    </svg>
+  );
+}
+
+// ─── RECURSOS DE MARCA ───────────────────────────────────────────────────────
 const LOGO_SEGUWALLET = '/seguwallet-logo.png';
 const LOGO_EDUCATION = '/og-seguros-education.svg';
 const AVATAR_DEMO = '/display-avatar.png';
@@ -104,7 +116,7 @@ export default function MoviProductLanding() {
         <title>MOVI Digital · Mi Oficina Virtual | Grupo JIRO</title>
         <meta
           name="description"
-          content="MOVI Digital es la plataforma tecnológica y comercial exclusiva de Grupo JIRO para sus agentes de seguros. Control de trámites, Mi CRM, Central de Producción, tu propia página web y notificaciones automáticas."
+          content="MOVI Digital es la plataforma exclusiva de gestión para agentes de seguros de Grupo JIRO. Control de trámites, CRM, comisiones, tu web personalizada y notificaciones."
         />
         <meta
           name="keywords"
@@ -117,17 +129,16 @@ export default function MoviProductLanding() {
         <meta property="og:title" content="MOVI Digital · Mi Oficina Virtual | Grupo JIRO" />
         <meta
           property="og:description"
-          content="La plataforma digital de vanguardia exclusiva para la red de agentes de Grupo JIRO."
+          content="La plataforma digital concisa y de vanguardia para la red de agentes de Grupo JIRO."
         />
         <meta property="og:url" content="https://movi.digital/" />
-        <meta property="og:image" content="https://movi.digital/logo_color.svg" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="MOVI Digital · Mi Oficina Virtual | Grupo JIRO" />
         <meta
           name="twitter:description"
-          content="Tecnología de gestión comercial y operativa para nuestros agentes de seguros."
+          content="Gestión comercial y operativa para agentes de seguros."
         />
       </Helmet>
 
@@ -135,87 +146,72 @@ export default function MoviProductLanding() {
       <style>{`
         @keyframes floatSlow {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
+          50% { transform: translateY(-6px); }
         }
-        @keyframes pulseGlow {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.05); }
-        }
-        @keyframes shimmer {
+        @keyframes shimmerBadge {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
         }
         .animate-float {
           animation: floatSlow 4s ease-in-out infinite;
         }
-        .animate-glow {
-          animation: pulseGlow 5s ease-in-out infinite;
-        }
         .shimmer-badge {
-          background: linear-gradient(90deg, rgba(238,242,255,0.8) 0%, rgba(224,231,255,1) 50%, rgba(238,242,255,0.8) 100%);
+          background: linear-gradient(90deg, #EFF6FF 0%, #DBEAFE 50%, #EFF6FF 100%);
           background-size: 200% 100%;
-          animation: shimmer 3s infinite;
+          animation: shimmerBadge 3s infinite;
         }
       `}</style>
 
       <div className="min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-blue-600 selection:text-white font-sans antialiased overflow-x-hidden">
 
-        {/* ─── 1. NAVBAR SUPERIOR FIJO Y CLARO CON LOGO ALTO CONTRASTE ──────── */}
+        {/* ─── 1. NAVBAR SUPERIOR CLARO CON LOGOS OFICIALES ─────────────────── */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all duration-200 shadow-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16 sm:h-20">
               
-              {/* Logos Institucionales: MOVI Digital + Grupo JIRO */}
-              <div className="flex items-center gap-3.5">
+              {/* Logos Oficiales: MOVI Digital + Grupo JIRO */}
+              <div className="flex items-center gap-3 sm:gap-4">
                 <a
                   href="#inicio"
                   onClick={(e) => { e.preventDefault(); scrollTo('inicio'); }}
-                  className="flex items-center gap-2 group transition-transform duration-200 hover:scale-102"
+                  className="flex items-center group transition-transform duration-200 hover:scale-102"
                 >
-                  <img
-                    src={LOGO_MOVI}
-                    alt="MOVI Digital"
-                    className="h-8 sm:h-10 w-auto object-contain"
-                  />
+                  <MoviOfficialLogo className="h-8 sm:h-9 w-auto" />
                 </a>
                 <div className="h-6 w-[1px] bg-slate-200 hidden sm:block" />
                 <a
                   href="https://www.grupojiro.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-blue-700 transition-colors"
+                  className="hidden sm:flex items-center hover:opacity-80 transition-opacity"
                 >
-                  <img
-                    src={LOGO_JIRO}
-                    alt="Grupo JIRO"
-                    className="h-6 sm:h-7 w-auto object-contain hover:opacity-85 transition-opacity"
-                  />
+                  <GrupoJiroLogo className="h-6 sm:h-7 w-auto" />
                 </a>
               </div>
 
-              {/* Menú de Navegación Interactivo */}
+              {/* Menú de Navegación */}
               <nav className="hidden lg:flex items-center gap-7">
                 <button
                   onClick={() => scrollTo('funciones')}
-                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-all cursor-pointer relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform"
+                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
                 >
                   Beneficios y Módulos
                 </button>
                 <button
                   onClick={() => scrollTo('mi-web')}
-                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-all cursor-pointer relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform"
+                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
                 >
                   Tu Página Web
                 </button>
                 <button
                   onClick={() => scrollTo('herramientas')}
-                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-all cursor-pointer relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform"
+                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
                 >
                   Herramientas
                 </button>
                 <button
                   onClick={() => scrollTo('faq')}
-                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-all cursor-pointer relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform"
+                  className="text-xs xl:text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
                 >
                   Preguntas Frecuentes
                 </button>
@@ -244,7 +240,7 @@ export default function MoviProductLanding() {
             </div>
           </div>
 
-          {/* Menú móvil animado */}
+          {/* Menú móvil */}
           {mobileMenuOpen && (
             <div className="lg:hidden border-t border-slate-200 bg-white px-5 py-6 space-y-4 shadow-xl animate-in slide-in-from-top duration-200">
               <div className="space-y-2">
@@ -277,53 +273,46 @@ export default function MoviProductLanding() {
           )}
         </header>
 
-        {/* ─── 2. HERO PRINCIPAL: SAAS TECH MODERNO CON LOGO DESTACADO ────── */}
+        {/* ─── 2. HERO PRINCIPAL CONCISO Y MODERNO ─────────────────────────── */}
         <section
           id="inicio"
-          className="relative pt-24 pb-16 lg:pt-36 lg:pb-28 bg-gradient-to-b from-blue-50/70 via-white to-[#F8FAFC] overflow-hidden"
+          className="relative pt-24 pb-16 lg:pt-36 lg:pb-24 bg-gradient-to-b from-blue-50/70 via-white to-[#F8FAFC] overflow-hidden"
         >
-          {/* Acentos de fondo con efecto Glow animado */}
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[850px] h-[450px] bg-gradient-to-r from-blue-200/40 via-indigo-200/30 to-cyan-200/30 rounded-full blur-3xl pointer-events-none animate-glow" />
-
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-4xl mx-auto space-y-7">
+            <div className="text-center max-w-3xl mx-auto space-y-6">
               
-              {/* Logo Oficial de MOVI Digital destacado (Sustituye al texto) */}
+              {/* Logo Oficial MOVI Digital en Gran Formato (Sin Texto Duplicado) */}
               <div className="flex justify-center mb-2 animate-float">
-                <img
-                  src={LOGO_MOVI}
-                  alt="MOVI Digital"
-                  className="h-16 sm:h-20 lg:h-24 w-auto object-contain drop-shadow-md hover:scale-105 transition-transform duration-300"
-                />
+                <MoviOfficialLogo className="h-14 sm:h-18 lg:h-22 w-auto drop-shadow-sm hover:scale-102 transition-transform duration-300" />
               </div>
 
-              {/* Badge Oficial Shimmer */}
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full shimmer-badge border border-blue-200/90 text-blue-900 text-xs font-extrabold tracking-wide uppercase shadow-xs">
-                <Sparkles className="w-4 h-4 text-blue-600 animate-spin" style={{ animationDuration: '8s' }} />
+              {/* Badge Oficial */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full shimmer-badge border border-blue-200 text-blue-900 text-xs font-extrabold uppercase tracking-wide shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                 <span>Plataforma Digital Exclusiva para Asesores de Grupo JIRO</span>
               </div>
 
-              {/* Subtítulo enfocado en la plataforma */}
-              <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto font-normal">
-                La herramienta tecnológica todo-en-uno creada exclusivamente para respaldar el éxito de nuestros agentes de seguros en <strong>Grupo JIRO</strong>. Controla tus trámites, atiende a tus prospectos en tu CRM, consulta tus comisiones y haz crecer tu cartera con tu propia página web personalizada.
+              {/* Subtítulo Conciso y Directo */}
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                Controla tus trámites en vivo, atiende prospectos en tu CRM, consulta tus comisiones y haz crecer tu cartera con tu propia página web profesional.
               </p>
 
-              {/* Botones de Acción Interactivos */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+              {/* Botones de Acción */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-1">
                 <a
                   href="https://app.movi.digital/login"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-base text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-xl shadow-blue-600/30 hover:shadow-blue-600/40 hover:-translate-y-0.5 cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-600/25 hover:-translate-y-0.5"
                 >
-                  <Lock className="w-5 h-5" />
+                  <Lock className="w-4 h-4" />
                   <span>Ingresar</span>
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4" />
                 </a>
 
                 <a
                   href="https://agentedeseguros.website/ejemplo"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 shadow-sm transition-all hover:-translate-y-0.5"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl font-bold text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 shadow-xs transition-all hover:-translate-y-0.5"
                 >
                   <Globe className="w-4 h-4 text-blue-600" />
                   <span>Ver Página Web de Ejemplo</span>
@@ -331,57 +320,57 @@ export default function MoviProductLanding() {
                 </a>
               </div>
 
-              {/* 4 Métricas Clave con Hover Motion */}
-              <div className="pt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 text-left border-t border-slate-200/80">
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md hover:border-blue-300 hover:-translate-y-1 transition-all duration-200">
-                  <p className="text-2xl font-black text-blue-600">100%</p>
+              {/* 4 Métricas Clave */}
+              <div className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 text-left border-t border-slate-200/80">
+                <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-blue-300 transition-colors">
+                  <p className="text-xl font-black text-blue-600">100%</p>
                   <p className="text-xs font-bold text-slate-800">Control de Trámites</p>
-                  <p className="text-[11px] text-slate-500">Emisión y cotización en línea</p>
+                  <p className="text-[11px] text-slate-500">Emisión en línea</p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md hover:border-emerald-300 hover:-translate-y-1 transition-all duration-200">
-                  <p className="text-2xl font-black text-emerald-600">WhatsApp</p>
-                  <p className="text-xs font-bold text-slate-800">Notificaciones en Vivo</p>
-                  <p className="text-[11px] text-slate-500">Avisos automáticos a clientes</p>
+                <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-emerald-300 transition-colors">
+                  <p className="text-xl font-black text-emerald-600">WhatsApp</p>
+                  <p className="text-xs font-bold text-slate-800">Notificaciones</p>
+                  <p className="text-[11px] text-slate-500">Alertas automáticas</p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md hover:border-indigo-300 hover:-translate-y-1 transition-all duration-200">
-                  <p className="text-2xl font-black text-indigo-600">Mi CRM</p>
-                  <p className="text-xs font-bold text-slate-800">Cartera Centralizada</p>
-                  <p className="text-[11px] text-slate-500">Historial y prospectos 360°</p>
+                <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-indigo-300 transition-colors">
+                  <p className="text-xl font-black text-indigo-600">Mi CRM</p>
+                  <p className="text-xs font-bold text-slate-800">Cartera 360°</p>
+                  <p className="text-[11px] text-slate-500">Historial centralizado</p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md hover:border-cyan-300 hover:-translate-y-1 transition-all duration-200">
-                  <p className="text-2xl font-black text-cyan-600">Mi Web</p>
-                  <p className="text-xs font-bold text-slate-800">Sitio Profesional Propio</p>
-                  <p className="text-[11px] text-slate-500">Con cotizadores integrados</p>
+                <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-cyan-300 transition-colors">
+                  <p className="text-xl font-black text-cyan-600">Mi Web</p>
+                  <p className="text-xs font-bold text-slate-800">Sitio Profesional</p>
+                  <p className="text-[11px] text-slate-500">Cotizadores listos</p>
                 </div>
               </div>
 
             </div>
 
-            {/* Mockup Interactivo del SaaS MOVI con Transiciones Suaves */}
-            <div className="mt-14 max-w-5xl mx-auto">
-              <div className="rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden hover:shadow-3xl transition-shadow duration-300">
+            {/* Mockup Interactivo del SaaS MOVI */}
+            <div className="mt-12 max-w-5xl mx-auto">
+              <div className="rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden">
                 
                 {/* Header de la ventana */}
-                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-rose-400" />
-                    <span className="w-3 h-3 rounded-full bg-amber-400" />
-                    <span className="w-3 h-3 rounded-full bg-emerald-400" />
-                    <span className="ml-2 font-mono text-xs font-semibold text-slate-500 bg-white px-3 py-1 rounded-lg border border-slate-200">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <span className="ml-2 font-mono text-slate-500 bg-white px-2.5 py-0.5 rounded-md border border-slate-200">
                       app.movi.digital · Grupo JIRO
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>Oficina Virtual Activa</span>
                   </div>
                 </div>
 
-                {/* Selector de Pestañas Interactivas */}
-                <div className="flex overflow-x-auto no-scrollbar gap-2 p-3 bg-slate-100/80 border-b border-slate-200 text-xs font-bold">
+                {/* Selector de Pestañas */}
+                <div className="flex overflow-x-auto no-scrollbar gap-1.5 p-2.5 bg-slate-100/80 border-b border-slate-200 text-xs font-bold">
                   {[
                     { id: 'tramites', label: 'Control de Trámites', icon: FileText },
                     { id: 'crm', label: 'Mi CRM y Prospectos', icon: Users },
@@ -395,61 +384,58 @@ export default function MoviProductLanding() {
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl whitespace-nowrap transition-all cursor-pointer ${
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl whitespace-nowrap transition-all cursor-pointer ${
                           isSelected
-                            ? 'bg-blue-600 text-white shadow-md scale-102'
+                            ? 'bg-blue-600 text-white shadow-sm'
                             : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80'
                         }`}
                       >
-                        <IconComp className="w-4 h-4" />
+                        <IconComp className="w-3.5 h-3.5" />
                         <span>{tab.label}</span>
                       </button>
                     );
                   })}
                 </div>
 
-                {/* Contenido Dinámico con Animación Fade */}
-                <div className="p-6 sm:p-8 min-h-[380px] bg-white">
+                {/* Contenido Dinámico */}
+                <div className="p-6 min-h-[340px] bg-white">
                   
                   {activeTab === 'tramites' && (
-                    <div className="space-y-4 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-base font-extrabold text-slate-900">Mesa de Control de Trámites</h3>
-                          <p className="text-xs text-slate-500">Monitoreo de solicitudes en tiempo real</p>
-                        </div>
-                        <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold">
+                    <div className="space-y-3 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-extrabold text-slate-900">Mesa de Control de Trámites</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold">
                           14 Trámites en Curso
                         </span>
                       </div>
 
-                      <div className="space-y-2.5">
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between hover:bg-slate-100/70 transition-colors">
-                          <div className="space-y-1">
-                            <p className="text-sm font-bold text-slate-900">Emisión Auto Cobertura Amplia · Folio #TR-8821</p>
-                            <p className="text-xs text-slate-500">Cliente: Mariana Ríos · GNP Seguros · Póliza Anual</p>
+                      <div className="space-y-2">
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between">
+                          <div className="space-y-0.5 text-left">
+                            <p className="text-xs font-bold text-slate-900">Emisión Auto Cobertura Amplia · Folio #TR-8821</p>
+                            <p className="text-[11px] text-slate-500">Cliente: Mariana Ríos · GNP Seguros · Póliza Anual</p>
                           </div>
-                          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
                             Póliza Emitida ✓
                           </span>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between hover:bg-slate-100/70 transition-colors">
-                          <div className="space-y-1">
-                            <p className="text-sm font-bold text-slate-900">Endoso Aumento de Suma Asegurada · Folio #TR-8822</p>
-                            <p className="text-xs text-slate-500">Cliente: Constructora del Centro · Quálitas Flotillas</p>
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between">
+                          <div className="space-y-0.5 text-left">
+                            <p className="text-xs font-bold text-slate-900">Endoso Aumento de Suma · Folio #TR-8822</p>
+                            <p className="text-[11px] text-slate-500">Cliente: Constructora del Centro · Quálitas Flotillas</p>
                           </div>
-                          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+                          <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold">
                             En Revisión Mesa JIRO
                           </span>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between hover:bg-slate-100/70 transition-colors">
-                          <div className="space-y-1">
-                            <p className="text-sm font-bold text-slate-900">Cotización Gastos Médicos Mayores · Folio #TR-8823</p>
-                            <p className="text-xs text-slate-500">Cliente: Dr. Esteban Garza · Plan Familiar</p>
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-between">
+                          <div className="space-y-0.5 text-left">
+                            <p className="text-xs font-bold text-slate-900">Cotización Gastos Médicos · Folio #TR-8823</p>
+                            <p className="text-[11px] text-slate-500">Cliente: Dr. Esteban Garza · Plan Familiar</p>
                           </div>
-                          <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold">
+                          <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[11px] font-bold">
                             Cotización Lista
                           </span>
                         </div>
@@ -458,107 +444,87 @@ export default function MoviProductLanding() {
                   )}
 
                   {activeTab === 'crm' && (
-                    <div className="space-y-4 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-base font-extrabold text-slate-900">Mi CRM de Asesor</h3>
-                          <p className="text-xs text-slate-500">Tus prospectos y clientes organizados en un solo lugar</p>
-                        </div>
-                        <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold">
+                    <div className="space-y-3 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-extrabold text-slate-900">Mi CRM de Asesor</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold">
                           48 Clientes Registrados
                         </span>
                       </div>
 
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-2 hover:bg-slate-100/70 transition-colors">
+                      <div className="grid sm:grid-cols-2 gap-3 text-left">
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <p className="text-sm font-bold text-slate-900">Lic. Roberto Sánchez</p>
-                            <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800 text-[11px] font-bold">Lead Web</span>
+                            <p className="text-xs font-bold text-slate-900">Lic. Roberto Sánchez</p>
+                            <span className="px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 text-[10px] font-bold">Lead Web</span>
                           </div>
-                          <p className="text-xs text-slate-500">Cotizó Seguro de Auto desde tu página web personalizada</p>
-                          <div className="pt-1 flex items-center gap-2 text-xs font-semibold text-blue-600">
-                            <PhoneCall className="w-3.5 h-3.5" /> 55 4920 1823 · WhatsApp Activo
-                          </div>
+                          <p className="text-[11px] text-slate-500">Cotizó Seguro de Auto desde tu web</p>
+                          <p className="text-[11px] font-semibold text-blue-600">55 4920 1823 · WhatsApp Activo</p>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-2 hover:bg-slate-100/70 transition-colors">
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <p className="text-sm font-bold text-slate-900">Dra. Claudia Morales</p>
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">Cliente Vigente</span>
+                            <p className="text-xs font-bold text-slate-900">Dra. Claudia Morales</p>
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">Cliente Vigente</span>
                           </div>
-                          <p className="text-xs text-slate-500">Póliza GMM Quálitas · Renovación próxima en 28 días</p>
-                          <div className="pt-1 flex items-center gap-2 text-xs font-semibold text-emerald-700">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Recibo 1/4 Pagado y Validado
-                          </div>
+                          <p className="text-[11px] text-slate-500">Póliza GMM Quálitas · Renovación en 28 días</p>
+                          <p className="text-[11px] font-semibold text-emerald-700">Recibo 1/4 Validado ✓</p>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {activeTab === 'produccion' && (
-                    <div className="space-y-4 animate-in fade-in duration-200">
-                      <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white space-y-2 shadow-lg">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold text-blue-100 uppercase tracking-wider">Tus Comisiones Quincenales</p>
-                          <span className="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold">Liquidación Lista</span>
-                        </div>
-                        <p className="text-3xl font-black">$48,920.00 MXN</p>
-                        <p className="text-xs text-blue-100">Dispersión programada con desglose por aseguradora</p>
+                    <div className="space-y-3 animate-in fade-in duration-150 text-left">
+                      <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white space-y-1">
+                        <p className="text-[11px] text-blue-100 font-semibold uppercase tracking-wider">Comisiones Quincenales</p>
+                        <p className="text-2xl font-black">$48,920.00 MXN</p>
+                        <p className="text-[11px] text-blue-100">Dispersión programada por aseguradora</p>
                       </div>
 
-                      <div className="space-y-2 text-xs">
-                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                          <span className="font-semibold text-slate-800">GNP Seguros (Emisiones del periodo)</span>
-                          <span className="font-bold text-emerald-600 font-mono text-sm">$26,400.00</span>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                          <span>GNP Seguros (Emisiones)</span>
+                          <span className="font-bold text-emerald-600 font-mono">$26,400.00</span>
                         </div>
-                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                          <span className="font-semibold text-slate-800">Quálitas Compañía de Seguros</span>
-                          <span className="font-bold text-emerald-600 font-mono text-sm">$14,820.00</span>
-                        </div>
-                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                          <span className="font-semibold text-slate-800">Chubb Seguros México</span>
-                          <span className="font-bold text-emerald-600 font-mono text-sm">$7,700.00</span>
+                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                          <span>Quálitas Compañía de Seguros</span>
+                          <span className="font-bold text-emerald-600 font-mono">$14,820.00</span>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {activeTab === 'notificaciones' && (
-                    <div className="space-y-4 animate-in fade-in duration-200">
-                      <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center gap-3">
-                        <MessageCircle className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                    <div className="space-y-3 animate-in fade-in duration-150 text-left">
+                      <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center gap-3">
+                        <MessageCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                         <div>
-                          <p className="text-xs font-extrabold text-emerald-900">Avisos automáticos sin trabajo manual</p>
-                          <p className="text-xs text-emerald-700">Tu cliente recibe alertas por WhatsApp cada vez que su póliza o recibo cambia de estado.</p>
+                          <p className="text-xs font-bold text-emerald-900">Avisos automáticos sin trabajo manual</p>
+                          <p className="text-[11px] text-emerald-700">Alertas por WhatsApp al cambiar el estado de la póliza.</p>
                         </div>
                       </div>
 
-                      <div className="p-5 rounded-2xl bg-slate-900 text-white space-y-3 font-mono text-xs shadow-md">
-                        <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                          <span>Mensaje WhatsApp automático enviado a cliente</span>
-                          <span>Entregado ✓✓</span>
-                        </div>
-                        <p className="text-emerald-400 font-sans leading-relaxed text-sm">
-                          "Hola <strong>Mariana</strong>, tu asesor <strong>Carlos Méndez (Grupo JIRO)</strong> te informa que tu póliza de auto <strong>GNP #9281-9920</strong> ya fue emitida. Puedes consultarla y descargar tu recibo oficial en tu Seguwallet."
+                      <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-2 font-mono text-xs">
+                        <p className="text-[10px] text-slate-400">WhatsApp enviado automáticamente:</p>
+                        <p className="text-emerald-400 font-sans leading-relaxed text-xs">
+                          "Hola <strong>Mariana</strong>, tu asesor <strong>Carlos Méndez (Grupo JIRO)</strong> te informa que tu póliza de auto <strong>GNP #9281-9920</strong> ya fue emitida. Puedes descargar tu recibo en Seguwallet."
                         </p>
                       </div>
                     </div>
                   )}
 
                   {activeTab === 'comunicados' && (
-                    <div className="space-y-3 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-base font-extrabold text-slate-900">Comunicados y Campañas Grupo JIRO</h3>
-                        <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">Oficial</span>
+                    <div className="space-y-3 animate-in fade-in duration-150 text-left">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-extrabold text-slate-900">Comunicados y Campañas Grupo JIRO</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">Oficial</span>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1.5 hover:bg-amber-50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-amber-900">Campaña de Autos GNP & Quálitas 2026</span>
-                          <span className="text-[11px] text-amber-700 font-semibold">Vigente este mes</span>
-                        </div>
-                        <p className="text-xs text-slate-700 leading-relaxed">
-                          Conoce la tabla de bonos especiales por volumen de pólizas emitidas en el ramo de automóviles para toda la red de agentes de Grupo JIRO.
+                      <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
+                        <p className="text-xs font-bold text-amber-900">Campaña de Autos GNP & Quálitas 2026</p>
+                        <p className="text-[11px] text-slate-700 leading-relaxed">
+                          Conoce la tabla de bonos especiales por volumen de pólizas emitidas para toda la red de agentes de Grupo JIRO.
                         </p>
                       </div>
                     </div>
@@ -567,14 +533,14 @@ export default function MoviProductLanding() {
                 </div>
 
                 {/* Footer del Mockup */}
-                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <span className="text-slate-500 font-medium">Acceso seguro exclusivo para agentes de Grupo JIRO</span>
+                <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <span className="text-slate-500">Acceso exclusivo para agentes de Grupo JIRO</span>
                   <a
                     href="https://app.movi.digital/login"
-                    className="font-extrabold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 transition-colors"
+                    className="font-extrabold text-blue-600 hover:text-blue-800 flex items-center gap-1.5"
                   >
                     <span>Ingresar</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </a>
                 </div>
 
@@ -584,87 +550,81 @@ export default function MoviProductLanding() {
           </div>
         </section>
 
-        {/* ─── 3. SECCIÓN: FUNCIONES CLAVE DE MI OFICINA VIRTUAL ────────────── */}
+        {/* ─── 3. FUNCIONES CLAVE CONCISAS ─────────────────────────────────── */}
         <section id="funciones" className="py-20 bg-white border-y border-slate-200/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
+            <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-wider">
                 Diseñado para el Asesor de Éxito
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                Todo lo que necesitas para operar tu negocio de seguros
+                Módulos de Gestión de Grupo JIRO
               </h2>
-              <p className="text-base text-slate-600 leading-relaxed">
-                Olvídate de procesos manuales y hojas de cálculo dispersas. MOVI Digital concentra toda la fuerza comercial y operativa en tus manos.
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Toda la fuerza comercial y operativa concentrada en tu oficina virtual.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               
-              {/* Feature 1 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-blue-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                  <FileText className="w-6 h-6" />
+              <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-blue-300 hover:shadow-lg transition-all space-y-3 text-left">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md">
+                  <FileText className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Control Total de Trámites</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Ingresa y monitorea solicitudes de cotización, emisión, cancelaciones y endosos con asignación directa al equipo de operaciones de Grupo JIRO.
+                <h3 className="text-lg font-bold text-slate-900">Control de Trámites</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Monitorea cotizaciones, emisiones, cancelaciones y endosos con asignación directa al equipo de operaciones de Grupo JIRO.
                 </p>
               </div>
 
-              {/* Feature 2 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-emerald-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
-                  <MessageCircle className="w-6 h-6" />
+              <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-emerald-300 hover:shadow-lg transition-all space-y-3 text-left">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+                  <MessageCircle className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Notificaciones por WhatsApp y Correo</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Mantén a tus clientes y a ti mismo informados al instante ante cualquier actualización o pago de póliza sin redactar mensajes manualmente.
+                <h3 className="text-lg font-bold text-slate-900">Notificaciones en Vivo</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Avisos automáticos por WhatsApp y correo a tus clientes cuando su póliza o recibo cambia de estado.
                 </p>
               </div>
 
-              {/* Feature 3 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-indigo-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
-                  <Users className="w-6 h-6" />
+              <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-indigo-300 hover:shadow-lg transition-all space-y-3 text-left">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
+                  <Users className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Mi CRM Integrado</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Historial completo de clientes, fechas de renovación, documentos oficiales y seguimiento oportuno para asegurar renovaciones y ventas cruzadas.
+                <h3 className="text-lg font-bold text-slate-900">Mi CRM Integrado</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Historial de prospectos, clientes y vigencias para asegurar renovaciones y ventas cruzadas.
                 </p>
               </div>
 
-              {/* Feature 4 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-cyan-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-600 text-white flex items-center justify-center shadow-md shadow-cyan-500/20">
-                  <BarChart3 className="w-6 h-6" />
+              <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-cyan-300 hover:shadow-lg transition-all space-y-3 text-left">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-600 text-white flex items-center justify-center shadow-md">
+                  <BarChart3 className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Central de Producción</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Consulta de comisiones quincenales, recibos cobrados, estados de cuenta y bonos comerciales con máxima transparencia y exactitud.
+                <h3 className="text-lg font-bold text-slate-900">Central de Producción</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Consulta tus comisiones quincenales, recibos cobrados y bonos con total claridad y exactitud.
                 </p>
               </div>
 
-              {/* Feature 5 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-rose-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
-                  <Globe className="w-6 h-6" />
+              <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-rose-300 hover:shadow-lg transition-all space-y-3 text-left">
+                <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md">
+                  <Globe className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Tu Propia Página Web</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Un sitio web profesional personalizado con tu nombre, foto, datos de contacto y cotizadores que envían los prospectos directo a tu CRM.
+                <h3 className="text-lg font-bold text-slate-900">Tu Propia Página Web</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Sitio web profesional con tu nombre y cotizadores integrados que envían los leads directo a tu CRM.
                 </p>
               </div>
 
-              {/* Feature 6 */}
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-amber-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
-                  <Megaphone className="w-6 h-6" />
+              <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200/90 hover:border-amber-300 hover:shadow-lg transition-all space-y-3 text-left">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md">
+                  <Megaphone className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900">Comunicados y Campañas JIRO</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Acceso directo a circulares de aseguradoras, promociones exclusivas, bonos y políticas comerciales emitidas por Grupo JIRO.
+                <h3 className="text-lg font-bold text-slate-900">Comunicados JIRO</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Circulares oficiales, incentivos y campañas comerciales emitidas directamente por Grupo JIRO.
                 </p>
               </div>
 
@@ -673,65 +633,65 @@ export default function MoviProductLanding() {
           </div>
         </section>
 
-        {/* ─── 4. SECCIÓN: TU PÁGINA WEB PERSONALIZADA (MOCKUP EXACTO) ─────── */}
-        <section id="mi-web" className="py-24 bg-[#F8FAFC]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+        {/* ─── 4. SECCIÓN: TU PÁGINA WEB PERSONALIZADA (MOCKUP REAL) ───────── */}
+        <section id="mi-web" className="py-20 bg-[#F8FAFC]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
             
-            <div className="text-center max-w-3xl mx-auto space-y-4">
+            <div className="text-center max-w-3xl mx-auto space-y-3">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-100 text-blue-800 text-xs font-extrabold uppercase tracking-wider">
-                <Globe className="w-4 h-4 text-blue-600" /> Tu Marca Personal en Internet
+                <Globe className="w-4 h-4 text-blue-600" /> Presencia Digital
               </span>
 
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 leading-tight">
-                Tu propia Página Web conectada en tiempo real a tu CRM
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                Tu Página Web Conectada al CRM
               </h2>
 
-              <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-                Cada asesor de Grupo JIRO cuenta con su propio sitio web oficial para captar prospectos, generar cotizaciones y recibir alertas directas por WhatsApp.
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Cada asesor de Grupo JIRO cuenta con su propio sitio web oficial para captar prospectos y cotizar seguros.
               </p>
 
-              <div className="pt-2">
+              <div className="pt-1">
                 <a
                   href="https://agentedeseguros.website/ejemplo"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-all hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all"
                 >
-                  <span>Abrir Página Web de Ejemplo en Vivo</span>
-                  <ExternalLink className="w-4 h-4" />
+                  <span>Abrir Página Web de Ejemplo</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
             </div>
 
-            {/* MOCKUP REAL EXACTO AL DISEÑO ADJUNTO */}
-            <div className="max-w-5xl mx-auto rounded-3xl border border-slate-200/90 bg-white shadow-2xl overflow-hidden text-slate-900 hover:shadow-3xl transition-shadow duration-300">
+            {/* MOCKUP REAL DE AGENTE DEMO */}
+            <div className="max-w-5xl mx-auto rounded-3xl border border-slate-200/90 bg-white shadow-xl overflow-hidden text-slate-900">
               
-              {/* Barra Superior del Navegador Simulado */}
-              <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between text-xs">
+              {/* Browser Bar */}
+              <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-rose-400" />
-                  <span className="w-3 h-3 rounded-full bg-amber-400" />
-                  <span className="w-3 h-3 rounded-full bg-emerald-400" />
-                  <span className="ml-2 font-mono text-slate-600 bg-white px-3 py-1 rounded-md border border-slate-200 truncate">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                  <span className="ml-2 font-mono text-slate-600 bg-white px-2.5 py-0.5 rounded-md border border-slate-200 truncate">
                     https://agentedeseguros.website/ejemplo
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[11px]">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="font-bold text-emerald-800 text-[11px]">En Línea</span>
+                  <span>En Línea</span>
                 </div>
               </div>
 
-              {/* Header Interno del Sitio Web del Asesor Demo */}
-              <div className="px-6 sm:px-10 py-5 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              {/* Header Interno del Sitio Web del Asesor */}
+              <div className="px-6 sm:px-10 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
                   <div className="flex flex-col text-left leading-none">
                     <span className="text-sm font-extrabold text-slate-900 tracking-tight">seguros</span>
                     <span className="text-xs font-black text-amber-500">.studio</span>
                   </div>
                 </div>
 
-                <div className="hidden sm:flex items-center gap-6 text-xs font-bold text-slate-600">
+                <div className="hidden sm:flex items-center gap-5 text-xs font-bold text-slate-600">
                   <span className="px-3 py-1 rounded-full bg-slate-800 text-white">Inicio</span>
                   <span className="hover:text-slate-900 cursor-pointer">Aseguradoras</span>
                   <span className="hover:text-slate-900 cursor-pointer">Cotizar</span>
@@ -739,12 +699,12 @@ export default function MoviProductLanding() {
                   <span className="hover:text-slate-900 cursor-pointer">App</span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div>
                   <a
                     href="https://agentedeseguros.website/ejemplo"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-xs transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-xs transition"
                   >
                     <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
                     <span>WhatsApp</span>
@@ -752,23 +712,14 @@ export default function MoviProductLanding() {
                 </div>
               </div>
 
-              {/* Cuerpo del Mockup: 2 Columnas idénticas al screenshot */}
-              <div className="p-6 sm:p-10 lg:p-12 grid lg:grid-cols-12 gap-10 items-start relative">
+              {/* Cuerpo del Mockup */}
+              <div className="p-6 sm:p-10 grid lg:grid-cols-12 gap-8 items-start relative">
                 
-                {/* Columna Izquierda: Perfil y Botones de Contacto */}
-                <div className="lg:col-span-5 space-y-6 text-left">
+                {/* Columna Izquierda: Perfil y Botones */}
+                <div className="lg:col-span-5 space-y-5 text-left">
                   
-                  {/* Logo pequeño superior */}
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex flex-col text-left leading-none">
-                      <span className="text-sm font-extrabold text-slate-900 tracking-tight">seguros</span>
-                      <span className="text-xs font-black text-amber-500">.studio</span>
-                    </div>
-                  </div>
-
-                  {/* Avatar Circular con Borde Multicolor */}
                   <div className="relative inline-block">
-                    <div className="w-32 h-32 rounded-full p-1.5 bg-gradient-to-tr from-amber-400 via-emerald-400 to-blue-500 shadow-md">
+                    <div className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-amber-400 via-emerald-400 to-blue-500 shadow-md">
                       <div className="w-full h-full rounded-full bg-slate-100 overflow-hidden flex items-center justify-center border-2 border-white">
                         <img
                           src={AVATAR_DEMO}
@@ -777,7 +728,7 @@ export default function MoviProductLanding() {
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
                             e.currentTarget.parentElement!.innerHTML = `
-                              <div class="w-full h-full bg-amber-50 flex items-center justify-center text-4xl">
+                              <div class="w-full h-full bg-amber-50 flex items-center justify-center text-3xl">
                                 👨‍💼
                               </div>
                             `;
@@ -787,43 +738,41 @@ export default function MoviProductLanding() {
                     </div>
                   </div>
 
-                  {/* Nombre y Título del Asesor */}
-                  <div className="space-y-1">
-                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+                  <div className="space-y-0.5">
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                       AGENTE DEMO
                     </h3>
-                    <p className="text-sm font-bold text-slate-600">
+                    <p className="text-xs font-bold text-slate-600">
                       Asesor Personal de Seguros
                     </p>
                   </div>
 
-                  {/* Bio */}
-                  <p className="text-sm text-slate-600 leading-relaxed font-normal">
+                  <p className="text-xs text-slate-600 leading-relaxed">
                     Te ayudo a encontrar el seguro perfecto para ti y tu familia. Cotizaciones sin costo, asesoria experta y atencion inmediata.
                   </p>
 
-                  {/* 4 Botones de Acción (Pills) */}
-                  <div className="space-y-2.5 pt-2">
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-800 text-white font-bold text-xs shadow-xs hover:bg-slate-900 hover:scale-102 transition">
-                        <MessageCircle className="w-4 h-4 text-emerald-400" />
-                        <span>Escribir por WhatsApp</span>
+                  {/* 4 Botones de Acción */}
+                  <div className="space-y-2 pt-1">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-800 text-white font-bold text-xs shadow-xs hover:bg-slate-900 transition">
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Escribir WhatsApp</span>
                       </button>
 
-                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs shadow-xs hover:bg-slate-50 hover:scale-102 transition">
-                        <Phone className="w-4 h-4 text-slate-600" />
+                      <button className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs shadow-xs hover:bg-slate-50 transition">
+                        <Phone className="w-3.5 h-3.5 text-slate-600" />
                         <span>Llamar</span>
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#E5A823] hover:bg-[#D99A16] hover:scale-102 text-white font-bold text-xs shadow-xs transition">
-                        <Car className="w-4 h-4 text-white" />
-                        <span>Multicotizador de Autos</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#E5A823] text-white font-bold text-xs shadow-xs hover:bg-[#D99A16] transition">
+                        <Car className="w-3.5 h-3.5 text-white" />
+                        <span>Multicotizador</span>
                       </button>
 
-                      <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs shadow-xs hover:bg-slate-50 hover:scale-102 transition">
-                        <UserPlus className="w-4 h-4 text-slate-600" />
+                      <button className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs shadow-xs hover:bg-slate-50 transition">
+                        <UserPlus className="w-3.5 h-3.5 text-slate-600" />
                         <span>Guardar Contacto</span>
                       </button>
                     </div>
@@ -833,27 +782,27 @@ export default function MoviProductLanding() {
 
                 {/* Columna Derecha: Tarjeta de Cotización */}
                 <div className="lg:col-span-7">
-                  <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xl space-y-6 text-left">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-lg space-y-4 text-left">
                     
-                    <div className="space-y-1 pb-4 border-b border-slate-100">
-                      <h4 className="text-2xl font-black text-slate-900 tracking-tight">
+                    <div className="space-y-0.5 pb-3 border-b border-slate-100">
+                      <h4 className="text-xl font-black text-slate-900 tracking-tight">
                         Solicita tu Cotizacion
                       </h4>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-[11px] text-slate-500">
                         Completa el formulario y te contacto de inmediato — sin costo ni compromiso.
                       </p>
                     </div>
 
                     {demoFormSent ? (
-                      <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3 animate-in fade-in">
-                        <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                        <h5 className="text-base font-extrabold text-emerald-900">¡Cotización Enviada al Asesor!</h5>
-                        <p className="text-xs text-emerald-700 leading-relaxed">
-                          La solicitud entró directamente a <strong>Mi CRM</strong> en MOVI y el agente recibió una alerta inmediata en su WhatsApp.
+                      <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-2 animate-in fade-in">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                        <h5 className="text-sm font-extrabold text-emerald-900">¡Cotización Enviada al Asesor!</h5>
+                        <p className="text-xs text-emerald-700">
+                          La solicitud entró a <strong>Mi CRM</strong> y el agente recibió una alerta en WhatsApp.
                         </p>
                         <button
                           onClick={() => setDemoFormSent(false)}
-                          className="text-xs font-bold text-blue-600 hover:underline pt-2 cursor-pointer"
+                          className="text-xs font-bold text-blue-600 hover:underline pt-1 cursor-pointer"
                         >
                           Enviar otra cotización de prueba
                         </button>
@@ -864,64 +813,63 @@ export default function MoviProductLanding() {
                           e.preventDefault();
                           setDemoFormSent(true);
                         }}
-                        className="space-y-4"
+                        className="space-y-3"
                       >
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-800">Nombre completo *</label>
                           <input
                             type="text"
                             required
                             placeholder="Tu nombre completo"
                             defaultValue="María Elena Torres"
-                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-800">Celular *</label>
                           <input
                             type="tel"
                             required
                             placeholder="55 1234 5678"
                             defaultValue="55 4920 1823"
-                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-800">Correo electronico *</label>
                           <input
                             type="email"
                             required
                             placeholder="tu@email.com"
                             defaultValue="maria.torres@ejemplo.com"
-                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-800">Seguro de interes *</label>
                           <select
                             value={selectedInsurance}
                             onChange={(e) => setSelectedInsurance(e.target.value)}
-                            className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             <option value="Seguro de Auto">Seguro de Auto</option>
                             <option value="Gastos Médicos Mayores">Gastos Médicos Mayores</option>
                             <option value="Seguro de Vida & Ahorro">Seguro de Vida & Ahorro</option>
                             <option value="Seguro de Hogar / Casa">Seguro de Hogar / Casa</option>
-                            <option value="Seguro de Empresa y Flotillas">Seguro de Empresa y Flotillas</option>
                           </select>
                         </div>
 
                         <button
                           type="submit"
-                          className="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-900 active:scale-98 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                          className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-900 active:scale-98 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
                         >
                           Solicitar Cotizacion Gratuita
                         </button>
 
-                        <p className="text-[11px] text-center text-slate-400">
+                        <p className="text-[10px] text-center text-slate-400">
                           Al enviar, aceptas que te contactemos para ofrecerte informacion sobre seguros.
                         </p>
                       </form>
@@ -930,9 +878,9 @@ export default function MoviProductLanding() {
                   </div>
                 </div>
 
-                {/* Burbuja flotante de WhatsApp en la esquina inferior derecha */}
-                <div className="absolute bottom-6 right-6 hidden sm:flex items-center justify-center w-12 h-12 rounded-full bg-slate-800 text-white shadow-xl cursor-pointer hover:scale-110 transition-transform">
-                  <MessageCircle className="w-6 h-6 text-emerald-400" />
+                {/* Burbuja flotante de WhatsApp */}
+                <div className="absolute bottom-5 right-5 hidden sm:flex items-center justify-center w-11 h-11 rounded-full bg-slate-800 text-white shadow-xl cursor-pointer hover:scale-110 transition-transform">
+                  <MessageCircle className="w-5 h-5 text-emerald-400" />
                 </div>
 
               </div>
@@ -942,115 +890,91 @@ export default function MoviProductLanding() {
           </div>
         </section>
 
-        {/* ─── 5. SECCIÓN: HERRAMIENTAS (SEGUWALLET & EDUCATION CON LOGOS) ─── */}
-        <section id="herramientas" className="py-24 bg-white border-y border-slate-200/80">
+        {/* ─── 5. HERRAMIENTAS (SEGUWALLET & EDUCATION CON LOGOS) ───────────── */}
+        <section id="herramientas" className="py-20 bg-white border-y border-slate-200/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
+            <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-wider">
                 Ecosistema de Soluciones
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                Herramientas Exclusivas para el Asesor de Grupo JIRO
+                Herramientas Exclusivas para el Asesor
               </h2>
-              <p className="text-base text-slate-600 leading-relaxed">
-                Potencia tu propuesta de valor ante tus clientes con tecnología móvil y fortalece tus competencias profesionales con formación continua.
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Tecnología móvil para tus clientes y formación continua para tu desarrollo profesional.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid md:grid-cols-2 gap-6">
               
-              {/* Card Seguwallet con Hover Zoom */}
-              <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-[#06142F] to-[#0A2260] text-white space-y-6 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
-                <div className="space-y-4">
+              {/* Card Seguwallet */}
+              <div className="p-7 sm:p-8 rounded-3xl bg-gradient-to-br from-[#06142F] to-[#0A2260] text-white space-y-5 shadow-lg flex flex-col justify-between">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <img
                       src={LOGO_SEGUWALLET}
                       alt="Seguwallet"
-                      className="h-9 w-auto object-contain brightness-110"
+                      className="h-8 w-auto object-contain brightness-110"
                     />
-                    <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold">
-                      App para tus Clientes
+                    <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold">
+                      App para Clientes
                     </span>
                   </div>
 
-                  <h3 className="text-2xl font-black text-white">
+                  <h3 className="text-xl font-black text-white">
                     Seguwallet: La Cartera Digital de tus Clientes
                   </h3>
 
-                  <p className="text-sm text-white/80 leading-relaxed">
-                    Entrega a tus asegurados una experiencia digital insuperable. Tus clientes consultan sus pólizas, descargan recibos en PDF y reportan siniestros directamente sin recordar contraseñas (acceso OTP por WhatsApp).
+                  <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
+                    Tus clientes consultan pólizas, descargan recibos en PDF y reportan siniestros directamente sin contraseñas (acceso OTP por WhatsApp).
                   </p>
-
-                  <div className="space-y-2 text-xs text-white/70">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-cyan-400" />
-                      <span>Todas las aseguradoras reunidas en una sola app móvil (PWA).</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-cyan-400" />
-                      <span>Marcación telefónica directa a cabinas de siniestros.</span>
-                    </div>
-                  </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/10">
+                <div className="pt-3 border-t border-white/10">
                   <a
                     href="https://seguwallet.mx"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-md active:scale-95"
                   >
                     <span>Conocer Seguwallet</span>
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
               </div>
 
-              {/* Card Seguros Education con Hover Zoom */}
-              <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-[#1E293B] to-[#0F172A] text-white space-y-6 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
-                <div className="space-y-4">
+              {/* Card Seguros Education */}
+              <div className="p-7 sm:p-8 rounded-3xl bg-gradient-to-br from-[#1E293B] to-[#0F172A] text-white space-y-5 shadow-lg flex flex-col justify-between">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                        <GraduationCap className="w-6 h-6" />
-                      </div>
-                      <span className="font-black text-lg text-white tracking-tight">Seguros Education</span>
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-6 h-6 text-amber-400" />
+                      <span className="font-black text-base text-white">Seguros Education</span>
                     </div>
-                    <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
                       Campus Virtual JIRO
                     </span>
                   </div>
 
-                  <h3 className="text-2xl font-black text-white">
+                  <h3 className="text-xl font-black text-white">
                     Seguros Education: Academia y Certificaciones
                   </h3>
 
-                  <p className="text-sm text-white/80 leading-relaxed">
-                    Capacitación continua de primer nivel. Cursos on-demand, preparación y simulador de examen para la Cédula A de la CNSF, certificaciones oficiales con aseguradoras y diplomados universitarios con UTEL.
+                  <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
+                    Cursos on-demand, simulador de examen para la Cédula A de la CNSF, certificaciones con aseguradoras y diplomados universitarios con UTEL.
                   </p>
-
-                  <div className="space-y-2 text-xs text-white/70">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-amber-400" />
-                      <span>Contenido normativo obligatorio de la CNSF al día.</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-amber-400" />
-                      <span>Talleres prácticos de ventas y suscripción de ramos complejos.</span>
-                    </div>
-                  </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/10">
+                <div className="pt-3 border-t border-white/10">
                   <a
                     href="https://seguros.education"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs sm:text-sm transition-all shadow-md active:scale-95"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all shadow-md active:scale-95"
                   >
                     <span>Ir a Seguros Education</span>
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
               </div>
@@ -1064,20 +988,20 @@ export default function MoviProductLanding() {
         <section id="faq" className="py-20 bg-[#F8FAFC]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            <div className="text-center max-w-2xl mx-auto space-y-4 mb-14">
+            <div className="text-center max-w-2xl mx-auto space-y-3 mb-12">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-100 text-blue-800 text-xs font-extrabold uppercase tracking-wider">
-                <HelpCircle className="w-4 h-4 text-blue-600" /> Resolvemos tus dudas
+                <HelpCircle className="w-4 h-4 text-blue-600" /> Dudas Comunes
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                Preguntas Frecuentes de nuestros Agentes
+                Preguntas Frecuentes
               </h2>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {[
                 {
                   q: '¿Cómo accedo a MOVI Digital / Mi Oficina Virtual?',
-                  a: 'Si eres agente activo de Grupo JIRO, tu cuenta ya se encuentra habilitada. Puedes ingresar directamente desde https://app.movi.digital/login con tu correo y contraseña registrados en la promotoría.'
+                  a: 'Si eres agente activo de Grupo JIRO, tu cuenta ya se encuentra habilitada. Puedes ingresar directamente desde https://app.movi.digital/login con tu correo y contraseña registrados.'
                 },
                 {
                   q: '¿Tiene algún costo para los asesores de Grupo JIRO?',
@@ -1085,35 +1009,35 @@ export default function MoviProductLanding() {
                 },
                 {
                   q: '¿Cómo obtengo y configuro mi Página Web personalizada?',
-                  a: 'Dentro de tu Oficina Virtual en MOVI, ingresa a la sección "Mi Marca" y "Mi Página Web". Podrás elegir tu slug personalizado (ej. agentedeseguros.website/tu-nombre), seleccionar los ramos que ofreces y personalizar tus colores.'
+                  a: 'Dentro de tu Oficina Virtual en MOVI, ingresa a "Mi Marca" y "Mi Página Web". Podrás elegir tu slug personalizado (ej. agentedeseguros.website/tu-nombre) y seleccionar tus ramos.'
                 },
                 {
                   q: '¿Cómo recibo las alertas de prospectos y cambios de trámites?',
-                  a: 'El sistema está conectado a un Gateway automático de WhatsApp y correo. Cuando un cliente solicita cotización en tu web o cuando un trámite es emitido por Grupo JIRO, recibes una notificación inmediata en tu teléfono móvil.'
+                  a: 'El sistema está conectado a un Gateway automático de WhatsApp y correo. Cuando un cliente cotiza en tu web o cuando un trámite es emitido, recibes una notificación inmediata.'
                 }
               ].map((faq, index) => {
                 const isOpen = openFaq === index;
                 return (
                   <div
                     key={index}
-                    className="rounded-2xl bg-white border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200"
+                    className="rounded-2xl bg-white border border-slate-200/90 overflow-hidden shadow-xs hover:border-blue-300 transition-colors"
                   >
                     <button
                       onClick={() => setOpenFaq(isOpen ? null : index)}
-                      className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-slate-50 transition-colors"
+                      className="w-full flex items-center justify-between p-5 text-left cursor-pointer hover:bg-slate-50 transition-colors"
                     >
-                      <span className="text-base sm:text-lg font-bold text-slate-900 pr-4">
+                      <span className="text-sm sm:text-base font-bold text-slate-900 pr-4">
                         {faq.q}
                       </span>
                       <ChevronDown
-                        className={`w-5 h-5 text-blue-600 flex-shrink-0 transition-transform duration-200 ${
+                        className={`w-4 h-4 text-blue-600 flex-shrink-0 transition-transform duration-200 ${
                           isOpen ? 'rotate-180' : ''
                         }`}
                       />
                     </button>
 
                     {isOpen && (
-                      <div className="px-6 pb-6 text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-4 animate-in fade-in duration-150">
+                      <div className="px-5 pb-5 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
                         {faq.a}
                       </div>
                     )}
@@ -1126,30 +1050,30 @@ export default function MoviProductLanding() {
         </section>
 
         {/* ─── 7. CTA FINAL COMERCIAL ───────────────────────────────────────── */}
-        <section className="py-20 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white relative">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+        <section className="py-16 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white relative">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
             
-            <div className="w-16 h-16 rounded-3xl bg-white/10 border border-white/20 flex items-center justify-center text-white mx-auto shadow-xl backdrop-blur-md animate-float">
-              <ShieldCheck className="w-8 h-8" />
+            <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white mx-auto shadow-xl">
+              <ShieldCheck className="w-7 h-7" />
             </div>
 
-            <div className="space-y-4 max-w-2xl mx-auto">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight">
+            <div className="space-y-2 max-w-xl mx-auto">
+              <h2 className="text-2xl sm:text-3xl font-black leading-tight">
                 Haz crecer tu despacho con la tecnología de Grupo JIRO
               </h2>
-              <p className="text-base sm:text-lg text-blue-100">
-                Ingresa hoy a tu Oficina Virtual y aprovecha todas las herramientas que tenemos listas para ti.
+              <p className="text-sm text-blue-100">
+                Ingresa hoy a tu Oficina Virtual y aprovecha todas las herramientas disponibles.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div>
               <a
                 href="https://app.movi.digital/login"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-base text-blue-700 bg-white hover:bg-blue-50 active:scale-95 transition-all shadow-xl hover:-translate-y-0.5"
+                className="inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl font-bold text-sm text-blue-700 bg-white hover:bg-blue-50 active:scale-95 transition-all shadow-xl hover:-translate-y-0.5"
               >
-                <Lock className="w-5 h-5" />
+                <Lock className="w-4 h-4" />
                 <span>Ingresar</span>
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-4 h-4" />
               </a>
             </div>
 
@@ -1157,60 +1081,59 @@ export default function MoviProductLanding() {
         </section>
 
         {/* ─── 8. FOOTER INSTITUCIONAL Y CRÉDITOS ───────────────────────────── */}
-        <footer className="border-t border-slate-200 bg-white py-14 text-slate-600">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+        <footer className="border-t border-slate-200 bg-white py-12 text-slate-600">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             
             <div className="grid md:grid-cols-4 gap-8">
               
-              {/* Columna 1: MOVI + Grupo JIRO */}
-              <div className="md:col-span-2 space-y-4">
+              {/* Columna 1: Logos MOVI Digital + Grupo JIRO */}
+              <div className="md:col-span-2 space-y-3 text-left">
                 <div className="flex items-center gap-3">
-                  <img src={LOGO_MOVI} alt="MOVI Digital" className="h-9 w-auto object-contain" />
+                  <MoviOfficialLogo className="h-8 w-auto" />
                   <div className="h-5 w-[1px] bg-slate-200" />
                   <a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer">
-                    <img src={LOGO_JIRO} alt="Grupo JIRO" className="h-6 w-auto object-contain" />
+                    <GrupoJiroLogo className="h-6 w-auto" />
                   </a>
                 </div>
-                <p className="text-sm text-slate-500 leading-relaxed max-w-md">
-                  <strong>MOVI.Digital · Mi Oficina Virtual</strong> es la plataforma de gestión operativa y comercial exclusiva de <strong>Grupo JIRO</strong> para su red nacional de agentes y promotorías de seguros.
+                <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
+                  <strong>MOVI.Digital · Mi Oficina Virtual</strong> es la plataforma de gestión operativa y comercial exclusiva de <strong>Grupo JIRO</strong> para su red de agentes de seguros.
                 </p>
-                <div className="text-xs text-slate-400">
-                  <a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 underline">
+                <div className="text-xs">
+                  <a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-600 underline">
                     www.grupojiro.com
                   </a>
                 </div>
               </div>
 
-              {/* Columna 2: Navegación Rápida */}
-              <div className="space-y-3">
+              {/* Columna 2: Módulos */}
+              <div className="space-y-2 text-left">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-900">Módulos</p>
-                <ul className="space-y-2 text-sm text-slate-600">
+                <ul className="space-y-1.5 text-xs text-slate-600">
                   <li><button onClick={() => scrollTo('funciones')} className="hover:text-blue-600 transition-colors cursor-pointer">Control de Trámites</button></li>
                   <li><button onClick={() => scrollTo('funciones')} className="hover:text-blue-600 transition-colors cursor-pointer">Mi CRM de Asesor</button></li>
                   <li><button onClick={() => scrollTo('funciones')} className="hover:text-blue-600 transition-colors cursor-pointer">Central de Producción</button></li>
                   <li><button onClick={() => scrollTo('mi-web')} className="hover:text-blue-600 transition-colors cursor-pointer">Mi Página Web</button></li>
-                  <li><a href="https://agentedeseguros.website/ejemplo" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Página Web de Ejemplo</a></li>
                 </ul>
               </div>
 
               {/* Columna 3: Ecosistema JIRO */}
-              <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-900">Ecosistema JIRO</p>
-                <ul className="space-y-2 text-sm text-slate-600">
+              <div className="space-y-2 text-left">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-900">Ecosistema</p>
+                <ul className="space-y-1.5 text-xs text-slate-600">
                   <li><a href="https://app.movi.digital/login" className="hover:text-blue-600 transition-colors">Ingresar al Portal</a></li>
                   <li><a href="https://seguwallet.mx" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Seguwallet</a></li>
                   <li><a href="https://seguros.education" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Seguros Education</a></li>
-                  <li><a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Grupo JIRO Corporativo</a></li>
+                  <li><a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Grupo JIRO</a></li>
                 </ul>
               </div>
 
             </div>
 
-            {/* Créditos y Copyright */}
-            <div className="pt-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            {/* Copyright y Créditos de Mekate Studio */}
+            <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
               <p>© {new Date().getFullYear()} MOVI Digital · Grupo JIRO. Todos los derechos reservados.</p>
               
-              <div className="flex items-center gap-2 text-slate-500">
+              <div className="flex items-center gap-1.5 text-slate-500">
                 <span>Desarrollado por</span>
                 <a
                   href="https://mekate.mx"
