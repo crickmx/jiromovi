@@ -182,8 +182,8 @@ export default function AdminDigital() {
   return (
     <div>
       {/* Module Header */}
-      <div className="bg-gradient-to-r from-neutral-900 to-neutral-800 px-6 py-5 border-b border-neutral-700">
-        <div className="max-w-7xl mx-auto">
+      <div className="bg-gradient-to-r from-neutral-900 to-neutral-800 px-6 py-5 rounded-2xl border border-neutral-700">
+        <div>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-white">Admin Digital</h1>

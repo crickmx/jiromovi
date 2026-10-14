@@ -310,7 +310,7 @@ export default function ExamenInterface() {
   return (
     <div className="flex flex-col">
       <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-200/50 dark:border-white/10 px-4 sm:px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto">
+        <div>
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
             className="flex items-center gap-2 text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white mb-3 transition-colors"

@@ -132,7 +132,7 @@ export default function ComunicadoCategorias() {
   if (!esAdmin) {
     return (
       <>
-        <div className="max-w-4xl mx-auto py-12">
+        <div className="py-12">
           <div className="bg-surface-card rounded-xl border border-soft dark:border-white/10 p-12 text-center">
             <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
               Acceso Denegado

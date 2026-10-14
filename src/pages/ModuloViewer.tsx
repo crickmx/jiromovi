@@ -237,7 +237,7 @@ export default function ModuloViewer() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Cargando módulo...</p>
@@ -248,7 +248,7 @@ export default function ModuloViewer() {
 
   if (!modulo || !leccionActual) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <p className="text-neutral-600">No se encontró el módulo</p>
           <button
@@ -267,7 +267,7 @@ export default function ModuloViewer() {
   const esPrimeraLeccion = indiceActual === 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex">
+    <div className="min-h-[calc(100vh-8rem)] rounded-2xl overflow-clip border border-soft dark:border-white/10 bg-gradient-to-br from-primary-50 via-white to-neutral-50 flex">
       {sidebarAbierto && (
         <div
           className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay z-20 lg:hidden"

@@ -242,13 +242,13 @@ export default function TareaReportePage() {
   // ── Renders ────────────────────────────────────────────────────────────────
 
   if (fase === 'cargando') return (
-    <div className="min-h-screen flex items-center justify-center dark:bg-neutral-900">
+    <div className="min-h-[60vh] flex items-center justify-center">
       <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
     </div>
   );
 
   if (fase === 'error') return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 dark:bg-neutral-900">
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
       <AlertTriangle className="w-8 h-8 text-red-500" />
       <p className="text-neutral-700 dark:text-neutral-300 text-center">{errMsg}</p>
       <button onClick={() => navigate(-1)} className="text-sm text-accent-ink hover:underline">Volver</button>
@@ -256,7 +256,7 @@ export default function TareaReportePage() {
   );
 
   if (fase === 'enviado') return (
-    <div className="min-h-screen flex flex-col items-center justify-center dark:bg-neutral-900">
+    <div className="min-h-[60vh] flex flex-col items-center justify-center">
       <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card border border-soft dark:border-neutral-700 p-8 max-w-md w-full text-center space-y-4">
         <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto" />
         <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Reporte enviado</h2>
@@ -269,7 +269,7 @@ export default function TareaReportePage() {
   );
 
   if (fase === 'instrucciones') return (
-    <div className="min-h-screen flex flex-col items-center justify-center dark:bg-neutral-900">
+    <div className="min-h-[60vh] flex flex-col items-center justify-center">
       <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card border border-soft dark:border-neutral-700 p-8 max-w-lg w-full space-y-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
@@ -326,7 +326,7 @@ export default function TareaReportePage() {
   const sPct = Math.round(score * 100);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-900 flex flex-col">
+    <div className="min-h-[calc(100vh-8rem)] rounded-2xl overflow-clip border border-soft dark:border-white/10 bg-white dark:bg-neutral-900 flex flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm">
         <button onClick={() => navigate(-1)} className="p-1.5 -ml-1 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
           <ArrowLeft className="w-4 h-4" />

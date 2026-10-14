@@ -205,7 +205,7 @@ export default function RegimenFiscalEditor() {
 
   if (!rule) {
     return (
-      <div className="p-6 text-center text-neutral-500 dark:text-white/50">
+      <div className="py-6 text-center text-neutral-500 dark:text-white/50">
         <AlertTriangle className="mx-auto mb-2 h-8 w-8 text-amber-500" />
         <p>Regla fiscal no encontrada.</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate('/comisiones/regimen-fiscal')}>

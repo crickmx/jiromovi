@@ -29,14 +29,14 @@ export function AulaVirtualSala() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, identifier]);
 
-  if (error) return <div className="flex min-h-screen items-center justify-center text-red-600">{error}</div>;
-  if (!url) return <div className="flex min-h-screen items-center justify-center">Cargando sala…</div>;
+  if (error) return <div className="flex min-h-[60vh] items-center justify-center text-red-600">{error}</div>;
+  if (!url) return <div className="flex min-h-[60vh] items-center justify-center">Cargando sala…</div>;
   return (
     <iframe
       title="Aula virtual"
       src={url}
       allow="camera *; microphone *; display-capture *; autoplay *; fullscreen *"
-      className="block h-screen w-full border-0"
+      className="block h-[calc(100vh-8rem)] w-full border-0 rounded-2xl"
     />
   );
 }

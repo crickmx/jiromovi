@@ -242,7 +242,7 @@ export default function ManualViewer() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center dark:bg-neutral-900">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center space-y-3">
           <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mx-auto">
             <BookOpen className="w-7 h-7 text-accent-ink dark:text-blue-400 animate-pulse" />
@@ -255,7 +255,7 @@ export default function ManualViewer() {
 
   if (!manual) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center dark:bg-neutral-900">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <div className="text-center max-w-sm space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto">
             <BookOpen className="w-8 h-8 text-red-400" />
@@ -277,7 +277,7 @@ export default function ManualViewer() {
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col h-screen bg-neutral-100 dark:bg-neutral-900">
+    <div ref={containerRef} className="flex flex-col h-[calc(100vh-8rem)] rounded-2xl overflow-hidden border border-soft dark:border-white/10 bg-neutral-100 dark:bg-neutral-900">
       {/* Top toolbar */}
       <header className="flex-shrink-0 bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-white/10 shadow-sm z-30">
         <div className="flex items-center justify-between h-12 sm:h-14 px-3 sm:px-4">
