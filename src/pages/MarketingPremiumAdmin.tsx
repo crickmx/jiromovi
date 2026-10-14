@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Plus, FileText, ExternalLink, Download, Paperclip, Camera, ZoomIn, Lock } from 'lucide-react';
@@ -263,6 +264,25 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   }, [usuario?.id]);
 
   useEffect(() => { cargarAgentes(); }, []);
+
+  // La bitácora enlaza a un agente concreto con `?agente=<id>`: al abrirlo hay
+  // que seleccionarlo y bajar a su panel de pagos, que es a lo que viene quien
+  // hace clic en una fila con saldo.
+  const [searchParams] = useSearchParams();
+  const agentePedido = searchParams.get('agente');
+  const [yaEnfocado, setYaEnfocado] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!agentePedido || agentes.length === 0 || yaEnfocado === agentePedido) return;
+    const agente = agentes.find(a => a.id === agentePedido);
+    if (!agente) return;
+    seleccionar(agente);
+    setYaEnfocado(agentePedido);
+    // El panel vive abajo en la ficha; sin esto queda fuera de la pantalla.
+    setTimeout(() => {
+      document.getElementById('panel-pagos-premium')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  }, [agentePedido, agentes, yaEnfocado]);
 
   useEffect(() => {
     supabase.from('store_frecuencias_pago').select('id, nombre').eq('activo', true).order('orden')
@@ -1221,7 +1241,9 @@ ALTER TABLE usuarios
                   </div>
 
                   {/* Pagos — debajo de la configuración del plan, que es lo que
-                      define cuánto se espera cobrar. */}
+                      define cuánto se espera cobrar. El id es el destino del
+                      enlace que trae la bitácora. */}
+                  <div id="panel-pagos-premium" />
                   <PagosPremiumPanel
                     usuarioId={seleccionado.id}
                     plan={(seleccionado.mkt_premium_plan ?? null) as PlanPremium | null}

@@ -64,8 +64,10 @@ export async function modulosVisibles(
 
 /** A dónde va el clic de una fila: siempre al control de pagos de ese registro. */
 export function rutaDePagos(row: BitacoraRow): string {
+  // Ojo: la ruta del detalle del pedido es `/store/pedido/:id`, en SINGULAR.
+  // `/store/pedidos` es la lista, y llevaba ahí sin abrir nada.
   return row.modulo === 'store'
-    ? `/store/pedidos/${row.destino_id}`
+    ? `/store/pedido/${row.destino_id}`
     : `/mercadotecnia/admin?tab=premium&agente=${row.destino_id}`;
 }
 

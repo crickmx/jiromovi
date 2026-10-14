@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Bookmark, Sparkles, LayoutDashboard, Users, Wallet, ClipboardList } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,7 +34,15 @@ const TABS: { key: Tab; label: string; icon: typeof Bookmark; description: strin
 
 export default function MktAdminDashboard() {
   const { usuario } = useAuth();
-  const [tab, setTab] = useState<Tab>('brand-kit');
+  // La bitácora enlaza con `?tab=premium&agente=<id>`; sin leerlo, el clic
+  // cambiaba la URL y la pantalla se quedaba donde estaba.
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => (searchParams.get('tab') as Tab) || 'brand-kit');
+
+  useEffect(() => {
+    const pedida = searchParams.get('tab') as Tab | null;
+    if (pedida) setTab(pedida);
+  }, [searchParams]);
   const [cargando, setCargando] = useState(true);
   const [tieneAcceso, setTieneAcceso] = useState(false);
 
