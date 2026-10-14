@@ -304,6 +304,14 @@ function MoviTiendaApp() {
   );
 }
 
+// movi.digital solo es la landing; cualquier entrada a la app se manda a app.movi.digital.
+function RedirectToApp({ path }: { path: string }) {
+  useEffect(() => {
+    window.location.replace(`https://app.movi.digital${path}`);
+  }, [path]);
+  return null;
+}
+
 function MoviMainSiteApp() {
   useEffect(() => { 
     document.getElementById('root')?.classList.add('public-page'); 
@@ -322,7 +330,8 @@ function MoviMainSiteApp() {
             <Route path="/home" element={<MoviProductLanding />} />
             <Route path="/movi" element={<MoviProductLanding />} />
             <Route path="/producto" element={<MoviProductLanding />} />
-            <Route path="/login" element={<MoviLogin />} />
+            {/* La sesión es por dominio: iniciar sesión en movi.digital no sirve, la app vive en app.movi.digital */}
+            <Route path="/login" element={<RedirectToApp path="/login" />} />
             <Route path="*" element={<MoviProductLanding />} />
           </Routes>
         </Suspense>
