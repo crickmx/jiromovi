@@ -55,7 +55,7 @@ export function LoadingOverlay() {
           <img
             src="/movirecurso_7.png"
             alt="MOVI Digital"
-            className={`h-9 w-auto object-contain transition-none ${isDark ? 'brightness-0 invert' : ''}`}
+            className={`h-9 w-auto object-contain transition-none ${isDark ? 'bg-white rounded-xl p-1' : ''}`}
           />
         </div>
       </div>

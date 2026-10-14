@@ -555,13 +555,12 @@ export function DesktopSidebar({
                   title="MOVI Mi Oficina Virtual · Ir al Dashboard"
                 >
                   <span
-                    className="grid place-items-center w-9 h-9 rounded-xl shadow-accent group-hover:scale-105 transition-transform"
-                    style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-text-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
+                    className="grid place-items-center w-9 h-9 rounded-xl bg-white border border-soft dark:border-white/10 shadow-2xs group-hover:scale-105 transition-transform"
                   >
                     <img
                       src="/movirecurso_7.png"
                       alt="MOVI"
-                      className="h-5 w-5 object-contain brightness-0 invert"
+                      className="h-6 w-6 object-contain"
                     />
                   </span>
                   <div className="flex flex-col text-left">
@@ -602,13 +601,12 @@ export function DesktopSidebar({
                   title="MOVI Mi Oficina Virtual"
                 >
                   <span
-                    className="grid place-items-center w-9 h-9 rounded-xl shadow-accent group-hover:scale-105 transition-transform"
-                    style={{ background: 'linear-gradient(135deg, rgb(var(--movi-accent-text-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%)' }}
+                    className="grid place-items-center w-9 h-9 rounded-xl bg-white border border-soft dark:border-white/10 shadow-2xs group-hover:scale-105 transition-transform"
                   >
                     <img
                       src="/movirecurso_7.png"
                       alt="MOVI"
-                      className="h-5 w-5 object-contain brightness-0 invert"
+                      className="h-6 w-6 object-contain"
                     />
                   </span>
                 </button>

@@ -70,7 +70,7 @@ export default function RegistroPersonal() {
       <Card className="max-w-lg w-full bg-slate-800 text-white border-slate-700">
         <CardContent className="p-8 space-y-6">
           <div className="text-center space-y-2">
-            <img src="/logo_color.svg" alt="MOVI Digital" className="h-10 w-auto mx-auto mb-2" />
+            <img src="/movirecurso_2.png" alt="movi.digital" className="h-10 w-auto mx-auto mb-2 object-contain" />
             <h2 className="text-2xl font-bold">Pre-Registro de Asesor</h2>
             <p className="text-xs text-slate-400">Ingresa tus datos para solicitar tu acceso en MOVI Digital</p>
           </div>

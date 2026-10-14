@@ -27,60 +27,25 @@ import {
   Check
 } from 'lucide-react';
 
-// ─── LOGOTIPOS VECTORIALES OFICIALES DE ALTA DEFINICIÓN ─────────────────────
+// ─── LOGOTIPOS OFICIALES ─────────────────────────────────────────────────────
+// Archivos oficiales de marca en /public. NO redibujarlos en SVG ni sustituirlos:
+//   /movirecurso_1.png  movi.digital a color (fondo claro)
+//   /movirecurso_2.png  movi.digital con texto blanco (fondo oscuro)
+//   /movirecurso_7.png  isotipo MOVI
+//   /logojiro.png       JIRO y Asociados (fondo claro)
 
-export function MoviOfficialLogo({ className = "h-10 w-auto" }: { className?: string }) {
+export function MoviOfficialLogo({ className = "h-10 w-auto", fondoOscuro = false }: { className?: string; fondoOscuro?: boolean }) {
   return (
-    <svg viewBox="0 0 420 150" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="moviW1" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#1C37E0" />
-          <stop offset="100%" stopColor="#1228B8" />
-        </linearGradient>
-        <linearGradient id="moviW2" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2563EB" />
-          <stop offset="100%" stopColor="#1D4ED8" />
-        </linearGradient>
-        <linearGradient id="moviW3" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#3B82F6" />
-          <stop offset="100%" stopColor="#2563EB" />
-        </linearGradient>
-        <linearGradient id="moviW4" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00E5FF" />
-          <stop offset="100%" stopColor="#38BDF8" />
-        </linearGradient>
-      </defs>
-      <g transform="translate(10, 8)">
-        <path d="M 10 32 A 70 70 0 0 1 150 32 L 132 50 A 46 46 0 0 0 28 50 Z" fill="url(#moviW1)" />
-        <path d="M 28 50 A 46 46 0 0 1 132 50 L 116 66 A 28 28 0 0 0 44 66 Z" fill="url(#moviW2)" />
-        <path d="M 44 66 A 28 28 0 0 1 116 66 L 101 81 A 14 14 0 0 0 59 81 Z" fill="url(#moviW3)" />
-        <path d="M 59 81 A 14 14 0 0 1 101 81 L 80 102 Z" fill="url(#moviW4)" />
-        <path d="M 12 90 L 38 126 C 42 132, 48 135, 54 135 L 72 135 L 50 104 C 44 95, 30 84, 12 90 Z" fill="#1C37E0" />
-        <path d="M 148 90 L 122 126 C 118 132, 112 135, 106 135 L 88 135 L 110 104 C 116 95, 130 84, 148 90 Z" fill="#1C37E0" />
-      </g>
-      <g fill="#1C37E0" transform="translate(180, 0)">
-        <text x="0" y="86" fontFamily="system-ui, -apple-system, sans-serif" fontSize="76" fontWeight="900" letterSpacing="-2px">movi</text>
-        <text x="2" y="130" fontFamily="system-ui, -apple-system, sans-serif" fontSize="42" fontWeight="800" letterSpacing="-1px">.digital</text>
-      </g>
-    </svg>
+    <img
+      src={fondoOscuro ? '/movirecurso_2.png' : '/movirecurso_1.png'}
+      alt="movi.digital"
+      className={`${className} object-contain`}
+    />
   );
 }
 
 export function GrupoJiroLogo({ className = "h-8 w-auto" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 280 80" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Icon Triangle & Diamond */}
-      <g fill="#1C37E0" transform="translate(180, 6)">
-        <path d="M 48 0 L 60 18 L 48 36 L 36 18 Z" />
-        <path d="M 0 68 L 36 68 L 68 18 L 52 18 L 28 54 L 14 54 L 42 12 L 28 12 Z" />
-      </g>
-      {/* Text GRUPO JIRO */}
-      <g fill="#0A2540" transform="translate(0, 10)">
-        <text x="0" y="24" fontFamily="system-ui, -apple-system, sans-serif" fontSize="24" fontWeight="800" letterSpacing="2px">GRUPO</text>
-        <text x="0" y="60" fontFamily="system-ui, -apple-system, sans-serif" fontSize="42" fontWeight="900" letterSpacing="-1px">JIRO</text>
-      </g>
-    </svg>
-  );
+  return <img src="/logojiro.png" alt="JIRO y Asociados" className={`${className} object-contain`} />;
 }
 
 // ─── RECURSOS DE MARCA ───────────────────────────────────────────────────────
@@ -185,7 +150,7 @@ export default function MoviProductLanding() {
                   rel="noopener noreferrer"
                   className="hidden sm:flex items-center hover:opacity-80 transition-opacity"
                 >
-                  <GrupoJiroLogo className="h-6 sm:h-7 w-auto" />
+                  <GrupoJiroLogo className="h-8 sm:h-10 w-auto" />
                 </a>
               </div>
 
@@ -1092,7 +1057,7 @@ export default function MoviProductLanding() {
                   <MoviOfficialLogo className="h-8 w-auto" />
                   <div className="h-5 w-[1px] bg-slate-200" />
                   <a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer">
-                    <GrupoJiroLogo className="h-6 w-auto" />
+                    <GrupoJiroLogo className="h-9 w-auto" />
                   </a>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
