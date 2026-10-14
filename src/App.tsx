@@ -69,7 +69,9 @@ const isLandingsSite   = HOST === 'landings.movi.digital'
 const isTiendaSite     = HOST === 'tienda.movi.digital'
   || HOST.endsWith('.tienda.movi.digital')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'tienda');
-// Everything else (app.movi.digital, localhost, Bolt preview, etc.) is MOVI
+const isMoviMainSite   = HOST === 'movi.digital' || HOST === 'www.movi.digital'
+  || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'movi');
+// Everything else (app.movi.digital, beta.movi.digital, localhost, Bolt preview, etc.) is MOVI App
 
 // ── Redirect helper for landings.movi.digital/mutuus -> mutuus.mx ──────────
 function RedirectToMutuusMx() {
@@ -302,6 +304,33 @@ function MoviTiendaApp() {
   );
 }
 
+function MoviMainSiteApp() {
+  useEffect(() => { 
+    document.getElementById('root')?.classList.add('public-page'); 
+    return () => {
+      document.getElementById('root')?.classList.remove('public-page');
+    };
+  }, []);
+
+  return (
+    <HelmetProvider>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<MoviProductLanding />} />
+            <Route path="/landing" element={<MoviProductLanding />} />
+            <Route path="/home" element={<MoviProductLanding />} />
+            <Route path="/movi" element={<MoviProductLanding />} />
+            <Route path="/producto" element={<MoviProductLanding />} />
+            <Route path="/login" element={<MoviLogin />} />
+            <Route path="*" element={<MoviProductLanding />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </HelmetProvider>
+  );
+}
+
 function MoviApp() {
   const { updateAvailable } = useAppUpdate();
   return (
@@ -403,6 +432,7 @@ function App() {
   if (isEducationSite)  return <SegurosEducationApp />;
   if (isExpressSite)    return <SegurosExpressApp />;
   if (isTiendaSite)     return <MoviTiendaApp />;
+  if (isMoviMainSite)   return <MoviMainSiteApp />;
   return <MoviApp />;
 }
 
