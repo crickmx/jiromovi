@@ -8,6 +8,55 @@ const corsHeaders = {
     "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+// ── Quién puede disparar un push ────────────────────────────────────────────
+// Mismo criterio que en `escalar-express-leads`: o es el servidor (cron u otra
+// función, que manda una llave de servidor) o es un usuario con sesión.
+//
+// Antes esto era `authHeader?.includes(supabaseServiceKey)`, y ese `includes`
+// tenía dos problemas. Uno de seguridad: si la variable llegara vacía,
+// `includes("")` es SIEMPRE verdadero y cualquiera podría mandarle una
+// notificación a cualquier usuario. Y uno de formato: Supabase ya cambió el
+// contenido de SUPABASE_SERVICE_ROLE_KEY por una `sb_secret_…`, que no es un
+// JWT — comparar a ciegas contra lo que venga en el header deja de ser fiable.
+
+/** Rol del JWT del cron legacy. La FIRMA la valida el gateway antes de entrar. */
+function jwtRole(authHeader: string): string | null {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const part = token.split(".")[1];
+    if (!part) return null;
+    let b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    const payload = JSON.parse(atob(b64));
+    return typeof payload.role === "string" ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Secret keys nuevas (JSON {nombre: valor}) + la legacy mientras siga viva. */
+function serverKeys(): string[] {
+  const keys: string[] = [];
+  try {
+    const raw = Deno.env.get("SUPABASE_SECRET_KEYS");
+    if (raw) {
+      for (const v of Object.values(JSON.parse(raw) as Record<string, unknown>)) {
+        if (typeof v === "string" && v.length > 0) keys.push(v);
+      }
+    }
+  } catch { /* variable ausente o mal formada: se ignora */ }
+  const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (legacy) keys.push(legacy);
+  return keys;
+}
+
+/** La llave puede venir en `apikey` o como Bearer. Comparación EXACTA. */
+function isServerKeyRequest(req: Request): boolean {
+  const bearer = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  const apikey = (req.headers.get("apikey") || "").trim();
+  return serverKeys().some((k) => k === bearer || k === apikey);
+}
+
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") || "";
 const VAPID_SUBJECT = "mailto:soporte@movi.digital";
@@ -239,7 +288,7 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const authHeader = req.headers.get("Authorization");
-    const isServiceCall = authHeader?.includes(supabaseServiceKey);
+    const isServiceCall = jwtRole(authHeader || "") === "service_role" || isServerKeyRequest(req);
 
     if (!isServiceCall) {
       const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
