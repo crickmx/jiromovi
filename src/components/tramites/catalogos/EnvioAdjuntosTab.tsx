@@ -139,6 +139,25 @@ export function EnvioAdjuntosTab({ tipoId, showToast }: Props) {
           <p className="text-sm text-neutral-500 italic">No hay categorías de adjunto activas.</p>
         ) : (
           <div className="space-y-1">
+            <label className="flex items-center gap-3 p-2.5 rounded-lg border border-dashed border-neutral-300 hover:bg-neutral-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={categoriasElegidas.length === categorias.length}
+                // Marcado a medias: ni todas ni ninguna. El indeterminado se pone
+                // por ref porque no existe como atributo de HTML.
+                ref={el => { if (el) el.indeterminate = categoriasElegidas.length > 0 && categoriasElegidas.length < categorias.length; }}
+                onChange={() => setCategoriasElegidas(
+                  categoriasElegidas.length === categorias.length ? [] : categorias.map(c => c.id),
+                )}
+                className="w-4 h-4 rounded border-neutral-300"
+              />
+              <span className="text-sm font-medium text-neutral-700">
+                Seleccionar todo
+                <span className="ml-2 text-xs font-normal text-neutral-500">
+                  ({categoriasElegidas.length} de {categorias.length})
+                </span>
+              </span>
+            </label>
             {categorias.map(cat => (
               <label
                 key={cat.id}

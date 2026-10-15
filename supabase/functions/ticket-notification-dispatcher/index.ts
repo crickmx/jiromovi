@@ -347,7 +347,11 @@ async function getTicketNotificationAttachments(
     .eq("ticket_id", ticketId)
     .order("fecha_subida", { ascending: false });
 
-  if (specificFileIds && specificFileIds.length > 0) {
+  // Una lista EXPLÍCITA vacía significa "ningún adjunto" — es lo que manda la
+  // ventana de confirmación cuando el usuario decide no enviar nada. Sin esto
+  // caía al comportamiento de "sin lista", que adjunta todo el trámite.
+  if (specificFileIds) {
+    if (specificFileIds.length === 0) return [];
     query = query.in("id", specificFileIds);
   }
 

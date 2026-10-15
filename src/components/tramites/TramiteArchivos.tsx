@@ -4,6 +4,7 @@ import { supabaseUrl } from '../../lib/supabase';
 import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2, Printer, Loader2, Check, Send } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
+import { ConfirmarEnvioAdjuntosModal, type ArchivoParaEnviar } from './ConfirmarEnvioAdjuntosModal';
 import { getPdfThumbnail } from '../../lib/pdfThumbnail';
 import JSZip from 'jszip';
 
@@ -63,6 +64,10 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const [yaEnviados, setYaEnviados] = useState<Set<string>>(new Set());
   const [enviandoAdjuntos, setEnviandoAdjuntos] = useState(false);
+  // Ventana de confirmación tras subir: qué se va a mandar y qué viene marcado.
+  const [confirmEnvio, setConfirmEnvio] = useState<
+    { archivos: ArchivoParaEnviar[]; preseleccion: string[]; canales: string[]; files: File[] } | null
+  >(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -368,7 +373,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       }
 
       if (uploadedFileIds.length > 0) {
-        dispatchDocumentNotification(uploadedFileIds, items.map(i => i.file));
+        void prepararConfirmacionEnvio(uploadedFileIds, items.map(i => i.file));
       }
     } catch (err: any) {
       console.error('Error uploading file:', err);
@@ -416,7 +421,64 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
     }
   };
 
-  const dispatchDocumentNotification = async (fileIds: string[], files: File[]) => {
+  /**
+   * Decide si hay que preguntar antes de mandarle los archivos al agente.
+   *
+   * Pregunta solo cuando de verdad saldría algo: el tipo de trámite tiene
+   * canales y categorías configuradas, y alguno de los archivos recién subidos
+   * cae en ellas. Si no, manda la notificación sin adjuntos y no estorba — una
+   * ventana que siempre dice "no se enviará nada" se vuelve un clic de más que
+   * la gente aprende a ignorar.
+   */
+  const prepararConfirmacionEnvio = async (fileIds: string[], files: File[]) => {
+    try {
+      const { data: ticket } = await supabase
+        .from('tickets').select('tipo_tramite').eq('id', tramiteId).maybeSingle();
+      const { data: cfg } = ticket?.tipo_tramite
+        ? await supabase
+            .from('ticket_tipos')
+            .select('envio_adjuntos_canales, envio_adjuntos_categorias_ids')
+            .eq('value', ticket.tipo_tramite)
+            .maybeSingle()
+        : { data: null };
+
+      const canales: string[] = cfg?.envio_adjuntos_canales ?? [];
+      const categorias: string[] = cfg?.envio_adjuntos_categorias_ids ?? [];
+
+      const { data: subidos } = await supabase
+        .from('ticket_archivos')
+        .select('id, nombre, categoria_id, categoria:maestro_adjunto_categorias!categoria_id(nombre)')
+        .in('id', fileIds);
+
+      const candidatos = (subidos ?? []).filter(
+        a => a.categoria_id && categorias.includes(a.categoria_id),
+      );
+
+      if (canales.length === 0 || candidatos.length === 0) {
+        dispatchDocumentNotification(fileIds, files);
+        return;
+      }
+
+      setConfirmEnvio({
+        canales,
+        files,
+        archivos: (subidos ?? []).map(a => ({
+          id: a.id as string,
+          nombre: (a.nombre as string) ?? 'documento',
+          categoriaNombre: (a.categoria as { nombre?: string } | null)?.nombre ?? null,
+          yaEnviado: yaEnviados.has(a.id as string),
+        })),
+        preseleccion: candidatos.map(a => a.id as string),
+      });
+    } catch (err) {
+      // Si algo falla al armar la confirmación, se manda la notificación sin
+      // adjuntos: nunca enviar de más sin que nadie lo haya visto.
+      console.error('No se pudo preparar la confirmación de envío:', err);
+      dispatchDocumentNotification([], files);
+    }
+  };
+
+  const dispatchDocumentNotification = async (fileIds: string[], files: File[], forzar = false) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -440,6 +502,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
             ticket_id: tramiteId,
             triggered_by_user_id: usuario!.id,
             attachment_file_ids: fileIds,
+            ...(forzar ? { forzar_reenvio: true } : {}),
             extra_variables: {
               nombre_archivo: fileIds.length === 1 ? fileNames : `${fileIds.length} archivos`,
               tamano_archivo: sizeLabel,
@@ -928,6 +991,51 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
           ))}
         </div>
       )}
+
+      {confirmEnvio && (
+
+        <ConfirmarEnvioAdjuntosModal
+
+          archivos={confirmEnvio.archivos}
+
+          preseleccion={confirmEnvio.preseleccion}
+
+          canales={confirmEnvio.canales}
+
+          enviando={enviandoAdjuntos}
+
+          onCancelar={() => {
+
+            // La notificación del trámite sale igual; lo que no sale son los
+
+            // archivos. La lista vacía es explícita (ver el despachador).
+
+            void dispatchDocumentNotification([], confirmEnvio.files);
+
+            setConfirmEnvio(null);
+
+          }}
+
+          onConfirmar={async (ids) => {
+
+            setEnviandoAdjuntos(true);
+
+            await dispatchDocumentNotification(ids, confirmEnvio.files, true);
+
+            setEnviandoAdjuntos(false);
+
+            setYaEnviados(prev => new Set([...prev, ...ids]));
+
+            setConfirmEnvio(null);
+
+            showToast(ids.length === 1 ? 'Archivo enviado al agente' : `${ids.length} archivos enviados al agente`);
+
+          }}
+
+        />
+
+      )}
+
 
       {previewFile && (
         <FilePreviewModal
