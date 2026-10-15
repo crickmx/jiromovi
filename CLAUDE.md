@@ -35,6 +35,18 @@ Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado 
 
 ---
 
+### 2026-10-15 — aseguradoras duplicadas en el selector + filtros multi-opción en el Directorio
+
+**La trampa:** el campo dinámico de aseguradoras guarda la selección como UN texto separado por comas, y **varios nombres del catálogo traen coma propia** (`ANA COMPAÑIA DE SEGUROS, S.A.`). Al releerlo, `split(',')` lo partía en pedazos, ninguno coincidía con el catálogo, la casilla salía sin palomear — y cada clic volvía a agregar el nombre. Tampoco se podía deseleccionar.
+
+`src/lib/aseguradorasSeleccion.ts` (+ su `.test.mjs`) vuelve a pegar los pedazos que juntos forman un nombre del catálogo, del más largo al más corto, y deduplica. **El formato guardado no cambió** — el detalle del trámite sigue leyendo y mostrando la lista completa. Lo que cambió es el campo cerrado del formulario: primera aseguradora + `otras N` (la lista completa queda en el `title`). Se lee contra el catálogo **completo**, no contra las filtradas por ramo, o filtrar por ramo borraría de la lectura algo ya elegido.
+
+El bloque Legacy `ce*` (`cotizacion_emision`) no tiene este bug: ahí la selección vive como arreglo, no como texto.
+
+**Directorio:** los filtros de Rol y Oficina ahora son multi-selección. El `MultiSelectDropdown` que vivía dentro de `pages/Tramites.tsx` se sacó a `components/ui/multi-select-dropdown.tsx` y lo usan las dos pantallas. El de Estado se dejó como `<select>`: sus tres opciones ya se excluyen entre sí.
+
+---
+
 ### 2026-10-15 — equipos de trámite en todos los roles, Gerente ve lo suyo, equipo de un solo ejecutivo
 
 Salió de un reporte de DIANA JIMÉNEZ GUTIERREZ (Gerente): levantó varios trámites y **no le aparecían en su tablero**. Tres causas encadenadas, las tres arregladas:
