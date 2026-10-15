@@ -14,14 +14,6 @@ function Sk({ className }: { className?: string }) {
   return <div className={cn('rounded-lg bg-surface-muted dark:bg-white/10 shimmer', className)} />;
 }
 
-type EjecutivoItem = {
-  id: string;
-  nombre: string;
-  apellidos: string;
-  total: number;
-  urgentes: number;
-};
-
 type TicketAbierto = {
   id: string;
   folio: string;
@@ -78,152 +70,93 @@ function estatusChip(label?: string | null) {
   return <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400">{label}</span>;
 }
 
-// avatar initials color by index
-const AVATAR_GRADS = [
-  'linear-gradient(135deg,#4338CA,#1E1B8C)',
-  'linear-gradient(135deg,#0369A1,#0EA5E9)',
-  'linear-gradient(135deg,#D97706,#B45309)',
-  'linear-gradient(135deg,#9D174D,#E84F8A)',
-  'linear-gradient(135deg,#065F46,#10B981)',
-  'linear-gradient(135deg,#7C3AED,#4C1D95)',
-];
+// ── Producción panel ───────────────────────────────────────
+// Los mismos tres indicadores que la pantalla de inicio de Central de
+// Producción, acotados a la oficina del gerente. La definición vive allá
+// (`_kpi_agg`, apps/reporting/views.py): prima neta es el total pagado,
+// convenio la parte bajo acuerdo con la aseguradora, y no convenio la resta.
 
-function initials(nombre: string, apellidos: string) {
-  return `${nombre.charAt(0)}${apellidos.charAt(0)}`.toUpperCase();
+function Delta({ pct }: { pct?: number | null }) {
+  if (pct == null) return null;
+  return (
+    <p className={cn('text-[11px] font-semibold mt-1', pct >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
+      {pct >= 0 ? '↑ +' : '↓ '}{pct}% vs año anterior
+    </p>
+  );
 }
 
-// ── Ejecutivos panel ───────────────────────────────────────────────────────
+/** '—' y no $0 cuando bonos aún no manda el dato: cero es un número, no un hueco. */
+function monto(n?: number | null) {
+  return n == null ? '—' : money(n);
+}
 
-function EjecutivosPanel({ usuario }: { usuario: Usuario }) {
-  const [ejecutivos, setEjecutivos] = useState<EjecutivoItem[]>([]);
-  const [loading, setLoading] = useState(true);
+function ProduccionPanel() {
+  const data = useMiResumen();
 
-  useEffect(() => {
-    let active = true;
-    const HORA_MS = 3_600_000;
-    const ahora = Date.now();
-
-    async function load() {
-      if (!usuario.oficina_id) { setLoading(false); return; }
-
-      const { data: users } = await supabase
-        .from('usuarios')
-        .select('id, nombre, apellidos')
-        .eq('rol', 'Ejecutivo')
-        .eq('oficina_id', usuario.oficina_id)
-        .order('nombre');
-
-      if (!active || !users?.length) { setLoading(false); return; }
-
-      const ids = users.map(u => u.id);
-
-      const { data: tickets } = await supabase
-        .from('tickets')
-        .select('agente_id, created_at')
-        .in('agente_id', ids)
-        .is('cerrado_en', null);
-
-      if (!active) return;
-
-      const items: EjecutivoItem[] = users.map(u => {
-        const mine = (tickets ?? []).filter(t => t.agente_id === u.id);
-        const urgentes = mine.filter(t => ahora - new Date(t.created_at).getTime() > 24 * HORA_MS).length;
-        return { id: u.id, nombre: u.nombre, apellidos: u.apellidos, total: mine.length, urgentes };
-      });
-
-      setEjecutivos(items);
-      setLoading(false);
-    }
-
-    void load();
-    return () => { active = false; };
-  }, [usuario.id, usuario.oficina_id]);
+  const prod =
+    data !== 'loading' && data !== 'error' && data.vinculado && data.aplica !== false
+      ? data.produccion
+      : null;
 
   return (
     <Panel
       stripe="bg-gradient-to-r from-[#065F46] to-[#10B981]"
-      eyebrow="Mi equipo"
-      title="Ejecutivos"
-      desc="Trámites activos por ejecutivo"
+      eyebrow="Central de producción"
+      title="Producción"
+      desc="Prima pagada de tu oficina en el año"
     >
-      {loading ? (
-        <><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /></>
-      ) : ejecutivos.length === 0 ? (
-        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin ejecutivos en esta oficina</p>
+      {data === 'loading' ? (
+        <><Sk className="h-20" /><Sk className="h-16" /><Sk className="h-10" /></>
+      ) : !prod ? (
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin datos de producción</p>
       ) : (
         <>
-          <div className="flex flex-col">
-            {ejecutivos.map((e, i) => (
-              <div key={e.id} className="flex items-center gap-3 py-2.5 border-b last:border-0 border-neutral-100 dark:border-white/6">
-                <div
-                  className="w-[34px] h-[34px] rounded-full grid place-items-center text-[13px] font-bold text-white flex-shrink-0"
-                  style={{ background: AVATAR_GRADS[i % AVATAR_GRADS.length] }}
-                >
-                  {initials(e.nombre, e.apellidos)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold text-neutral-900 dark:text-white truncate">
-                    {e.nombre} {e.apellidos}
-                  </p>
-                  <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">
-                    {e.total} trámite{e.total !== 1 ? 's' : ''} activo{e.total !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  {e.urgentes > 0 ? (
-                    <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400">
-                      {e.urgentes} urgente{e.urgentes !== 1 ? 's' : ''}
-                    </span>
-                  ) : (
-                    <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                      Al día
-                    </span>
-                  )}
-                  <div className="w-14 h-[3px] bg-neutral-200 dark:bg-white/10 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        background: AVATAR_GRADS[i % AVATAR_GRADS.length].replace('linear-gradient(135deg,', '').replace(')', '').split(',')[0],
-                        width: `${Math.min(100, (e.total / Math.max(...ejecutivos.map(x => x.total), 1)) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="bg-surface-muted dark:bg-white/5 rounded-2xl p-3">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50">Prima neta</p>
+            <p className="text-[10.5px] text-neutral-400 dark:text-white/40 mb-1">convenio + no convenio</p>
+            <p className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+              {monto(prod.prima_neta_actual)}
+            </p>
+            <Delta pct={prod.delta_neta_pct} />
           </div>
 
-          {/* Summary */}
-          <div className="bg-neutral-50 dark:bg-white/5 rounded-xl p-3 mt-1">
-            <p className="text-[10.5px] font-bold uppercase tracking-wide text-neutral-500 dark:text-white/50 mb-2">Oficina · resumen</p>
-            <div className="flex justify-between">
-              <div className="text-center">
-                <p className="text-base font-extrabold text-neutral-900 dark:text-white font-variant-numeric tabular-nums">
-                  {ejecutivos.reduce((s, e) => s + e.total, 0)}
-                </p>
-                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Trámites totales</p>
-              </div>
-              <div className="text-center">
-                <p className={cn('text-base font-extrabold font-variant-numeric tabular-nums', ejecutivos.some(e => e.urgentes > 0) ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400')}>
-                  {ejecutivos.reduce((s, e) => s + e.urgentes, 0)}
-                </p>
-                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Urgentes</p>
-              </div>
-              <div className="text-center">
-                <p className="text-base font-extrabold text-neutral-900 dark:text-white">
-                  {ejecutivos.length}
-                </p>
-                <p className="text-[10.5px] text-neutral-500 dark:text-white/50 mt-0.5">Ejecutivos</p>
-              </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-surface-muted dark:bg-white/5 rounded-2xl p-3">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">De convenio</p>
+              <p className="text-base font-extrabold text-sky-600 dark:text-sky-400 tabular-nums">{monto(prod.prima_conv_actual)}</p>
+              <Delta pct={prod.delta_pct} />
+            </div>
+            <div className="bg-surface-muted dark:bg-white/5 rounded-2xl p-3">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">No convenio</p>
+              <p className="text-base font-extrabold text-neutral-700 dark:text-white/80 tabular-nums">{monto(prod.prima_no_conv_actual)}</p>
+              <Delta pct={prod.delta_no_conv_pct} />
             </div>
           </div>
+
+          {prod.meta_monto != null && (
+            <div className="mt-auto pt-1">
+              <div className="flex justify-between text-[11px] mb-1">
+                <span className="text-neutral-500 dark:text-white/55">Meta anual de oficina</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{prod.meta_pct}%</span>
+              </div>
+              <div className="h-1.5 bg-neutral-200 dark:bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${Math.min(100, prod.meta_pct ?? 0)}%`, background: 'linear-gradient(90deg,#059669,#34D399)' }} />
+              </div>
+              <p className="text-[10.5px] text-neutral-400 dark:text-white/40 mt-1">Meta {money(prod.meta_monto)}</p>
+            </div>
+          )}
         </>
       )}
     </Panel>
   );
 }
 
-// ── Metas panel ────────────────────────────────────────────────────────────
+
+// ── Convención panel ─────────────────────────────────────
+// Los 5 de mayor prima PONDERADA del equipo — que es con la que se mide la
+// convención, no con la prima a secas (TablaPonderacion en bonos). Van los
+// cinco primeros aunque todavía no alcancen nivel: el gerente necesita ver a
+// quién le falta poco, no solo a quien ya llegó.
 
 function MetasPanel() {
   const data = useMiResumen();
@@ -233,97 +166,55 @@ function MetasPanel() {
       ? data.convencion_equipo
       : null;
 
-  const prod =
-    data !== 'loading' && data !== 'error' && data.vinculado && data.aplica !== false
-      ? data.produccion
-      : null;
+  const top = ce?.top ?? [];
 
   return (
     <Panel
       stripe="bg-gradient-to-r from-[#0284C7] to-[#38BDF8]"
       eyebrow="Convención · oficina"
-      title="Metas"
-      desc="Progreso del equipo hacia convención"
+      title="Top 5 del equipo"
+      desc="Mayor producción ponderada y su nivel"
     >
       {data === 'loading' ? (
-        <><Sk className="h-16" /><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /></>
+        <><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /><Sk className="h-12" /></>
+      ) : !ce ? (
+        <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin datos de convención del equipo</p>
       ) : (
         <>
-          {/* Office production summary */}
-          {prod && (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-surface-muted dark:bg-white/5 rounded-2xl p-3">
-                <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">Prima oficina</p>
-                <p className="text-base font-extrabold text-sky-600 dark:text-sky-400">{money(prod.prima_conv_actual)}</p>
-                {prod.delta_pct != null && (
-                  <p className={cn('text-[11px] font-semibold mt-1', prod.delta_pct >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
-                    {prod.delta_pct >= 0 ? '↑ +' : '↓ '}{prod.delta_pct}% vs año anterior
-                  </p>
-                )}
-              </div>
-              <div className="bg-surface-muted dark:bg-white/5 rounded-2xl p-3">
-                <p className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-neutral-500 dark:text-white/50 mb-1">En convención</p>
-                <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                  {ce ? ce.en_convencion.length : '—'}
-                  {ce && <span className="text-[11px] font-normal text-neutral-500 dark:text-white/50"> / {ce.total_vendedores}</span>}
-                </p>
-                <p className="text-[11px] text-neutral-500 dark:text-white/50 mt-1">ejecutivos</p>
-              </div>
-            </div>
-          )}
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">{ce.en_convencion.length}</span>
+            <span className="text-[11px] text-neutral-500 dark:text-white/50">de {ce.total_vendedores} ejecutivos ya en convención</span>
+          </div>
 
-          {ce && ce.en_convencion.length > 0 && (
-            <div>
-              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/50 mb-2">Nivel por ejecutivo</p>
-              <div className="flex flex-col gap-1.5">
-                {ce.en_convencion.map(v => (
-                  <div
-                    key={v.entity}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-100 dark:border-white/8"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-bold text-neutral-900 dark:text-white truncate">{v.entity}</p>
-                      <p className="text-[11px] text-neutral-500 dark:text-white/50 mt-0.5">
-                        {v.pct_conv}% hacia {v.sig_conv ?? 'máximo'}
-                      </p>
-                    </div>
+          {top.length === 0 ? (
+            <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">
+              Sin producción registrada en el periodo
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {top.map((v, i) => (
+                <div
+                  key={v.entity}
+                  className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-100 dark:border-white/8"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full grid place-items-center text-[10.5px] font-bold text-white flex-shrink-0 bg-sky-600 dark:bg-sky-500">
+                      {i + 1}
+                    </span>
+                    <p className="flex-1 min-w-0 text-[12px] font-bold text-neutral-900 dark:text-white truncate">{v.entity}</p>
                     {nivelChip(v.nivel_conv)}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {ce && ce.cerca.length > 0 && (
-            <div>
-              <p className="text-[10.5px] font-bold uppercase tracking-widest text-neutral-500 dark:text-white/50 mb-2">Cerca del siguiente nivel</p>
-              {ce.cerca.map(v => (
-                <div key={v.entity} className="bg-sky-50 dark:bg-sky-950/20 border-l-[3px] border-sky-500 rounded-r-xl p-2.5 mb-2">
-                  <p className="text-[11px] font-bold text-neutral-800 dark:text-white">{v.entity}</p>
-                  <p className="text-[11px] text-neutral-500 dark:text-white/55">
-                    Falta {money(v.falta_conv)} para {v.sig_conv}
-                  </p>
-                  <div className="h-1.5 bg-sky-100 dark:bg-sky-950/30 rounded-full overflow-hidden mt-1.5">
+                  <div className="flex items-baseline justify-between mt-1 pl-7">
+                    <span className="text-[11px] font-semibold text-neutral-700 dark:text-white/70 tabular-nums">{money(v.prima_pond)}</span>
+                    <span className="text-[11px] text-neutral-500 dark:text-white/50">
+                      {v.sig_conv ? <>falta {money(v.falta_conv)} para {v.sig_conv}</> : 'nivel máximo'}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-neutral-200 dark:bg-white/10 rounded-full overflow-hidden mt-1.5 ml-7">
                     <div className="h-full rounded-full" style={{ width: `${v.pct_conv}%`, background: 'linear-gradient(90deg,#0284c7,#38bdf8)' }} />
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {!ce && (
-            <p className="text-xs text-neutral-500 dark:text-white/50 text-center py-6">Sin datos de convención del equipo</p>
-          )}
-
-          {prod?.meta_monto != null && (
-            <div>
-              <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-neutral-500 dark:text-white/55">Meta anual de oficina</span>
-                <span className="font-bold text-sky-600 dark:text-sky-400">{prod.meta_pct}%</span>
-              </div>
-              <div className="h-1.5 bg-neutral-200 dark:bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${Math.min(100, prod.meta_pct ?? 0)}%`, background: 'linear-gradient(90deg,#059669,#34D399)' }} />
-              </div>
             </div>
           )}
         </>
@@ -331,6 +222,7 @@ function MetasPanel() {
     </Panel>
   );
 }
+
 
 // ── Solicitudes panel ──────────────────────────────────────────────────────
 
@@ -464,7 +356,7 @@ export function GerenteSections({ usuario }: { usuario: Usuario }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 movi-stagger">
-        <EjecutivosPanel usuario={usuario} />
+        <ProduccionPanel />
         <MetasPanel />
         <SolicitudesPanel usuario={usuario} />
       </div>

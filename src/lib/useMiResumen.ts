@@ -62,10 +62,22 @@ export interface ConvencionCercaVendedor {
   sig_conv: string | null;
 }
 
+/** Los 5 de mayor prima ponderada del equipo, hayan alcanzado nivel o no. */
+export interface ConvencionTopVendedor {
+  entity: string;
+  prima_pond: number;
+  nivel_conv: string;
+  sig_conv: string | null;
+  falta_conv: number;
+  pct_conv: number;
+}
+
 export interface ConvencionEquipo {
   total_vendedores: number;
   en_convencion: ConvencionEquipoVendedor[];
   cerca: ConvencionCercaVendedor[];
+  /** Opcional: bonos viejo (antes del 15/10/26) no lo manda. */
+  top?: ConvencionTopVendedor[];
 }
 
 export interface MiResumenData {
@@ -77,6 +89,14 @@ export interface MiResumenData {
     prima_conv_actual: number;
     prima_conv_anterior: number;
     delta_pct: number | null;
+    // Los mismos tres KPI del inicio de Central de Producción. Opcionales
+    // porque una versión vieja de bonos no los manda.
+    prima_neta_actual?: number;
+    prima_neta_anterior?: number;
+    delta_neta_pct?: number | null;
+    prima_no_conv_actual?: number;
+    prima_no_conv_anterior?: number;
+    delta_no_conv_pct?: number | null;
     num_polizas: number;
     meta_monto: number | null;
     meta_pct: number | null;
