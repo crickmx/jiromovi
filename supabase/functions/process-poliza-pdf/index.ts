@@ -317,7 +317,7 @@ Deno.serve(async (req: Request) => {
       // el archivo, el vendedor, el despacho y "Vigente" puestos. Nada de eso lo
       // extrajo el lector, así que esa fila está vacía y el Excel tiene que
       // decirlo en vez de dejar que parezca buena.
-      const filas = (todosExtraidos ?? []).map((d: any) =>
+      const aFila = (d: any) =>
         marcarSiNoSeExtrajo(
           SICAS_HEADERS,
           buildSicasRow(
@@ -326,12 +326,27 @@ Deno.serve(async (req: Request) => {
             d.archivo?.nombre ?? ""
           ),
           d.estado === "ok",
-        )
-      );
+        );
+
+      // Dos hojas, y el orden importa: la carga masiva de SICAS lee la PRIMERA,
+      // así que ahí va solo lo que de verdad se extrajo. Lo que no se pudo leer
+      // va en la segunda, con su aviso, para capturarlo a mano sin que ensucie
+      // la carga. La segunda hoja se crea siempre, aunque venga vacía: que el
+      // archivo tenga siempre la misma forma evita sustos al abrirlo.
+      const extraidas = (todosExtraidos ?? []).filter((d: any) => d.estado === "ok");
+      const noExtraidas = (todosExtraidos ?? []).filter((d: any) => d.estado !== "ok");
 
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet([SICAS_HEADERS, ...filas]);
-      XLSX.utils.book_append_sheet(wb, ws, "SICAS");
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.aoa_to_sheet([SICAS_HEADERS, ...extraidas.map(aFila)]),
+        "SICAS",
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.aoa_to_sheet([SICAS_HEADERS, ...noExtraidas.map(aFila)]),
+        "No extraidas",
+      );
       const xlsxArr: number[] = XLSX.write(wb, { type: "array", bookType: "xlsx" });
       const xlsxBytes = new Uint8Array(xlsxArr);
       const xlsxName = `${ticket.folio ?? ticket_id}-SICAS.xlsx`;
