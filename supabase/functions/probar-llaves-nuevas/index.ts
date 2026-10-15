@@ -53,8 +53,40 @@ async function probarLlave(url: string, llave: string, headersExtra?: Record<str
   }
 }
 
+/**
+ * ¿El gateway de edge functions deja pasar una llave nueva?
+ *
+ * Nueve funciones llaman a otra con `Authorization: Bearer ${service key}`, y
+ * esa variable ahora trae una `sb_secret_…` que NO es un JWT. Si el gateway la
+ * rechaza, esas nueve llamadas ya están fallando. Se prueba llamándose a sí
+ * misma con `?ping=1` (que corta de inmediato, sin recursión).
+ */
+async function probarGateway(url: string, llave: string) {
+  const destino = `${url}/functions/v1/probar-llaves-nuevas?ping=1`;
+  const intento = async (headers: Record<string, string>) => {
+    try {
+      const r = await fetch(destino, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: '{}' });
+      return { status: r.status, cuerpo: (await r.text()).slice(0, 120) };
+    } catch (e) {
+      return { status: null, cuerpo: e instanceof Error ? e.message : String(e) };
+    }
+  };
+  return {
+    como_bearer: await intento({ Authorization: `Bearer ${llave}` }),
+    como_apikey: await intento({ apikey: llave }),
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 200, headers: corsHeaders });
+
+  // Corta la llamada que se hace a sí misma: sin esto, cada prueba dispararía
+  // otra ronda de pruebas.
+  if (new URL(req.url).searchParams.get('ping')) {
+    return new Response(JSON.stringify({ pong: true }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   const url = Deno.env.get('SUPABASE_URL')!;
   const legacy = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -87,6 +119,9 @@ Deno.serve(async (req: Request) => {
   } else {
     pruebas.secreta_directa = 'no hay SUPABASE_SECRET_KEYS en este proyecto';
   }
+
+  // La pregunta que decide si hay un incendio: esas 9 llamadas entre funciones.
+  pruebas.gateway = secreta ? await probarGateway(url, secreta) : 'sin llave secreta';
 
   return new Response(JSON.stringify(resultado, null, 2), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
