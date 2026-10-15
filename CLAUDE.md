@@ -27,6 +27,20 @@ Si al abrir la Bitácora sale *"Could not find the table … in the schema cache
 - **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
 - **Trámite hijo repetido**: volver a aplicar el estatus que dispara un trigger y confirmar que ahora avisa.
 
+#### 🔜 LO PRIMERO DE MAÑANA — tres ajustes al envío de adjuntos (pedidos el 15/10 al cerrar)
+
+Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
+
+**1. Archivos sin categoría deben entrar al envío.** Hoy la regla es "solo las categorías marcadas", así que un archivo **sin categoría** —o de un tipo de trámite cuyo campo adjunto no obliga a elegirla— nunca sale. Ricardo quiere que esos salgan marcados por defecto.
+  - ⚠️ **Falta su respuesta antes de tocar código:** ¿sin categoría se manda **solo** cuando alguien confirma en la ventana (más seguro), o también en los envíos automáticos por cambio de estatus, donde nadie lo revisa? Lo segundo es lo que dice literal el pedido, pero deja salir cualquier archivo al que se le haya olvidado la categoría —incluido lo interno—, que es justo el problema que se vino a arreglar. Recomendación: preseleccionarlo en la ventana, y en el camino automático dejarlo fuera.
+  - Dónde se toca: `prepararConfirmacionEnvio()` en `TramiteArchivos.tsx` (la preselección) y `filtrarAdjuntosParaEnvio()` en `ticket-notification-dispatcher` (solo si la respuesta es "también automático").
+
+**2. Confirmar también al guardar o al salir del trámite.** Hoy la ventana sale al subir desde la pestaña Archivos. Falta el otro camino: los adjuntos de un **campo `adjunto`** del formulario (`TramiteDetalle.tsx`, ~línea 2509 — ahí se insertan en `ticket_archivos` al elegir el archivo, no al guardar) hoy **no disparan ninguna notificación**. Hay que llamar al mismo `ConfirmarEnvioAdjuntosModal` al guardar cambios, y poner una guarda al salir si quedan archivos sin decidir.
+
+**3. Configuración de CUÁNDO se envía.** Columna nueva en `ticket_tipos` (ej. `envio_adjuntos_momento`: `al_guardar` | `al_cambiar_estatus`), su control en la pestaña *Envío de adjuntos*, y que lo respeten los dos caminos. Hoy el envío va pegado al evento `tramite_documento_cargado` (al subir).
+
+---
+
 #### Pendiente de decisión
 - **Registrar pagos de Store desde el modal.** Hoy el modal de Store es de solo lectura: registrar un pago tiene validaciones de método/forma de pago que viven en `StorePedidoDetalle`. Hacerlo bien es sacar esa parte a su propio componente y usarlo en los dos lados; copiarla sería la segunda copia que se desincroniza.
 - **Notificaciones configurables.** Hoy el texto de los avisos de trámite está escrito a mano en el código (ya mejorado, ver abajo). Falta la pantalla de plantillas, como la de los triggers de Store.
