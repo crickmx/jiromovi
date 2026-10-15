@@ -13,7 +13,7 @@
 | `20261014000001_bitacora_unificada.sql` | la bitácora de Store + Premium en una sola vista | ✅ corrida |
 | `20261014000002_pagos_premium_por_periodo.sql` | `mkt_premium_pagos.periodo_id` + backfill, y recrea la vista | ✅ corrida |
 | `20261015100000_equipos_todos_los_roles_y_unico_ejecutivo.sql` | el cambio de rol ya no apaga las reglas de equipo + autoasignar al único ejecutivo | ✅ corrida |
-| `20261015200000_envio_adjuntos_agente.sql` | config de envío de adjuntos por tipo + `archivo_id` en el log (candado) | ⏳ **falta correr** |
+| `20261015200000_envio_adjuntos_agente.sql` | config de envío de adjuntos por tipo + `archivo_id` en el log (candado) | ✅ corrida |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
@@ -21,6 +21,7 @@ Si al abrir la Bitácora sale *"Could not find the table … in the schema cache
 - **Tarjetas de bonos en el dashboard del agente** (Producción / Metas / Campaña): entrar en "ver como" a un agente que SÍ sea vendedor en bonos y ver si se llenan. El fix del 15/10 manda `?as=<uuid>` a `cp.movi.digital` (bonos ya desplegado, commit `b6356d8` en `master`). Si siguen vacías, mirar la petición `mi-resumen` en F12 → Red: `403` = bonos no lo reconoce como admin · `{"vinculado": false}` = ese agente nunca entró a bonos · `{"aplica": false}` = su rol en bonos no es vendedor · **sin `?as=` en la URL** = no entró el deploy de MOVI.
 - **Equipos de trámite en todos los roles** (15/10): asignarle equipos a un Empleado/Gerente desde Editar Usuario y confirmar que (a) se guardan, (b) un trámite levantado para esa persona nace con equipo, (c) **no perdió su membresía** en los equipos donde es ejecutivo/líder (menú de Trámites, permisos de catálogos).
 - **Equipo de un solo ejecutivo**: levantar un trámite que caiga en un equipo con un único `ejecutivo` y confirmar que sale asignado a esa persona, no "Sin responsable".
+- **Envío de adjuntos al agente** (15/10): configurar un tipo en FormBuilder → *Envío de adjuntos* (canales + categorías), subir a un trámite de ese tipo un archivo de una categoría marcada y otro de una sin marcar, y confirmar que (a) sale la ventana con el correcto marcado, (b) "No enviar" no manda archivos, (c) al volver a subir el mismo archivo el candado lo deja fuera de la preselección, (d) el botón "Enviar al agente" de la pestaña Archivos sí lo reenvía.
 - **Bitácora**: el modal de pagos al hacer clic en una fila de cada módulo, los filtros, y que el Excel/CSV exporte lo filtrado.
 - **Papelera**: mandar un trámite a la papelera. Si sale un mensaje de error, **mandarlo** — es la causa de fondo de por qué no escribía, y todavía no la sabemos.
 - **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
@@ -59,7 +60,7 @@ Pedido de Ricardo: que al agente le lleguen por WhatsApp y correo los archivos q
 - Si el log no se puede leer, **no se manda nada automáticamente**: repetir un envío molesta al agente, y el botón manual sigue ahí.
 - Se reutiliza el evento `tramite_documento_cargado` para el envío manual — no hizo falta una plantilla nueva.
 
-**Falta:** correr la migración y **redesplegar `ticket-notification-dispatcher`** desde el dashboard.
+**Migración corrida y `ticket-notification-dispatcher` redesplegado el 15/10.** Falta probarlo en navegador (ver la lista de arranque).
 
 ---
 
