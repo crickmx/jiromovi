@@ -31,6 +31,16 @@ Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado 
 
 ---
 
+### 🔴 2026-10-15 — migraciones: baseline nuevo, las viejas se archivaron
+
+Los correos de supabase[bot] en los PRs y la rama `main` de la integración en `MIGRATIONS_FAILED` desde el 1 de sept tenían una sola causa: **el historial de migraciones de producción ya no coincidía con el repo** (274 archivos corridos a mano sin registrar, 128 registros sin archivo, 4 timestamps repetidos, archivos duplicados que truenan al correr desde cero).
+
+**Ahora:** `supabase/migrations/` tiene UN solo archivo, `20261015000000_baseline_produccion.sql` (esquema real de producción, verificado objeto por objeto). Las 1,330 viejas están en `supabase/migrations_archive/`, solo de referencia. El historial de producción quedó con esa única versión (respaldo en `supabase_migrations.schema_migrations_backup_20261015`). Detalle y reglas en `supabase/README_MIGRACIONES.md`.
+
+**🔑 Regla desde hoy:** una migración nueva llega a producción por merge a `main`. Si se corre a mano en el SQL Editor, hay que registrarla (`supabase migration repair --status applied <version>`) o el historial se vuelve a desincronizar. Timestamp único siempre.
+
+---
+
 ### 🔴 2026-10-14 — un `[0]` sobre algo que no es arreglo: dos listas salían vacías
 
 "No tienes equipos asignados como líder" sobre un usuario que SÍ era líder de dos equipos activos.
