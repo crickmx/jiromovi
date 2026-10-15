@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
+import { useImpersonation } from '../contexts/ImpersonationContext';
 
 const BONOS_URL = import.meta.env.VITE_BONOS_URL || 'http://localhost:8003';
 
@@ -92,17 +93,31 @@ export interface MiResumenData {
   campanias?: CampaniaActiva[];
 }
 
+// La caché se guarda POR persona consultada: si no, al entrar en "ver como"
+// se seguían mostrando los datos de quien estuviera antes.
 let _cache: MiResumenData | 'error' | null = null;
 let _cacheTime = 0;
+let _cacheClave = '';
 const CACHE_TTL = 60_000;
 
 export function useMiResumen(): MiResumenData | 'loading' | 'error' {
-  const [data, setData] = useState<MiResumenData | 'loading' | 'error'>(_cache ?? 'loading');
+  // La impersonación de MOVI solo cambia lo que pinta la pantalla: el token
+  // sigue siendo el del administrador, así que sin decírselo a bonos las
+  // tarjetas mostraban la producción del ADMINISTRADOR mientras la pantalla
+  // decía estar viendo a otro. Bonos solo lo acepta si quien pregunta es
+  // administrador allá, y lo deja en su log.
+  const { isImpersonating, impersonatedUser } = useImpersonation();
+  const verComo = isImpersonating ? impersonatedUser?.id ?? null : null;
+
+  const [data, setData] = useState<MiResumenData | 'loading' | 'error'>(
+    _cacheClave === (verComo ?? 'self') ? (_cache ?? 'loading') : 'loading',
+  );
 
   useEffect(() => {
     let active = true;
+    const clave = verComo ?? 'self';
     const now = Date.now();
-    if (_cache && now - _cacheTime < CACHE_TTL) {
+    if (_cache && _cacheClave === clave && now - _cacheTime < CACHE_TTL) {
       setData(_cache);
       return;
     }
@@ -110,19 +125,21 @@ export function useMiResumen(): MiResumenData | 'loading' | 'error' {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) { if (active) setData('error'); return; }
       try {
-        const url = new URL('/accounts/api/mi-resumen/', BONOS_URL).toString();
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const url = new URL('/accounts/api/mi-resumen/', BONOS_URL);
+        if (verComo) url.searchParams.set('as', verComo);
+        const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${session.access_token}` } });
         if (!res.ok) { if (active) setData('error'); return; }
         const json = (await res.json()) as MiResumenData;
         _cache = json;
         _cacheTime = Date.now();
+        _cacheClave = clave;
         if (active) setData(json);
       } catch {
         if (active) setData('error');
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [verComo]);
 
   return data;
 }
