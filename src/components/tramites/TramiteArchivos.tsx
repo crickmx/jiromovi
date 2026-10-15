@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { supabaseUrl } from '../../lib/supabase';
-import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2, Printer, Loader2, Check } from 'lucide-react';
+import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2, Printer, Loader2, Check, Send } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
 import { getPdfThumbnail } from '../../lib/pdfThumbnail';
@@ -57,6 +57,12 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
   const { usuario } = useAuth();
   const isAdmin = usuario?.rol === 'Administrador';
   const [archivos, setArchivos] = useState<Archivo[]>([]);
+  // Envío de adjuntos al agente: qué está marcado y qué ya salió alguna vez.
+  // El despachador aplica el mismo candado del lado del servidor; esto es para
+  // que se vea en pantalla antes de presionar.
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [yaEnviados, setYaEnviados] = useState<Set<string>>(new Set());
+  const [enviandoAdjuntos, setEnviandoAdjuntos] = useState(false);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -150,6 +156,21 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
         .eq('ticket_id', tramiteId),
     ]);
 
+    const { data: enviados } = await supabase
+      .from('notification_attachments_log')
+      .select('archivo_id, file_name')
+      .eq('ticket_id', tramiteId)
+      .eq('sent_successfully', true);
+    if (enviados) {
+      // Las filas viejas no tienen archivo_id; ahí el nombre dentro del mismo
+      // trámite es el mejor respaldo, igual que en el despachador.
+      const ids = new Set(enviados.map(e => e.archivo_id as string).filter(Boolean));
+      const nombres = new Set(enviados.map(e => e.file_name as string).filter(Boolean));
+      setYaEnviados(new Set(
+        (data ?? []).filter(a => ids.has(a.id) || nombres.has(a.nombre)).map(a => a.id as string),
+      ));
+    }
+
     if (data) setArchivos(data as Archivo[]);
     if (extraidos) {
       const map: Record<string, { estado: 'pendiente' | 'ok' | 'error'; mensaje?: string }> = {};
@@ -161,6 +182,61 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       setExtractionStatus(map);
     }
     setLoading(false);
+  };
+
+  /**
+   * Manda los archivos elegidos al agente por correo y WhatsApp.
+   *
+   * Va con `forzar_reenvio`: salta la configuración del tipo y el candado de
+   * "ya se mandó". Es un botón que alguien presionó a propósito — si quiere
+   * mandar otra vez el mismo archivo, es su decisión, no un descuido.
+   */
+  const enviarAlAgente = async (ids: string[]) => {
+    if (ids.length === 0 || enviandoAdjuntos) return;
+    setEnviandoAdjuntos(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { showToast('No hay sesión activa', 'error'); return; }
+
+      const resp = await fetch(`${supabaseUrl}/functions/v1/ticket-notification-dispatcher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          event_key: 'tramite_documento_cargado',
+          ticket_id: tramiteId,
+          triggered_by_user_id: usuario!.id,
+          attachment_file_ids: ids,
+          forzar_reenvio: true,
+          extra_variables: {
+            nombre_archivo: ids.length === 1
+              ? (archivos.find(a => a.id === ids[0])?.nombre ?? 'documento')
+              : `${ids.length} archivos`,
+          },
+        }),
+      });
+
+      // Un envío que falla en silencio es peor que no tener el botón: el
+      // usuario se queda creyendo que el agente ya lo recibió.
+      if (!resp.ok) {
+        showToast(`No se pudo enviar: ${await resp.text()}`, 'error');
+        return;
+      }
+      showToast(ids.length === 1 ? 'Archivo enviado al agente' : `${ids.length} archivos enviados al agente`);
+      setSeleccionados(new Set());
+      setYaEnviados(prev => new Set([...prev, ...ids]));
+    } catch (err) {
+      showToast(`No se pudo enviar: ${err instanceof Error ? err.message : 'error desconocido'}`, 'error');
+    } finally {
+      setEnviandoAdjuntos(false);
+    }
+  };
+
+  const alternarSeleccion = (id: string) => {
+    setSeleccionados(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   const handleCambiarCategoria = async (archivoId: string, nuevaCategoriaId: string) => {
@@ -590,6 +666,17 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
           Archivos Adjuntos ({archivos.length})
         </h3>
         <div className="flex items-center space-x-2">
+          {seleccionados.size > 0 && (
+            <button
+              onClick={() => enviarAlAgente([...seleccionados])}
+              disabled={enviandoAdjuntos}
+              className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+              title="Manda los archivos marcados al agente por correo y WhatsApp"
+            >
+              {enviandoAdjuntos ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              <span>{enviandoAdjuntos ? 'Enviando…' : `Enviar al agente (${seleccionados.size})`}</span>
+            </button>
+          )}
           {archivos.length > 0 && (
             <button
               onClick={handleDownloadAll}
@@ -637,6 +724,26 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                 onClick={() => setPreviewFile(archivo)}
               >
                 <FileThumbnail archivo={archivo} />
+
+                {/* Marcar para enviar. Click aparte: la miniatura abre la vista previa. */}
+                <label
+                  className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-1.5 py-1 rounded-lg bg-white/90 dark:bg-neutral-900/80 shadow cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                  title={yaEnviados.has(archivo.id)
+                    ? 'Ya se le envió al agente. Marcarlo lo manda otra vez.'
+                    : 'Marcar para enviar al agente'}
+                >
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.has(archivo.id)}
+                    onChange={() => alternarSeleccion(archivo.id)}
+                    className="w-3.5 h-3.5 rounded border-neutral-300"
+                  />
+                  {yaEnviados.has(archivo.id) && (
+                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">Enviado</span>
+                  )}
+                </label>
+
                 {extractionStatus[archivo.id] && (
                   <div className="absolute top-2 right-2 z-10">
                     {extractionStatus[archivo.id].estado === 'pendiente' && (

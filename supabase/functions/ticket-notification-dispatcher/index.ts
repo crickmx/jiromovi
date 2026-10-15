@@ -21,6 +21,8 @@ const SIGNED_URL_DURATION_SECONDS = 3600; // 1 hour
 
 interface TicketNotificationPayload {
   event_key: string;
+  /** Botón de reenviar del detalle del trámite: salta la config y el candado. */
+  forzar_reenvio?: boolean;
   ticket_id: string;
   triggered_by_user_id: string;
   extra_variables?: Record<string, string>;
@@ -47,6 +49,8 @@ interface AttachmentInfo {
   fileUrl?: string;
   mimeType?: string;
   size?: number;
+  /** Categoría del adjunto: con ella se decide si sale solo (ver filtrarAdjuntos). */
+  categoriaId?: string | null;
   source: "ticket" | "comment" | "policy_delivery" | "contact_center";
 }
 
@@ -339,7 +343,7 @@ async function getTicketNotificationAttachments(
 ): Promise<AttachmentInfo[]> {
   let query = supabase
     .from("ticket_archivos")
-    .select("id, nombre, url, tipo, tamano")
+    .select("id, nombre, url, tipo, tamano, categoria_id")
     .eq("ticket_id", ticketId)
     .order("fecha_subida", { ascending: false });
 
@@ -377,11 +381,104 @@ async function getTicketNotificationAttachments(
       fileUrl: f.url || undefined,
       mimeType: f.tipo || "application/octet-stream",
       size: f.tamano || 0,
+      categoriaId: (f as { categoria_id?: string | null }).categoria_id ?? null,
       source: "ticket" as const,
     });
   }
 
   return deduped;
+}
+
+// ============================================================
+// Helper: qué adjuntos salen, por qué canal, y cuáles ya salieron
+// ============================================================
+//
+// Antes, una notificación con adjuntos mandaba TODOS los archivos del trámite:
+// con cada cambio de estatus el agente recibía lo mismo otra vez, y recibía
+// también lo interno. Ahora cada tipo de trámite decide qué categorías salen
+// solas y por qué canal, y un archivo que ya salió no se repite.
+//
+// `forzar_reenvio` salta las dos reglas: es el botón del detalle del trámite,
+// y si alguien lo presiona es porque quiere mandar ese archivo otra vez.
+
+interface ConfigEnvioAdjuntos {
+  canales: string[];
+  categorias: string[];
+}
+
+async function getConfigEnvioAdjuntos(
+  supabase: ReturnType<typeof createClient>,
+  tipoTramite: string,
+): Promise<ConfigEnvioAdjuntos> {
+  if (!tipoTramite) return { canales: [], categorias: [] };
+  const { data, error } = await supabase
+    .from("ticket_tipos")
+    .select("envio_adjuntos_canales, envio_adjuntos_categorias_ids")
+    .eq("value", tipoTramite)
+    .maybeSingle();
+  if (error) {
+    // Sin configuración legible no se adivina: no se manda nada solo.
+    console.error("[Adjuntos] No se pudo leer la config del tipo:", error.message);
+    return { canales: [], categorias: [] };
+  }
+  return {
+    canales: (data?.envio_adjuntos_canales as string[] | null) ?? [],
+    categorias: (data?.envio_adjuntos_categorias_ids as string[] | null) ?? [],
+  };
+}
+
+/** El candado es global: si el archivo salió por cualquier canal, no se repite. */
+async function getArchivosYaEnviados(
+  supabase: ReturnType<typeof createClient>,
+  ticketId: string,
+): Promise<{ ids: Set<string>; nombres: Set<string> }> {
+  const { data, error } = await supabase
+    .from("notification_attachments_log")
+    .select("archivo_id, file_name")
+    .eq("ticket_id", ticketId)
+    .eq("sent_successfully", true);
+  if (error) {
+    // Si no se puede leer el log, NO se manda: repetir un envío molesta al
+    // agente, y el botón de reenviar sigue disponible para el caso real.
+    console.error("[Adjuntos] No se pudo leer el log de enviados:", error.message);
+    return { ids: new Set(["*"]), nombres: new Set(["*"]) };
+  }
+  return {
+    ids: new Set((data ?? []).map((r) => r.archivo_id as string).filter(Boolean)),
+    // Las filas anteriores al 15/10/26 no tienen archivo_id; el nombre dentro
+    // del mismo trámite es el mejor respaldo que hay.
+    nombres: new Set((data ?? []).map((r) => r.file_name as string).filter(Boolean)),
+  };
+}
+
+async function filtrarAdjuntosParaEnvio(
+  supabase: ReturnType<typeof createClient>,
+  tipoTramite: string,
+  ticketId: string,
+  attachments: AttachmentInfo[],
+  forzarReenvio: boolean,
+): Promise<{ correo: AttachmentInfo[]; whatsapp: AttachmentInfo[] }> {
+  if (attachments.length === 0) return { correo: [], whatsapp: [] };
+  if (forzarReenvio) return { correo: attachments, whatsapp: attachments };
+
+  const cfg = await getConfigEnvioAdjuntos(supabase, tipoTramite);
+  if (cfg.canales.length === 0 || cfg.categorias.length === 0) {
+    console.log(`[Adjuntos] El tipo "${tipoTramite}" no manda adjuntos automáticamente`);
+    return { correo: [], whatsapp: [] };
+  }
+
+  const ya = await getArchivosYaEnviados(supabase, ticketId);
+  const elegibles = attachments.filter((a) => {
+    if (!a.categoriaId || !cfg.categorias.includes(a.categoriaId)) return false;
+    if (ya.ids.has("*")) return false;
+    return !ya.ids.has(a.id) && !ya.nombres.has(a.fileName);
+  });
+
+  console.log(`[Adjuntos] ${elegibles.length} de ${attachments.length} salen (canales: ${cfg.canales.join(", ") || "ninguno"})`);
+  return {
+    correo: cfg.canales.includes("correo") ? elegibles : [],
+    whatsapp: cfg.canales.includes("whatsapp") ? elegibles : [],
+  };
 }
 
 // ============================================================
@@ -906,7 +1003,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload: TicketNotificationPayload = rawPayload;
-    const { event_key, ticket_id, triggered_by_user_id, extra_variables, attachment_file_ids, skip_email, skip_whatsapp } = payload;
+    const { event_key, ticket_id, triggered_by_user_id, extra_variables, attachment_file_ids, skip_email, skip_whatsapp, forzar_reenvio } = payload;
 
     console.log(`[Dispatcher] ========== START ==========`);
     console.log(`[Dispatcher] eventType: ${event_key}`);
@@ -1033,6 +1130,16 @@ Deno.serve(async (req: Request) => {
       attachment_file_ids
     );
 
+    // Qué sale de verdad: la config del tipo decide las categorías y los canales,
+    // y el candado quita lo que ya se mandó. El botón de reenviar salta ambos.
+    const adjuntos = await filtrarAdjuntosParaEnvio(
+      supabase,
+      String(ticket.tipo_tramite ?? ""),
+      ticket_id,
+      attachments,
+      forzar_reenvio === true,
+    );
+
     console.log(`[Dispatcher] resolved attachments count: ${attachments.length}`);
     if (attachments.length > 0) {
       console.log(`[Dispatcher] attachment files: ${attachments.map(a => `"${a.fileName}" (${a.filePath?.substring(0, 60)}...)`).join(", ")}`);
@@ -1054,7 +1161,7 @@ Deno.serve(async (req: Request) => {
         agentEmail,
         finalSubject,
         renderedEmailBody,
-        attachments,
+        adjuntos.correo,
         supabase
       );
     } else if (!agentEmail) {
@@ -1076,7 +1183,7 @@ Deno.serve(async (req: Request) => {
         supabase,
         agentPhone,
         renderedWhatsApp,
-        attachments
+        adjuntos.whatsapp
       );
     } else if (!agentPhone) {
       whatsappResult.error = "El usuario no tiene teléfono registrado";
@@ -1124,6 +1231,7 @@ Deno.serve(async (req: Request) => {
           return {
             notification_history_id: historyRecord.id,
             ticket_id,
+            archivo_id: att?.id ?? null,
             file_name: detail.fileName,
             file_path: att?.filePath || null,
             file_url: att?.fileUrl || null,
