@@ -13,6 +13,7 @@
 | `20261014000001_bitacora_unificada.sql` | la bitácora de Store + Premium en una sola vista | ✅ corrida |
 | `20261014000002_pagos_premium_por_periodo.sql` | `mkt_premium_pagos.periodo_id` + backfill, y recrea la vista | ✅ corrida |
 | `20261015100000_equipos_todos_los_roles_y_unico_ejecutivo.sql` | el cambio de rol ya no apaga las reglas de equipo + autoasignar al único ejecutivo | ✅ corrida |
+| `20261015200000_envio_adjuntos_agente.sql` | config de envío de adjuntos por tipo + `archivo_id` en el log (candado) | ⏳ **falta correr** |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
@@ -32,6 +33,33 @@ Si al abrir la Bitácora sale *"Could not find the table … in the schema cache
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### 2026-10-15 — adjuntos al agente: configurables por tipo, con candado
+
+Pedido de Ricardo: que al agente le lleguen por WhatsApp y correo los archivos que se adjuntan, poder elegir cuáles, poder reenviar a mano, y que no se repitan en cada cambio de estatus.
+
+**La mitad ya existía:** las dos funciones de envío saben mandar archivos, `enviar-correo-transaccional` acepta `attachment_file_ids` (una lista específica), y `notification_attachments_log` ya registraba qué archivo salió por qué canal. **El origen del problema:** `getTicketNotificationAttachments()` sin lista explícita devuelve **TODOS** los archivos del trámite, así que cada evento con adjuntos reenviaba todo, incluido lo interno.
+
+**Lo que se agregó:**
+
+| Pieza | Dónde |
+|---|---|
+| Config por tipo: canales + categorías que salen solas | FormBuilder → pestaña **Envío de adjuntos** (`EnvioAdjuntosTab.tsx`); columnas `ticket_tipos.envio_adjuntos_canales` / `..._categorias_ids` |
+| Candado global | `filtrarAdjuntosParaEnvio()` en `ticket-notification-dispatcher`; se apoya en `notification_attachments_log.archivo_id` (columna nueva) |
+| Casilla por archivo + botón "Enviar al agente" + marca "Enviado" | pestaña Archivos del trámite (`TramiteArchivos.tsx`) |
+
+**Decisiones de Ricardo:** automático **solo lo configurado** (no todo); candado **global** (si ya salió por cualquier canal, no se repite); por tipo se configuran **canales + categorías**, no un simple switch.
+
+**Un tipo sin configurar no manda nada automáticamente**, y así quedan todos tras la migración. Es a propósito: el estado anterior era "mandar todo", y volver a encenderlo debe ser una decisión por tipo.
+
+- El envío manual va con `forzar_reenvio: true`: **salta la config y el candado**. Alguien lo presionó a propósito.
+- El candado reconoce por `archivo_id`; las filas anteriores al 15/10 no lo tienen, así que caen al **nombre dentro del mismo trámite** (la migración hace ese backfill). Mismo criterio en el frontend y en el despachador, a propósito.
+- Si el log no se puede leer, **no se manda nada automáticamente**: repetir un envío molesta al agente, y el botón manual sigue ahí.
+- Se reutiliza el evento `tramite_documento_cargado` para el envío manual — no hizo falta una plantilla nueva.
+
+**Falta:** correr la migración y **redesplegar `ticket-notification-dispatcher`** desde el dashboard.
 
 ---
 
