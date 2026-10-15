@@ -14,6 +14,7 @@ import {
 } from '../lib/tramiteTeamAssignments';
 import AgentTramiteTeamsSection from '../components/tramites/AgentTramiteTeamsSection';
 import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown';
+import { normalizarTexto } from '../lib/utils';
 import { SolicitudesAltaPanel } from '../components/admin/SolicitudesAltaPanel';
 import { getOficinasDeGerente } from '../lib/oficinasUtils';
 
@@ -298,24 +299,27 @@ export function Directorio() {
     }
   };
 
-  const normalize = (text: string) =>
-    text
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-
   const filteredUsuarios = usuarios.filter((usuario) => {
-    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const q = norm(searchTerm);
-    const matchesSearch =
-      searchTerm === '' ||
-      norm(usuario.nombre || '').includes(q) ||
-      norm(usuario.apellidos || '').includes(q) ||
-      norm(usuario.email_personal || '').includes(q) ||
-      norm(usuario.email_laboral || '').includes(q) ||
-      (usuario.celular_personal || '').includes(searchTerm) ||
-      (usuario.celular_laboral || '').includes(searchTerm) ||
-      norm(usuario.username || '').includes(q);
+    // Todo en un solo texto: nombre y apellidos se comparaban por separado, así
+    // que "ricardo jim" no encontraba a RICARDO JIMÉNEZ — en cuanto se escribía
+    // el espacio, ninguno de los dos campos contenía la frase completa.
+    // Cada palabra de la búsqueda tiene que aparecer, en cualquier orden, así
+    // que "jimenez ricardo" también lo encuentra. `normalizarTexto` quita
+    // acentos y mayúsculas de los dos lados.
+    const haystack = normalizarTexto([
+      usuario.nombre,
+      usuario.apellidos,
+      usuario.email_personal,
+      usuario.email_laboral,
+      usuario.celular_personal,
+      usuario.celular_laboral,
+      (usuario as { username?: string | null }).username,
+    ].filter(Boolean).join(' '));
+    // Solo espacios = no hay nada que filtrar (se quedan los 176 usuarios).
+    const matchesSearch = normalizarTexto(searchTerm)
+      .split(' ')
+      .filter(Boolean)
+      .every((palabra) => haystack.includes(palabra));
 
     const matchesRol = filterRol.length === 0 || filterRol.includes(usuario.rol ?? '');
     const matchesOficina = filterOficina.length === 0 || filterOficina.includes(usuario.oficina_id ?? '');
