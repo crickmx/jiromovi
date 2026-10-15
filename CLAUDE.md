@@ -12,7 +12,7 @@
 |---|---|---|
 | `20261014000001_bitacora_unificada.sql` | la bitácora de Store + Premium en una sola vista | ✅ corrida |
 | `20261014000002_pagos_premium_por_periodo.sql` | `mkt_premium_pagos.periodo_id` + backfill, y recrea la vista | ✅ corrida |
-| `20261015100000_equipos_todos_los_roles_y_unico_ejecutivo.sql` | el cambio de rol ya no apaga las reglas de equipo + autoasignar al único ejecutivo | ⏳ **falta correr** |
+| `20261015100000_equipos_todos_los_roles_y_unico_ejecutivo.sql` | el cambio de rol ya no apaga las reglas de equipo + autoasignar al único ejecutivo | ✅ corrida |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
