@@ -1271,7 +1271,14 @@ Deno.serve(async (req: Request) => {
         error: whatsappResult.error,
       },
       attachments: {
-        total: attachments.length,
+        // `total` era cuántos archivos se resolvieron, no cuántos se
+        // intentaron mandar — con el filtro por tipo y el candado esos dos
+        // números ya no son el mismo, y quien lee la respuesta necesita el
+        // segundo para saber si llegaron todos.
+        total: Math.max(adjuntos.correo.length, adjuntos.whatsapp.length),
+        resueltos: attachments.length,
+        intentadosCorreo: adjuntos.correo.length,
+        intentadosWhatsapp: adjuntos.whatsapp.length,
         emailSent: emailResult.attachmentsSent,
         emailFailed: emailResult.failedAttachments,
         whatsappSent: whatsappResult.documentsSent,
