@@ -35,6 +35,31 @@ Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado 
 
 ---
 
+### 🔑 2026-10-15 — llaves nuevas de Supabase: lo que se midió (y por qué NO hay que migrar 189 funciones)
+
+Supabase está cambiando `anon`/`service_role` (JWT) por `sb_publishable_…`/`sb_secret_…` (que **no** son JWT). Deprecación anunciada: fin de 2026. Christofer mandó un plan para cambiar las ~189 edge functions que leen `SUPABASE_SERVICE_ROLE_KEY` a que lean `SUPABASE_SECRET_KEYS`. **Se midió con una sonda desechable (`probar-llaves-nuevas`, ya borrada) y ese trabajo no hace falta:**
+
+| Qué se probó | Resultado |
+|---|---|
+| Contenido de `SUPABASE_SERVICE_ROLE_KEY` | **ya es una `sb_secret_…`** de 41 caracteres, no un JWT |
+| `createClient(url, sb_secret_…)` | ✅ funciona (consulta real contra `usuarios`) |
+| Llamar a otra edge function con `Authorization: Bearer <sb_secret_>` | ✅ 200 |
+| Lo mismo con el header `apikey` | ✅ 200 |
+
+**Lo que esto significa:** Supabase ya cambió el **contenido** de la variable vieja. Las ~189 funciones que la leen ya usan la llave nueva sin saberlo; leerla por `SUPABASE_SECRET_KEYS` daría el mismo valor. Y las 9 funciones que llaman a otra con `Bearer ${supabaseServiceKey}` (`notification-dispatcher`, `process-policy-delivery`, `sicas-register-document-delivery`, `sicas-sync-orchestrator`, `submit-express-lead`, `sync-insurers-from-sheets`, `sync-production-from-sheets`, `wazzup-webhook`, `escalar-express-leads`) **no están rotas**: el gateway acepta la llave nueva de las dos formas, aunque la doc de Supabase recomiende `apikey`.
+
+**Dónde SÍ rompe el cambio de formato: donde se COMPARA la llave contra el header de quien llama.** Eran dos lugares, los dos cerrados:
+- `escalar-express-leads` — el 401 del cron cada minuto (14:16–14:22 UTC del 15/10). Arreglo de Christofer, PR #83.
+- `send-push-notification` — mismo patrón, arreglado el 15/10 (`8b086110`).
+
+⚠️ **El `includes()` era además un hueco de seguridad.** `authHeader.includes(serviceKey)`: si esa variable llegara vacía, `includes("")` es **siempre verdadero** y cualquiera con la URL podía disparar la función. Las dos ahora comparan exacto contra las llaves de servidor (`SUPABASE_SECRET_KEYS` + legacy), en `Bearer` o en `apikey`. **Si aparece ese patrón en otra función, es el mismo bug.**
+
+**Lo único que queda del plan:** cambiar las apps de `anon` a `sb_publishable_` (beta, producción, tienda, seguros.express, lector, bonos_jiro) — variable de entorno en Plesk + rebuild. Independiente de todo lo anterior.
+
+**Nota de método:** la sonda costó dos deploys y evitó reescribir 189 funciones sobre una suposición. El deploy es desde el **dashboard**, que empaqueta solo la carpeta de la función: por eso el bloque de llaves va **copiado** en cada función y no importado de `_shared`.
+
+---
+
 ### 2026-10-15 — aseguradoras duplicadas en el selector + filtros multi-opción en el Directorio
 
 **La trampa:** el campo dinámico de aseguradoras guarda la selección como UN texto separado por comas, y **varios nombres del catálogo traen coma propia** (`ANA COMPAÑIA DE SEGUROS, S.A.`). Al releerlo, `split(',')` lo partía en pedazos, ninguno coincidía con el catálogo, la casilla salía sin palomear — y cada clic volvía a agregar el nombre. Tampoco se podía deseleccionar.
