@@ -10,6 +10,7 @@ import { BaseModal } from '../BaseModal';
 import type { TramiteSeccion } from './catalogos/types';
 import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor, campoExigible, campoCumpleSuCondicion, conteoSeccion, seccionesAbiertasPorDefecto, CAMPOS_ANCHOS } from '../../lib/tramiteSecciones';
 import { analizarRFC, analizarCURP, RFC_GENERICO_NACIONAL, ENTIDADES_CURP } from '../../lib/rfcCurp';
+import { parseAseguradoras, etiquetaAseguradoras } from '../../lib/aseguradorasSeleccion';
 import { SelectorVehiculo, type VehiculoSeleccionado } from './SelectorVehiculo';
 import {
   canAccessRegistroActividades,
@@ -1247,7 +1248,9 @@ export function NuevoTramiteModal({
               })
             : catalogoCompanias;
 
-          const seleccionadas = val ? String(val).split(',').map(s => s.trim()).filter(Boolean) : [];
+          // Contra el catálogo COMPLETO, no contra `companiasDisponibles`: filtrar
+          // por ramo no debe borrar de la lectura una aseguradora ya elegida.
+          const seleccionadas = parseAseguradoras(val as string, catalogoCompanias.map(c => c.nombre));
           const ui = asegUiState[campo.id] || { open: false, search: '', verMas: false };
           const setUi = (patch: Partial<typeof ui>) => setAsegUiState(prev => ({ ...prev, [campo.id]: { ...ui, ...patch } }));
 
@@ -1285,7 +1288,7 @@ export function NuevoTramiteModal({
               >
                 {seleccionadas.length === 0
                   ? <span className="text-neutral-500">{ramoCampo && !ramoVal ? 'Selecciona primero un ramo (opcional)...' : 'Selecciona aseguradoras...'}</span>
-                  : <span className="text-neutral-900">{seleccionadas.join(', ')}</span>
+                  : <span className="text-neutral-900" title={seleccionadas.join(', ')}>{etiquetaAseguradoras(seleccionadas)}</span>
                 }
                 <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${ui.open ? 'rotate-180' : ''}`} />
               </div>
