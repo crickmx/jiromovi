@@ -13,6 +13,7 @@ import {
   syncUserTramiteTeamAssignments, puedeTenerEquiposTramite, normalizeCategory,
 } from '../lib/tramiteTeamAssignments';
 import AgentTramiteTeamsSection from '../components/tramites/AgentTramiteTeamsSection';
+import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown';
 import { SolicitudesAltaPanel } from '../components/admin/SolicitudesAltaPanel';
 import { getOficinasDeGerente } from '../lib/oficinasUtils';
 
@@ -26,8 +27,8 @@ export function Directorio() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRol, setFilterRol] = useState<string>('');
-  const [filterOficina, setFilterOficina] = useState<string>('');
+  const [filterRol, setFilterRol] = useState<string[]>([]);
+  const [filterOficina, setFilterOficina] = useState<string[]>([]);
   // La columna Estado pinta `activo`, no `estado`: el filtro usa el mismo campo
   // para que lo que se ve y lo que se filtra no puedan contradecirse.
   const [filterEstado, setFilterEstado] = useState<'' | 'activo' | 'inactivo'>('');
@@ -316,8 +317,8 @@ export function Directorio() {
       (usuario.celular_laboral || '').includes(searchTerm) ||
       norm(usuario.username || '').includes(q);
 
-    const matchesRol = filterRol === '' || usuario.rol === filterRol;
-    const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;
+    const matchesRol = filterRol.length === 0 || filterRol.includes(usuario.rol ?? '');
+    const matchesOficina = filterOficina.length === 0 || filterOficina.includes(usuario.oficina_id ?? '');
     const matchesEstado = filterEstado === '' || (filterEstado === 'activo' ? !!usuario.activo : !usuario.activo);
 
     return matchesSearch && matchesRol && matchesOficina && matchesEstado;
@@ -512,31 +513,29 @@ export function Directorio() {
               />
             </div>
 
-            <select
-              value={filterRol}
-              onChange={(e) => setFilterRol(e.target.value)}
-              className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
-            >
-              <option value="">Todos los roles</option>
-              <option value="Administrador">Administrador</option>
-              <option value="Gerente">Gerente</option>
-              <option value="Empleado">Empleado</option>
-              <option value="Agente">Agente</option>
-            </select>
+            <div className="flex items-center">
+              <MultiSelectDropdown
+                label="Rol"
+                options={[
+                  { value: 'Administrador', label: 'Administrador' },
+                  { value: 'Gerente', label: 'Gerente' },
+                  { value: 'Empleado', label: 'Empleado' },
+                  { value: 'Agente', label: 'Agente' },
+                ]}
+                selected={filterRol}
+                onChange={setFilterRol}
+              />
+            </div>
 
             {currentUser?.rol !== 'Gerente' && (
-              <select
-                value={filterOficina}
-                onChange={(e) => setFilterOficina(e.target.value)}
-                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
-              >
-                <option value="">Todas las oficinas</option>
-                {oficinas.map((oficina) => (
-                  <option key={oficina.id} value={oficina.id}>
-                    {oficina.nombre}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center">
+                <MultiSelectDropdown
+                  label="Oficina"
+                  options={oficinas.map((o) => ({ value: o.id, label: o.nombre }))}
+                  selected={filterOficina}
+                  onChange={setFilterOficina}
+                />
+              </div>
             )}
 
             <select
