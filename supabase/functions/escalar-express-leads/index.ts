@@ -29,6 +29,34 @@ function jwtRole(authHeader: string): string | null {
   }
 }
 
+// Llaves de servidor aceptadas para la llamada del cron: las secret keys nuevas
+// (sb_secret_..., inyectadas por Supabase en SUPABASE_SECRET_KEYS como JSON
+// {nombre: valor}) y, mientras siga activa, la service_role legacy.
+function serverKeys(): string[] {
+  const keys: string[] = [];
+  try {
+    const raw = Deno.env.get('SUPABASE_SECRET_KEYS');
+    if (raw) {
+      for (const v of Object.values(JSON.parse(raw) as Record<string, unknown>)) {
+        if (typeof v === 'string' && v.length > 0) keys.push(v);
+      }
+    }
+  } catch { /* variable ausente o mal formada: se ignora */ }
+  const legacy = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (legacy) keys.push(legacy);
+  return keys;
+}
+
+// El cron puede mandar la llave en `apikey` (forma recomendada para sb_secret_)
+// o como `Authorization: Bearer`. Comparación EXACTA: nunca `includes`, que con
+// una llave vacía dejaría pasar cualquier request.
+function isServerKeyRequest(req: Request): boolean {
+  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  const apikey = (req.headers.get('apikey') || '').trim();
+  const keys = serverKeys();
+  return keys.some((k) => k === bearer || k === apikey);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -37,13 +65,12 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-  // Sólo service role (cron) o un Administrador autenticado. Detectamos al cron
-  // por el rol del JWT (robusto ante rotación/formato de la key) y dejamos el
-  // string-match como respaldo. Antes sólo se comparaba el header contra
-  // SUPABASE_SERVICE_ROLE_KEY carácter por carácter: cuando ese valor inyectado
-  // dejó de coincidir exacto con el JWT del cron, el cron respondía 401 cada minuto.
+  // Sólo el cron (llave de servidor) o un Administrador autenticado. Al cron se
+  // le reconoce por: (a) el rol service_role de su JWT legacy, o (b) que mande
+  // exactamente una llave de servidor (sb_secret_... o la service_role legacy).
+  // (b) es lo que permite rotar a las secret keys nuevas, que no son JWT.
   const authHeader = req.headers.get('Authorization') || '';
-  const isServiceCall = jwtRole(authHeader) === 'service_role' || authHeader.includes(supabaseServiceKey);
+  const isServiceCall = jwtRole(authHeader) === 'service_role' || isServerKeyRequest(req);
   if (!isServiceCall) {
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const userClient = createClient(supabaseUrl, anonKey, {
