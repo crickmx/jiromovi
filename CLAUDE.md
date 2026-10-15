@@ -6,6 +6,12 @@
 
 **`origin/main`** (beta) tiene todo lo de hoy. **`produccion` NO se tocó** desde el merge del 12.
 
+⚠️ **Falta desplegar lo último del 15/10** (Ricardo ya desplegó lo anterior):
+1. **Redesplegar `ticket-notification-dispatcher`** desde el dashboard — cambió su respuesta (`attachments.intentadosCorreo` / `intentadosWhatsapp`), de donde sale el aviso de "salieron 2 de 3".
+2. **Pull + deploy de beta** — trae las marcas verde/roja por archivo en la pestaña Archivos.
+
+Ruta: `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\ticket-notification-dispatcher\index.ts`
+
 #### Migraciones
 
 | Archivo | Qué hace | Estado |
@@ -26,6 +32,33 @@ Si al abrir la Bitácora sale *"Could not find the table … in the schema cache
 - **Papelera**: mandar un trámite a la papelera. Si sale un mensaje de error, **mandarlo** — es la causa de fondo de por qué no escribía, y todavía no la sabemos.
 - **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
 - **Trámite hijo repetido**: volver a aplicar el estatus que dispara un trigger y confirmar que ahora avisa.
+
+#### 🔴 LO PRIMERO DE MAÑANA — 2 de 3 adjuntos llegaron por WhatsApp
+
+Ricardo probó el envío con 3 archivos: **por correo llegaron los 3, por WhatsApp solo 2.** Falta el diagnóstico, que ya está guardado — basta correr esto con el folio de esa prueba:
+
+```sql
+select l.file_name, l.error_message, l.created_at
+from notification_attachments_log l
+join tickets t on t.id = l.ticket_id
+where t.folio = 'TKXXXXX'
+  and l.channel = 'whatsapp'
+  and l.sent_successfully = false
+order by l.created_at desc;
+```
+
+Que haya salido por correo descarta tamaño y configuración: es del lado de Wazzup, que manda los documentos **uno por uno** (`sendWhatsAppWithDocuments`, ~línea 840) — si uno truena, los demás siguen y no se entera nadie. Según lo que diga `error_message`:
+
+| `error_message` | Qué es | Arreglo |
+|---|---|---|
+| `Wazzup 429` | límite de ritmo (hoy espera **500 ms** entre documentos) | subir la pausa + un reintento antes de rendirse |
+| `Wazzup 400 INVALID_MESSAGE_DATA` | el nombre o el tipo del archivo no le gustó | revisar `sanitizedFileName` |
+| `Signed URL not accessible` | la URL firmada expiró o no se pudo firmar | revisar `resolveFileUrl` |
+| `Could not resolve file URL` | el archivo no está en el bucket | datos, no código |
+
+**Apuesta:** el 429. Los otros dos sí salieron, así que el camino funciona.
+
+---
 
 #### 🔜 LO PRIMERO DE MAÑANA — tres ajustes al envío de adjuntos (pedidos el 15/10 al cerrar)
 
@@ -48,6 +81,18 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### 2026-10-15 — saber qué adjunto llegó y cuál no
+
+Ricardo mandó 3 archivos y llegaron 2. **El dato ya se guardaba** —`notification_attachments_log` registra por archivo y por canal si salió y el motivo— pero no se leía en ningún lado: un archivo que falló se veía **idéntico** a uno que nunca se intentó mandar.
+
+- La pestaña Archivos lee ahora **todos** los intentos, no solo los exitosos: marca verde "Enviado", marca roja "No se envió" con el motivo en el tooltip. Un reenvío exitoso borra la marca roja anterior.
+- El aviso al terminar dice los números reales (`correo 2/3, WhatsApp 3/3 — falló X.pdf`) y pasa a rojo si alguno se quedó. **Un "enviado correctamente" cuando salieron 2 de 3 es justo lo que impide ver el problema.**
+- La respuesta del despachador separa `intentadosCorreo`/`intentadosWhatsapp` de `resueltos`: con el filtro por tipo y el candado, "cuántos archivos hay" y "cuántos se intentaron mandar" dejaron de ser el mismo número, y el viejo `total` ya no servía para saber si llegaron todos.
+
+**🔑 Patrón, otra vez el mismo:** el sistema ya sabía la respuesta y la guardaba; lo que faltaba era enseñarla. Antes de construir un mecanismo de diagnóstico nuevo, revisar si el dato ya está en alguna tabla de log.
 
 ---
 
