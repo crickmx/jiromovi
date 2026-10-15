@@ -257,15 +257,49 @@ export function TramiteDetalle() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showCerrarMenu]);
 
+  // El encabezado rebotaba al hacer scroll: saltaba entre compacto y normal
+  // varias veces por segundo y terminaba estirado otra vez (medido en el video
+  // del 15/10: 76 ↔ 154 px de alto, cuatro rebotes seguidos).
+  //
+  // La causa es un lazo: el centinela de 1px decidía con UN solo umbral, así que
+  // al compactarse la página se acortaba ~78px, el navegador recortaba el scroll
+  // para que no sobrara espacio, el centinela volvía a entrar en pantalla y el
+  // encabezado se estiraba — lo que devolvía los 78px y empezaba de nuevo. Se ve
+  // en trámites con poco contenido, donde el scroll disponible es menor que lo
+  // que el encabezado encoge: ahí encogerse se come justo el scroll que lo
+  // provocó.
+  //
+  // Arreglo: dos umbrales con una franja muerta (96px) más grande que el rebote,
+  // medidos contra el contenedor que de verdad scrollea. Si en esa pantalla no
+  // hay ni 120px que recorrer, el encabezado simplemente no se compacta — que es
+  // lo correcto, no había nada que ganar.
   useEffect(() => {
     const nodo = centinelaRef.current;
-    if (!nodo || typeof IntersectionObserver === 'undefined') return;
-    const obs = new IntersectionObserver(
-      ([entrada]) => setEncabezadoCompacto(!entrada.isIntersecting),
-      { threshold: 0 },
-    );
-    obs.observe(nodo);
-    return () => obs.disconnect();
+    if (!nodo) return;
+
+    // El scroll no es el de la ventana, es el <main> del Layout.
+    let cont: HTMLElement | null = nodo.parentElement;
+    while (cont) {
+      const overflow = getComputedStyle(cont).overflowY;
+      if (overflow === 'auto' || overflow === 'scroll') break;
+      cont = cont.parentElement;
+    }
+
+    const COMPACTAR = 120;
+    const EXPANDIR = 24;
+    const medir = () => {
+      const y = cont ? cont.scrollTop : window.scrollY;
+      setEncabezadoCompacto((prev) => (prev ? y > EXPANDIR : y > COMPACTAR));
+    };
+
+    medir();
+    const objetivo: EventTarget = cont ?? window;
+    objetivo.addEventListener('scroll', medir, { passive: true });
+    window.addEventListener('resize', medir);
+    return () => {
+      objetivo.removeEventListener('scroll', medir);
+      window.removeEventListener('resize', medir);
+    };
   }, [loading]);
 
   useEffect(() => {
