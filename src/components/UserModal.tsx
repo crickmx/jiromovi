@@ -612,7 +612,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         }
 
         if (puedeAsignarEquiposTramite) {
-          await syncUserTramiteTeamAssignments(user.id, tramiteTeamIds);
+          await syncUserTramiteTeamAssignments(user.id, tramiteTeamIds, formData.rol);
         }
       } else {
         // Crear usuario nuevo
@@ -737,6 +737,13 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
           const errorMessage = result.error || 'Error al crear el usuario';
           const detailsMessage = result.details ? ` (${result.details})` : '';
           throw new Error(errorMessage + detailsMessage);
+        }
+
+        // Equipos de trámite al dar de alta: los del Agente los valida y guarda la
+        // edge function (exige cubrir todas las categorías); los de cualquier otro
+        // rol se guardan aquí, por la misma ruta que usa el admin al editar.
+        if (result.userId && puedeAsignarEquiposTramite && !mustValidateTramiteTeams && tramiteTeamIds.length > 0) {
+          await syncUserTramiteTeamAssignments(result.userId, tramiteTeamIds, formData.rol);
         }
 
         // Si se creó el usuario y hay imágenes, subirlas ahora

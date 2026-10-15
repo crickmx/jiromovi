@@ -192,7 +192,7 @@ export function PerfilUsuario() {
     } else {
       if (puedeAsignarEquiposTramite) {
         try {
-          await syncUserTramiteTeamAssignments(id, tramiteTeamIds);
+          await syncUserTramiteTeamAssignments(id, tramiteTeamIds, formData.rol);
         } catch (teamError: unknown) {
           const message = teamError instanceof Error ? teamError.message : 'error desconocido';
           setMessage({ type: 'error', text: `Usuario guardado, pero no se pudieron guardar los equipos: ${message}` });

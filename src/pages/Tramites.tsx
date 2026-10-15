@@ -421,12 +421,15 @@ export function Tramites() {
 
       if (effectiveRol === 'Gerente') {
         // RLS deja pasar TODOS los tickets a Gerente sin filtro de equipo — acotar aquí
-        // a sus propios equipos, tanto en sesión real como impersonada. Sin equipo, nada.
+        // a sus propios equipos, tanto en sesión real como impersonada. Lo suyo va
+        // aparte: un trámite que él levantó puede no tener equipo resuelto todavía
+        // (ver el filtro de visibleTramites, misma razón).
         const { data: gruposData } = await supabase
           .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', effectiveId);
         const grupIds = (gruposData || []).map(g => g.grupo_id);
-        if (grupIds.length === 0) { setTramitesCerrados20([]); return; }
-        q = q.in('grupo_asignado_id', grupIds);
+        let orFilter = `agente_id.eq.${effectiveId},creado_por.eq.${effectiveId},assigned_to_user_id.eq.${effectiveId}`;
+        if (grupIds.length > 0) orFilter += `,grupo_asignado_id.in.(${grupIds.join(',')})`;
+        q = q.or(orFilter);
       } else if (isImpersonating && impersonatedUser && effectiveRol !== 'Administrador') {
         const uid = impersonatedUser.id;
         const { data: gruposData } = await supabase
@@ -777,10 +780,13 @@ export function Tramites() {
       !tramite.assigned_to_user_id &&
       isInMyGroup;
 
-    // Gerente: solo trámites de sus equipos. Sin equipo asignado, no ve nada
-    // (decisión explícita: solo Administrador ve todo sin restricción de equipo).
+    // Gerente: los trámites de sus equipos (ver TODO sigue siendo solo del
+    // Administrador) más los propios. Lo propio se agrega porque un Gerente que
+    // levanta un trámite para alguien más se quedaba sin verlo: si el solicitante
+    // no tiene equipo resuelto, el trámite nace con grupo_asignado_id en null y
+    // no entraba por ninguna de las dos ramas.
     if (esRolSistemaGerente) {
-      return isInMyGroup;
+      return isInMyGroup || isDirectlyInvolved;
     }
 
     // Lider: todos los tramites de su grupo (asignados o no) — se evalúa antes que el

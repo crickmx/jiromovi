@@ -6,16 +6,20 @@
 
 **`origin/main`** (beta) tiene todo lo de hoy. **`produccion` NO se tocó** desde el merge del 12.
 
-#### Migraciones — **las dos corridas**, no queda ninguna pendiente
+#### Migraciones
 
 | Archivo | Qué hace | Estado |
 |---|---|---|
 | `20261014000001_bitacora_unificada.sql` | la bitácora de Store + Premium en una sola vista | ✅ corrida |
 | `20261014000002_pagos_premium_por_periodo.sql` | `mkt_premium_pagos.periodo_id` + backfill, y recrea la vista | ✅ corrida |
+| `20261015100000_equipos_todos_los_roles_y_unico_ejecutivo.sql` | el cambio de rol ya no apaga las reglas de equipo + autoasignar al único ejecutivo | ⏳ **falta correr** |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
 #### Falta probar en navegador
+- **Tarjetas de bonos en el dashboard del agente** (Producción / Metas / Campaña): entrar en "ver como" a un agente que SÍ sea vendedor en bonos y ver si se llenan. El fix del 15/10 manda `?as=<uuid>` a `cp.movi.digital` (bonos ya desplegado, commit `b6356d8` en `master`). Si siguen vacías, mirar la petición `mi-resumen` en F12 → Red: `403` = bonos no lo reconoce como admin · `{"vinculado": false}` = ese agente nunca entró a bonos · `{"aplica": false}` = su rol en bonos no es vendedor · **sin `?as=` en la URL** = no entró el deploy de MOVI.
+- **Equipos de trámite en todos los roles** (15/10): asignarle equipos a un Empleado/Gerente desde Editar Usuario y confirmar que (a) se guardan, (b) un trámite levantado para esa persona nace con equipo, (c) **no perdió su membresía** en los equipos donde es ejecutivo/líder (menú de Trámites, permisos de catálogos).
+- **Equipo de un solo ejecutivo**: levantar un trámite que caiga en un equipo con un único `ejecutivo` y confirmar que sale asignado a esa persona, no "Sin responsable".
 - **Bitácora**: el modal de pagos al hacer clic en una fila de cada módulo, los filtros, y que el Excel/CSV exporte lo filtrado.
 - **Papelera**: mandar un trámite a la papelera. Si sale un mensaje de error, **mandarlo** — es la causa de fondo de por qué no escribía, y todavía no la sabemos.
 - **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
@@ -28,6 +32,26 @@ Si al abrir la Bitácora sale *"Could not find the table … in the schema cache
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### 2026-10-15 — equipos de trámite en todos los roles, Gerente ve lo suyo, equipo de un solo ejecutivo
+
+Salió de un reporte de DIANA JIMÉNEZ GUTIERREZ (Gerente): levantó varios trámites y **no le aparecían en su tablero**. Tres causas encadenadas, las tres arregladas:
+
+**1. Los equipos de trámite solo se podían configurar a Agentes (y Admins).** `puedeTenerEquiposTramite()` traía una lista blanca de roles (`ROLES_CON_EQUIPOS_TRAMITE`, ya borrada) y la sección "Equipos" se escondía para todo lo demás. Pero el motor (`get_grupo_para_ticket`) resuelve por **usuario + área** en `tramites_grupos_reglas` — el rol no entra en la consulta. Un trámite levantado para un Empleado o un Gerente nacía sin equipo. Ahora cualquier rol puede tener equipos asignados; lo que **sigue siendo solo del Agente** es la exigencia de cubrir todas las categorías (`mustValidateTramiteTeams`, intacto).
+
+- ⚠️ **La trampa que esto destapó:** `syncUserTramiteTeamAssignments()` terminaba con un `delete` de TODAS las filas del usuario en `tramites_grupos_miembros`. Era correcto mientras solo aplicara a Agentes (un agente no es miembro operativo, la BD hasta lo prohíbe con un trigger). Con los demás roles habría sido un desastre: de esa tabla salen los permisos de Trámites (`usePermisos`, `equiposAcceso`, `PanelLider`, menciones, notificaciones) — guardarle los equipos a un ejecutivo lo habría echado de su propio equipo. Ahora la función recibe el `rol` y solo limpia si es `'Agente'`; sin `rol`, no borra nada.
+- Al **dar de alta**, los equipos de un Agente los sigue validando y guardando la edge function `create-user` (no se tocó, no hay que redesplegar); los de cualquier otro rol los guarda `UserModal` después del alta, por la misma ruta que usa el admin al editar.
+- En la BD, `cleanup_tramite_relationships_on_role_change()` **desactivaba todas las reglas** del usuario al dejar de ser Agente. Esa mitad se eliminó; la otra (al pasar A Agente se le borran las membresías) se conservó.
+
+**2. Un Gerente no veía los trámites que él mismo levantó.** El filtro de `visibleTramites` cortaba al Gerente a `isInMyGroup` y nada más — sin equipo resuelto (`grupo_asignado_id` null, causa #1), no entraba por ningún lado. Ahora es `isInMyGroup || isDirectlyInvolved`. Mismo arreglo en `loadCerrados20`, que acotaba la consulta con un `in('grupo_asignado_id', …)` y hasta cortaba en seco (`return []`) si el Gerente no tenía equipos. **Ver TODO sigue siendo solo del Administrador.**
+
+**3. Equipo de un solo ejecutivo → se asigna directo.** `get_grupo_para_ticket` dejaba el trámite en el pool siempre que la regla no trajera `ejecutivo_id`, incluso en un equipo de una sola persona donde el pool no reparte nada. Se reescribió el cuerpo con variables (`v_grupo`/`v_ejecutivo`) en vez de un `RETURN QUERY` por nivel, para que el relleno final aplique a los tres niveles: si no hay ejecutivo resuelto y el equipo tiene **exactamente un** miembro con `rol_en_equipo = 'ejecutivo'`, ese se asigna. Con dos o más, el pool se respeta igual que antes. La prioridad de los niveles no cambió.
+
+- Detalle de Postgres: el conteo usa `(array_agg(m.usuario_id))[1] … HAVING count(*) = 1`. **`min(uuid)` no existe**, ya nos tropezamos con eso antes.
+
+**Migración:** `20261015100000_equipos_todos_los_roles_y_unico_ejecutivo.sql` (los puntos 1-BD y 3). Los demás son frontend.
 
 ---
 

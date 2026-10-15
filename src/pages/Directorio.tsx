@@ -371,7 +371,7 @@ export function Directorio() {
           const existingKept = allTeams
             .filter((t) => existingIds.includes(t.id) && !bulkCategories.has(normalizeCategory(t.area_categoria)))
             .map((t) => t.id);
-          await syncUserTramiteTeamAssignments(user.id, [...existingKept, ...bulkEquiposTeamIds]);
+          await syncUserTramiteTeamAssignments(user.id, [...existingKept, ...bulkEquiposTeamIds], user.rol);
           ok++;
         } catch (err) {
           console.error(`Error asignando equipos a ${user.nombre} ${user.apellidos}:`, err);
@@ -836,7 +836,7 @@ export function Directorio() {
           <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-lg w-full p-6 animate-scale-in max-h-[85vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-neutral-900 mb-1">Editar equipos en bulk</h3>
             <p className="text-sm text-neutral-600 mb-4">
-              Se aplicará a {selectedConEquipos.length} de los {selectedIds.size} usuarios seleccionados (solo Agente/Administrador pueden tener equipos de trámite). Las categorías que NO toques aquí se dejan como ya las tenía cada usuario.
+              Se aplicará a {selectedConEquipos.length} de los {selectedIds.size} usuarios seleccionados. Las categorías que NO toques aquí se dejan como ya las tenía cada usuario.
             </p>
 
             {selectedConEquipos.length === 0 ? (
