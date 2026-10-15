@@ -172,6 +172,26 @@ Deno.serve(async (req: Request) => {
     { onConflict: "archivo_id" }
   );
 
+  // Encolar para entrenamiento es lo último que se puede perder: si el PDF no se
+  // pudo leer, el equipo del lector necesita verlo justamente por eso. Vive aquí
+  // arriba —y no dentro del try— para que el `catch` final también pueda llamarlo:
+  // cuando la función reventaba (PDF que no se pudo descargar, URL firmada que
+  // falló, guardado que tronó) el archivo se marcaba en rojo y NO se encolaba.
+  // Ese es el caso del trámite TKFA89F-A: salió "Error al extraer datos" y nunca
+  // llegó al lector.
+  let archivoUrl: string | null = null;
+  const encolarParaEntrenamiento = async (aseguradora: string | null) => {
+    if (!archivoUrl) return; // sin el archivo no hay nada que mandar
+    // El bucket ticket-archivos es privado; se guarda el path para que lector
+    // genere sus propias signed URLs.
+    const archivoPath = archivoUrl.split("/storage/v1/object/public/ticket-archivos/")[1] ?? null;
+    const { error: colaErr } = await sb.from("lector_cola_entrenamiento").upsert(
+      { ticket_id, archivo_id, archivo_url: archivoUrl, archivo_path: archivoPath, aseguradora, estado: "pendiente" },
+      { onConflict: "archivo_id", ignoreDuplicates: true }
+    );
+    if (colaErr) console.error("Error encolando a lector_cola_entrenamiento:", colaErr.message);
+  };
+
   try {
     // 4. Obtener info del archivo
     const { data: archivo, error: archivoErr } = await sb
@@ -180,6 +200,7 @@ Deno.serve(async (req: Request) => {
       .eq("id", archivo_id)
       .single();
     if (archivoErr || !archivo) throw new Error("Archivo no encontrado");
+    archivoUrl = archivo.url;
 
     // 5. Extraer path del storage y generar signed URL
     const match = archivo.url.match(/ticket-archivos\/(.+)$/);
@@ -280,23 +301,7 @@ Deno.serve(async (req: Request) => {
     // 8a. Todo PDF que no se extrajo bien va a la cola de entrenamiento, incluido
     // cuando el extractor mismo falló — antes ese caso se perdía sin encolar.
     const enviarEntrenamiento = !extraccionOk;
-    if (enviarEntrenamiento) {
-      // El bucket ticket-archivos es privado; guardamos el path para que lector
-      // pueda generar signed URLs con su propio cliente autenticado de Supabase.
-      const archivoPath = archivo.url.split("/storage/v1/object/public/ticket-archivos/")[1] ?? null;
-      const { error: colaErr } = await sb.from("lector_cola_entrenamiento").upsert(
-        {
-          ticket_id,
-          archivo_id,
-          archivo_url: archivo.url,
-          archivo_path: archivoPath,
-          aseguradora: extracted.aseguradora ?? null,
-          estado: "pendiente",
-        },
-        { onConflict: "archivo_id", ignoreDuplicates: true }
-      );
-      if (colaErr) console.error("Error encolando a lector_cola_entrenamiento:", colaErr.message);
-    }
+    if (enviarEntrenamiento) await encolarParaEntrenamiento(extracted.aseguradora ?? null);
 
     // 8b. Generar y adjuntar XLSX para SICAS — una fila por cada archivo del ticket
     let xlsxError: string | null = null;
@@ -446,6 +451,8 @@ Deno.serve(async (req: Request) => {
       { ticket_id, archivo_id, estado: "error", error_detalle: message },
       { onConflict: "archivo_id" }
     );
+    // Reventar es la razón MÁS fuerte para mandarlo a entrenamiento, no la menos.
+    await encolarParaEntrenamiento(null);
     return json({ ok: false, error: message }, 500);
   }
 });
