@@ -1296,12 +1296,21 @@ Deno.serve(async (req: Request) => {
       const titulo = renderTemplate(template.inapp_title_template || "", allVariables).trim()
         || `${context.folio} — ${eventLabels[event_key] ?? "Trámite"}`;
       const cuerpo = renderTemplate(template.inapp_body_template || "", allVariables).trim();
-      const { error: errInapp } = await supabase.rpc("crear_notificacion", {
-        p_usuario_id: agentUserId,
-        p_tipo: event_key,
+      // `enviar_notificacion_individual`, no `crear_notificacion`: esa segunda
+      // NO EXISTE en la base (la llama también `escalar-tramite`, donde lleva
+      // fallando igual de callado). Fallaba siempre, así que quien llamaba creía
+      // que el aviso no había salido y mandaba su respaldo — de ahí los dos
+      // WhatsApp del 16/10.
+      //
+      // `p_enviar_whatsapp: false` porque el WhatsApp ya lo manda esta misma
+      // función, con la plantilla; dejarlo en true lo duplicaría otra vez.
+      const { error: errInapp } = await supabase.rpc("enviar_notificacion_individual", {
+        p_user_id: agentUserId,
         p_titulo: titulo.slice(0, 120),
         p_mensaje: cuerpo.slice(0, 500),
-        p_url: context.ticketUrl,
+        p_modulo: "Tramites",
+        p_accion_url: context.ticketUrl,
+        p_enviar_whatsapp: false,
       });
       if (errInapp) console.error("[Campanita] No se pudo crear la notificación:", errInapp.message);
       else inappEnviada = true;
