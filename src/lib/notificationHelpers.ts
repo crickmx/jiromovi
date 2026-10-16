@@ -36,7 +36,9 @@ export interface AvisoPorEvento {
  * si está apagado, o si el despachador falla, se manda el aviso de siempre. Un
  * trámite nuevo del que nadie se entera es peor que un texto sin personalizar.
  */
-export async function avisarPorEvento(aviso: AvisoPorEvento): Promise<{ via: 'motor' | 'respaldo' }> {
+export async function avisarPorEvento(
+  aviso: AvisoPorEvento,
+): Promise<{ via: 'motor' | 'motor_sin_campanita' | 'respaldo' }> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('sin sesión');
@@ -57,14 +59,34 @@ export async function avisarPorEvento(aviso: AvisoPorEvento): Promise<{ via: 'mo
     });
 
     const r = resp.ok ? await resp.json().catch(() => null) : null;
-    // Que responda 200 no basta: si la campanita no salió, el usuario no se
-    // entera dentro de MOVI, que es donde más se ve.
-    if (r?.success !== false && r?.inapp?.sent) return { via: 'motor' };
+
+    // Qué salió de verdad, canal por canal. La primera versión exigía que la
+    // campanita hubiera salido para dar el aviso por bueno — y si el motor
+    // mandaba el WhatsApp pero fallaba la campanita, el respaldo lo mandaba
+    // OTRA VEZ. Llegaban dos WhatsApp del mismo trámite.
+    const correo = r?.email?.sent === true;
+    const whatsapp = r?.whatsapp?.messageSent === true;
+    const campanita = r?.inapp?.sent === true;
+
+    if (campanita || correo || whatsapp) {
+      // Algo salió. Si lo único que falta es la campanita, se crea SOLO esa:
+      // `crearNotificacion` manda WhatsApp por default y repetirlo es peor que
+      // quedarse sin el avisito de la app.
+      if (!campanita) {
+        console.warn(`[aviso] "${aviso.eventKey}": el motor avisó pero sin campanita, se crea solo esa`);
+        await crearNotificacion({ ...aviso.respaldo, enviar_whatsapp: false });
+        return { via: 'motor_sin_campanita' };
+      }
+      return { via: 'motor' };
+    }
+
     console.warn(`[aviso] El motor no avisó por "${aviso.eventKey}", se usa el respaldo`, r);
   } catch (err) {
     console.warn(`[aviso] Falló el motor para "${aviso.eventKey}", se usa el respaldo`, err);
   }
 
+  // Aquí el motor no mandó NADA: ni correo, ni WhatsApp, ni campanita. Solo en
+  // ese caso se usa el aviso de siempre.
   await crearNotificacion(aviso.respaldo);
   return { via: 'respaldo' };
 }
