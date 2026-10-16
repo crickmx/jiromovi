@@ -3,6 +3,7 @@ import { X, Upload, User, Users, CircleAlert as AlertCircle, FileText, Package, 
 import { supabase } from '../../lib/supabase';
 import { puedeVerCampo, puedeEditarCampo } from '../../lib/rolCampos';
 import { crearNotificacion, avisarPorEvento } from '../../lib/notificationHelpers';
+import { destinatariosDelAviso } from '../../lib/destinatariosAviso';
 import { mensajeNuevoTramite } from '../../lib/tramiteAviso';
 import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
@@ -2434,36 +2435,55 @@ export function NuevoTramiteModal({
         tipo_tramite: tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite,
       };
 
-      if (responsableId) {
-        await avisarPorEvento({
-          eventKey: 'nuevo_tramite',
-          ticketId: ticket.id,
-          destinatarioId: responsableId,
-          disparadoPor: usuario!.id,
-          variables: varsAviso,
-          respaldo: {
-            user_id: responsableId,
-            titulo: 'Nuevo trámite asignado',
-            mensaje: avisoTramite,
-            modulo: 'Tramites',
-            icono: 'clipboard-list',
-            accion_url: `/tramites/${ticket.id}`,
-            accion_texto: 'Ver trámite',
-          },
-        });
-      } else if (grupoAsignadoId) {
+      // A quién se le avisa sale de la configuración, no del código: Admin ›
+      // Transaccionales → "Nuevo Trámite Generado" → ¿A quién se le avisa?
+      // Vacío = el camino de siempre, que es el `else` de más abajo.
+      const { data: cfgAviso } = await supabase
+        .from('correo_tipos_notificacion')
+        .select('id, destinatarios_roles')
+        .eq('codigo', 'nuevo_tramite')
+        .maybeSingle();
+      const rolesAviso: string[] = cfgAviso?.destinatarios_roles ?? [];
+
+      // El líder solo hace falta cuando no hay responsable (ver destinatariosAviso).
+      let liderEquipoId: string | null = null;
+      if (grupoAsignadoId && !responsableId) {
         const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
-        const lider = (miembros as Array<{ id: string; nombre_completo: string }>)?.[0];
-        if (lider) {
+        liderEquipoId = (miembros as Array<{ id: string }>)?.[0]?.id ?? null;
+      }
+
+      let listaFija: string[] = [];
+      if (rolesAviso.includes('lista_fija') && cfgAviso?.id) {
+        const { data: fijos } = await supabase
+          .from('correo_destinatarios_notificacion')
+          .select('usuario_id')
+          .eq('tipo_notificacion_id', cfgAviso.id);
+        listaFija = (fijos ?? []).map(f => f.usuario_id as string).filter(Boolean);
+      }
+
+      const destinatarios = destinatariosDelAviso(rolesAviso, {
+        solicitanteId,
+        responsableId,
+        liderEquipoId,
+        listaFija,
+      });
+
+      const tituloPara = (id: string) =>
+        id === responsableId ? 'Nuevo trámite asignado'
+        : id === solicitanteId ? 'Tu trámite fue registrado'
+        : 'Nuevo trámite en tu equipo';
+
+      if (destinatarios.length > 0) {
+        for (const destinatarioId of destinatarios) {
           await avisarPorEvento({
             eventKey: 'nuevo_tramite',
             ticketId: ticket.id,
-            destinatarioId: lider.id,
+            destinatarioId,
             disparadoPor: usuario!.id,
             variables: varsAviso,
             respaldo: {
-              user_id: lider.id,
-              titulo: 'Nuevo trámite en tu equipo',
+              user_id: destinatarioId,
+              titulo: tituloPara(destinatarioId),
               mensaje: avisoTramite,
               modulo: 'Tramites',
               icono: 'clipboard-list',
@@ -2472,9 +2492,33 @@ export function NuevoTramiteModal({
             },
           });
         }
-      } else {
-        // Ni responsable ni equipo: la auto-asignación (override, oficina, o regla de
-        // área) no resolvió nada. Avisar a Admin para que no se pierda de vista.
+      } else if (responsableId || liderEquipoId) {
+        // Sin configuración: el camino de siempre. Una config en blanco no debe
+        // significar "no avisarle a nadie".
+        const destinatarioId = responsableId || liderEquipoId!;
+        await avisarPorEvento({
+          eventKey: 'nuevo_tramite',
+          ticketId: ticket.id,
+          destinatarioId,
+          disparadoPor: usuario!.id,
+          variables: varsAviso,
+          respaldo: {
+            user_id: destinatarioId,
+            titulo: tituloPara(destinatarioId),
+            mensaje: avisoTramite,
+            modulo: 'Tramites',
+            icono: 'clipboard-list',
+            accion_url: `/tramites/${ticket.id}`,
+            accion_texto: 'Ver trámite',
+          },
+        });
+      }
+
+      // Ni responsable ni equipo: la auto-asignación (override, oficina, o regla
+      // de área) no resolvió nada. Esto NO se configura desde la pantalla: es una
+      // alarma de configuración rota, no un aviso de negocio, y poder apagarla
+      // sería poder quedarse sin enterarse de que algo quedó en el limbo.
+      if (!responsableId && !grupoAsignadoId) {
         const { data: adminsSinEquipo } = await supabase.from('usuarios').select('id')
           .eq('rol', 'Administrador').eq('activo', true);
         for (const adm of (adminsSinEquipo ?? [])) {

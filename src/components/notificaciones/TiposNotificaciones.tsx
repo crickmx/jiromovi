@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Mail, Power, MessageCircle, CircleAlert as AlertCircle, Pencil as Edit, Bell, ChevronDown, ChevronUp, Users, Check, X, Search, ShieldCheck, Briefcase, BookOpen, FileText, ShoppingBag, Building2, UserCheck, RefreshCw, Info, Layers, Wallet, Smartphone, Monitor, PhoneMissed } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
 import { CanalesPorTipoTramite } from './CanalesPorTipoTramite';
+import { ROLES_DESTINATARIO } from '../../lib/destinatariosAviso';
 
 interface TipoNotificacion {
   id: string;
@@ -18,6 +19,7 @@ interface TipoNotificacion {
   platform: 'movi' | 'seguwallet';
   reminder_offsets_minutes?: number[];
   es_obsoleto?: boolean;
+  destinatarios_roles?: string[];
 }
 
 interface Usuario {
@@ -108,6 +110,25 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
     fetchDestinatarios();
     fetchUsuariosDisponibles();
   }, []);
+
+  /** Por papel en el trámite, no por persona: así sirve para todos los trámites. */
+  const alternarRolDestinatario = async (tipo: TipoNotificacion, rol: string) => {
+    const actuales = tipo.destinatarios_roles ?? [];
+    const nuevos = actuales.includes(rol) ? actuales.filter(r => r !== rol) : [...actuales, rol];
+
+    const { error } = await supabase
+      .from('correo_tipos_notificacion')
+      .update({ destinatarios_roles: nuevos })
+      .eq('id', tipo.id);
+
+    // Sin revisar el resultado, la pantalla mostraría el cambio y la base no lo
+    // tendría — ya pasó con otros toggles de este proyecto.
+    if (error) {
+      alert(`No se pudo guardar: ${error.message}`);
+      return;
+    }
+    setTipos(prev => prev.map(t => (t.id === tipo.id ? { ...t, destinatarios_roles: nuevos } : t)));
+  };
 
   const fetchTipos = async () => {
     try {
@@ -578,6 +599,42 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                 ))}
                               </div>
                             </div>
+
+                            {/* A quién se le avisa — por su papel en el trámite. Antes
+                                estaba escrito en el código de cada pantalla. */}
+                            {tipo.modulo === 'TRAMITES' && (
+                              <div>
+                                <p className="text-xs font-semibold text-neutral-600 mb-1">¿A quién se le avisa?</p>
+                                <p className="text-[11px] text-neutral-500 mb-2">
+                                  Por su papel en cada trámite, no por nombre.
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {ROLES_DESTINATARIO.map(rol => {
+                                    const puesto = (tipo.destinatarios_roles ?? []).includes(rol.valor);
+                                    return (
+                                      <button
+                                        key={rol.valor}
+                                        onClick={() => alternarRolDestinatario(tipo, rol.valor)}
+                                        title={rol.ayuda}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                          puesto
+                                            ? 'bg-violet-100 text-violet-700 border-violet-300 border-2'
+                                            : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300'
+                                        }`}
+                                      >
+                                        <Users className="w-3.5 h-3.5" />
+                                        {rol.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                {(tipo.destinatarios_roles ?? []).length === 0 && (
+                                  <p className="text-[11px] text-amber-600 mt-1.5">
+                                    Sin elegir ninguno se usa el comportamiento de siempre: al responsable, o al líder de su equipo.
+                                  </p>
+                                )}
+                              </div>
+                            )}
 
                             {/* Por tipo de trámite: la lista sale de ticket_tipos activos,
                                 no de una lista escrita a mano, así que un tipo nuevo
