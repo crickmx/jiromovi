@@ -29,6 +29,16 @@ interface TicketNotificationPayload {
   attachment_file_ids?: string[];
   skip_email?: boolean;
   skip_whatsapp?: boolean;
+  /**
+   * A quién avisar, cuando NO es el agente del trámite.
+   *
+   * El despachador nació para avisarle al agente, así que siempre resolvía al
+   * destinatario desde el ticket. Pero hay avisos que van a otra persona —el
+   * responsable que recibe un trámite nuevo, el líder de su equipo, un
+   * administrador— y sin esto no había cómo mandarlos por aquí: se quedaban
+   * escritos a mano en el código.
+   */
+  destinatario_user_id?: string;
 }
 
 interface TicketNotificationContext {
@@ -412,20 +422,25 @@ async function canalesDelAviso(
   supabase: ReturnType<typeof createClient>,
   eventKey: string,
   tipoTramite: string,
-): Promise<{ correo: boolean; whatsapp: boolean; origen: string }> {
+): Promise<{ correo: boolean; whatsapp: boolean; campanita: boolean; origen: string }> {
   let correo = true;
   let whatsapp = true;
+  // La campanita se configura por evento, no por tipo de trámite: un aviso que
+  // aparece dentro de MOVI no molesta a nadie fuera de su pantalla, así que
+  // afinarlo tipo por tipo sería configuración sin beneficio.
+  let campanita = true;
   let origen = "sin configurar (se envía por todo)";
 
   const { data: general, error: errGeneral } = await supabase
     .from("correo_tipos_notificacion")
-    .select("enviar_correo, enviar_whatsapp")
+    .select("enviar_correo, enviar_whatsapp, enviar_notificacion")
     .eq("codigo", eventKey)
     .maybeSingle();
   if (errGeneral) console.error("[Canales] No se pudo leer la config general:", errGeneral.message);
   if (general) {
     correo = general.enviar_correo !== false;
     whatsapp = general.enviar_whatsapp !== false;
+    campanita = general.enviar_notificacion !== false;
     origen = "config del evento";
   }
 
@@ -450,8 +465,8 @@ async function canalesDelAviso(
     }
   }
 
-  console.log(`[Canales] ${eventKey}: correo=${correo}, whatsapp=${whatsapp} (${origen})`);
-  return { correo, whatsapp, origen };
+  console.log(`[Canales] ${eventKey}: correo=${correo}, whatsapp=${whatsapp}, campanita=${campanita} (${origen})`);
+  return { correo, whatsapp, campanita, origen };
 }
 
 // ============================================================
@@ -1068,7 +1083,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload: TicketNotificationPayload = rawPayload;
-    const { event_key, ticket_id, triggered_by_user_id, extra_variables, attachment_file_ids, skip_email, skip_whatsapp, forzar_reenvio } = payload;
+    const { event_key, ticket_id, triggered_by_user_id, extra_variables, attachment_file_ids, skip_email, skip_whatsapp, forzar_reenvio, destinatario_user_id } = payload;
 
     console.log(`[Dispatcher] ========== START ==========`);
     console.log(`[Dispatcher] eventType: ${event_key}`);
@@ -1103,9 +1118,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 3. Get recipient (agent) info
+    // 3. Get recipient info — quien se haya pedido, o el agente del trámite.
     const ticket = context.rawTicket;
-    const agentUserId = (ticket as any).agente_usuario_id || (ticket as any).agente_id;
+    const agentUserId = destinatario_user_id
+      || (ticket as any).agente_usuario_id
+      || (ticket as any).agente_id;
 
     if (!agentUserId) {
       return new Response(
@@ -1262,6 +1279,29 @@ Deno.serve(async (req: Request) => {
       whatsappResult.error = `WhatsApp apagado para este aviso (${canales.origen})`;
     }
 
+    // 10b. Campanita dentro de MOVI.
+    //
+    // Hasta hoy el despachador solo mandaba correo y WhatsApp, así que el aviso
+    // de dentro de la app tenía que crearlo cada pantalla por su cuenta, con el
+    // texto escrito a mano. Por eso una plantilla podía decir una cosa y la
+    // campanita otra. La plantilla ya traía los campos `inapp_*` desde que se
+    // creó la tabla; solo faltaba usarlos.
+    let inappEnviada = false;
+    if (canales.campanita && (template.inapp_title_template || template.inapp_body_template)) {
+      const titulo = renderTemplate(template.inapp_title_template || "", allVariables).trim()
+        || `${context.folio} — ${eventLabels[event_key] ?? "Trámite"}`;
+      const cuerpo = renderTemplate(template.inapp_body_template || "", allVariables).trim();
+      const { error: errInapp } = await supabase.rpc("crear_notificacion", {
+        p_usuario_id: agentUserId,
+        p_tipo: event_key,
+        p_titulo: titulo.slice(0, 120),
+        p_mensaje: cuerpo.slice(0, 500),
+        p_url: context.ticketUrl,
+      });
+      if (errInapp) console.error("[Campanita] No se pudo crear la notificación:", errInapp.message);
+      else inappEnviada = true;
+    }
+
     // 11. Log to history
     const { data: historyRecord } = await supabase
       .from("transactional_notification_history")
@@ -1351,6 +1391,7 @@ Deno.serve(async (req: Request) => {
         whatsappSent: whatsappResult.documentsSent,
         whatsappFailed: whatsappResult.failedDocuments,
       },
+      inapp: { sent: inappEnviada },
       historyId: historyRecord?.id,
     };
 

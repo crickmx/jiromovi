@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Upload, User, Users, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, ChevronDown, Lock, RotateCcw, Star, Layers } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { puedeVerCampo, puedeEditarCampo } from '../../lib/rolCampos';
-import { crearNotificacion } from '../../lib/notificationHelpers';
+import { crearNotificacion, avisarPorEvento } from '../../lib/notificationHelpers';
 import { mensajeNuevoTramite } from '../../lib/tramiteAviso';
 import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
@@ -2419,28 +2419,54 @@ export function NuevoTramiteModal({
       });
 
       // Notificar al responsable asignado o al líder del equipo
+      // Las variables que puede usar la plantilla de Admin › Transaccionales.
+      // El respaldo de cada aviso es el texto de siempre: si no hay plantilla o
+      // el motor falla, el aviso sale igual.
+      const varsAviso = {
+        folio: ticket.folio ?? '',
+        solicitante: solicitante?.nombre_completo ?? '',
+        oficina: oficinas.find(o => o.id === solicitante?.oficina_id)?.nombre ?? '',
+        prioridad: prioridad ?? '',
+        instrucciones: String(ticketData.instrucciones ?? ''),
+        tipo_tramite: tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite,
+      };
+
       if (responsableId) {
-        await crearNotificacion({
-          user_id: responsableId,
-          titulo: 'Nuevo trámite asignado',
-          mensaje: avisoTramite,
-          modulo: 'Tramites',
-          icono: 'clipboard-list',
-          accion_url: `/tramites/${ticket.id}`,
-          accion_texto: 'Ver trámite',
-        });
-      } else if (grupoAsignadoId) {
-        const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
-        const lider = (miembros as Array<{ id: string; nombre_completo: string }>)?.[0];
-        if (lider) {
-          await crearNotificacion({
-            user_id: lider.id,
-            titulo: 'Nuevo trámite en tu equipo',
+        await avisarPorEvento({
+          eventKey: 'nuevo_tramite',
+          ticketId: ticket.id,
+          destinatarioId: responsableId,
+          disparadoPor: usuario!.id,
+          variables: varsAviso,
+          respaldo: {
+            user_id: responsableId,
+            titulo: 'Nuevo trámite asignado',
             mensaje: avisoTramite,
             modulo: 'Tramites',
             icono: 'clipboard-list',
             accion_url: `/tramites/${ticket.id}`,
             accion_texto: 'Ver trámite',
+          },
+        });
+      } else if (grupoAsignadoId) {
+        const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
+        const lider = (miembros as Array<{ id: string; nombre_completo: string }>)?.[0];
+        if (lider) {
+          await avisarPorEvento({
+            eventKey: 'nuevo_tramite',
+            ticketId: ticket.id,
+            destinatarioId: lider.id,
+            disparadoPor: usuario!.id,
+            variables: varsAviso,
+            respaldo: {
+              user_id: lider.id,
+              titulo: 'Nuevo trámite en tu equipo',
+              mensaje: avisoTramite,
+              modulo: 'Tramites',
+              icono: 'clipboard-list',
+              accion_url: `/tramites/${ticket.id}`,
+              accion_texto: 'Ver trámite',
+            },
           });
         }
       } else {

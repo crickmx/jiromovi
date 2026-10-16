@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseUrl } from './supabase';
 
 export interface NotificationParams {
   user_id: string;
@@ -9,6 +9,64 @@ export interface NotificationParams {
   accion_url?: string;
   accion_texto?: string;
   enviar_whatsapp?: boolean;
+}
+
+export interface AvisoPorEvento {
+  /** Código del aviso en Admin › Transaccionales (= `event_key` del motor). */
+  eventKey: string;
+  ticketId: string;
+  /** A quién se le avisa. Puede no ser el agente del trámite. */
+  destinatarioId: string;
+  disparadoPor: string;
+  /** Lo que la plantilla puede usar: {{folio}}, {{solicitante}}, … */
+  variables?: Record<string, string>;
+  /** Si el motor no pudo, se manda esto a mano. Nunca se pierde el aviso. */
+  respaldo: NotificationParams;
+}
+
+/**
+ * Avisa pasando por el motor de Transaccionales, con red abajo.
+ *
+ * El texto de los avisos de trámite vivía escrito a mano en las pantallas, así
+ * que la plantilla de Admin › Transaccionales podía decir una cosa y el aviso
+ * real otra. Esto los junta: manda el evento al despachador, que resuelve la
+ * plantilla, los canales configurados y la campanita.
+ *
+ * **La red importa tanto como el motor.** Si no hay plantilla para ese evento,
+ * si está apagado, o si el despachador falla, se manda el aviso de siempre. Un
+ * trámite nuevo del que nadie se entera es peor que un texto sin personalizar.
+ */
+export async function avisarPorEvento(aviso: AvisoPorEvento): Promise<{ via: 'motor' | 'respaldo' }> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('sin sesión');
+
+    const resp = await fetch(`${supabaseUrl}/functions/v1/ticket-notification-dispatcher`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({
+        event_key: aviso.eventKey,
+        ticket_id: aviso.ticketId,
+        triggered_by_user_id: aviso.disparadoPor,
+        destinatario_user_id: aviso.destinatarioId,
+        extra_variables: aviso.variables ?? {},
+        // Un aviso de trámite nuevo no lleva archivos: mandarlos aquí sería
+        // repetir lo que ya hace el envío de adjuntos, con su propio candado.
+        attachment_file_ids: [],
+      }),
+    });
+
+    const r = resp.ok ? await resp.json().catch(() => null) : null;
+    // Que responda 200 no basta: si la campanita no salió, el usuario no se
+    // entera dentro de MOVI, que es donde más se ve.
+    if (r?.success !== false && r?.inapp?.sent) return { via: 'motor' };
+    console.warn(`[aviso] El motor no avisó por "${aviso.eventKey}", se usa el respaldo`, r);
+  } catch (err) {
+    console.warn(`[aviso] Falló el motor para "${aviso.eventKey}", se usa el respaldo`, err);
+  }
+
+  await crearNotificacion(aviso.respaldo);
+  return { via: 'respaldo' };
 }
 
 export async function crearNotificacion(params: NotificationParams) {
