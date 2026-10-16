@@ -72,8 +72,24 @@ const CODIGOS_MOTOR_INTERNO = [
   'notificacion_personalizada',
 ];
 
+/** Hace cuánto, en palabras. Un "hace 7 meses" dice más que una fecha suelta. */
+function haceCuanto(iso: string): string {
+  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (dias <= 0) return 'hoy';
+  if (dias === 1) return 'ayer';
+  if (dias < 30) return `hace ${dias} días`;
+  const meses = Math.round(dias / 30);
+  if (meses < 12) return `hace ${meses} ${meses === 1 ? 'mes' : 'meses'}`;
+  const anios = Math.round(meses / 12);
+  return `hace ${anios} ${anios === 1 ? 'año' : 'años'}`;
+}
+
 export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const [tipos, setTipos] = useState<TipoNotificacion[]>([]);
+  // Uso REAL por código: una notificación puede estar activa, con sus canales y
+  // su plantilla, y que nadie la dispare nunca. Pasaba con 5 de las 6 de
+  // Trámites. Sin esto, la pantalla no tiene cómo distinguirlas.
+  const [uso, setUso] = useState<Record<string, { ultimo: string | null; envios: number }>>({});
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [editingTipo, setEditingTipo] = useState<{ id: string; nombre: string; platform?: 'movi' | 'seguwallet' } | null>(null);
@@ -105,6 +121,24 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         (t: TipoNotificacion) => !t.es_obsoleto && !t.descripcion?.includes('NO USAR')
       );
       setTipos(validos);
+
+      const { data: usoData, error: usoErr } = await supabase
+        .from('notificaciones_uso_view')
+        .select('codigo, ultimo_envio, envios');
+      // Sin el dato se prefiere no decir nada a decir algo falso: una etiqueta
+      // de "nunca se ha disparado" equivocada haría que alguien apague algo que
+      // sí sirve.
+      if (usoErr) console.error('No se pudo leer el uso de las notificaciones:', usoErr.message);
+      else {
+        const mapa: Record<string, { ultimo: string | null; envios: number }> = {};
+        for (const fila of usoData ?? []) {
+          mapa[fila.codigo as string] = {
+            ultimo: (fila.ultimo_envio as string) ?? null,
+            envios: Number(fila.envios ?? 0),
+          };
+        }
+        setUso(mapa);
+      }
     } catch (err) {
       console.error('Error cargando tipos:', err);
     } finally {
@@ -462,6 +496,26 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                   <UserCheck className="w-2.5 h-2.5" />
                                   Automatica
                                 </span>
+                              )}
+                              {/* Lo que la pantalla callaba: si esto se dispara o no. */}
+                              {Object.keys(uso).length > 0 && (
+                                uso[tipo.codigo]?.ultimo ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-xs rounded border border-emerald-200"
+                                    title={`${uso[tipo.codigo].envios} envío(s). Último: ${new Date(uso[tipo.codigo].ultimo as string).toLocaleString('es-MX')}`}
+                                  >
+                                    <Check className="w-2.5 h-2.5" />
+                                    Se envió {haceCuanto(uso[tipo.codigo].ultimo as string)}
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-xs rounded border border-red-200"
+                                    title="No hay un solo envío registrado con este código. Está configurada, pero nada la dispara: cambiar su plantilla o sus canales no tiene efecto."
+                                  >
+                                    <AlertCircle className="w-2.5 h-2.5" />
+                                    Nunca se ha disparado
+                                  </span>
+                                )
                               )}
                               {esDepartamental && destTipo.length === 0 && tipo.activo && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-600 text-xs rounded border border-amber-200">
