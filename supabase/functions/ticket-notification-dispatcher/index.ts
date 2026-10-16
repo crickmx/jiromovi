@@ -1193,7 +1193,12 @@ Deno.serve(async (req: Request) => {
       tramite_asignado: "Asignado a ti",
     };
 
-    const finalSubject = buildTicketEmailSubject(context, eventLabels[event_key]);
+    // El asunto de la plantilla manda. Antes SIEMPRE se armaba aquí, así que el
+    // campo "Asunto" de Admin › Transaccionales no servía para nada — se podía
+    // editar y el correo salía igual. Sin asunto en la plantilla se sigue
+    // armando como siempre.
+    const asuntoDePlantilla = renderTemplate(template.email_subject_template || "", allVariables).trim();
+    const finalSubject = asuntoDePlantilla || buildTicketEmailSubject(context, eventLabels[event_key]);
 
     // 7. Render body templates
     const renderedEmailBody = renderTemplate(

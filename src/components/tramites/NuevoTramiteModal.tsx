@@ -2422,12 +2422,15 @@ export function NuevoTramiteModal({
       // Las variables que puede usar la plantilla de Admin › Transaccionales.
       // El respaldo de cada aviso es el texto de siempre: si no hay plantilla o
       // el motor falla, el aviso sale igual.
+      // Un guion y no cadena vacía: la plantilla no tiene condicionales, así que
+      // un dato ausente dejaría su renglón en blanco y el correo se vería roto.
+      const oDash = (v: string | null | undefined) => (v && v.trim() ? v.trim() : '—');
       const varsAviso = {
         folio: ticket.folio ?? '',
-        solicitante: solicitante?.nombre_completo ?? '',
-        oficina: oficinas.find(o => o.id === solicitante?.oficina_id)?.nombre ?? '',
-        prioridad: prioridad ?? '',
-        instrucciones: String(ticketData.instrucciones ?? ''),
+        solicitante: oDash(solicitante?.nombre_completo),
+        oficina: oDash(oficinas.find(o => o.id === solicitante?.oficina_id)?.nombre),
+        prioridad: oDash(prioridad),
+        instrucciones: oDash(String(ticketData.instrucciones ?? '')),
         tipo_tramite: tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite,
       };
 
