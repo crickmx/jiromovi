@@ -33,30 +33,47 @@ Si al abrir la Bitácora sale *"Could not find the table … in the schema cache
 - **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
 - **Trámite hijo repetido**: volver a aplicar el estatus que dispara un trigger y confirmar que ahora avisa.
 
-#### 🔴 LO PRIMERO DE MAÑANA — 2 de 3 adjuntos llegaron por WhatsApp
+#### ⏸️ PENDIENTE — un adjunto no llegó por WhatsApp, y Wazzup dice que sí
 
-Ricardo probó el envío con 3 archivos: **por correo llegaron los 3, por WhatsApp solo 2.** Falta el diagnóstico, que ya está guardado — basta correr esto con el folio de esa prueba:
+Prueba del 15/10 en el trámite **TK6B3AE** (3 archivos): por correo llegaron los 3, por WhatsApp 2. Se repitió el 16/10 a las 18:01 con los mismos 3.
 
-```sql
-select l.file_name, l.error_message, l.created_at
-from notification_attachments_log l
-join tickets t on t.id = l.ticket_id
-where t.folio = 'TKXXXXX'
-  and l.channel = 'whatsapp'
-  and l.sent_successfully = false
-order by l.created_at desc;
-```
+**Lo ya descartado, con datos:**
+- No es el candado ni el filtro por tipo: el log tiene las **6 filas** (3 archivos × 2 canales) de cada envío.
+- No es tamaño ni configuración: por correo salieron los 3.
+- No es la URL firmada: dura **1 hora** (`SIGNED_URL_DURATION_SECONDS`), de sobra para que Wazzup la baje.
+- **Las 3 filas de `whatsapp` dicen `sent_successfully = true`, sin error.** O sea que Wazzup contestó 200 a las tres y el archivo se perdió de su lado, entre su "recibido" y el teléfono.
 
-Que haya salido por correo descarta tamaño y configuración: es del lado de Wazzup, que manda los documentos **uno por uno** (`sendWhatsAppWithDocuments`, ~línea 840) — si uno truena, los demás siguen y no se entera nadie. Según lo que diga `error_message`:
+**Dónde se nos acaba la pista y cómo extenderla:** cuando Wazzup acepta un documento devuelve un **id de mensaje** que hoy se tira. Guardándolo en `notification_attachments_log` se le podría preguntar después qué pasó con ese mensaje — y ya existe `wazzup-webhook`, que es por donde ellos avisan los cambios de estado. Sin eso, la próxima vez volvemos a quedarnos aquí.
 
-| `error_message` | Qué es | Arreglo |
-|---|---|---|
-| `Wazzup 429` | límite de ritmo (hoy espera **500 ms** entre documentos) | subir la pausa + un reintento antes de rendirse |
-| `Wazzup 400 INVALID_MESSAGE_DATA` | el nombre o el tipo del archivo no le gustó | revisar `sanitizedFileName` |
-| `Signed URL not accessible` | la URL firmada expiró o no se pudo firmar | revisar `resolveFileUrl` |
-| `Could not resolve file URL` | el archivo no está en el bucket | datos, no código |
+**Falta un dato de Ricardo:** cuál de los 3 no llegó. Si siempre es `Aviso de Cobro 2° Sem Vida Lucia Balsa.pdf`, apunta al `°` del nombre (en mayo hubo `INVALID_MESSAGE_DATA` justo con un nombre con corchetes); si siempre es el último de la lista, apunta al ritmo (van con **500 ms** de separación).
 
-**Apuesta:** el 429. Los otros dos sí salieron, así que el camino funciona.
+---
+
+#### 🔴 PENDIENTE — Admin › Transaccionales: 5 de sus 6 avisos de Trámites no los dispara nadie
+
+Pregunta de Ricardo (16/10): *"¿esta sección realmente está funcionando, y manda sobre los trámites actuales o solo con los antiguos?"*. Revisado en el código, **sin tocar nada todavía**:
+
+**El motor sí funciona, pero casi nada lo llama.** Los únicos `event_key` que algo dispara hoy:
+
+| Evento | Quién lo dispara |
+|---|---|
+| `tramite_documento_cargado` | `TramiteArchivos.tsx` al subir un archivo |
+| `tramite_entrega_poliza` | la edge function `process-policy-delivery` |
+
+De las **6 que lista la pantalla** en el grupo Trámites, solo *"Nuevo Documento en Trámite"* se dispara. Las otras cinco —Cambio de Estatus, Nuevo Comentario, Nuevo Trámite Generado (Mesa de Control), Renovación de Póliza Próxima, Trámite Actualizado— **no las manda ni el código ni ningún trigger de BD**. Se ven "Activas", con sus canales y sus plantillas, y no hacen nada. Editarlas no cambia nada en el sistema.
+
+**Lo que sí notifica los trámites hoy es otro camino:** `crearNotificacion()` (`notificationHelpers`) con el texto **escrito a mano** en `TramiteDetalle.tsx`, `NuevoTramiteModal.tsx` y `tramiteAviso.ts`. Son dos sistemas que no se conocen — es el mismo patrón de "pantalla de configuración sin efecto real" que ya mordió con `tramite_team_tipo_config` y con los eventos de Marketing Premium.
+
+**Qué está hardcodeado dentro del motor** (lo otro que preguntó):
+- `eventLabels` en `ticket-notification-dispatcher` (~línea 1107): mapa fijo de 8 claves para el asunto del correo. Un evento nuevo creado desde la pantalla sale **sin asunto**.
+- Las variables disponibles (`{{folio}}`, `{{estatus}}`…) se arman en código, así que la pantalla no puede ofrecer la lista real por evento.
+
+**Plan sugerido, de más barato a más caro:**
+1. **Que la pantalla diga la verdad.** Un distintivo "nunca se ha disparado" / "último envío: fecha" leyendo `transactional_notification_history` por `event_key`. Barato, y evita que alguien vuelva a configurar una plantilla fantasma.
+2. **Conectar los eventos que ya existen**: cambiar los `crearNotificacion()` de trámites por un disparo al despachador con su `event_key`. Queda un solo camino, y las plantillas de la pantalla pasan a mandar de verdad.
+3. **Sacar `eventLabels` y el catálogo de variables a la BD**, para que un evento nuevo se pueda configurar entero desde la pantalla.
+
+⚠️ **Antes de tocar el punto 2**, confirmar con Ricardo qué avisos deben seguir siendo internos (campanita) y cuáles salen por WhatsApp/correo: hoy el texto hecho a mano y la plantilla pueden decir cosas distintas, y unificar los cambia a los dos a la vez.
 
 ---
 
