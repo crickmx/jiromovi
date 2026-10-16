@@ -6,9 +6,11 @@
 
 **`origin/main`** (beta) tiene todo lo de hoy. **`produccion` NO se tocó** desde el merge del 12.
 
-⚠️ **Falta desplegar lo último del 15/10** (Ricardo ya desplegó lo anterior):
-1. **Redesplegar `ticket-notification-dispatcher`** desde el dashboard — cambió su respuesta (`attachments.intentadosCorreo` / `intentadosWhatsapp`), de donde sale el aviso de "salieron 2 de 3".
-2. **Pull + deploy de beta** — trae las marcas verde/roja por archivo en la pestaña Archivos.
+⚠️ **Falta desplegar lo último del 16/10** (todo lo anterior ya está arriba):
+1. **Redesplegar `ticket-notification-dispatcher`** — trae las variables `{{campo_<clave>}}` (los campos del formulario del trámite) que el editor de plantillas ya ofrece.
+2. **Pull + deploy de beta** — el editor de plantillas apuntando a la tabla correcta y el selector de variables.
+
+**Las 6 migraciones del 16/10 están corridas** (`20261016000001` a `…06`). Se nota que funcionan: en Admin › Transaccionales cada aviso trae su marca verde/roja de uso, y el WhatsApp de trámite nuevo llega con 📋 y los datos llenos.
 
 Ruta: `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\ticket-notification-dispatcher\index.ts`
 
@@ -32,6 +34,20 @@ Si al abrir la Bitácora sale *"Could not find the table … in the schema cache
 - **Papelera**: mandar un trámite a la papelera. Si sale un mensaje de error, **mandarlo** — es la causa de fondo de por qué no escribía, y todavía no la sabemos.
 - **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
 - **Trámite hijo repetido**: volver a aplicar el estatus que dispara un trigger y confirmar que ahora avisa.
+
+#### 🔜 LO QUE SIGUE DEL MOTOR DE NOTIFICACIONES (16/10)
+
+El evento `nuevo_tramite` ya pasa por el motor de punta a punta. Faltan los otros del grupo Trámites, que **siguen sin que nadie los dispare**: Cambio de Estatus, Nuevo Comentario, Renovación de Póliza Próxima y Trámite Actualizado. El camino ya está abierto — se copia lo de `NuevoTramiteModal`:
+
+1. `avisarPorEvento({ eventKey, ticketId, destinatarioId, variables, respaldo })` donde hoy hay un `crearNotificacion()` escrito a mano.
+2. Los destinatarios salen de `destinatariosDelAviso()` leyendo `correo_tipos_notificacion.destinatarios_roles`.
+3. Agregar la plantilla del evento a `transactional_notification_templates` — **la tabla que de verdad se manda**, no `correo_plantillas`.
+
+⚠️ **`escalar-tramite` llama a `crear_notificacion`, que NO EXISTE en la base.** Sus avisos internos llevan fallando en silencio desde julio. Se arregla igual que en el despachador: `enviar_notificacion_individual` con `p_enviar_whatsapp: false`.
+
+**Variables:** el catálogo vive en `src/lib/variablesPlantilla.ts`. **Si se agrega una variable a `allVariables` del despachador, hay que agregarla ahí** o la pantalla no la ofrece — y si alguien la escribe a mano, el aviso sale con un hueco sin avisar.
+
+---
 
 #### ⏸️ PENDIENTE — un adjunto no llegó por WhatsApp, y Wazzup dice que sí
 
@@ -98,6 +114,49 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### 🔴 2026-10-16 — Admin › Transaccionales: cuatro pantallas que no mandaban nada
+
+Día entero sobre el motor de notificaciones. La pregunta de arranque fue *"¿esta sección realmente está funcionando?"*. **No, casi nada.** Cuatro hallazgos encadenados, cada uno tapando al siguiente:
+
+| Lo que se veía en pantalla | Lo que pasaba de verdad |
+|---|---|
+| 6 avisos de Trámites activos con sus canales | **5 no los dispara nadie**; solo `tramite_documento_cargado` |
+| Botones Push / WhatsApp / Correo por evento | **El despachador nunca los leía**: mandaba siempre por los dos |
+| Lista de "Destinatarios" | Otro mecanismo; el destinatario real estaba **escrito en el código** |
+| "Editar Plantilla" | Editaba **`correo_plantillas`, tabla de la que NINGÚN motor manda** |
+
+**El patrón, por cuarta vez en el proyecto:** una pantalla de configuración completa, que guarda sin error, y que el motor nunca consulta. Ya pasó con `tramite_team_tipo_config`, con los eventos de Marketing Premium y con los equipos habilitados por tipo. **Al tocar una pantalla de configuración, lo primero es un `grep` del nombre de la tabla en `supabase/functions/` y `src/`: si solo aparece donde se guarda, no sirve para nada.**
+
+#### Lo que se construyó
+
+| Pieza | Qué resuelve |
+|---|---|
+| `notificaciones_uso_view` + marcas verde/roja | La pantalla dice si un aviso **se disparó alguna vez**. Une los historiales de los DOS motores (`correo_historial_envios` por código y `transactional_notification_history` por `event_key`) — mirar solo uno habría marcado como muertas todas las de trámites |
+| `canalesDelAviso()` en el despachador | Los botones de canal por fin apagan algo |
+| `tramite_tipo_notificacion_canales` | Excepciones por **tipo de trámite**; la lista sale de `ticket_tipos` activos, individual o en bloque. Sin renglón, hereda del evento |
+| `destinatarios_roles` + `destinatariosAviso.ts` (con autocomprobación) | A quién se le avisa, **por su papel**: solicitante, responsable, líder, lista fija |
+| `avisarPorEvento()` en `notificationHelpers` | Dispara el evento al motor **con red**: si no hay plantilla, está apagado o falla, manda el aviso de siempre |
+| `destinatario_user_id` en el despachador | Nació para avisarle al AGENTE; estos avisos van al responsable o al líder |
+| Campanita desde la plantilla | Solo mandaba correo y WhatsApp; los campos `inapp_*` existían desde el principio y nadie los usaba |
+| Plantilla de `nuevo_tramite` | Correo (fragmento HTML con estilos en línea), WhatsApp y campanita, con 📋 |
+| `variablesPlantilla.ts` + `SelectorVariables` | Las variables que el motor **de verdad** sustituye, con buscador y filtros, más los campos del formulario como `{{campo_<clave>}}` |
+
+#### 🔑 Tres trampas, una prueba en vivo cada una
+
+**1. `crear_notificacion` NO EXISTE en la base.** El despachador la llamaba para la campanita, fallaba siempre, y como `avisarPorEvento` usa eso para saber si el aviso salió, mandaba su respaldo: **llegaban dos WhatsApp**. La buena es `enviar_notificacion_individual(p_user_id, p_titulo, p_mensaje, p_modulo, p_accion_url, p_enviar_whatsapp)` — con el último en `false`, o el WhatsApp se duplica otra vez.
+
+**2. `ON CONFLICT DO NOTHING` no instaló la plantilla nueva.** Ya existía un renglón de enero para `nuevo_tramite`, así que la plantilla diseñada nunca se guardó y siguió mandando la vieja. Y la vieja usa nombres de variable que el despachador no entrega, así que el WhatsApp llegaba con *"Folio:", "Usuario:", "Fecha:"* **en blanco**. `renderTemplate` borra lo que no puede sustituir: **un nombre de variable equivocado no da error, deja un hueco**.
+
+**3. El respaldo no debe correr si el motor mandó ALGO.** La primera versión exigía que la campanita hubiera salido para dar el aviso por bueno; con el WhatsApp ya enviado y la campanita rota, el respaldo lo repetía. Ahora: si salió algo, no hay respaldo; y si lo único que faltó fue la campanita, se crea solo esa, con el WhatsApp apagado.
+
+#### Decisiones de Ricardo
+- Por tipo de trámite se configuran **solo los canales**, no el texto (30 tipos x 6 eventos de textos no los mantiene nadie).
+- Un tipo sin configuración **hereda** la del evento; una configuración vacía **nunca** significa "no avisar".
+- El líder del equipo es **respaldo**, no un segundo destinatario: con responsable puesto, no le llega.
+- El aviso a Administradores cuando el trámite no cae en ninguna regla **no es configurable**: es una alarma de configuración rota, y poder apagarla sería poder quedarse sin enterarse.
 
 ---
 
