@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Mail, Power, MessageCircle, CircleAlert as AlertCircle, Pencil as Edit, Bell, ChevronDown, ChevronUp, Users, Check, X, Search, ShieldCheck, Briefcase, BookOpen, FileText, ShoppingBag, Building2, UserCheck, RefreshCw, Info, Layers, Wallet, Smartphone, Monitor, PhoneMissed } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
+import { CanalesPorTipoTramite } from './CanalesPorTipoTramite';
 
 interface TipoNotificacion {
   id: string;
@@ -577,6 +578,33 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                 ))}
                               </div>
                             </div>
+
+                            {/* Por tipo de trámite: la lista sale de ticket_tipos activos,
+                                no de una lista escrita a mano, así que un tipo nuevo
+                                aparece aquí solo. */}
+                            {tipo.modulo === 'TRAMITES' && (
+                              <details className="border border-neutral-200 rounded-lg">
+                                <summary className="px-3 py-2 text-xs font-semibold text-neutral-700 cursor-pointer select-none hover:bg-neutral-50">
+                                  Por tipo de trámite
+                                  <span className="ml-2 font-normal text-neutral-500">
+                                    — excepciones a los canales de arriba
+                                  </span>
+                                </summary>
+                                <div className="px-3 pb-3 pt-1">
+                                  <CanalesPorTipoTramite
+                                    codigo={tipo.codigo}
+                                    heredaCorreo={tipo.enviar_correo}
+                                    heredaWhatsapp={tipo.enviar_whatsapp}
+                                    onToast={(msg, t) => {
+                                      // La pantalla no tiene toast propio; el aviso del
+                                      // navegador es feo pero no deja pasar un error en
+                                      // silencio, que es lo que importa aquí.
+                                      if (t === 'error') alert(msg);
+                                    }}
+                                  />
+                                </div>
+                              </details>
+                            )}
 
                             {tipo.codigo.startsWith('agenda_recordatorio_') && (
                               <div>

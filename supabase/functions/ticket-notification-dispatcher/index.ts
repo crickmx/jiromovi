@@ -394,6 +394,67 @@ async function getTicketNotificationAttachments(
 }
 
 // ============================================================
+// Helper: por qué canales sale este aviso
+// ============================================================
+//
+// Hasta el 16/10/26 esta función **nunca leyó** la configuración de canales:
+// mandaba correo y WhatsApp siempre que el agente los tuviera. Los botones de
+// Admin › Transaccionales no apagaban nada, y nadie podía notarlo.
+//
+// Ahora manda la configuración, en dos capas:
+//   1. `correo_tipos_notificacion` por código de evento (lo general)
+//   2. `tramite_tipo_notificacion_canales` por tipo de trámite (la excepción)
+//
+// Sin renglón en ninguna de las dos se envía por todo, que es el comportamiento
+// de siempre: una configuración ausente nunca debe apagar un aviso en silencio.
+
+async function canalesDelAviso(
+  supabase: ReturnType<typeof createClient>,
+  eventKey: string,
+  tipoTramite: string,
+): Promise<{ correo: boolean; whatsapp: boolean; origen: string }> {
+  let correo = true;
+  let whatsapp = true;
+  let origen = "sin configurar (se envía por todo)";
+
+  const { data: general, error: errGeneral } = await supabase
+    .from("correo_tipos_notificacion")
+    .select("enviar_correo, enviar_whatsapp")
+    .eq("codigo", eventKey)
+    .maybeSingle();
+  if (errGeneral) console.error("[Canales] No se pudo leer la config general:", errGeneral.message);
+  if (general) {
+    correo = general.enviar_correo !== false;
+    whatsapp = general.enviar_whatsapp !== false;
+    origen = "config del evento";
+  }
+
+  if (tipoTramite) {
+    const { data: tipo } = await supabase
+      .from("ticket_tipos")
+      .select("id")
+      .eq("value", tipoTramite)
+      .maybeSingle();
+    if (tipo?.id) {
+      const { data: porTipo } = await supabase
+        .from("tramite_tipo_notificacion_canales")
+        .select("enviar_correo, enviar_whatsapp")
+        .eq("ticket_tipo_id", tipo.id)
+        .eq("codigo", eventKey)
+        .maybeSingle();
+      if (porTipo) {
+        correo = porTipo.enviar_correo !== false;
+        whatsapp = porTipo.enviar_whatsapp !== false;
+        origen = `config del tipo "${tipoTramite}"`;
+      }
+    }
+  }
+
+  console.log(`[Canales] ${eventKey}: correo=${correo}, whatsapp=${whatsapp} (${origen})`);
+  return { correo, whatsapp, origen };
+}
+
+// ============================================================
 // Helper: qué adjuntos salen, por qué canal, y cuáles ya salieron
 // ============================================================
 //
@@ -1160,7 +1221,9 @@ Deno.serve(async (req: Request) => {
       failedAttachments: [] as string[],
       attachmentDetails: [] as AttachmentResult[],
     };
-    if (!skip_email && agentEmail) {
+    const canales = await canalesDelAviso(supabase, event_key, String(ticket.tipo_tramite ?? ""));
+
+    if (!skip_email && agentEmail && canales.correo) {
       emailResult = await sendEmailWithAttachments(
         agentEmail,
         finalSubject,
@@ -1172,6 +1235,8 @@ Deno.serve(async (req: Request) => {
       emailResult.error = "El usuario no tiene correo registrado";
     } else if (skip_email) {
       emailResult.error = "Email skipped by request";
+    } else if (!canales.correo) {
+      emailResult.error = `Correo apagado para este aviso (${canales.origen})`;
     }
 
     // 10. Send WhatsApp
@@ -1182,7 +1247,7 @@ Deno.serve(async (req: Request) => {
       failedDocuments: [] as string[],
       attachmentDetails: [] as AttachmentResult[],
     };
-    if (!skip_whatsapp && agentPhone) {
+    if (!skip_whatsapp && agentPhone && canales.whatsapp) {
       whatsappResult = await sendWhatsAppWithDocuments(
         supabase,
         agentPhone,
@@ -1193,6 +1258,8 @@ Deno.serve(async (req: Request) => {
       whatsappResult.error = "El usuario no tiene teléfono registrado";
     } else if (skip_whatsapp) {
       whatsappResult.error = "WhatsApp skipped by request";
+    } else if (!canales.whatsapp) {
+      whatsappResult.error = `WhatsApp apagado para este aviso (${canales.origen})`;
     }
 
     // 11. Log to history
