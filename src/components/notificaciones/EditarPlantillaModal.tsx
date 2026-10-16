@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, Mail, MessageCircle, AlertCircle, Save, Bell, Eye, Code, Bold, Italic, List, Link as LinkIcon, Image, Monitor, Smartphone } from 'lucide-react';
+import { SelectorVariables } from './SelectorVariables';
+import { VARIABLES_TRAMITE, variablesDeCampos, variablesDesconocidas, type VariablePlantilla } from '../../lib/variablesPlantilla';
 
 interface Plantilla {
   id: string;
@@ -18,12 +20,15 @@ interface Plantilla {
 interface EditarPlantillaModalProps {
   tipoId: string;
   tipoNombre: string;
+  /** El código del evento: con ESTE se encuentra la plantilla que el motor usa. */
+  codigo: string;
+  modulo?: string;
   platform?: 'movi' | 'seguwallet';
   onClose: () => void;
   onSave: () => void;
 }
 
-export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, onSave }: EditarPlantillaModalProps) {
+export function EditarPlantillaModal({ tipoId, tipoNombre, codigo, modulo, platform, onClose, onSave }: EditarPlantillaModalProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [plantilla, setPlantilla] = useState<Plantilla | null>(null);
@@ -35,6 +40,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
   const [previewTab, setPreviewTab] = useState<'email' | 'whatsapp' | 'notificacion'>('email');
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showPreview, setShowPreview] = useState(true);
+  const [variables, setVariables] = useState<VariablePlantilla[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -44,28 +50,81 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
   const fetchPlantilla = async () => {
     try {
       setLoading(true);
+      // `transactional_notification_templates`, no `correo_plantillas`.
+      //
+      // Esta pantalla llevaba editando `correo_plantillas`… de la que NINGÚN
+      // motor manda: tanto `ticket-notification-dispatcher` como
+      // `enviar-correo-transaccional` leen la otra. Por eso guardar aquí no
+      // cambiaba el mensaje que llegaba (visto el 16/10 con "Nuevo trámite").
       const { data, error } = await supabase
-        .from('correo_plantillas')
+        .from('transactional_notification_templates')
         .select('*')
-        .eq('tipo_notificacion_id', tipoId)
+        .eq('event_key', codigo)
         .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
         setPlantilla(data);
-        setAsunto(data.asunto || '');
-        setCuerpoEmail(data.html_cuerpo || '');
-        setMensajeWhatsApp(data.whatsapp_plantilla || '');
-        setTituloNotificacion(data.notificacion_titulo || '');
-        setCuerpoNotificacion(data.notificacion_cuerpo || '');
+        setAsunto(data.email_subject_template || '');
+        setCuerpoEmail(data.email_body_template || '');
+        setMensajeWhatsApp(data.whatsapp_body_template || '');
+        setTituloNotificacion(data.inapp_title_template || '');
+        setCuerpoNotificacion(data.inapp_body_template || '');
       }
+
+      await cargarVariables();
     } catch (error: any) {
       console.error('Error al cargar plantilla:', error);
       setMessage({ type: 'error', text: 'Error al cargar la plantilla' });
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * Lo que el motor de verdad sustituye.
+   *
+   * Para trámites son las fijas (folio, solicitante, …) más los campos del
+   * formulario de cada tipo activo, como {{campo_<clave>}}. Para el resto de
+   * módulos todavía no hay catálogo, así que se cae a lo que haya guardado la
+   * plantilla vieja — una pista, no una promesa.
+   */
+  const cargarVariables = async () => {
+    if (modulo !== 'TRAMITES') {
+      const { data: vieja } = await supabase
+        .from('correo_plantillas')
+        .select('variables_disponibles')
+        .eq('tipo_notificacion_id', tipoId)
+        .maybeSingle();
+      setVariables(
+        (vieja?.variables_disponibles ?? []).map((v: string) => ({
+          nombre: v.replace(/[{}\s]/g, ''),
+          descripcion: 'De la plantilla anterior — verifica que el motor la entregue',
+          ejemplo: '',
+          grupo: 'Sin confirmar',
+        })),
+      );
+      return;
+    }
+
+    const { data: campos } = await supabase
+      .from('tramite_tipo_campos')
+      .select('key, label, tipo, ticket_tipo:ticket_tipos!tramite_tipo_campos_tramite_tipo_id_fkey(label, activo)')
+      .order('display_order');
+
+    const delFormulario = (campos ?? [])
+      .map((c: any) => {
+        const tt = Array.isArray(c.ticket_tipo) ? c.ticket_tipo[0] : c.ticket_tipo;
+        return { key: c.key as string, label: c.label as string, tipo: c.tipo as string, tipoTramiteLabel: tt?.label ?? 'Sin tipo', activo: tt?.activo !== false };
+      })
+      .filter(c => c.activo && c.key);
+
+    // Una misma clave puede existir en varios tipos; se muestra una vez.
+    const porClave = new Map<string, typeof delFormulario[number]>();
+    for (const c of delFormulario) if (!porClave.has(c.key)) porClave.set(c.key, c);
+
+    setVariables([...VARIABLES_TRAMITE, ...variablesDeCampos([...porClave.values()])]);
   };
 
   const handleSave = async () => {
@@ -85,40 +144,24 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      if (plantilla) {
-        // Actualizar plantilla existente
-        const { error } = await supabase
-          .from('correo_plantillas')
-          .update({
-            asunto: asunto.trim(),
-            html_cuerpo: cuerpoEmail.trim(),
-            whatsapp_plantilla: mensajeWhatsApp.trim() || null,
-            notificacion_titulo: tituloNotificacion.trim() || null,
-            notificacion_cuerpo: cuerpoNotificacion.trim() || null,
-            actualizado_por: user?.id,
-            ultima_actualizacion: new Date().toISOString()
-          })
-          .eq('id', plantilla.id);
+      const fila = {
+        event_key: codigo,
+        name: tipoNombre,
+        platform: platform ?? 'movi',
+        is_active: true,
+        email_subject_template: asunto.trim(),
+        email_body_template: cuerpoEmail.trim(),
+        whatsapp_body_template: mensajeWhatsApp.trim() || null,
+        inapp_title_template: tituloNotificacion.trim() || null,
+        inapp_body_template: cuerpoNotificacion.trim() || null,
+        updated_at: new Date().toISOString(),
+      };
 
-        if (error) throw error;
-      } else {
-        // Crear nueva plantilla
-        const { error } = await supabase
-          .from('correo_plantillas')
-          .insert({
-            tipo_notificacion_id: tipoId,
-            asunto: asunto.trim(),
-            html_cuerpo: cuerpoEmail.trim(),
-            whatsapp_plantilla: mensajeWhatsApp.trim() || null,
-            notificacion_titulo: tituloNotificacion.trim() || null,
-            notificacion_cuerpo: cuerpoNotificacion.trim() || null,
-            es_plantilla_default: true,
-            actualizado_por: user?.id,
-            ultima_actualizacion: new Date().toISOString()
-          });
+      const { error } = await supabase
+        .from('transactional_notification_templates')
+        .upsert(fila, { onConflict: 'event_key' });
 
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       setMessage({ type: 'success', text: 'Plantilla guardada exitosamente' });
       
@@ -185,15 +228,17 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
     );
   }
 
-  const variablesEmail = plantilla?.variables_disponibles || [
-    '{{nombre}}',
-    '{{apellidos}}',
-    '{{email}}',
-    '{{nombre_plataforma}}'
-  ];
-
-  const variablesWhatsApp = plantilla?.whatsapp_variables_disponibles || variablesEmail;
-  const variablesNotificacion = plantilla?.notificacion_variables_disponibles || variablesEmail;
+  // Lo que se escribió y el motor no va a poder sustituir. No bloquea: puede
+  // haber variables nuevas que todavía no estén en el catálogo. Pero decirlo
+  // antes de guardar evita el mensaje con huecos, que es como se descubría.
+  const conocidas = variables.map(v => v.nombre);
+  const inventadas = Array.from(new Set([
+    ...variablesDesconocidas(asunto, conocidas),
+    ...variablesDesconocidas(cuerpoEmail, conocidas),
+    ...variablesDesconocidas(mensajeWhatsApp, conocidas),
+    ...variablesDesconocidas(tituloNotificacion, conocidas),
+    ...variablesDesconocidas(cuerpoNotificacion, conocidas),
+  ])).filter(v => v !== 'adjuntos_lista_html');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -223,6 +268,16 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
           </button>
         </div>
 
+        {inventadas.length > 0 && (
+          <div className="mx-6 mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              El motor no entrega {inventadas.map(v => `{{${v}}}`).join(', ')} — va a salir en blanco.
+              Elige una de la lista de abajo.
+            </span>
+          </div>
+        )}
+
         {/* Message */}
         {message && (
           <div className={`mx-6 mt-4 p-4 rounded-lg flex items-center gap-2 ${
@@ -251,7 +306,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
                 className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
               />
               <p className="text-xs text-neutral-500 mt-1">
-                Puedes usar variables como {variablesEmail.slice(0, 3).join(', ')}
+                Puedes usar variables como {variables.slice(0, 3).map(v => `{{${v.nombre}}}`).join(', ')}
               </p>
             </div>
 
@@ -419,24 +474,11 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
                   )}
                 </div>
 
-                {/* Variables Email */}
-                <div>
-                  <p className="text-sm font-semibold text-neutral-700 mb-2">Variables Disponibles:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {variablesEmail.map((variable) => (
-                      <button
-                        key={variable}
-                        onClick={() => insertVariable(variable, 'email')}
-                        className="px-3 py-1 text-xs font-mono bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200 transition-colors"
-                      >
-                        {variable}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-neutral-500 mt-2">
-                    Click en una variable para insertarla en el cuerpo del email
-                  </p>
-                </div>
+                <SelectorVariables
+                  variables={variables}
+                  onInsertar={(v) => insertVariable(v, 'email')}
+                  ayuda="Clic para insertarla en el cuerpo del correo."
+                />
               </div>
             )}
 
@@ -459,24 +501,11 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
                   </p>
                 </div>
 
-                {/* Variables WhatsApp */}
-                <div>
-                  <p className="text-sm font-semibold text-neutral-700 mb-2">Variables Disponibles:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {variablesWhatsApp.map((variable) => (
-                      <button
-                        key={variable}
-                        onClick={() => insertVariable(variable, 'whatsapp')}
-                        className="px-3 py-1 text-xs font-mono bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 transition-colors"
-                      >
-                        {variable}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-neutral-500 mt-2">
-                    Click en una variable para insertarla en el mensaje
-                  </p>
-                </div>
+                <SelectorVariables
+                  variables={variables}
+                  onInsertar={(v) => insertVariable(v, 'whatsapp')}
+                  ayuda="Clic para insertarla en el mensaje."
+                />
               </div>
             )}
 
@@ -512,24 +541,11 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, platform, onClose, on
                   </p>
                 </div>
 
-                {/* Variables Notificación */}
-                <div>
-                  <p className="text-sm font-semibold text-neutral-700 mb-2">Variables Disponibles:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {variablesNotificacion.map((variable) => (
-                      <button
-                        key={variable}
-                        onClick={() => insertVariable(variable, 'notificacion')}
-                        className="px-3 py-1 text-xs font-mono bg-primary-100 text-primary-700 rounded-md hover:bg-primary-200 transition-colors"
-                      >
-                        {variable}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-neutral-500 mt-2">
-                    Click en una variable para insertarla en la notificación
-                  </p>
-                </div>
+                <SelectorVariables
+                  variables={variables}
+                  onInsertar={(v) => insertVariable(v, 'notificacion')}
+                  ayuda="Clic para insertarla en la campanita."
+                />
               </div>
             )}
           </div>

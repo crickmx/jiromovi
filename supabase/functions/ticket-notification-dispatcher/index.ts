@@ -1181,6 +1181,43 @@ Deno.serve(async (req: Request) => {
       ...(extra_variables || {}),
     };
 
+    // Los campos del formulario de ESE trámite, como {{campo_<clave>}}.
+    //
+    // Van con prefijo a propósito: un tipo de trámite puede tener un campo con
+    // clave `folio` o `estatus`, y sin prefijo pisaría al del trámite. Se
+    // agregan al final pero sin sobrescribir nada de arriba, por la misma razón.
+    try {
+      const { data: respuestas } = await supabase
+        .from("tramite_respuestas")
+        .select("valor_texto, valor_numerico, valor_fecha, valor_booleano, valor_json, campo:tramite_tipo_campos!campo_id(key)")
+        .eq("tramite_id", ticket_id);
+
+      for (const r of respuestas ?? []) {
+        const campo = Array.isArray(r.campo) ? r.campo[0] : r.campo;
+        const key = (campo as { key?: string } | null)?.key;
+        if (!key) continue;
+
+        // El valor vive en una columna distinta según el tipo de campo; se toma
+        // el primero que traiga algo en vez de repetir aquí ese mapa, que ya
+        // vive en tres lugares del frontend y se desincroniza solo.
+        let valor = "";
+        if (r.valor_texto != null && r.valor_texto !== "") valor = String(r.valor_texto);
+        else if (r.valor_numerico != null) valor = String(r.valor_numerico);
+        else if (r.valor_fecha != null) valor = String(r.valor_fecha);
+        else if (r.valor_booleano != null) valor = r.valor_booleano ? "Sí" : "No";
+        else if (r.valor_json != null) {
+          valor = Array.isArray(r.valor_json) ? r.valor_json.join(", ") : String(r.valor_json);
+        }
+
+        const nombre = `campo_${key}`;
+        if (!(nombre in allVariables)) allVariables[nombre] = valor;
+      }
+    } catch (err) {
+      // Sin los campos la plantilla queda con huecos, pero el aviso sale igual:
+      // perder el aviso completo por esto sería peor.
+      console.error("[Variables] No se pudieron leer los campos del trámite:", err);
+    }
+
     // 6. Build subject
     const eventLabels: Record<string, string> = {
       tramite_creado: "Nuevo trámite",

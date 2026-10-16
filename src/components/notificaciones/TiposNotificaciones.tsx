@@ -95,7 +95,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const [uso, setUso] = useState<Record<string, { ultimo: string | null; envios: number }>>({});
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [editingTipo, setEditingTipo] = useState<{ id: string; nombre: string; platform?: 'movi' | 'seguwallet' } | null>(null);
+  const [editingTipo, setEditingTipo] = useState<{ id: string; nombre: string; codigo: string; modulo: string; platform?: 'movi' | 'seguwallet' } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [destinatarios, setDestinatarios] = useState<Record<string, Destinatario[]>>({});
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
@@ -761,7 +761,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                             )}
 
                             <button
-                              onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre, platform: tipo.platform })}
+                              onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre, platform: tipo.platform, codigo: tipo.codigo, modulo: tipo.modulo })}
                               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
                             >
                               <Edit className="w-4 h-4" />
@@ -783,6 +783,8 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         <EditarPlantillaModal
           tipoId={editingTipo.id}
           tipoNombre={editingTipo.nombre}
+          codigo={editingTipo.codigo}
+          modulo={editingTipo.modulo}
           platform={editingTipo.platform}
           onClose={() => setEditingTipo(null)}
           onSave={() => { fetchTipos(); onUpdate(); }}
