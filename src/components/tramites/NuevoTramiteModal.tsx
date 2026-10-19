@@ -2199,6 +2199,12 @@ export function NuevoTramiteModal({
         : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : null));
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
+      // Los estados de los selectores arrancan en cadena vacía, no en null, y
+      // Postgres rechaza `''` como uuid: el alta tronaba con «invalid input
+      // syntax for type uuid: ""» cuando el tipo no exige Solicitante y nadie
+      // lo eligió. Vacío significa "no hay", y eso en la base es null.
+      const uuidONull = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v : null);
+
       const ticketData: any = {
         tipo_tramite: tipoTramite,
         estatus_id: estatusNuevo.id,
@@ -2206,9 +2212,9 @@ export function NuevoTramiteModal({
         instrucciones: isCommercial ? buildCommercialDescription() : (descripcion.trim() || 'Sin descripción'),
         creado_por: usuario.id,
         modificado_por: usuario.id,
-        agente_id: esInterno ? null : (isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo)),
-        agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
-        assigned_to_user_id: responsableId,
+        agente_id: esInterno ? null : uuidONull(isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo)),
+        agente_usuario_id: isCommercial ? (uuidONull(comAgenteUserId) ?? undefined) : undefined,
+        assigned_to_user_id: uuidONull(responsableId),
         grupo_asignado_id: grupoAsignadoId ?? undefined,
       };
 
