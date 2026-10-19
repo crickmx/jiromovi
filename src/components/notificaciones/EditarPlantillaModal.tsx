@@ -41,6 +41,7 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, codigo, modulo, platf
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const [variables, setVariables] = useState<VariablePlantilla[]>([]);
+  const [plantillaVieja, setPlantillaVieja] = useState<{ id: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -50,27 +51,40 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, codigo, modulo, platf
   const fetchPlantilla = async () => {
     try {
       setLoading(true);
-      // `transactional_notification_templates`, no `correo_plantillas`.
+      // ⚠️ HAY DOS TABLAS DE PLANTILLAS Y LAS DOS ESTÁN VIVAS:
       //
-      // Esta pantalla llevaba editando `correo_plantillas`… de la que NINGÚN
-      // motor manda: tanto `ticket-notification-dispatcher` como
-      // `enviar-correo-transaccional` leen la otra. Por eso guardar aquí no
-      // cambiaba el mensaje que llegaba (visto el 16/10 con "Nuevo trámite").
-      const { data, error } = await supabase
-        .from('transactional_notification_templates')
-        .select('*')
-        .eq('event_key', codigo)
-        .maybeSingle();
+      //   · `transactional_notification_templates` — la leen las edge functions
+      //     (`ticket-notification-dispatcher`, `enviar-correo-transaccional`) y
+      //     la función `send_transactional_notification`.
+      //   · `correo_plantillas` — la lee `enviar_notificacion_transaccional`,
+      //     que es por donde salen los avisos que disparan los TRIGGERS de la
+      //     base: comentario nuevo, cambio de estatus, trámite actualizado.
+      //
+      // Cuál se usa depende del evento, y eso no se ve desde aquí. Por eso se
+      // lee la primera que tenga contenido y se ESCRIBE EN LAS DOS: mientras
+      // los dos motores coexistan, es la única forma de que editar aquí cambie
+      // de verdad el mensaje que llega, sin tener que adivinar el camino.
+      const [{ data: nueva, error }, { data: vieja }] = await Promise.all([
+        supabase.from('transactional_notification_templates').select('*').eq('event_key', codigo).maybeSingle(),
+        supabase.from('correo_plantillas').select('*').eq('tipo_notificacion_id', tipoId).maybeSingle(),
+      ]);
 
       if (error) throw error;
+      setPlantillaVieja(vieja ?? null);
 
-      if (data) {
-        setPlantilla(data);
-        setAsunto(data.email_subject_template || '');
-        setCuerpoEmail(data.email_body_template || '');
-        setMensajeWhatsApp(data.whatsapp_body_template || '');
-        setTituloNotificacion(data.inapp_title_template || '');
-        setCuerpoNotificacion(data.inapp_body_template || '');
+      if (nueva) {
+        setPlantilla(nueva);
+        setAsunto(nueva.email_subject_template || '');
+        setCuerpoEmail(nueva.email_body_template || '');
+        setMensajeWhatsApp(nueva.whatsapp_body_template || '');
+        setTituloNotificacion(nueva.inapp_title_template || '');
+        setCuerpoNotificacion(nueva.inapp_body_template || '');
+      } else if (vieja) {
+        setAsunto(vieja.asunto || '');
+        setCuerpoEmail(vieja.html_cuerpo || '');
+        setMensajeWhatsApp(vieja.whatsapp_plantilla || '');
+        setTituloNotificacion(vieja.notificacion_titulo || '');
+        setCuerpoNotificacion(vieja.notificacion_cuerpo || '');
       }
 
       await cargarVariables();
@@ -162,6 +176,34 @@ export function EditarPlantillaModal({ tipoId, tipoNombre, codigo, modulo, platf
         .upsert(fila, { onConflict: 'event_key' });
 
       if (error) throw error;
+
+      // La misma plantilla en la tabla vieja: los avisos que salen por trigger
+      // de base (comentario, cambio de estatus, actualización) leen esa. Si
+      // falla, se avisa pero no se tira el guardado — lo de arriba ya quedó.
+      const filaVieja = {
+        tipo_notificacion_id: tipoId,
+        asunto: asunto.trim(),
+        html_cuerpo: cuerpoEmail.trim(),
+        whatsapp_plantilla: mensajeWhatsApp.trim() || null,
+        notificacion_titulo: tituloNotificacion.trim() || null,
+        notificacion_cuerpo: cuerpoNotificacion.trim() || null,
+        es_plantilla_default: true,
+        actualizado_por: user?.id,
+        ultima_actualizacion: new Date().toISOString(),
+      };
+      const { error: errVieja } = plantillaVieja
+        ? await supabase.from('correo_plantillas').update(filaVieja).eq('id', plantillaVieja.id)
+        : await supabase.from('correo_plantillas').insert(filaVieja);
+
+      if (errVieja) {
+        console.error('[plantilla] No se pudo guardar en correo_plantillas:', errVieja);
+        setMessage({
+          type: 'error',
+          text: 'Se guardó, pero no en la tabla que usan los avisos por trigger: ' + errVieja.message,
+        });
+        setSaving(false);
+        return;
+      }
 
       setMessage({ type: 'success', text: 'Plantilla guardada exitosamente' });
       
