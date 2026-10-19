@@ -6,17 +6,7 @@
 
 **`origin/main`** (beta) está en `8c903358` con todo lo de hoy. **`produccion` NO se tocó** desde el merge del 12.
 
-⚠️ **Falta hacer, en este orden:**
-
-1. **Las dos migraciones de hoy**, en orden (la segunda depende de la primera):
-   - `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\migrations\20261019000003_una_sola_tabla_de_plantillas.sql`
-   - `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\migrations\20261019000004_resolver_unico_de_destinatarios.sql`
-
-   Si alguna truena, **conseguir el error antes de seguir**: la `…0004` recrea funciones que corren en *cada comentario y cada cambio de estatus*.
-2. **Redesplegar `escalar-tramite`** (trae el fix de `crear_notificacion`, commit `63c83d33`).
-3. **Pull + deploy de beta** — el fix del uuid vacío del alta y el editor de plantillas apuntando a una sola tabla.
-
-✅ Ya corridas/desplegadas hoy: migraciones `20261019000001` y `…02`, y las edge functions `ticket-notification-dispatcher` y `process-poliza-pdf`.
+⚠️ **No queda nada por correr ni por desplegar.** Las dos migraciones del 19/10 se corrieron, `escalar-tramite` se redesplegó y beta ya tiene el código. Lo que sigue es **probar en navegador** (lista más abajo).
 
 ⚠️ **Al desplegar `process-poliza-pdf` desde el dashboard van DOS archivos.** Hoy se pegó por error el código de `escalar-tramite` (que es de un solo archivo) y el dashboard se llevó `extraccionExitosa.ts`; el deploy siguiente ya solo fallaba con *"Module not found … extraccionExitosa.ts"*. Se arregla volviendo a crear el archivo en el editor, no tocando el `index.ts`:
 
@@ -38,8 +28,8 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261016000001` … `…06` | las seis del motor de notificaciones (vista de uso, canales por tipo, plantilla, destinatarios_roles, emoji) | ✅ corridas |
 | `20261019000001_uso_incluye_notification_jobs.sql` | la vista de uso une los TRES motores, y solo cuenta `status='sent'` | ✅ corrida |
 | `20261019000002_avisos_tramite_por_trigger_respetan_pantalla.sql` | los avisos por trigger leen canales y destinatarios de la pantalla | ✅ corrida |
-| `20261019000003_una_sola_tabla_de_plantillas.sql` | una sola tabla de plantillas; `correo_plantillas` queda deprecada | ❌ **FALTA** |
-| `20261019000004_resolver_unico_de_destinatarios.sql` | `resolver_destinatarios_aviso()`: un solo lugar con las reglas | ❌ **FALTA — después de la …0003** |
+| `20261019000003_una_sola_tabla_de_plantillas.sql` | una sola tabla de plantillas; `correo_plantillas` queda deprecada | ✅ corrida |
+| `20261019000004_resolver_unico_de_destinatarios.sql` | `resolver_destinatarios_aviso()`: un solo lugar con las reglas | ✅ corrida |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
