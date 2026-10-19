@@ -3,7 +3,6 @@ import { X, Upload, User, Users, CircleAlert as AlertCircle, FileText, Package, 
 import { supabase } from '../../lib/supabase';
 import { puedeVerCampo, puedeEditarCampo } from '../../lib/rolCampos';
 import { crearNotificacion, avisarPorEvento } from '../../lib/notificationHelpers';
-import { destinatariosDelAviso } from '../../lib/destinatariosAviso';
 import { mensajeNuevoTramite } from '../../lib/tramiteAviso';
 import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
@@ -2435,38 +2434,24 @@ export function NuevoTramiteModal({
         tipo_tramite: tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite,
       };
 
-      // A quién se le avisa sale de la configuración, no del código: Admin ›
-      // Transaccionales → "Nuevo Trámite Generado" → ¿A quién se le avisa?
-      // Vacío = el camino de siempre, que es el `else` de más abajo.
-      const { data: cfgAviso } = await supabase
-        .from('correo_tipos_notificacion')
-        .select('id, destinatarios_roles')
-        .eq('codigo', 'nuevo_tramite')
-        .maybeSingle();
-      const rolesAviso: string[] = cfgAviso?.destinatarios_roles ?? [];
+      // A quién se le avisa lo decide la BASE, no esta pantalla.
+      //
+      // Las reglas vivían aquí Y en SQL —los avisos que salen por trigger usan
+      // las mismas— y eran dos copias que nadie iba a mantener sincronizadas.
+      // Ahora hay una sola: `resolver_destinatarios_aviso`. Si falla, se cae al
+      // camino de siempre (abajo), nunca a "no avisarle a nadie".
+      let destinatarios: string[] = [];
+      const { data: resueltos, error: errDest } = await supabase
+        .rpc('resolver_destinatarios_aviso', { p_ticket_id: ticket.id, p_codigo_tipo: 'nuevo_tramite' });
+      if (errDest) console.error('[aviso] No se pudieron resolver los destinatarios:', errDest.message);
+      else destinatarios = (resueltos as string[] | null) ?? [];
 
-      // El líder solo hace falta cuando no hay responsable (ver destinatariosAviso).
+      // El líder solo se necesita para el respaldo de abajo.
       let liderEquipoId: string | null = null;
       if (grupoAsignadoId && !responsableId) {
         const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
         liderEquipoId = (miembros as Array<{ id: string }>)?.[0]?.id ?? null;
       }
-
-      let listaFija: string[] = [];
-      if (rolesAviso.includes('lista_fija') && cfgAviso?.id) {
-        const { data: fijos } = await supabase
-          .from('correo_destinatarios_notificacion')
-          .select('usuario_id')
-          .eq('tipo_notificacion_id', cfgAviso.id);
-        listaFija = (fijos ?? []).map(f => f.usuario_id as string).filter(Boolean);
-      }
-
-      const destinatarios = destinatariosDelAviso(rolesAviso, {
-        solicitanteId,
-        responsableId,
-        liderEquipoId,
-        listaFija,
-      });
 
       const tituloPara = (id: string) =>
         id === responsableId ? 'Nuevo trámite asignado'

@@ -1,43 +1,19 @@
-// Autocomprobación de a quién se le avisa.
-//   npx tsx src/lib/destinatariosAviso.test.mjs
+// La lógica de destinatarios se movió a SQL (`resolver_destinatarios_aviso`),
+// así que ya no hay nada que comprobar desde aquí: este archivo solo conserva
+// el catálogo de papeles que pinta la pantalla.
 //
-// Lo que se protege: que nadie quede sin aviso y que nadie lo reciba dos veces.
-// Un error aquí no da ningún síntoma — solo alguien que no se enteró.
+// Las reglas que protegía esta prueba —el líder es respaldo, nadie se repite,
+// vacío no significa "a nadie"— están escritas en la migración
+// `20261019000004_resolver_unico_de_destinatarios.sql`. Si alguien las toca,
+// se prueban en el SQL Editor con un trámite real.
 
 import assert from 'node:assert/strict';
-import { destinatariosDelAviso } from './destinatariosAviso.ts';
+import { ROLES_DESTINATARIO } from './destinatariosAviso.ts';
 
-const personas = {
-  solicitanteId: 'sol',
-  responsableId: 'resp',
-  liderEquipoId: 'lider',
-  listaFija: ['fija1', 'fija2'],
-};
-
-// Sin configurar: vacío, para que quien llama use su camino de siempre.
-assert.deepEqual(destinatariosDelAviso([], personas), []);
-assert.deepEqual(destinatariosDelAviso(null, personas), []);
-
-// Cada papel por separado.
-assert.deepEqual(destinatariosDelAviso(['solicitante'], personas), ['sol']);
-assert.deepEqual(destinatariosDelAviso(['responsable'], personas), ['resp']);
-assert.deepEqual(destinatariosDelAviso(['lista_fija'], personas), ['fija1', 'fija2']);
-
-// El líder es RESPALDO: con responsable puesto, no entra.
-assert.deepEqual(destinatariosDelAviso(['responsable', 'lider_equipo'], personas), ['resp']);
-// Sin responsable, sí.
 assert.deepEqual(
-  destinatariosDelAviso(['responsable', 'lider_equipo'], { ...personas, responsableId: null }),
-  ['lider'],
+  ROLES_DESTINATARIO.map(r => r.valor),
+  ['solicitante', 'responsable', 'lider_equipo', 'lista_fija'],
+  'los papeles de la pantalla deben coincidir con los que entiende el SQL',
 );
 
-// La misma persona en dos papeles sale una vez.
-assert.deepEqual(
-  destinatariosDelAviso(['solicitante', 'responsable'], { solicitanteId: 'x', responsableId: 'x' }),
-  ['x'],
-);
-
-// Papeles configurados cuya persona no existe no inventan destinatarios.
-assert.deepEqual(destinatariosDelAviso(['solicitante'], { solicitanteId: null }), []);
-
-console.log('✓ destinatariosAviso: el líder es respaldo, nadie se repite, vacío no significa "a nadie"');
+console.log('✓ destinatariosAviso: el catálogo de papeles coincide con el del SQL');
