@@ -1,18 +1,31 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-14)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-19)
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-14
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-19
 
-**`origin/main`** (beta) tiene todo lo de hoy. **`produccion` NO se tocó** desde el merge del 12.
+**`origin/main`** (beta) está en `8c903358` con todo lo de hoy. **`produccion` NO se tocó** desde el merge del 12.
 
-⚠️ **Falta desplegar lo último del 16/10** (todo lo anterior ya está arriba):
-1. **Redesplegar `ticket-notification-dispatcher`** — trae las variables `{{campo_<clave>}}` (los campos del formulario del trámite) que el editor de plantillas ya ofrece.
-2. **Pull + deploy de beta** — el editor de plantillas apuntando a la tabla correcta y el selector de variables.
+⚠️ **Falta hacer, en este orden:**
 
-**Las 6 migraciones del 16/10 están corridas** (`20261016000001` a `…06`). Se nota que funcionan: en Admin › Transaccionales cada aviso trae su marca verde/roja de uso, y el WhatsApp de trámite nuevo llega con 📋 y los datos llenos.
+1. **Las dos migraciones de hoy**, en orden (la segunda depende de la primera):
+   - `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\migrations\20261019000003_una_sola_tabla_de_plantillas.sql`
+   - `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\migrations\20261019000004_resolver_unico_de_destinatarios.sql`
 
-Ruta: `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\ticket-notification-dispatcher\index.ts`
+   Si alguna truena, **conseguir el error antes de seguir**: la `…0004` recrea funciones que corren en *cada comentario y cada cambio de estatus*.
+2. **Redesplegar `escalar-tramite`** (trae el fix de `crear_notificacion`, commit `63c83d33`).
+3. **Pull + deploy de beta** — el fix del uuid vacío del alta y el editor de plantillas apuntando a una sola tabla.
+
+✅ Ya corridas/desplegadas hoy: migraciones `20261019000001` y `…02`, y las edge functions `ticket-notification-dispatcher` y `process-poliza-pdf`.
+
+⚠️ **Al desplegar `process-poliza-pdf` desde el dashboard van DOS archivos.** Hoy se pegó por error el código de `escalar-tramite` (que es de un solo archivo) y el dashboard se llevó `extraccionExitosa.ts`; el deploy siguiente ya solo fallaba con *"Module not found … extraccionExitosa.ts"*. Se arregla volviendo a crear el archivo en el editor, no tocando el `index.ts`:
+
+```
+C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\process-poliza-pdf\index.ts              (482 líneas)
+C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\process-poliza-pdf\extraccionExitosa.ts  (100 líneas)
+```
+
+El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 
 #### Migraciones
 
@@ -22,6 +35,11 @@ Ruta: `C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\ticket-
 | `20261014000002_pagos_premium_por_periodo.sql` | `mkt_premium_pagos.periodo_id` + backfill, y recrea la vista | ✅ corrida |
 | `20261015100000_equipos_todos_los_roles_y_unico_ejecutivo.sql` | el cambio de rol ya no apaga las reglas de equipo + autoasignar al único ejecutivo | ✅ corrida |
 | `20261015200000_envio_adjuntos_agente.sql` | config de envío de adjuntos por tipo + `archivo_id` en el log (candado) | ✅ corrida |
+| `20261016000001` … `…06` | las seis del motor de notificaciones (vista de uso, canales por tipo, plantilla, destinatarios_roles, emoji) | ✅ corridas |
+| `20261019000001_uso_incluye_notification_jobs.sql` | la vista de uso une los TRES motores, y solo cuenta `status='sent'` | ✅ corrida |
+| `20261019000002_avisos_tramite_por_trigger_respetan_pantalla.sql` | los avisos por trigger leen canales y destinatarios de la pantalla | ✅ corrida |
+| `20261019000003_una_sola_tabla_de_plantillas.sql` | una sola tabla de plantillas; `correo_plantillas` queda deprecada | ❌ **FALTA** |
+| `20261019000004_resolver_unico_de_destinatarios.sql` | `resolver_destinatarios_aviso()`: un solo lugar con las reglas | ❌ **FALTA — después de la …0003** |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
@@ -34,19 +52,17 @@ Si al abrir la Bitácora sale *"Could not find the table … in the schema cache
 - **Papelera**: mandar un trámite a la papelera. Si sale un mensaje de error, **mandarlo** — es la causa de fondo de por qué no escribía, y todavía no la sabemos.
 - **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
 - **Trámite hijo repetido**: volver a aplicar el estatus que dispara un trigger y confirmar que ahora avisa.
+- **Un solo motor de notificaciones** (19/10, después de correr las dos migraciones): cambiar el estatus de un trámite, dejarle un comentario y subirle un archivo, y confirmar que (a) llega UN solo aviso por cada uno, no dos, (b) por los canales que dice Admin › Transaccionales y no más, (c) a quien dicen los papeles configurados. Editar una plantilla desde la pantalla y volver a disparar el evento: el texto nuevo tiene que salir.
+- **Alta de trámite sin Solicitante** (19/10): crear una Cotización como Gerente sin elegir Solicitante. Antes tronaba con `uuid: ""`; ahora debe guardarse y quedar "Sin responsable" con el aviso a Administradores.
 
-#### 🔜 LO QUE SIGUE DEL MOTOR DE NOTIFICACIONES (16/10)
+#### ✅ MOTOR DE NOTIFICACIONES — qué queda del grupo Trámites (al 19/10)
 
-El evento `nuevo_tramite` ya pasa por el motor de punta a punta. Faltan los otros del grupo Trámites, que **siguen sin que nadie los dispare**: Cambio de Estatus, Nuevo Comentario, Renovación de Póliza Próxima y Trámite Actualizado. El camino ya está abierto — se copia lo de `NuevoTramiteModal`:
+Los seis avisos del grupo Trámites **ya se disparan todos**, y la pantalla ya manda sobre ellos. Lo que queda es de menor calado:
 
-1. `avisarPorEvento({ eventKey, ticketId, destinatarioId, variables, respaldo })` donde hoy hay un `crearNotificacion()` escrito a mano.
-2. Los destinatarios salen de `destinatariosDelAviso()` leyendo `correo_tipos_notificacion.destinatarios_roles`.
-3. Agregar la plantilla del evento a `transactional_notification_templates` — **la tabla que de verdad se manda**, no `correo_plantillas`.
-
-⚠️ **`escalar-tramite` llama a `crear_notificacion`, que NO EXISTE en la base.** Sus avisos internos llevan fallando en silencio desde julio. Se arregla igual que en el despachador: `enviar_notificacion_individual` con `p_enviar_whatsapp: false`.
+- **"Renovación de Póliza Próxima"** sigue sin dispararse — **a propósito**: Ricardo dijo que no (19/10). No hay cron ni código que lo mande, y así se queda.
+- **Fase 3 (no hecha):** `eventLabels` en `ticket-notification-dispatcher` (~línea 1107) sigue siendo un mapa fijo de 8 claves para el asunto del correo. Un evento **nuevo** creado desde la pantalla sale **sin asunto**. Sacarlo a la BD es lo único que falta para que un evento se pueda configurar entero sin tocar código.
 
 **Variables:** el catálogo vive en `src/lib/variablesPlantilla.ts`. **Si se agrega una variable a `allVariables` del despachador, hay que agregarla ahí** o la pantalla no la ofrece — y si alguien la escribe a mano, el aviso sale con un hueco sin avisar.
-
 ---
 
 #### ⏸️ PENDIENTE — un adjunto no llegó por WhatsApp, y Wazzup dice que sí
@@ -65,32 +81,30 @@ Prueba del 15/10 en el trámite **TK6B3AE** (3 archivos): por correo llegaron lo
 
 ---
 
-#### 🔴 PENDIENTE — Admin › Transaccionales: 5 de sus 6 avisos de Trámites no los dispara nadie
+#### 🔑 CORREGIDO el 19/10 — los avisos de trámite SÍ se disparan, por TRIGGERS DE BASE
 
-Pregunta de Ricardo (16/10): *"¿esta sección realmente está funcionando, y manda sobre los trámites actuales o solo con los antiguos?"*. Revisado en el código, **sin tocar nada todavía**:
+El 16/10 quedó escrito aquí que *"5 de los 6 avisos de Trámites no los dispara nadie"*. **Era falso, y vale la pena recordar por qué:** la revisión grepeó el frontend y las edge functions, y nunca miró los triggers de Postgres. Ahí estaban los cinco:
 
-**El motor sí funciona, pero casi nada lo llama.** Los únicos `event_key` que algo dispara hoy:
+| Trigger | Sobre | Evento |
+|---|---|---|
+| `trigger_notificar_comentario_tramite` | `ticket_comentarios` | `tramite_comentario_nuevo` |
+| `trigger_notificar_cambio_estatus_tramite` | `tickets` | `tramite_cambio_estatus` |
+| `trigger_notificar_actualizacion_tramite` | `tickets` | `tramite_actualizado` |
+| `trigger_notificar_documento_tramite` | `ticket_archivos` | `tramite_documento_cargado` |
 
-| Evento | Quién lo dispara |
-|---|---|
-| `tramite_documento_cargado` | `TramiteArchivos.tsx` al subir un archivo |
-| `tramite_entrega_poliza` | la edge function `process-policy-delivery` |
+Los cuatro llaman a `notify_tramite_recipients` → `enviar_notificacion_transaccional`, que encola en `notification_jobs` y el cron `notification-dispatcher` los manda.
 
-De las **6 que lista la pantalla** en el grupo Trámites, solo *"Nuevo Documento en Trámite"* se dispara. Las otras cinco —Cambio de Estatus, Nuevo Comentario, Nuevo Trámite Generado (Mesa de Control), Renovación de Póliza Próxima, Trámite Actualizado— **no las manda ni el código ni ningún trigger de BD**. Se ven "Activas", con sus canales y sus plantillas, y no hacen nada. Editarlas no cambia nada en el sistema.
+**Por qué la pantalla los marcaba como muertos:** `notificaciones_uso_view` unía los historiales de dos motores y ese tercer camino no aparecía en ninguno. Se corrigió (`20261019000001`): la vista une los **tres**, y solo cuenta `status = 'sent'`. Con eso, 5 de los 6 pasaron a verde *"Se envió hace N días"*.
 
-**Lo que sí notifica los trámites hoy es otro camino:** `crearNotificacion()` (`notificationHelpers`) con el texto **escrito a mano** en `TramiteDetalle.tsx`, `NuevoTramiteModal.tsx` y `tramiteAviso.ts`. Son dos sistemas que no se conocen — es el mismo patrón de "pantalla de configuración sin efecto real" que ya mordió con `tramite_team_tipo_config` y con los eventos de Marketing Premium.
+**🔑 La regla que sale de aquí:** *un `grep` sobre `src/` y `supabase/functions/` no es una búsqueda completa en este proyecto.* Hay lógica viva en triggers y funciones de Postgres que ningún archivo del repo menciona. Antes de afirmar que algo "no lo dispara nadie", mirar `pg_trigger` y `pg_proc`:
 
-**Qué está hardcodeado dentro del motor** (lo otro que preguntó):
-- `eventLabels` en `ticket-notification-dispatcher` (~línea 1107): mapa fijo de 8 claves para el asunto del correo. Un evento nuevo creado desde la pantalla sale **sin asunto**.
-- Las variables disponibles (`{{folio}}`, `{{estatus}}`…) se arman en código, así que la pantalla no puede ofrecer la lista real por evento.
+```sql
+select tgname, c.relname from pg_trigger t
+join pg_class c on c.oid = t.tgrelid
+where not t.tgisinternal and c.relname in ('tickets','ticket_comentarios','ticket_archivos');
 
-**Plan sugerido, de más barato a más caro:**
-1. **Que la pantalla diga la verdad.** Un distintivo "nunca se ha disparado" / "último envío: fecha" leyendo `transactional_notification_history` por `event_key`. Barato, y evita que alguien vuelva a configurar una plantilla fantasma.
-2. **Conectar los eventos que ya existen**: cambiar los `crearNotificacion()` de trámites por un disparo al despachador con su `event_key`. Queda un solo camino, y las plantillas de la pantalla pasan a mandar de verdad.
-3. **Sacar `eventLabels` y el catálogo de variables a la BD**, para que un evento nuevo se pueda configurar entero desde la pantalla.
-
-⚠️ **Antes de tocar el punto 2**, confirmar con Ricardo qué avisos deben seguir siendo internos (campanita) y cuáles salen por WhatsApp/correo: hoy el texto hecho a mano y la plantilla pueden decir cosas distintas, y unificar los cambia a los dos a la vez.
-
+select proname from pg_proc where prosrc ilike '%<lo que busques>%';
+```
 ---
 
 #### 🔜 LO PRIMERO DE MAÑANA — tres ajustes al envío de adjuntos (pedidos el 15/10 al cerrar)
@@ -109,11 +123,58 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Pendiente de decisión
 - **Registrar pagos de Store desde el modal.** Hoy el modal de Store es de solo lectura: registrar un pago tiene validaciones de método/forma de pago que viven en `StorePedidoDetalle`. Hacerlo bien es sacar esa parte a su propio componente y usarlo en los dos lados; copiarla sería la segunda copia que se desincroniza.
-- **Notificaciones configurables.** Hoy el texto de los avisos de trámite está escrito a mano en el código (ya mejorado, ver abajo). Falta la pantalla de plantillas, como la de los triggers de Store.
+- **Solicitante obligatorio en Cotización.** Hoy el tipo no lo exige, así que un trámite puede nacer sin agente: no cae en ninguna regla de equipo y queda "Sin responsable". Si debe exigirse, se marca requerido en el FormBuilder (decisión de Ricardo, 19/10).
 - **La landing de Mutuus sigue bifurcada** entre `main` y `produccion`: hay que decidir cuál gana antes del próximo merge.
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### 🔴 2026-10-19 — tres motores de notificaciones, y la cuenta de que eran tres
+
+Arrancó con *"¿cómo podemos mover todo a un solo motor?"*. La respuesta corta de por qué hacía falta: **había tres**, y ninguno sabía de los otros.
+
+| Motor | Lo dispara | Lee plantillas de | Cómo manda |
+|---|---|---|---|
+| `ticket-notification-dispatcher` (edge) | el frontend | `transactional_notification_templates` | Resend/Wazzup directo + campanita, y **contesta qué mandó** |
+| `enviar_notificacion_transaccional` (SQL) | **triggers de BD** | `correo_plantillas` (hasta hoy) | encola en `notification_jobs`, el cron los saca |
+| `send_transactional_notification` (SQL) | edge functions de leads | `transactional_notification_templates` | campanita + `net.http_post` |
+
+**Dos tablas de plantillas y las reglas de destinatarios escritas dos veces** (una en TS, otra en SQL). Nada de eso da error: solo hace que un día los dos caminos empiecen a avisar distinto, y nadie se entera.
+
+#### Lo que se hizo
+
+| | Qué resuelve |
+|---|---|
+| `20261019000001` | la vista de uso une los **tres** motores (antes dos) y solo cuenta `status='sent'`. Con eso, 5 de los 6 avisos de Trámites pasaron de rojo a verde — ver la sección "CORREGIDO el 19/10" arriba |
+| `20261019000002` | los avisos que salen por trigger leen sus **canales** de `correo_tipos_notificacion` y sus **destinatarios** de `destinatarios_roles`. Antes mandaban siempre por los dos canales, sin mirar la pantalla |
+| `20261019000003` (Fase 1) | **una sola tabla de plantillas**. `enviar_notificacion_transaccional` deja `correo_plantillas` y lee `transactional_notification_templates`; el editor deja de escribir en dos tablas |
+| `20261019000004` (Fase 2) | **un solo lugar con las reglas**: `resolver_destinatarios_aviso(ticket, codigo)`. La usan los triggers y el frontend por RPC; `destinatariosAviso.ts` se queda solo con el catálogo que pinta los botones |
+| `63c83d33` | tres `crear_notificacion` muertas en `escalar-tramite` (1) y `process-poliza-pdf` (2) — esa función **no existe** en la base, llevaban meses fallando en silencio |
+
+**Decisiones de Ricardo en la migración de plantillas:** **gana la plantilla que se está usando**, para que nadie note un cambio de texto el día que corra. Los cinco avisos que salen por SQL imponen su texto; `tramite_documento_cargado` es el único que puede cambiar, porque sale por los dos caminos.
+
+#### 🔑 Lo que conviene no volver a aprender
+
+1. **Un `grep` del repo no es una búsqueda completa aquí.** Lo de arriba: cinco avisos declarados muertos porque la revisión nunca miró `pg_trigger`.
+2. **No reconstruir una función SQL de memoria.** A media sesión se reescribieron a mano las ~143 líneas de `enviar_notificacion_transaccional` para cambiarle una línea. Se tiró y se regeneró **del texto real de la migración anterior**, cambiando solo la fuente de la plantilla: reconstruir de memoria es exactamente cómo se cuela un error que no da síntoma.
+3. **`DROP` antes de `CREATE OR REPLACE`** si cambia el tipo de retorno o se agrega un parámetro — si no, Postgres crea una **sobrecarga** y el llamador sigue entrando a la vieja.
+4. **`.rpc()` devuelve el error, no lo lanza.** Una llamada sin revisar `error` falla en silencio.
+
+---
+
+### ✅ 2026-10-19 — el alta de trámite tronaba con `uuid: ""`
+
+Reportado al cerrar: crear una **Cotización** como Gerente devolvía *«invalid input syntax for type uuid: ""»* y el trámite no se guardaba.
+
+`asignado` y `comAgenteUserId` son estados de selector: **arrancan en cadena vacía, no en null**. Si el tipo de trámite no marca Solicitante como requerido —y Cotización no lo marca, por eso la barra decía 4/4— nadie lo elige, y ese `''` viajaba tal cual a `tickets.agente_id`, que es `uuid`.
+
+Se normaliza en el **único punto** donde se arma el insert (`uuidONull`, en `handleSubmit` de `NuevoTramiteModal.tsx`), no en cada selector. **No era regresión de ese día**: está así desde septiembre, solo que hasta entonces nadie había dado de alta un tipo sin Solicitante obligatorio.
+
+**Dos cosas que quedaron abiertas:** si Cotización **sí** debe pedir Solicitante, se marca requerido en el FormBuilder; y sin solicitante el trámite nace sin agente, así que no cae en ninguna regla de equipo y queda "Sin responsable" con el aviso a Administradores.
+
+**🔑 Patrón:** en este proyecto los selectores inicializan en `''`. Cualquier estado de selector que termine en una columna `uuid`, `date` o numérica necesita esa normalización — el `''` no da problema hasta que alguien no elige nada.
 
 ---
 
