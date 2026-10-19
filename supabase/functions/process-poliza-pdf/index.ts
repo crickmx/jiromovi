@@ -397,13 +397,20 @@ Deno.serve(async (req: Request) => {
             .replace("{placas}", campos.placas ?? "")
         : `El PDF de tu póliza fue recibido en el trámite ${ticket.folio ?? ticket_id}.\n\nDatos extraídos:\n${mensaje}`;
 
-      await sb.rpc("crear_notificacion", {
-        p_usuario_id: ticket.agente_id,
-        p_tipo: "tramite_documento_cargado",
+      // `enviar_notificacion_individual`, no `crear_notificacion`: esta última
+      // NO EXISTE en la base. Llevaba fallando en silencio desde que se
+      // escribió, así que los avisos de la pestaña "Extracción PDF" nunca
+      // habían salido. El `.rpc()` devuelve el error en vez de lanzarlo, y
+      // nadie lo revisaba — por eso no había ni un síntoma.
+      const { error: errAviso } = await sb.rpc("enviar_notificacion_individual", {
+        p_user_id: ticket.agente_id,
         p_titulo: "Datos de póliza extraídos",
         p_mensaje: texto,
-        p_url: ticketUrl,
+        p_modulo: "Tramites",
+        p_accion_url: ticketUrl,
+        p_enviar_whatsapp: true,
       });
+      if (errAviso) console.error("No se pudo avisar al agente:", errAviso.message);
     }
 
     // 10. Notificar equipos configurados
@@ -430,13 +437,15 @@ Deno.serve(async (req: Request) => {
           .eq("activo", true);
 
         for (const m of miembros ?? []) {
-          await sb.rpc("crear_notificacion", {
-            p_usuario_id: m.usuario_id,
-            p_tipo: "tramite_documento_cargado",
+          const { error: errEquipo } = await sb.rpc("enviar_notificacion_individual", {
+            p_user_id: m.usuario_id,
             p_titulo: "Póliza lista para captura en SICAS",
             p_mensaje: textoEquipo,
-            p_url: ticketUrl,
+            p_modulo: "Tramites",
+            p_accion_url: ticketUrl,
+            p_enviar_whatsapp: true,
           });
+          if (errEquipo) console.error("No se pudo avisar al equipo:", errEquipo.message);
         }
       }
     }

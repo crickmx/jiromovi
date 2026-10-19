@@ -539,7 +539,11 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                   </span>
                                 )
                               )}
-                              {esDepartamental && destTipo.length === 0 && tipo.activo && (
+                              {/* Solo molesta si de verdad no hay a quién avisarle:
+                                  con papeles configurados (solicitante, responsable…)
+                                  la lista fija puede estar vacía a propósito. */}
+                              {esDepartamental && destTipo.length === 0 && tipo.activo
+                                && (tipo.destinatarios_roles ?? []).length === 0 && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-600 text-xs rounded border border-amber-200">
                                   <AlertCircle className="w-2.5 h-2.5" />
                                   Sin destinatarios
