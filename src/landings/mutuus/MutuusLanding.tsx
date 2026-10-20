@@ -32,11 +32,11 @@ import {
 
 export const MUTUUS_PORTAL_URL = 'https://selfservice.psmutuus.com/agente/A-3522/promo/A-3522';
 
-// ─── LOGO MUTUUS OFICIAL (https://ps-mutuus.com/icons/logo.svg) ──────────────
+// ─── LOGO MUTUUS OFICIAL (copia local del archivo oficial) ─────────────────
 export function MutuusOfficialLogo({ className = "h-11 w-auto", dark = false }: { className?: string; dark?: boolean }) {
   return (
     <img
-      src="https://ps-mutuus.com/icons/logo.svg"
+      src="/brand/mutuus/logo-mutuus-oficial.svg"
       alt="Mutuus Salud Inteligente"
       className={className}
       style={{
@@ -101,76 +101,79 @@ const DEFAULT_FAQS = [
   }
 ];
 
-// ─── Planes Data (Lista de Precios Julio 2026, titulares mayores de 18 años) ──
-type FormaPago = 'anual' | 'msi' | 'diferido';
-
-const BENEFICIOS_BASE = [
-  'Sin deducible y sin coaseguro en eventos reportados',
-  'Servicio de Urgencias 24/7 y telemedicina',
-  'Atención hospitalaria en accidentes, enfermedades y maternidad',
-  'Check up anual y limpieza dental anual',
-  'Ambulancia y asistencia funeraria',
-  'Descuentos en medicinas, consultas y laboratorio',
-  'Seguro por muerte accidental'
-];
+// ─── Planes Data (precios de lista vigentes, titulares mayores de 18 años) ───
+type FormaPago = 'anual' | 'msi' | 'flex';
 
 const PLANES_DATA = [
   {
     id: 'uno',
-    nombre: 'Cobertura UNO',
+    nombre: 'Plan UNO',
     badge: 'Esencial',
     sumaAsegurada: '$1,000,000 MXN',
     popular: false,
     precios: {
-      anual: { principal: '$20,376', detalle: 'Un pago anual · equivale a $1,698 al mes' },
-      msi: { principal: '$2,017', detalle: '12 pagos mensuales con TDC · $24,204 al año' },
-      diferido: { principal: '$1,500', detalle: 'Pago inicial de $5,000 + 11 mensualidades de $1,500 · $21,500 al año' }
+      anual: { principal: '$20,376', detalle: 'Un solo pago al año · equivale a $1,698 al mes' },
+      msi: { principal: '$2,017', detalle: '12 cargos mensuales a tarjeta de crédito · $24,204 al año' },
+      flex: { principal: '$1,500', detalle: 'Pago inicial de $5,000 y 11 mensualidades de $1,500 · $21,500 al año' }
     },
     menores: '$8,916 al año o $743 al mes',
-    caracteristicas: [...BENEFICIOS_BASE]
+    caracteristicas: [
+      'Suma asegurada de $1,000,000 al año, reinstalable',
+      '$0 de deducible y 0% de coaseguro en la red, al reportar tu evento',
+      'Telemedicina 24/7 con urgenciólogo y médico general',
+      'Nutriólogo y psicólogo sin límite de consultas en la app',
+      'Checkup básico y limpieza dental, una vez al año',
+      'Ambulancia terrestre para urgencias',
+      'Especialistas con tarifa preferencial',
+      'Gastos funerarios',
+      '$100,000 por muerte accidental'
+    ]
   },
   {
     id: 'dos',
-    nombre: 'Cobertura DOS',
-    badge: 'Con cobertura en el extranjero',
+    nombre: 'Plan DOS',
+    badge: 'El más popular',
     sumaAsegurada: '$2,000,000 MXN',
     popular: true,
     precios: {
-      anual: { principal: '$24,936', detalle: 'Un pago anual · equivale a $2,078 al mes' },
-      msi: { principal: '$2,431', detalle: '12 pagos mensuales con TDC · $29,172 al año' },
-      diferido: { principal: '$1,800', detalle: 'Pago inicial de $6,000 + 11 mensualidades de $1,800 · $25,800 al año' }
+      anual: { principal: '$24,936', detalle: 'Un solo pago al año · equivale a $2,078 al mes' },
+      msi: { principal: '$2,431', detalle: '12 cargos mensuales a tarjeta de crédito · $29,172 al año' },
+      flex: { principal: '$1,800', detalle: 'Pago inicial de $6,000 y 11 mensualidades de $1,800 · $25,800 al año' }
     },
     menores: '$10,824 al año o $902 al mes',
-    caracteristicas: [...BENEFICIOS_BASE, 'Cobertura en el extranjero por USD $50,000']
+    caracteristicas: [
+      'Todo lo del Plan UNO',
+      'Suma asegurada de $2,000,000 al año, que se renueva en cada aniversario',
+      'Hasta USD $50,000 para emergencias médicas en el extranjero'
+    ]
   },
   {
     id: 'plus',
-    nombre: 'Mutuus+ (Plus)',
-    badge: 'Con Plan Visión y Mascota',
+    nombre: 'Plan Plus',
+    badge: 'Con indemnizaciones en efectivo',
     sumaAsegurada: '$2,000,000 MXN',
     popular: false,
     precios: {
-      anual: { principal: '$29,292', detalle: 'Un pago anual · equivale a $2,441 al mes' },
-      msi: { principal: '$2,876', detalle: '12 pagos mensuales con TDC · $34,512 al año' },
-      diferido: { principal: '$2,100', detalle: 'Pago inicial de $7,500 + 11 mensualidades de $2,100 · $30,600 al año' }
+      anual: { principal: '$29,292', detalle: 'Un solo pago al año · equivale a $2,441 al mes' },
+      msi: { principal: '$2,876', detalle: '12 cargos mensuales a tarjeta de crédito · $34,512 al año' },
+      flex: { principal: '$2,100', detalle: 'Pago inicial de $7,500 y 11 mensualidades de $2,100 · $30,600 al año' }
     },
     menores: '$11,460 al año o $955 al mes',
     caracteristicas: [
-      ...BENEFICIOS_BASE,
-      'Cobertura en el extranjero por USD $50,000',
-      'Muerte accidental por $490,000 MXN',
-      'Indemnización por renta diaria por enfermedad o accidente',
-      'Indemnización por diagnóstico de cáncer',
-      'Plan Visión: examen de vista gratis, anteojos o lentes de contacto',
-      'Mascota: orientación y consulta veterinaria, vacunas y servicios funerarios'
+      'Todo lo del Plan DOS',
+      '$490,000 por muerte accidental (en lugar de $100,000)',
+      '$2,450 diarios si te hospitalizan por accidente y $980 diarios por enfermedad',
+      '$122,500 si te diagnostican cáncer',
+      'Plan visual: anteojos completos o lentes de contacto graduados',
+      'Atención veterinaria y consultas de sexología en la app'
     ]
   }
 ];
 
 const FORMAS_PAGO: { id: FormaPago; label: string; sufijo: string }[] = [
   { id: 'anual', label: 'Pago anual', sufijo: '/ año' },
-  { id: 'msi', label: '12 meses con TDC', sufijo: '/ mes' },
-  { id: 'diferido', label: 'Pago diferido', sufijo: '/ mes' }
+  { id: 'flex', label: 'Flex (inicial + 11 meses)', sufijo: '/ mes' },
+  { id: 'msi', label: '12 meses con tarjeta', sufijo: '/ mes' }
 ];
 
 // ─── Más beneficios (presentación, "Más beneficios") ─────────────────────────
@@ -220,7 +223,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
       <Helmet>
         <html lang="es-MX" />
         <title>Seguro Médico Inteligente Mutuus | Cobertura de Gastos Médicos Mayores y Menores sin Deducible</title>
-        <meta name="description" content="Seguro Médico Inteligente Mutuus: Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Más de 600 hospitales registrados en México. Respaldados por MetLife." />
+        <meta name="description" content="Seguro Médico Inteligente Mutuus: Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Red de más de 500 hospitales en México, más de 110 con pago directo." />
         <meta name="keywords" content="Mutuus seguro gastos medicos, seguro cero deducible mexico, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguro hospitalario pago directo, membresia de salud mutuus, seguro medico inteligente mutuus" />
         <link rel="canonical" href="https://mutuus.mx/" />
         
@@ -229,7 +232,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <meta property="og:locale" content="es_MX" />
         <meta property="og:site_name" content="Mutuus Salud Inteligente" />
         <meta property="og:title" content="Seguro Médico Inteligente Mutuus | Sin Deducible ni Coaseguro" />
-        <meta property="og:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Más de 600 hospitales registrados y Servicio de Urgencias 24/7." />
+        <meta property="og:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Más de 500 hospitales en red y telemedicina 24/7 desde el primer día." />
         <meta property="og:url" content="https://mutuus.mx/" />
         <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
         <meta property="og:image:width" content="1200" />
@@ -238,7 +241,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Seguro Médico Inteligente Mutuus | Gastos Médicos Mayores y Menores" />
-        <meta name="twitter:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Más de 600 hospitales registrados en México." />
+        <meta name="twitter:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Más de 500 hospitales en red en México." />
         <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
         
         {/* Schema.org JSON-LD */}
@@ -441,7 +444,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   </span>
                   <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full font-bold">
                     <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
-                    +600 hospitales registrados
+                    +110 hospitales de pago directo
                   </span>
                 </div>
 
@@ -813,7 +816,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             </div>
 
             <div className="mt-10 p-5 rounded-2xl bg-[#F4F9FF] border border-[#CBD5E1] max-w-3xl mx-auto text-xs sm:text-sm text-slate-700">
-              <strong>¿Tienes 70 años o más?</strong> Adulto Inteligente está disponible hasta los 99 años: un pago anual de $34,512, 12 pagos mensuales con TDC de $2,876, o pago diferido con un pago inicial de $8,000 + 11 mensualidades de $2,500.
+              <strong>Adulto Inteligente, para seguir protegido después de los 70.</strong> No se contrata por separado: es la continuación de tu plan para quien lo contrató antes de los 64 años y lleva al menos 61 meses de pagos continuos. Al renovar ya en la edad de elegibilidad, el plan cambia solo a Adulto Inteligente: $1,000,000 de suma asegurada reinstalable, renovación garantizada hasta los 99 años y una tarifa plana de $34,512 al año (o $2,876 al mes con tarjeta), igual para hombres y mujeres.
             </div>
 
             <p className="text-center text-xs text-slate-400 mt-6 max-w-3xl mx-auto">
@@ -832,7 +835,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 Sistema Hospitalario Mutuus
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
-                Más de 600 hospitales registrados en todo México
+                Más de 500 hospitales en todo México
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
                 Una red hospitalaria privada de prestigio nacional, que incluye muchos de los hospitales mejor valorados del país.
@@ -975,7 +978,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   { t: 'Dos años', d: 'Amígdalas y/o adenoides, padecimientos anorrectales, circuncisiones, litiasis del aparato genitourinario, hernias, columna vertebral, tratamientos quirúrgicos u oncológicos del piso perineal y genitales, padecimientos prostáticos, vesícula y vías biliares, tumoraciones mamarias, insuficiencia venosa, rodilla, cáncer, padecimientos cardiovasculares (excepto recién nacidos dentro de la colectividad), padecimientos ortopédicos, hallux valgus (juanetes) y enfermedades ácido-pépticas, incluido el reflujo gastroesofágico.' },
                   { t: 'Cinco años', d: 'Síndrome de Inmunodeficiencia Adquirida (SIDA) o seropositividad y cualquier padecimiento de transmisión sexual; aplica también para recién nacidos dentro de la colectividad.' },
                   { t: 'Senos paranasales', d: 'Sin periodo de espera, pero solo se cubren en accidentes, con 20% de coaseguro y $40,000 de deducible.' },
-                  { t: 'Indemnizaciones (Mutuus+)', d: '12 horas para renta diaria por accidente, 24 horas para renta diaria por enfermedad y 90 días para diagnóstico de cáncer.' },
+                  { t: 'Indemnizaciones del Plan Plus', d: '12 horas para renta diaria por accidente, 24 horas para renta diaria por enfermedad y 90 días para diagnóstico de cáncer.' },
                   { t: 'Dictamen y tabuladores', d: 'Todo evento lo evalúa y aprueba el área de dictamen antes del pago. Los médicos pueden cambiar sus tarifas; si el hospital te pide firmar que pagarás una diferencia, contacta a Mutuus antes de firmar.' }
                 ].map((item) => (
                   <div key={item.t} className="p-5 rounded-2xl bg-rose-50/50 border border-rose-100 shadow-xs flex items-start gap-3">
@@ -1066,7 +1069,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
                   <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center mb-2">1</div>
                   <h4 className="font-bold text-xs text-slate-900">Elige tu Plan</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Cobertura UNO, DOS o Mutuus+.</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Plan UNO, DOS o Plus.</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
                   <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center mb-2">2</div>
@@ -1147,7 +1150,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               <div className="space-y-3">
                 <MutuusOfficialLogo className="h-10 w-auto" dark={true} />
                 <p className="text-white/70 text-xs leading-relaxed mt-2">
-                  Seguro Médico Inteligente sin deducible ni coaseguro, con más de 600 hospitales registrados en todo México. Respaldados por MetLife.
+                  Seguro Médico Inteligente sin deducible ni coaseguro, con una red de más de 500 hospitales en todo México.
                 </p>
                 <div className="pt-1">
                   <a
