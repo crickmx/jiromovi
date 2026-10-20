@@ -66,10 +66,8 @@ export interface LandingCustomization {
 // y Condiciones de la Membresía v06.2026. Todo el texto está redactado de nuevo; no
 // se copia ni se enlaza el sitio de Mutuus. Si cambia algo, se cambia contra esos
 // documentos, no a mano.
-// Teléfonos para reportar un evento: el de atención que hoy publica Mutuus y el que
-// marcan las Condiciones de la Membresía (opción 0). Se muestran los dos.
+// Teléfono para reportar un evento: el que publica hoy Mutuus en su sitio.
 export const MUTUUS_TELEFONO = '55 8311 3800';
-export const MUTUUS_TELEFONO_CG = '55 8525 8800';
 
 // ─── FAQ Data ────────────────────────────────────────────────────────────────
 const DEFAULT_FAQS = [
@@ -83,11 +81,11 @@ const DEFAULT_FAQS = [
   },
   {
     q: '¿Qué tengo que hacer para no pagar deducible ni coaseguro?',
-    a: `Avisar a Mutuus antes de usar tu cobertura, por la app o por teléfono (${MUTUUS_TELEFONO}, o ${MUTUUS_TELEFONO_CG} opción 0). Un médico urgenciólogo revisa tu caso y te indica a qué hospital de la red acudir; Mutuus notifica tu ingreso y autoriza eliminar el deducible y el coaseguro. Si hay riesgo de vida, puedes avisar dentro de las 24 horas siguientes.`
+    a: `Avisar a Mutuus antes de usar tu cobertura, por la app o al ${MUTUUS_TELEFONO}. Un médico urgenciólogo revisa tu caso y te indica a qué hospital de la red acudir; Mutuus notifica tu ingreso y autoriza eliminar el deducible y el coaseguro. Si hay riesgo de vida, puedes avisar dentro de las 24 horas siguientes.`
   },
   {
     q: '¿Qué pasa si no aviso antes o me atiendo fuera de la red?',
-    a: 'Si usas tu membresía sin avisar primero, se aplica un deducible no reembolsable de $40,000 y un coaseguro del 50% del costo del evento, sin tope. Fuera de la red coordinada (incluidos algunos hospitales de alto nivel que solo operan por reembolso), aplican el deducible y el coaseguro de la póliza, y el reembolso se paga en un plazo no menor a 40 días hábiles después de entregar la documentación completa.'
+    a: 'Si usas tu membresía sin avisar primero, se aplica un deducible no reembolsable de $40,000 y un coaseguro del 50% del costo del evento, sin tope. Atenderte fuera de la red coordinada es excepcional: avisa antes a Mutuus para que te indique cómo proceder. En ese caso pueden aplicar deducible y coaseguro, el reembolso se limita a los tabuladores acordados y se paga en un plazo no menor a 40 días hábiles después de entregar la documentación completa.'
   },
   {
     q: '¿Cuántos hospitales tiene la red?',
@@ -95,7 +93,7 @@ const DEFAULT_FAQS = [
   },
   {
     q: '¿Cómo funciona la suma asegurada "reinstalable"?',
-    a: 'La suma asegurada ($1,000,000 en el Plan UNO y $2,000,000 en DOS y Plus) es el tope total para todos tus padecimientos cubiertos durante el año de vigencia. Si se agotara antes de terminar el año, vuelve a estar completa al renovar tu membresía.'
+    a: 'La suma asegurada ($1,000,000 en el Plan UNO y $2,000,000 en DOS y Plus) se renueva cada año. Además es reinstalable: si llegaras a agotarla durante el año, puede reinstalarse para eventos nuevos que no tengan relación con el anterior, conforme a las Condiciones Generales. Así, un solo evento grave no te deja sin protección el resto del año.'
   },
   {
     q: '¿Qué incluye cada plan?',
@@ -103,7 +101,7 @@ const DEFAULT_FAQS = [
   },
   {
     q: '¿Cubre maternidad?',
-    a: 'Sí, para la asegurada titular: parto natural hasta 20 UMAM y cesárea hasta 25 UMAM. Las complicaciones del embarazo, el parto y el puerperio tienen una suma propia de $1,000,000. Para que aplique, el embarazo debe iniciar después del primer mes de vigencia continua.'
+    a: 'Sí, para la asegurada titular: parto natural hasta 20 UMAM y cesárea hasta 25 UMAM (el valor de la UMAM en pesos se consulta al momento de hacer la conversión). Las complicaciones del embarazo, el parto y el puerperio tienen una suma propia de $1,000,000. Para que aplique, el embarazo debe iniciar después del primer mes de vigencia continua.'
   },
   {
     q: '¿Hay periodos de espera?',
@@ -228,12 +226,12 @@ const CONDICIONES_GENERALES = [
     d: 'Se cobra un deducible no reembolsable de $40,000 y un coaseguro del 50% sin tope. Si hay riesgo de vida, el aviso puede darse dentro de las 24 horas posteriores al evento.'
   },
   {
-    t: 'Hospitales que operan solo por reembolso',
-    d: 'En un grupo de hospitales de alto nivel (por ejemplo ABC, Ángeles, Español, Médica Sur o Star Médica) la atención es por reembolso, con el deducible y el coaseguro de la póliza, aunque hayas reportado el evento.'
+    t: 'Atención fuera de la red',
+    d: 'El $0 de deducible y coaseguro aplica en la red coordinada por Mutuus. Fuera de ella el reembolso es excepcional: avisa antes, puede incluir deducible y coaseguro y se limita a los tabuladores acordados con los proveedores.'
   },
   {
-    t: 'Suma asegurada por año',
-    d: 'Es un tope único para todos los gastos cubiertos durante la vigencia. Si se agota, se restablece completa al renovar la membresía.'
+    t: 'Suma asegurada reinstalable',
+    d: 'Se renueva en cada aniversario. Si se agota durante el año, puede reinstalarse para eventos nuevos y no relacionados con el anterior.'
   },
   {
     t: 'Emergencias en el extranjero',
@@ -677,7 +675,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 font-black text-xs flex items-center justify-center flex-shrink-0">1</div>
                     <div>
                       <h4 className="font-bold text-xs text-slate-900">Reporta tu evento</h4>
-                      <p className="text-[11px] text-slate-500">Antes de usar tu cobertura: desde la app de Mutuus o al {MUTUUS_TELEFONO} ({MUTUUS_TELEFONO_CG}, opción 0).</p>
+                      <p className="text-[11px] text-slate-500">Antes de usar tu cobertura: desde la app de Mutuus o al {MUTUUS_TELEFONO}.</p>
                     </div>
                   </div>
 
@@ -990,7 +988,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
             <div className="mt-10 p-6 rounded-2xl bg-white border border-blue-200/80 max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
               <p className="text-xs sm:text-sm text-slate-700">
-                Antes de acudir a un hospital, avisa desde la app o al <strong>{MUTUUS_TELEFONO}</strong>. Algunos hospitales de alto nivel operan solo por reembolso y con el deducible y el coaseguro de la póliza; el equipo médico te dice cuál te conviene.
+                Antes de acudir a un hospital, avisa desde la app o al <strong>{MUTUUS_TELEFONO}</strong>. El equipo médico te indica el hospital de la red más cercano y adecuado para tu caso.
               </p>
               <a
                 href={MUTUUS_PORTAL_URL}
@@ -1081,7 +1079,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-3">Aplica para la asegurada titular cuando el embarazo inicia después del primer mes de vigencia continua.</p>
+                  <p className="text-[11px] text-slate-500 mt-3">Aplica para la asegurada titular cuando el embarazo inicia después del primer mes de vigencia continua. La UMAM es una unidad de medida cuyo valor cambia con el tiempo: su equivalente en pesos se consulta al momento de hacer la conversión.</p>
                 </div>
 
                 <div>
