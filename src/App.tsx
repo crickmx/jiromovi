@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Suspense, lazy, useEffect } from 'react';
-import { HelmetProvider } from 'react-helmet-async';
+import { Helmet, HelmetProvider } from 'react-helmet-async';
 import './index.css';
 import { MoviAuthProvider } from './contexts/MoviAuthContext';
 import { ImpersonationProvider } from './contexts/ImpersonationContext';
@@ -14,6 +14,7 @@ import { AppUpdateBanner } from './components/AppUpdateBanner';
 // ── Landings (lazy) ────────────────────────────────────────────────────────
 const LandingsStudio = lazy(() => import('./landings/LandingsStudio'));
 const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
+const MutuusComingSoon = lazy(() => import('./landings/mutuus/MutuusComingSoon'));
 
 // ── Seguwallet pages (lazy) ────────────────────────────────────────────────
 import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
@@ -105,6 +106,17 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 
 // ── Per-domain apps ───────────────────────────────────────────────────────
 
+function MutuusPreview() {
+  return (
+    <>
+      <MutuusLanding />
+      <Helmet>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
+    </>
+  );
+}
+
 function MutuusApp() {
   useEffect(() => { 
     document.getElementById('root')?.classList.add('public-page'); 
@@ -118,7 +130,9 @@ function MutuusApp() {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={<MutuusLanding />} />
+            {/* Provisional mientras se termina la landing; la completa vive en /preview, sin indexar */}
+            <Route path="/" element={<MutuusComingSoon />} />
+            <Route path="/preview" element={<MutuusPreview />} />
             <Route path="/mutuus" element={<Navigate to="/" replace />} />
             <Route path="/landings/mutuus" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
