@@ -308,7 +308,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <meta property="og:title" content="Seguro Médico Inteligente Mutuus | Sin Deducible ni Coaseguro" />
         <meta property="og:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Más de 500 hospitales en red y telemedicina 24/7 desde el primer día." />
         <meta property="og:url" content="https://mutuus.mx/" />
-        <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
+        <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=1" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         
@@ -316,7 +316,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Seguro Médico Inteligente Mutuus | Gastos Médicos Mayores y Menores" />
         <meta name="twitter:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Más de 500 hospitales en red en México." />
-        <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
+        <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=1" />
         
         {/* Schema.org JSON-LD */}
         <script type="application/ld+json">
@@ -325,7 +325,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             "@type": "Product",
             "name": "Seguro Médico Inteligente Mutuus",
             "description": "Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Operado por Grupo JIRO.",
-            "image": "https://mutuus.mx/brand/mutuus/og-mutuus.svg",
+            "image": "https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=1",
             "brand": {
               "@type": "Brand",
               "name": "Mutuus Salud Inteligente"

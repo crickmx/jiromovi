@@ -18,13 +18,16 @@ export default function MutuusComingSoon() {
         <meta property="og:title" content="Mutuus Salud Inteligente | Nos estamos renovando para ti" />
         <meta property="og:description" content="Contrata tu Seguro Médico Inteligente Mutuus en línea, sin deducible ni coaseguro." />
         <meta property="og:url" content="https://mutuus.mx/" />
-        <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
+        <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=1" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Mutuus Salud Inteligente | Nos estamos renovando para ti" />
-        <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.svg" />
+        <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=1" />
       </Helmet>
 
-      <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F4F9FF] via-white to-white text-[#2B2A2A] font-sans antialiased">
+      <div
+        className="min-h-screen flex flex-col bg-gradient-to-b from-[#F4F9FF] via-white to-white text-[#2B2A2A] antialiased"
+        style={{ fontFamily: 'Montserrat, system-ui, -apple-system, sans-serif' }}
+      >
         <main className="flex-1 flex items-center justify-center px-4 py-12">
           <div className="w-full max-w-xl text-center">
             <MutuusOfficialLogo className="h-12 w-auto mx-auto" />

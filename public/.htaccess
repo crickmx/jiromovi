@@ -58,6 +58,17 @@ Options -MultiViews
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # mutuus.mx sirve mutuus.html: el mismo build con título, íconos e imagen
+  # social de Mutuus (lo genera scripts/postbuild.cjs). Sin esto, WhatsApp y
+  # Facebook muestran la tarjeta de MOVI al compartir el enlace.
+  RewriteCond %{HTTP_HOST} ^(www\.)?mutuus\.mx$ [NC]
+  RewriteRule ^(index\.html)?$ /mutuus.html [L]
+  RewriteCond %{HTTP_HOST} ^(www\.)?mutuus\.mx$ [NC]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /mutuus.html [L]
+
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d

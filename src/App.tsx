@@ -117,6 +117,14 @@ function MutuusPreview() {
   );
 }
 
+function MutuusLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="w-10 h-10 border-[3px] border-[#8DC63F]/30 border-t-[#003896] rounded-full animate-spin" />
+    </div>
+  );
+}
+
 function MutuusApp() {
   useEffect(() => { 
     document.getElementById('root')?.classList.add('public-page'); 
@@ -127,8 +135,15 @@ function MutuusApp() {
 
   return (
     <HelmetProvider>
+      {/* Íconos de Mutuus también al navegar dentro de la app; el HTML que leen los
+          buscadores y WhatsApp lo da dist/mutuus.html (scripts/postbuild.cjs). */}
+      <Helmet>
+        <link rel="icon" type="image/png" sizes="32x32" href="/brand/mutuus/icon-32.png" />
+        <link rel="apple-touch-icon" href="/brand/mutuus/icon-180.png" />
+        <meta name="theme-color" content="#003896" />
+      </Helmet>
       <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
+        <Suspense fallback={<MutuusLoader />}>
           <Routes>
             {/* Provisional mientras se termina la landing; la completa vive en /preview, sin indexar */}
             <Route path="/" element={<MutuusComingSoon />} />

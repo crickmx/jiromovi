@@ -1,0 +1,14 @@
+{
+  "name": "Mutuus Salud Inteligente",
+  "short_name": "Mutuus",
+  "description": "Seguro Médico Inteligente sin deducible ni coaseguro",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#003896",
+  "icons": [
+    { "src": "/brand/mutuus/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/mutuus/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
