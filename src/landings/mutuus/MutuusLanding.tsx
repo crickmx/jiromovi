@@ -61,43 +61,65 @@ export interface LandingCustomization {
 }
 
 // ─── Fuente de toda la información de esta página ────────────────────────────
-// "Presentación Mutuus JULIO 2026" y "Lista de Precios Julio 2026" (vigencia a partir
-// del 1 de julio de 2026). Si cambia algo, se cambia contra esos documentos, no a mano.
-export const MUTUUS_TELEFONO = '55 8525 8800';
+// Lista de Precios Julio 2026, material vigente de planes y preguntas frecuentes de
+// Mutuus (octubre 2026), Condiciones Generales de la póliza colectiva MetLife v06.2026
+// y Condiciones de la Membresía v06.2026. Todo el texto está redactado de nuevo; no
+// se copia ni se enlaza el sitio de Mutuus. Si cambia algo, se cambia contra esos
+// documentos, no a mano.
+// Teléfonos para reportar un evento: el de atención que hoy publica Mutuus y el que
+// marcan las Condiciones de la Membresía (opción 0). Se muestran los dos.
+export const MUTUUS_TELEFONO = '55 8311 3800';
+export const MUTUUS_TELEFONO_CG = '55 8525 8800';
 
 // ─── FAQ Data ────────────────────────────────────────────────────────────────
 const DEFAULT_FAQS = [
   {
     q: '¿Qué es Mutuus?',
-    a: 'Mutuus es un Seguro Médico Inteligente: una InsureTech (compañía tecnológica de salud privada) con 8 años en el mercado y respaldada por MetLife, que te da acceso a la mayoría de los mejores hospitales privados del país cuando el diagnóstico lo requiera, sin deducible y sin coaseguro.'
+    a: 'Es una membresía de salud digital que incluye una cobertura de gastos médicos mayores y menores. La parte hospitalaria está amparada por una póliza colectiva de MetLife México, en la que Mutuus funciona como contratante; Mutuus no es una aseguradora, es una empresa de tecnología en salud. Su diferencia principal es que, al reportar tu evento y atenderte en su red coordinada, no pagas deducible ni coaseguro.'
   },
   {
-    q: '¿Cómo obtengo el beneficio de $0 deducible y $0 coaseguro?',
-    a: `Todos los eventos se deben REPORTAR por teléfono al ${MUTUUS_TELEFONO} o por la app móvil de Mutuus. Así obtienes el beneficio de 0 deducible y 0 coaseguro en padecimientos cubiertos de acuerdo con las Condiciones Generales de la póliza incluida en tu Seguro Médico Inteligente. Toda atención hospitalaria se somete a un dictamen médico que determina si procede la cobertura y, en consecuencia, el pago de la cuenta hospitalaria.`
+    q: '¿En qué se distingue de un seguro de gastos médicos tradicional?',
+    a: 'En un seguro tradicional pagas primero un deducible y después un porcentaje de la cuenta (el coaseguro suele rondar el 10%, y la CONDUSEF lo ubica entre 5% y 20%). Con Mutuus, si cumples el procedimiento, ese desembolso es de $0. Además, los servicios del día a día —telemedicina, ambulancia, checkup y limpieza dental— se pueden usar desde que inicia tu membresía, sin esperar a una emergencia.'
   },
   {
-    q: '¿Qué hospitales puedo usar?',
-    a: 'Mutuus tiene más de 600 hospitales registrados en una red hospitalaria privada de prestigio nacional (red preferente y de reembolso), además de una amplia red de laboratorios en todo el país. Antes de ir a cualquier hospital es fundamental seguir las recomendaciones del equipo de especialistas de Mutuus, para asegurar que tu cobertura sea la adecuada y evitar costos adicionales.'
+    q: '¿Qué tengo que hacer para no pagar deducible ni coaseguro?',
+    a: `Avisar a Mutuus antes de usar tu cobertura, por la app o por teléfono (${MUTUUS_TELEFONO}, o ${MUTUUS_TELEFONO_CG} opción 0). Un médico urgenciólogo revisa tu caso y te indica a qué hospital de la red acudir; Mutuus notifica tu ingreso y autoriza eliminar el deducible y el coaseguro. Si hay riesgo de vida, puedes avisar dentro de las 24 horas siguientes.`
   },
   {
-    q: '¿Cubre maternidad, parto o cesárea?',
-    a: 'Sí. La cobertura de maternidad tiene una suma asegurada de 20 UMAM para parto normal, 25 UMAM para cesárea y $1 millón de pesos para complicaciones del embarazo. Aplica un periodo de espera de 30 días para la gestación del embarazo.'
+    q: '¿Qué pasa si no aviso antes o me atiendo fuera de la red?',
+    a: 'Si usas tu membresía sin avisar primero, se aplica un deducible no reembolsable de $40,000 y un coaseguro del 50% del costo del evento, sin tope. Fuera de la red coordinada (incluidos algunos hospitales de alto nivel que solo operan por reembolso), aplican el deducible y el coaseguro de la póliza, y el reembolso se paga en un plazo no menor a 40 días hábiles después de entregar la documentación completa.'
   },
   {
-    q: '¿Cuáles son las edades de aceptación?',
-    a: 'De 18 a 63 años 11 meses. A partir de los 70 años está Adulto Inteligente (hasta los 99 años). Los menores de 18 años pueden contratar, siempre ligados a un titular mayor de edad.'
+    q: '¿Cuántos hospitales tiene la red?',
+    a: 'Más de 500 hospitales en todo el país, de los cuales más de 110 trabajan con pago directo: llegas, te atiendes y te vas sin pagar ni tramitar reembolsos. Antes de ir, el equipo médico de Mutuus te dice cuál te conviene según tu caso y ubicación.'
   },
   {
-    q: '¿Hay periodo de espera?',
-    a: 'Durante los primeros 30 días de vigencia, la póliza de Gastos Médicos Mayores no cubre enfermedades originadas en ese lapso; los accidentes sí están cubiertos desde el primer día. Algunos padecimientos tienen periodos de espera de dos o cinco años (consulta la sección de coberturas).'
+    q: '¿Cómo funciona la suma asegurada "reinstalable"?',
+    a: 'La suma asegurada ($1,000,000 en el Plan UNO y $2,000,000 en DOS y Plus) es el tope total para todos tus padecimientos cubiertos durante el año de vigencia. Si se agotara antes de terminar el año, vuelve a estar completa al renovar tu membresía.'
   },
   {
-    q: '¿Cubre enfermedades preexistentes?',
-    a: 'No. No se cubren preexistencias, declaradas o no declaradas.'
+    q: '¿Qué incluye cada plan?',
+    a: 'El Plan UNO cubre hasta $1,000,000 al año e incluye telemedicina 24/7, nutriólogo y psicólogo en la app, checkup y limpieza dental anuales, ambulancia, especialistas a precio preferencial, gastos funerarios y $100,000 por muerte accidental. El Plan DOS sube la suma a $2,000,000 y agrega hasta USD $50,000 para emergencias en el extranjero. El Plan Plus suma $490,000 por muerte accidental, renta diaria por hospitalización, $122,500 por diagnóstico de cáncer, plan visual y beneficios veterinarios en la app.'
   },
   {
-    q: '¿Cómo contrato?',
-    a: 'En línea, desde el portal de autoservicio de Mutuus con la promotoría A-3522 de Grupo JIRO: eliges tu plan, capturas tus datos y realizas tu pago. Se aceptan Visa, MasterCard y American Express.'
+    q: '¿Cubre maternidad?',
+    a: 'Sí, para la asegurada titular: parto natural hasta 20 UMAM y cesárea hasta 25 UMAM. Las complicaciones del embarazo, el parto y el puerperio tienen una suma propia de $1,000,000. Para que aplique, el embarazo debe iniciar después del primer mes de vigencia continua.'
+  },
+  {
+    q: '¿Hay periodos de espera?',
+    a: 'Sí. Las enfermedades que inicien en los primeros 30 días no se cubren (los accidentes sí). Un grupo de padecimientos, entre ellos hernias, columna vertebral, padecimientos ortopédicos, vesícula y cáncer, requiere 2 años de antigüedad; el VIH y las enfermedades de transmisión sexual, 5 años. Los servicios de telemedicina, ambulancia, checkup y limpieza dental funcionan desde el primer día.'
+  },
+  {
+    q: '¿Se cubren enfermedades preexistentes?',
+    a: 'No. Cualquier padecimiento que ya existiera antes de contratar —declarado o no, con diagnóstico, síntomas o tratamiento previo— queda excluido sin importar la antigüedad.'
+  },
+  {
+    q: '¿Quién puede contratar?',
+    a: 'Titulares mayores de 18 y menores de 65 años, con residencia en México. Los hijos menores de 18 años pueden incluirse como dependientes con un costo adicional; con pago anual de contado se incluye un hijo menor sin costo. Al cumplir 70 años, quien ha pagado de forma continua pasa a Adulto Inteligente y puede seguir protegido hasta los 99.'
+  },
+  {
+    q: '¿Cómo pago y puedo cancelar?',
+    a: 'Con pago anual, Flex (pago inicial más 11 mensualidades) o 12 meses con tarjeta de crédito. No se aceptan pagos en efectivo. Si cambias de opinión, puedes cancelar con reembolso dentro de los primeros 5 días hábiles; si un pago se atrasa más de 15 días naturales, la membresía puede cancelarse.'
   }
 ];
 
@@ -178,15 +200,69 @@ const FORMAS_PAGO: { id: FormaPago; label: string; sufijo: string }[] = [
 
 // ─── Más beneficios (presentación, "Más beneficios") ─────────────────────────
 const MAS_BENEFICIOS = [
-  'Red de más de 8,000 médicos especialistas a nivel nacional, con tarifa preferencial de $300 a máximo $1,300 por consulta',
-  'Médico a domicilio con tarifa especial (de 7:00 a 20:00)',
-  'Descuentos en laboratorios',
-  'Salud visual con descuentos en ópticas',
-  'Limpieza dental anual sin costo',
-  'Descuentos en más de 100 tratamientos odontológicos',
-  'Asistencia telefónica 24 horas: médica, nutricional y emocional',
-  'Servicios de asistencia y gastos funerarios',
-  '80% de descuento en Open English'
+  'Consultas con especialistas de la red a precio preferencial, desde $650',
+  'Médico general a domicilio con tarifa preferente',
+  'Telemedicina con médico general, nutriólogo y psicólogo desde la app',
+  'Descuentos en medicamentos y estudios de laboratorio',
+  'Urgencia dental además de la limpieza anual',
+  'Asistencia funeraria de hasta $30,000',
+  'Tratamientos de alto costo fuera del hospital: cáncer, medicamentos para enfermedades autoinmunes y medicamentos de más de $10,000',
+  'Cirugía de cataratas: un evento por ojo'
+];
+
+// ─── Condiciones Generales en lenguaje claro ─────────────────────────────────
+// Resumen de las Condiciones Generales de la póliza colectiva (MetLife, v06.2026) y
+// de las Condiciones de la Membresía (v06.2026). Ante cualquier diferencia mandan
+// los documentos completos.
+const CONDICIONES_GENERALES = [
+  {
+    t: 'Quién respalda tu cobertura',
+    d: 'La parte hospitalaria es una póliza colectiva de Gastos Médicos Mayores de MetLife México. Mutuus es el contratante y te adhiere a ella al comprar tu membresía; los servicios de salud adicionales los prestan proveedores especializados.'
+  },
+  {
+    t: 'Cuándo pagas $0',
+    d: 'El deducible y el coaseguro se eliminan cuando se cumplen tres cosas: reportas el evento a Mutuus antes de usar tu cobertura, te atiendes en un hospital de la red coordinada y Mutuus autoriza el ingreso tras el dictamen médico.'
+  },
+  {
+    t: 'Si no reportas antes',
+    d: 'Se cobra un deducible no reembolsable de $40,000 y un coaseguro del 50% sin tope. Si hay riesgo de vida, el aviso puede darse dentro de las 24 horas posteriores al evento.'
+  },
+  {
+    t: 'Hospitales que operan solo por reembolso',
+    d: 'En un grupo de hospitales de alto nivel (por ejemplo ABC, Ángeles, Español, Médica Sur o Star Médica) la atención es por reembolso, con el deducible y el coaseguro de la póliza, aunque hayas reportado el evento.'
+  },
+  {
+    t: 'Suma asegurada por año',
+    d: 'Es un tope único para todos los gastos cubiertos durante la vigencia. Si se agota, se restablece completa al renovar la membresía.'
+  },
+  {
+    t: 'Emergencias en el extranjero',
+    d: 'Los planes DOS y Plus cubren hasta USD $50,000 sin deducible ni coaseguro, solo por reembolso y únicamente mientras dura la emergencia y hasta estabilizar al paciente. No incluye parto, cesárea ni cirugías programadas.'
+  },
+  {
+    t: 'Lo que pasa fuera del hospital',
+    d: 'La póliza cubre gastos hospitalarios. Fuera del hospital solo se cubren tratamientos de alto costo (cáncer, medicamentos para padecimientos autoinmunes y medicamentos de más de $10,000); las consultas externas se atienden con los descuentos y servicios de la membresía.'
+  },
+  {
+    t: 'Edades y dependientes',
+    d: 'Titulares de 18 a 64 años al contratar e hijos menores de 18 como dependientes. Al cumplir 18, el hijo puede contratar su propia membresía conservando su antigüedad. La permanencia llega hasta los 99 años con pagos continuos.'
+  },
+  {
+    t: 'Pagos, cancelación y rescisión',
+    d: 'No se aceptan pagos en efectivo. La cancelación con reembolso solo procede en los primeros 5 días hábiles. Con más de 15 días naturales de atraso la membresía puede cancelarse. Declarar información falsa u omitir preexistencias permite rescindirla con una penalización del 40% de su costo.'
+  },
+  {
+    t: 'Cómo se tramita un reclamo',
+    d: 'Todo se gestiona con Mutuus, no directamente con la aseguradora. Para reembolsos se necesitan comprobantes fiscales, estudios con tus datos y tu RFC con homoclave; el pago llega en un plazo no menor a 40 días hábiles tras completar el expediente.'
+  },
+  {
+    t: 'Exclusiones principales',
+    d: 'Preexistencias, tratamientos estéticos, infertilidad, padecimientos mentales y adicciones, chequeos preventivos dentro de la póliza, tratamientos experimentales, deportes profesionales o de alto riesgo, accidentes bajo efecto de alcohol o drogas, ambulancia aérea, homeopatía, quiropráctica, rehabilitación fuera del hospital y gastos personales durante la hospitalización.'
+  },
+  {
+    t: 'Quejas y aclaraciones',
+    d: 'Unidad Especializada de MetLife: 55 5328 9002 o 800 907 1111. CONDUSEF: 55 5340 0999 o 800 999 8080. El plazo para reclamar es de 2 años.'
+  }
 ];
 
 export default function MutuusLanding({ customization }: { customization?: LandingCustomization }) {
@@ -206,7 +282,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
   // Dynamic overrides
   const heroTitle = customization?.heroTitle || 'Seguro Médico Inteligente Mutuus';
-  const heroSubtitle = customization?.heroSubtitle || 'Acceso a la mayoría de los mejores hospitales privados del país cuando el diagnóstico lo requiera, sin que tengas que hacer ningún pago. Suma Asegurada Inteligente de $1 o $2 millones de pesos por persona, renovable cada año.';
+  const heroSubtitle = customization?.heroSubtitle || 'Atiéndete en hospitales privados de la red Mutuus sin pagar deducible ni coaseguro, con una suma asegurada de $1 o $2 millones de pesos por persona que se renueva cada año, y usa telemedicina, ambulancia, checkup y limpieza dental desde el primer día.';
   const badgeText = customization?.badgeText || 'Sin deducible · Sin coaseguro';
   const primaryColor = customization?.primaryColor || '#0047BA';
   const accentColor = customization?.accentColor || '#8DC63F';
@@ -265,6 +341,17 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             }
           })}
         </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": allFaqs.map((f) => ({
+              "@type": "Question",
+              "name": f.q,
+              "acceptedAnswer": { "@type": "Answer", "text": f.a }
+            }))
+          })}
+        </script>
       </Helmet>
 
       {/* ─── CONTENEDOR PRINCIPAL CON SCROLL NATIVO ──────────────────────── */}
@@ -287,12 +374,13 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             </a>
 
             {/* Menú de Navegación Desktop con UX Pulida y Espaciada */}
-            <nav className="hidden lg:flex items-center gap-6 xl:gap-8 text-xs xl:text-sm font-bold text-slate-600 whitespace-nowrap">
+            <nav className="hidden xl:flex items-center gap-6 2xl:gap-8 text-xs xl:text-sm font-bold text-slate-600 whitespace-nowrap">
               <a href="#como-funciona" className="hover:text-[#0047BA] transition-colors">¿Cómo funciona?</a>
-              <a href="#planes" className="hover:text-[#0047BA] transition-colors">Planes y Precios</a>
-              <a href="#red-hospitalaria" className="hover:text-[#0047BA] transition-colors">Red de Hospitales</a>
+              <a href="#planes" className="hover:text-[#0047BA] transition-colors">Planes</a>
+              <a href="#red-hospitalaria" className="hover:text-[#0047BA] transition-colors">Hospitales</a>
               <a href="#coberturas" className="hover:text-[#0047BA] transition-colors">Coberturas</a>
-              <a href="#faq" className="hover:text-[#0047BA] transition-colors">Preguntas Frecuentes</a>
+              <a href="#condiciones" className="hover:text-[#0047BA] transition-colors">Condiciones</a>
+              <a href="#faq" className="hover:text-[#0047BA] transition-colors">Preguntas</a>
             </nav>
 
             {/* Acciones Header: 100% Directo a Portal */}
@@ -321,7 +409,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               {/* Botón Móvil Menú */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="xl:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                 aria-label="Abrir Menú"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -332,7 +420,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
           {/* Menú Móvil Desplegable */}
           {mobileMenuOpen && (
-            <div className="lg:hidden border-t border-slate-100 bg-white px-4 pt-4 pb-6 space-y-4 shadow-xl animate-in slide-in-from-top-2">
+            <div className="xl:hidden border-t border-slate-100 bg-white px-4 pt-4 pb-6 space-y-4 shadow-xl animate-in slide-in-from-top-2">
               <nav className="flex flex-col space-y-2 text-sm font-bold text-slate-800">
                 <a 
                   href="#como-funciona" 
@@ -361,6 +449,13 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   className="p-2.5 rounded-xl hover:bg-slate-50 transition"
                 >
                   Coberturas
+                </a>
+                <a 
+                  href="#condiciones" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2.5 rounded-xl hover:bg-slate-50 transition"
+                >
+                  Condiciones Generales
                 </a>
                 <a 
                   href="#faq" 
@@ -540,7 +635,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     </div>
 
                     <p className="text-xs text-white/75 leading-relaxed">
-                      Aplica solo para eventos reportados al 55 8525 8800 o por la app, y sujeto a dictamen médico. No incluye gastos personales ni insumos no relacionados con el diagnóstico autorizado.
+                      Aplica solo para eventos reportados antes por la app o al {MUTUUS_TELEFONO}, y sujeto a dictamen médico. No incluye gastos personales ni insumos no relacionados con el diagnóstico autorizado.
                     </p>
 
                     <a
@@ -582,7 +677,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 font-black text-xs flex items-center justify-center flex-shrink-0">1</div>
                     <div>
                       <h4 className="font-bold text-xs text-slate-900">Reporta tu evento</h4>
-                      <p className="text-[11px] text-slate-500">Por teléfono al {MUTUUS_TELEFONO} o desde la app móvil de Mutuus.</p>
+                      <p className="text-[11px] text-slate-500">Antes de usar tu cobertura: desde la app de Mutuus o al {MUTUUS_TELEFONO} ({MUTUUS_TELEFONO_CG}, opción 0).</p>
                     </div>
                   </div>
 
@@ -598,7 +693,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 font-black text-xs flex items-center justify-center flex-shrink-0">3</div>
                     <div>
                       <h4 className="font-bold text-xs text-slate-900">Dictamen médico y pago</h4>
-                      <p className="text-[11px] text-slate-500">El área de dictamen determina si procede la cobertura. Si procede, Mutuus paga la cuenta del hospital y los honorarios médicos.</p>
+                      <p className="text-[11px] text-slate-500">Mutuus notifica tu ingreso y autoriza eliminar el deducible y el coaseguro; en los hospitales con pago directo, llegas, te atiendes y te vas.</p>
                     </div>
                   </div>
                 </div>
@@ -618,8 +713,8 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       <p className="text-[11px] text-white/70">millones de pesos ahorrados en cuentas hospitalarias</p>
                     </div>
                     <div>
-                      <p className="text-2xl sm:text-3xl font-black">+600</p>
-                      <p className="text-[11px] text-white/70">hospitales registrados</p>
+                      <p className="text-2xl sm:text-3xl font-black">+500</p>
+                      <p className="text-[11px] text-white/70">hospitales en la red</p>
                     </div>
                   </div>
                   <p className="text-xs text-white/80 leading-relaxed border-t border-white/10 pt-4">
@@ -698,6 +793,38 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   <p className="text-xs text-slate-600 leading-relaxed">{caso.nota}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-12 p-6 sm:p-8 rounded-3xl bg-white border-2 border-slate-200/80 shadow-xl">
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+                Mutuus frente a un seguro tradicional, con un padecimiento del corazón
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 mt-2">
+                De acuerdo con Profeco (2021), tratar una enfermedad cardiaca cuesta alrededor de $347,000 al año. Así cambia lo que sale de tu bolsillo:
+              </p>
+              <div className="mt-5 text-xs sm:text-sm">
+                <div className="grid grid-cols-4 font-bold text-slate-500 pb-2 border-b border-slate-100">
+                  <span>Escenario</span>
+                  <span className="text-right">Deducible</span>
+                  <span className="text-right">Coaseguro</span>
+                  <span className="text-right">Tu pago</span>
+                </div>
+                {[
+                  ['Mutuus, en la red', '$0', '$0', '$0', 'text-emerald-600'],
+                  ['Seguro tradicional', '$25,000', '$32,200', '$57,200', 'text-rose-600'],
+                  ['Sin cobertura', '—', '—', '$347,000', 'text-rose-700']
+                ].map(([esc, ded, coa, total, color]) => (
+                  <div key={esc} className="grid grid-cols-4 py-2.5 border-b border-slate-50">
+                    <span className="font-semibold text-slate-800">{esc}</span>
+                    <span className="text-right">{ded}</span>
+                    <span className="text-right">{coa}</span>
+                    <span className={`text-right font-black ${color}`}>{total}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-4">
+                Ejemplo ilustrativo con un deducible de $25,000 y un coaseguro del 10% sobre el resto de la cuenta; en los seguros tradicionales el coaseguro suele ir del 5% al 20% según la CONDUSEF. El $0 de Mutuus requiere reportar el evento antes y atenderte en la red coordinada.
+              </p>
             </div>
 
             <p className="text-[11px] text-slate-500 mt-6 leading-relaxed">
@@ -820,33 +947,33 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             </div>
 
             <p className="text-center text-xs text-slate-400 mt-6 max-w-3xl mx-auto">
-              * Precios en pesos mexicanos para titulares mayores de 18 años, vigentes a partir del 1 de julio de 2026. Las coberturas para menores deben estar ligadas forzosamente a un titular mayor de edad. Aceptamos Visa, MasterCard y American Express.
+              * Precios en pesos mexicanos para titulares mayores de 18 años, vigentes a partir del 1 de julio de 2026. Las coberturas para menores deben estar ligadas a un titular mayor de edad; con pago anual de contado se incluye un hijo menor sin costo. Aceptamos Visa, MasterCard y American Express.
             </p>
 
           </div>
         </section>
 
-        {/* ─── 6. SISTEMA HOSPITALARIO ────────────────────────────────────── */}
+        {/* ─── 6. RED HOSPITALARIA ────────────────────────────────────────── */}
         <section id="red-hospitalaria" className="py-20 bg-[#F4F9FF]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 
             <div className="text-center max-w-3xl mx-auto space-y-3 mb-10">
               <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
-                Sistema Hospitalario Mutuus
+                Red hospitalaria Mutuus
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
                 Más de 500 hospitales en todo México
               </h2>
               <p className="text-slate-600 text-sm sm:text-base">
-                Una red hospitalaria privada de prestigio nacional, que incluye muchos de los hospitales mejor valorados del país.
+                Una red nacional de hospitales privados, coordinada por el equipo médico de Mutuus, con presencia en los 32 estados.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {[
-                { t: 'Red preferente y de reembolso', d: 'Acceso a instalaciones de primer nivel para asegurar el mejor cuidado posible.' },
-                { t: 'Red nacional de laboratorios', d: 'Una amplia red de laboratorios para una cobertura completa en servicios de salud.' },
-                { t: '+8,000 médicos especialistas', d: 'Con tarifa preferencial de entre $300 y máximo $1,300 por consulta.' }
+                { t: '+110 con pago directo', d: 'Llegas, te atiendes y te vas: Mutuus liquida la cuenta directamente con el hospital, sin trámites de reembolso.' },
+                { t: 'Atención coordinada', d: 'Un médico urgenciólogo te orienta y te indica el hospital de la red más adecuado para tu caso y tu ubicación.' },
+                { t: 'Especialistas preferentes', d: 'Una red de médicos especialistas con consulta a precio preferencial, desde $650, mostrando tu credencial digital.' }
               ].map((item) => (
                 <div key={item.t} className="p-6 rounded-2xl bg-white border border-slate-200/80 space-y-3">
                   <div
@@ -863,7 +990,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
             <div className="mt-10 p-6 rounded-2xl bg-white border border-blue-200/80 max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
               <p className="text-xs sm:text-sm text-slate-700">
-                Antes de acudir a cualquier hospital de la red, llama al <strong>{MUTUUS_TELEFONO}</strong> o usa la app y sigue las recomendaciones del equipo de especialistas: así tu cobertura es la adecuada y evitas costos adicionales.
+                Antes de acudir a un hospital, avisa desde la app o al <strong>{MUTUUS_TELEFONO}</strong>. Algunos hospitales de alto nivel operan solo por reembolso y con el deducible y el coaseguro de la póliza; el equipo médico te dice cuál te conviene.
               </p>
               <a
                 href={MUTUUS_PORTAL_URL}
@@ -889,7 +1016,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 ¿Qué cubre?
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
-                Tu Seguro Médico Inteligente, antes, durante y después del hospital
+                Protección en el hospital y cuidado para todos los días
               </h2>
 
               <div className="pt-4 flex justify-center">
@@ -922,9 +1049,9 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               <div className="space-y-10">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
-                    { t: 'Atención pre hospitalaria', items: ['Servicio de Urgencias 24/7', 'Telemedicina', 'Check up anual', 'Limpieza dental anual', 'Ambulancia', 'Asistencia funeraria', 'Descuentos en medicinas, consultas y pruebas de laboratorio'] },
-                    { t: 'Atención hospitalaria', items: ['En accidentes', 'En enfermedades', 'Maternidad', 'Cuenta del hospital y honorarios médicos sin deducible ni coaseguro'] },
-                    { t: 'Atención post hospitalaria', items: ['Descuentos en consultas médicas, medicamentos y pruebas de laboratorio', 'Seguro por muerte accidental'] }
+                    { t: 'Desde el primer día', items: ['Telemedicina 24/7 con urgenciólogo y médico general', 'Nutriólogo y psicólogo sin límite de consultas en la app', 'Checkup básico anual', 'Limpieza dental anual', 'Ambulancia terrestre para urgencias', 'Descuentos en medicamentos y laboratorio'] },
+                    { t: 'En el hospital', items: ['Hospitalización y cirugía por accidente o enfermedad', 'Cuarto privado estándar, quirófano y terapia intensiva', 'Honorarios médicos según tabulador', 'Medicamentos, estudios e insumos durante la estancia', 'Prótesis derivadas de un padecimiento cubierto'] },
+                    { t: 'Coberturas adicionales', items: ['Maternidad y complicaciones del embarazo', 'Recién nacido sano y padecimientos congénitos de hijos nacidos en la vigencia', 'Tratamientos de alto costo fuera del hospital', 'Emergencias en el extranjero (DOS y Plus)', 'Muerte accidental y gastos funerarios'] }
                   ].map((bloque) => (
                     <div key={bloque.t} className="p-5 rounded-2xl bg-[#F4F9FF] border border-emerald-100 shadow-xs">
                       <h4 className="font-black text-slate-900 text-sm mb-3">{bloque.t}</h4>
@@ -941,12 +1068,12 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 </div>
 
                 <div>
-                  <h3 className="font-black text-slate-900 text-lg mb-4">Cobertura de maternidad</h3>
+                  <h3 className="font-black text-slate-900 text-lg mb-4">Maternidad</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {[
-                      { t: 'Parto normal', d: 'Suma asegurada de 20 UMAM' },
-                      { t: 'Cesárea', d: 'Suma asegurada de 25 UMAM' },
-                      { t: 'Complicaciones del embarazo', d: 'Suma asegurada de $1 millón de pesos' }
+                      { t: 'Parto natural', d: 'Hasta 20 UMAM' },
+                      { t: 'Cesárea', d: 'Hasta 25 UMAM' },
+                      { t: 'Complicaciones del embarazo', d: 'Hasta $1,000,000' }
                     ].map((m) => (
                       <div key={m.t} className="p-5 rounded-2xl border border-slate-200 text-center">
                         <p className="font-bold text-slate-900 text-sm">{m.t}</p>
@@ -954,10 +1081,11 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       </div>
                     ))}
                   </div>
+                  <p className="text-[11px] text-slate-500 mt-3">Aplica para la asegurada titular cuando el embarazo inicia después del primer mes de vigencia continua.</p>
                 </div>
 
                 <div>
-                  <h3 className="font-black text-slate-900 text-lg mb-4">Más beneficios</h3>
+                  <h3 className="font-black text-slate-900 text-lg mb-4">Más beneficios de la membresía</h3>
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {MAS_BENEFICIOS.map((b) => (
                       <li key={b} className="flex items-start gap-2 text-xs sm:text-sm text-slate-700">
@@ -966,20 +1094,19 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       </li>
                     ))}
                   </ul>
-                  <p className="text-[11px] text-slate-500 mt-3">Tarifas de consulta según el tabulador del manual de tu Seguro Médico Inteligente. Aplican términos y condiciones.</p>
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { t: 'Preexistencias', d: 'No se cubren padecimientos preexistentes, declarados o no declarados.' },
-                  { t: 'Primeros 30 días', d: 'La póliza no cubre enfermedades originadas en los primeros 30 días de vigencia. Los accidentes sí están cubiertos desde el inicio.' },
-                  { t: 'Embarazo: 30 días', d: 'Periodo de espera de 30 días para la gestación del embarazo.' },
-                  { t: 'Dos años', d: 'Amígdalas y/o adenoides, padecimientos anorrectales, circuncisiones, litiasis del aparato genitourinario, hernias, columna vertebral, tratamientos quirúrgicos u oncológicos del piso perineal y genitales, padecimientos prostáticos, vesícula y vías biliares, tumoraciones mamarias, insuficiencia venosa, rodilla, cáncer, padecimientos cardiovasculares (excepto recién nacidos dentro de la colectividad), padecimientos ortopédicos, hallux valgus (juanetes) y enfermedades ácido-pépticas, incluido el reflujo gastroesofágico.' },
-                  { t: 'Cinco años', d: 'Síndrome de Inmunodeficiencia Adquirida (SIDA) o seropositividad y cualquier padecimiento de transmisión sexual; aplica también para recién nacidos dentro de la colectividad.' },
-                  { t: 'Senos paranasales', d: 'Sin periodo de espera, pero solo se cubren en accidentes, con 20% de coaseguro y $40,000 de deducible.' },
-                  { t: 'Indemnizaciones del Plan Plus', d: '12 horas para renta diaria por accidente, 24 horas para renta diaria por enfermedad y 90 días para diagnóstico de cáncer.' },
-                  { t: 'Dictamen y tabuladores', d: 'Todo evento lo evalúa y aprueba el área de dictamen antes del pago. Los médicos pueden cambiar sus tarifas; si el hospital te pide firmar que pagarás una diferencia, contacta a Mutuus antes de firmar.' }
+                  { t: 'Preexistencias', d: 'Nunca se cubren: todo padecimiento con diagnóstico, síntomas o tratamiento anterior a la contratación queda fuera, se haya declarado o no.' },
+                  { t: 'Primeros 30 días', d: 'No se cubren enfermedades que inicien durante el primer mes de vigencia. Los accidentes sí se cubren desde el inicio.' },
+                  { t: 'Maternidad: 1 mes', d: 'El embarazo debe iniciar después de 30 días de vigencia continua.' },
+                  { t: 'Dos años', d: 'Amígdalas y adenoides, padecimientos anorrectales, circuncisión, cálculos del aparato genitourinario, hernias, columna vertebral, piso perineal y genitales, próstata, vesícula y vías biliares, tumores mamarios, insuficiencia venosa, padecimientos cardiovasculares y ortopédicos, juanetes, enfermedad ácido-péptica (incluido el reflujo) y cáncer. Si alguno llega como emergencia, se cubre la emergencia.' },
+                  { t: 'Cinco años', d: 'VIH/SIDA y cualquier enfermedad de transmisión sexual, incluso en recién nacidos dentro de la colectividad.' },
+                  { t: 'Indemnizaciones del Plan Plus', d: 'Renta diaria: 12 horas de hospitalización por accidente y 24 horas por enfermedad. Diagnóstico de cáncer: 90 días de carencia.' },
+                  { t: 'Nariz y senos paranasales', d: 'Solo por accidente, con el deducible de la póliza y 20% de coaseguro aunque se reporte el evento. Por enfermedad no se cubren.' },
+                  { t: 'Exclusiones principales', d: 'Estética, infertilidad, salud mental y adicciones, tratamientos experimentales, deportes profesionales o de alto riesgo, accidentes bajo efecto de alcohol o drogas, ambulancia aérea, homeopatía, quiropráctica, rehabilitación fuera del hospital y gastos personales.' }
                 ].map((item) => (
                   <div key={item.t} className="p-5 rounded-2xl bg-rose-50/50 border border-rose-100 shadow-xs flex items-start gap-3">
                     <div className="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -994,6 +1121,35 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               </div>
             )}
 
+          </div>
+        </section>
+
+        {/* ─── 7b. CONDICIONES GENERALES EN LENGUAJE CLARO ────────────────── */}
+        <section id="condiciones" className="py-20 bg-[#F4F9FF]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
+              <span className="px-3 py-1 rounded-full bg-white border border-[#CBD5E1] text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
+                Condiciones Generales
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
+                Las reglas de tu cobertura, explicadas sin letras chiquitas
+              </h2>
+              <p className="text-slate-600 text-sm sm:text-base">
+                Un resumen de las Condiciones Generales de la póliza colectiva y de las Condiciones de la Membresía (versión junio 2026). Al contratar recibes los documentos completos, que son los que rigen tu cobertura.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {CONDICIONES_GENERALES.map((c) => (
+                <div key={c.t} className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                  <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                    <FileText className="w-4 h-4 flex-shrink-0" style={{ color: primaryColor }} />
+                    {c.t}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-2 leading-relaxed">{c.d}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -1079,7 +1235,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
                   <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center mb-2">3</div>
                   <h4 className="font-bold text-xs text-slate-900">Activa tu Cobertura</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Pago anual, 12 meses con TDC o pago diferido.</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Pago anual, Flex o 12 meses con tarjeta.</p>
                 </div>
               </div>
 
@@ -1174,32 +1330,23 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   <li><a href="#planes" className="hover:text-white transition-colors">Planes y Precios</a></li>
                   <li><a href="#red-hospitalaria" className="hover:text-white transition-colors">Red de Hospitales</a></li>
                   <li><a href="#coberturas" className="hover:text-white transition-colors">Coberturas</a></li>
+                  <li><a href="#condiciones" className="hover:text-white transition-colors">Condiciones Generales</a></li>
                   <li><a href="#faq" className="hover:text-white transition-colors">Preguntas Frecuentes</a></li>
                 </ul>
               </div>
 
-              {/* Documentos Oficiales ps-mutuus.com */}
+              {/* Documentos y legal (sin enlaces al sitio de Mutuus) */}
               <div className="space-y-2">
                 <p className="font-bold text-white text-sm">Documentos y Legal</p>
                 <ul className="space-y-1.5 text-white/70">
                   <li>
-                    <a 
-                      href="https://ps-mutuus.com/Condiciones-Generales-Mutuus-MetLife.pdf" 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="hover:text-white transition-colors flex items-center gap-1"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-[#8DC63F]" /> Condiciones Generales Póliza (PDF)
+                    <a href="#condiciones" className="hover:text-white transition-colors flex items-center gap-1">
+                      <FileText className="w-3.5 h-3.5 text-[#8DC63F]" /> Condiciones Generales (resumen)
                     </a>
                   </li>
                   <li>
-                    <a 
-                      href="https://ps-mutuus.com/terminos-y-condiciones" 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="hover:text-white transition-colors flex items-center gap-1"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-[#8DC63F]" /> Términos y Condiciones Oficiales
+                    <a href="#coberturas" className="hover:text-white transition-colors flex items-center gap-1">
+                      <FileText className="w-3.5 h-3.5 text-[#8DC63F]" /> Periodos de espera y exclusiones
                     </a>
                   </li>
                   <li>
@@ -1247,7 +1394,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
             <div className="pt-8 border-t border-white/10 space-y-2 text-[11px] text-white/50 leading-relaxed">
               <p>
-                * Mutuus es una marca registrada. Comercialización y distribución autorizada a través de JIRO Agente de Seguros y Fianzas S.A. de C.V. (Clave Promotoría A-3522). El beneficio de 0 deducible y 0 coaseguro aplica solo para eventos reportados por teléfono al 55 8525 8800 o por la app móvil, en padecimientos cubiertos de acuerdo con las Condiciones Generales, y sujeto a dictamen médico. No se cubren preexistencias. Aplican periodos de espera. Precios vigentes a partir del 1 de julio de 2026.
+                * Mutuus es una marca registrada. Comercialización y distribución autorizada a través de JIRO Agente de Seguros y Fianzas S.A. de C.V. (Clave Promotoría A-3522). El beneficio de 0 deducible y 0 coaseguro aplica solo para eventos reportados antes a Mutuus por la app o por teléfono, atendidos en la red coordinada y autorizados tras dictamen médico, en padecimientos cubiertos conforme a las Condiciones Generales de la póliza colectiva de MetLife México y a las Condiciones de la Membresía. No se cubren preexistencias. Aplican periodos de espera y exclusiones. Mutuus no acepta pagos en efectivo. Precios vigentes a partir del 1 de julio de 2026.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-between pt-4 text-white/40">
                 <p>© {new Date().getFullYear()} Mutuus Salud Inteligente · Operado y Distribuido por Grupo JIRO (<a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">jiro.mx</a>). Todos los derechos reservados.</p>
