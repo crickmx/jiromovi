@@ -22,14 +22,14 @@ type ChannelType = 'email_resend' | 'whatsapp_wazzup24';
 
 const DEFAULT_HEADER = `<div style="background-color:#ffffff; border-bottom:2px solid #f0f0f0; padding:24px 32px; text-align:center; font-family:Arial,sans-serif;">
   <a href="https://movi.digital/">
-    <img src="https://movi.digital/wp-content/uploads/2025/12/moviRecurso-1.png" alt="MOVI Digital" style="max-height:56px; max-width:200px; object-fit:contain;" />
+    <img src="https://app.movi.digital/movirecurso_1.png" alt="MOVI Digital" style="max-height:56px; max-width:200px; object-fit:contain;" />
   </a>
 </div>
 <div style="background-color:#f8f9fa; height:4px; width:100%;"></div>`;
 
 const DEFAULT_FOOTER = `<div style="background-color:#f8f9fa; border-top:1px solid #e9ecef; padding:20px 32px; text-align:center; font-family:Arial,sans-serif; margin-top:0;">
   <a href="https://grupojiro.com/">
-    <img src="https://movi.digital/wp-content/uploads/elementor/thumbs/JIRO-removebg-preview-q7jqo7rw54f9czhmjfhpfn83yk55ykwwarsblzb0u8.png" alt="Grupo JIRO" style="max-height:28px; max-width:120px; opacity:0.65; object-fit:contain; display:block; margin:0 auto 10px;" />
+    <img src="https://app.movi.digital/logojiro.png" alt="Grupo JIRO" style="max-height:28px; max-width:120px; opacity:0.65; object-fit:contain; display:block; margin:0 auto 10px;" />
   </a>
   <p style="margin:0; font-size:11px; color:#9ca3af; line-height:1.6;">
     Este mensaje fue enviado automaticamente por MOVI Digital.<br/>

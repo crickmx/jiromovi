@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Info, X, MessageSquare, QrCode, Zap, Wifi, WifiOff, CircleAlert as AlertCircle, RefreshCw, Settings, Plus, Star, Send, Copy, Trash2, Tag, Pencil as Edit3, Phone, ExternalLink, User, FileText, ClipboardList } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { tokenDeSesion, SESION_EXPIRADA } from '@/lib/sesionActiva';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { type CCChannel, type CCStatus } from '@/lib/contactCenterTypes';
@@ -35,7 +36,7 @@ interface UserTemplate {
 }
 
 export default function CentroContactoUnificado() {
-  const { usuario } = useAuth();
+  const { usuario, isMasked } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ── Subtab state ─────────────────────────────────────────────────
@@ -57,6 +58,10 @@ export default function CentroContactoUnificado() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [providerConfigured, setProviderConfigured] = useState(false);
   const [providerMessage, setProviderMessage] = useState<string | null>(null);
+  // Por qué no se pudo ni preguntar al servidor (sin sesión, o "ver como").
+  // Va aparte de `providerConfigured`: antes los dos casos caían en
+  // "Servidor no configurado", que era falso.
+  const [avisoConexion, setAvisoConexion] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
   const [syncingHistory, setSyncingHistory] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
@@ -69,12 +74,22 @@ export default function CentroContactoUnificado() {
 
   // ── Edge function helper ─────────────────────────────────────────
   const callEdgeFunction = useCallback(async (action: string, extra?: Record<string, unknown>) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return null;
+    // `whatsapp-session` identifica al usuario por el JWT, y en "ver como" ese
+    // JWT sigue siendo el del admin: conectaría o mostraría SU WhatsApp con el
+    // nombre de otra persona encima.
+    if (isMasked) {
+      return { aviso: 'En "ver como" no se puede ver ni conectar el WhatsApp personal de otra persona: el servidor usa tu sesión real. Sal de la vista para usar el tuyo.' };
+    }
+    let accessToken: string;
+    try {
+      accessToken = await tokenDeSesion();
+    } catch {
+      return { aviso: SESION_EXPIRADA };
+    }
     try {
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-session`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, ...extra }),
       });
       const data = await resp.json().catch(() => null);
@@ -83,7 +98,7 @@ export default function CentroContactoUnificado() {
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'Error de red' };
     }
-  }, []);
+  }, [isMasked]);
 
   // ── Load conversations (WA only, no chat) ────────────────────────
   const loadAll = useCallback(async () => {
@@ -178,6 +193,12 @@ export default function CentroContactoUnificado() {
   // ── Load WA Personal session status ──────────────────────────────
   const loadConnectionStatus = useCallback(async () => {
     const result = await callEdgeFunction('get-status');
+    if (result?.aviso) {
+      setAvisoConexion(result.aviso);
+      setWaSession(null);
+      return;
+    }
+    setAvisoConexion(null);
     if (result) {
       setWaSession(result.session || null);
       setProviderConfigured(result.server_configured ?? result.provider_configured ?? false);
@@ -274,6 +295,12 @@ export default function CentroContactoUnificado() {
     setWaSession(prev => prev ? { ...prev, status: 'qr_pending' } : { id: '', status: 'qr_pending', phone_number: null, connected_at: null, error_message: null });
 
     const result = await callEdgeFunction('connect');
+    if (result?.aviso) {
+      setAvisoConexion(result.aviso);
+      setPolling(false);
+      setWaSession(null);
+      return;
+    }
     if (result?.qr_code) setQrCode(result.qr_code);
     if (result?.error && !result.success) {
       setProviderConfigured(result.server_configured ?? false);
@@ -408,6 +435,7 @@ export default function CentroContactoUnificado() {
             qrCode={qrCode}
             providerConfigured={providerConfigured}
             providerMessage={providerMessage}
+            avisoConexion={avisoConexion}
             polling={polling}
             waMoviActive={waMoviActive}
             syncingHistory={syncingHistory}
@@ -730,7 +758,7 @@ function ConversationsView({
 // ── Connection Sub-view ────────────────────────────────────────────────────
 
 function ConnectionView({
-  waSession, qrCode, providerConfigured, providerMessage,
+  waSession, qrCode, providerConfigured, providerMessage, avisoConexion,
   polling, waMoviActive, syncingHistory, syncResult,
   onConnect, onDisconnect, onRefresh, onSyncHistory,
 }: {
@@ -738,6 +766,7 @@ function ConnectionView({
   qrCode: string | null;
   providerConfigured: boolean;
   providerMessage: string | null;
+  avisoConexion: string | null;
   polling: boolean;
   waMoviActive: boolean;
   syncingHistory: boolean;
@@ -775,7 +804,17 @@ function ConnectionView({
         </div>
 
         {/* WA Personal status */}
-        {!providerConfigured && (
+        {avisoConexion ? (
+          <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">WA Personal no disponible</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{avisoConexion}</p>
+              </div>
+            </div>
+          </div>
+        ) : !providerConfigured && (
           <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 p-4">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -810,7 +849,7 @@ function ConnectionView({
 
           <div className="flex flex-wrap items-center gap-3">
             {!isConnected && (
-              <button onClick={onConnect} disabled={!providerConfigured}
+              <button onClick={onConnect} disabled={!providerConfigured || !!avisoConexion}
                 className="flex items-center gap-2 px-5 py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-neutral-300 disabled:dark:bg-neutral-700 text-white disabled:text-neutral-500 rounded-xl text-sm font-medium transition-colors">
                 <QrCode className="w-4 h-4" />
                 {isQrPending || isConnecting ? 'Reintentar' : 'Conectar WhatsApp'}

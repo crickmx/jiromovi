@@ -1443,7 +1443,7 @@ export default function PaginaPublicaAsesor() {
                   style={{ background: `linear-gradient(150deg, ${createColorVariant(primaryColor, 0.05)} 0%, ${createColorVariant(secondaryColor, 0.07)} 100%)` }}
                 >
                   <img
-                    src="https://movi.digital/wp-content/uploads/2025/02/seguwallet-movidigital.png"
+                    src="/seguwallet-logo.png"
                     alt="Seguwallet app"
                     loading="lazy"
                     className="w-full max-w-[200px] lg:max-w-[240px] object-contain hover:scale-105 transition-transform duration-500"

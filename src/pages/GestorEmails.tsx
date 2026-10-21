@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { tokenDeSesion } from '../lib/sesionActiva';
 import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature, stripExistingSignature } from '../lib/emailSignatureUtils';
 import { Mail, Send, FileText, Trash2, CircleAlert as AlertCircle, Inbox, Search, RefreshCw, Paperclip, ChevronLeft, ChevronRight, Settings, Plus, Archive, MailOpen, Eye, EyeOff, FolderOpen, X, ArrowLeft, Reply, ReplyAll, Forward, Download, ChevronDown, ChevronUp, ClipboardList, LayoutList, ContactRound, ExternalLink, Save } from 'lucide-react';
@@ -77,15 +78,14 @@ function getFolderIcon(path: string) {
 // ── API Helper ──────────────────────────────────────────────────────
 
 async function callWebmail(action: string, params: Record<string, unknown> = {}): Promise<any> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('No hay sesion activa');
+  const accessToken = await tokenDeSesion();
 
   const resp = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ionos-webmail`,
     {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ action, ...params }),
@@ -153,7 +153,7 @@ function friendlyRoundcubeError(code?: string): string {
 // ── Main Component ──────────────────────────────────────────────────
 
 export function GestorEmails() {
-  const { usuario } = useAuth();
+  const { usuario, isMasked } = useAuth();
 
   const [hasConfig, setHasConfig] = useState<boolean | null>(null);
   const [configEmail, setConfigEmail] = useState('');
@@ -221,7 +221,9 @@ export function GestorEmails() {
   }, [usuario?.id]);
 
   const checkConfig = async () => {
-    if (!usuario) return;
+    // Con la máscara no se carga nada: el servidor de correo ve la sesión REAL
+    // del admin y abriría su buzón con el nombre de la persona enmascarada.
+    if (!usuario || isMasked) return;
     const { data } = await supabase
       .from('email_configuraciones')
       .select('email')
@@ -377,6 +379,10 @@ export function GestorEmails() {
   const displayMessages = searchResults ?? messages;
 
   // ── Setup / Loading screens ────────────────────────────────────────
+  if (isMasked) {
+    return <AvisoCorreoEnMascara nombre={usuario?.nombre_completo || usuario?.nombre || 'este usuario'} />;
+  }
+
   if (showSetup || hasConfig === false) {
     return <SetupScreen onSuccess={() => { setShowSetup(false); checkConfig(); }} onClose={() => setShowSetup(false)} />;
   }
@@ -1136,6 +1142,27 @@ interface ConfiguredAccount {
   email: string;
   nombre_remitente: string | null;
   estado_conexion: string | null;
+}
+
+// El correo vive en el edge function `ionos-webmail`, que identifica al usuario
+// por el JWT del navegador. En "ver como" ese JWT sigue siendo el del admin, así
+// que mostrar el buzón —o configurarlo— actuaría sobre la cuenta del admin con
+// el nombre de otra persona encima. Mejor decirlo que hacerlo mal.
+function AvisoCorreoEnMascara({ nombre }: { nombre: string }) {
+  return (
+    <div className="h-full flex items-start justify-center bg-neutral-50 dark:bg-neutral-900 p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-lg max-w-md w-full p-8 my-auto text-center">
+        <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-4">
+          <EyeOff className="w-7 h-7 text-amber-600" />
+        </div>
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Correo no disponible en "ver como"</h2>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+          El correo se abre con tu sesión real, no con la de {nombre}. Aquí no se puede ver ni configurar su buzón.
+          Sal de la vista para usar tu correo.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function SetupScreen({ onSuccess, onClose }: { onSuccess: () => void; onClose?: () => void }) {
