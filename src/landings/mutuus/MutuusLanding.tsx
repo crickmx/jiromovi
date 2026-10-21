@@ -32,21 +32,23 @@ import {
 
 export const MUTUUS_PORTAL_URL = 'https://selfservice.psmutuus.com/agente/A-3522/promo/A-3522';
 
-// ─── LOGO MUTUUS OFICIAL (copia local del archivo oficial) ─────────────────
-export function MutuusOfficialLogo({ className = "h-11 w-auto", dark = false }: { className?: string; dark?: boolean }) {
+// ─── LOGO AGENTE MUTUUS ──────────────────────────────────────────────────────
+// El manual de marca de Mutuus no permite que un intermediario use el logotipo ni
+// el isotipo de Mutuus de forma que parezca el sitio oficial: va el de Agente Mutuus.
+export function AgenteMutuusLogo({ className = "h-11 w-auto" }: { className?: string }) {
   return (
     <img
-      src="/brand/mutuus/logo-mutuus-oficial.svg"
-      alt="Mutuus Salud Inteligente"
+      src="/brand/mutuus/logo-agente-mutuus.png"
+      alt="Agente Mutuus · JIRO Agente de Seguros y Fianzas"
       className={className}
-      style={{
-        objectFit: 'contain',
-        filter: dark ? 'brightness(0) invert(1)' : 'none'
-      }}
+      style={{ objectFit: 'contain' }}
       loading="eager"
     />
   );
 }
+
+// Leyenda que pide el manual de marca de Mutuus para comunicación de terceros.
+export const LEYENDA_TERCERO = 'Prosalud Mutuus SC de RL de CV. Marca Registrada. La información contenida en este sitio no refleja la opinión y/o valores de la compañía en virtud de que fue emitida por un tercero ajeno a ella.';
 
 export interface LandingCustomization {
   heroTitle?: string;
@@ -208,6 +210,16 @@ const MAS_BENEFICIOS = [
   'Cirugía de cataratas: un evento por ojo'
 ];
 
+// ─── Periodos de espera (Condiciones Generales v06.2026) ─────────────────────
+const PERIODOS_ESPERA = [
+  { plazo: '30 días', que: 'Enfermedades en general', detalle: 'No se cubren las enfermedades que inicien durante el primer mes de vigencia. Los accidentes están cubiertos desde el primer día.' },
+  { plazo: '1 mes', que: 'Maternidad, complicaciones del embarazo y recién nacido sano', detalle: 'El embarazo debe comenzar después de 30 días de vigencia continua.' },
+  { plazo: '2 años', que: 'Padecimientos específicos', detalle: 'Amígdalas y adenoides, padecimientos anorrectales, circuncisión, cálculos del aparato genitourinario, hernias, columna vertebral, piso perineal y genitales, próstata, vesícula y vías biliares, tumores mamarios, insuficiencia venosa, padecimientos cardiovasculares y ortopédicos, juanetes, enfermedad ácido-péptica (incluido el reflujo) y cáncer.' },
+  { plazo: '5 años', que: 'VIH/SIDA y enfermedades de transmisión sexual', detalle: 'Aplica también a recién nacidos dentro de la colectividad.' },
+  { plazo: '90 días', que: 'Indemnización por diagnóstico de cáncer (Plan Plus)', detalle: 'El diagnóstico debe ocurrir después de los primeros 90 días de vigencia.' },
+  { plazo: '12 y 24 horas', que: 'Renta diaria por hospitalización (Plan Plus)', detalle: 'Se paga a partir de 12 horas de hospitalización por accidente y de 24 horas por enfermedad.' }
+];
+
 // ─── Condiciones Generales en lenguaje claro ─────────────────────────────────
 // Resumen de las Condiciones Generales de la póliza colectiva (MetLife, v06.2026) y
 // de las Condiciones de la Membresía (v06.2026). Ante cualquier diferencia mandan
@@ -283,7 +295,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
   const heroSubtitle = customization?.heroSubtitle || 'Atiéndete en hospitales privados de la red Mutuus sin pagar deducible ni coaseguro, con una suma asegurada de $1 o $2 millones de pesos por persona que se renueva cada año, y usa telemedicina, ambulancia, checkup y limpieza dental desde el primer día.';
   const badgeText = customization?.badgeText || 'Sin deducible · Sin coaseguro';
   const primaryColor = customization?.primaryColor || '#0047BA';
-  const accentColor = customization?.accentColor || '#8DC63F';
+  const accentColor = customization?.accentColor || '#AED43A';
 
   const allFaqs = customization?.customFaqs && customization.customFaqs.length > 0 
     ? [...customization.customFaqs, ...DEFAULT_FAQS] 
@@ -296,7 +308,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
     <>
       <Helmet>
         <html lang="es-MX" />
-        <title>Seguro Médico Inteligente Mutuus | Cobertura de Gastos Médicos Mayores y Menores sin Deducible</title>
+        <title>Seguro Médico Inteligente Mutuus | JIRO, Agente Autorizado</title>
         <meta name="description" content="Seguro Médico Inteligente Mutuus: Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Red de más de 500 hospitales en México, más de 110 con pago directo." />
         <meta name="keywords" content="Mutuus seguro gastos medicos, seguro cero deducible mexico, seguro medico sin coaseguro, telemedicina 24/7 mexico, seguro hospitalario pago directo, membresia de salud mutuus, seguro medico inteligente mutuus" />
         <link rel="canonical" href="https://mutuus.mx/" />
@@ -304,11 +316,11 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         {/* Open Graph Social Card */}
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="es_MX" />
-        <meta property="og:site_name" content="Mutuus Salud Inteligente" />
+        <meta property="og:site_name" content="JIRO · Agente Mutuus" />
         <meta property="og:title" content="Seguro Médico Inteligente Mutuus | Sin Deducible ni Coaseguro" />
         <meta property="og:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Más de 500 hospitales en red y telemedicina 24/7 desde el primer día." />
         <meta property="og:url" content="https://mutuus.mx/" />
-        <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=1" />
+        <meta property="og:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=2" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         
@@ -316,7 +328,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Seguro Médico Inteligente Mutuus | Gastos Médicos Mayores y Menores" />
         <meta name="twitter:description" content="Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Más de 500 hospitales en red en México." />
-        <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=1" />
+        <meta name="twitter:image" content="https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=2" />
         
         {/* Schema.org JSON-LD */}
         <script type="application/ld+json">
@@ -325,7 +337,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             "@type": "Product",
             "name": "Seguro Médico Inteligente Mutuus",
             "description": "Cobertura de Gastos Médicos Mayores y Menores, sin deducible ni coaseguro. Operado por Grupo JIRO.",
-            "image": "https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=1",
+            "image": "https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=2",
             "brand": {
               "@type": "Brand",
               "name": "Mutuus Salud Inteligente"
@@ -362,13 +374,24 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         } as React.CSSProperties}
       >
 
-        {/* ─── 1. HEADER STICKY (LOGOTIPO OFICIAL MUTUUS & MENÚ ELEGANTE) ── */}
+        {/* ─── 0. BARRA DE AUTORÍA: sitio de un agente autorizado, no de Mutuus ─ */}
+        <div className="bg-[#002769] text-white text-[11px] sm:text-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-center">
+            Sitio de <strong>JIRO Agente de Seguros y Fianzas</strong>, agente autorizado para comercializar Mutuus. No es el sitio oficial de Mutuus.
+          </div>
+        </div>
+
+        {/* ─── 1. HEADER STICKY (LOGO AGENTE MUTUUS & MENÚ) ───────────────── */}
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
             
-            {/* Logotipo Oficial Mutuus desde CDN Oficial */}
-            <a href="#inicio" className="flex items-center group py-1 flex-shrink-0" aria-label="Mutuus Salud Inteligente Inicio">
-              <MutuusOfficialLogo className="h-9 sm:h-11 w-auto transition-transform group-hover:scale-102" />
+            {/* Logo Agente Mutuus + autoría de JIRO */}
+            <a href="#inicio" className="flex items-center gap-3 group py-1 flex-shrink-0" aria-label="Inicio · JIRO, Agente Mutuus">
+              <AgenteMutuusLogo className="h-10 sm:h-12 w-auto" />
+              <span className="hidden sm:flex flex-col border-l border-slate-200 pl-3 leading-tight">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Un sitio de</span>
+                <span className="text-sm font-bold text-[#003896]">JIRO</span>
+              </span>
             </a>
 
             {/* Menú de Navegación Desktop con UX Pulida y Espaciada */}
@@ -533,7 +556,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 text-xs font-semibold text-slate-500 pt-1">
                   <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-full font-bold">
                     <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
-                    Respaldados por MetLife
+                    Agente autorizado Mutuus
                   </span>
                   <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full font-bold">
                     <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
@@ -597,7 +620,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     <div className="flex items-center justify-between">
                       <div 
                         className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold border border-white/10"
-                        style={{ color: '#8DC63F' }}
+                        style={{ color: '#AED43A' }}
                       >
                         <Hospital className="w-4 h-4" />
                         <span>Ejemplo: Manuel requiere cirugía</span>
@@ -622,7 +645,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
                       <div 
                         className="p-4 rounded-2xl text-slate-900 border flex items-center justify-between shadow-xl"
-                        style={{ backgroundColor: '#8DC63F', borderColor: '#8DC63F' }}
+                        style={{ backgroundColor: '#AED43A', borderColor: '#AED43A' }}
                       >
                         <div>
                           <p className="text-xs font-bold text-slate-800">Con Mutuus</p>
@@ -641,7 +664,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-4 px-6 rounded-full font-black text-sm text-slate-900 transition-all shadow-xl hover:scale-102 active:scale-98 cursor-pointer text-center flex items-center justify-center gap-2"
-                      style={{ backgroundColor: '#8DC63F' }}
+                      style={{ backgroundColor: '#AED43A' }}
                     >
                       <span>Contratar Membresía en Línea</span>
                       <ExternalLink className="w-4 h-4 text-slate-900" />
@@ -700,7 +723,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               {/* Cifras de la presentación oficial */}
               <div className="lg:col-span-6 flex justify-center">
                 <div className="relative w-full max-w-lg p-6 sm:p-8 rounded-3xl bg-slate-900 text-white shadow-2xl border border-slate-800 overflow-hidden">
-                  <p className="text-xs font-bold text-[#8DC63F] uppercase tracking-wider">Experiencia Mutuus</p>
+                  <p className="text-xs font-bold text-[#AED43A] uppercase tracking-wider">Experiencia Mutuus</p>
                   <div className="py-6 grid grid-cols-3 gap-3 text-center">
                     <div>
                       <p className="text-2xl sm:text-3xl font-black">+13,470</p>
@@ -716,7 +739,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     </div>
                   </div>
                   <p className="text-xs text-white/80 leading-relaxed border-t border-white/10 pt-4">
-                    Con 8 años de experiencia y respaldados por MetLife, más de 10,000 personas en México ya tienen acceso a atención médica privada; el 88% nunca había tenido un seguro de Gastos Médicos Mayores.
+                    Con 8 años de experiencia, más de 10,000 personas en México ya tienen acceso a atención médica privada; el 88% nunca había tenido un seguro de Gastos Médicos Mayores.
                   </p>
                   <div className="pt-4 flex justify-end">
                     <a
@@ -724,7 +747,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-5 py-2.5 rounded-full text-xs font-black text-slate-900 transition-all shadow-md active:scale-95"
-                      style={{ backgroundColor: '#8DC63F' }}
+                      style={{ backgroundColor: '#AED43A' }}
                     >
                       Contratar en línea
                     </a>
@@ -1137,6 +1160,29 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               </p>
             </div>
 
+            {/* Periodos de espera: definición + tabla */}
+            <div className="mb-10 p-6 sm:p-8 rounded-3xl bg-white border-2 border-slate-200/80 shadow-md">
+              <h3 className="text-lg sm:text-xl font-semibold uppercase tracking-wide text-[#003896] flex items-center gap-2">
+                <Clock className="w-5 h-5 flex-shrink-0" />
+                Periodos de espera
+              </h3>
+              <p className="text-sm text-slate-600 mt-3 leading-relaxed">
+                Un periodo de espera es el tiempo que debe pasar, sin interrupciones, desde que inicia tu membresía para que ciertos padecimientos queden cubiertos. Se cuenta desde tu alta en Mutuus: la antigüedad en otros seguros no se reconoce. Si un padecimiento que aún está en espera llega como emergencia, se cubre la atención de la emergencia; el tratamiento posterior sí debe cumplir el plazo. Los servicios de telemedicina, ambulancia, checkup y limpieza dental no tienen espera.
+              </p>
+              <div className="mt-6 divide-y divide-slate-100">
+                {PERIODOS_ESPERA.map((pe) => (
+                  <div key={pe.que} className="py-4 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 sm:gap-6">
+                    <span className="font-semibold text-[#003896] text-sm">{pe.plazo}</span>
+                    <div>
+                      <p className="font-semibold text-slate-900 text-sm">{pe.que}</p>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">{pe.detalle}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-4">Las preexistencias no se cubren nunca, sin importar el tiempo que lleves con tu membresía.</p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {CONDICIONES_GENERALES.map((c) => (
                 <div key={c.t} className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
@@ -1203,7 +1249,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
         {/* ─── 9. CTA FINAL CON ENLACE DIRECTO AL PORTAL DE REGISTRO ───────── */}
         <section id="contacto" className="py-20 text-white" style={{ backgroundColor: primaryColor }}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-3xl p-8 sm:p-14 text-slate-900 shadow-2xl border-4 border-[#8DC63F] text-center space-y-8">
+            <div className="bg-white rounded-3xl p-8 sm:p-14 text-slate-900 shadow-2xl border-4 border-[#AED43A] text-center space-y-8">
               
               <div className="space-y-3 max-w-2xl mx-auto">
                 <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black uppercase tracking-wider">
@@ -1244,7 +1290,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-5 rounded-full font-black text-base text-slate-900 transition-all shadow-xl hover:scale-105 active:scale-95 cursor-pointer"
-                  style={{ backgroundColor: '#8DC63F' }}
+                  style={{ backgroundColor: '#AED43A' }}
                 >
                   <CreditCard className="w-5 h-5 text-slate-900" />
                   <span>Ingresar al Portal y Contratar Ahora</span>
@@ -1275,13 +1321,13 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 />
                 <div>
                   <div className="flex items-center justify-center sm:justify-start gap-2">
-                    <p className="text-white font-black text-sm">Operado y Distribuido por Grupo JIRO</p>
-                    <span className="px-2 py-0.5 rounded-full bg-[#8DC63F]/20 text-[#8DC63F] text-[10px] font-black uppercase">
+                    <p className="text-white font-black text-sm">Sitio operado por Grupo JIRO · Agente Mutuus</p>
+                    <span className="px-2 py-0.5 rounded-full bg-[#AED43A]/20 text-[#AED43A] text-[10px] font-black uppercase">
                       Promotoría A-3522
                     </span>
                   </div>
                   <p className="text-white/70 text-xs mt-1">
-                    JIRO Agente de Seguros y Fianzas S.A. de C.V. · Socio Comercial y Distribuidor Oficial de Mutuus Salud Inteligente.
+                    JIRO Agente de Seguros y Fianzas S.A. de C.V. · Agente autorizado para comercializar las membresías Mutuus. Este no es un sitio oficial de Mutuus.
                   </p>
                 </div>
               </div>
@@ -1293,7 +1339,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                   className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition inline-flex items-center gap-1.5 border border-white/10"
                 >
                   <span>Conocer Grupo JIRO</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-[#8DC63F]" />
+                  <ExternalLink className="w-3.5 h-3.5 text-[#AED43A]" />
                 </a>
               </div>
             </div>
@@ -1302,7 +1348,9 @@ export default function MutuusLanding({ customization }: { customization?: Landi
               
               {/* Mutuus Col */}
               <div className="space-y-3">
-                <MutuusOfficialLogo className="h-10 w-auto" dark={true} />
+                <span className="inline-block bg-white rounded-xl px-3 py-2">
+                  <AgenteMutuusLogo className="h-10 w-auto" />
+                </span>
                 <p className="text-white/70 text-xs leading-relaxed mt-2">
                   Seguro Médico Inteligente sin deducible ni coaseguro, con una red de más de 500 hospitales en todo México.
                 </p>
@@ -1311,10 +1359,10 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                     href={MUTUUS_PORTAL_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] font-bold text-[#8DC63F] underline hover:text-white inline-flex items-center gap-1"
+                    className="text-[11px] font-bold text-[#AED43A] underline hover:text-white inline-flex items-center gap-1"
                   >
                     <LogIn className="w-3 h-3" />
-                    <span>Portal Oficial de Registro y Emisión</span>
+                    <span>Contratación en línea</span>
                   </a>
                 </div>
               </div>
@@ -1339,12 +1387,12 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                 <ul className="space-y-1.5 text-white/70">
                   <li>
                     <a href="#condiciones" className="hover:text-white transition-colors flex items-center gap-1">
-                      <FileText className="w-3.5 h-3.5 text-[#8DC63F]" /> Condiciones Generales (resumen)
+                      <FileText className="w-3.5 h-3.5 text-[#AED43A]" /> Condiciones Generales (resumen)
                     </a>
                   </li>
                   <li>
                     <a href="#coberturas" className="hover:text-white transition-colors flex items-center gap-1">
-                      <FileText className="w-3.5 h-3.5 text-[#8DC63F]" /> Periodos de espera y exclusiones
+                      <FileText className="w-3.5 h-3.5 text-[#AED43A]" /> Periodos de espera y exclusiones
                     </a>
                   </li>
                   <li>
@@ -1364,7 +1412,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
                       rel="noopener noreferrer" 
                       className="hover:text-white transition-colors flex items-center gap-1 text-white/90"
                     >
-                      <Building2 className="w-3.5 h-3.5 text-[#8DC63F]" /> Corporativo Grupo JIRO (jiro.mx)
+                      <Building2 className="w-3.5 h-3.5 text-[#AED43A]" /> Corporativo Grupo JIRO (jiro.mx)
                     </a>
                   </li>
                 </ul>
@@ -1392,10 +1440,13 @@ export default function MutuusLanding({ customization }: { customization?: Landi
 
             <div className="pt-8 border-t border-white/10 space-y-2 text-[11px] text-white/50 leading-relaxed">
               <p>
-                * Mutuus es una marca registrada. Comercialización y distribución autorizada a través de JIRO Agente de Seguros y Fianzas S.A. de C.V. (Clave Promotoría A-3522). El beneficio de 0 deducible y 0 coaseguro aplica solo para eventos reportados antes a Mutuus por la app o por teléfono, atendidos en la red coordinada y autorizados tras dictamen médico, en padecimientos cubiertos conforme a las Condiciones Generales de la póliza colectiva de MetLife México y a las Condiciones de la Membresía. No se cubren preexistencias. Aplican periodos de espera y exclusiones. Mutuus no acepta pagos en efectivo. Precios vigentes a partir del 1 de julio de 2026.
+                {LEYENDA_TERCERO}
+              </p>
+              <p>
+                * Comercialización autorizada a través de JIRO Agente de Seguros y Fianzas S.A. de C.V. (Clave Promotoría A-3522). El beneficio de 0 deducible y 0 coaseguro aplica solo para eventos reportados antes a Mutuus por la app o por teléfono, atendidos en la red coordinada y autorizados tras dictamen médico, en padecimientos cubiertos conforme a las Condiciones Generales de la póliza colectiva de MetLife México y a las Condiciones de la Membresía. No se cubren preexistencias. Aplican periodos de espera y exclusiones. Mutuus no acepta pagos en efectivo. Precios vigentes a partir del 1 de julio de 2026.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-between pt-4 text-white/40">
-                <p>© {new Date().getFullYear()} Mutuus Salud Inteligente · Operado y Distribuido por Grupo JIRO (<a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">jiro.mx</a>). Todos los derechos reservados.</p>
+                <p>© {new Date().getFullYear()} JIRO Agente de Seguros y Fianzas · Agente Mutuus (<a href="https://www.grupojiro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">jiro.mx</a>). Todos los derechos reservados.</p>
                 <p>Aviso de Privacidad protegido por Ley Federal de Protección de Datos Personales (LFPDPPP)</p>
               </div>
             </div>
@@ -1410,7 +1461,7 @@ export default function MutuusLanding({ customization }: { customization?: Landi
             rel="noopener noreferrer"
             aria-label="Contratar en Línea"
             className="px-6 py-4 rounded-full text-slate-900 font-black text-sm shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 border-2 border-white"
-            style={{ backgroundColor: '#8DC63F' }}
+            style={{ backgroundColor: '#AED43A' }}
           >
             <CreditCard className="w-5 h-5 text-slate-900" />
             <span>Contratar en Línea</span>

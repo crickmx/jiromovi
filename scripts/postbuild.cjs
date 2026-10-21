@@ -22,9 +22,9 @@ if (fs.existsSync(indexPath)) {
     console.error("❌ index.html no trae las marcas meta-sitio: no se pudo generar mutuus.html");
     process.exit(1);
   }
-  const titulo = "Seguro Médico Inteligente Mutuus | Sin deducible ni coaseguro";
-  const descripcion = "Gastos médicos mayores y menores sin deducible ni coaseguro, con una red de más de 500 hospitales en México. Planes UNO, DOS y Plus.";
-  const imagen = "https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=1";
+  const titulo = "Seguro Médico Inteligente Mutuus | JIRO, Agente Autorizado";
+  const descripcion = "Gastos médicos mayores y menores sin deducible ni coaseguro, con una red de más de 500 hospitales en México. Asesoría de JIRO, agente autorizado Mutuus.";
+  const imagen = "https://mutuus.mx/brand/mutuus/og-mutuus.jpg?v=2";
   const metaMutuus = `<link rel="icon" type="image/png" sizes="32x32" href="/brand/mutuus/icon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/brand/mutuus/icon-192.png" />
     <link rel="apple-touch-icon" href="/brand/mutuus/icon-180.png" />
@@ -38,7 +38,7 @@ if (fs.existsSync(indexPath)) {
     <meta name="description" content="${descripcion}" />
     <link rel="canonical" href="https://mutuus.mx/" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Mutuus Salud Inteligente" />
+    <meta property="og:site_name" content="JIRO · Agente Mutuus" />
     <meta property="og:url" content="https://mutuus.mx/" />
     <meta property="og:title" content="${titulo}" />
     <meta property="og:description" content="${descripcion}" />
@@ -47,13 +47,13 @@ if (fs.existsSync(indexPath)) {
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Mutuus Salud Inteligente — Seguro Médico Inteligente sin deducible ni coaseguro" />
+    <meta property="og:image:alt" content="Agente Mutuus · JIRO — Seguro Médico Inteligente sin deducible ni coaseguro" />
     <meta property="og:locale" content="es_MX" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${titulo}" />
     <meta name="twitter:description" content="${descripcion}" />
     <meta name="twitter:image" content="${imagen}" />
-    <meta name="twitter:image:alt" content="Mutuus Salud Inteligente — Seguro Médico Inteligente sin deducible ni coaseguro" />
+    <meta name="twitter:image:alt" content="Agente Mutuus · JIRO — Seguro Médico Inteligente sin deducible ni coaseguro" />
     `;
   const mutuus = (html.slice(0, ini) + metaMutuus + html.slice(fin + finMarca.length))
     .replace('<html lang="es">', '<html lang="es-MX">');

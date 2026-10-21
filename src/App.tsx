@@ -120,7 +120,7 @@ function MutuusPreview() {
 function MutuusLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-10 h-10 border-[3px] border-[#8DC63F]/30 border-t-[#003896] rounded-full animate-spin" />
+      <div className="w-10 h-10 border-[3px] border-[#AED43A]/30 border-t-[#003896] rounded-full animate-spin" />
     </div>
   );
 }
