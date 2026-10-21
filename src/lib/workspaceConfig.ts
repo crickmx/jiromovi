@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Wrench, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Wrench, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet, UserPlus, FileSignature, BarChart3, Store, Package, Crown, Tags, Settings2, ListTree } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -153,13 +153,28 @@ const WORKSPACE_ADMIN: WorkspaceDefinition = {
   visibleTo: ADMIN_GERENTE,
   items: [
     { path: '/directorio', label: 'Usuarios', icon: Users, visibleTo: ADMIN_GERENTE },
-    { path: '/configuracion', label: 'Configuración', icon: SlidersHorizontal, visibleTo: ADMIN_ONLY, matchPrefix: true },
+    { path: '/configuracion', label: 'Configuración', icon: SlidersHorizontal, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/configuracion/hub', '/configuracion/catalogos'] },
+    { path: '/configuracion/hub', label: 'Configuración Avanzada', icon: Settings2, visibleTo: ADMIN_ONLY },
+    { path: '/oficinas', label: 'Oficinas', icon: Building2, visibleTo: ADMIN_ONLY },
+    { path: '/configuracion/catalogos', label: 'Catálogos', icon: ListTree, visibleTo: ADMIN_ONLY },
+    { path: '/configuracion/catalogos-web', label: 'Catálogos Web', icon: Globe, visibleTo: ADMIN_ONLY },
     { path: '/actividad-usuarios', label: 'Actividad', icon: UserCheck, visibleTo: ADMIN_ONLY },
     { path: '/carga-masiva-usuarios', label: 'Carga Masiva', icon: Upload, visibleTo: ADMIN_ONLY },
+    { path: '/admin/altas', label: 'Altas de Agentes', icon: UserPlus, visibleTo: ADMIN_ONLY },
+    { path: '/admin/registro-at/contratos', label: 'Contratos Registro AT', icon: FileSignature, visibleTo: ADMIN_ONLY },
+    { path: '/admin/gamificacion', label: 'Gamificación', icon: Trophy, visibleTo: ADMIN_ONLY },
     { path: '/admin-digital', label: 'Admin Digital', icon: LayoutTemplate, visibleTo: ADMIN_ONLY },
     { path: '/admin/importacion-masiva', label: 'Importación Masiva', icon: Database, visibleTo: ADMIN_ONLY },
     { path: '/admin/base-datos', label: 'Base de Datos', icon: HardDrive, visibleTo: ADMIN_ONLY },
     { path: '/admin/tramites', label: 'Trámites', icon: ClipboardList, visibleTo: ADMIN_ONLY, matchPrefix: true },
+    { path: '/tramites/reportes', label: 'Reportes de Trámites', icon: BarChart3, visibleTo: ADMIN_GERENTE },
+    { path: '/store/admin', label: 'MOVI Store Admin', icon: Store, visibleTo: ADMIN_ONLY },
+    { path: '/store/pedidos', label: 'Pedidos MOVI Store', icon: Package, visibleTo: ADMIN_ONLY },
+    { path: '/store/reporte', label: 'Ganancias MOVI Store', icon: TrendingUp, visibleTo: ADMIN_ONLY },
+    { path: '/mercadotecnia/premium/admin', label: 'Marketing Premium', icon: Crown, visibleTo: ADMIN_ONLY },
+    { path: '/mercadotecnia/fotos-estudio/admin', label: 'Fotos de Estudio Admin', icon: Camera, visibleTo: ADMIN_ONLY },
+    { path: '/comunicados/categorias', label: 'Categorías de Comunicados', icon: Tags, visibleTo: ADMIN_ONLY },
+    { path: '/manuales/admin', label: 'Manuales Admin', icon: BookOpen, visibleTo: ADMIN_ONLY },
     { path: '/admin/dias-no-habiles', label: 'Días No Hábiles', icon: Calendar, visibleTo: ADMIN_ONLY },
     { path: '/admin/config-jornada', label: 'Jornada Laboral', icon: Clock, visibleTo: ADMIN_ONLY },
     { path: '/comisiones', label: 'Comisiones Admin', icon: Percent, visibleTo: ADMIN_ONLY, matchPrefix: true, excludePrefixes: ['/comisiones/regimen-fiscal', '/comisiones/mapeo-vendedores'] },

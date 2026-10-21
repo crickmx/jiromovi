@@ -35,6 +35,21 @@ import {
   Brain,
   Settings,
   ChevronRight,
+  UserPlus,
+  FileSignature,
+  Trophy,
+  BarChart3,
+  Store,
+  Package,
+  TrendingUp,
+  Crown,
+  Camera,
+  Tags,
+  BookOpen,
+  Settings2,
+  Building2,
+  ListTree,
+  Globe,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { isItemVisible, WORKSPACES, type UserRole } from '../lib/workspaceConfig';
@@ -56,6 +71,9 @@ const ADMIN_MODULES: AdminModule[] = [
   { path: '/actividad-usuarios', label: 'Actividad', description: 'Registro de accesos y bitácora de actividad.', icon: UserCheck, category: 'Usuarios y Accesos', color: 'text-indigo-500' },
   { path: '/carga-masiva-usuarios', label: 'Carga Masiva', description: 'Importación por lotes de nuevos usuarios.', icon: Upload, category: 'Usuarios y Accesos', color: 'text-cyan-500' },
   { path: '/admin/mascara', label: 'Máscara de Usuario', description: 'Impersonación segura para diagnóstico.', icon: UserCog, category: 'Usuarios y Accesos', color: 'text-amber-500' },
+  { path: '/admin/altas', label: 'Altas de Agentes', description: 'Solicitudes de alta de agentes por revisar.', icon: UserPlus, category: 'Usuarios y Accesos', color: 'text-blue-500' },
+  { path: '/admin/registro-at/contratos', label: 'Contratos Registro AT', description: 'Contratos del registro de Agente Total.', icon: FileSignature, category: 'Usuarios y Accesos', color: 'text-indigo-500' },
+  { path: '/admin/gamificacion', label: 'Gamificación', description: 'Niveles, puntos y antigüedad de agentes.', icon: Trophy, category: 'Usuarios y Accesos', color: 'text-amber-500' },
 
   // ── Operaciones y Comisiones ──
   { path: '/admin/tramites', label: 'Trámites Admin', description: 'Configuración de tipos, flujos y reglas.', icon: ClipboardList, category: 'Operaciones y Comisiones', color: 'text-emerald-500' },
@@ -66,6 +84,14 @@ const ADMIN_MODULES: AdminModule[] = [
   { path: '/sicas/salud', label: 'SICAS Salud', description: 'Integración especializada de salud.', icon: HeartPulse, category: 'Operaciones y Comisiones', color: 'text-rose-500' },
   { path: '/seguwallet-admin', label: 'Seguwallet', description: 'Supervisión de clientes y pólizas app.', icon: Wallet, category: 'Operaciones y Comisiones', color: 'text-teal-600' },
   { path: '/admin/seguros-express', label: 'Seguros Express', description: 'Distribución geográfica de prospectos.', icon: Zap, category: 'Operaciones y Comisiones', color: 'text-amber-500' },
+  { path: '/tramites/reportes', label: 'Reportes de Trámites', description: 'Dashboard y reportes de trámites.', icon: BarChart3, category: 'Operaciones y Comisiones', color: 'text-emerald-500' },
+  { path: '/store/admin', label: 'MOVI Store Admin', description: 'Productos, categorías, equipos y triggers.', icon: Store, category: 'Operaciones y Comisiones', color: 'text-amber-600' },
+  { path: '/store/pedidos', label: 'Pedidos MOVI Store', description: 'Gestión y seguimiento de pedidos.', icon: Package, category: 'Operaciones y Comisiones', color: 'text-orange-500' },
+  { path: '/store/reporte', label: 'Ganancias MOVI Store', description: 'Reporte de ganancias de pedidos.', icon: TrendingUp, category: 'Operaciones y Comisiones', color: 'text-green-600' },
+  { path: '/mercadotecnia/premium/admin', label: 'Marketing Premium', description: 'Contrataciones, pagos y bitácora Premium.', icon: Crown, category: 'Operaciones y Comisiones', color: 'text-purple-500' },
+  { path: '/mercadotecnia/fotos-estudio/admin', label: 'Fotos de Estudio Admin', description: 'Sesiones y fotos de estudio de agentes.', icon: Camera, category: 'Operaciones y Comisiones', color: 'text-pink-500' },
+  { path: '/comunicados/categorias', label: 'Categorías de Comunicados', description: 'Categorías de los comunicados oficiales.', icon: Tags, category: 'Operaciones y Comisiones', color: 'text-sky-500' },
+  { path: '/manuales/admin', label: 'Manuales Admin', description: 'Alta y edición de manuales.', icon: BookOpen, category: 'Operaciones y Comisiones', color: 'text-blue-600' },
 
   // ── Inteligencia Artificial ──
   { path: '/admin/chava-inteligencia', label: 'Dashboard IA', description: 'Métricas y rendimiento de Chava IA.', icon: BrainCircuit, category: 'Inteligencia Artificial', color: 'text-sky-500' },
@@ -76,6 +102,13 @@ const ADMIN_MODULES: AdminModule[] = [
 
   // ── Sistema y Configuración ──
   { path: '/configuracion', label: 'Configuración', description: 'Ajustes globales de la plataforma.', icon: SlidersHorizontal, category: 'Sistema y Configuración', color: 'text-neutral-500' },
+  { path: '/configuracion/hub', label: 'Configuración Avanzada', description: 'Oficinas, gamificación, catálogos, SICAS y tarifas GMM.', icon: Settings2, category: 'Sistema y Configuración', color: 'text-neutral-600' },
+  { path: '/oficinas', label: 'Oficinas', description: 'Alta y edición de oficinas.', icon: Building2, category: 'Sistema y Configuración', color: 'text-indigo-500' },
+  { path: '/configuracion/catalogos', label: 'Catálogos', description: 'Catálogos generales de la plataforma.', icon: ListTree, category: 'Sistema y Configuración', color: 'text-slate-500' },
+  { path: '/configuracion/catalogos-web', label: 'Catálogos Web', description: 'Catálogos de las páginas web de agentes.', icon: Globe, category: 'Sistema y Configuración', color: 'text-cyan-500' },
+  { path: '/admin/importacion-masiva', label: 'Importación Masiva', description: 'Carga masiva al Centro Digital.', icon: Database, category: 'Sistema y Configuración', color: 'text-teal-500' },
+  { path: '/admin/transaccionales', label: 'Transaccionales', description: 'Eventos y plantillas de notificaciones.', icon: ArrowLeftRight, category: 'Sistema y Configuración', color: 'text-violet-500' },
+  { path: '/admin/diagnostico', label: 'Diagnóstico', description: 'Diagnóstico de webhooks e integraciones.', icon: SearchCode, category: 'Sistema y Configuración', color: 'text-rose-500' },
   { path: '/admin-digital', label: 'Admin Digital', description: 'Monitoreo web y conciliación.', icon: LayoutTemplate, category: 'Sistema y Configuración', color: 'text-slate-500' },
   { path: '/admin/base-datos', label: 'Base de Datos', description: 'Catálogos maestros y convenios.', icon: HardDrive, category: 'Sistema y Configuración', color: 'text-indigo-500' },
   { path: '/admin/dias-no-habiles', label: 'Días No Hábiles', description: 'Calendario de asuetos y festivos.', icon: Calendar, category: 'Sistema y Configuración', color: 'text-rose-500' },
