@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
 import { useTiposTramite } from '../hooks/useTiposTramite';
@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { subscribeResilientChannel } from '../lib/resilientRealtime';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy, MessageSquare } from 'lucide-react';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy, MessageSquare, Bot, UserRound } from 'lucide-react';
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
@@ -54,7 +54,8 @@ interface TramiteItem {
   creado_por: string | null;
   assigned_to_user_id: string | null;
   grupo_asignado_id: string | null;
-  agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null } | null;
+  agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null; es_bot?: boolean } | null;
+  creador: { es_bot?: boolean } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
   custom_estatus_label: string | null;
@@ -73,6 +74,22 @@ interface TicketTipoDB {
 }
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
+
+/** Qué mitad del tablero se está mirando. Solo aplica al Administrador. */
+type ModoTablero = 'reales' | 'bots' | 'todo';
+const MODO_TABLERO_KEY = 'tramites_modo_tablero';
+
+/**
+ * Un trámite es "de bot" si lo levantó un agente de IA o si es para uno.
+ *
+ * Se miran los dos lados a propósito: un bot que reporta un bug queda como
+ * solicitante Y como creador, pero un bot podría levantar algo a nombre de una
+ * persona (o al revés). Con un solo lado, esos trámites se irían al tablero
+ * equivocado y nadie lo notaría hasta buscarlos.
+ */
+function esDeBot(t: { agente: { es_bot?: boolean } | null; creador: { es_bot?: boolean } | null }) {
+  return t.agente?.es_bot === true || t.creador?.es_bot === true;
+}
 
 function getSlaInfo(fechaCreacion: string, slaHoras: number | null | undefined) {
   const daysOpen = Math.max(0, Math.floor((Date.now() - new Date(fechaCreacion).getTime()) / 86_400_000));
@@ -175,6 +192,17 @@ export function Tramites() {
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
   const [assignTargetId, setAssignTargetId] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'lista'>('kanban');
+
+  // Qué tablero mira el Administrador. Arranca en 'reales' a propósito: los bots
+  // son los que saturan, así que esconderlos es el estado útil por default y ver
+  // los suyos es la excepción que se pide.
+  const [modoTablero, setModoTablero] = useState<ModoTablero>(() => {
+    try {
+      const guardado = localStorage.getItem(MODO_TABLERO_KEY);
+      if (guardado === 'reales' || guardado === 'bots' || guardado === 'todo') return guardado;
+    } catch { /* ventana privada o storage bloqueado: el default sirve igual */ }
+    return 'reales';
+  });
   const [tramitesCerrados20, setTramitesCerrados20] = useState<TramiteItem[]>([]);
 
   // Estatus filtered by selected tipos (cascade)
@@ -325,7 +353,7 @@ export function Tramites() {
     try {
       let q = supabase
         .from('tickets')
-        .select(`*, agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)), responsable:assigned_to_user_id(nombre_completo), estatus:estatus_id(*), ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)), ticket_archivos(id)`)
+        .select(`*, agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre), es_bot), creador:creado_por(es_bot), responsable:assigned_to_user_id(nombre_completo), estatus:estatus_id(*), ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)), ticket_archivos(id)`)
         .is('eliminado_at', null)
         .not('cerrado_en', 'is', null)
         .gte('cerrado_en', desde.toISOString())
@@ -401,7 +429,8 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)),
+          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre), es_bot),
+          creador:creado_por(es_bot),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
@@ -476,7 +505,8 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)),
+          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre), es_bot),
+          creador:creado_por(es_bot),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
@@ -678,7 +708,25 @@ export function Tramites() {
   // - Líder (equipo, cualquier rol de sistema): todos los trámites de su equipo
   // - Agente (sistema, cliente externo): solo los propios
   // - Todos los demás: solo los propios (directamente involucrado) + trámites de sus grupos/equipos
+  useEffect(() => {
+    try { localStorage.setItem(MODO_TABLERO_KEY, modoTablero); } catch { /* da igual si no se puede guardar */ }
+  }, [modoTablero]);
+
+  // El toggle de Reales/Bots es SOLO del Administrador: es el único que ve todo
+  // y por eso el único a quien los bots le saturan el tablero. Para cualquier
+  // otro rol esto no filtra nada.
+  const pasaModoTablero = useCallback((t: TramiteItem) => {
+    if (!esRolSistemaAdmin || modoTablero === 'todo') return true;
+    return modoTablero === 'bots' ? esDeBot(t) : !esDeBot(t);
+  }, [esRolSistemaAdmin, modoTablero]);
+
   const visibleTramites = tramites.filter(tramite => {
+    // Antes que cualquier otra cosa: si el modo lo deja fuera, no existe para
+    // esta pantalla. Va aquí y no en `filteredTramites` porque las fichas de
+    // arriba (Requiere Atención, Alta Prioridad…) se cuentan de `visibleTramites`
+    // y de los filtros no se enteran — ponerlo abajo limpiaría el Kanban y
+    // dejaría los contadores saturados, que es justo lo que se vino a evitar.
+    if (!pasaModoTablero(tramite)) return false;
     if (esRolSistemaAdmin) return true;
 
     const isDirectlyInvolved =
@@ -1089,6 +1137,7 @@ export function Tramites() {
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const term = norm(searchTerm ?? '');
     return tramitesCerrados20.filter(t => {
+      if (!pasaModoTablero(t)) return false;
       const matches = (v: string | null | undefined) => norm(v ?? '').includes(term);
       const matchSearch = !term || matches(t.folio) || matches(t.instrucciones) || matches(t.poliza) || matches(t.agente?.nombre_completo) || matches(t.responsable?.nombre_completo) || matches(getTipoTramiteLabel(t.tipo_tramite));
       const matchAreas      = selectedAreas.length === 0 || selectedAreas.includes(getTipoTramiteArea(t.tipo_tramite));
@@ -1101,7 +1150,7 @@ export function Tramites() {
       const matchResponsables = selectedResponsables.length === 0 || (t.assigned_to_user_id != null && selectedResponsables.includes(t.assigned_to_user_id));
       return matchSearch && matchAreas && matchTipos && matchEstatuses && matchPrioridades && matchOficinas && matchAgentes && matchEquipos && matchResponsables;
     });
-  }, [tramitesCerrados20, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos, selectedResponsables]);
+  }, [tramitesCerrados20, pasaModoTablero, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos, selectedResponsables]);
 
   return (
     <div className="space-y-5">
@@ -1145,6 +1194,34 @@ export function Tramites() {
                 <FileText className="w-4 h-4 mr-1.5" />
                 <span className="hidden sm:inline">Formularios</span>
               </Button>
+            )}
+            {esRolSistemaAdmin && (
+              <div
+                className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden"
+                role="group"
+                aria-label="Qué trámites se muestran"
+              >
+                {([
+                  { modo: 'reales', icono: <UserRound className="w-4 h-4" />, texto: 'Reales', ayuda: 'Solo trámites de personas' },
+                  { modo: 'bots',   icono: <Bot className="w-4 h-4" />,       texto: 'Bots',   ayuda: 'Solo trámites de los agentes de IA' },
+                  { modo: 'todo',   icono: null,                              texto: 'Todo',   ayuda: 'Personas y agentes de IA juntos' },
+                ] as const).map(({ modo, icono, texto, ayuda }) => (
+                  <button
+                    key={modo}
+                    onClick={() => setModoTablero(modo)}
+                    title={ayuda}
+                    aria-pressed={modoTablero === modo}
+                    className={`flex items-center gap-1.5 px-2.5 py-2 text-xs font-semibold transition-colors ${
+                      modoTablero === modo
+                        ? 'bg-accent text-white'
+                        : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'
+                    }`}
+                  >
+                    {icono}
+                    <span className="hidden sm:inline">{texto}</span>
+                  </button>
+                ))}
+              </div>
             )}
             <div className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden">
               <button
