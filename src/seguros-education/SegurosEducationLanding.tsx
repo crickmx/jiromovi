@@ -328,19 +328,25 @@ export default function SegurosEducationLanding() {
   useEffect(() => {
     async function load() {
       try {
+        // `seguros_lessons` no tiene columna `activo` (el filtro daba 400) y
+        // la tabla de sesiones es `aula_virtual_sesiones`, no `aula_sesiones`
+        // (daba 404). Las sesiones solo las lee alguien con sesión —llevan el
+        // enlace de la sala—, así que al visitante le quedan los ejemplos.
         const [{ data: lessonsData }, { data: sessionsData }] = await Promise.all([
           supabase
             .from('seguros_lessons')
             .select('id, titulo, descripcion, miniatura_url, duracion, categorias:seguros_lesson_categories(categoria:seguros_categories(nombre))')
-            .eq('activo', true)
             .order('orden', { ascending: true })
             .limit(6),
-          supabase
-            .from('aula_sesiones')
-            .select('id, titulo, descripcion, fecha, hora_inicio, estado')
-            .in('estado', ['activa', 'programada'])
-            .order('fecha', { ascending: true })
-            .limit(4),
+          usuario
+            ? supabase
+                .from('aula_virtual_sesiones')
+                .select('id, titulo, descripcion, fecha_inicio, estado')
+                .in('estado', ['activa', 'programada'])
+                .gte('fecha_inicio', new Date().toISOString())
+                .order('fecha_inicio', { ascending: true })
+                .limit(4)
+            : Promise.resolve({ data: null }),
         ]);
 
         if (lessonsData) {
@@ -349,7 +355,20 @@ export default function SegurosEducationLanding() {
             categoria_nombre: l.categorias?.[0]?.categoria?.nombre ?? null,
           })));
         }
-        if (sessionsData) setSessions(sessionsData as AulaSession[]);
+        if (sessionsData) {
+          setSessions((sessionsData as any[]).map((s) => {
+            const inicio = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
+            const dos = (n: number) => String(n).padStart(2, '0');
+            return {
+              id: s.id,
+              titulo: s.titulo,
+              descripcion: s.descripcion ?? undefined,
+              estado: s.estado,
+              fecha: inicio ? `${inicio.getFullYear()}-${dos(inicio.getMonth() + 1)}-${dos(inicio.getDate())}` : undefined,
+              hora_inicio: inicio ? `${dos(inicio.getHours())}:${dos(inicio.getMinutes())}` : undefined,
+            };
+          }));
+        }
       } catch {
         // fail silently — landing still works without live data
       } finally {
@@ -357,7 +376,7 @@ export default function SegurosEducationLanding() {
       }
     }
     load();
-  }, []);
+  }, [usuario?.id]);
 
   function requireAuth(redirectPath?: string) {
     if (authLoading) return;
