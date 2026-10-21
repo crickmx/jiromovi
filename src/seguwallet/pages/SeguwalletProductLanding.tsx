@@ -135,7 +135,7 @@ export default function SeguwalletProductLanding() {
           content="Todas tus pólizas en un solo lugar. Consulta vigencias, descarga documentos y reporta siniestros en segundos."
         />
         <meta property="og:url" content="https://seguwallet.mx/" />
-        <meta property="og:image" content="https://seguwallet.mx/seguwallet-logo.png" />
+        <meta property="og:image" content="https://app.movi.digital/seguwallet-logo.png" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />

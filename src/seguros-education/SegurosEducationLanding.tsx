@@ -36,8 +36,10 @@ interface AulaSession {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const SE_LOGO =
-  'https://movi.digital/wp-content/uploads/elementor/thumbs/moviRecurso-10-rgqg5n2oyvobfmstl7md0o8mr5w7vjv6rsxrkauuio.png';
+// Absoluta a propósito: también va en og:image y en el JSON-LD, que los
+// buscadores leen sin resolver rutas relativas. (La de movi.digital/wp-content
+// dejó de existir junto con ese WordPress.)
+const SE_LOGO = 'https://app.movi.digital/movirecurso_11.png';
 
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
