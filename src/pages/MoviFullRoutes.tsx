@@ -345,7 +345,7 @@ export default function MoviFullRoutes() {
 
           {/* Shared profile */}
           <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
-          <Route path="/oficinas" element={<ProtectedRoute><Oficinas /></ProtectedRoute>} />
+          <Route path="/oficinas" element={<ProtectedRoute requireAdmin><Oficinas /></ProtectedRoute>} />
 
           {/* Salud Today Module */}
           <Route path="/saludtoday" element={<ProtectedRoute><SaludToday /></ProtectedRoute>} />
