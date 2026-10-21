@@ -54,6 +54,7 @@ const TiendaCatalogo = lazy(() => import('./movistore/TiendaCatalogo').then(m =>
 
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const isMoviRootDomain = HOST === 'movi.digital' || HOST === 'www.movi.digital';
 const isMutuusSite    = HOST === 'mutuus.mx' || HOST.endsWith('.mutuus.mx')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'mutuus');
 const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
@@ -107,6 +108,49 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 }
 
 // ── Per-domain apps ───────────────────────────────────────────────────────
+
+function MoviDigitalLandingApp() {
+  useEffect(() => { 
+    document.getElementById('root')?.classList.add('public-page'); 
+    return () => {
+      document.getElementById('root')?.classList.remove('public-page');
+    };
+  }, []);
+
+  return (
+    <HelmetProvider>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Landing principal de Movi en movi.digital */}
+            <Route path="/" element={<MoviProductLanding />} />
+            <Route path="/landing" element={<MoviProductLanding />} />
+            <Route path="/home" element={<MoviProductLanding />} />
+            <Route path="/movi" element={<MoviProductLanding />} />
+            <Route path="/producto" element={<MoviProductLanding />} />
+            <Route path="/ecosistema" element={<MoviProductLanding />} />
+
+            {/* Acceso a login de la plataforma */}
+            <Route path="/login" element={<MoviLogin />} />
+
+            {/* Rutas secundarias de producto */}
+            <Route path="/seguwallet" element={<SeguwalletProductLanding />} />
+            <Route path="/seguros-express" element={<SegurosExpressLanding />} />
+            <Route path="/seguros-education" element={<SegurosEducationLanding />} />
+            <Route path="/chava-agente" element={<ChavaAgenteLanding />} />
+
+            {/* Redirección de mutuus */}
+            <Route path="/mutuus" element={<RedirectToMutuusMx />} />
+            <Route path="/mutuus/*" element={<RedirectToMutuusMx />} />
+
+            {/* Fallback a la landing principal */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </HelmetProvider>
+  );
+}
 
 function MutuusApp() {
   useEffect(() => { 
@@ -433,6 +477,7 @@ function PageLoader() {
 }
 
 function App() {
+  if (isMoviRootDomain) return <MoviDigitalLandingApp />;
   if (isMutuusSite)     return <MutuusApp />;
   if (isLandingsSite)   return <LandingsApp />;
   if (isAgenteSite)     return <AgenteWebsiteApp />;
