@@ -1,14 +1,16 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-19)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-21)
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-19
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-21
 
-**`origin/main`** (beta) está en `8c903358` con todo lo de hoy. **`produccion` NO se tocó** desde el merge del 12.
+**`origin/main`** (beta) está en `a7a79450`. **`produccion` NO se tocó** desde el merge del 12.
 
-⚠️ **No queda nada por correr ni por desplegar.** Las dos migraciones del 19/10 se corrieron, `escalar-tramite` se redesplegó y beta ya tiene el código. Lo que sigue es **probar en navegador** (lista más abajo).
+⚠️ **No queda nada por correr ni por desplegar.** Las cuatro migraciones del 19/10 y las dos del 21/10 están corridas, y `main` autodespliega beta solo. Lo que sigue es **probar en navegador** (lista más abajo) y lo que depende de Christofer (ver la sección de los bots).
 
-⚠️ **Al desplegar `process-poliza-pdf` desde el dashboard van DOS archivos.** Hoy se pegó por error el código de `escalar-tramite` (que es de un solo archivo) y el dashboard se llevó `extraccionExitosa.ts`; el deploy siguiente ya solo fallaba con *"Module not found … extraccionExitosa.ts"*. Se arregla volviendo a crear el archivo en el editor, no tocando el `index.ts`:
+⚠️ **`main` autodespliega beta desde el 24/09** (job `deploy-beta` en `ci.yml`). Un push a `main` dispara build + gitleaks y, si pasan, sube `dist/` al servidor. **No hace falta Pull + Deploy en Plesk para beta**; lo que sí hay que vigilar es que nada llegue a `main` sin revisar, porque sale en vivo en minutos. `main` **no tiene protección de rama** (la API devuelve 404).
+
+⚠️ **Al desplegar `process-poliza-pdf` desde el dashboard van DOS archivos.** El 19/10 se pegó por error el código de `escalar-tramite` (que es de un solo archivo) y el dashboard se llevó `extraccionExitosa.ts`; el deploy siguiente ya solo fallaba con *"Module not found … extraccionExitosa.ts"*. Se arregla volviendo a crear el archivo en el editor, no tocando el `index.ts`:
 
 ```
 C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\process-poliza-pdf\index.ts              (482 líneas)
@@ -16,6 +18,7 @@ C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\process-poliza
 ```
 
 El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
+
 
 #### Migraciones
 
@@ -30,6 +33,8 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261019000002_avisos_tramite_por_trigger_respetan_pantalla.sql` | los avisos por trigger leen canales y destinatarios de la pantalla | ✅ corrida |
 | `20261019000003_una_sola_tabla_de_plantillas.sql` | una sola tabla de plantillas; `correo_plantillas` queda deprecada | ✅ corrida |
 | `20261019000004_resolver_unico_de_destinatarios.sql` | `resolver_destinatarios_aviso()`: un solo lugar con las reglas | ✅ corrida |
+| `20261021000001_marca_de_bot_en_usuarios.sql` | `usuarios.es_bot` — separa el tablero de Trámites del Admin | ✅ corrida |
+| `20261021000002_los_bots_no_notifican_a_personas.sql` | un trámite de bot solo le avisa a bots; el badge deja de contarlos | ✅ corrida |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
@@ -42,6 +47,7 @@ Si al abrir la Bitácora sale *"Could not find the table … in the schema cache
 - **Papelera**: mandar un trámite a la papelera. Si sale un mensaje de error, **mandarlo** — es la causa de fondo de por qué no escribía, y todavía no la sabemos.
 - **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
 - **Trámite hijo repetido**: volver a aplicar el estatus que dispara un trigger y confirmar que ahora avisa.
+- **Los bots no notifican a personas** (21/10): que un bot comente o cambie el estatus de un trámite suyo y confirmar que al Admin no le llega **ni campanita ni WhatsApp**, y que el badge del sidebar no se mueve. Verificación directa: `select position('''aviso_de_bot_para_persona''' in prosrc) > 0 from pg_proc where proname = '''enviar_notificacion_individual''';` debe dar true.
 - **Un solo motor de notificaciones** (19/10, después de correr las dos migraciones): cambiar el estatus de un trámite, dejarle un comentario y subirle un archivo, y confirmar que (a) llega UN solo aviso por cada uno, no dos, (b) por los canales que dice Admin › Transaccionales y no más, (c) a quien dicen los papeles configurados. Editar una plantilla desde la pantalla y volver a disparar el evento: el texto nuevo tiene que salir.
 - **Alta de trámite sin Solicitante** (19/10): crear una Cotización como Gerente sin elegir Solicitante. Antes tronaba con `uuid: ""`; ahora debe guardarse y quedar "Sin responsable" con el aviso a Administradores.
 
@@ -118,6 +124,130 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### 🤖 2026-10-21 — los agentes de IA son usuarios de MOVI: qué se sabe y qué falta
+
+Ricardo le pidió a Christofer crear agentes de IA que son **usuarios de MOVI reales**, con oficina y equipo, para detectar bugs. Esto es lo averiguado, porque **casi nada de ello está en el repo**.
+
+#### Quiénes son
+
+Cinco, todos en la oficina **MOVI Digital**, apellido **PRUEBAS**:
+
+| | Rol de sistema | Qué alcanza a ver |
+|---|---|---|
+| MATEO, VALERIA | Agente | solo sus propios trámites |
+| DIEGO, SOFÍA | Empleado | lo suyo + lo de sus equipos |
+| LAURA | Gerente | lo de sus equipos |
+
+Cubren los niveles de permiso a propósito. **No hay ninguno Administrador**, y ahí viven casi todas las pantallas de configuración (Transaccionales, FormBuilder, Control de Módulos, Base de Datos) — que son justo donde más ha mordido el patrón de "pantalla que guarda sin error y no hace nada". Hoy nadie las prueba.
+
+#### Lo que NO está en el repo, y se buscó a fondo
+
+`"Flujo QA"`, `"PRUEBA QA"`, `"prueba automatizada"` y el id de flujo: **0 resultados** en las 129 ramas **y** en toda la historia (`git log -S`, no solo las puntas). Ninguna rama agregó una edge function. La org `crickmx` solo tiene este repo activo. **El prompt y lo que genera los flujos QA no pasan por GitHub** — al repo solo llega el resultado de los arreglos.
+
+#### Lo que dicen los datos de la base (21/10)
+
+- **No hay cron de QA.** Los 17 jobs de `cron.job` son los de siempre.
+- **Las 5 cuentas nacieron de un golpe**: mismo `created_at` al microsegundo (`17:03:20.842114`). Un script o una llamada por API, no alta manual.
+- **Entran con sesión real** (`auth.users.last_sign_in_at` entre 18:13 y 18:41), así que pasan por RLS y permisos como cualquiera. No usan `service_role`.
+- **Lo que los mueve es una sesión, no un sistema.** El último login es de las 18:41 y los trámites siguen hasta las 21:21; los intervalos son irregulares (+7, +2, +21, +3, +2, +3, +40 min); y el texto fue cambiando durante la corrida (de *"Cotización de prueba"* a *"Flujo completo QA"* a *"#MVIKQHL5"*). Alguien iterando el script en vivo.
+
+  **Si Christofer cierra esa sesión, los bots se detienen.** Todavía no es un sistema, es una corrida.
+- **Los 8 trámites son el mismo flujo feliz** ocho veces (`cotizacion_emision_nuevo`: Valeria crea, Sofía atiende, Laura supervisa). Valida que el camino funciona, pero **no es navegar como usuario real**: así no salen parpadeos, botones muertos, etiquetas confusas ni campos que no se dejan llenar.
+
+#### GitHub: los bots NO tienen cuenta propia
+
+Primera lectura, equivocada: "los bots tienen permiso de push". **El autor del commit es texto libre y no dice nada de permisos.** Verificado contra la API (`triggering_actor`): los commits de "Claude" del 20 y 21 los empujó **`crickmx`**. Los colaboradores son cuatro personas —`crickmx` (admin), `medaunbrauni`, `Froilan-Perez-Garcia`, `dieguegue`— y ninguna es un bot.
+
+Consecuencia: **no hay push que revocar**; quitárselo sería quitárselo a Christofer. La única palanca es **proteger `main`** exigiendo PR, y marcando *"incluir administradores"* o a él no le aplica.
+
+#### Lo decidido con Ricardo (21/10)
+
+- **Los agentes dejan de arreglar código.** Solo reportan, como usuarios reales.
+- Un **agente monitor** revisa su actividad; los hallazgos van a un **registro**, y de ahí salen los reportes de bugs/mejoras/fixes. Qué se arregla lo decide Ricardo.
+- El registro es **tabla + pantalla en MOVI**, no un trámite por hallazgo: si reportan como usuarios reales van a soltar decenas al día e inundarían Trámites. Se **promueve a trámite** solo lo que valga.
+
+#### La rúbrica acordada — en qué se deben fijar
+
+| | Qué cuenta como hallazgo |
+|---|---|
+| Botones | no hace nada, no dice qué hizo, se queda en "Guardando…", el doble clic duplica |
+| Links | 404, pantalla en blanco, ancla muerta, abre fuera del sitio sin avisar |
+| Estabilidad visual | parpadeo, el contenido salta al cargar, el encabezado oscila al hacer scroll, modal recortado |
+| Claridad | etiqueta que no dice lo que el control hace, error sin decir qué hacer, instrucción ambigua |
+| Campos | requerido imposible de llenar, selector vacío, bloqueado sin decir por qué, validación que rechaza algo válido |
+| Configuración sin efecto | una pantalla que guarda sin error y no cambia nada — **el patrón #1 de este proyecto**, ya pasó cuatro veces |
+| Guardados que mienten | la tarjeta desaparece de pantalla pero la base no cambió |
+| Permisos por rol | un rol ve de más o de menos de lo que debería (es el bug de `/oficinas` que encontraron el 21) |
+
+Cada hallazgo obliga a cuatro datos: **ruta · qué esperaba · qué pasó · se repite**. Sin los cuatro, no entra al registro.
+
+#### ❌ Lo que falta, y de quién depende
+
+**De Christofer:**
+1. El script que creó las 5 cuentas a las 17:03 — ahí está cómo quedaron configuradas.
+2. El script o la sesión que genera los flujos QA, para volverlo permanente.
+3. El prompt actual.
+
+**De nosotros, en el repo:**
+4. **Apagar la línea que les ordena arreglar.** `supabase/functions/bug-reports-daily-digest/index.ts`, línea 112: *"revisa el repo real antes de confirmar una causa o **aplicar un fix**"*. Mientras esté ahí siguen arreglando aunque el prompt diga otra cosa.
+5. **Pieza 2: el registro de hallazgos** (tabla + pantalla).
+6. **Proteger `main`** con PR obligatorio, incluyendo administradores.
+
+🔴 **Bug encontrado de paso, sin arreglar:** el digest consulta `ticket_comentarios.created_at` y **esa columna no existe** (es `fecha_hora`). La consulta falla, nadie revisa el `error`, y todo reporte cerrado sale con *"Sin comentarios registrados"*. Es cambiar la palabra en dos lugares.
+
+---
+
+### ✅ 2026-10-21 — el tablero se separa en Reales / Bots / Todo
+
+Pedido de Ricardo: *"no tener saturado mi tablero de trámites de bots… ya sé que existen los filtros, pero quiero un toggle"*.
+
+**Los filtros no alcanzaban, y esa es la razón de fondo.** Las fichas de arriba (Requiere Atención, Alta Prioridad, En Riesgo, Sin Asignar) se cuentan de `visibleTramites`, **antes** de los filtros (`Tramites.tsx`, el bloque `const activos = visibleTramites.filter(...)`). Filtrar por agente o equipo limpiaba el Kanban y dejaba los contadores igual de saturados. Por eso el toggle corta **al nivel de `visibleTramites`**: con un solo punto se limpian fichas, las tres columnas, la papelera y las opciones de los propios filtros.
+
+- `usuarios.es_bot`, **una columna y no una tabla**: ser bot es un atributo de la persona. Reconocerlos por una lista de ids en el código, por su equipo o por el dominio del correo deja de ser cierto el día que alguien los mueve, y nadie se entera.
+- Un trámite es de bot si lo levantó un bot **o** si es para uno (`esDeBot`). Mirar un solo lado mandaría al tablero equivocado los que mezclan persona y agente.
+- Arranca en **Reales**, se recuerda en `localStorage`, y **solo lo ve el Administrador** — es el único que ve TODO y por eso el único a quien le satura.
+
+**Para marcar a un agente nuevo**, hasta que haya casilla en el modal de usuario:
+
+```sql
+update usuarios u set es_bot = true
+from oficinas o
+where o.id = u.oficina_id and o.nombre = 'Oficina MOVI Digital' and u.apellidos = 'PRUEBAS';
+```
+
+Va por apellido **y** oficina a propósito: si entra una persona real a esa oficina, no se vuelve bot sola.
+
+**Fuera de alcance a propósito:** en modo "Todo" no se distingue cuál tarjeta es de bot (sería un ícono), y Reportes de Trámites sigue contándolos.
+
+---
+
+### ✅ 2026-10-21 — los trámites de los bots dejan de avisarle a las personas
+
+La regla es **"un trámite de bot solo le avisa a bots"**, no "los trámites de bot no avisan". Los agentes están para ejercitar el flujo completo y las notificaciones son parte de lo que tienen que poder romper: apagarlas del todo dejaría el motor de avisos sin nadie que lo probara hasta que fallara con una persona enfrente.
+
+Se corta en **dos** lugares, porque son dos caminos que no se tocan:
+
+| Dónde | Qué cubre |
+|---|---|
+| `resolver_destinatarios_aviso` | todo lo que sale por triggers de la base (comentario, estatus, actualización, documento) + el trámite nuevo del frontend. Es el grueso, y apaga también correo y WhatsApp de la cola |
+| `enviar_notificacion_individual` | los **siete** avisos sueltos escritos a mano en `TramiteDetalle` y `NuevoTramiteModal` |
+
+**🔑 Por qué no bastaba un trigger sobre `notificaciones`:** las siete llamadas sueltas mandan **WhatsApp además de la campanita**, y el WhatsApp sale de `enviar_notificacion_individual` *después* del insert. Un trigger habría cortado la campanita y dejado salir el WhatsApp igual.
+
+**🔑 Cómo se modificó esa función sin reescribirla.** Tiene ~100 líneas. La migración lee su definición **viva** con `pg_get_functiondef`, le inserta la guarda justo después del `BEGIN` y aborta si no encuentra el ancla. Dos razones: reconstruir 100 líneas de memoria es como se cuela un error sin síntoma (ya pasó el 19/10), y la versión viva de esta base no siempre coincide con la del repo (`tickets_select_v6`, `ejecutar_recurrencias`). **Es el patrón a reusar cada vez que haya que tocar una función larga que no escribimos nosotros.**
+
+`aviso_de_bot_para_persona(user_id, accion_url)` deduce el trámite del `accion_url` (`/tramites/<uuid>`), que es el único dato que todas las llamadas traen, y **devuelve false ante cualquier duda** —sin url, otra ruta, trámite inexistente, error—: un aviso de más molesta, uno que desaparece en silencio es el que hace daño.
+
+El badge del sidebar (`get_admin_tramites_attention_count`) deja de contarlos. **Decisión de Ricardo: nunca los cuenta, aunque el toggle esté en Bots** — es un contador global y lo útil es que diga trabajo real pendiente.
+
+Para limpiar las que ya se acumularon:
+
+```sql
+delete from notificaciones n where aviso_de_bot_para_persona(n.usuario_id, n.accion_url);
+```
 
 ---
 
