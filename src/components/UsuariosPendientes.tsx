@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { USUARIO_COLUMNAS } from '../lib/usuarioColumnas';
 import { UserCheck, UserX, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Database } from '../lib/database.types';
@@ -27,14 +28,14 @@ export function UsuariosPendientes() {
     setLoading(true);
     const { data, error } = await supabase
       .from('usuarios')
-      .select('*, oficinas(nombre)')
+      .select(`${USUARIO_COLUMNAS}, oficinas(nombre)`)
       .eq('estado', 'pendiente')
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error loading pending users:', error);
     } else {
-      setUsuarios(data || []);
+      setUsuarios((data || []) as unknown as Usuario[]);
     }
     setLoading(false);
   };
@@ -44,9 +45,9 @@ export function UsuariosPendientes() {
     try {
       const { data: usuario, error: fetchError } = await supabase
         .from('usuarios')
-        .select('*')
+        .select(USUARIO_COLUMNAS)
         .eq('id', usuarioId)
-        .single();
+        .single<Usuario>();
 
       if (fetchError || !usuario) {
         throw new Error('No se pudo obtener información del usuario');
@@ -63,7 +64,8 @@ export function UsuariosPendientes() {
         nombre: usuario.nombre,
         apellidos: usuario.apellidos,
         email: usuario.email_laboral || usuario.email_personal || '',
-        telefono: usuario.telefono_movil || usuario.celular_personal || undefined,
+        // telefono_movil no existe en usuarios (siempre llegaba vacío): queda el personal, como antes.
+        telefono: usuario.celular_personal || undefined,
         userId: usuario.id,
       });
 

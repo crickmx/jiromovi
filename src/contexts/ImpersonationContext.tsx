@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 import { cargarPermisosAdicionales } from '../lib/permisosUtils';
 import { applyTheme } from '../lib/themeUtils';
+import { USUARIO_COLUMNAS } from '../lib/usuarioColumnas';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   permisosAdicionales?: string[];
@@ -113,13 +114,14 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
     if (platform === 'movi' && userId) {
       const { data, error } = await supabase
         .from('usuarios')
+        // Por columnas: un select(*) sobre usuarios truena (ver usuarioColumnas.ts).
         .select(`
-          *,
+          ${USUARIO_COLUMNAS},
           oficina:oficinas!oficina_id(id, nombre, accent_color, logo_url)
         `)
         .eq('id', userId)
         .eq('activo', true)
-        .maybeSingle();
+        .maybeSingle<Usuario>();
 
       if (error || !data) {
         console.error('[Impersonation] Error loading user:', error);

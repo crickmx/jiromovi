@@ -15,6 +15,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { Button } from '@/components/ui/button';
 import type { Database } from '../lib/database.types';
 import { syncUserTramiteTeamAssignments, puedeTenerEquiposTramite } from '../lib/tramiteTeamAssignments';
+import { USUARIO_COLUMNAS, conDatosPrivados } from '../lib/usuarioColumnas';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -85,13 +86,16 @@ export function PerfilUsuario() {
 
     try {
       const [usuarioRes, oficinasRes] = await Promise.all([
-        supabase.from('usuarios').select('*').eq('id', id).maybeSingle(),
+        // Por columnas: un select(*) sobre usuarios truena (ver usuarioColumnas.ts).
+        supabase.from('usuarios').select(USUARIO_COLUMNAS).eq('id', id).maybeSingle<Usuario>(),
         supabase.from('oficinas').select('*').eq('activa', true).order('nombre'),
       ]);
 
       if (usuarioRes.data) {
-        setUsuario(usuarioRes.data);
-        setFormData(usuarioRes.data);
+        // Banco y CLABE solo llegan si quien mira es la persona, un Admin o su Gerente.
+        const conPrivados = (await conDatosPrivados(usuarioRes.data)) as Usuario;
+        setUsuario(conPrivados);
+        setFormData(conPrivados as Partial<UsuarioPerfilUpdate>);
         setTramiteTeamIds([]);
         setTramiteTeamState({ ready: false, valid: false, missingCategories: [] });
       } else {
