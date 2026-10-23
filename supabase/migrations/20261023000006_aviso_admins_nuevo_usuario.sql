@@ -43,7 +43,7 @@
 
 begin;
 
--- `usuarios` está siempre en uso: sin esto el DROP/CREATE TRIGGER se queda
+-- `usuarios` está siempre en uso: sin esto el cambio de triggers se queda
 -- esperando su candado y bloquea a todos detrás. Si falla, se vuelve a correr.
 set local lock_timeout = '5s';
 
@@ -187,13 +187,12 @@ exception when others then
 end;
 $function$;
 
--- Los dos triggers viejos se van: uno no mandaba nada y el otro duplicaría la
--- campanita. Las funciones se conservan por si algo más las llama.
-drop trigger if exists trigger_notificar_equipos_nuevo_usuario on public.usuarios;
-drop trigger if exists trigger_notify_admins_new_user on public.usuarios;
+-- Los dos triggers viejos se apagan (no se borran: reversa de una línea): uno
+-- no mandaba nada y el otro duplicaría la campanita.
+alter table public.usuarios disable trigger trigger_notificar_equipos_nuevo_usuario;
+alter table public.usuarios disable trigger trigger_notify_admins_new_user;
 
-drop trigger if exists trigger_avisar_admins_nuevo_usuario on public.usuarios;
-create trigger trigger_avisar_admins_nuevo_usuario
+create or replace trigger trigger_avisar_admins_nuevo_usuario
   after insert on public.usuarios
   for each row execute function public.avisar_admins_nuevo_usuario();
 
@@ -251,13 +250,11 @@ where codigo = 'nuevo_usuario_creado';
 commit;
 
 -- Verificación:
---   select tgname from pg_trigger where tgrelid = 'public.usuarios'::regclass
---    and tgname like '%nuevo_usuario%' or tgname = 'trigger_notify_admins_new_user';
---   → solo debe salir trigger_avisar_admins_nuevo_usuario.
+--   select tgname, tgenabled from pg_trigger where tgrelid = 'public.usuarios'::regclass
+--    and (tgname like '%nuevo_usuario%' or tgname = 'trigger_notify_admins_new_user');
+--   → trigger_avisar_admins_nuevo_usuario en 'O'; los dos viejos en 'D'.
 --
 -- Reversa:
---   drop trigger trigger_avisar_admins_nuevo_usuario on public.usuarios;
---   create trigger trigger_notificar_equipos_nuevo_usuario after insert on public.usuarios
---     for each row execute function notificar_equipos_nuevo_usuario();
---   create trigger trigger_notify_admins_new_user after insert on public.usuarios
---     for each row execute function notify_admins_new_user_pending();
+--   alter table public.usuarios disable trigger trigger_avisar_admins_nuevo_usuario;
+--   alter table public.usuarios enable trigger trigger_notificar_equipos_nuevo_usuario;
+--   alter table public.usuarios enable trigger trigger_notify_admins_new_user;
