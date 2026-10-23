@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mail, X, RefreshCw, Send, CircleAlert as AlertCircle, CircleCheck as CheckCircle, User, Clock, Inbox, Send as SendIcon, FileText, TriangleAlert as AlertTriangle, Trash2, Folder, Paperclip, Search, ListFilter as Filter, Settings, WifiOff, Eye, EyeOff, ChevronDown, Reply, Forward, Star, MoveHorizontal as MoreHorizontal, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { obtenerDatosPrivados } from '../lib/usuarioColumnas';
 import { useAuth } from '../contexts/AuthContext';
 import { getRenderedSignature } from '../lib/emailSignatureUtils';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -548,13 +549,13 @@ export function MisCorreos() {
     if (!usuario) return;
     setConnectionStatus('checking');
     try {
-      const { data } = await supabase
-        .from('usuarios')
-        .select('email_cuenta, email_password')
-        .eq('id', usuario.id)
-        .maybeSingle();
+      // La contraseña nunca viaja al navegador: solo se pregunta si existe.
+      const [{ data }, privados] = await Promise.all([
+        supabase.from('usuarios').select('email_cuenta').eq('id', usuario.id).maybeSingle(),
+        obtenerDatosPrivados([usuario.id]),
+      ]);
 
-      if (!data?.email_cuenta?.trim() || !data?.email_password) {
+      if (!data?.email_cuenta?.trim() || !privados.get(usuario.id)?.tiene_email_password) {
         setConnectionStatus('not_configured');
       } else {
         setConnectionStatus('connected');
