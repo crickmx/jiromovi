@@ -15,6 +15,9 @@
 
 begin;
 
+-- Si una tabla está ocupada, abortar en vez de quedarse esperando y frenar a los usuarios.
+set local lock_timeout = '5s';
+
 -- A. Vistas --------------------------------------------------------------------------------
 
 revoke all on public.chava_knowledge_access_summary          from anon;
