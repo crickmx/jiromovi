@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
 import { EmptyState } from '@/components/ui/empty-state';
 import UbicacionPicker from '../components/ubicacion/UbicacionPicker';
+import { USUARIO_COLUMNAS } from '../lib/usuarioColumnas';
 
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
@@ -65,12 +66,12 @@ export function Oficinas() {
       for (const oficina of oficinasRes.data) {
         const { data } = await supabase
           .from('usuarios')
-          .select('*')
+          .select(USUARIO_COLUMNAS)
           .eq('oficina_id', oficina.id)
           .order('nombre');
 
         if (data) {
-          usuariosMap[oficina.id] = data;
+          usuariosMap[oficina.id] = data as unknown as Usuario[];
         }
       }
       setUsuarios(usuariosMap);

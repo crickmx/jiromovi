@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { USUARIO_COLUMNAS } from '../lib/usuarioColumnas';
 import { useAuth, type Usuario } from '../contexts/AuthContext';
 
 interface MoviUserRow {
@@ -42,7 +43,7 @@ function DevMaskPanel() {
     setLoadingApply(true);
     const { data, error } = await supabase
       .from('usuarios')
-      .select('*, oficina:oficinas(id, nombre, accent_color)')
+      .select(`${USUARIO_COLUMNAS}, oficina:oficinas(id, nombre, accent_color)`)
       .eq('id', selected)
       .maybeSingle();
     setLoadingApply(false);

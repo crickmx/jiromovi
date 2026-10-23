@@ -6,6 +6,7 @@ import { useImpersonation } from './ImpersonationContext';
 import { isBetaHost, isEducationHost, skipBetaRedirectActive, crossDomainUrl, consumeIncomingSession, BETA_ORIGIN } from '../lib/betaAccess';
 import type { Database } from '../lib/database.types';
 import { closeRoundcubeSession } from '../lib/roundcubeSso';
+import { USUARIO_COLUMNAS, conDatosPrivados } from '../lib/usuarioColumnas';
 
 type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
 
@@ -75,8 +76,10 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('usuarios')
+        // Por columnas, no con *: los datos bancarios ya no se leen directo de la tabla
+        // (ver usuarioColumnas.ts). Los propios se traen aparte, abajo.
         .select(`
-          *,
+          ${USUARIO_COLUMNAS},
           oficina:oficinas!oficina_id(id, nombre, accent_color, logo_url, whatsapp, telefono, email, domicilio),
           regimen_fiscal:commission_fiscal_regimes(id, name)
         `)
@@ -90,7 +93,7 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
         return;
       }
 
-      let u: Usuario = data as Usuario;
+      let u: Usuario = (await conDatosPrivados(data as unknown as Usuario)) as Usuario;
       if (u.rol === 'Gerente') {
         const permisos = await cargarPermisosAdicionales(u.id);
         u = { ...u, permisosAdicionales: permisos };

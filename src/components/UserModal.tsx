@@ -23,6 +23,7 @@ import {
   type SicasVendorOption,
 } from '../lib/sicasVendorLink';
 import { syncUserTramiteTeamAssignments, puedeTenerEquiposTramite } from '../lib/tramiteTeamAssignments';
+import { obtenerDatosPrivados } from '../lib/usuarioColumnas';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -116,6 +117,12 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
     missingCategories: [],
   });
 
+  // Datos bancarios del usuario que se edita. No vienen en la lista del Directorio
+  // (desde el 23/10 se leen aparte, ver usuarioColumnas.ts). Hasta saber si se
+  // pudieron leer, NO se mandan al guardar: antes el formulario los mandaba vacíos
+  // y borraba el banco y la CLABE de cualquiera que se editara desde el Directorio.
+  const [datosBancariosCargados, setDatosBancariosCargados] = useState(false);
+
   // Enlace con "usuario SICAS" (catálogo de vendedores)
   const canLinkSicas = isAdmin || isGerente;
   const [sicasLink, setSicasLink] = useState<SicasVendorOption | null>(null);
@@ -184,6 +191,14 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
       });
       loadPermisosAdicionales(editableUser.id);
       loadOficinasAdicionales(editableUser.id);
+
+      setDatosBancariosCargados(false);
+      obtenerDatosPrivados([editableUser.id]).then((mapa) => {
+        const privados = mapa.get(editableUser.id);
+        if (!privados) return;
+        setFormData(prev => ({ ...prev, banco: privados.banco || '', clabe: privados.clabe || '' }));
+        setDatosBancariosCargados(true);
+      });
 
       // Prellenar el chip de enlace SICAS si el usuario ya tiene id_sicas.
       const existingIdSicas = editableUser.id_sicas;
@@ -540,8 +555,9 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
           email_laboral: formData.email_laboral,
           extension_telefonica: formData.extension_telefonica,
           regimen_fiscal_id: formData.regimen_fiscal_id || null,
-          banco: formData.banco,
-          clabe: formData.clabe,
+          // Solo si se pudieron leer: si no, se mandarían vacíos y se borrarían.
+          banco: datosBancariosCargados ? formData.banco : undefined,
+          clabe: datosBancariosCargados ? formData.clabe : undefined,
           dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
           equipo_computo: formData.equipo_computo || null,
           equipo_celular: formData.equipo_celular || null,
