@@ -35,6 +35,9 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261019000004_resolver_unico_de_destinatarios.sql` | `resolver_destinatarios_aviso()`: un solo lugar con las reglas | ✅ corrida |
 | `20261021000001_marca_de_bot_en_usuarios.sql` | `usuarios.es_bot` — separa el tablero de Trámites del Admin | ✅ corrida |
 | `20261021000002_los_bots_no_notifican_a_personas.sql` | un trámite de bot solo le avisa a bots; el badge deja de contarlos | ✅ corrida |
+| `20261023000006_aviso_admins_nuevo_usuario.sql` | usuario nuevo (por cualquier camino) → aviso a Admins por correo, WhatsApp, campanita y push | ❌ **falta correrla** |
+
+**Aviso de usuario nuevo (23/10):** el evento `nuevo_usuario_creado` nunca mandó nada — `notify()` exige el evento en `notification_events_catalog` y ese renglón no existe (cero jobs en la historia). Se reemplazó por un trigger propio (`avisar_admins_nuevo_usuario`) que encola correo/WhatsApp, crea la campanita y dispara push. **No agregar el evento al catálogo:** `register-employee` todavía llama a notify con el id del usuario NUEVO y empezaría a mandarle el aviso interno. Probada contra la base real dentro de una transacción deshecha: 7 destinatarios, 14 jobs, 7 campanitas, 7 push. ⚠️ El MCP de Supabase se cuelga con cualquier `DROP` (pide confirmación que nadie da): la migración hay que correrla desde el SQL Editor.
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
