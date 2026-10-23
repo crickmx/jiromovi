@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { subscribeResilientChannel } from '../lib/resilientRealtime';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
+import { filtroTramitesVistaComo } from '../lib/tramitesVisibilidad';
 import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy, MessageSquare, Bot, UserRound } from 'lucide-react';
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
@@ -53,6 +54,7 @@ interface TramiteItem {
   agente_usuario_id: string | null;
   creado_por: string | null;
   assigned_to_user_id: string | null;
+  attending_user_id?: string | null;
   grupo_asignado_id: string | null;
   agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null; es_bot?: boolean } | null;
   creador: { es_bot?: boolean } | null;
@@ -359,28 +361,11 @@ export function Tramites() {
         .gte('cerrado_en', desde.toISOString())
         .order('cerrado_en', { ascending: false });
 
-      const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : usuario.id;
-      const effectiveRol = isImpersonating && impersonatedUser ? (impersonatedUser.rol || '') : (usuario.rol || '');
-
-      if (effectiveRol === 'Gerente') {
-        // RLS deja pasar TODOS los tickets a Gerente sin filtro de equipo — acotar aquí
-        // a sus propios equipos, tanto en sesión real como impersonada. Lo suyo va
-        // aparte: un trámite que él levantó puede no tener equipo resuelto todavía
-        // (ver el filtro de visibleTramites, misma razón).
-        const { data: gruposData } = await supabase
-          .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', effectiveId);
-        const grupIds = (gruposData || []).map(g => g.grupo_id);
-        let orFilter = `agente_id.eq.${effectiveId},creado_por.eq.${effectiveId},assigned_to_user_id.eq.${effectiveId}`;
-        if (grupIds.length > 0) orFilter += `,grupo_asignado_id.in.(${grupIds.join(',')})`;
-        q = q.or(orFilter);
-      } else if (isImpersonating && impersonatedUser && effectiveRol !== 'Administrador') {
-        const uid = impersonatedUser.id;
-        const { data: gruposData } = await supabase
-          .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', uid);
-        const grupIds = (gruposData || []).map(g => g.grupo_id);
-        let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
-        if (grupIds.length > 0) orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
-        q = q.or(orFilter);
+      // En sesión normal la RLS (tickets_select_v10) ya deja solo lo que le toca a cada
+      // rol. Solo hay que reproducirla al impersonar, porque ahí el JWT es del Admin.
+      if (isImpersonating && impersonatedUser) {
+        const orFilter = await filtroTramitesVistaComo(impersonatedUser);
+        if (orFilter) q = q.or(orFilter);
       }
 
       const { data } = await q;
@@ -449,23 +434,10 @@ export function Tramites() {
 
       // When admin is impersonating a non-admin/gerente user, RLS still runs as the real admin
       // (auth.uid() = admin). Apply an explicit filter to replicate the impersonated user's visibility.
+      // Misma regla que la RLS (tickets_select_v10), ver src/lib/tramitesVisibilidad.ts.
       if (isImpersonating && impersonatedUser) {
-        const impersonatedRol = impersonatedUser.rol || '';
-        if (!['Administrador'].includes(impersonatedRol)) {
-          const uid = impersonatedUser.id;
-          // Also include pool tramites (unassigned) for groups the user belongs to.
-          // Query inline to avoid myGrupoIds timing dependency.
-          const { data: gruposData } = await supabase
-            .from('tramites_grupos_miembros')
-            .select('grupo_id')
-            .eq('usuario_id', uid);
-          const grupIds = (gruposData || []).map(g => g.grupo_id);
-          let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
-          if (grupIds.length > 0) {
-            orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
-          }
-          query = query.or(orFilter);
-        }
+        const orFilter = await filtroTramitesVistaComo(impersonatedUser);
+        if (orFilter) query = query.or(orFilter);
       }
 
       const { data, error } = await query;
@@ -704,10 +676,10 @@ export function Tramites() {
   // todo lo de su equipo, no solo lo suyo. Ver comentario junto a esRolSistemaAdmin/
   // esRolSistemaGerente/esRolSistemaAgente arriba para la explicación completa.
   // - Admin (sistema): todo
-  // - Gerente (sistema): trámites de su oficina (agente.oficina_id) + grupos a los que pertenece + directamente involucrado
+  // - Gerente (sistema): todo lo de sus oficinas + sus equipos + lo suyo (lo decide la RLS, tickets_select_v10)
   // - Líder (equipo, cualquier rol de sistema): todos los trámites de su equipo
   // - Agente (sistema, cliente externo): solo los propios
-  // - Todos los demás: solo los propios (directamente involucrado) + trámites de sus grupos/equipos
+  // - Empleado y demás: lo propio + todo lo de sus equipos (asignado o no)
   useEffect(() => {
     try { localStorage.setItem(MODO_TABLERO_KEY, modoTablero); } catch { /* da igual si no se puede guardar */ }
   }, [modoTablero]);
@@ -738,19 +710,11 @@ export function Tramites() {
       tramite.grupo_asignado_id !== null &&
       myGrupoIds.includes(tramite.grupo_asignado_id);
 
-    // Pool del equipo: trámites SIN asignar en grupos del usuario (para autoasignarse)
-    const isPoolOfMyGroup =
-      !tramite.assigned_to_user_id &&
-      isInMyGroup;
-
-    // Gerente: los trámites de sus equipos (ver TODO sigue siendo solo del
-    // Administrador) más los propios. Lo propio se agrega porque un Gerente que
-    // levanta un trámite para alguien más se quedaba sin verlo: si el solicitante
-    // no tiene equipo resuelto, el trámite nace con grupo_asignado_id en null y
-    // no entraba por ninguna de las dos ramas.
-    if (esRolSistemaGerente) {
-      return isInMyGroup || isDirectlyInvolved;
-    }
+    // Gerente: todo lo de sus oficinas + sus equipos + lo suyo. Desde el 23/10 eso lo
+    // decide la RLS (tickets_select_v10) — y al impersonar, filtroTramitesVistaComo —,
+    // así que aquí no hay nada más que recortar: "lo de su oficina" depende de la
+    // oficina de cada persona del trámite, y esa información no viaja en la tarjeta.
+    if (esRolSistemaGerente) return true;
 
     // Lider: todos los tramites de su grupo (asignados o no) — se evalúa antes que el
     // corte de Agente, porque el rol de líder es por equipo, no por rol global del usuario
@@ -762,8 +726,9 @@ export function Tramites() {
     // Agente: solo sus propios trámites
     if (esRolSistemaAgente) return isDirectlyInvolved;
 
-    // Ejecutivo y demás: propios + pool sin asignar de sus equipos (para autoasignarse)
-    return isDirectlyInvolved || isPoolOfMyGroup;
+    // Empleado y demás: propios + todo lo de sus equipos, asignado o no (regla del 23/10).
+    // "Requiere atención" sigue contando solo lo propio y el pool, ver needsAttentionFn.
+    return isDirectlyInvolved || isInMyGroup;
   });
 
   // ── Kanban helpers ────────────────────────────────────────────────────────
@@ -785,6 +750,17 @@ export function Tramites() {
     }
     // Ejecutivos / agentes: sin acción aún (null) también requiere atención
     const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : usuario?.id;
+    // Un trámite de su equipo o de su oficina que ya lleva otra persona se puede ver,
+    // pero no le pide nada a este usuario: solo cuenta lo propio y el pool sin asignar.
+    // Es la misma regla que el badge del sidebar (useTramitesAttentionCount).
+    const loTocaAMi =
+      t.creado_por === effectiveId ||
+      t.agente_id === effectiveId ||
+      t.agente_usuario_id === effectiveId ||
+      t.assigned_to_user_id === effectiveId ||
+      t.attending_user_id === effectiveId ||
+      (!t.assigned_to_user_id && !t.attending_user_id && !!t.grupo_asignado_id && myGrupoIds.includes(t.grupo_asignado_id));
+    if (!loTocaAMi) return false;
     return !t.ultima_accion_por || t.ultima_accion_por !== effectiveId;
   };
 
