@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Server, Mail, Lock, Check, CircleAlert as AlertCircle, Shield } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { obtenerDatosPrivados } from '../../lib/usuarioColumnas';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface ConfiguracionCorreoProps {
@@ -35,15 +36,11 @@ export function ConfiguracionCorreo({ isOpen, onClose, onSuccess, configuracion 
     loadConfigGlobal();
     if (usuario) {
       setEmail(usuario.email_cuenta || '');
-      // Check if a password is already stored
-      supabase
-        .from('usuarios')
-        .select('email_password')
-        .eq('id', usuario.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          setHasExistingPassword(!!data?.email_password);
-        });
+      // ¿Ya hay contraseña guardada? La contraseña nunca viaja al navegador:
+      // solo se pregunta si existe (ver usuarioColumnas.ts).
+      obtenerDatosPrivados([usuario.id]).then((mapa) => {
+        setHasExistingPassword(!!mapa.get(usuario.id)?.tiene_email_password);
+      });
     }
   }, [usuario]);
 
