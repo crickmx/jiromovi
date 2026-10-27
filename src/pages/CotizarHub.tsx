@@ -19,6 +19,18 @@ const MODULES = [
     logo: '/logo-bupa.png',
   },
   {
+    path: '/cotizar/auna-oncologico',
+    label: 'Auna Oncológico',
+    description: 'Seguro oncológico Oncosalud Plus: tarifas por edad y sexo, cuestionario médico, extraprimas y PDF con tu marca.',
+    icon: Heart,
+    color: 'from-cyan-500 to-lime-400',
+    bgLight: 'bg-white dark:bg-neutral-800 border border-cyan-200/60 dark:border-cyan-800/40',
+    borderHover: 'hover:border-cyan-400/60 dark:hover:border-cyan-500/50',
+    shadowHover: 'hover:shadow-cyan-100/40 dark:hover:shadow-cyan-900/20',
+    iconColor: 'text-cyan-600 dark:text-cyan-400',
+    logo: '/logo-auna.png',
+  },
+  {
     path: '/cotizar/a-la-medida',
     label: 'A la Medida',
     description: 'Diseñador inteligente de seguros. Selecciona coberturas y encuentra las aseguradoras con mejor compatibilidad.',

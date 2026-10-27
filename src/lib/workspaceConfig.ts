@@ -101,6 +101,7 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
     { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: SlidersHorizontal, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/multicotizador', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },
     { path: '/cotizar/multicotizador-gmm', label: 'Multicotizador GMM', icon: Stethoscope, visibleTo: ALL_ROLES },
+    { path: '/cotizar/auna-oncologico', label: 'Auna Oncológico', icon: HeartPulse, visibleTo: ALL_ROLES },
   ],
 };
 
