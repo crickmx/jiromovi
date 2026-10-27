@@ -17,7 +17,7 @@ import {
   type Sexo,
 } from '../lib/aunaOncoCotizador';
 import { generarPdfAunaOnco, agenteDesdeUsuario, type AgentePdf } from '../lib/aunaOncoPdf';
-import { guardarCotizacion, cargarCotizacion, idCotizacionEnUrl } from '../lib/cotizaciones';
+import { guardarCotizacion, cargarCotizacion, idCotizacionEnUrl, mensajeDeError } from '../lib/cotizaciones';
 import { pdfDeCotizacion, agenteAunaDeDueno } from '../lib/cotizacionesPdf';
 import { crearTramiteEmision } from '../lib/aunaOncoTramiteEmision';
 import type { DatosAuna } from '../lib/aunaOncoGuardado';
@@ -100,7 +100,7 @@ export default function CotizadorAunaOnco() {
         setFolio(c.folio);
         if (irAEmision) setPendienteEmision(true);
       })
-      .catch(e => setError('No se pudo abrir la cotización: ' + (e?.message ?? e)));
+      .catch(e => setError('No se pudo abrir la cotización: ' + mensajeDeError(e)));
   }, []);
 
   // Si el titular no lleva nombre propio, es el mismo cliente.
@@ -157,7 +157,7 @@ export default function CotizadorAunaOnco() {
   useEffect(() => {
     if (!valida || claveActual === ultimoGuardado.current) return;
     const t = setTimeout(() => {
-      guardar().catch(e => setError('No se pudo guardar automáticamente: ' + (e instanceof Error ? e.message : String(e))));
+      guardar().catch(e => setError('No se pudo guardar automáticamente: ' + (mensajeDeError(e))));
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -166,7 +166,7 @@ export default function CotizadorAunaOnco() {
   const guardarAMano = async () => {
     setError(null);
     if (!validarCotizacion()) return;
-    try { await guardar(); } catch (e) { setError('No se pudo guardar: ' + (e instanceof Error ? e.message : String(e))); }
+    try { await guardar(); } catch (e) { setError('No se pudo guardar: ' + (mensajeDeError(e))); }
   };
 
   const nueva = () => {
@@ -233,7 +233,7 @@ export default function CotizadorAunaOnco() {
       const { blob, nombre } = await pdfSolicitud(await guardar());
       descargar(blob, nombre);
     } catch (e) {
-      setError('No se pudo generar el PDF: ' + (e instanceof Error ? e.message : String(e)));
+      setError('No se pudo generar el PDF: ' + (mensajeDeError(e)));
     } finally {
       setGenerando(false);
     }
@@ -262,7 +262,7 @@ export default function CotizadorAunaOnco() {
       });
       setTramiteEmision(t);
     } catch (e) {
-      setError('No se pudo crear el trámite: ' + (e instanceof Error ? e.message : String(e)));
+      setError('No se pudo crear el trámite: ' + (mensajeDeError(e)));
     } finally {
       setGenerando(false);
     }
@@ -307,7 +307,7 @@ export default function CotizadorAunaOnco() {
       });
       descargar(blob, `Cotizacion-Oncosalud-${cliente.trim().replace(/\s+/g, '-')}-${folio}.pdf`);
     } catch (e) {
-      setError('No se pudo generar el PDF: ' + (e instanceof Error ? e.message : String(e)));
+      setError('No se pudo generar el PDF: ' + (mensajeDeError(e)));
     } finally {
       setGenerando(false);
     }

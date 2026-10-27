@@ -122,6 +122,13 @@ export async function duplicarCotizacion(c: Cotizacion): Promise<{ id: string; f
   });
 }
 
+/** Texto legible de un error: los de Supabase son objetos, no `Error`. */
+export function mensajeDeError(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  return String(e);
+}
+
 /** Lee ?cotizacion=<id> de la URL (para abrir una guardada en su cotizador). */
 export function idCotizacionEnUrl(): string | null {
   return new URLSearchParams(window.location.search).get('cotizacion');

@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 import { PageHeader } from '../components/ui/page-header';
 import { normalizarTexto } from '../lib/utils';
 import {
-  COTIZADORES, listarCotizaciones, eliminarCotizacion, duplicarCotizacion,
+  COTIZADORES, mensajeDeError, listarCotizaciones, eliminarCotizacion, duplicarCotizacion,
   type Cotizacion, type CotizadorId,
 } from '../lib/cotizaciones';
 import { pdfDeCotizacion } from '../lib/cotizacionesPdf';
@@ -78,7 +78,7 @@ export default function Cotizaciones() {
         setAgentes(new Map((data ?? []).map(u => [u.id, `${u.nombre} ${u.apellidos}`.trim()])));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(mensajeDeError(e));
     } finally {
       setCargando(false);
     }
@@ -107,7 +107,7 @@ export default function Cotizaciones() {
 
   const conAccion = async (c: Cotizacion, accion: string, fn: () => Promise<void>) => {
     setOcupado(`${c.id}:${accion}`);
-    try { await fn(); } catch (e) { avisar(e instanceof Error ? e.message : String(e), 'error'); } finally { setOcupado(null); }
+    try { await fn(); } catch (e) { avisar(mensajeDeError(e), 'error'); } finally { setOcupado(null); }
   };
 
   const abrir = (c: Cotizacion) => navigate(`${COTIZADORES[c.cotizador]?.ruta ?? '/cotizar'}?cotizacion=${c.id}`);
@@ -306,7 +306,7 @@ function EnviarCotizacionModal({ cotizacion: c, nombreAgente, onCerrar, onEnviad
       }
       onEnviado(`Cotización ${c.folio} enviada por ${canal === 'correo' ? 'correo' : 'WhatsApp'}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(mensajeDeError(e));
     } finally {
       setEnviando(false);
     }
