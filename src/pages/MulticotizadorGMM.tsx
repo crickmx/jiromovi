@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Loader, CircleAlert as AlertCircle, Check, Pencil } from 'lucide-react';
+import { Heart, Calculator, Settings, Plus, Trash2, Users, FileDown, Loader, CircleAlert as AlertCircle, Check, FileText, FilePlus } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
 import { supabase } from '../lib/supabase';
 import { calculateBnv, calculateBxplus, calculateBnp } from '../lib/multicotizadorGmm';
 import type {
   ProductId, QuotePerson, FormaPago, MultiGmmOption, OptionResult,
-  BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput, SavedMultiGmmQuote,
+  BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput,
 } from '../lib/multicotizadorGmm/types';
 import { DEFAULT_BXPLUS_COVERAGES } from '../lib/multicotizadorGmm/types';
 import { TarifasAdminPanel } from '../components/multicotizadorGmm/TarifasAdminPanel';
@@ -13,10 +14,18 @@ import { ComparisonResults } from '../components/multicotizadorGmm/ComparisonRes
 import { OptionConfigurator } from '../components/multicotizadorGmm/OptionConfigurator';
 import { generateMultiGmmPdf } from '../lib/multicotizadorGmm/pdfGenerator';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
+import { guardarCotizacion, cargarCotizacion, idCotizacionEnUrl } from '../lib/cotizaciones';
+
+// Lo que se guarda en cotizaciones.datos (mismo formato que el backfill de la migración).
+interface DatosGmm {
+  people: QuotePerson[];
+  options: MultiGmmOption[];
+  results: OptionResult[] | null;
+  selected_formas_pago?: string[];
+}
 
 const TABS = [
   { id: 'cotizador', label: 'Cotizador', icon: Calculator },
-  { id: 'historial', label: 'Cotizaciones', icon: History },
   { id: 'tarifas', label: 'Tarifas', icon: Settings },
 ] as const;
 
@@ -50,6 +59,7 @@ function createDefaultOption(index: number): MultiGmmOption {
 
 export default function MulticotizadorGMM() {
   const { usuario } = useMoviAuth();
+  const navigate = useNavigate();
   const isAdmin = usuario?.rol === 'Administrador';
   const [activeTab, setActiveTab] = useState<TabId>('cotizador');
 
@@ -65,59 +75,69 @@ export default function MulticotizadorGMM() {
   const [calculating, setCalculating] = useState(false);
   const [results, setResults] = useState<OptionResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [savedQuotes, setSavedQuotes] = useState<SavedMultiGmmQuote[]>([]);
+  const [cotizacionId, setCotizacionId] = useState<string | null>(null);
   const [lastSavedFolio, setLastSavedFolio] = useState<string | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const savedResultsRef = useRef<string | null>(null);
 
-  const loadSavedQuotes = useCallback(async () => {
-    const { data, error: loadError } = await supabase
-      .from('multicotizador_gmm_quotes')
-      .select('*')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (loadError) {
-      console.error('[MulticotizadorGMM] loadSavedQuotes error:', loadError.message);
-      return;
-    }
-    if (data) setSavedQuotes(data as any);
+  // Abrir una cotización guardada desde Cotizar › Cotizaciones (?cotizacion=<id>).
+  useEffect(() => {
+    const id = idCotizacionEnUrl();
+    if (!id) return;
+    cargarCotizacion<DatosGmm>(id)
+      .then(c => {
+        setClientName(c.cliente_nombre || '');
+        setPeople(c.datos.people?.length ? c.datos.people : [DEFAULT_PERSON()]);
+        const opts = c.datos.options?.length ? c.datos.options : [createDefaultOption(1)];
+        setOptions(opts);
+        setResults(c.datos.results ?? null);
+        setCotizacionId(c.id);
+        setLastSavedFolio(c.folio);
+        savedResultsRef.current = c.datos.results ? JSON.stringify(c.datos.results) : null;
+        setExpandedOptions(new Set([opts[0].id]));
+      })
+      .catch(e => setError('No se pudo abrir la cotización: ' + (e?.message ?? e)));
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'historial') loadSavedQuotes();
-  }, [activeTab, loadSavedQuotes]);
+  const nuevaCotizacion = () => {
+    setClientName('');
+    setPeople([DEFAULT_PERSON()]);
+    const opts = [createDefaultOption(1), createDefaultOption(2), createDefaultOption(3)];
+    setOptions(opts);
+    setExpandedOptions(new Set([opts[0].id]));
+    setResults(null);
+    setCotizacionId(null);
+    setLastSavedFolio(null);
+    savedResultsRef.current = null;
+    navigate('/cotizar/multicotizador-gmm', { replace: true });
+  };
 
+  // Se guarda sola tras cada cálculo. Si ya tiene folio, se actualiza ese mismo.
   const autoSaveQuote = useCallback(async (optionResults: OptionResult[]) => {
-    // Always use the real authenticated session UID — not usuario.id which may be
-    // an impersonated user and would fail the RLS WITH CHECK (created_by = auth.uid())
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user.id;
-    if (!userId) return;
-
     const resultsKey = JSON.stringify(optionResults);
     if (savedResultsRef.current === resultsKey) return;
 
     setAutoSaveStatus('saving');
     try {
-      const { data, error: saveError } = await supabase
-        .from('multicotizador_gmm_quotes')
-        .insert({
-          created_by: userId,
-          client_name: clientName.trim() || 'Sin nombre',
-          people_json: people,
-          options_json: options,
-          results_json: optionResults,
+      const { id, folio } = await guardarCotizacion<DatosGmm>({
+        id: cotizacionId,
+        cotizador: 'gmm_multi',
+        cliente_nombre: clientName,
+        datos: {
+          people,
+          options,
+          results: optionResults,
           selected_formas_pago: ['Anual', 'Semestral', 'Trimestral', 'Mensual'],
-          status: 'calculated',
-        })
-        .select('folio')
-        .single();
-
-      if (saveError) throw saveError;
+        },
+        resumen: {
+          productos: [...new Set(options.map(o => o.product_id))],
+          personas: people.length,
+        },
+      });
 
       savedResultsRef.current = resultsKey;
-      if (data?.folio) setLastSavedFolio(data.folio);
+      setCotizacionId(id);
+      setLastSavedFolio(folio);
       setAutoSaveStatus('saved');
       setTimeout(() => setAutoSaveStatus('idle'), 3000);
     } catch (err: any) {
@@ -125,7 +145,7 @@ export default function MulticotizadorGMM() {
       setAutoSaveStatus('error');
       setTimeout(() => setAutoSaveStatus('idle'), 4000);
     }
-  }, [clientName, people, options]);
+  }, [cotizacionId, clientName, people, options]);
 
   const addPerson = () => setPeople(prev => [...prev, { ...DEFAULT_PERSON(), relation: prev.length === 0 ? 'Titular' : 'Dependiente' }]);
   const removePerson = (id: string) => setPeople(prev => prev.filter(p => p.id !== id));
@@ -344,49 +364,6 @@ export default function MulticotizadorGMM() {
     }
   };
 
-  const handleEditQuote = (quote: SavedMultiGmmQuote) => {
-    setClientName(quote.client_name || '');
-    setPeople(quote.people_json || [DEFAULT_PERSON()]);
-    setOptions(quote.options_json || [createDefaultOption(1)]);
-    setResults(quote.results_json || null);
-    setLastSavedFolio(quote.folio);
-    savedResultsRef.current = quote.results_json ? JSON.stringify(quote.results_json) : null;
-    setExpandedOptions(new Set(quote.options_json?.length ? [quote.options_json[0].id] : []));
-    setActiveTab('cotizador');
-  };
-
-  const handleDownloadSavedPdf = async (quote: SavedMultiGmmQuote) => {
-    if (!quote.results_json || quote.results_json.length === 0) {
-      setError('Esta cotizacion no tiene resultados para descargar');
-      return;
-    }
-    try {
-      let logoUrl: string | undefined;
-      if (usuario?.id) {
-        const url = await getEffectiveUserLogo(usuario.id);
-        if (url) logoUrl = url;
-      }
-
-      const blob = await generateMultiGmmPdf(
-        quote.results_json,
-        quote.people_json || [],
-        quote.client_name || '',
-        usuario,
-        quote.options_json || [],
-        logoUrl,
-        quote.folio
-      );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `multicotizador-gmm-${quote.client_name || quote.folio}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError('Error generando PDF: ' + err.message);
-    }
-  };
-
   const visibleTabs = TABS.filter(t => t.id !== 'tarifas' || isAdmin);
 
   return (
@@ -400,7 +377,20 @@ export default function MulticotizadorGMM() {
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">Multicotizador GMM</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Compara BX+ Unikuz, Bupa Nacional Vital y Bupa Nacional Plus</p>
         </div>
+        <div className="ml-auto flex items-center gap-2">
+          {lastSavedFolio && (
+            <button onClick={nuevaCotizacion} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05]" title="Empezar una cotización nueva">
+              <FilePlus className="w-4 h-4" /> Nueva
+            </button>
+          )}
+          <Link to="/cotizar/cotizaciones" className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:border-teal-400">
+            <FileText className="w-4 h-4" /> Cotizaciones
+          </Link>
+        </div>
       </div>
+      {lastSavedFolio && (
+        <p className="-mt-3 mb-4 text-xs text-neutral-500 dark:text-neutral-400">Editando <span className="font-mono font-semibold text-teal-600 dark:text-teal-400">{lastSavedFolio}</span> — al recalcular se actualiza este mismo folio.</p>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 p-1 bg-neutral-100 dark:bg-white/[0.04] rounded-xl w-fit">
@@ -564,73 +554,6 @@ export default function MulticotizadorGMM() {
 
           {/* Results */}
           {results && <ComparisonResults results={results} selectedFormaPago="Anual" />}
-        </div>
-      )}
-
-      {activeTab === 'historial' && (
-        <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] overflow-hidden">
-          {savedQuotes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-neutral-500 dark:text-neutral-500">
-              <History className="w-10 h-10 mb-3 opacity-40" />
-              <p className="text-sm">No hay cotizaciones guardadas</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-neutral-100 dark:border-white/[0.06]">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Folio</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Cliente</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Fecha</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Aseguradoras</th>
-                    <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {savedQuotes.map(q => {
-                    const products = [...new Set((q.options_json || []).map((o: any) => o.product_id))];
-                    const productLabels: Record<string, string> = { BXPLUS: 'BX+ Unikuz', BNV: 'BNV', BNP: 'BNP' };
-                    return (
-                      <tr key={q.id} className="border-b border-neutral-50 dark:border-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors">
-                        <td className="px-5 py-3.5 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">{q.folio}</td>
-                        <td className="px-5 py-3.5 text-neutral-900 dark:text-white font-medium">{q.client_name}</td>
-                        <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400">{new Date(q.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {products.map(pid => (
-                              <span key={pid} className="inline-flex px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide bg-neutral-100 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300">
-                                {productLabels[pid as string] || pid}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => handleEditQuote(q)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
-                              title="Editar cotizacion"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => handleDownloadSavedPdf(q)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
-                              title="Descargar PDF"
-                            >
-                              <FileDown className="w-3.5 h-3.5" />
-                              Descargar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Wrench, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet, UserPlus, FileSignature, BarChart3, Store, Package, Crown, Tags, Settings2, ListTree } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Wrench, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet, UserPlus, FileSignature, BarChart3, Store, Package, Crown, Tags, Settings2, ListTree, FileText } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -96,6 +96,7 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
   visibleTo: ALL_ROLES,
   items: [
     { path: '/cotizar', label: 'Inicio', icon: House, visibleTo: ALL_ROLES },
+    { path: '/cotizar/cotizaciones', label: 'Cotizaciones', icon: FileText, visibleTo: ALL_ROLES },
     { path: '/cotizar/gmm-bx', label: 'GMM BX+', icon: HeartPulse, visibleTo: ADMIN_ONLY },
     // { path: '/cotizar/formularios', label: 'Formularios', icon: FormInput, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: SlidersHorizontal, visibleTo: ALL_ROLES, matchPrefix: true },

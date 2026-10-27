@@ -64,6 +64,7 @@ const DisenadorAuto = lazy(() => import('./comercial/disenadores/DisenadorAuto')
 const DisenadorGMM = lazy(() => import('./comercial/disenadores/DisenadorGMM'));
 const MulticotizadorGMM = lazy(() => import('./MulticotizadorGMM'));
 const CotizadorAunaOnco = lazy(() => import('./CotizadorAunaOnco'));
+const Cotizaciones = lazy(() => import('./Cotizaciones'));
 
 // Operaciones
 const BonosPage = lazy(() => import('./BonosPage'));
@@ -253,6 +254,7 @@ export default function MoviFullRoutes() {
           <Route path="/cotizar/multicotizador" element={<ProtectedRoute><MulticotizadorDigital /></ProtectedRoute>} />
           <Route path="/cotizar/multicotizador-gmm" element={<ProtectedRoute><MulticotizadorGMM /></ProtectedRoute>} />
           <Route path="/cotizar/auna-oncologico" element={<ProtectedRoute><CotizadorAunaOnco /></ProtectedRoute>} />
+          <Route path="/cotizar/cotizaciones" element={<ProtectedRoute><Cotizaciones /></ProtectedRoute>} />
 
           {/* Central de Produccion */}
           <Route path="/produccion" element={<ProtectedRoute><BonosPage /></ProtectedRoute>} />

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Car, Compass, ChevronRight, Calculator, Heart } from 'lucide-react';
+import { Car, Compass, ChevronRight, Calculator, Heart, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
 import { isItemVisible, WORKSPACES, type UserRole } from '../lib/workspaceConfig';
@@ -80,6 +80,7 @@ export default function CotizarHub() {
         badge={`${visibleModules.length} comparadores`}
         description="Herramientas para cotizar seguros, formularios y comparadores multi-aseguradora."
         icon={Calculator}
+        action={{ label: 'Mis cotizaciones', onClick: () => navigate('/cotizar/cotizaciones'), icon: FileText }}
       />
 
       {/* Module Cards */}

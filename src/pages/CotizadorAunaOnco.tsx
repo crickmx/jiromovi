@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { Plus, Trash2, Download, AlertTriangle, ChevronDown, ChevronUp, Info, Loader2, ShieldCheck, FileSignature } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Trash2, Download, AlertTriangle, ChevronDown, ChevronUp, Info, Loader2, ShieldCheck, FileSignature, FileText, FilePlus, Save, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeader } from '../components/ui/page-header';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
@@ -15,7 +16,9 @@ import {
   type FormaPago,
   type Sexo,
 } from '../lib/aunaOncoCotizador';
-import { generarPdfAunaOnco, type AgentePdf } from '../lib/aunaOncoPdf';
+import { generarPdfAunaOnco, agenteDesdeUsuario, type AgentePdf } from '../lib/aunaOncoPdf';
+import { guardarCotizacion, cargarCotizacion, idCotizacionEnUrl } from '../lib/cotizaciones';
+import type { DatosAuna } from '../lib/aunaOncoGuardado';
 import { generarPdfSolicitudAuna } from '../lib/aunaOncoSolicitudPdf';
 import { solicitudInicial, sincronizar, faltantes, type Solicitud } from '../lib/aunaOncoSolicitud';
 import SolicitudEmisionAuna from '../components/cotizador/SolicitudEmisionAuna';
@@ -33,12 +36,6 @@ const nuevoAsegurado = (n: number): Asegurado => ({
   extraprimas: [],
 });
 
-const nuevoFolio = (prefijo: string) => {
-  const d = new Date();
-  const p = (x: number) => String(x).padStart(2, '0');
-  return `${prefijo}-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-};
-
 const inputCls = 'w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent';
 const labelCls = 'block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1';
 
@@ -53,6 +50,7 @@ const descargar = (blob: Blob, nombre: string) => {
 
 export default function CotizadorAunaOnco() {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
   const [cliente, setCliente] = useState('');
   const [formaPago, setFormaPago] = useState<FormaPago>('anual');
   const [descuento, setDescuento] = useState(0);
@@ -62,7 +60,27 @@ export default function CotizadorAunaOnco() {
   const [error, setError] = useState<string | null>(null);
   const [modo, setModo] = useState<'cotizacion' | 'solicitud'>('cotizacion');
   const [solicitud, setSolicitud] = useState<Solicitud | null>(null);
-  const [folioCotizacion, setFolioCotizacion] = useState<string | undefined>();
+  const [cotizacionId, setCotizacionId] = useState<string | null>(null);
+  const [folio, setFolio] = useState<string | null>(null);
+  const [guardado, setGuardado] = useState<'idle' | 'guardando' | 'ok'>('idle');
+
+  // Abrir una cotización guardada desde Cotizar › Cotizaciones (?cotizacion=<id>).
+  useEffect(() => {
+    const id = idCotizacionEnUrl();
+    if (!id) return;
+    cargarCotizacion<DatosAuna>(id)
+      .then(c => {
+        const d = c.datos;
+        setCliente(d.cliente ?? c.cliente_nombre);
+        setFormaPago(d.formaPago ?? 'anual');
+        setDescuento(d.descuento ?? 0);
+        if (d.asegurados?.length) setAsegurados(d.asegurados);
+        setSolicitud(d.solicitud ?? null);
+        setCotizacionId(c.id);
+        setFolio(c.folio);
+      })
+      .catch(e => setError('No se pudo abrir la cotización: ' + (e?.message ?? e)));
+  }, []);
 
   // Si el titular no lleva nombre propio, es el mismo cliente.
   const aseguradosConNombre = useMemo(
@@ -72,14 +90,53 @@ export default function CotizadorAunaOnco() {
   const resultado = useMemo(() => cotizar(aseguradosConNombre, formaPago, descuento), [aseguradosConNombre, formaPago, descuento]);
   const faltan = useMemo(() => (solicitud ? faltantes(solicitud, aseguradosConNombre) : []), [solicitud, aseguradosConNombre]);
 
-  const datosAgente = async (): Promise<AgentePdf> => ({
-    nombre: usuario?.nombre_publico || usuario?.nombre_completo
-      || [usuario?.nombre, usuario?.apellidos].filter(Boolean).join(' ') || '',
-    telefono: usuario?.celular_laboral || usuario?.celular_personal || null,
-    email: usuario?.email_laboral || usuario?.email || null,
-    oficina: usuario?.oficina?.nombre ?? null,
-    logoUrl: usuario?.id ? await getEffectiveUserLogo(usuario.id) : null,
-  });
+  const datosAgente = async (): Promise<AgentePdf> =>
+    agenteDesdeUsuario(usuario, usuario?.id ? await getEffectiveUserLogo(usuario.id) : null);
+
+  /** Guarda en Cotizaciones (mismo folio si ya existe) y devuelve el folio. */
+  const guardar = async (): Promise<string> => {
+    setGuardado('guardando');
+    try {
+      const c = solicitud?.contratante;
+      const r = await guardarCotizacion<DatosAuna>({
+        id: cotizacionId,
+        cotizador: 'auna_onco',
+        cliente_nombre: cliente,
+        cliente_email: c?.email.trim() || null,
+        cliente_telefono: c?.telefono.trim() || null,
+        datos: { cliente, formaPago, descuento, asegurados, resultado, solicitud },
+        resumen: { asegurados: asegurados.length, formaPago, solicitud: !!solicitud },
+        prima_total: resultado.primaTotal,
+      });
+      setCotizacionId(r.id);
+      setFolio(r.folio);
+      setGuardado('ok');
+      setTimeout(() => setGuardado('idle'), 3000);
+      return r.folio;
+    } catch (e) {
+      setGuardado('idle');
+      throw e;
+    }
+  };
+
+  const guardarAMano = async () => {
+    setError(null);
+    if (!validarCotizacion()) return;
+    try { await guardar(); } catch (e) { setError('No se pudo guardar: ' + (e instanceof Error ? e.message : String(e))); }
+  };
+
+  const nueva = () => {
+    setCliente('');
+    setFormaPago('anual');
+    setDescuento(0);
+    setAsegurados([nuevoAsegurado(0)]);
+    setSolicitud(null);
+    setCotizacionId(null);
+    setFolio(null);
+    setModo('cotizacion');
+    setError(null);
+    navigate('/cotizar/auna-oncologico', { replace: true });
+  };
 
   const validarCotizacion = () => {
     if (!cliente.trim()) { setError('Escribe el nombre del cliente para la cotización.'); return false; }
@@ -100,10 +157,11 @@ export default function CotizadorAunaOnco() {
     setError(null);
     setGenerando(true);
     try {
-      const folio = nuevoFolio('SOL-AUNA');
+      const folioCot = await guardar();
+      const folio = `${folioCot}-SOL`;
       const blob = await generarPdfSolicitudAuna({
         folio,
-        folioCotizacion,
+        folioCotizacion: folioCot,
         fecha: new Date(),
         solicitud,
         asegurados: aseguradosConNombre,
@@ -147,7 +205,7 @@ export default function CotizadorAunaOnco() {
     if (!validarCotizacion()) return;
     setGenerando(true);
     try {
-      const folio = nuevoFolio('AUNA');
+      const folio = await guardar();
       const blob = await generarPdfAunaOnco({
         folio,
         cliente: cliente.trim(),
@@ -155,7 +213,6 @@ export default function CotizadorAunaOnco() {
         resultado,
         agente: await datosAgente(),
       });
-      setFolioCotizacion(folio);
       descargar(blob, `Cotizacion-Oncosalud-${cliente.trim().replace(/\s+/g, '-')}-${folio}.pdf`);
     } catch (e) {
       setError('No se pudo generar el PDF: ' + (e instanceof Error ? e.message : String(e)));
@@ -172,7 +229,26 @@ export default function CotizadorAunaOnco() {
         backTo="/cotizar"
         backLabel="Cotizar"
         badge={<img src="/logo-auna.png" alt="Auna" className="h-5 w-auto" />}
+        actions={
+          <div className="flex items-center gap-2">
+            {folio && (
+              <button type="button" onClick={nueva} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05]">
+                <FilePlus className="w-4 h-4" /> Nueva
+              </button>
+            )}
+            <button type="button" onClick={guardarAMano} disabled={guardado === 'guardando'} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-neutral-700 dark:text-neutral-200 border border-neutral-200 dark:border-white/10 hover:border-accent disabled:opacity-50">
+              {guardado === 'guardando' ? <Loader2 className="w-4 h-4 animate-spin" /> : guardado === 'ok' ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4" />}
+              {guardado === 'ok' ? 'Guardada' : 'Guardar'}
+            </button>
+            <Link to="/cotizar/cotizaciones" className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-neutral-700 dark:text-neutral-200 border border-neutral-200 dark:border-white/10 hover:border-accent">
+              <FileText className="w-4 h-4" /> Cotizaciones
+            </Link>
+          </div>
+        }
       />
+      {folio && (
+        <p className="-mt-3 text-xs text-neutral-500 dark:text-neutral-400">Folio <span className="font-mono font-semibold text-accent">{folio}</span> — al guardar o descargar se actualiza este mismo folio.</p>
+      )}
 
       {modo === 'solicitud' && solicitud ? (
         <SolicitudEmisionAuna

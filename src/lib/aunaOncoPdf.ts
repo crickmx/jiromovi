@@ -21,6 +21,21 @@ export interface AgentePdf {
   logoUrl?: string | null;
 }
 
+/** Datos del agente para el PDF a partir de su fila de `usuarios` (con oficina). */
+export function agenteDesdeUsuario(u: {
+  nombre?: string | null; apellidos?: string | null; nombre_publico?: string | null; nombre_completo?: string | null;
+  celular_laboral?: string | null; celular_personal?: string | null; email_laboral?: string | null; email?: string | null;
+  oficina?: { nombre?: string | null } | null;
+} | null | undefined, logoUrl: string | null): AgentePdf {
+  return {
+    nombre: u?.nombre_publico || u?.nombre_completo || [u?.nombre, u?.apellidos].filter(Boolean).join(' ') || '',
+    telefono: u?.celular_laboral || u?.celular_personal || null,
+    email: u?.email_laboral || u?.email || null,
+    oficina: u?.oficina?.nombre ?? null,
+    logoUrl,
+  };
+}
+
 export interface DatosPdf {
   folio: string;
   cliente: string;
