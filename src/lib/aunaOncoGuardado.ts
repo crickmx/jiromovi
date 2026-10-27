@@ -10,4 +10,6 @@ export interface DatosAuna {
   asegurados: Asegurado[];
   resultado: ResultadoCotizacion;
   solicitud: Solicitud | null;
+  /** El trámite de emisión levantado desde esta cotización (uno por cotización). */
+  tramiteEmision?: { id: string; folio: string } | null;
 }

@@ -151,6 +151,14 @@ create policy cotizaciones_update on public.cotizaciones
 revoke all on table public.cotizaciones from anon;
 grant select, insert, update on table public.cotizaciones to authenticated;
 
+-- ── PDFs que se mandan por WhatsApp ─────────────────────────────────────────
+-- Wazzup necesita una URL para el documento: la función enviar-cotizacion sube
+-- el PDF aquí (con service role) y manda una URL firmada. Privado y sin
+-- políticas: nadie más lo lee.
+insert into storage.buckets (id, name, public)
+values ('cotizaciones', 'cotizaciones', false)
+on conflict (id) do nothing;
+
 -- ── Las del Multicotizador GMM ───────────────────────────────────────────────
 create or replace function public.gmm_quote_a_cotizacion(q public.multicotizador_gmm_quotes)
 returns void

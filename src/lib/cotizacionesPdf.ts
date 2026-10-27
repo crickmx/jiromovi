@@ -7,7 +7,7 @@ import { getEffectiveUserLogo } from './logoUtils';
 import type { Cotizacion } from './cotizaciones';
 import type { DatosAuna } from './aunaOncoGuardado';
 
-async function duenoDe(c: Cotizacion) {
+async function duenoDe(c: Pick<Cotizacion, 'usuario_id'>) {
   const { data } = await supabase
     .from('usuarios')
     .select(`${USUARIO_COLUMNAS}, oficina:oficinas!oficina_id(id, nombre, accent_color, logo_url, whatsapp, telefono, email, domicilio)`)
@@ -15,6 +15,13 @@ async function duenoDe(c: Cotizacion) {
     .maybeSingle();
   const logo = await getEffectiveUserLogo(c.usuario_id);
   return { usuario: data, logo };
+}
+
+/** Agente que firma los PDF de Auna: el dueño de la cotización. */
+export async function agenteAunaDeDueno(usuarioId: string) {
+  const { usuario, logo } = await duenoDe({ usuario_id: usuarioId });
+  const { agenteDesdeUsuario } = await import('./aunaOncoPdf');
+  return agenteDesdeUsuario(usuario as never, logo);
 }
 
 const slug = (s: string) => s.trim().replace(/\s+/g, '-').replace(/[^\w\-áéíóúñÁÉÍÓÚÑ]/g, '') || 'cliente';

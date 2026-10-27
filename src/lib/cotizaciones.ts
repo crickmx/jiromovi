@@ -122,13 +122,6 @@ export async function duplicarCotizacion(c: Cotizacion): Promise<{ id: string; f
   });
 }
 
-export async function registrarEnvio(c: Cotizacion, envio: Omit<EnvioCotizacion, 'at' | 'usuario_id'>, usuarioId: string | null) {
-  const envios = [...(c.envios ?? []), { ...envio, at: new Date().toISOString(), usuario_id: usuarioId }];
-  const { error } = await supabase.from('cotizaciones').update({ envios }).eq('id', c.id);
-  if (error) throw error;
-  return envios;
-}
-
 /** Lee ?cotizacion=<id> de la URL (para abrir una guardada en su cotizador). */
 export function idCotizacionEnUrl(): string | null {
   return new URLSearchParams(window.location.search).get('cotizacion');

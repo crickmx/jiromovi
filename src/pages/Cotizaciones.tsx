@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileText, Search, FolderOpen, FileDown, Send, Copy, Trash2, Loader2, Mail, MessageCircle, X, CheckCircle2, AlertTriangle,
+  FileText, Search, FolderOpen, FileDown, Send, Copy, Trash2, Loader2, Mail, MessageCircle, X, CheckCircle2, AlertTriangle, FileSignature,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { PageHeader } from '../components/ui/page-header';
 import { normalizarTexto } from '../lib/utils';
 import {
-  COTIZADORES, listarCotizaciones, eliminarCotizacion, duplicarCotizacion, registrarEnvio,
+  COTIZADORES, listarCotizaciones, eliminarCotizacion, duplicarCotizacion,
   type Cotizacion, type CotizadorId,
 } from '../lib/cotizaciones';
 import { pdfDeCotizacion } from '../lib/cotizacionesPdf';
@@ -24,14 +24,6 @@ const aBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
   r.readAsDataURL(blob);
 });
 
-/** Mismo criterio que whatsapp-session al mandar texto: 10 dígitos → 521… */
-function telefonoWhatsApp(tel: string): string {
-  let t = tel.replace(/\D/g, '');
-  if (t.length === 10) t = `52${t}`;
-  if (t.length === 12 && t.startsWith('52') && !t.startsWith('521')) t = `521${t.slice(2)}`;
-  return t;
-}
-
 function descargar(blob: Blob, nombre: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -42,7 +34,7 @@ function descargar(blob: Blob, nombre: string) {
 }
 
 function resumenTexto(c: Cotizacion): string {
-  const r = c.resumen as { productos?: string[]; personas?: number; formaPago?: string; asegurados?: number };
+  const r = c.resumen as { productos?: string[]; personas?: number; formaPago?: string; asegurados?: number; tramite_folio?: string | null };
   const partes: string[] = [];
   if (r.productos?.length) {
     const nombres: Record<string, string> = { BXPLUS: 'BX+', BNV: 'Bupa Vital', BNP: 'Bupa Plus' };
@@ -51,6 +43,7 @@ function resumenTexto(c: Cotizacion): string {
   const personas = r.personas ?? r.asegurados;
   if (personas) partes.push(`${personas} asegurado${personas === 1 ? '' : 's'}`);
   if (r.formaPago) partes.push(r.formaPago === 'mensual' ? 'Mensual' : 'Anual');
+  if (r.tramite_folio) partes.push(`Emisión ${r.tramite_folio}`);
   return partes.join(' · ');
 }
 
@@ -229,6 +222,12 @@ export default function Cotizaciones() {
                             {ocupado === `${c.id}:pdf` ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
                           </button>
                           <button type="button" className={iconBtn} title="Enviar al cliente" onClick={() => setEnviando(c)}><Send className="w-4 h-4" /></button>
+                          {c.cotizador === 'auna_onco' && (
+                            <button type="button" className={iconBtn} title={(c.resumen as { tramite_folio?: string }).tramite_folio ? 'Ver solicitud de emisión' : 'Solicitar emisión'}
+                              onClick={() => navigate(`${COTIZADORES.auna_onco.ruta}?cotizacion=${c.id}&emision=1`)}>
+                              <FileSignature className="w-4 h-4" />
+                            </button>
+                          )}
                           <button type="button" className={iconBtn} title="Duplicar" disabled={!!ocupado} onClick={() => duplicar(c)}>
                             {ocupado === `${c.id}:dup` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
                           </button>
@@ -250,7 +249,6 @@ export default function Cotizaciones() {
         <EnviarCotizacionModal
           cotizacion={enviando}
           nombreAgente={agentes.get(enviando.usuario_id) ?? ''}
-          usuarioId={usuario?.id ?? null}
           onCerrar={() => setEnviando(null)}
           onEnviado={(msg) => { setEnviando(null); avisar(msg); cargar(); }}
         />
@@ -265,20 +263,17 @@ export default function Cotizaciones() {
   );
 }
 
-function EnviarCotizacionModal({ cotizacion: c, nombreAgente, usuarioId, onCerrar, onEnviado }: {
+function EnviarCotizacionModal({ cotizacion: c, nombreAgente, onCerrar, onEnviado }: {
   cotizacion: Cotizacion;
   nombreAgente: string;
-  usuarioId: string | null;
   onCerrar: () => void;
   onEnviado: (mensaje: string) => void;
 }) {
   const [canal, setCanal] = useState<'correo' | 'whatsapp'>(c.cliente_telefono && !c.cliente_email ? 'whatsapp' : 'correo');
   const [email, setEmail] = useState(c.cliente_email ?? '');
   const [telefono, setTelefono] = useState(c.cliente_telefono ?? '');
-  const producto = COTIZADORES[c.cotizador]?.label ?? 'seguro';
-  const [mensaje, setMensaje] = useState(
-    `Hola ${c.cliente_nombre.split(' ')[0] || ''}, te comparto tu cotización ${c.folio} (${producto}). Quedo atento a cualquier duda.${nombreAgente ? `\n\n${nombreAgente}` : ''}`,
-  );
+  // Nota opcional del asesor; el saludo, su nombre y su WhatsApp los pone el servidor.
+  const [mensaje, setMensaje] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -291,38 +286,24 @@ function EnviarCotizacionModal({ cotizacion: c, nombreAgente, usuarioId, onCerra
     setEnviando(true);
     try {
       const { blob, nombre } = await pdfDeCotizacion(c);
-      const base64 = await aBase64(blob);
-      if (canal === 'correo') {
-        const html = `<p style="font-size:15px;color:#0f172a;white-space:pre-line">${mensaje.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>
-          <p style="font-size:13px;color:#64748b">Adjuntamos el PDF de la cotización ${c.folio}.</p>`;
-        const { data, error: err } = await supabase.functions.invoke('send-direct-email', {
-          body: {
-            to: email.trim(),
-            subject: `Tu cotización ${c.folio} · ${producto}`,
-            html,
-            attachments: [{ filename: nombre, content: base64, content_type: 'application/pdf' }],
-          },
-        });
-        if (err || data?.success === false) throw new Error(data?.error || err?.message || 'No se pudo enviar el correo');
-      } else {
-        const { data, error: err } = await supabase.functions.invoke('whatsapp-session', {
-          body: {
-            action: 'send-media',
-            to: telefonoWhatsApp(telefono),
-            mediaBase64: base64,
-            mimeType: 'application/pdf',
-            filename: nombre,
-            caption: mensaje,
-          },
-        });
-        if (err || !data?.success) {
-          throw new Error('No se pudo enviar desde tu WhatsApp. Revisa que esté vinculado en Centro de Contacto › WhatsApp.');
+      const { data, error: err } = await supabase.functions.invoke('enviar-cotizacion', {
+        body: {
+          cotizacion_id: c.id,
+          canal,
+          destino: canal === 'correo' ? email.trim() : telefono.trim(),
+          mensaje: mensaje.trim(),
+          pdf_base64: await aBase64(blob),
+          filename: nombre,
+        },
+      });
+      if (err || !data?.success) {
+        // invoke() pone el cuerpo de un 4xx/5xx en err.context: ahí viene el motivo.
+        let motivo = data?.error as string | undefined;
+        if (!motivo && err && 'context' in err) {
+          try { motivo = (await (err as { context: Response }).context.json())?.error; } catch { /* sin cuerpo */ }
         }
+        throw new Error(motivo || err?.message || 'No se pudo enviar');
       }
-      const destino = canal === 'correo' ? email.trim() : telefono.trim();
-      await registrarEnvio(c, { canal, destino }, usuarioId);
-      // Se guarda el contacto en la cotización para el siguiente envío.
-      await supabase.from('cotizaciones').update(canal === 'correo' ? { cliente_email: destino } : { cliente_telefono: destino }).eq('id', c.id);
       onEnviado(`Cotización ${c.folio} enviada por ${canal === 'correo' ? 'correo' : 'WhatsApp'}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -330,8 +311,6 @@ function EnviarCotizacionModal({ cotizacion: c, nombreAgente, usuarioId, onCerra
       setEnviando(false);
     }
   };
-
-  const waSinPdf = `https://wa.me/${telefonoWhatsApp(telefono)}?text=${encodeURIComponent(mensaje)}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCerrar}>
@@ -362,22 +341,20 @@ function EnviarCotizacionModal({ cotizacion: c, nombreAgente, usuarioId, onCerra
             <div>
               <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">WhatsApp del cliente</label>
               <input type="tel" className={inputCls} value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="10 dígitos" />
-              <p className="text-[11px] text-neutral-500 mt-1">Sale desde tu WhatsApp vinculado en MOVI, con el PDF adjunto.</p>
+
             </div>
           )}
           <div>
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Mensaje</label>
-            <textarea rows={4} className={inputCls} value={mensaje} onChange={e => setMensaje(e.target.value)} />
+            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Nota para el cliente <span className="font-normal text-neutral-400">(opcional)</span></label>
+            <textarea rows={3} className={inputCls} value={mensaje} onChange={e => setMensaje(e.target.value)} placeholder="Ej. Te dejo las dos opciones que platicamos." />
+          </div>
+          <div className="rounded-lg bg-neutral-50 dark:bg-white/[0.03] border border-neutral-100 dark:border-white/5 p-3 text-[11px] text-neutral-600 dark:text-neutral-300 leading-relaxed">
+            Sale desde <b>Seguwallet</b> ({canal === 'correo' ? 'seguwallet@movi.digital' : 'WhatsApp de Seguwallet'}) con el PDF adjunto. Dice que <b>{nombreAgente || 'el asesor'}</b> le envía la cotización y que puede contactarlo a su WhatsApp a 10 dígitos (el celular de su perfil).
           </div>
           {error && (
             <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 p-3 text-xs text-red-700 dark:text-red-300">
               <AlertTriangle className="w-4 h-4 shrink-0" />
-              <div>
-                {error}
-                {canal === 'whatsapp' && destinoValido && (
-                  <a href={waSinPdf} target="_blank" rel="noopener noreferrer" className="block mt-1 font-semibold underline">Abrir WhatsApp con el mensaje (sin PDF)</a>
-                )}
-              </div>
+              <div>{error}</div>
             </div>
           )}
         </div>

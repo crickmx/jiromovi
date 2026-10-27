@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft, Download, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Download, Loader2, AlertTriangle, CheckCircle2, ClipboardList } from 'lucide-react';
 import { type Asegurado, type ResultadoCotizacion } from '../../lib/aunaOncoCotizador';
 import {
   PARENTESCOS,
@@ -67,10 +68,13 @@ interface Props {
   generando: boolean;
   error: string | null;
   onVolver: () => void;
+  /** Crea el trámite de emisión con los PDF adjuntos. */
   onGenerar: () => void;
+  onDescargar: () => void;
+  tramite: { id: string; folio: string } | null;
 }
 
-export default function SolicitudEmisionAuna({ solicitud: s, setSolicitud, asegurados, resultado, faltan, generando, error, onVolver, onGenerar }: Props) {
+export default function SolicitudEmisionAuna({ solicitud: s, setSolicitud, asegurados, resultado, faltan, generando, error, onVolver, onGenerar, onDescargar, tramite }: Props) {
   const c = s.contratante;
   const fisica = c.tipoPersona === 'fisica';
   const setC = (cambios: Partial<Contratante>) => setSolicitud(x => ({ ...x, contratante: { ...x.contratante, ...cambios } }));
@@ -313,12 +317,26 @@ export default function SolicitudEmisionAuna({ solicitud: s, setSolicitud, asegu
 
         {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
-        <button type="button" onClick={onGenerar} disabled={generando || faltan.length > 0}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-          {generando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          Generar solicitud PDF
+        {tramite ? (
+          <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-900/20 p-4 space-y-2">
+            <p className="flex items-center gap-1.5 text-sm font-bold text-emerald-800 dark:text-emerald-300"><CheckCircle2 className="w-4 h-4" /> Trámite de emisión creado</p>
+            <p className="text-xs text-emerald-800/90 dark:text-emerald-200/80">Lleva adjuntas la cotización y la solicitud en PDF.</p>
+            <Link to={`/tramites/${tramite.id}`} className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700">
+              <ClipboardList className="w-4 h-4" /> Ver trámite {tramite.folio}
+            </Link>
+          </div>
+        ) : (
+          <button type="button" onClick={onGenerar} disabled={generando || faltan.length > 0}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            {generando ? <Loader2 className="w-4 h-4 animate-spin" /> : <ClipboardList className="w-4 h-4" />}
+            Crear trámite de emisión
+          </button>
+        )}
+        <button type="button" onClick={onDescargar} disabled={generando || faltan.length > 0}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:border-accent disabled:opacity-50 disabled:cursor-not-allowed">
+          <Download className="w-4 h-4" /> Descargar solicitud PDF
         </button>
-        <p className="text-[11px] text-neutral-500 dark:text-neutral-400">El PDF lleva espacio para la firma autógrafa del contratante y del agente.</p>
+        <p className="text-[11px] text-neutral-500 dark:text-neutral-400">El trámite se crea en Comercial › Emisión con la cotización y la solicitud adjuntas. El PDF lleva espacio para las firmas.</p>
       </aside>
     </div>
   );
