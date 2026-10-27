@@ -2,8 +2,10 @@
  * Cotizador Auna Oncosalud Plus 2026 (Dentegra Seguros Dentales).
  *
  * Fuente: "Agentes Tradicionales 2026 - Tarifas sistema individual.xlsx"
- * (prima neta por persona, por quinquenio y sexo, contado y mensualizado) y
- * la cotización de ejemplo de Auna para el desglose (derechos, IVA, recibos).
+ * (prima neta anual por persona, por quinquenio y sexo) y la cotización de
+ * ejemplo de Auna para el desglose: recargo por pago fraccionado de 9.5%,
+ * derechos e IVA. El Excel de tarifas trae una columna mensual con ~8.5%;
+ * Ricardo decidió usar el 9.5% de la cotización real (27/10).
  *
  * Todo es puro, sin Supabase, para poder comprobarlo con
  * `npx tsx src/lib/aunaOncoCotizador.test.mjs`.
@@ -17,6 +19,8 @@ export const EDAD_MAXIMA = 70;
 /** Derechos de póliza: $250 + IVA. */
 export const DERECHOS_POLIZA = 250;
 export const IVA = 0.16;
+/** Recargo por pago fraccionado (mensual), sobre la prima neta con descuento. */
+export const RECARGO_MENSUAL = 0.095;
 export const LIMITE_ANUAL = 9_500_000;
 export const VIGENCIA_TARIFAS = '31 de diciembre de 2026';
 
@@ -26,27 +30,25 @@ interface Quinquenio {
   hasta: number;
   /** [Mujer, Hombre] */
   anual: [number, number];
-  mensual: [number, number];
 }
 
-// Prima neta anual por persona. "mensual" es la prima anualizada pagando en
-// 12 recibos (ya trae el recargo por pago fraccionado).
+// Prima neta anual por persona.
 const TARIFAS: Quinquenio[] = [
-  { etiqueta: '0-4',   desde: 0,  hasta: 4,  anual: [1120.55, 821.60],   mensual: [1215.80, 891.44] },
-  { etiqueta: '5-9',   desde: 5,  hasta: 9,  anual: [2139.33, 1568.55],  mensual: [2321.18, 1701.88] },
-  { etiqueta: '10-14', desde: 10, hasta: 14, anual: [3955.87, 2900.47],  mensual: [4292.11, 3147.00] },
-  { etiqueta: '15-19', desde: 15, hasta: 19, anual: [5306.37, 3890.67],  mensual: [5757.41, 4221.38] },
-  { etiqueta: '20-24', desde: 20, hasta: 24, anual: [7505.00, 5502.69],  mensual: [8142.92, 5970.42] },
-  { etiqueta: '25-29', desde: 25, hasta: 29, anual: [8995.69, 6595.69],  mensual: [9760.32, 7156.32] },
-  { etiqueta: '30-34', desde: 30, hasta: 34, anual: [11584.20, 8493.61], mensual: [12568.86, 9215.56] },
-  { etiqueta: '35-39', desde: 35, hasta: 39, anual: [13356.92, 9793.36], mensual: [14492.26, 10625.80] },
-  { etiqueta: '40-44', desde: 40, hasta: 44, anual: [16171.86, 11857.29], mensual: [17546.47, 12865.16] },
-  { etiqueta: '45-49', desde: 45, hasta: 49, anual: [18158.02, 13313.54], mensual: [19701.45, 14445.20] },
-  { etiqueta: '50-54', desde: 50, hasta: 54, anual: [21315.67, 15628.78], mensual: [23127.51, 16957.22] },
-  { etiqueta: '55-59', desde: 55, hasta: 59, anual: [23550.87, 17267.62], mensual: [25552.69, 18735.37] },
-  { etiqueta: '60-64', desde: 60, hasta: 64, anual: [27123.22, 19886.90], mensual: [29428.69, 21577.28] },
-  { etiqueta: '65-69', desde: 65, hasta: 69, anual: [29669.02, 21753.49], mensual: [32190.88, 23602.54] },
-  { etiqueta: '70',    desde: 70, hasta: 70, anual: [33771.76, 24761.62], mensual: [36642.36, 26866.36] },
+  { etiqueta: '0-4',   desde: 0,  hasta: 4,  anual: [1120.55, 821.60] },
+  { etiqueta: '5-9',   desde: 5,  hasta: 9,  anual: [2139.33, 1568.55] },
+  { etiqueta: '10-14', desde: 10, hasta: 14, anual: [3955.87, 2900.47] },
+  { etiqueta: '15-19', desde: 15, hasta: 19, anual: [5306.37, 3890.67] },
+  { etiqueta: '20-24', desde: 20, hasta: 24, anual: [7505.00, 5502.69] },
+  { etiqueta: '25-29', desde: 25, hasta: 29, anual: [8995.69, 6595.69] },
+  { etiqueta: '30-34', desde: 30, hasta: 34, anual: [11584.20, 8493.61] },
+  { etiqueta: '35-39', desde: 35, hasta: 39, anual: [13356.92, 9793.36] },
+  { etiqueta: '40-44', desde: 40, hasta: 44, anual: [16171.86, 11857.29] },
+  { etiqueta: '45-49', desde: 45, hasta: 49, anual: [18158.02, 13313.54] },
+  { etiqueta: '50-54', desde: 50, hasta: 54, anual: [21315.67, 15628.78] },
+  { etiqueta: '55-59', desde: 55, hasta: 59, anual: [23550.87, 17267.62] },
+  { etiqueta: '60-64', desde: 60, hasta: 64, anual: [27123.22, 19886.90] },
+  { etiqueta: '65-69', desde: 65, hasta: 69, anual: [29669.02, 21753.49] },
+  { etiqueta: '70',    desde: 70, hasta: 70, anual: [33771.76, 24761.62] },
 ];
 
 // ── Extraprimas ──────────────────────────────────────────────────────────────
@@ -159,8 +161,6 @@ export interface LineaAsegurado {
   extraprimaPct: number;
   extraprima: number;
   primaNeta: number;
-  /** Prima anualizada pagando mensual (con recargo), ya con extraprima. */
-  primaMensualizada: number;
   error?: string;
   requiereSuscripcion: boolean;
   alertas: string[];
@@ -202,7 +202,6 @@ export function cotizar(
 
     const idx = a.sexo === 'F' ? 0 : 1;
     const base = q && !error ? q.anual[idx] : 0;
-    const baseMensual = q && !error ? q.mensual[idx] : 0;
     const extraPct = pctExtraprima(a.extraprimas);
     const extra = r2(base * extraPct);
 
@@ -228,7 +227,6 @@ export function cotizar(
       extraprimaPct: extraPct,
       extraprima: extra,
       primaNeta: r2(base + extra),
-      primaMensualizada: r2(baseMensual * (1 + extraPct)),
       error,
       requiereSuscripcion,
       alertas,
@@ -238,9 +236,8 @@ export function cotizar(
   const d = Math.min(Math.max(descuentoPct || 0, 0), 100) / 100;
   const primaNetaTotal = r2(lineas.reduce((s, l) => s + l.primaNeta, 0));
   const extraprimaTotal = r2(lineas.reduce((s, l) => s + l.extraprima, 0));
-  const mensualizadaTotal = r2(lineas.reduce((s, l) => s + l.primaMensualizada, 0));
   const descuento = r2(primaNetaTotal * d);
-  const recargoFraccionado = formaPago === 'mensual' ? r2((mensualizadaTotal - primaNetaTotal) * (1 - d)) : 0;
+  const recargoFraccionado = formaPago === 'mensual' ? r2((primaNetaTotal - descuento) * RECARGO_MENSUAL) : 0;
   const derechos = lineas.length ? DERECHOS_POLIZA : 0;
   const subtotal = r2(primaNetaTotal - descuento + recargoFraccionado + derechos);
   const iva = r2(subtotal * IVA);

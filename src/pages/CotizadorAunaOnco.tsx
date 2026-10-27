@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, Download, AlertTriangle, ChevronDown, ChevronUp, Info, Loader2, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, Download, AlertTriangle, ChevronDown, ChevronUp, Info, Loader2, ShieldCheck, FileSignature } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeader } from '../components/ui/page-header';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
@@ -15,7 +15,10 @@ import {
   type FormaPago,
   type Sexo,
 } from '../lib/aunaOncoCotizador';
-import { generarPdfAunaOnco } from '../lib/aunaOncoPdf';
+import { generarPdfAunaOnco, type AgentePdf } from '../lib/aunaOncoPdf';
+import { generarPdfSolicitudAuna } from '../lib/aunaOncoSolicitudPdf';
+import { solicitudInicial, sincronizar, faltantes, type Solicitud } from '../lib/aunaOncoSolicitud';
+import SolicitudEmisionAuna from '../components/cotizador/SolicitudEmisionAuna';
 
 const fmt = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
 
@@ -30,14 +33,23 @@ const nuevoAsegurado = (n: number): Asegurado => ({
   extraprimas: [],
 });
 
-const nuevoFolio = () => {
+const nuevoFolio = (prefijo: string) => {
   const d = new Date();
   const p = (x: number) => String(x).padStart(2, '0');
-  return `AUNA-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  return `${prefijo}-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 };
 
 const inputCls = 'w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent';
 const labelCls = 'block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1';
+
+const descargar = (blob: Blob, nombre: string) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombre;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 export default function CotizadorAunaOnco() {
   const { usuario } = useAuth();
@@ -48,13 +60,63 @@ export default function CotizadorAunaOnco() {
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modo, setModo] = useState<'cotizacion' | 'solicitud'>('cotizacion');
+  const [solicitud, setSolicitud] = useState<Solicitud | null>(null);
+  const [folioCotizacion, setFolioCotizacion] = useState<string | undefined>();
 
   // Si el titular no lleva nombre propio, es el mismo cliente.
-  const resultado = useMemo(() => cotizar(
-    asegurados.map((a, i) => (i === 0 && !a.nombre.trim() ? { ...a, nombre: cliente } : a)),
-    formaPago,
-    descuento,
-  ), [asegurados, cliente, formaPago, descuento]);
+  const aseguradosConNombre = useMemo(
+    () => asegurados.map((a, i) => (i === 0 && !a.nombre.trim() ? { ...a, nombre: cliente } : a)),
+    [asegurados, cliente],
+  );
+  const resultado = useMemo(() => cotizar(aseguradosConNombre, formaPago, descuento), [aseguradosConNombre, formaPago, descuento]);
+  const faltan = useMemo(() => (solicitud ? faltantes(solicitud, aseguradosConNombre) : []), [solicitud, aseguradosConNombre]);
+
+  const datosAgente = async (): Promise<AgentePdf> => ({
+    nombre: usuario?.nombre_publico || usuario?.nombre_completo
+      || [usuario?.nombre, usuario?.apellidos].filter(Boolean).join(' ') || '',
+    telefono: usuario?.celular_laboral || usuario?.celular_personal || null,
+    email: usuario?.email_laboral || usuario?.email || null,
+    oficina: usuario?.oficina?.nombre ?? null,
+    logoUrl: usuario?.id ? await getEffectiveUserLogo(usuario.id) : null,
+  });
+
+  const validarCotizacion = () => {
+    if (!cliente.trim()) { setError('Escribe el nombre del cliente para la cotización.'); return false; }
+    if (!resultado.valido) { setError('Revisa los asegurados: todos necesitan nombre y una edad aceptable.'); return false; }
+    return true;
+  };
+
+  const abrirSolicitud = () => {
+    setError(null);
+    if (!validarCotizacion()) return;
+    setSolicitud(prev => sincronizar(prev ?? solicitudInicial(cliente.trim(), aseguradosConNombre), cliente.trim(), aseguradosConNombre));
+    setModo('solicitud');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const generarSolicitud = async () => {
+    if (!solicitud || faltan.length) return;
+    setError(null);
+    setGenerando(true);
+    try {
+      const folio = nuevoFolio('SOL-AUNA');
+      const blob = await generarPdfSolicitudAuna({
+        folio,
+        folioCotizacion,
+        fecha: new Date(),
+        solicitud,
+        asegurados: aseguradosConNombre,
+        resultado,
+        agente: await datosAgente(),
+      });
+      descargar(blob, `Solicitud-Oncosalud-${cliente.trim().replace(/\s+/g, '-')}-${folio}.pdf`);
+    } catch (e) {
+      setError('No se pudo generar el PDF: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setGenerando(false);
+    }
+  };
 
   const actualizar = (id: string, cambios: Partial<Asegurado>) =>
     setAsegurados(prev => prev.map(a => (a.id === id ? { ...a, ...cambios } : a)));
@@ -82,33 +144,19 @@ export default function CotizadorAunaOnco() {
 
   const descargarPdf = async () => {
     setError(null);
-    if (!cliente.trim()) { setError('Escribe el nombre del cliente para la cotización.'); return; }
-    if (!resultado.valido) { setError('Revisa los asegurados: todos necesitan nombre y una edad aceptable.'); return; }
+    if (!validarCotizacion()) return;
     setGenerando(true);
     try {
-      const logoUrl = usuario?.id ? await getEffectiveUserLogo(usuario.id) : null;
-      const nombreAgente = usuario?.nombre_publico || usuario?.nombre_completo
-        || [usuario?.nombre, usuario?.apellidos].filter(Boolean).join(' ') || '';
-      const folio = nuevoFolio();
+      const folio = nuevoFolio('AUNA');
       const blob = await generarPdfAunaOnco({
         folio,
         cliente: cliente.trim(),
         fecha: new Date(),
         resultado,
-        agente: {
-          nombre: nombreAgente,
-          telefono: usuario?.celular_laboral || usuario?.celular_personal || null,
-          email: usuario?.email_laboral || usuario?.email || null,
-          oficina: usuario?.oficina?.nombre ?? null,
-          logoUrl,
-        },
+        agente: await datosAgente(),
       });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Cotizacion-Oncosalud-${cliente.trim().replace(/\s+/g, '-')}-${folio}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      setFolioCotizacion(folio);
+      descargar(blob, `Cotizacion-Oncosalud-${cliente.trim().replace(/\s+/g, '-')}-${folio}.pdf`);
     } catch (e) {
       setError('No se pudo generar el PDF: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -126,6 +174,19 @@ export default function CotizadorAunaOnco() {
         badge={<img src="/logo-auna.png" alt="Auna" className="h-5 w-auto" />}
       />
 
+      {modo === 'solicitud' && solicitud ? (
+        <SolicitudEmisionAuna
+          solicitud={solicitud}
+          setSolicitud={fn => setSolicitud(prev => (prev ? fn(prev) : prev))}
+          asegurados={aseguradosConNombre}
+          resultado={resultado}
+          faltan={faltan}
+          generando={generando}
+          error={error}
+          onVolver={() => { setError(null); setModo('cotizacion'); }}
+          onGenerar={generarSolicitud}
+        />
+      ) : (
       <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
         {/* ── Captura ── */}
         <div className="space-y-5">
@@ -373,12 +434,22 @@ export default function CotizadorAunaOnco() {
             Descargar cotización PDF
           </button>
 
+          <button
+            type="button"
+            onClick={abrirSolicitud}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-accent text-accent font-semibold text-sm hover:bg-accent/10 transition-colors"
+          >
+            <FileSignature className="w-4 h-4" />
+            Solicitar emisión
+          </button>
+
           <p className="flex items-start gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">
             <ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-px" />
             Límite anual por asegurado {fmt(LIMITE_ANUAL)} · deducible $0 · copago 0% · carencia 180 días · red cerrada Auna.
           </p>
         </aside>
       </div>
+      )}
     </div>
   );
 }

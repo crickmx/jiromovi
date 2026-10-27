@@ -33,12 +33,14 @@ assert.equal(a.primaTotal, 51783.37);
 assert.equal(a.primerRecibo, 51783.37);
 assert.equal(a.reciboSubsecuente, null);
 
-// Pago mensual: con la tarifa mensualizada del Excel de tarifas 2026
+// Pago mensual: recargo 9.5%, idéntico a la cotización mensual de Auna
 const m = cotizar(pareja, 'mensual', 0, dia);
-assert.equal(m.reciboSubsecuente, 4655.86, 'mismo 2º recibo que el Excel de Auna');
-// El 1er recibo lleva los derechos con IVA ($290) y absorbe el centavo del
-// redondeo, igual que Auna (4,698.77 + 290 = 4,988.77 y ellos cobran 4,988.78).
-assert.equal(m.primerRecibo, 4945.85);
+assert.equal(m.recargoFraccionado, 4217.13);
+assert.equal(m.subtotal, 48857.97);
+assert.equal(m.iva, 7817.28);
+assert.equal(m.primaTotal, 56675.25);
+assert.equal(m.reciboSubsecuente, 4698.77);
+assert.equal(m.primerRecibo, 4988.78, 'el 1er recibo lleva los derechos y absorbe el centavo, como Auna');
 assert.equal(Math.round((m.primerRecibo + m.reciboSubsecuente * 11) * 100) / 100, m.primaTotal, 'los recibos suman el total');
 
 // Extraprimas

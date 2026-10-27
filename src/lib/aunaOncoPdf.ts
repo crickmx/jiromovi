@@ -10,7 +10,7 @@ import {
 } from './aunaOncoCotizador';
 
 // jspdf-autotable se publica como CommonJS (ver ordenCompraPdf.ts).
-const autoTable = ((autoTableImport as unknown as { default?: typeof autoTableImport }).default
+export const autoTable = ((autoTableImport as unknown as { default?: typeof autoTableImport }).default
   ?? autoTableImport) as typeof autoTableImport;
 
 export interface AgentePdf {
@@ -29,14 +29,15 @@ export interface DatosPdf {
   agente: AgentePdf;
 }
 
-const AUNA = [31, 179, 201] as const;      // turquesa de las tablas de Auna
+export const AUNA = [31, 179, 201] as const;      // turquesa de las tablas de Auna
 const AUNA_LIME = [181, 230, 29] as const;
-const NAVY = [15, 23, 42] as const;
-const GRIS = [100, 116, 139] as const;
+export const NAVY = [15, 23, 42] as const;
+export const GRIS = [100, 116, 139] as const;
 
-const fmt = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
-const fechaLarga = (d: Date) => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-const fechaCorta = (iso: string) => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
+export const fmt = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
+export const fechaLarga = (d: Date) => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+export const fechaCorta = (iso: string) => {
+  if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
 
 async function cargarImagen(url: string): Promise<{ data: string; w: number; h: number } | null> {
   try {
@@ -86,13 +87,16 @@ const COBERTURAS_ALCANCE: [string, string][] = [
   ['Servicio de acompañamiento', 'Orientación desde la sospecha de cáncer y durante el tratamiento.'],
 ];
 
-export async function generarPdfAunaOnco(datos: DatosPdf): Promise<Blob> {
-  const { resultado: r, agente } = datos;
-  const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+export const MARGEN = 14;
+
+/**
+ * Encabezado y pie de marca compartida (logo del agente + Auna), comunes a la
+ * cotización y a la solicitud de emisión. `pie()` se llama al final: numera.
+ */
+export async function marcaCompartida(doc: jsPDF, agente: AgentePdf, folio: string) {
   const PW = doc.internal.pageSize.getWidth();
   const PH = doc.internal.pageSize.getHeight();
-  const M = 14;
-
+  const M = MARGEN;
   const [logoAgente, logoAuna] = await Promise.all([
     agente.logoUrl ? cargarImagen(agente.logoUrl) : Promise.resolve(null),
     cargarImagen('/logo-auna.png'),
@@ -124,9 +128,21 @@ export async function generarPdfAunaOnco(datos: DatosPdf): Promise<Blob> {
       const contacto = [agente.nombre, agente.telefono, agente.email].filter(Boolean).join('  ·  ');
       doc.text(`Tu asesor: ${contacto}`, M, PH - 11);
       doc.text('Seguro Oncosalud operado por Dentegra Seguros Dentales, S.A. · www.auna.org/mx/oncosalud', M, PH - 7);
-      doc.text(`Folio ${datos.folio} · ${i}/${total}`, PW - M, PH - 11, { align: 'right' });
+      doc.text(`Folio ${folio} · ${i}/${total}`, PW - M, PH - 11, { align: 'right' });
     }
   };
+
+  return { encabezado, pie };
+}
+
+export async function generarPdfAunaOnco(datos: DatosPdf): Promise<Blob> {
+  const { resultado: r, agente } = datos;
+  const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+  const PW = doc.internal.pageSize.getWidth();
+  const PH = doc.internal.pageSize.getHeight();
+  const M = MARGEN;
+
+  const { encabezado, pie } = await marcaCompartida(doc, agente, datos.folio);
 
   // ── Página 1 ──────────────────────────────────────────────────────────────
   encabezado();
