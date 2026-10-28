@@ -57,7 +57,6 @@ export async function pdfDeCotizacion(c: Cotizacion): Promise<{ blob: Blob; nomb
       fecha: new Date(c.updated_at),
       resultado,
       agente: agenteDesdeUsuario(usuario as never, logo),
-      claveAgente: d.claveAgente,
       region: d.region,
     });
     return { blob, nombre: `Precio-Referencia-Oncosalud-${slug(c.cliente_nombre)}-${c.folio}.pdf` };

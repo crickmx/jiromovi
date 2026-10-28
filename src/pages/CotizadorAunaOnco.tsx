@@ -16,6 +16,7 @@ import {
   MAX_DEPENDIENTES,
   PARENTESCOS_DEPENDIENTE,
   PRODUCTO,
+  CLAVE_AGENTE,
   REGIONES,
   VIGENCIA_TARIFAS,
   imc,
@@ -64,7 +65,6 @@ export default function CotizadorAunaOnco() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const [cliente, setCliente] = useState('');
-  const [claveAgente, setClaveAgente] = useState('');
   const [region, setRegion] = useState('');
   const [verInfo, setVerInfo] = useState(false);
   const [formaPago, setFormaPago] = useState<FormaPago>('anual');
@@ -86,8 +86,8 @@ export default function CotizadorAunaOnco() {
   const idRef = useRef<string | null>(null);
   const enCurso = useRef<Promise<unknown> | null>(null);
   const ultimoGuardado = useRef<string>('');
-  const claveDe = (d: Pick<DatosAuna, 'cliente' | 'formaPago' | 'descuento' | 'asegurados' | 'solicitud' | 'claveAgente' | 'region'>) =>
-    JSON.stringify([d.cliente, d.formaPago, d.descuento, d.asegurados, d.solicitud, d.claveAgente ?? '', d.region ?? '']);
+  const claveDe = (d: Pick<DatosAuna, 'cliente' | 'formaPago' | 'descuento' | 'asegurados' | 'solicitud' | 'region'>) =>
+    JSON.stringify([d.cliente, d.formaPago, d.descuento, d.asegurados, d.solicitud, d.region ?? '']);
 
   // Abrir una cotización guardada desde Cotizar › Cotizaciones (?cotizacion=<id>).
   // Con &emision=1 entra directo a la solicitud de emisión.
@@ -103,9 +103,8 @@ export default function CotizadorAunaOnco() {
           ? d.asegurados.map((a, i) => ({ ...a, parentesco: parentescoDe(a, i) }))
           : [nuevoAsegurado(0)];
         const cli = d.cliente ?? c.cliente_nombre;
-        ultimoGuardado.current = claveDe({ cliente: cli, formaPago: d.formaPago ?? 'anual', descuento: d.descuento ?? 0, asegurados: aseg, solicitud: d.solicitud ?? null, claveAgente: d.claveAgente ?? '', region: d.region ?? '' });
+        ultimoGuardado.current = claveDe({ cliente: cli, formaPago: d.formaPago ?? 'anual', descuento: d.descuento ?? 0, asegurados: aseg, solicitud: d.solicitud ?? null, region: d.region ?? '' });
         setCliente(cli);
-        setClaveAgente(d.claveAgente ?? '');
         setRegion(d.region ?? '');
         setFormaPago(d.formaPago ?? 'anual');
         setDescuento(d.descuento ?? 0);
@@ -145,12 +144,12 @@ export default function CotizadorAunaOnco() {
         cliente_nombre: cliente,
         cliente_email: c?.email.trim() || null,
         cliente_telefono: c?.telefono.trim() || null,
-        datos: { cliente, claveAgente, region, formaPago, descuento, asegurados, resultado, solicitud, tramiteEmision },
+        datos: { cliente, region, formaPago, descuento, asegurados, resultado, solicitud, tramiteEmision },
         resumen: { asegurados: asegurados.length, formaPago, region, solicitud: !!solicitud, tramite_folio: tramiteEmision?.folio ?? null },
         prima_total: resultado.primaTotal,
       });
       idRef.current = r.id;
-      ultimoGuardado.current = claveDe({ cliente, formaPago, descuento, asegurados, solicitud, claveAgente, region });
+      ultimoGuardado.current = claveDe({ cliente, formaPago, descuento, asegurados, solicitud, region });
       setCotizacionId(r.id);
       setFolio(r.folio);
       return r.folio;
@@ -171,7 +170,7 @@ export default function CotizadorAunaOnco() {
 
   // Se guarda sola en cuanto la cotización es válida y cada vez que cambia.
   const valida = !!cliente.trim() && resultado.valido;
-  const claveActual = claveDe({ cliente, formaPago, descuento, asegurados, solicitud, claveAgente, region });
+  const claveActual = claveDe({ cliente, formaPago, descuento, asegurados, solicitud, region });
   useEffect(() => {
     if (!valida || claveActual === ultimoGuardado.current) return;
     const t = setTimeout(() => {
@@ -189,7 +188,6 @@ export default function CotizadorAunaOnco() {
 
   const nueva = () => {
     setCliente('');
-    setClaveAgente('');
     setRegion('');
     setFormaPago('anual');
     setDescuento(0);
@@ -208,7 +206,6 @@ export default function CotizadorAunaOnco() {
 
   const validarCotizacion = () => {
     const faltaEjercicio = [
-      !claveAgente.trim() && 'Clave del agente / promotor',
       !cliente.trim() && 'Dirigido a',
       !region && 'Región',
     ].filter(Boolean);
@@ -224,7 +221,7 @@ export default function CotizadorAunaOnco() {
     setSolicitud(prev => {
       const s0 = sincronizar(prev ?? solicitudInicial(cliente.trim(), aseguradosConNombre), cliente.trim(), aseguradosConNombre);
       // La clave capturada en la cotización llena la del agente si aún está vacía.
-      return s0.agente.clave.trim() ? s0 : { ...s0, agente: { ...s0.agente, clave: claveAgente.trim() } };
+      return s0.agente.clave.trim() ? s0 : { ...s0, agente: { ...s0.agente, clave: CLAVE_AGENTE } };
     });
     setModo('solicitud');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -333,7 +330,6 @@ export default function CotizadorAunaOnco() {
         fecha: new Date(),
         resultado,
         agente: await datosAgente(),
-        claveAgente: claveAgente.trim(),
         region,
       });
       descargar(blob, `Precio-Referencia-Oncosalud-${cliente.trim().replace(/\s+/g, '-')}-${folio}.pdf`);
@@ -398,12 +394,8 @@ export default function CotizadorAunaOnco() {
           <section className="rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] p-5 space-y-3">
             <h3 className="text-sm font-bold text-neutral-900 dark:text-white">1 · Datos del ejercicio</h3>
             <div className="grid sm:grid-cols-3 gap-4">
-              <div>
-                <label className={labelCls}>Clave del agente / promotor <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={claveAgente} onChange={e => setClaveAgente(e.target.value)} placeholder="Clave Auna" />
-              </div>
-              <div>
-                <label className={labelCls}>Dirigido a <span className="text-red-500">*</span></label>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Dirigido a (cliente) <span className="text-red-500">*</span></label>
                 <input className={inputCls} value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Cliente / prospecto" />
               </div>
               <div>
@@ -480,7 +472,18 @@ export default function CotizadorAunaOnco() {
                   <div className="grid sm:grid-cols-6 gap-3">
                     <div className={i === 0 ? 'sm:col-span-3' : 'sm:col-span-2'}>
                       <label className={labelCls}>Nombre completo</label>
-                      <input className={inputCls} value={a.nombre} onChange={e => actualizar(a.id, { nombre: e.target.value })} placeholder={i === 0 ? (cliente || 'Igual que el cliente') : 'Nombre completo'} />
+                      {/* El titular es el cliente salvo que se escriba otro nombre; vaciarlo lo vuelve a ligar. */}
+                      <input
+                        className={inputCls}
+                        value={i === 0 ? (a.nombre || cliente) : a.nombre}
+                        onChange={e => actualizar(a.id, { nombre: i === 0 && e.target.value.trim() === cliente.trim() ? '' : e.target.value })}
+                        placeholder={i === 0 ? 'Igual que el cliente' : 'Nombre completo'}
+                      />
+                      {i === 0 && (
+                        <p className="text-[10px] text-neutral-400 mt-1">
+                          {a.nombre.trim() ? 'Titular distinto al cliente. Bórralo para volver a usar el nombre del cliente.' : 'Igual que el cliente; edítalo si el titular es otra persona.'}
+                        </p>
+                      )}
                     </div>
                     {i > 0 && (
                       <div className="sm:col-span-1">

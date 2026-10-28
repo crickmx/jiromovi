@@ -131,7 +131,7 @@ export function solicitudInicial(cliente: string, asegurados: Asegurado[]): Soli
     pep: { es: false, detalle: '', vinculos: false, sociedad: '' },
     envio: 'digital',
     aceptaMercadotecnia: null,
-    agente: { clave: '', participacion: '100' },
+    agente: { clave: 'JIRO', participacion: '100' },
     lugar: '',
   };
 }

@@ -26,6 +26,8 @@ export const MAX_DEPENDIENTES = 5;
 export const EDAD_MAXIMA_HIJO = 24;
 export const REGIONES = ['CDMX', 'Monterrey', 'Guadalajara', 'Querétaro', 'Puebla', 'Otra'];
 export const PRODUCTO = 'Oncosalud PLUS';
+/** Clave de agente/promotor que va en los PDF: todas salen a nombre de JIRO (Ricardo, 28/10). */
+export const CLAVE_AGENTE = 'JIRO';
 
 /** Edad máxima de aceptación: 70 años 11 meses → edad cumplida 70. */
 export const EDAD_MAXIMA = 70;

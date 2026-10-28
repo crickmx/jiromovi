@@ -11,6 +11,7 @@ import {
   NOTAS_REFERENCIA,
   LIMITE_ANUAL,
   PRODUCTO,
+  CLAVE_AGENTE,
   RECARGO_MENSUAL,
   VIGENCIA_TARIFAS,
   type ResultadoCotizacion,
@@ -49,7 +50,7 @@ export interface DatosPdf {
   fecha: Date;
   resultado: ResultadoCotizacion;
   agente: AgentePdf;
-  /** Clave del agente / promotor ante Auna. */
+  /** Clave del agente / promotor ante Auna. Si no viene, JIRO. */
   claveAgente?: string;
   region?: string;
 }
@@ -226,7 +227,8 @@ export async function generarPdfAunaOnco(datos: DatosPdf): Promise<Blob> {
   par('Referencia', datos.folio, M, y);
   par('Región', datos.region || '—', PW - M, y, 'right');
   y += 5;
-  par('Agente / promotor', [datos.claveAgente, agente.nombre].filter(Boolean).join(' · ') || '—', M, y);
+  par('Clave', datos.claveAgente || CLAVE_AGENTE, M, y);
+  par('Agente', agente.nombre || '—', PW - M, y + 5, 'right');
   par('Forma de pago', mensual ? 'Mensual' : 'Anual', PW - M, y, 'right');
   y += 5;
   par('Cliente / prospecto', datos.cliente.toUpperCase(), M, y);

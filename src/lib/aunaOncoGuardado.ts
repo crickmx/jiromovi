@@ -5,7 +5,7 @@ import type { Solicitud } from './aunaOncoSolicitud';
 
 export interface DatosAuna {
   cliente: string;
-  /** Clave del agente / promotor ante Auna y región del ejercicio (desde el 28/10). */
+  /** Región del ejercicio (desde el 28/10). `claveAgente` quedó en desuso: siempre es JIRO. */
   claveAgente?: string;
   region?: string;
   formaPago: FormaPago;
