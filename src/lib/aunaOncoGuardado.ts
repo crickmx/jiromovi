@@ -5,6 +5,9 @@ import type { Solicitud } from './aunaOncoSolicitud';
 
 export interface DatosAuna {
   cliente: string;
+  /** Clave del agente / promotor ante Auna y región del ejercicio (desde el 28/10). */
+  claveAgente?: string;
+  region?: string;
   formaPago: FormaPago;
   descuento: number;
   asegurados: Asegurado[];

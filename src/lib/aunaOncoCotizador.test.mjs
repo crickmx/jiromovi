@@ -5,7 +5,7 @@
 // (09-030-2607/01554, 28/07/2026) y del Excel "Cotizador Oncosalud 2026".
 
 import assert from 'node:assert/strict';
-import { cotizar, edadCumplida, quinquenioDe, pctExtraprima, sugiereObesidadIII } from './aunaOncoCotizador.ts';
+import { cotizar, edadCumplida, quinquenioDe, pctExtraprima, sugiereObesidadIII, parentescoDe } from './aunaOncoCotizador.ts';
 
 const dia = new Date(2026, 6, 28);
 const base = (o) => ({ id: o.nombre, respuestas: {}, extraprimas: [], ...o });
@@ -68,5 +68,32 @@ assert.equal(prost.requiereSuscripcion, false);
 
 assert.equal(sugiereObesidadIII({ estatura: 1.6, peso: 103 }), true);
 assert.equal(sugiereObesidadIII({ estatura: 1.6, peso: 100 }), false);
+
+// PDF oficial de Auna del 27/10 (JUANITA PEREZ LOPEZ, 12/10/1966, mensual):
+// recargo 2,576.71 · total 34,741.92 · 1er recibo 3,161.03 · 11 de 2,870.99
+const juanita = [base({ nombre: 'JUANITA', sexo: 'F', fechaNacimiento: '1966-10-12' })];
+const jm = cotizar(juanita, 'mensual', 0, new Date(2026, 9, 27));
+assert.equal(jm.recargoFraccionado, 2576.71);
+assert.equal(jm.primaTotal, 34741.92);
+assert.equal(jm.primerRecibo, 3161.03);
+assert.equal(jm.reciboSubsecuente, 2870.99);
+assert.equal(jm.lineas[0].primaConRecargo, 29699.93, 'prima + 9.5% de esa persona');
+assert.equal(cotizar(juanita, 'anual', 0, new Date(2026, 9, 27)).primaTotal, 31752.94);
+
+// Parentescos: el primero es titular; los viejos sin parentesco, cónyuge
+assert.equal(parentescoDe({}, 0), 'Titular');
+assert.equal(parentescoDe({}, 1), 'Cónyuge');
+assert.equal(parentescoDe({ parentesco: 'Hijo/a' }, 2), 'Hijo/a');
+
+// Hijo/a de 25 años o más: fuera de la póliza
+const hijo25 = cotizar([pareja[0], base({ nombre: 'Hijo', sexo: 'M', fechaNacimiento: '2001-01-01', parentesco: 'Hijo/a' })], 'anual', 0, dia);
+assert.equal(hijo25.valido, false);
+assert.match(hijo25.lineas[1].error, /24 años 11 meses/);
+const hijo24 = cotizar([pareja[0], base({ nombre: 'Hijo', sexo: 'M', fechaNacimiento: '2002-01-01', parentesco: 'Hijo/a' })], 'anual', 0, dia);
+assert.equal(hijo24.valido, true);
+
+// Máximo 6 asegurados
+const siete = Array.from({ length: 7 }, (_, i) => base({ nombre: `P${i}`, sexo: 'F', fechaNacimiento: '1990-01-01', parentesco: i ? 'Hijo/a' : undefined }));
+assert.equal(cotizar(siete.map(p => ({ ...p, fechaNacimiento: '2010-01-01' })), 'anual', 0, dia).valido, false);
 
 console.log('✓ aunaOncoCotizador: todo bien');

@@ -1,10 +1,17 @@
-// PDF de la cotización Auna Oncosalud Plus, con marca compartida:
-// logo del agente a la izquierda y logo de Auna a la derecha.
+// PDF del precio de referencia Auna Oncosalud PLUS, con marca compartida:
+// logo del agente a la izquierda y logo de Auna a la derecha. Contenido,
+// leyendas y paleta siguen la calculadora oficial de Auna (28/10).
 import { jsPDF } from 'jspdf';
 import autoTableImport from 'jspdf-autotable';
 import {
   AVISO_IMPORTANTE,
+  AVISO_NO_OFICIAL,
+  AVISO_REFERENCIA,
+  AVISO_PRIVACIDAD,
+  NOTAS_REFERENCIA,
   LIMITE_ANUAL,
+  PRODUCTO,
+  RECARGO_MENSUAL,
   VIGENCIA_TARIFAS,
   type ResultadoCotizacion,
 } from './aunaOncoCotizador';
@@ -42,12 +49,18 @@ export interface DatosPdf {
   fecha: Date;
   resultado: ResultadoCotizacion;
   agente: AgentePdf;
+  /** Clave del agente / promotor ante Auna. */
+  claveAgente?: string;
+  region?: string;
 }
 
-export const AUNA = [31, 179, 201] as const;      // turquesa de las tablas de Auna
-const AUNA_LIME = [181, 230, 29] as const;
-export const NAVY = [15, 23, 42] as const;
-export const GRIS = [100, 116, 139] as const;
+// Paleta oficial Auna 2026 (Pantone 3125C, 382C, Black 7C).
+export const AUNA = [0, 176, 202] as const;        // Turquesa Auna — color principal
+const AUNA_DEEP = [0, 147, 168] as const;          // para tablas secundarias
+const AUNA_LIME = [190, 214, 0] as const;          // Verde Auna — solo con texto gris oscuro encima
+const AUNA_NARANJA = [255, 105, 0] as const;       // aviso de "no oficial"
+export const NAVY = [61, 57, 53] as const;         // Gris oscuro Auna — tinta principal
+export const GRIS = [117, 114, 109] as const;
 
 export const fmt = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
 export const fechaLarga = (d: Date) => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -108,7 +121,12 @@ export const MARGEN = 14;
  * Encabezado y pie de marca compartida (logo del agente + Auna), comunes a la
  * cotización y a la solicitud de emisión. `pie()` se llama al final: numera.
  */
-export async function marcaCompartida(doc: jsPDF, agente: AgentePdf, folio: string) {
+export async function marcaCompartida(
+  doc: jsPDF,
+  agente: AgentePdf,
+  folio: string,
+  leyendaPie = 'Seguro Oncosalud · Auna Seguros, S.A. · www.aunaseguros.com.mx',
+) {
   const PW = doc.internal.pageSize.getWidth();
   const PH = doc.internal.pageSize.getHeight();
   const M = MARGEN;
@@ -142,7 +160,7 @@ export async function marcaCompartida(doc: jsPDF, agente: AgentePdf, folio: stri
       doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...GRIS);
       const contacto = [agente.nombre, agente.telefono, agente.email].filter(Boolean).join('  ·  ');
       doc.text(`Tu asesor: ${contacto}`, M, PH - 11);
-      doc.text('Seguro Oncosalud operado por Dentegra Seguros Dentales, S.A. · www.auna.org/mx/oncosalud', M, PH - 7);
+      doc.text(leyendaPie, M, PH - 7);
       doc.text(`Folio ${folio} · ${i}/${total}`, PW - M, PH - 11, { align: 'right' });
     }
   };
@@ -156,153 +174,207 @@ export async function generarPdfAunaOnco(datos: DatosPdf): Promise<Blob> {
   const PW = doc.internal.pageSize.getWidth();
   const PH = doc.internal.pageSize.getHeight();
   const M = MARGEN;
+  const ancho = PW - 2 * M;
+  const mensual = r.formaPago === 'mensual';
+  const finY = () => (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
 
   const { encabezado, pie } = await marcaCompartida(doc, agente, datos.folio);
+  const nuevaPagina = (yy: number, alto: number) => {
+    if (yy + alto <= PH - 20) return yy;
+    doc.addPage(); encabezado(); return 36;
+  };
 
   // ── Página 1 ──────────────────────────────────────────────────────────────
   encabezado();
-  let y = 38;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(...NAVY);
-  doc.text('Cotización Oncosalud Plus', M, y);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GRIS);
-  doc.text(`${fechaLarga(datos.fecha)}  ·  Folio ${datos.folio}`, PW - M, y, { align: 'right' });
-  y += 7;
-  doc.setFontSize(10); doc.setTextColor(...NAVY);
-  doc.text(`Estimado(a) cliente: `, M, y);
-  doc.setFont('helvetica', 'bold');
-  doc.text(datos.cliente.toUpperCase(), M + doc.getTextWidth('Estimado(a) cliente: '), y);
-  y += 5;
+  let y = 37;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...NAVY);
+  doc.text(`Precio de Referencia · ${PRODUCTO}`, M, y);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...GRIS);
-  const intro = doc.splitTextToSize('Gracias por considerarnos para la protección oncológica de usted y su familia. A continuación encontrará la descripción de beneficios, costos y el alcance del seguro cotizado.', PW - 2 * M);
-  doc.text(intro, M, y);
-  y += intro.length * 3.8 + 3;
+  doc.text(fechaLarga(datos.fecha), PW - M, y, { align: 'right' });
+  y += 4;
+
+  // Aviso "no es cotización oficial" (naranja Auna)
+  doc.setFillColor(255, 241, 228);
+  doc.rect(M, y, ancho, 7, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...AUNA_NARANJA);
+  doc.text(AVISO_NO_OFICIAL, M + 2.5, y + 4.6);
+  y += 11;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(...GRIS);
+  const lRef = doc.splitTextToSize(AVISO_REFERENCIA, ancho);
+  doc.text(lRef, M, y);
+  y += lRef.length * 3 + 3;
+
+  // Datos del ejercicio
+  const par = (etq: string, val: string, x: number, yy: number, alinear: 'left' | 'right' = 'left') => {
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(...NAVY);
+    const t = `${etq}: `;
+    // El ancho se mide con la fuente con la que se dibuja cada parte.
+    if (alinear === 'left') {
+      doc.text(t, x, yy);
+      const anchoEtq = doc.getTextWidth(t);
+      doc.setFont('helvetica', 'normal');
+      doc.text(val, x + anchoEtq, yy);
+    } else {
+      doc.setFont('helvetica', 'normal');
+      const anchoVal = doc.getTextWidth(val);
+      doc.text(val, x, yy, { align: 'right' });
+      doc.setFont('helvetica', 'bold');
+      doc.text(t, x - anchoVal, yy, { align: 'right' });
+    }
+  };
+  doc.setFontSize(8.8);
+  par('Referencia', datos.folio, M, y);
+  par('Región', datos.region || '—', PW - M, y, 'right');
+  y += 5;
+  par('Agente / promotor', [datos.claveAgente, agente.nombre].filter(Boolean).join(' · ') || '—', M, y);
+  par('Forma de pago', mensual ? 'Mensual' : 'Anual', PW - M, y, 'right');
+  y += 5;
+  par('Cliente / prospecto', datos.cliente.toUpperCase(), M, y);
+  y += 4;
 
   // Coberturas
   autoTable(doc, {
     startY: y,
     margin: { left: M, right: M },
-    head: [[{ content: 'PROGRAMA ONCOSALUD PLUS', colSpan: 4, styles: { halign: 'center' } }], ['Coberturas', 'Periodo de carencia', 'Deducible', 'Copago']],
+    head: [['Coberturas', 'Periodo de carencia', 'Deducible', 'Copago']],
     body: [
       ['Cobertura de Diagnóstico', '180 días', '$0', '0%'],
       ['Cobertura de Tratamiento Oncológico', '180 días', '$0', '0%'],
       ['Consulta Preventiva', '180 días', '$0', '0%'],
       ['Chequeo Oncológico', '180 días', '$0', '0%'],
-      [{ content: 'Límite anual por asegurado', styles: { fontStyle: 'bold' } }, { content: fmt(LIMITE_ANUAL), colSpan: 3, styles: { halign: 'center', fontStyle: 'bold' } }],
-      [{ content: 'Red', styles: { fontStyle: 'bold' } }, { content: 'Cerrada · Vigencia anual', colSpan: 3, styles: { halign: 'center' } }],
     ],
-    headStyles: { fillColor: [...AUNA], textColor: 255, fontSize: 8.5 },
-    bodyStyles: { fontSize: 8.5, textColor: [...NAVY] },
+    headStyles: { fillColor: [...AUNA], textColor: 255, fontSize: 8 },
+    bodyStyles: { fontSize: 8, textColor: [...NAVY] },
     columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' } },
     theme: 'grid',
-    styles: { lineColor: [226, 232, 240], lineWidth: 0.2, cellPadding: 1.8 },
+    styles: { lineColor: [226, 232, 240], lineWidth: 0.2, cellPadding: 1.4 },
   });
-  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 5;
+  y = finY() + 3.5;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(...GRIS);
+  doc.text(`Límite anual por asegurado: ${fmt(LIMITE_ANUAL)} MXN  ·  Tipo de red: Red Cerrada  ·  Vigencia: Anual`, M, y);
+  y += 4;
 
   // Asegurados
   const hayExtra = r.lineas.some(l => l.extraprima > 0);
+  const recargoPct = `${(RECARGO_MENSUAL * 100).toFixed(1)}%`;
   autoTable(doc, {
     startY: y,
     margin: { left: M, right: M },
     head: [[
-      'Asegurado', 'Género', 'Fecha de nacimiento', 'Edad',
+      'Asegurado', 'Parentesco', 'Sexo', 'Nacimiento', 'Edad',
       ...(hayExtra ? ['Extraprima'] : []),
-      'Prima neta',
+      'Ref. Prima base',
+      ...(mensual ? [`Ref. Prima + recargo ${recargoPct}`] : []),
     ]],
     body: r.lineas.map(l => [
       l.nombre.toUpperCase(),
+      l.parentesco,
       l.sexo === 'F' ? 'Femenino' : 'Masculino',
       fechaCorta(l.fechaNacimiento),
-      String(l.edad ?? ''),
-      ...(hayExtra ? [l.extraprima > 0 ? `${Math.round(l.extraprimaPct * 100)}% (${fmt(l.extraprima)})` : '—'] : []),
+      `${l.edad ?? ''} (${l.quinquenio ?? '—'})`,
+      ...(hayExtra ? [l.extraprima > 0 ? `${Math.round(l.extraprimaPct * 100)}%` : '—'] : []),
       fmt(l.primaNeta),
+      ...(mensual ? [fmt(l.primaConRecargo)] : []),
     ]),
-    headStyles: { fillColor: [...AUNA], textColor: 255, fontSize: 8.5 },
-    bodyStyles: { fontSize: 8.5, textColor: [...NAVY] },
-    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, [hayExtra ? 5 : 4]: { halign: 'right' }, ...(hayExtra ? { 4: { halign: 'right' } } : {}) },
+    headStyles: { fillColor: [...AUNA_DEEP], textColor: 255, fontSize: 7.8 },
+    bodyStyles: { fontSize: 7.8, textColor: [...NAVY] },
+    columnStyles: {
+      2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' },
+      [hayExtra ? 5 : -1]: { halign: 'center' },
+      [hayExtra ? 6 : 5]: { halign: 'right' },
+      [hayExtra ? 7 : 6]: { halign: 'right' },
+    },
     theme: 'grid',
-    styles: { lineColor: [226, 232, 240], lineWidth: 0.2, cellPadding: 1.8 },
+    styles: { lineColor: [226, 232, 240], lineWidth: 0.2, cellPadding: 1.4 },
   });
-  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 5;
+  y = finY() + 4;
 
   // Desglose
-  const filas: [string, string][] = [
-    ['Forma de pago', r.formaPago === 'anual' ? 'Anual (contado)' : 'Mensual (12 recibos)'],
-    ['Prima neta total de la póliza', fmt(r.primaNetaTotal)],
-  ];
-  if (r.descuento > 0) filas.push([`Descuento en la prima (${r.descuentoPct}%)`, `- ${fmt(r.descuento)}`]);
-  filas.push(['Recargo por pago fraccionado', fmt(r.recargoFraccionado)]);
-  filas.push(['Derechos de póliza', fmt(r.derechos)]);
-  filas.push(['Subtotal', fmt(r.subtotal)]);
-  filas.push(['I.V.A. (16%)', fmt(r.iva)]);
-  const anchoDesglose = 105;
+  const filas: [string, string][] = [['Ref. Prima neta total', fmt(r.primaNetaTotal)]];
+  if (r.descuento > 0) filas.push([`Ref. Descuento en la prima (${r.descuentoPct}%)`, `- ${fmt(r.descuento)}`]);
+  if (mensual) {
+    filas.push([`Ref. Recargo por pago mensual (${recargoPct} por asegurado)`, fmt(r.recargoFraccionado)]);
+    filas.push(['Ref. Prima neta + recargo', fmt(r.primaNetaTotal - r.descuento + r.recargoFraccionado)]);
+  }
+  filas.push(['Ref. Derechos de emisión (una sola vez por póliza)', fmt(r.derechos)]);
+  filas.push(['Ref. Subtotal', fmt(r.subtotal)]);
+  filas.push(['Ref. IVA (16%)', fmt(r.iva)]);
+  y = nuevaPagina(y, filas.length * 5 + 30);
   autoTable(doc, {
     startY: y,
-    margin: { left: M, right: PW - M - anchoDesglose },
-    body: [...filas, ['Prima total de la póliza', fmt(r.primaTotal)]],
+    margin: { left: M, right: M },
+    body: filas,
     theme: 'plain',
-    bodyStyles: { fontSize: 8.5, textColor: [...NAVY], cellPadding: 1.5 },
-    columnStyles: { 1: { halign: 'right' } },
-    didParseCell: (h) => {
-      if (h.row.index === filas.length) {
-        h.cell.styles.fillColor = [...AUNA];
-        h.cell.styles.textColor = 255;
-        h.cell.styles.fontStyle = 'bold';
-        h.cell.styles.fontSize = 10;
-      } else if (h.row.index % 2 === 0) {
-        h.cell.styles.fillColor = [241, 250, 252];
-      }
-    },
+    bodyStyles: { fontSize: 8.6, textColor: [...NAVY], cellPadding: 1.1 },
+    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
   });
-  const finDesglose = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  y = finY() + 1.5;
+  // Total: verde Auna, texto SIEMPRE gris oscuro encima (regla de marca)
+  doc.setFillColor(...AUNA_LIME);
+  doc.rect(M, y, ancho, 10, 'F');
+  doc.setTextColor(...NAVY); doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5);
+  doc.text('Ref. Prima total', M + 3.5, y + 6.6);
+  doc.text(fmt(r.primaTotal), PW - M - 3.5, y + 6.6, { align: 'right' });
+  y += 15;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.6); doc.setTextColor(...NAVY);
+  doc.text(mensual
+    ? `Ref. Primer recibo (incluye derechos de emisión): ${fmt(r.primerRecibo)}     Ref. Recibos subsecuentes (x11): ${fmt(r.reciboSubsecuente ?? 0)}`
+    : `Ref. Primer recibo (pago de contado, cubre la vigencia anual completa): ${fmt(r.primerRecibo)}`, M, y);
+  y += 4;
+  doc.setFontSize(6.8); doc.setTextColor(...GRIS);
+  doc.text('* REF.- Referencia de precio', M, y);
+  y += 5;
 
-  // Tarjeta de recibos a la derecha del desglose
-  const cx = M + anchoDesglose + 6;
-  const cw = PW - M - cx;
-  doc.setFillColor(15, 23, 42); doc.roundedRect(cx, y, cw, finDesglose - y, 3, 3, 'F');
-  doc.setTextColor(255); doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-  doc.text(r.formaPago === 'anual' ? 'PAGO ÚNICO' : 'PRIMER RECIBO', cx + 5, y + 8);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
-  doc.text(fmt(r.primerRecibo), cx + 5, y + 17);
-  if (r.reciboSubsecuente != null) {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-    doc.text('11 RECIBOS SUBSECUENTES DE', cx + 5, y + 27);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
-    doc.text(fmt(r.reciboSubsecuente), cx + 5, y + 35);
-  }
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(203, 213, 225);
-  doc.text(doc.splitTextToSize('Incluye IVA. Los derechos de póliza se cobran en el primer recibo.', cw - 10), cx + 5, finDesglose - 7);
-  y = finDesglose + 6;
-
-  // Aviso importante
-  // El ancho de línea depende del tamaño de letra: fijarlo antes de partir.
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-  const avisoLineas = doc.splitTextToSize(AVISO_IMPORTANTE, PW - 2 * M - 10);
-  const avisoH = avisoLineas.length * 3.6 + 12;
-  if (y + avisoH > PH - 20) { doc.addPage(); encabezado(); y = 36; }
-  doc.setFillColor(255, 251, 235); doc.setDrawColor(245, 158, 11); doc.setLineWidth(0.4);
-  doc.roundedRect(M, y, PW - 2 * M, avisoH, 2.5, 2.5, 'FD');
-  doc.setFillColor(245, 158, 11); doc.rect(M, y, 1.6, avisoH, 'F');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(146, 64, 14);
-  doc.text('Aviso importante sobre su cotización:', M + 5, y + 6);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120, 53, 15);
-  doc.text(avisoLineas, M + 5, y + 11);
+  // Aviso importante (pedido por JIRO)
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8);
+  const lAviso = doc.splitTextToSize(AVISO_IMPORTANTE, ancho - 9);
+  const avisoH = lAviso.length * 3.4 + 10;
+  y = nuevaPagina(y, avisoH);
+  doc.setFillColor(255, 251, 235); doc.setDrawColor(245, 158, 11); doc.setLineWidth(0.35);
+  doc.roundedRect(M, y, ancho, avisoH, 2, 2, 'FD');
+  doc.setFillColor(245, 158, 11); doc.rect(M, y, 1.5, avisoH, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(146, 64, 14);
+  doc.text('Aviso importante sobre su cotización:', M + 4.5, y + 5.2);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(120, 53, 15);
+  doc.text(lAviso, M + 4.5, y + 9.4);
   y += avisoH + 4;
 
   if (r.requiereSuscripcion || hayExtra) {
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(7.2);
     const txt = r.requiereSuscripcion
       ? 'Con base en el cuestionario médico, uno o más asegurados requieren valoración de la suscripción médica de la aseguradora antes de confirmar precio y condiciones.'
       : 'Las extraprimas mostradas son preliminares conforme a la matriz de casos frecuentes; la aseguradora las confirma en la suscripción médica.';
-    doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5);
-    const l = doc.splitTextToSize(txt, PW - 2 * M);
-    if (y + l.length * 3.6 > PH - 20) { doc.addPage(); encabezado(); y = 36; }
-    doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5); doc.setTextColor(...GRIS);
+    const l = doc.splitTextToSize(txt, ancho);
+    y = nuevaPagina(y, l.length * 3.2);
+    doc.setTextColor(...GRIS);
     doc.text(l, M, y);
+    y += l.length * 3.2 + 2;
   }
 
-  // ── Página 2: alcance, red y notas ────────────────────────────────────────
-  doc.addPage();
-  encabezado();
-  y = 38;
+  // Información importante a considerar + privacidad
+  y = nuevaPagina(y, 40);
+  doc.setDrawColor(...AUNA); doc.setLineWidth(0.3);
+  doc.line(M, y, PW - M, y);
+  y += 5;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(...NAVY);
+  doc.text('Información Importante a Considerar', M, y);
+  y += 4.5;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.4); doc.setTextColor(...GRIS);
+  NOTAS_REFERENCIA.forEach((n, i) => {
+    const l = doc.splitTextToSize(`${i + 1}. ${n}`, ancho);
+    y = nuevaPagina(y, l.length * 3.2);
+    doc.text(l, M, y);
+    y += l.length * 3.2 + 0.8;
+  });
+  y += 1.5;
+  doc.setFont('helvetica', 'italic'); doc.setFontSize(6.9);
+  const lPriv = doc.splitTextToSize(AVISO_PRIVACIDAD, ancho);
+  y = nuevaPagina(y, lPriv.length * 3);
+  doc.text(lPriv, M, y);
+
+  // ── Alcance, red y condiciones (sigue donde quedó si cabe) ───────────────
+  y += lPriv.length * 3 + 8;
+  y = nuevaPagina(y, 70);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...NAVY);
   doc.text('Alcance de los beneficios', M, y);
   autoTable(doc, {
@@ -343,12 +415,11 @@ export async function generarPdfAunaOnco(datos: DatosPdf): Promise<Blob> {
     'Deducible y copago: $0 y 0% en red cerrada para el plan cotizado. No aplica deducible en la renovación anual.',
     'Límite anual: monto máximo de beneficio por asegurado por vigencia anual, reinstalable en la renovación.',
   ]);
-  bloque('Notas', [
-    '1. Este documento no es una póliza de seguro; es una cotización y no representa garantía de aceptación de cobertura por parte de Dentegra Seguros Dentales, S.A.',
-    '2. Sujeta a políticas de aceptación y proceso de suscripción médica y administrativa. Validez de 30 días naturales.',
-    '3. Para contratar, el solicitante debe ser mayor de edad y llenar la solicitud y el cuestionario de salud. Edad máxima de aceptación: 70 años 11 meses.',
-    `4. Tarifas sin descuento vigentes al ${VIGENCIA_TARIFAS}, sujetas a cambio sin previo aviso. Primas netas por persona; derechos de póliza $250 + IVA; IVA 16%.`,
-    '5. Consulte las Condiciones Generales con el detalle de cobertura, alcance, limitaciones y exclusiones, y el Aviso de Privacidad en www.dentegra.com.mx y auna.org/mx/oncosalud.',
+  bloque('Condiciones del precio de referencia', [
+    '• Validez de 30 días naturales. Sujeto a las políticas de aceptación y al proceso de suscripción médica y administrativa de Auna Seguros.',
+    '• Edad máxima de aceptación: 70 años 11 meses. Dependientes: cónyuge, padres/madres e hijos/as (hijos/as hasta 24 años 11 meses); hasta 5 dependientes por póliza.',
+    `• Tarifas sin descuento vigentes al ${VIGENCIA_TARIFAS}, sujetas a cambio sin previo aviso. Primas netas por persona; recargo por pago mensual 9.5% por asegurado; derechos de emisión $250 + IVA, una sola vez por póliza; IVA 16%.`,
+    '• Consulte las Condiciones Generales con el detalle de cobertura, alcance, limitaciones y exclusiones en www.aunaseguros.com.mx y auna.org/mx/oncosalud.',
   ]);
 
   pie();

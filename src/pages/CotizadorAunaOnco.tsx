@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Download, AlertTriangle, ChevronDown, ChevronUp, Info, Loader2, ShieldCheck, FileSignature, FileText, FilePlus, Save, Check } from 'lucide-react';
+import { Plus, Trash2, Download, AlertTriangle, ChevronDown, ChevronUp, Info, Loader2, ShieldCheck, FileSignature, FileText, FilePlus, Save, Check, BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeader } from '../components/ui/page-header';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
@@ -9,11 +9,20 @@ import {
   EXTRAPRIMAS,
   PREGUNTAS_MEDICAS,
   AVISO_IMPORTANTE,
+  AVISO_NO_OFICIAL,
+  AVISO_PRIVACIDAD,
+  INFO_CALCULO,
   LIMITE_ANUAL,
+  MAX_DEPENDIENTES,
+  PARENTESCOS_DEPENDIENTE,
+  PRODUCTO,
+  REGIONES,
   VIGENCIA_TARIFAS,
   imc,
+  parentescoDe,
   type Asegurado,
   type FormaPago,
+  type Parentesco,
   type Sexo,
 } from '../lib/aunaOncoCotizador';
 import { generarPdfAunaOnco, agenteDesdeUsuario, type AgentePdf } from '../lib/aunaOncoPdf';
@@ -30,6 +39,7 @@ const fmt = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', c
 const nuevoAsegurado = (n: number): Asegurado => ({
   id: crypto.randomUUID(),
   nombre: '',
+  parentesco: n === 0 ? 'Titular' : 'Cónyuge',
   sexo: n === 0 ? 'M' : 'F',
   fechaNacimiento: '',
   estatura: null,
@@ -54,6 +64,9 @@ export default function CotizadorAunaOnco() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const [cliente, setCliente] = useState('');
+  const [claveAgente, setClaveAgente] = useState('');
+  const [region, setRegion] = useState('');
+  const [verInfo, setVerInfo] = useState(false);
   const [formaPago, setFormaPago] = useState<FormaPago>('anual');
   const [descuento, setDescuento] = useState(0);
   const [asegurados, setAsegurados] = useState<Asegurado[]>([nuevoAsegurado(0)]);
@@ -73,8 +86,8 @@ export default function CotizadorAunaOnco() {
   const idRef = useRef<string | null>(null);
   const enCurso = useRef<Promise<unknown> | null>(null);
   const ultimoGuardado = useRef<string>('');
-  const claveDe = (d: Pick<DatosAuna, 'cliente' | 'formaPago' | 'descuento' | 'asegurados' | 'solicitud'>) =>
-    JSON.stringify([d.cliente, d.formaPago, d.descuento, d.asegurados, d.solicitud]);
+  const claveDe = (d: Pick<DatosAuna, 'cliente' | 'formaPago' | 'descuento' | 'asegurados' | 'solicitud' | 'claveAgente' | 'region'>) =>
+    JSON.stringify([d.cliente, d.formaPago, d.descuento, d.asegurados, d.solicitud, d.claveAgente ?? '', d.region ?? '']);
 
   // Abrir una cotización guardada desde Cotizar › Cotizaciones (?cotizacion=<id>).
   // Con &emision=1 entra directo a la solicitud de emisión.
@@ -85,10 +98,15 @@ export default function CotizadorAunaOnco() {
     cargarCotizacion<DatosAuna>(id)
       .then(c => {
         const d = c.datos;
-        const aseg = d.asegurados?.length ? d.asegurados : [nuevoAsegurado(0)];
+        // Las guardadas antes del 28/10 no traen parentesco: se infiere por posición.
+        const aseg = d.asegurados?.length
+          ? d.asegurados.map((a, i) => ({ ...a, parentesco: parentescoDe(a, i) }))
+          : [nuevoAsegurado(0)];
         const cli = d.cliente ?? c.cliente_nombre;
-        ultimoGuardado.current = claveDe({ cliente: cli, formaPago: d.formaPago ?? 'anual', descuento: d.descuento ?? 0, asegurados: aseg, solicitud: d.solicitud ?? null });
+        ultimoGuardado.current = claveDe({ cliente: cli, formaPago: d.formaPago ?? 'anual', descuento: d.descuento ?? 0, asegurados: aseg, solicitud: d.solicitud ?? null, claveAgente: d.claveAgente ?? '', region: d.region ?? '' });
         setCliente(cli);
+        setClaveAgente(d.claveAgente ?? '');
+        setRegion(d.region ?? '');
         setFormaPago(d.formaPago ?? 'anual');
         setDescuento(d.descuento ?? 0);
         setAsegurados(aseg);
@@ -127,12 +145,12 @@ export default function CotizadorAunaOnco() {
         cliente_nombre: cliente,
         cliente_email: c?.email.trim() || null,
         cliente_telefono: c?.telefono.trim() || null,
-        datos: { cliente, formaPago, descuento, asegurados, resultado, solicitud, tramiteEmision },
-        resumen: { asegurados: asegurados.length, formaPago, solicitud: !!solicitud, tramite_folio: tramiteEmision?.folio ?? null },
+        datos: { cliente, claveAgente, region, formaPago, descuento, asegurados, resultado, solicitud, tramiteEmision },
+        resumen: { asegurados: asegurados.length, formaPago, region, solicitud: !!solicitud, tramite_folio: tramiteEmision?.folio ?? null },
         prima_total: resultado.primaTotal,
       });
       idRef.current = r.id;
-      ultimoGuardado.current = claveDe({ cliente, formaPago, descuento, asegurados, solicitud });
+      ultimoGuardado.current = claveDe({ cliente, formaPago, descuento, asegurados, solicitud, claveAgente, region });
       setCotizacionId(r.id);
       setFolio(r.folio);
       return r.folio;
@@ -153,7 +171,7 @@ export default function CotizadorAunaOnco() {
 
   // Se guarda sola en cuanto la cotización es válida y cada vez que cambia.
   const valida = !!cliente.trim() && resultado.valido;
-  const claveActual = claveDe({ cliente, formaPago, descuento, asegurados, solicitud });
+  const claveActual = claveDe({ cliente, formaPago, descuento, asegurados, solicitud, claveAgente, region });
   useEffect(() => {
     if (!valida || claveActual === ultimoGuardado.current) return;
     const t = setTimeout(() => {
@@ -171,6 +189,8 @@ export default function CotizadorAunaOnco() {
 
   const nueva = () => {
     setCliente('');
+    setClaveAgente('');
+    setRegion('');
     setFormaPago('anual');
     setDescuento(0);
     setAsegurados([nuevoAsegurado(0)]);
@@ -187,7 +207,12 @@ export default function CotizadorAunaOnco() {
   };
 
   const validarCotizacion = () => {
-    if (!cliente.trim()) { setError('Escribe el nombre del cliente para la cotización.'); return false; }
+    const faltaEjercicio = [
+      !claveAgente.trim() && 'Clave del agente / promotor',
+      !cliente.trim() && 'Dirigido a',
+      !region && 'Región',
+    ].filter(Boolean);
+    if (faltaEjercicio.length) { setError(`Completa los campos obligatorios: ${faltaEjercicio.join(', ')}.`); return false; }
     if (!resultado.valido) { setError('Revisa los asegurados: todos necesitan nombre y una edad aceptable.'); return false; }
     return true;
   };
@@ -196,7 +221,11 @@ export default function CotizadorAunaOnco() {
     setError(null);
     if (!cotizacionId) { setError('La solicitud de emisión se levanta desde una cotización ya guardada.'); return; }
     if (!validarCotizacion()) return;
-    setSolicitud(prev => sincronizar(prev ?? solicitudInicial(cliente.trim(), aseguradosConNombre), cliente.trim(), aseguradosConNombre));
+    setSolicitud(prev => {
+      const s0 = sincronizar(prev ?? solicitudInicial(cliente.trim(), aseguradosConNombre), cliente.trim(), aseguradosConNombre);
+      // La clave capturada en la cotización llena la del agente si aún está vacía.
+      return s0.agente.clave.trim() ? s0 : { ...s0, agente: { ...s0.agente, clave: claveAgente.trim() } };
+    });
     setModo('solicitud');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -304,8 +333,10 @@ export default function CotizadorAunaOnco() {
         fecha: new Date(),
         resultado,
         agente: await datosAgente(),
+        claveAgente: claveAgente.trim(),
+        region,
       });
-      descargar(blob, `Cotizacion-Oncosalud-${cliente.trim().replace(/\s+/g, '-')}-${folio}.pdf`);
+      descargar(blob, `Precio-Referencia-Oncosalud-${cliente.trim().replace(/\s+/g, '-')}-${folio}.pdf`);
     } catch (e) {
       setError('No se pudo generar el PDF: ' + (mensajeDeError(e)));
     } finally {
@@ -317,7 +348,7 @@ export default function CotizadorAunaOnco() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Auna Oncosalud Plus"
-        description="Seguro oncológico individual y familiar. Cotiza por quinquenio y sexo, con cuestionario médico y extraprimas preliminares."
+        description="Precio de referencia del seguro oncológico individual de Auna. Captura al titular y dependientes; incluye cuestionario médico y extraprimas preliminares."
         backTo="/cotizar"
         backLabel="Cotizar"
         badge={<img src="/logo-auna.png" alt="Auna" className="h-5 w-auto" />}
@@ -360,11 +391,37 @@ export default function CotizadorAunaOnco() {
       <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
         {/* ── Captura ── */}
         <div className="space-y-5">
-          <section className="rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] p-5">
+          <div className="flex items-start gap-2 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 px-4 py-2.5 text-xs font-semibold text-orange-700 dark:text-orange-300">
+            <Info className="w-4 h-4 shrink-0 mt-px" /> {AVISO_NO_OFICIAL}
+          </div>
+
+          <section className="rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] p-5 space-y-3">
+            <h3 className="text-sm font-bold text-neutral-900 dark:text-white">1 · Datos del ejercicio</h3>
             <div className="grid sm:grid-cols-3 gap-4">
-              <div className="sm:col-span-3">
-                <label className={labelCls}>Cliente (contratante)</label>
-                <input className={inputCls} value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Nombre completo" />
+              <div>
+                <label className={labelCls}>Clave del agente / promotor <span className="text-red-500">*</span></label>
+                <input className={inputCls} value={claveAgente} onChange={e => setClaveAgente(e.target.value)} placeholder="Clave Auna" />
+              </div>
+              <div>
+                <label className={labelCls}>Dirigido a <span className="text-red-500">*</span></label>
+                <input className={inputCls} value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Cliente / prospecto" />
+              </div>
+              <div>
+                <label className={labelCls}>Región <span className="text-red-500">*</span></label>
+                <select className={inputCls} value={region} onChange={e => setRegion(e.target.value)}>
+                  <option value="">-- Selecciona región --</option>
+                  {REGIONES.map(r => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] p-5 space-y-3">
+            <h3 className="text-sm font-bold text-neutral-900 dark:text-white">2 · Producto y forma de pago</h3>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label className={labelCls}>Producto</label>
+                <div className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm font-semibold text-neutral-800 dark:text-neutral-200">{PRODUCTO}</div>
               </div>
               <div>
                 <label className={labelCls}>Forma de pago</label>
@@ -376,7 +433,7 @@ export default function CotizadorAunaOnco() {
                       onClick={() => setFormaPago(fp)}
                       className={`flex-1 py-2 text-sm font-semibold transition-colors ${formaPago === fp ? 'bg-accent text-accent-foreground' : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'}`}
                     >
-                      {fp === 'anual' ? 'Anual (contado)' : 'Mensual'}
+                      {fp === 'anual' ? 'Anual' : 'Mensual'}
                     </button>
                   ))}
                 </div>
@@ -385,13 +442,16 @@ export default function CotizadorAunaOnco() {
                 <label className={labelCls}>Descuento vigente (%)</label>
                 <input type="number" min={0} max={100} step={1} className={inputCls} value={descuento} onChange={e => setDescuento(Number(e.target.value) || 0)} />
               </div>
-              <div className="flex items-end">
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">
-                  Tarifas sin descuento vigentes al {VIGENCIA_TARIFAS}. Valida con Auna si hay descuento el día de hoy.
-                </p>
-              </div>
             </div>
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">
+              Tarifas sin descuento vigentes al {VIGENCIA_TARIFAS}. Valida con Auna si hay descuento el día de hoy. Mensual: recargo de 9.5% por asegurado.
+            </p>
           </section>
+
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-neutral-900 dark:text-white">3 · Personas a asegurar</h3>
+            <span className="text-xs font-semibold text-neutral-500">{asegurados.length} de {MAX_DEPENDIENTES + 1}</span>
+          </div>
 
           {asegurados.map((a, i) => {
             const linea = resultado.lineas[i];
@@ -407,7 +467,8 @@ export default function CotizadorAunaOnco() {
                 <div className="p-5 space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-sm font-bold text-neutral-900 dark:text-white">
-                      {i === 0 ? 'Titular' : `Dependiente A${i}`}
+                      {i === 0 ? 'Titular' : `Dependiente ${i}`}
+                      {i === 0 && <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">Obligatorio</span>}
                     </h3>
                     {i > 0 && (
                       <button type="button" onClick={() => setAsegurados(prev => prev.filter(x => x.id !== a.id))} className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Quitar asegurado" title="Quitar asegurado">
@@ -417,18 +478,26 @@ export default function CotizadorAunaOnco() {
                   </div>
 
                   <div className="grid sm:grid-cols-6 gap-3">
-                    <div className="sm:col-span-3">
-                      <label className={labelCls}>Nombre</label>
+                    <div className={i === 0 ? 'sm:col-span-3' : 'sm:col-span-2'}>
+                      <label className={labelCls}>Nombre completo</label>
                       <input className={inputCls} value={a.nombre} onChange={e => actualizar(a.id, { nombre: e.target.value })} placeholder={i === 0 ? (cliente || 'Igual que el cliente') : 'Nombre completo'} />
                     </div>
+                    {i > 0 && (
+                      <div className="sm:col-span-1">
+                        <label className={labelCls}>Parentesco</label>
+                        <select className={inputCls} value={parentescoDe(a, i)} onChange={e => actualizar(a.id, { parentesco: e.target.value as Parentesco })}>
+                          {PARENTESCOS_DEPENDIENTE.map(p => <option key={p}>{p}</option>)}
+                        </select>
+                      </div>
+                    )}
                     <div className="sm:col-span-1">
                       <label className={labelCls}>Sexo</label>
                       <select className={inputCls} value={a.sexo} onChange={e => {
                         const sexo = e.target.value as Sexo;
                         actualizar(a.id, { sexo, extraprimas: a.extraprimas.filter(id => { const ep = EXTRAPRIMAS.find(x => x.id === id); return !ep?.sexo || ep.sexo === sexo; }) });
                       }}>
-                        <option value="M">Hombre</option>
-                        <option value="F">Mujer</option>
+                        <option value="F">Femenino</option>
+                        <option value="M">Masculino</option>
                       </select>
                     </div>
                     <div className="sm:col-span-2">
@@ -439,12 +508,13 @@ export default function CotizadorAunaOnco() {
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                     {linea.edad != null && !linea.error && (
-                      <span className="text-neutral-500 dark:text-neutral-400">Edad <b className="text-neutral-800 dark:text-neutral-200">{linea.edad}</b> · quinquenio {linea.quinquenio}</span>
+                      <span className="text-neutral-500 dark:text-neutral-400">Edad <b className="text-neutral-800 dark:text-neutral-200">{linea.edad}</b> ({linea.quinquenio})</span>
                     )}
                     {linea.error && a.fechaNacimiento && <span className="text-red-600 dark:text-red-400 font-medium">{linea.error}</span>}
                     {!linea.error && (
                       <span className="ml-auto font-semibold text-neutral-900 dark:text-white">
-                        Prima neta {fmt(linea.primaNeta)}
+                        Ref. prima base {fmt(linea.primaNeta)}
+                        {formaPago === 'mensual' && <span className="ml-1 font-medium text-neutral-500">· + recargo {fmt(linea.primaConRecargo)}</span>}
                         {linea.extraprima > 0 && <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium">(incl. extraprima {Math.round(linea.extraprimaPct * 100)}%)</span>}
                       </span>
                     )}
@@ -537,29 +607,60 @@ export default function CotizadorAunaOnco() {
             );
           })}
 
-          {asegurados.length < 8 && (
-            <button type="button" onClick={() => setAsegurados(prev => [...prev, nuevoAsegurado(prev.length)])} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-neutral-200 dark:border-white/10 text-sm font-semibold text-neutral-500 hover:text-accent hover:border-accent transition-colors">
+          <div className="space-y-2">
+            <button
+              type="button"
+              disabled={asegurados.length > MAX_DEPENDIENTES}
+              onClick={() => setAsegurados(prev => [...prev, nuevoAsegurado(prev.length)])}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-neutral-200 dark:border-white/10 text-sm font-semibold text-neutral-500 hover:text-accent hover:border-accent disabled:opacity-40 disabled:hover:text-neutral-500 disabled:hover:border-neutral-200 transition-colors"
+            >
               <Plus className="w-4 h-4" /> Agregar dependiente
             </button>
-          )}
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">
+              Hasta 5 dependientes por póliza (6 asegurados en total). Solo se cubre cónyuge, padres/madres e hijos/as. Los hijos/as deben tener máximo 24 años 11 meses; si superan esa edad, deben cotizarse en una póliza aparte.
+            </p>
+          </div>
+
+          <section className="rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] overflow-hidden">
+            <button type="button" onClick={() => setVerInfo(v => !v)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left">
+              <span className="flex items-center gap-2 text-sm font-bold text-neutral-900 dark:text-white">
+                <BookOpen className="w-4 h-4 text-accent" /> Información a considerar para el cálculo <span className="font-normal text-xs text-neutral-500">(leerlo antes de compartir)</span>
+              </span>
+              {verInfo ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            {verInfo && (
+              <div className="px-5 pb-5 space-y-3">
+                <ul className="list-disc pl-5 space-y-1.5 text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                  {INFO_CALCULO.map(t => <li key={t}>{t}</li>)}
+                </ul>
+                <p className="text-[11px] italic text-neutral-500 dark:text-neutral-400 leading-relaxed">{AVISO_PRIVACIDAD}</p>
+              </div>
+            )}
+          </section>
         </div>
 
         {/* ── Resumen ── */}
         <aside className="lg:sticky lg:top-4 space-y-4">
           <section className="rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-white/5">
-              <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Resumen</h3>
+              <div>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white">Precio de Referencia · {PRODUCTO}</h3>
+                <p className="text-[11px] text-neutral-500">{folio ? `Referencia ${folio} · ` : ''}Forma de pago: {formaPago === 'anual' ? 'Anual' : 'Mensual'}</p>
+              </div>
               <img src="/logo-auna.png" alt="Auna" className="h-5 w-auto" />
             </div>
             <dl className="px-5 py-4 space-y-2 text-sm">
               {[
-                ['Prima neta', fmt(resultado.primaNetaTotal)],
+                ['Ref. Prima neta total', fmt(resultado.primaNetaTotal)],
                 ...(resultado.extraprimaTotal > 0 ? [['  incluye extraprimas', fmt(resultado.extraprimaTotal)]] : []),
-                ...(resultado.descuento > 0 ? [[`Descuento ${resultado.descuentoPct}%`, `- ${fmt(resultado.descuento)}`]] : []),
-                ['Recargo pago fraccionado', fmt(resultado.recargoFraccionado)],
-                ['Derechos de póliza', fmt(resultado.derechos)],
-                ['Subtotal', fmt(resultado.subtotal)],
-                ['IVA 16%', fmt(resultado.iva)],
+                ...(resultado.descuento > 0 ? [[`Ref. Descuento ${resultado.descuentoPct}%`, `- ${fmt(resultado.descuento)}`]] : []),
+                ...(formaPago === 'mensual' ? [
+                  ['Ref. Recargo mensual (9.5% c/u)', fmt(resultado.recargoFraccionado)],
+                  ['Ref. Prima neta + recargo', fmt(resultado.primaNetaTotal - resultado.descuento + resultado.recargoFraccionado)],
+                ] : []),
+                ['Ref. Derechos de emisión (una vez)', fmt(resultado.derechos)],
+                ['Ref. Subtotal', fmt(resultado.subtotal)],
+                ['Ref. IVA (16%)', fmt(resultado.iva)],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-3">
                   <dt className={`text-neutral-500 dark:text-neutral-400 ${k.startsWith('  ') ? 'pl-3 text-xs' : ''}`}>{k.trim()}</dt>
@@ -567,15 +668,15 @@ export default function CotizadorAunaOnco() {
                 </div>
               ))}
               <div className="flex justify-between gap-3 pt-2 border-t border-neutral-100 dark:border-white/5">
-                <dt className="font-bold text-neutral-900 dark:text-white">Prima total</dt>
+                <dt className="font-bold text-neutral-900 dark:text-white">Ref. Prima total</dt>
                 <dd className="font-bold text-neutral-900 dark:text-white tabular-nums">{fmt(resultado.primaTotal)}</dd>
               </div>
             </dl>
             <div className="mx-5 mb-5 rounded-xl bg-neutral-900 dark:bg-black/40 text-white p-4">
-              <p className="text-[11px] uppercase tracking-wide text-neutral-400">{formaPago === 'anual' ? 'Pago único' : 'Primer recibo'}</p>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-400">{formaPago === 'anual' ? 'Ref. Primer recibo (pago de contado)' : 'Ref. Primer recibo (incluye derechos)'}</p>
               <p className="text-2xl font-bold tabular-nums">{fmt(resultado.primerRecibo)}</p>
               {resultado.reciboSubsecuente != null && (
-                <p className="text-xs text-neutral-300 mt-1">+ 11 recibos de <b className="text-white">{fmt(resultado.reciboSubsecuente)}</b></p>
+                <p className="text-xs text-neutral-300 mt-1">Ref. Recibos subsecuentes (x11): <b className="text-white">{fmt(resultado.reciboSubsecuente)}</b></p>
               )}
             </div>
           </section>
@@ -601,7 +702,7 @@ export default function CotizadorAunaOnco() {
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent-hover disabled:opacity-60 transition-colors"
           >
             {generando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Descargar cotización PDF
+            Descargar precio de referencia PDF
           </button>
 
           {tramiteEmision ? (
@@ -626,6 +727,7 @@ export default function CotizadorAunaOnco() {
             <ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-px" />
             Límite anual por asegurado {fmt(LIMITE_ANUAL)} · deducible $0 · copago 0% · carencia 180 días · red cerrada Auna.
           </p>
+          <p className="text-[10px] text-neutral-400 leading-snug">* REF.- Referencia de precio. No es una póliza ni una cotización oficial; la cotización oficial está sujeta a suscripción en el Sistema de Emisión de Auna Seguros, S.A.</p>
         </aside>
       </div>
       )}

@@ -1,5 +1,9 @@
 /**
- * Cotizador Auna Oncosalud Plus 2026 (Dentegra Seguros Dentales).
+ * Precio de referencia Auna Oncosalud PLUS 2026 (Auna Seguros, S.A.).
+ *
+ * Reglas, textos legales y desglose alineados con la calculadora oficial de
+ * Auna (preciosreferencia-oncosalud.netlify.app, 28/10) y con sus PDF del
+ * Sistema de Emisión: es un PRECIO DE REFERENCIA, no una cotización oficial.
  *
  * Fuente: "Agentes Tradicionales 2026 - Tarifas sistema individual.xlsx"
  * (prima neta anual por persona, por quinquenio y sexo) y la cotización de
@@ -13,6 +17,15 @@
 
 export type Sexo = 'F' | 'M';
 export type FormaPago = 'anual' | 'mensual';
+/** Los únicos vínculos que la póliza permite asegurar como dependientes. */
+export type Parentesco = 'Titular' | 'Cónyuge' | 'Hijo/a' | 'Padre/Madre';
+export const PARENTESCOS_DEPENDIENTE: Parentesco[] = ['Cónyuge', 'Hijo/a', 'Padre/Madre'];
+/** Hasta 5 dependientes por póliza (6 asegurados en total). */
+export const MAX_DEPENDIENTES = 5;
+/** Hijos/as: máximo 24 años 11 meses; si lo superan, se cotizan en póliza aparte. */
+export const EDAD_MAXIMA_HIJO = 24;
+export const REGIONES = ['CDMX', 'Monterrey', 'Guadalajara', 'Querétaro', 'Puebla', 'Otra'];
+export const PRODUCTO = 'Oncosalud PLUS';
 
 /** Edad máxima de aceptación: 70 años 11 meses → edad cumplida 70. */
 export const EDAD_MAXIMA = 70;
@@ -110,6 +123,8 @@ export const PREGUNTAS_MEDICAS: PreguntaMedica[] = [
 export interface Asegurado {
   id: string;
   nombre: string;
+  /** Las cotizaciones guardadas antes del 28/10 no lo traen: se infiere por posición. */
+  parentesco?: Parentesco;
   sexo: Sexo;
   /** yyyy-mm-dd */
   fechaNacimiento: string;
@@ -150,9 +165,16 @@ export function pctExtraprima(ids: string[]): number {
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+/** El primero siempre es el titular; un dependiente sin parentesco guardado se toma como cónyuge. */
+export function parentescoDe(a: Pick<Asegurado, 'parentesco'>, indice: number): Parentesco {
+  if (indice === 0) return 'Titular';
+  return a.parentesco && a.parentesco !== 'Titular' ? a.parentesco : 'Cónyuge';
+}
+
 export interface LineaAsegurado {
   id: string;
   nombre: string;
+  parentesco: Parentesco;
   sexo: Sexo;
   fechaNacimiento: string;
   edad: number | null;
@@ -161,6 +183,8 @@ export interface LineaAsegurado {
   extraprimaPct: number;
   extraprima: number;
   primaNeta: number;
+  /** Prima + 9.5% de ese asegurado cuando el pago es mensual (igual a primaNeta en anual). */
+  primaConRecargo: number;
   error?: string;
   requiereSuscripcion: boolean;
   alertas: string[];
@@ -191,7 +215,8 @@ export function cotizar(
   descuentoPct: number,
   alDia: Date = new Date(),
 ): ResultadoCotizacion {
-  const lineas: LineaAsegurado[] = asegurados.map(a => {
+  const lineas: LineaAsegurado[] = asegurados.map((a, i) => {
+    const parentesco = parentescoDe(a, i);
     const edad = edadCumplida(a.fechaNacimiento, alDia);
     const alertas: string[] = [];
     let error: string | undefined;
@@ -199,6 +224,9 @@ export function cotizar(
     if (edad == null) error = 'Falta la fecha de nacimiento';
     else if (edad < 0) error = 'Fecha de nacimiento futura';
     else if (edad > EDAD_MAXIMA) error = `Edad ${edad}: la edad máxima de aceptación es 70 años 11 meses`;
+    else if (parentesco === 'Hijo/a' && edad > EDAD_MAXIMA_HIJO) {
+      error = `Edad ${edad}: los hijos/as se aseguran hasta los 24 años 11 meses. Cotízalo en una póliza aparte.`;
+    }
 
     const idx = a.sexo === 'F' ? 0 : 1;
     const base = q && !error ? q.anual[idx] : 0;
@@ -219,6 +247,7 @@ export function cotizar(
     return {
       id: a.id,
       nombre: a.nombre,
+      parentesco,
       sexo: a.sexo,
       fechaNacimiento: a.fechaNacimiento,
       edad,
@@ -227,6 +256,7 @@ export function cotizar(
       extraprimaPct: extraPct,
       extraprima: extra,
       primaNeta: r2(base + extra),
+      primaConRecargo: r2((base + extra) * (formaPago === 'mensual' ? 1 + RECARGO_MENSUAL : 1)),
       error,
       requiereSuscripcion,
       alertas,
@@ -268,10 +298,41 @@ export function cotizar(
     primerRecibo,
     reciboSubsecuente,
     numRecibos,
-    valido: lineas.length > 0 && lineas.every(l => !l.error && l.nombre.trim() !== ''),
+    valido: lineas.length > 0 && lineas.length <= MAX_DEPENDIENTES + 1
+      && lineas.every(l => !l.error && l.nombre.trim() !== ''),
     requiereSuscripcion: lineas.some(l => l.requiereSuscripcion),
   };
 }
 
 export const AVISO_IMPORTANTE =
   'Los precios y condiciones presentados en este documento son una estimación preliminar basada en la información inicial proporcionada por el cliente. Debido a que la emisión de la póliza está sujeta a un proceso de suscripción médica y evaluación de riesgo, el precio final y las condiciones de cobertura pueden ser ajustados o modificados según los resultados del historial médico, informes clínicos o requisitos adicionales solicitados por la compañía aseguradora.';
+
+// ── Textos de Auna para el precio de referencia (calculadora oficial, 28/10) ──
+
+export const AVISO_NO_OFICIAL =
+  'Precio de referencia — no es una cotización oficial. La cotización oficial se emite en el Sistema de Emisión Auna.';
+
+export const AVISO_REFERENCIA =
+  'Precio de Referencia: los precios emitidos son exclusivamente referenciales y no constituyen una cotización oficial, oferta vinculante ni póliza de seguro, quedando la emisión de un precio definitivo sujeto a los procesos de suscripción establecidos por Auna Seguros.';
+
+export const NOTAS_REFERENCIA = [
+  'Este documento contiene una referencia de precio y no constituye una cotización oficial, oferta vinculante, aceptación del riesgo, ni póliza de seguro, quedando la emisión de un precio definitivo sujeto a los procesos de suscripción médica y administrativa establecidos por Auna Seguros.',
+  'Para contratar, el solicitante debe ser mayor de edad y completar la solicitud del seguro y el cuestionario médico que forma parte del proceso de suscripción.',
+  'El producto está sujeto a un Periodo de carencia: 180 días desde el inicio de vigencia de la póliza para hacer uso de todas las coberturas.',
+];
+
+export const AVISO_PRIVACIDAD =
+  'Auna Seguros, S.A., con domicilio en Av. Insurgentes Sur 1458, pisos 19 y 20, Colonia Actipan, Alcaldía Benito Juárez, C.P. 03230, Ciudad de México, utilizó los datos personales exclusivamente para generar el precio de referencia solicitado. Para más información acerca del tratamiento y de los derechos que puede hacer valer, Usted puede acceder al aviso de privacidad integral en https://www.aunaseguros.com.mx/';
+
+/** "Información a considerar para realizar el cálculo (leerlo antes de compartir)". */
+export const INFO_CALCULO = [
+  'Recargo por pago mensual: 9.5%, aplicado sobre la prima base de cada asegurado (titular y dependientes), no sobre el total consolidado.',
+  'Derechos de emisión: $250.00 MXN + IVA (= $290.00), fijos por póliza y se cobran una sola vez, sin importar el número de asegurados ni la forma de pago.',
+  'IVA 16% aplicado sobre (prima neta total + recargo, si es mensual) y, por separado, sobre los derechos de emisión.',
+  'Anual: el primer recibo es un pago de contado por la prima total completa; no hay recibos subsecuentes en el mismo periodo de vigencia.',
+  'Mensual: el total con IVA (sin derechos) se divide entre 12 para obtener el recibo subsecuente; el primer recibo es ese mismo monto más los derechos de emisión con IVA ($290.00).',
+  'Límite anual por asegurado: $9,500,000.00 MXN, deducible $0 y copago 0% en Red Cerrada.',
+  'La edad se calcula a la fecha del ejercicio y se agrupa en quinquenios (0-4, 5-9 …) igual que la tarifa base. Edad máxima de aceptación: 70 años 11 meses.',
+  'Hasta 5 dependientes por póliza (6 asegurados en total). Solo se cubre cónyuge, padres/madres e hijos/as; los hijos/as deben tener máximo 24 años 11 meses, si la superan se cotizan en una póliza aparte.',
+  'Este resultado es un precio de referencia, no una cotización oficial. La cotización oficial y vinculante se emite en el Sistema de Emisión Auna.',
+];

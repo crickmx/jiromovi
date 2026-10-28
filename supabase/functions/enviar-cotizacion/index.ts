@@ -46,8 +46,15 @@ const escapar = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").re
 
 const PRODUCTOS: Record<string, string> = {
   gmm_multi: "Gastos Médicos Mayores",
-  auna_onco: "Oncosalud Plus (Auna)",
+  auna_onco: "Oncosalud PLUS (Auna)",
 };
+
+// Auna pide llamarlo "precio de referencia" y aclarar que no es cotización oficial.
+const QUE_ES: Record<string, string> = { auna_onco: "precio de referencia" };
+const LEYENDA: Record<string, string> = {
+  auna_onco: "Precio de referencia: no es una cotización oficial ni una póliza. El precio definitivo está sujeto a la suscripción médica y administrativa de Auna Seguros, S.A.",
+};
+const LEYENDA_DEFAULT = "Los precios son una estimación preliminar sujeta a suscripción de la aseguradora.";
 
 async function canal(supabase: ReturnType<typeof createClient>, tipo: "email_resend" | "whatsapp_wazzup24") {
   const { data } = await supabase
@@ -103,6 +110,8 @@ Deno.serve(async (req) => {
     }
 
     const producto = PRODUCTOS[cot.cotizador] ?? "seguro";
+    const queEs = QUE_ES[cot.cotizador] ?? "cotización";
+    const leyenda = LEYENDA[cot.cotizador] ?? LEYENDA_DEFAULT;
     const nombreCliente = (cot.cliente_nombre || "").split(" ")[0] || "";
     const waAsesor = `https://wa.me/52${telAsesor}`;
     const filename = (p.filename || `Cotizacion-${cot.folio}.pdf`).replace(/[^\w.\-()]/g, "") || "cotizacion.pdf";
@@ -120,11 +129,11 @@ Deno.serve(async (req) => {
 <tr><td style="background:#1C37E0;padding:20px 28px;color:#fff;font-size:18px;font-weight:bold;">Seguwallet</td></tr>
 <tr><td style="padding:28px;color:#0f172a;font-size:15px;line-height:1.6;">
 <p style="margin:0 0 14px;">Hola ${escapar(nombreCliente)},</p>
-<p style="margin:0 0 14px;"><b>${escapar(nombreAsesor)}</b>, tu asesor de seguros, te envía tu cotización de <b>${escapar(producto)}</b> (folio ${escapar(cot.folio)}). La encontrarás adjunta en PDF.</p>
+<p style="margin:0 0 14px;"><b>${escapar(nombreAsesor)}</b>, tu asesor de seguros, te envía tu ${queEs} de <b>${escapar(producto)}</b> (folio ${escapar(cot.folio)}). La encontrarás adjunta en PDF.</p>
 ${notaLibre ? `<p style="margin:0 0 14px;padding:12px 16px;background:#f1f5f9;border-radius:8px;white-space:pre-line;">${escapar(notaLibre)}</p>` : ""}
 <p style="margin:0 0 20px;">Si tienes dudas o quieres contratar, contáctalo directamente a su WhatsApp:</p>
 <p style="margin:0 0 24px;"><a href="${waAsesor}" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px;">WhatsApp ${telLegible(telAsesor)}</a></p>
-<p style="margin:0;font-size:12px;color:#64748b;">Los precios son una estimación preliminar sujeta a suscripción de la aseguradora.</p>
+<p style="margin:0;font-size:12px;color:#64748b;">${escapar(leyenda)}</p>
 </td></tr></table></td></tr></table></body></html>`;
 
       const res = await fetch("https://api.resend.com/emails", {
@@ -133,7 +142,7 @@ ${notaLibre ? `<p style="margin:0 0 14px;padding:12px 16px;background:#f1f5f9;bo
         body: JSON.stringify({
           from: `${nombreAsesor} vía Seguwallet <${fromEmail}>`,
           to: [p.destino.trim()],
-          subject: `${nombreAsesor} te envía tu cotización ${cot.folio}`,
+          subject: `${nombreAsesor} te envía tu ${queEs} ${cot.folio}`,
           html,
           attachments: [{ filename, content: p.pdf_base64 }],
         }),
@@ -159,8 +168,9 @@ ${notaLibre ? `<p style="margin:0 0 14px;padding:12px 16px;background:#f1f5f9;bo
       if (!firmada?.signedUrl) return json({ success: false, error: "No se pudo generar el enlace del PDF" }, 500);
 
       const texto = [
-        `Hola ${nombreCliente}, ${nombreAsesor}, tu asesor de seguros, te envía tu cotización de ${producto} (folio ${cot.folio}).`,
+        `Hola ${nombreCliente}, ${nombreAsesor}, tu asesor de seguros, te envía tu ${queEs} de ${producto} (folio ${cot.folio}).`,
         notaLibre,
+        leyenda,
         `Para dudas o contratarla, contáctalo a su WhatsApp: ${telAsesor}`,
         waAsesor,
       ].filter(Boolean).join("\n\n");

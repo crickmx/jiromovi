@@ -7,7 +7,7 @@
  * asegurado se capturan en la cotización; aquí solo se completa lo demás.
  */
 import { analizarRFC, analizarCURP } from './rfcCurp';
-import { PREGUNTAS_MEDICAS, EXTRAPRIMAS, edadCumplida, type Asegurado } from './aunaOncoCotizador';
+import { PREGUNTAS_MEDICAS, EXTRAPRIMAS, edadCumplida, parentescoDe, type Asegurado } from './aunaOncoCotizador';
 
 export interface Domicilio {
   calle: string;
@@ -84,7 +84,8 @@ export interface Solicitud {
   lugar: string;
 }
 
-export const PARENTESCOS = ['Titular', 'Cónyuge', 'Hijo(a)', 'Padre', 'Madre', 'Hermano(a)', 'Otro'];
+/** Mismos vínculos que admite la póliza (calculadora oficial de Auna). */
+export const PARENTESCOS = ['Titular', 'Cónyuge', 'Hijo/a', 'Padre/Madre'];
 
 const domicilioVacio = (): Domicilio => ({
   calle: '', numExt: '', numInt: '', cp: '', colonia: '', municipio: '', ciudad: '', entidad: '', pais: 'México',
@@ -118,7 +119,7 @@ export function solicitudInicial(cliente: string, asegurados: Asegurado[]): Soli
     },
     asegurados: Object.fromEntries(asegurados.map((a, i) => [a.id, {
       ...partirNombre(i === 0 ? nombreTitular : a.nombre),
-      parentesco: i === 0 ? 'Titular' : '',
+      parentesco: parentescoDe(a, i),
       actividad: '',
       medicamentos: '',
       mismoDomicilio: true,
@@ -152,7 +153,10 @@ export function afirmativas(a: Asegurado) {
 export function sincronizar(s: Solicitud, cliente: string, asegurados: Asegurado[]): Solicitud {
   const base = solicitudInicial(cliente, asegurados);
   const aseg = { ...s.asegurados };
-  for (const a of asegurados) if (!aseg[a.id]) aseg[a.id] = base.asegurados[a.id];
+  asegurados.forEach((a, i) => {
+    // El parentesco lo decide la cotización: es lo que se tarifó.
+    aseg[a.id] = aseg[a.id] ? { ...aseg[a.id], parentesco: parentescoDe(a, i) } : base.asegurados[a.id];
+  });
   const detalles = [...s.detalles];
   for (const a of asegurados) {
     if (!a.respuestas.p16) continue;

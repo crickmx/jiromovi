@@ -227,8 +227,8 @@ export default function SolicitudEmisionAuna({ solicitud: s, setSolicitud, asegu
                   <Campo label="Apellido materno" value={da.apellidoMaterno} onChange={v => setAseg(a.id, { apellidoMaterno: v })} />
                   <div>
                     <label className={labelCls}>Parentesco</label>
-                    <select className={inputCls} value={da.parentesco} onChange={e => setAseg(a.id, { parentesco: e.target.value })}>
-                      <option value="">Selecciona…</option>
+                    {/* Viene de la cotización: cambiarlo aquí desalinearía lo tarifado. */}
+                    <select className={`${inputCls} opacity-70`} value={da.parentesco} disabled title="Se cambia en la cotización">
                       {PARENTESCOS.map(p => <option key={p}>{p}</option>)}
                     </select>
                   </div>
