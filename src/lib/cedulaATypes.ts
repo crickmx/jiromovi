@@ -45,6 +45,8 @@ export interface CedulaAExamen {
   activo: boolean;
   created_at: string;
   updated_at: string;
+  /** Calculado al listar exámenes. */
+  num_preguntas?: number;
 }
 
 export interface CedulaAPregunta {
@@ -163,9 +165,10 @@ export interface RetroalimentacionPregunta {
   pregunta: string;
   opciones: OpcionRespuesta[];
   respuesta_usuario: string;
-  respuesta_correcta: string;
+  /** null en el examen final: no se revela la respuesta correcta. */
+  respuesta_correcta: string | null;
   es_correcta: boolean;
-  explicacion: string;
+  explicacion: string | null;
 }
 
 export interface EstadisticasCurso {

@@ -163,7 +163,7 @@ export async function calcularProgresoModulo(userId: string, moduloId: string): 
 export async function obtenerExamenes(tipo?: 'practica' | 'modulo' | 'final'): Promise<CedulaAExamen[]> {
   let query = supabase
     .from('cedula_a_examenes')
-    .select('*')
+    .select('*, preguntas:cedula_a_preguntas(count)')
     .eq('activo', true)
     .order('orden', { ascending: true });
 
@@ -174,7 +174,10 @@ export async function obtenerExamenes(tipo?: 'practica' | 'modulo' | 'final'): P
   const { data, error } = await query;
 
   if (error) throw error;
-  return data || [];
+  return (data || []).map(({ preguntas, ...examen }) => ({
+    ...examen,
+    num_preguntas: (preguntas as { count: number }[] | null)?.[0]?.count ?? 0,
+  })) as CedulaAExamen[];
 }
 
 export async function obtenerExamen(examenId: string): Promise<CedulaAExamen | null> {
