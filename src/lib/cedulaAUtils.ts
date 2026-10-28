@@ -163,7 +163,7 @@ export async function calcularProgresoModulo(userId: string, moduloId: string): 
 export async function obtenerExamenes(tipo?: 'practica' | 'modulo' | 'final'): Promise<CedulaAExamen[]> {
   let query = supabase
     .from('cedula_a_examenes')
-    .select('*, preguntas:cedula_a_preguntas(count)')
+    .select('*')
     .eq('activo', true)
     .order('orden', { ascending: true });
 
@@ -171,12 +171,21 @@ export async function obtenerExamenes(tipo?: 'practica' | 'modulo' | 'final'): P
     query = query.eq('tipo', tipo);
   }
 
-  const { data, error } = await query;
+  // El conteo se hace sobre examen_id: un embed `cedula_a_preguntas(count)` exige
+  // SELECT de toda la tabla, y respuesta_correcta/explicacion están ocultas al cliente.
+  const [examenesRes, preguntasRes] = await Promise.all([
+    query,
+    supabase.from('cedula_a_preguntas').select('examen_id'),
+  ]);
 
-  if (error) throw error;
-  return (data || []).map(({ preguntas, ...examen }) => ({
+  if (examenesRes.error) throw examenesRes.error;
+  const porExamen = new Map<string, number>();
+  for (const { examen_id } of preguntasRes.data || []) {
+    porExamen.set(examen_id, (porExamen.get(examen_id) ?? 0) + 1);
+  }
+  return (examenesRes.data || []).map((examen) => ({
     ...examen,
-    num_preguntas: (preguntas as { count: number }[] | null)?.[0]?.count ?? 0,
+    num_preguntas: porExamen.get(examen.id) ?? 0,
   })) as CedulaAExamen[];
 }
 
