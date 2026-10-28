@@ -157,7 +157,10 @@ export interface ResultadoEvaluacion {
   respuestas_correctas: number;
   aprobado: boolean;
   puntaje_minimo: number;
+  /** Vacía en el examen final: solo se informa la calificación. */
   retroalimentacion: RetroalimentacionPregunta[];
+  /** Solo en el final: aciertos por módulo (preguntas con modulo_referencia_id). */
+  desglose?: { modulo: string; orden: number; correctas: number; total: number }[];
 }
 
 export interface RetroalimentacionPregunta {

@@ -251,13 +251,34 @@ export default function ExamenInterface() {
             </div>
           </div>
 
+          {examen.tipo === 'final' ? (
+            <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-ios p-6">
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Resultado del simulador</h2>
+              <p className="text-sm text-neutral-600 dark:text-white/60 mb-4">
+                Como en el examen oficial de la CNSF, el simulador final solo muestra tu calificación. Para identificar qué repasar, usa los exámenes de práctica de cada módulo.
+              </p>
+              {resultado.desglose && resultado.desglose.length > 0 && (
+                <div className="space-y-3">
+                  {resultado.desglose.map((d) => {
+                    const pct = d.total > 0 ? Math.round((d.correctas / d.total) * 100) : 0;
+                    return (
+                      <div key={d.modulo}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-neutral-700 dark:text-white/70">{d.modulo}</span>
+                          <span className="font-medium text-neutral-900 dark:text-white">{d.correctas}/{d.total} · {pct}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
+                          <div className={`h-full ${pct >= 70 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
           <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-ios p-6">
             <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">Retroalimentación Detallada</h2>
-            {examen.tipo === 'final' && (
-              <p className="text-sm text-neutral-600 dark:text-white/60 mb-4">
-                Como en el examen oficial, el simulador final indica qué preguntas fallaste pero no revela la respuesta correcta. Repasa los módulos y los exámenes de práctica.
-              </p>
-            )}
             <div className="space-y-6">
               {preguntas
                 .map((p) => ({ p, retro: resultado.retroalimentacion.find((r) => r.pregunta_id === p.id) }))
@@ -321,6 +342,7 @@ export default function ExamenInterface() {
               ))}
             </div>
           </div>
+          )}
         </div>
       </div>
     );
