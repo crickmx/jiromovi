@@ -50,7 +50,7 @@ export interface DatosPdf {
   fecha: Date;
   resultado: ResultadoCotizacion;
   agente: AgentePdf;
-  /** Clave del agente / promotor ante Auna. Si no viene, JIRO. */
+  /** Clave del agente / promotor ante Auna. Si no viene, DTJIRO. */
   claveAgente?: string;
   region?: string;
 }

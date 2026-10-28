@@ -5,7 +5,7 @@ import type { Solicitud } from './aunaOncoSolicitud';
 
 export interface DatosAuna {
   cliente: string;
-  /** Región del ejercicio (desde el 28/10). `claveAgente` quedó en desuso: siempre es JIRO. */
+  /** Región del ejercicio (desde el 28/10). `claveAgente` quedó en desuso: siempre es DTJIRO. */
   claveAgente?: string;
   region?: string;
   formaPago: FormaPago;

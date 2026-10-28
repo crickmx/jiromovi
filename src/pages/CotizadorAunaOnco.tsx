@@ -221,7 +221,8 @@ export default function CotizadorAunaOnco() {
     setSolicitud(prev => {
       const s0 = sincronizar(prev ?? solicitudInicial(cliente.trim(), aseguradosConNombre), cliente.trim(), aseguradosConNombre);
       // La clave capturada en la cotización llena la del agente si aún está vacía.
-      return s0.agente.clave.trim() ? s0 : { ...s0, agente: { ...s0.agente, clave: CLAVE_AGENTE } };
+      // La clave siempre es la de JIRO (también corrige solicitudes guardadas con la anterior).
+      return { ...s0, agente: { ...s0.agente, clave: CLAVE_AGENTE } };
     });
     setModo('solicitud');
     window.scrollTo({ top: 0, behavior: 'smooth' });
