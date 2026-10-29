@@ -1,12 +1,21 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-21)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-29)
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-21
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-29
 
-**`origin/main`** (beta) está en `a7a79450`. **`produccion` NO se tocó** desde el merge del 12.
+**`origin/main`** (beta) está en `1fef6956`. **`produccion` NO se tocó** desde el merge del 12.
 
-⚠️ **No queda nada por correr ni por desplegar.** Las cuatro migraciones del 19/10 y las dos del 21/10 están corridas, y `main` autodespliega beta solo. Lo que sigue es **probar en navegador** (lista más abajo) y lo que depende de Christofer (ver la sección de los bots).
+⚠️ **Quedan DOS migraciones por correr**, las últimas del 29:
+
+```
+C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\migrations\20261029000005_el_equipo_se_ve_a_si_mismo.sql
+C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\migrations\20261029000006_las_tablas_de_tramites_si_transmiten.sql
+```
+
+Las cuatro anteriores del 29 (`…0001` a `…0004`) ya están corridas. **Ninguna de las dos depende de código**: el frontend que las acompaña ya está en beta, así que el orden no muerde.
+
+**Lo siguiente de la lista son M9, M10 y M11** del reporte de los bots — ver la sección del 29/10 abajo, que trae el estado de cada hallazgo.
 
 ⚠️ **`main` autodespliega beta desde el 24/09** (job `deploy-beta` en `ci.yml`). Un push a `main` dispara build + gitleaks y, si pasan, sube `dist/` al servidor. **No hace falta Pull + Deploy en Plesk para beta**; lo que sí hay que vigilar es que nada llegue a `main` sin revisar, porque sale en vivo en minutos. `main` **no tiene protección de rama** (la API devuelve 404).
 
@@ -35,10 +44,24 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261019000004_resolver_unico_de_destinatarios.sql` | `resolver_destinatarios_aviso()`: un solo lugar con las reglas | ✅ corrida |
 | `20261021000001_marca_de_bot_en_usuarios.sql` | `usuarios.es_bot` — separa el tablero de Trámites del Admin | ✅ corrida |
 | `20261021000002_los_bots_no_notifican_a_personas.sql` | un trámite de bot solo le avisa a bots; el badge deja de contarlos | ✅ corrida |
+| `20261029000001_responsable_todo_el_equipo.sql` | `get_grupo_miembros_ejecutivos` devuelve los 5 `rol_en_equipo` con precedencia, y filtra por `activo` | ✅ corrida |
+| `20261029000002_un_solo_dato_de_cierre.sql` | `tickets.cerrado` sigue a `cerrado_en` por trigger + backfill | ✅ corrida |
+| `20261029000003_un_aviso_por_cambio_de_estatus.sql` | `es_nota_de_estatus` + `WHEN` en el trigger: un cambio manda UN aviso | ✅ corrida |
+| `20261029000004_el_equipo_puede_operar_sus_tramites.sql` | el miembro del equipo puede asignarse y operar; mover de equipo sigue siendo Admin/Gerente | ✅ corrida |
+| `20261029000005_el_equipo_se_ve_a_si_mismo.sql` | **A8** — lectura por equipo en `tramites_grupos_miembros` | ❌ **falta correrla** |
+| `20261029000006_las_tablas_de_tramites_si_transmiten.sql` | **A9** — publica Trámites y Store en `supabase_realtime` | ❌ **falta correrla** |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
 #### Falta probar en navegador
+- **Lo del 29/10, después de correr las dos migraciones que faltan:**
+  - **@menciones (A8):** entrar con un **Empleado o Gerente** —no Administrador, que es el único a quien le funcionaban— a un trámite con equipo, escribir `@` en un comentario y confirmar que sale la lista de compañeros. De paso, que "Mi equipo" deje de decir **1 integrante**.
+  - **Tiempo real (A9):** dos navegadores en el mismo trámite; comentar en uno y verlo aparecer en el otro **sin recargar**. Y en el tablero, cambiar un estatus en una pestaña y ver moverse la tarjeta en la otra.
+  - **Duplicar trámite (A7):** duplicar uno con el formulario lleno y confirmar que llegan descripción, solicitante y los campos del negocio —**no** área, equipo, estatus ni responsable, que se resuelven solos.
+  - **Fecha Promesa (M8):** entrar como **Agente** a un tipo que la tenga marcada requerida y confirmar que ya se puede crear el trámite.
+  - **Cierre (A3):** cerrar un trámite de un tipo del FormBuilder y comprobar `select cerrado, cerrado_en from tickets where folio = '<folio>';` — los dos deben concordar.
+  - **Un solo aviso (A4/B22):** cambiar el estatus con su nota obligatoria y confirmar que llega **un** aviso, el de estatus, y no además "Nuevo comentario".
+  - **Asignarse (A2):** con un Empleado que sea ejecutivo del equipo dueño, tomar un trámite del pool. Antes daba 403 y la pantalla no decía nada.
 - **Tarjetas de bonos en el dashboard del agente** (Producción / Metas / Campaña): entrar en "ver como" a un agente que SÍ sea vendedor en bonos y ver si se llenan. El fix del 15/10 manda `?as=<uuid>` a `cp.movi.digital` (bonos ya desplegado, commit `b6356d8` en `master`). Si siguen vacías, mirar la petición `mi-resumen` en F12 → Red: `403` = bonos no lo reconoce como admin · `{"vinculado": false}` = ese agente nunca entró a bonos · `{"aplica": false}` = su rol en bonos no es vendedor · **sin `?as=` en la URL** = no entró el deploy de MOVI.
 - **Equipos de trámite en todos los roles** (15/10): asignarle equipos a un Empleado/Gerente desde Editar Usuario y confirmar que (a) se guardan, (b) un trámite levantado para esa persona nace con equipo, (c) **no perdió su membresía** en los equipos donde es ejecutivo/líder (menú de Trámites, permisos de catálogos).
 - **Equipo de un solo ejecutivo**: levantar un trámite que caiga en un equipo con un único `ejecutivo` y confirmar que sale asignado a esa persona, no "Sin responsable".
@@ -124,6 +147,99 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### ✅ 2026-10-29 — el reporte de los bots: Trámites y Store
+
+Ricardo entregó `reporte-agentesia-movi.pdf` con los hallazgos de los agentes de IA y acotó el alcance: *"me gustaría enfocarnos en los de trámites y store, los demás los está revisando Christofer"*. Eligió el orden **"lo roto y barato"**.
+
+**🔑 La lección de método del día: el reporte describe síntomas, no causas, y sus diagnósticos propuestos estuvieron equivocados más veces que acertados.** Leerlo como lista de tareas habría arreglado la pantalla equivocada en seis de los once hallazgos. Lo que sirvió fue tratarlo como lista de **síntomas reproducibles** y buscar la causa en el código y en `pg_policies` / `pg_publication_tables`.
+
+| | El reporte decía | Lo que era de verdad |
+|---|---|---|
+| **A2** | "no se puede asignar" | Las **tres** políticas de escritura de `ticket_asignaciones` exigen Admin o Gerente, y las **tres** de UPDATE de `tickets` deciden por **oficina**. Christofer pasó la LECTURA a equipos el 23/10 y la escritura se quedó atrás: un Empleado **ve** los trámites de su equipo y solo puede escribir en los de su oficina |
+| **A3** | "los KPIs salen mal" | `cerrado` no alimenta ningún KPI. Lo lee **una** función del Centro de Contacto, y con `cerrado=false` eterno un ejecutivo seguía viendo conversaciones de agentes cuyos trámites cerraron hace meses |
+| **A4** | "el aviso sale 2 veces" | Es el **mismo bug que B22**: la nota obligatoria del cambio de estatus dispara también el trigger de comentario. Y su segunda mitad (TKA65F1 sin destinatarios) **no era un bug**: es un trámite de bot con responsable humano, o sea nuestro propio filtro del 21/10 |
+| **A5** | "agregar Tesorería al mapa de colores" | Un `CONFIG[valor]` indexado por un valor que crece con el tiempo. Agregar un área no arregla la siguiente |
+| **A7** | "precargar los datos" | `tickets` **no tiene columna `descripcion`** (es `instrucciones`): el select tronaba con 42703 y nadie miraba el error. Y aun así solo se copiaban tipo y prioridad |
+| **A8** | "revisar la consulta del autocompletado" | La consulta está bien. **La RLS de `tramites_grupos_miembros` solo deja ver tu propia fila** si no eres Administrador |
+| **A9** | "revisar el canal realtime" | `ticket_comentarios` **nunca estuvo en la publicación `supabase_realtime`** |
+| **A10** | "un error" | Cuatro archivos y **dos** errores distintos (`created_at` que no existe, y un embed sin FK) |
+| **B1** | "las imágenes pesan mucho" | Faltaba `loading="lazy"`: el catálogo bajaba 14.9 MB de golpe |
+| **B14** | "96 botones sin etiqueta" | Son **dos por tarjeta de producto**, el `−` y el `+` |
+| **M8** | "marcar el campo con asterisco" | El asterisco ya se pinta. **El campo no se dibuja para un Agente** (`if (isAgent) return null`) y la validación no lo sabía |
+
+#### 🔑 Los dos hallazgos de fondo, que valen más que el reporte entero
+
+**1. Trámites y Store llevan años sin tiempo real.** Supabase solo transmite las tablas que estén en la publicación `supabase_realtime`. En esta base hay **tres** (`contact_center_messages`, `notificaciones`, `notifications`) y el frontend se suscribe a **más de veinte**. `tickets`, `ticket_comentarios`, `ticket_archivos`, `ticket_historial` y `store_pedidos` nunca estuvieron ahí.
+
+Eso explica por qué *"no se actualiza hasta recargar"* reaparece cada pocos meses en una pantalla distinta y nunca se cierra. **El arreglo de julio** —pasar el canal del tablero a `subscribeResilientChannel`— **hizo que se reconectara de forma confiable a un flujo vacío.** La migración `20261029000006` publica las cinco de este alcance; las otras ~17 tablas siguen igual y están listadas dentro del archivo.
+
+Comprobación:
+```sql
+select tablename from pg_publication_tables
+ where pubname = 'supabase_realtime' and schemaname = 'public' order by tablename;
+```
+
+**No se tocó `REPLICA IDENTITY`** a propósito: en FULL, Postgres escribiría la fila vieja completa al WAL en cada UPDATE de `tickets`, que es la tabla más movida del sistema. Con la identidad por llave primaria llegan igual los INSERT y los UPDATE con la fila nueva, que es lo único que estas pantallas usan — y los borrados de trámite son lógicos (`eliminado_at`), o sea UPDATE. **La RLS sigue mandando**: Realtime evalúa las políticas contra cada suscriptor, publicar no abre nada.
+
+**2. Las @menciones nunca funcionaron para nadie salvo un Administrador.** `tramites_grupos_miembros` tiene **una sola** política de lectura: `usuario_id = auth.uid() OR rol = 'Administrador'`. El autocompletado pide los miembros del equipo, recibe una fila —la suya— y la descarta porque uno no se menciona a sí mismo. **Patrón #1 del proyecto**, en su forma más limpia.
+
+No son solo las menciones: la misma tabla la leen la lista de miembros del detalle y el conteo de "Mi equipo" (`PanelLider`), que **por esto cuenta 1 siempre**.
+
+#### Lo arreglado, por commit
+
+| Commit | Qué |
+|---|---|
+| `2749c010` | **A3** — `cerrado` sigue a `cerrado_en` |
+| `8d275e18` | **A4 + B22** — un cambio de estatus manda UN aviso, y dice que es de estatus |
+| `18cc70ab` | **Store** — B1 (lazy loading), B14/B16 (`aria-label`), B19 (Escape) |
+| `a692af0a` | **A2** — el equipo puede operar sus trámites, y los seis `update`/`insert` por fin miran su error |
+| `fc8467ec` | **A7 + M8** — duplicar copia el trámite; un requerido invisible deja de bloquear |
+| `1fef6956` | **A8 + A9** — el equipo se ve a sí mismo; Trámites y Store transmiten |
+
+A1, A5, A10 y A12 entraron antes, en la pasada de `colorDeArea()` y los dashboards.
+
+#### Decisiones que conviene no volver a discutir
+
+- **En A2 se AGREGÓ una política, no se reescribieron las tres.** Las permisivas se combinan con OR, así que sumar una solo puede abrir lo que falta: no hay forma de romper lo que hoy funciona.
+- **El `with check` de esa política exige que el trámite SIGA en un equipo del usuario**: puede asignarse, cambiar prioridad y estatus, pero **no mover el trámite a otro equipo**. Un `with check` permisivo ahí relajaría de paso las restricciones de las otras tres, porque el check final también es un OR.
+- **Al duplicar, los campos de SISTEMA se quedan fuera** (área, equipo, estatus, fechas, responsable): describen el *estado* del trámite viejo, no sus datos, y el alta los resuelve sola. El solicitante sí se hereda.
+- **M8 dejó una sola definición, `campoSistemaOculto`**, que usan el render, la validación y la barra de progreso — para que lo que se ve y lo que se exige no se puedan volver a separar.
+
+#### 🔴 Dos bugs encontrados de paso, que nadie reportó
+
+1. **`confirmarEscalacion` escribía en `ticket_comentarios.contenido`**, columna que **no existe** (es `mensaje`). Los comentarios de escalación se perdían en silencio desde julio. Corregido.
+2. **`bug-reports-daily-digest` consulta `ticket_comentarios.created_at`** — tampoco existe (es `fecha_hora`). **Sigue sin corregir**; es cambiar la palabra en dos lugares.
+
+#### ❌ Lo que queda del reporte
+
+| | |
+|---|---|
+| **Código, pendiente** | **M9** "Vista tablero" no cambia la pantalla · **M10** comentar sin conexión no muestra nada · **M11** Diego no ve la caja de comentarios en trámites de Sistemas que él creó |
+| **Configuración de Ricardo** | **A6** — "Reporte Semanal" y "Alta Usuario Beta" no tienen los campos de sistema `descripcion` ni `archivos_adjuntos` en su FormBuilder, así que `instrucciones` se guarda como *"Sin descripción"* y no hay dónde adjuntar. **Lo que el usuario escribe en "Comentarios" SÍ se guarda** — lo que se pierde es el encabezado y el texto del aviso por WhatsApp/correo, que leen `instrucciones` |
+| **Datos** | **B5** equipo "Pruebas MOVI Digital" duplicado · **B7** "Mesa de Control Aguascalienteses" · **B8** "informaicón" en la ayuda del adjunto de Cotización (está en el FormBuilder) |
+
+Para A6, qué tipos están así:
+```sql
+select t.label,
+       bool_or(c.sistema_key = 'descripcion')        as tiene_descripcion,
+       bool_or(c.sistema_key = 'archivos_adjuntos')  as tiene_adjuntos
+from ticket_tipos t
+left join tramite_tipo_campos c on c.tramite_tipo_id = t.id and c.activo
+where t.activo
+group by t.label
+having not bool_or(c.sistema_key = 'descripcion')
+    or not bool_or(c.sistema_key = 'archivos_adjuntos')
+order by t.label;
+```
+
+#### ⚠️ Señalado a Ricardo, sin tocar
+
+- **Las tres políticas de UPDATE de `tickets` deberían ser una.** Hoy `tickets_update_by_role` deja a cualquier Gerente escribir en todo lo de su oficina sin más condición, y no se puede saber qué permite el conjunto sin leer las tres.
+- **`tickets_update_by_role_or_participant` usa `get_my_oficina_id()` en singular**, mientras el 23/10 se agregó `get_my_oficina_ids()` plural. Un Gerente con oficina adicional **ve** esos trámites pero no los puede editar. Es una palabra, pero toca una política existente.
+- **`tramite_respuestas` tiene la escritura abierta**: cualquier usuario con sesión puede modificar las respuestas del formulario de cualquier trámite.
 
 ---
 
@@ -1897,6 +2013,8 @@ Es una simulación **solo de cliente**: `MoviAuthContext`/`ImpersonationContext`
 
 ## Reglas de arquitectura — CRÍTICAS
 - Tabla de tickets: `tickets` (NO `tramites`) — crítico para SQL y migraciones
+- **`tickets` NO tiene columna `descripcion`** — el texto del trámite vive en **`instrucciones`**. Un `.select('descripcion')` devuelve 42703 y, si nadie mira el `error`, se ve igual que un trámite sin texto (así se rompió "Duplicar trámite" durante meses).
+- **Realtime: una tabla solo transmite si está en la publicación `supabase_realtime`.** Al agregar un `postgres_changes` sobre una tabla nueva, publicarla en la misma migración o el canal escucha un flujo vacío — y el síntoma ("no se actualiza hasta recargar") es indistinguible de un canal mal configurado. Verificar con `select tablename from pg_publication_tables where pubname = 'supabase_realtime';`
 - Tipos de trámite: tabla `ticket_tipos`, columna `value` como slug, **columna `label` para el nombre visible (NO `nombre` — esa columna no existe y falla en silencio vía PostgREST)**
 - `assignment_mode` eliminado de `ticket_tipos` el 2026-06-24 — no referenciar jamás
 - Campos del formulario por tipo: `tramite_tipo_campos` · Respuestas: `tramite_respuestas`
