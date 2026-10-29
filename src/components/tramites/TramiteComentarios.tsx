@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { subscribeResilientChannel } from '../../lib/resilientRealtime';
 import { useAuth } from '../../contexts/AuthContext';
 import { Send, Upload, X, FileText, AtSign } from 'lucide-react';
 
@@ -39,12 +40,19 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
   const [mencionQuery, setMencionQuery] = useState<string | null>(null);
   const [mencionIndex, setMencionIndex] = useState(0);
 
+  // QA 2026-10-22 (A9) — los comentarios de otros solo aparecían al recargar.
+  //
+  // La causa de fondo es de base de datos: `ticket_comentarios` no estaba en la
+  // publicación `supabase_realtime`, así que este canal escuchaba un flujo por
+  // el que nunca pasó nada (migración 20261029000006). Ya que por fin llegan
+  // eventos, el canal usa `subscribeResilientChannel`: reintenta con backoff y
+  // recarga al volver el foco o la red. Un websocket suspendido en segundo
+  // plano reproduce el mismo síntoma sin avisar.
   useEffect(() => {
-    loadComentarios();
-
-    const subscription = supabase
-      .channel(`tramite_comentarios_${tramiteId}`)
-      .on(
+    const unsubscribe = subscribeResilientChannel({
+      channelName: `tramite_comentarios_${tramiteId}`,
+      onReconnect: loadComentarios,
+      configure: (channel) => channel.on(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -73,12 +81,10 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
             });
           }
         }
-      )
-      .subscribe();
+      ),
+    });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return unsubscribe;
   }, [tramiteId]);
 
   useEffect(() => {
@@ -92,7 +98,15 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
       .from('tramites_grupos_miembros')
       .select('usuario_id, usuario:usuario_id(id, nombre_completo)')
       .eq('grupo_id', grupoId)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Una consulta que se traga su error se ve igual que "no hay nadie", y
+        // así se veía este hueco: hasta la migración 20261029000005 la RLS solo
+        // dejaba leer la fila propia, la lista salía vacía y nadie se enteraba.
+        if (error) {
+          console.error('No se pudo cargar el equipo para las @menciones:', error.message);
+          setMiembros([]);
+          return;
+        }
         const ms: Miembro[] = (data ?? [])
           .map((r: any) => r.usuario)
           .filter(Boolean)
