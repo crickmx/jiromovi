@@ -25,7 +25,7 @@ import {
   getTipoTramiteLabel as centralGetLabel,
   getTipoTramiteArea,
   getTipoTramitesByArea,
-  AREA_CONFIG,
+  colorDeArea,
 } from '../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
@@ -1135,7 +1135,7 @@ export function Tramites() {
         description="Gestiona solicitudes y soporte interno"
         icon={ClipboardList}
         badge={userArea && !esRolSistemaAdmin ? (
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.bg} ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.color}`}>
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colorDeArea(userArea).bg} ${colorDeArea(userArea).color}`}>
             {userArea}
           </span>
         ) : undefined}
@@ -1620,7 +1620,7 @@ export function Tramites() {
             <div className="space-y-3">
               {tramitesPapelera.map(tramite => {
                 const area = getTipoTramiteArea(tramite.tipo_tramite);
-                const ac = AREA_CONFIG[area];
+                const ac = colorDeArea(area);
                 const tipoDb = tiposDb.get(tramite.tipo_tramite);
                 const dbColor = tipoDb?.color;
                 const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
@@ -1725,7 +1725,7 @@ export function Tramites() {
               <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-8">Sin trámites pendientes</p>
             ) : kanbanAtención.map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
-              const ac = AREA_CONFIG[area];
+              const ac = colorDeArea(area);
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
               const dbColor = tipoDb?.color;
               const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
@@ -1826,7 +1826,7 @@ export function Tramites() {
               <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-8">Sin trámites en proceso</p>
             ) : kanbanProceso.map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
-              const ac = AREA_CONFIG[area];
+              const ac = colorDeArea(area);
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
               const dbColor = tipoDb?.color;
               const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
@@ -1919,7 +1919,7 @@ export function Tramites() {
               <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-8">Sin cierres recientes</p>
             ) : kanbanCerrados.slice(0, 10).map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
-              const ac = AREA_CONFIG[area];
+              const ac = colorDeArea(area);
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
               const dbColor = tipoDb?.color;
               const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
@@ -1995,7 +1995,7 @@ export function Tramites() {
 
           {filteredTramites.map(tramite => {
             const area = getTipoTramiteArea(tramite.tipo_tramite);
-            const ac = AREA_CONFIG[area];
+            const ac = colorDeArea(area);
             const tipoDb = tiposDb.get(tramite.tipo_tramite);
             const dbColor = tipoDb?.color;
             const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';

@@ -24,7 +24,6 @@ import {
   REGISTRO_ACTIVIDAD_ESTATUS,
   getTipoTramitesByArea,
   getTipoTramiteArea,
-  AREA_CONFIG,
   isCommercialTicketType,
   type UsuarioOficina
 } from '../../lib/registroActividadesTypes';

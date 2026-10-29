@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Clock, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { getTipoTramiteLabel } from '@/lib/registroActividadesTypes';
 import type { Usuario } from '../../contexts/MoviAuthContext';
 import { useMiResumen } from '../../lib/useMiResumen';
 
@@ -19,8 +20,7 @@ type TramiteReciente = {
   folio: string;
   tipo_tramite: string;
   custom_estatus_label?: string | null;
-  created_at: string;
-  ticket_tipos?: { label: string } | null;
+  fecha_creacion: string;
 };
 
 // ── Panel wrapper ──────────────────────────────────────────────────────────
@@ -419,12 +419,15 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
     let active = true;
     supabase
       .from('tickets')
-      .select('id, folio, tipo_tramite, custom_estatus_label, created_at, ticket_tipos(label)')
+      .select('id, folio, tipo_tramite, custom_estatus_label, fecha_creacion')
       .eq('creado_por', usuario.id)
       .is('cerrado_en', null)
-      .order('created_at', { ascending: false })
+      .order('fecha_creacion', { ascending: false })
       .limit(4)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Un error aqui se veia igual que "no hay tramites": por eso el widget
+        // llevaba roto sin que nadie lo reportara.
+        if (error) console.error('[Dashboard] tramites recientes:', error.message);
         if (active) {
           setTramites((data ?? []) as unknown as TramiteReciente[]);
           setLoading(false);
@@ -517,7 +520,7 @@ function TramitePanel({ usuario }: { usuario: Usuario }) {
                     {t.folio}
                   </p>
                   <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate">
-                    {(t.ticket_tipos as { label: string } | null)?.label ?? t.tipo_tramite}
+                    {getTipoTramiteLabel(t.tipo_tramite)}
                   </p>
                 </div>
                 {estatusChip(t.custom_estatus_label)}

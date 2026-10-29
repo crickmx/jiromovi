@@ -7,7 +7,7 @@ import {
   TriangleAlert as AlertTriangle, Loader as Loader2, Globe, Crown, Zap, Eye, ShieldAlert, Star,
   GitBranch, FileText, CheckCircle2,
 } from 'lucide-react';
-import { AREA_CONFIG } from '../../lib/registroActividadesTypes';
+import { colorDeArea } from '../../lib/registroActividadesTypes';
 
 interface Grupo {
   id: string;
@@ -650,10 +650,8 @@ export function GestionGruposVisualizacion() {
 
   // ── HELPERS ───────────────────────────────────────────────────────────────────
 
-  const getAC = (area: string | null) =>
-    area && (AREA_CONFIG as Record<string, { color: string; bg: string; border: string }>)[area]
-      ? (AREA_CONFIG as Record<string, { color: string; bg: string; border: string }>)[area]
-      : { bg: 'bg-neutral-50', color: 'text-neutral-600', border: 'border-neutral-200' };
+  // Era una copia local de lo mismo; ahora el respaldo vive en un solo lugar.
+  const getAC = colorDeArea;
 
   const AreaIcon = ({ area }: { area: string | null }) =>
     area === 'Comercial' ? <Briefcase className="w-4 h-4" /> : <Wrench className="w-4 h-4" />;

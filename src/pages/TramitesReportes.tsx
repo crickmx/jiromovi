@@ -14,7 +14,7 @@ import {
   getTipoTramiteLabel as centralGetLabel,
   getTipoTramiteArea,
   getTipoTramitesByArea,
-  AREA_CONFIG,
+  colorDeArea,
   type AreaCategoria,
 } from '../lib/registroActividadesTypes';
 
@@ -744,7 +744,7 @@ export default function TramitesReportes() {
         description="Análisis y métricas de productividad"
         icon={BarChart3}
         badge={userArea ? (() => {
-          const ac = AREA_CONFIG[userArea];
+          const ac = colorDeArea(userArea);
           return (
             <span className={`px-3 py-1 text-sm font-bold rounded-full ${ac.bg} ${ac.color} border ${ac.border}`}>
               {userArea}
@@ -1199,7 +1199,7 @@ export default function TramitesReportes() {
         {(['Comercial', 'Operaciones'] as AreaCategoria[]).map(area => {
           const areaItems = kpisPorTipo.filter(item => getTipoTramiteArea(item.tipo) === area);
           if (areaItems.length === 0) return null;
-          const ac = AREA_CONFIG[area];
+          const ac = colorDeArea(area);
           return (
             <div key={area} className="mb-6 last:mb-0">
               <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-lg ${ac.bg} border ${ac.border}`}>
@@ -1425,7 +1425,7 @@ export default function TramitesReportes() {
             {(['Comercial', 'Operaciones'] as AreaCategoria[]).map(area => {
               const items = tramitesPorTipo.filter(i => getTipoTramiteArea(i.tipo) === area);
               if (items.length === 0) return null;
-              const ac = AREA_CONFIG[area];
+              const ac = colorDeArea(area);
               const maxVal = Math.max(1, ...tramitesPorTipo.map(t => t.cantidad));
               return (
                 <div key={area}>

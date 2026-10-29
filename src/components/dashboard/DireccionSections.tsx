@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { getTipoTramiteLabel } from '@/lib/registroActividadesTypes';
 import type { Usuario } from '../../contexts/MoviAuthContext';
 import { useMiResumen } from '../../lib/useMiResumen';
 
@@ -28,9 +29,8 @@ type TicketAbierto = {
   folio: string;
   tipo_tramite: string;
   custom_estatus_label?: string | null;
-  created_at: string;
+  fecha_creacion: string;
   agente_id?: string | null;
-  ticket_tipos?: { label: string } | null;
   _agente_nombre?: string;
 };
 
@@ -111,7 +111,7 @@ function GerentesPanel() {
 
       const { data: tickets } = await supabase
         .from('tickets')
-        .select('agente_id, created_at')
+        .select('agente_id, fecha_creacion')
         .in('agente_id', ids)
         .is('cerrado_en', null);
 
@@ -119,7 +119,7 @@ function GerentesPanel() {
 
       const items: GerenteItem[] = users.map(u => {
         const mine = (tickets ?? []).filter(t => t.agente_id === u.id);
-        const urgentes = mine.filter(t => ahora - new Date(t.created_at).getTime() > 24 * HORA_MS).length;
+        const urgentes = mine.filter(t => ahora - new Date(t.fecha_creacion).getTime() > 24 * HORA_MS).length;
         const ofRaw = u.oficina as unknown as { nombre: string } | { nombre: string }[] | null;
         const ofName = Array.isArray(ofRaw) ? (ofRaw[0]?.nombre ?? '—') : (ofRaw?.nombre ?? '—');
         return { id: u.id, nombre: u.nombre, apellidos: u.apellidos, oficina_nombre: ofName, total: mine.length, urgentes, total_tickets: mine.length };
@@ -406,9 +406,9 @@ function SolicitudesPanel() {
       const [{ data: raw }, { data: agentes }] = await Promise.all([
         supabase
           .from('tickets')
-          .select('id, folio, tipo_tramite, custom_estatus_label, created_at, agente_id, ticket_tipos(label)')
+          .select('id, folio, tipo_tramite, custom_estatus_label, fecha_creacion, agente_id')
           .is('cerrado_en', null)
-          .order('created_at', { ascending: true })
+          .order('fecha_creacion', { ascending: true })
           .limit(10),
         supabase
           .from('usuarios')
@@ -426,7 +426,7 @@ function SolicitudesPanel() {
           : '—',
       }));
 
-      const urgentes = list.filter(t => ahora - new Date(t.created_at).getTime() > 24 * HORA_MS).length;
+      const urgentes = list.filter(t => ahora - new Date(t.fecha_creacion).getTime() > 24 * HORA_MS).length;
       setTickets(list);
       setCounts({ urgentes, total: list.length });
       setLoading(false);
@@ -469,7 +469,7 @@ function SolicitudesPanel() {
                   <div className="min-w-0">
                     <p className="text-[12px] font-bold text-neutral-900 dark:text-white font-variant-numeric tabular-nums">{t.folio}</p>
                     <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate">
-                      {(t.ticket_tipos as { label: string } | null)?.label ?? t.tipo_tramite}
+                      {getTipoTramiteLabel(t.tipo_tramite)}
                     </p>
                     <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">👤 {t._agente_nombre}</p>
                   </div>

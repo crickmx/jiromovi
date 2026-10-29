@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { getTipoTramiteLabel } from '@/lib/registroActividadesTypes';
 import type { Usuario } from '../../contexts/MoviAuthContext';
 import { useMiResumen } from '../../lib/useMiResumen';
 
@@ -19,9 +20,8 @@ type TicketAbierto = {
   folio: string;
   tipo_tramite: string;
   custom_estatus_label?: string | null;
-  created_at: string;
+  fecha_creacion: string;
   agente_id?: string | null;
-  ticket_tipos?: { label: string } | null;
   _agente_nombre?: string;
 };
 
@@ -251,14 +251,17 @@ function SolicitudesPanel({ usuario }: { usuario: Usuario }) {
       const ids = users.map(u => u.id);
       const nameMap = new Map(users.map(u => [u.id, `${u.nombre} ${u.apellidos}`]));
 
-      const { data: raw } = await supabase
+      const { data: raw, error: errRaw } = await supabase
         .from('tickets')
-        .select('id, folio, tipo_tramite, custom_estatus_label, created_at, agente_id, ticket_tipos(label)')
+        .select('id, folio, tipo_tramite, custom_estatus_label, fecha_creacion, agente_id')
         .in('agente_id', ids)
         .is('cerrado_en', null)
-        .order('created_at', { ascending: true })
+        .order('fecha_creacion', { ascending: true })
         .limit(10);
 
+      // Un error aqui se veia igual que "no hay tramites": por eso estas tarjetas
+      // llevaban rotas sin que nadie lo reportara.
+      if (errRaw) console.error('[Dashboard] tramites abiertos:', errRaw.message);
       if (!active) return;
 
       const list = (raw ?? []).map(t => ({
@@ -266,7 +269,7 @@ function SolicitudesPanel({ usuario }: { usuario: Usuario }) {
         _agente_nombre: t.agente_id ? (nameMap.get(t.agente_id) ?? '—') : '—',
       }));
 
-      const urgentes = list.filter(t => ahora - new Date(t.created_at).getTime() > 24 * HORA_MS).length;
+      const urgentes = list.filter(t => ahora - new Date(t.fecha_creacion).getTime() > 24 * HORA_MS).length;
       setTickets(list);
       setCounts({ urgentes, total: list.length });
       setLoading(false);
@@ -311,7 +314,7 @@ function SolicitudesPanel({ usuario }: { usuario: Usuario }) {
                   <div className="min-w-0">
                     <p className="text-[12px] font-bold text-neutral-900 dark:text-white font-variant-numeric tabular-nums">{t.folio}</p>
                     <p className="text-[11px] text-neutral-500 dark:text-white/50 truncate">
-                      {(t.ticket_tipos as { label: string } | null)?.label ?? t.tipo_tramite}
+                      {getTipoTramiteLabel(t.tipo_tramite)}
                     </p>
                     <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">👤 {t._agente_nombre}</p>
                   </div>
