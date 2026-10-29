@@ -1446,11 +1446,17 @@ export function TramiteDetalle() {
   const confirmarCambioConComentario = async () => {
     if (!pendingEstatusComentario || !tramite || !usuario) return;
     if (!comentarioCambioEstatus.trim()) return;
-    await supabase.from('ticket_comentarios').insert({
+    // Marcada como nota de estatus: se guarda y se ve en la conversación igual
+    // que cualquier comentario, pero no genera su propio aviso. Sin esto llegan
+    // DOS notificaciones por una sola acción, y la primera dice "Nuevo
+    // comentario" sobre algo que nadie comentó (ver 20261029000003).
+    const { error: errNota } = await supabase.from('ticket_comentarios').insert({
       ticket_id: tramite.id,
       usuario_id: usuario.id,
       mensaje: comentarioCambioEstatus.trim(),
+      es_nota_de_estatus: true,
     });
+    if (errNota) { showToast(`No se pudo guardar la nota: ${errNota.message}`, 'error'); return; }
     const { slug, id } = pendingEstatusComentario;
     setPendingEstatusComentario(null);
     setComentarioCambioEstatus('');
@@ -1462,11 +1468,15 @@ export function TramiteDetalle() {
     if (!escalacionComentario.trim()) { showToast('El comentario es obligatorio', 'error'); return; }
 
     // Insert mandatory comment
-    await supabase.from('ticket_comentarios').insert({
+    // `contenido` NO existe en ticket_comentarios: la columna es `mensaje`. El
+    // insert fallaba, nadie miraba el error, y el comentario obligatorio de cada
+    // escalación se perdía desde julio sin dejar rastro.
+    const { error: errEsc } = await supabase.from('ticket_comentarios').insert({
       ticket_id: tramite.id,
       usuario_id: usuario!.id,
-      contenido: escalacionComentario.trim(),
+      mensaje: escalacionComentario.trim(),
     });
+    if (errEsc) { showToast(`No se pudo guardar el comentario: ${errEsc.message}`, 'error'); return; }
 
     // Mark as requires attention
     await supabase.from('tickets').update({ requiere_atencion_manual: true }).eq('id', tramite.id);
