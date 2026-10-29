@@ -67,6 +67,19 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
   const [imagenFinalPersonalizacion, setImagenFinalPersonalizacion] = useState<string | null>(null);
   const [mostrarEditorLogo, setMostrarEditorLogo] = useState(false);
 
+  // Cerrar con Escape. `BaseModal` lo soporta pero viene apagado por default y
+  // este modal ni siquiera lo usa, asi que la tecla no hacia nada. Es seguro
+  // aqui porque no hay nada que perder: lo que se captura (cantidad, atributos)
+  // no se guarda hasta "Agregar al carrito". No se cierra mientras el editor de
+  // logo esta abierto — ahi si hay trabajo del usuario encima.
+  useEffect(() => {
+    const alPresionar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !mostrarEditorLogo) onClose();
+    };
+    document.addEventListener('keydown', alPresionar);
+    return () => document.removeEventListener('keydown', alPresionar);
+  }, [onClose, mostrarEditorLogo]);
+
   const esPremium = esProductoPremium(producto);
   const planInicial = producto.tipo === 'marketing_premium_anual' ? 'anual' : 'mensual';
   const [planSeleccionado, setPlanSeleccionado] = useState<'mensual' | 'anual'>(planInicial);
@@ -169,6 +182,7 @@ export function ProductoDetalleModal({ producto, onClose, onAgregar }: Props) {
           </h2>
           <button
             onClick={onClose}
+            aria-label="Cerrar"
             className="text-neutral-500 hover:text-gray-600 transition-colors"
           >
             <X className="w-6 h-6" />

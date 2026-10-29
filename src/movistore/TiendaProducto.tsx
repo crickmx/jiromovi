@@ -196,6 +196,8 @@ export function TiendaProducto() {
                 <img
                   src={producto.imagen_url || PLACEHOLDER_SVG}
                   alt={producto.titulo}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                   onError={e => {
                     (e.target as HTMLImageElement).src = PLACEHOLDER_SVG;

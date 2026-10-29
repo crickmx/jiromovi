@@ -211,6 +211,8 @@ export function TiendaCatalogo() {
           <img
             src={catalogo.imagen_portada_url}
             alt={catalogo.nombre}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none"
           />
         )}
@@ -371,6 +373,8 @@ export function TiendaCatalogo() {
                     <img
                       src={p.imagen_url || PLACEHOLDER_SVG}
                       alt={p.titulo}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       onError={e => {
                         (e.target as HTMLImageElement).src = PLACEHOLDER_SVG;
