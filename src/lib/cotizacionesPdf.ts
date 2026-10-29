@@ -42,20 +42,27 @@ export async function pdfDeCotizacion(c: Cotizacion): Promise<{ blob: Blob; nomb
   if (c.cotizador === 'auna_onco') {
     const d = c.datos as unknown as DatosAuna;
     const { generarPdfAunaOnco, agenteDesdeUsuario } = await import('./aunaOncoPdf');
-    const { cotizar } = await import('./aunaOncoCotizador');
+    const { cotizar, sinExtraprimas } = await import('./aunaOncoCotizador');
     // Se recalcula con la fecha en que se guardó: así las cotizaciones de antes
     // del 28/10 también traen parentesco y prima + recargo por persona.
     const resultado = d.asegurados?.length
       ? cotizar(
           d.asegurados.map((a, i) => (i === 0 && !a.nombre.trim() ? { ...a, nombre: d.cliente || c.cliente_nombre } : a)),
-          d.formaPago ?? 'anual', d.descuento ?? 0, new Date(c.updated_at),
+          d.formaPago ?? 'anual', 0, new Date(c.updated_at),
         )
       : d.resultado;
+    const sinExtra = d.asegurados?.length && resultado.extraprimaTotal > 0
+      ? cotizar(
+          sinExtraprimas(d.asegurados.map((a, i) => (i === 0 && !a.nombre.trim() ? { ...a, nombre: d.cliente || c.cliente_nombre } : a))),
+          d.formaPago ?? 'anual', 0, new Date(c.updated_at),
+        )
+      : undefined;
     const blob = await generarPdfAunaOnco({
       folio: c.folio,
       cliente: c.cliente_nombre,
       fecha: new Date(c.updated_at),
       resultado,
+      resultadoSinExtraprima: sinExtra,
       agente: agenteDesdeUsuario(usuario as never, logo),
       region: d.region,
     });

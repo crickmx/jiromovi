@@ -49,6 +49,8 @@ export interface DatosPdf {
   cliente: string;
   fecha: Date;
   resultado: ResultadoCotizacion;
+  /** El mismo cálculo sin extraprimas (tarifa de Auna); se muestra al lado si hay extraprima. */
+  resultadoSinExtraprima?: ResultadoCotizacion;
   agente: AgentePdf;
   /** Clave del agente / promotor ante Auna. Si no viene, DTJIRO. */
   claveAgente?: string;
@@ -326,6 +328,28 @@ export async function generarPdfAunaOnco(datos: DatosPdf): Promise<Blob> {
   doc.setFontSize(6.8); doc.setTextColor(...GRIS);
   doc.text('* REF.- Referencia de precio', M, y);
   y += 5;
+
+  // Sin y con extraprima, lado a lado: "sin" es la tarifa de Auna.
+  const s0 = datos.resultadoSinExtraprima;
+  if (s0 && hayExtra) {
+    y = nuevaPagina(y, 30);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: M, right: M },
+      head: [['Precio sin y con extraprima', 'Sin extraprima (tarifa Auna)', 'Con extraprima (preliminar)']],
+      body: [
+        ['Ref. Prima total', fmt(s0.primaTotal), fmt(r.primaTotal)],
+        ['Ref. Primer recibo', fmt(s0.primerRecibo), fmt(r.primerRecibo)],
+        ...(mensual ? [['Ref. Recibos subsecuentes (x11)', fmt(s0.reciboSubsecuente ?? 0), fmt(r.reciboSubsecuente ?? 0)]] : []),
+      ],
+      headStyles: { fillColor: [...AUNA_DEEP], textColor: 255, fontSize: 8 },
+      bodyStyles: { fontSize: 8.4, textColor: [...NAVY] },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right', fontStyle: 'bold' } },
+      theme: 'grid',
+      styles: { lineColor: [226, 232, 240], lineWidth: 0.2, cellPadding: 1.4 },
+    });
+    y = finY() + 5;
+  }
 
   // Aviso importante (pedido por JIRO)
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7.8);

@@ -152,13 +152,20 @@ export function quinquenioDe(edad: number): Quinquenio | null {
 
 export function imc(estatura?: number | null, peso?: number | null): number | null {
   if (!estatura || !peso || estatura <= 0) return null;
-  return peso / (estatura * estatura);
+  // Se captura en metros, pero hay quien escribe centímetros (180): se acepta igual.
+  const m = estatura > 3 ? estatura / 100 : estatura;
+  return peso / (m * m);
 }
 
 /** IMC ≥ 40 es obesidad grado III (la única que está en la matriz). */
 export function sugiereObesidadIII(a: Pick<Asegurado, 'estatura' | 'peso'>): boolean {
   const v = imc(a.estatura, a.peso);
   return v != null && v >= 40;
+}
+
+/** Los mismos asegurados sin extraprimas: es lo que da el Excel de tarifas de Auna. */
+export function sinExtraprimas<T extends Pick<Asegurado, 'extraprimas'>>(asegurados: T[]): T[] {
+  return asegurados.map(a => ({ ...a, extraprimas: [] }));
 }
 
 export function pctExtraprima(ids: string[]): number {

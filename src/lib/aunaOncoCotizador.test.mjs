@@ -68,6 +68,7 @@ assert.equal(prost.requiereSuscripcion, false);
 
 assert.equal(sugiereObesidadIII({ estatura: 1.6, peso: 103 }), true);
 assert.equal(sugiereObesidadIII({ estatura: 1.6, peso: 100 }), false);
+assert.equal(sugiereObesidadIII({ estatura: 160, peso: 103 }), true, 'estatura en centímetros');
 
 // PDF oficial de Auna del 27/10 (JUANITA PEREZ LOPEZ, 12/10/1966, mensual):
 // recargo 2,576.71 · total 34,741.92 · 1er recibo 3,161.03 · 11 de 2,870.99

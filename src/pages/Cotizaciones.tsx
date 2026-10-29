@@ -206,7 +206,12 @@ export default function Cotizaciones() {
                         </span>
                       </td>
                       {hayDeOtros && <td className="px-4 py-3 text-xs text-neutral-600 dark:text-neutral-300">{agentes.get(c.usuario_id) ?? '—'}</td>}
-                      <td className="px-4 py-3 text-right tabular-nums text-neutral-800 dark:text-neutral-200">{c.prima_total != null ? fmt(c.prima_total) : '—'}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-neutral-800 dark:text-neutral-200">
+                        {c.prima_total != null ? fmt(c.prima_total) : '—'}
+                        {(c.resumen as { prima_sin_extraprima?: number | null }).prima_sin_extraprima != null && (
+                          <span className="block text-[10px] text-neutral-500">sin extraprima {fmt((c.resumen as { prima_sin_extraprima: number }).prima_sin_extraprima)}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-xs text-neutral-500 whitespace-nowrap">
                         {fecha(c.updated_at)}
                         {ultimoEnvio && (

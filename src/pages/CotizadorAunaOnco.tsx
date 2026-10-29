@@ -21,6 +21,7 @@ import {
   VIGENCIA_TARIFAS,
   imc,
   parentescoDe,
+  sinExtraprimas,
   type Asegurado,
   type FormaPago,
   type Parentesco,
@@ -68,7 +69,8 @@ export default function CotizadorAunaOnco() {
   const [region, setRegion] = useState('');
   const [verInfo, setVerInfo] = useState(false);
   const [formaPago, setFormaPago] = useState<FormaPago>('anual');
-  const [descuento, setDescuento] = useState(0);
+  // El Excel de Auna solo admite descuento 0%: el campo se quitó (29/10).
+  const descuento = 0;
   const [asegurados, setAsegurados] = useState<Asegurado[]>([nuevoAsegurado(0)]);
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
   const [generando, setGenerando] = useState(false);
@@ -103,11 +105,10 @@ export default function CotizadorAunaOnco() {
           ? d.asegurados.map((a, i) => ({ ...a, parentesco: parentescoDe(a, i) }))
           : [nuevoAsegurado(0)];
         const cli = d.cliente ?? c.cliente_nombre;
-        ultimoGuardado.current = claveDe({ cliente: cli, formaPago: d.formaPago ?? 'anual', descuento: d.descuento ?? 0, asegurados: aseg, solicitud: d.solicitud ?? null, region: d.region ?? '' });
+        ultimoGuardado.current = claveDe({ cliente: cli, formaPago: d.formaPago ?? 'anual', descuento: 0, asegurados: aseg, solicitud: d.solicitud ?? null, region: d.region ?? '' });
         setCliente(cli);
         setRegion(d.region ?? '');
         setFormaPago(d.formaPago ?? 'anual');
-        setDescuento(d.descuento ?? 0);
         setAsegurados(aseg);
         setSolicitud(d.solicitud ?? null);
         setTramiteEmision(d.tramiteEmision ?? null);
@@ -126,6 +127,9 @@ export default function CotizadorAunaOnco() {
     [asegurados, cliente],
   );
   const resultado = useMemo(() => cotizar(aseguradosConNombre, formaPago, descuento), [aseguradosConNombre, formaPago, descuento]);
+  // Mismo cálculo sin extraprimas: el precio de tarifa, igual al Excel de Auna.
+  const resultadoSinExtra = useMemo(() => cotizar(sinExtraprimas(aseguradosConNombre), formaPago, descuento), [aseguradosConNombre, formaPago, descuento]);
+  const hayExtraprima = resultado.extraprimaTotal > 0;
   const faltan = useMemo(() => (solicitud ? faltantes(solicitud, aseguradosConNombre) : []), [solicitud, aseguradosConNombre]);
 
   const datosAgente = async (): Promise<AgentePdf> =>
@@ -145,7 +149,7 @@ export default function CotizadorAunaOnco() {
         cliente_email: c?.email.trim() || null,
         cliente_telefono: c?.telefono.trim() || null,
         datos: { cliente, region, formaPago, descuento, asegurados, resultado, solicitud, tramiteEmision },
-        resumen: { asegurados: asegurados.length, formaPago, region, solicitud: !!solicitud, tramite_folio: tramiteEmision?.folio ?? null },
+        resumen: { asegurados: asegurados.length, formaPago, region, prima_sin_extraprima: hayExtraprima ? resultadoSinExtra.primaTotal : null, solicitud: !!solicitud, tramite_folio: tramiteEmision?.folio ?? null },
         prima_total: resultado.primaTotal,
       });
       idRef.current = r.id;
@@ -190,7 +194,6 @@ export default function CotizadorAunaOnco() {
     setCliente('');
     setRegion('');
     setFormaPago('anual');
-    setDescuento(0);
     setAsegurados([nuevoAsegurado(0)]);
     setSolicitud(null);
     setCotizacionId(null);
@@ -330,6 +333,7 @@ export default function CotizadorAunaOnco() {
         cliente: cliente.trim(),
         fecha: new Date(),
         resultado,
+        resultadoSinExtraprima: hayExtraprima ? resultadoSinExtra : undefined,
         agente: await datosAgente(),
         region,
       });
@@ -411,7 +415,7 @@ export default function CotizadorAunaOnco() {
 
           <section className="rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] p-5 space-y-3">
             <h3 className="text-sm font-bold text-neutral-900 dark:text-white">2 · Producto y forma de pago</h3>
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Producto</label>
                 <div className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/[0.03] text-sm font-semibold text-neutral-800 dark:text-neutral-200">{PRODUCTO}</div>
@@ -431,13 +435,9 @@ export default function CotizadorAunaOnco() {
                   ))}
                 </div>
               </div>
-              <div>
-                <label className={labelCls}>Descuento vigente (%)</label>
-                <input type="number" min={0} max={100} step={1} className={inputCls} value={descuento} onChange={e => setDescuento(Number(e.target.value) || 0)} />
-              </div>
             </div>
             <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">
-              Tarifas sin descuento vigentes al {VIGENCIA_TARIFAS}. Valida con Auna si hay descuento el día de hoy. Mensual: recargo de 9.5% por asegurado.
+              Tarifas vigentes al {VIGENCIA_TARIFAS}, sin descuento. Mensual: recargo de 9.5% por asegurado.
             </p>
           </section>
 
@@ -684,6 +684,37 @@ export default function CotizadorAunaOnco() {
               )}
             </div>
           </section>
+
+          {hayExtraprima && (
+            <section className="rounded-2xl bg-surface-card dark:bg-neutral-900 border border-soft dark:border-white/[0.06] p-4">
+              <h3 className="text-xs font-bold text-neutral-900 dark:text-white mb-1">Precio sin y con extraprima</h3>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-3">"Sin extraprima" es la tarifa de Auna (igual al Excel de tarifas). La extraprima es preliminar y la confirma la suscripción médica.</p>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wide text-neutral-500">
+                    <th className="text-left font-semibold pb-1"></th>
+                    <th className="text-right font-semibold pb-1">Sin extraprima</th>
+                    <th className="text-right font-semibold pb-1">Con extraprima</th>
+                  </tr>
+                </thead>
+                <tbody className="tabular-nums">
+                  {[
+                    ['Ref. Prima total', resultadoSinExtra.primaTotal, resultado.primaTotal],
+                    ['Ref. Primer recibo', resultadoSinExtra.primerRecibo, resultado.primerRecibo],
+                    ...(resultado.reciboSubsecuente != null
+                      ? [['Ref. Subsecuentes (x11)', resultadoSinExtra.reciboSubsecuente ?? 0, resultado.reciboSubsecuente] as [string, number, number]]
+                      : []),
+                  ].map(([k, a, b]) => (
+                    <tr key={k as string} className="border-t border-neutral-100 dark:border-white/5">
+                      <td className="py-1.5 text-neutral-500 dark:text-neutral-400">{k}</td>
+                      <td className="py-1.5 text-right font-semibold text-neutral-800 dark:text-neutral-200">{fmt(a as number)}</td>
+                      <td className="py-1.5 text-right font-semibold text-amber-700 dark:text-amber-400">{fmt(b as number)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
 
           <div className="rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 p-4">
             <p className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 mb-1"><Info className="w-3.5 h-3.5" /> Aviso importante sobre su cotización</p>
