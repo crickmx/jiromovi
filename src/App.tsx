@@ -14,7 +14,6 @@ import { AppUpdateBanner } from './components/AppUpdateBanner';
 // ── Landings (lazy) ────────────────────────────────────────────────────────
 const LandingsStudio = lazy(() => import('./landings/LandingsStudio'));
 const MutuusLanding = lazy(() => import('./landings/mutuus/MutuusLanding'));
-const MutuusComingSoon = lazy(() => import('./landings/mutuus/MutuusComingSoon'));
 
 // ── Seguwallet pages (lazy) ────────────────────────────────────────────────
 import { SeguwalletAuthProvider } from './seguwallet/lib/SeguwalletAuthContext';
@@ -106,17 +105,6 @@ function SeguwalletStack({ children }: { children: React.ReactNode }) {
 
 // ── Per-domain apps ───────────────────────────────────────────────────────
 
-function MutuusPreview() {
-  return (
-    <>
-      <MutuusLanding />
-      <Helmet>
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
-    </>
-  );
-}
-
 function MutuusLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
@@ -145,9 +133,9 @@ function MutuusApp() {
       <BrowserRouter>
         <Suspense fallback={<MutuusLoader />}>
           <Routes>
-            {/* Provisional mientras se termina la landing; la completa vive en /preview, sin indexar */}
-            <Route path="/" element={<MutuusComingSoon />} />
-            <Route path="/preview" element={<MutuusPreview />} />
+            <Route path="/" element={<MutuusLanding />} />
+            {/* /preview fue la vista previa mientras el sitio estaba en revisión */}
+            <Route path="/preview" element={<Navigate to="/" replace />} />
             <Route path="/mutuus" element={<Navigate to="/" replace />} />
             <Route path="/landings/mutuus" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
