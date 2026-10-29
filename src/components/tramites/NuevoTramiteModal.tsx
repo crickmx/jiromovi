@@ -97,6 +97,8 @@ interface NuevoTramiteModalProps {
     descripcion?: string;
     prioridad?: string;
     agenteId?: string;
+    /** Respuestas del formulario a precargar, por id de campo (duplicar trámite). */
+    respuestas?: Record<string, unknown>;
   };
 }
 
@@ -416,6 +418,18 @@ export function NuevoTramiteModal({
         if (agCampo && preloadedData?.agenteId) {
           setRespuestasDinamicas(prev => ({ ...prev, [agCampo.id]: preloadedData.agenteId! }));
           setAsignado(preloadedData.agenteId!);
+        }
+
+        // Datos del formulario al duplicar un trámite. Va después del reset de
+        // arriba por lo mismo que el agente, y solo se aceptan los campos que
+        // este tipo tiene HOY: si al tipo le quitaron un campo, su id ya no
+        // corresponde a nada y arrastrarlo dejaría basura en el insert.
+        if (preloadedData?.respuestas) {
+          const idsDelTipo = new Set(campos.map(c => c.id));
+          const validas = Object.entries(preloadedData.respuestas).filter(([id]) => idsDelTipo.has(id));
+          if (validas.length > 0) {
+            setRespuestasDinamicas(prev => ({ ...prev, ...Object.fromEntries(validas) }));
+          }
         }
 
         // La prioridad inicial se configura por tipo desde el FormBuilder; antes
@@ -1001,6 +1015,22 @@ export function NuevoTramiteModal({
 
   const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por', 'asignado_a', 'estatus'];
 
+  // QA 2026-10-22 (M8) — dos campos de sistema NO se dibujan en ciertos contextos
+  // (ver `renderCampoSistema`), pero la validación no lo sabía: con la Fecha
+  // Promesa marcada requerida, un Agente no podía crear el trámite NUNCA — el
+  // error nombraba un campo que su pantalla no muestra, y la barra de progreso
+  // se quedaba atorada contándolo. Un requerido que no se puede llenar no es un
+  // requerido. Esta es la única definición; el render también la usa, para que
+  // lo que se ve y lo que se exige no puedan volver a separarse.
+  const campoSistemaOculto = (campo: CampoDinamico): boolean => {
+    if (!campo.is_sistema) return false;
+    if (campo.sistema_key === 'fecha_promesa_entrega') return isAgent;
+    if (campo.sistema_key === 'archivos_adjuntos') {
+      return tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes';
+    }
+    return false;
+  };
+
   // Único punto de verdad de "¿este campo ya tiene respuesta?" — usado por validateForm()
   // y por la barra de progreso (que necesita el mismo criterio sin lanzar errores).
   const isCampoRespondido = (campo: CampoDinamico): boolean => {
@@ -1101,6 +1131,7 @@ export function NuevoTramiteModal({
       if (!campoExigible(campo, secciones, camposDinamicos, respuestasDinamicas)) continue;
       if (!canSeeCampo(campo)) continue;
       if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
+      if (campoSistemaOculto(campo)) continue;
       if (!isCampoRespondido(campo)) {
         setError(`El campo "${campo.label}" es obligatorio`);
         return false;
@@ -1973,7 +2004,7 @@ export function NuevoTramiteModal({
     );
 
     if (campo.sistema_key === 'fecha_promesa_entrega') {
-      if (isAgent) return null;
+      if (campoSistemaOculto(campo)) return null;
       return (
         <div key={campo.id}>
           <label className="block text-sm font-semibold text-neutral-900 mb-2">
@@ -1995,7 +2026,7 @@ export function NuevoTramiteModal({
     }
 
     if (campo.sistema_key === 'archivos_adjuntos') {
-      if (tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes') return null;
+      if (campoSistemaOculto(campo)) return null;
       return (
         <div key={campo.id}>
           <label className="block text-sm font-semibold text-neutral-900 mb-2">
@@ -2768,7 +2799,8 @@ No cayó en ninguna regla de asignación. Requiere asignarlo a mano.`,
   // aparte como agente/lote de comisiones, que no vienen de camposDinamicos).
   const camposRequeridosVisibles = camposDinamicos.filter(c =>
     campoExigible(c, secciones, camposDinamicos, respuestasDinamicas) &&
-    canSeeCampo(c) && !(c.is_sistema && AUTO_FILL_KEYS.includes(c.sistema_key || ''))
+    canSeeCampo(c) && !campoSistemaOculto(c) &&
+    !(c.is_sistema && AUTO_FILL_KEYS.includes(c.sistema_key || ''))
   );
   const camposRequeridosCompletos = camposRequeridosVisibles.filter(isCampoRespondido).length;
   const progresoPct = camposRequeridosVisibles.length > 0

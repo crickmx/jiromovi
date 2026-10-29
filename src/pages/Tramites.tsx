@@ -7,6 +7,7 @@ import { subscribeResilientChannel } from '../lib/resilientRealtime';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
 import { filtroTramitesVistaComo } from '../lib/tramitesVisibilidad';
+import { columnaDeTipo } from '../lib/tramiteRespuestas';
 import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy, MessageSquare, Bot, UserRound } from 'lucide-react';
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
@@ -164,7 +165,7 @@ export function Tramites() {
   const sortRef = useRef<HTMLDivElement>(null);
   const [grupos, setGrupos] = useState<Array<{ id: string; nombre: string }>>([]);
   const [showNuevoModal, setShowNuevoModal] = useState(false);
-  const [duplicarPreload, setDuplicarPreload] = useState<{ tipoTramite?: string; descripcion?: string; instrucciones?: string; prioridad?: string; agenteId?: string } | null>(null);
+  const [duplicarPreload, setDuplicarPreload] = useState<{ tipoTramite?: string; descripcion?: string; instrucciones?: string; prioridad?: string; agenteId?: string; respuestas?: Record<string, unknown> } | null>(null);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
   const [showGruposModal, setShowGruposModal] = useState(false);
   const [showPanelLider, setShowPanelLider] = useState(false);
@@ -519,20 +520,63 @@ export function Tramites() {
     loadPapelera();
   };
 
+  // QA 2026-10-22 (A7) — "Duplicar trámite" abría el formulario vacío.
+  //
+  // Dos causas encadenadas: `tickets` NO tiene columna `descripcion` (es
+  // `instrucciones`), así que el select devolvía error 42703, nadie lo miraba y
+  // el texto llegaba vacío; y aunque hubiera llegado, lo único que se copiaba
+  // era tipo + prioridad — ningún dato del formulario.
   const handleDuplicar = async (e: React.MouseEvent, tramite: TramiteItem) => {
     e.stopPropagation();
-    // Fetch descripcion desde el ticket completo si no está en el resumen
-    let descripcion = '';
-    const { data } = await supabase
+
+    const { data: original, error: errTicket } = await supabase
       .from('tickets')
-      .select('descripcion')
+      .select('instrucciones, agente_id')
       .eq('id', tramite.id)
       .single();
-    if (data) descripcion = data.descripcion ?? '';
+    if (errTicket) {
+      alert(`No se pudo leer el trámite a duplicar: ${errTicket.message}`);
+      return;
+    }
+
+    // Los campos de SISTEMA se quedan fuera a propósito: área, equipo, estatus,
+    // fechas y responsable describen el estado del trámite viejo, no sus datos, y
+    // el alta los vuelve a resolver sola. El solicitante sí se hereda, por el
+    // camino que ya existe (`agenteId`).
+    const { data: respuestas, error: errResp } = await supabase
+      .from('tramite_respuestas')
+      .select('campo_id, valor_texto, valor_numerico, valor_fecha, valor_booleano, valor_json, campo:tramite_tipo_campos(tipo, is_sistema)')
+      .eq('tramite_id', tramite.id);
+    if (errResp) {
+      alert(`No se pudieron copiar los datos del trámite: ${errResp.message}`);
+      return;
+    }
+
+    type FilaRespuesta = {
+      campo_id: string;
+      valor_texto: string | null;
+      valor_numerico: number | null;
+      valor_fecha: string | null;
+      valor_booleano: boolean | null;
+      valor_json: unknown;
+      // Relación de UNO (el lado del FK): PostgREST la devuelve como objeto.
+      campo: { tipo: string; is_sistema: boolean } | null;
+    };
+
+    const copiadas: Record<string, unknown> = {};
+    for (const r of (respuestas ?? []) as unknown as FilaRespuesta[]) {
+      if (!r.campo || r.campo.is_sistema) continue;
+      const valor = r[columnaDeTipo(r.campo.tipo)];
+      if (valor === null || valor === undefined || valor === '') continue;
+      copiadas[r.campo_id] = valor;
+    }
+
     setDuplicarPreload({
       tipoTramite: tramite.tipo_tramite,
-      descripcion,
+      descripcion: original?.instrucciones ?? '',
       prioridad: tramite.prioridad,
+      agenteId: original?.agente_id ?? undefined,
+      respuestas: copiadas,
     });
     setShowNuevoModal(true);
   };
