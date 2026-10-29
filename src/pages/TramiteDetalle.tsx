@@ -1578,14 +1578,16 @@ export function TramiteDetalle() {
 
   const handleResponsableChange = async (userId: string) => {
     if (!tramite || !usuario) return;
-    await supabase.from('tickets').update({
+    const { error: errAsignar } = await supabase.from('tickets').update({
       assigned_to_user_id: userId || null,
       modificado_por: usuario.id,
     }).eq('id', tramite.id);
+    if (errAsignar) { showToast(`No se pudo cambiar el responsable: ${errAsignar.message}`, 'error'); return; }
     if (userId) {
-      await supabase.from('ticket_asignaciones').insert({
+      const { error: errAsig } = await supabase.from('ticket_asignaciones').insert({
         ticket_id: tramite.id, ejecutivo_id: userId, asignado_por: usuario.id,
       });
+      if (errAsig) showToast(`Se asignó, pero no se registró la asignación: ${errAsig.message}`, 'error');
       await crearNotificacion({
         user_id: userId,
         titulo: 'Trámite asignado',

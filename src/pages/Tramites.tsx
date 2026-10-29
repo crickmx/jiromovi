@@ -647,20 +647,31 @@ export function Tramites() {
 
   const handleTakeTramite = async (tramiteId: string) => {
     if (!usuario) return;
-    await supabase.from('tickets').update({ assigned_to_user_id: usuario.id, attending_user_id: usuario.id }).eq('id', tramiteId);
-    await supabase.from('ticket_asignaciones').insert({
+    // Sin revisar el error, un 403 de RLS se veia como que el cambio se guardo:
+    // la tarjeta se recargaba con el valor viejo y nadie entendia por que. Era
+    // la mitad invisible de A2.
+    const { error: errTicket } = await supabase.from('tickets')
+      .update({ assigned_to_user_id: usuario.id, attending_user_id: usuario.id })
+      .eq('id', tramiteId);
+    if (errTicket) { alert(`No se pudo tomar el tramite: ${errTicket.message}`); return; }
+    const { error: errAsig } = await supabase.from('ticket_asignaciones').insert({
       ticket_id: tramiteId, ejecutivo_id: usuario.id, asignado_por: usuario.id,
     });
+    if (errAsig) alert(`El tramite se asigno, pero no se registro la asignacion: ${errAsig.message}`);
     invalidateCacheByPrefix('tramites_');
     loadTramites(true);
   };
 
   const handleAssignTramite = async (tramiteId: string, ejecutivoId: string) => {
     if (!usuario || !ejecutivoId) return;
-    await supabase.from('tickets').update({ assigned_to_user_id: ejecutivoId, attending_user_id: ejecutivoId }).eq('id', tramiteId);
-    await supabase.from('ticket_asignaciones').insert({
+    const { error: errTicket } = await supabase.from('tickets')
+      .update({ assigned_to_user_id: ejecutivoId, attending_user_id: ejecutivoId })
+      .eq('id', tramiteId);
+    if (errTicket) { alert(`No se pudo asignar el tramite: ${errTicket.message}`); return; }
+    const { error: errAsig } = await supabase.from('ticket_asignaciones').insert({
       ticket_id: tramiteId, ejecutivo_id: ejecutivoId, asignado_por: usuario.id,
     });
+    if (errAsig) alert(`El tramite se asigno, pero no se registro la asignacion: ${errAsig.message}`);
     setAssigningTramiteId(null);
     setAssignTargetId('');
     invalidateCacheByPrefix('tramites_');
