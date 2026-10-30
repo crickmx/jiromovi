@@ -46,8 +46,14 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 
 | # | Qué | Commit |
 |---|---|---|
-| M9 | el par Lista/Tablero no hacía nada en Concluidos ni en Papelera | `b5f02343` |
-| M10 | un corte de red manda a la pantalla de login y borra lo capturado | `b5f02343` |
+| M9 | el par Lista/Tablero no hacía nada en Concluidos ni en Papelera | `b5f02343` — **verificado en navegador** |
+| M10 | un corte de red manda a la pantalla de login y borra lo capturado | `b5f02343` — **verificado en navegador** |
+
+## Verificado de lo de ayer
+
+| # | Cómo se comprobó | Resultado |
+|---|---|---|
+| **A9** tiempo real | dos pestañas en el mismo trámite; comenté en una | el comentario apareció en la otra **sin recargar**. Funciona |
 
 ## Cerrados
 
@@ -76,7 +82,7 @@ Faltan de **verificar en navegador** — es la primera corrida de la pieza A.
 
 ## Fichas
 
-### M9 · El par Lista/Tablero no hace nada fuera de Activos — `arreglado`
+### M9 · El par Lista/Tablero no hace nada fuera de Activos — `verificado`
 
 - **ruta**: /tramites → pestaña **Concluidos**, y también **Papelera**. Como RICARDO (Admin)
 - **esperaba**: que "Vista tablero" cambiara la lista por el Kanban
@@ -87,7 +93,7 @@ Faltan de **verificar en navegador** — es la primera corrida de la pieza A.
 - **arreglo**: esconder el par fuera de Activos (`Tramites.tsx`). Se descartó hacer Kanban para cerrados: todos caen en una columna y no informa nada
 - **capturas**: `qa/capturas/2026-10-30T19-02-31-concluidos-lista.png`, `…19-02-42-concluidos-tras-tablero.png`
 
-### M10 · Un parpadeo de red te manda a la pantalla de login — `arreglado`
+### M10 · Un parpadeo de red te manda a la pantalla de login — `verificado`
 
 El reporte lo llamó *"comentar sin conexión no muestra nada"*. **Es mucho peor que eso.**
 
@@ -117,3 +123,36 @@ El reporte lo llamó *"comentar sin conexión no muestra nada"*. **Es mucho peor
 - **se repite**: según el reporte, sí
 - **lo revisado en código (30/10)**: la pestaña Comentarios y su `<form>` **no tienen ninguna condición** — se dibujan para cualquiera. Así que el síntoma no puede ser lo que dice: o no podía abrir el trámite, o la barra de pestañas se le salió de la pantalla
 - **bloqueo**: hace falta la sesión de DIEGO. Se le pone contraseña desde Supabase → Authentication → Users
+
+---
+
+## Verificaciones en navegador del 30/10
+
+**M9** — con el build nuevo: el par Lista/Tablero sigue en **Activos** y
+desapareció de **Concluidos** y **Papelera**.
+
+**M10** — red cortada, comentario escrito, Enviar:
+
+| | Antes | Ahora |
+|---|---|---|
+| Aviso | sí | sí |
+| Dónde quedas | `/login` | **en el trámite** |
+| El texto capturado | se perdía | **sigue en la caja** |
+| Al volver la red | había que entrar de nuevo | **el reintento sale al primer clic** |
+
+**A9 (tiempo real, del 29/10)** — dos pestañas en el mismo trámite; se comentó
+en una y **el comentario apareció en la otra sin recargar**. La publicación en
+`supabase_realtime` hizo su trabajo: es la primera vez que el tiempo real de
+Trámites funciona.
+
+**Cómo repetir la prueba de dos pestañas** (no hace falta una segunda sesión,
+basta otra pestaña del mismo perfil):
+
+```bash
+curl -s -X PUT "http://127.0.0.1:9222/json/new?<url del trámite>"
+node conducir.mjs --pagina 0 --resumen   # identificar cuál es cuál
+```
+
+⚠️ El orden de `--pagina` **no** es el orden en que se abrieron. Identificar
+cada pestaña con `--resumen` antes de actuar: la primera corrida de esta prueba
+escribió en la pestaña equivocada y el resultado salió falso negativo.
