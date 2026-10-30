@@ -140,6 +140,17 @@ export function Tramites() {
   // El pointer capture solo redirige eventos de Pointer, no el click nativo del mouse —
   // al soltar sobre otra tarjeta, esa tarjeta recibe el click real. Se suprime ese click
   // fantasma justo después de un arrastre real (moved=true), sin importar dónde caiga.
+  // QA 2026-10-30 (H-003) — las tarjetas de trámite eran <div> con onClick:
+  // no había UN SOLO link ni elemento enfocable en toda la pantalla, así que
+  // con teclado no se podía abrir ningún trámite. Se les da rol, foco y
+  // Enter/Espacio en vez de convertirlas en <a>: el arrastre del Kanban vive
+  // en los mismos pointer events y un ancla real se los pelearía.
+  const abrirConTeclado = (id: string) => (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    navigate(`/tramites/${id}`);
+  };
+
   const suppressClickRef = useRef(false);
   const DRAG_THRESHOLD = 4;
   const KANBAN_COL_COLORS: Record<'atencion' | 'proceso' | 'terminados', string> = {
@@ -1808,11 +1819,15 @@ export function Tramites() {
                 <div
                   key={tramite.id}
                   onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Trámite ${tramite.folio}`}
+                  onKeyDown={abrirConTeclado(tramite.id)}
                   onPointerDown={(e) => startKanbanDrag(e, tramite, 'atencion')}
                   onPointerMove={(e) => moveKanbanDrag(e, tramite)}
                   onPointerUp={endKanbanDrag}
                   onPointerCancel={endKanbanDrag}
-                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
+                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
                 >
                   {!tramite.cerrado_en && (
                     <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
@@ -1909,11 +1924,15 @@ export function Tramites() {
                 <div
                   key={tramite.id}
                   onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Trámite ${tramite.folio}`}
+                  onKeyDown={abrirConTeclado(tramite.id)}
                   onPointerDown={(e) => startKanbanDrag(e, tramite, 'proceso')}
                   onPointerMove={(e) => moveKanbanDrag(e, tramite)}
                   onPointerUp={endKanbanDrag}
                   onPointerCancel={endKanbanDrag}
-                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
+                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
                 >
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
@@ -1997,7 +2016,7 @@ export function Tramites() {
                   : null;
               const totalDays = Math.max(0, Math.floor((new Date(tramite.cerrado_en!).getTime() - new Date(tramite.fecha_creacion).getTime()) / 86_400_000));
               return (
-                <div key={tramite.id} onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }} className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
+                <div key={tramite.id} onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }} role="button" tabIndex={0} aria-label={`Trámite ${tramite.folio}`} onKeyDown={abrirConTeclado(tramite.id)} className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 opacity-75">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
@@ -2073,7 +2092,11 @@ export function Tramites() {
               <div
                 key={tramite.id}
                 onClick={() => navigate(`/tramites/${tramite.id}`)}
-                className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 hover:border-neutral-300 dark:hover:border-white/20 transition-all duration-200 cursor-pointer group flex"
+                role="button"
+                tabIndex={0}
+                aria-label={`Trámite ${tramite.folio}`}
+                onKeyDown={abrirConTeclado(tramite.id)}
+                className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 hover:border-neutral-300 dark:hover:border-white/20 transition-all duration-200 cursor-pointer group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
               >
                 {/* Globito animado — requiere atención */}
                 {needsAttention && (

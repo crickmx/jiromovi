@@ -35,6 +35,9 @@ const sello = () => new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const consola = [];
 const fallos = [];
 const errores = [];
+// Un alert()/confirm() ES lo que el usuario ve. Playwright los descarta solos
+// si nadie escucha, y entonces se pierde justo la evidencia del aviso.
+const dialogos = [];
 
 function escuchar(page) {
   page.on('console', (m) => {
@@ -43,6 +46,10 @@ function escuchar(page) {
     }
   });
   page.on('pageerror', (e) => errores.push(String(e.message).slice(0, 300)));
+  page.on('dialog', async (d) => {
+    dialogos.push(`[${d.type()}] ${d.message().slice(0, 300)}`);
+    await d.dismiss().catch(() => {});
+  });
   page.on('requestfailed', (r) => {
     const f = r.failure()?.errorText || 'falló';
     fallos.push(`${r.method()} ${r.url().slice(0, 160)} — ${f}`);
@@ -127,6 +134,15 @@ async function ejecutar(page, pasos, bitacora) {
         await loc(page, a).first().fill(String(b), { timeout: 10000 });
       } else if (verbo === 'elegir') {
         await loc(page, a).first().selectOption(String(b), { timeout: 10000 });
+      } else if (verbo === 'red') {
+        // Cortar la red de verdad, por CDP. Sirve para ver qué hace la pantalla
+        // cuando un guardado no puede salir: ahí viven los "guardados que
+        // mienten" y los avisos que nunca llegan.
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send('Network.enable');
+        await cdp.send('Network.emulateNetworkConditions', {
+          offline: a === 'off', latency: 0, downloadThroughput: -1, uploadThroughput: -1,
+        });
       } else if (verbo === 'tecla') {
         await page.keyboard.press(String(a));
         await page.waitForTimeout(600);
@@ -184,6 +200,7 @@ if (tiene('resumen') || !pasos.length) {
   salida.pantalla = await page.evaluate(RESUMEN);
 }
 if (consola.length) salida.consola = consola.slice(-25);
+if (dialogos.length) salida.dialogos = dialogos.slice(-10);
 if (errores.length) salida.errores_pagina = errores.slice(-10);
 if (fallos.length) salida.peticiones_fallidas = [...new Set(fallos)].slice(-25);
 

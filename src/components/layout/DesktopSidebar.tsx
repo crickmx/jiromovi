@@ -366,6 +366,8 @@ export function DesktopSidebar({
               <TooltipTrigger asChild>
                 <button
                   onClick={() => handleNav(item.path)}
+                  aria-label={item.label}
+                  aria-current={isActive ? 'page' : undefined}
                   className={cn(
                     'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
                     isActive
@@ -442,6 +444,8 @@ export function DesktopSidebar({
             <TooltipTrigger asChild>
               <button
                 onClick={() => handleNav(hubRoute)}
+                aria-label={ws.label}
+                aria-current={isWsActive ? 'page' : undefined}
                 className={cn(
                   'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
                   isWsActive
@@ -652,6 +656,7 @@ export function DesktopSidebar({
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => handleNav('/perfil')}
+                    aria-label="Mi Perfil"
                     className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/5 active:scale-95 transition-all"
                   >
                     <Avatar className="h-7 w-7 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10">
@@ -695,6 +700,7 @@ export function DesktopSidebar({
                 <TooltipTrigger asChild>
                   <button
                     onClick={onSignOut}
+                    aria-label="Cerrar Sesión"
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-90 transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5" />

@@ -1,21 +1,93 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-29)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-30)
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-29
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-30
 
-**`origin/main`** (beta) está en `1fef6956`. **`produccion` NO se tocó** desde el merge del 12.
+**Todas las migraciones están corridas**, incluida la del 30 (`20261030000001`).
+**`produccion` NO se tocó** desde el merge del 12.
 
-⚠️ **Quedan DOS migraciones por correr**, las últimas del 29:
+**El reporte de los bots del 22/10 quedó CERRADO por completo.** Once arreglados
+el 29; M9 y M10 verificados en navegador el 30; **M11 descartado con evidencia**
+(ver abajo). Lo único que sigue del reporte son **B5, B7 y A6**, que son datos y
+configuración, no código.
+
+#### ❌ Lo primero: probar en navegador lo del 30/10
+
+Nada de lo del 30 se ha visto funcionar — se subió a `main` al cerrar la sesión
+y el build salió después. Con la sesión de **DIEGO** (Empleado):
+
+- **Fecha Promesa (regla nueva de Ricardo, 30/10):** un **Empleado** ya debe
+  poder ponerla —antes solo Admin, Gerente o líder de equipo—; un **Agente**
+  nunca la edita, y solo la ve en la franja de fechas **cuando ya trae valor**.
+- **H-003 teclado:** en /tramites, `Tab` debe recorrer las tarjetas con un
+  anillo visible y `Enter` debe abrir el trámite. En la barra lateral colapsada,
+  cada icono debe anunciarse con su nombre.
+- **H-005:** en el detalle, PRIORIDAD / DESCRIPCIÓN / FECHA PROMESA de la tabla
+  "Información del Trámite" ya no deben decir *"Sin registrar"* cuando el chip
+  del encabezado sí trae el dato. Quedan de **solo lectura** a propósito.
+- **H-006** (migración ya corrida): comentar y confirmar que *"Última
+  modificación"* dice **quien comentó**, no el anterior.
+- **H-007:** entrar en frío a un trámite con equipo y confirmar que la etiqueta
+  nunca dice *"Sin equipo asignado"* teniendo equipo.
+
+#### Cómo se maneja un usuario bot desde esta máquina
+
+La herramienta está en `qa/`, con su manual en `qa/README.md`. En corto:
 
 ```
-C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\migrations\20261029000005_el_equipo_se_ve_a_si_mismo.sql
-C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\migrations\20261029000006_las_tablas_de_tramites_si_transmiten.sql
+cd C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\qa
+abrir.cmd diego 9223
+node conducir.mjs --puerto 9223 --resumen
 ```
 
-Las cuatro anteriores del 29 (`…0001` a `…0004`) ya están corridas. **Ninguna de las dos depende de código**: el frontend que las acompaña ya está en beta, así que el orden no muerde.
+**La contraseña la pone Ricardo y nunca pasa por el chat.** Se cambia desde el
+SQL Editor de Supabase, con comillas **simples**:
 
-**Lo siguiente de la lista son M9, M10 y M11** del reporte de los bots — ver la sección del 29/10 abajo, que trae el estado de cada hallazgo.
+```sql
+update auth.users
+set encrypted_password = crypt('LA-QUE-SEA', gen_salt('bf'))
+where email = 'ccjimenez+empleado1@jiro.com.mx';   -- DIEGO (Empleado)
+```
+
+Los otros: `+gerente@` LAURA · `+agente1@` MATEO · `+agente2@` VALERIA ·
+`+empleado2@` SOFÍA. **Ninguno es Administrador**: ese rol lo maneja Ricardo.
+
+⚠️ **Dos trampas del manejador**, las dos costaron una corrida falsa:
+1. `escribir` usa `fill()` y **no simula teclas**. El autocompletado de
+   @menciones no se dispara con él — para eso va `tecla`.
+2. El orden de `--pagina` **no** es el orden en que se abrieron las pestañas.
+   Identificar cada una con `--resumen` antes de actuar.
+
+#### 🔴 De Ricardo, no de código — y bloquea cosas reales
+
+**B5: hay SIETE equipos llamados "Pruebas MOVI Digital".** No dos: siete,
+idénticos, en el filtro de Equipo y en el selector del detalle.
+
+Y eso **explica una rareza que si no se sabe no se entiende**: a Diego el
+selector de Responsable solo le ofrece a sí mismo, mientras la lista de
+@menciones sí le trae a Laura y a Sofía. No son dos bugs — son **dos consultas
+pegándole a equipos distintos con el mismo nombre**. Diego es miembro de uno,
+el trámite está en otro.
+
+Limpiarlo **no es borrar seis filas**: de `tramites_grupos_miembros` salen los
+permisos de Trámites, las menciones y las reglas de asignación. Hay que decidir
+cuál sobrevive y mover ahí las membresías y las reglas, o la gente se queda
+fuera de su propio equipo.
+
+**B7:** *"Mesa de Control Aguascalienteses"*, en ese mismo selector.
+
+#### ⏸️ Pospuesto por Ricardo el 30/10 — SeguWallet
+
+*"Ahorita no quiero tocar nada de seguwallet / sólo MOVI."* Queda una revisión
+de seguridad pendiente en una edge function de ese módulo que toca cuentas de
+`auth` —y `auth.users` es compartida con MOVI—. **El detalle NO se escribe en
+este repo porque es público**; está en la conversación del 30/10 y como ficha
+corta en `qa/hallazgos.md`.
+
+🔑 **La regla que sale de aquí:** este repo es **público** (`crickmx/jiromovi`,
+verificado el 30/10). Un hueco sin cerrar no se describe en un archivo
+versionado.
 
 ⚠️ **`main` autodespliega beta desde el 24/09** (job `deploy-beta` en `ci.yml`). Un push a `main` dispara build + gitleaks y, si pasan, sube `dist/` al servidor. **No hace falta Pull + Deploy en Plesk para beta**; lo que sí hay que vigilar es que nada llegue a `main` sin revisar, porque sale en vivo en minutos. `main` **no tiene protección de rama** (la API devuelve 404).
 
@@ -48,8 +120,9 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261029000002_un_solo_dato_de_cierre.sql` | `tickets.cerrado` sigue a `cerrado_en` por trigger + backfill | ✅ corrida |
 | `20261029000003_un_aviso_por_cambio_de_estatus.sql` | `es_nota_de_estatus` + `WHEN` en el trigger: un cambio manda UN aviso | ✅ corrida |
 | `20261029000004_el_equipo_puede_operar_sus_tramites.sql` | el miembro del equipo puede asignarse y operar; mover de equipo sigue siendo Admin/Gerente | ✅ corrida |
-| `20261029000005_el_equipo_se_ve_a_si_mismo.sql` | **A8** — lectura por equipo en `tramites_grupos_miembros` | ❌ **falta correrla** |
-| `20261029000006_las_tablas_de_tramites_si_transmiten.sql` | **A9** — publica Trámites y Store en `supabase_realtime` | ❌ **falta correrla** |
+| `20261029000005_el_equipo_se_ve_a_si_mismo.sql` | **A8** — lectura por equipo en `tramites_grupos_miembros` | ✅ corrida |
+| `20261029000006_las_tablas_de_tramites_si_transmiten.sql` | **A9** — publica Trámites y Store en `supabase_realtime` | ✅ corrida |
+| `20261030000001_quien_comento_es_quien_modifico.sql` | **H-006** — comentar ya actualiza `modificado_por`, no solo la fecha | ✅ corrida |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
@@ -147,6 +220,67 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### ✅ 2026-10-30 — los bots se manejan desde esta máquina, y M11 no era bug
+
+Pedido de Ricardo: *"correr los bots usuarios desde esta máquina… que tú puedas
+cachar errores y con mi autorización y un plan presentado, los podamos ir
+corrigiendo"*. Alcance que autorizó: **flujo completo, incluido cerrar**.
+
+#### La herramienta: `qa/`
+
+Tres piezas, manual en `qa/README.md`, registro en `qa/hallazgos.md`.
+`conducir.mjs` **se conecta** por CDP a un Chrome que ya está abierto con la
+sesión iniciada — **nunca lanza navegador y nunca ve una contraseña**. Imprime
+estructura de pantalla, no imágenes: *un screenshot en base64 no cabe en una
+conversación*, y para decidir el siguiente clic hace falta la estructura.
+
+Sensores: consola, `pageerror`, peticiones fallidas, respuestas ≥400 y
+**`dialog`** — un `alert()` ES lo que el usuario ve, y Playwright los descarta
+solos si nadie escucha, perdiendo justo la evidencia.
+
+#### 🔑 M11 no era bug, y por qué conviene recordarlo
+
+El reporte decía *"Diego no ve la caja de comentarios"*. Con **su sesión real**,
+en los dos trámites exactos del reporte: la pestaña está, la caja está, se
+comentó y **quedó guardado**.
+
+Lo que sí había: la pestaña **Detalles** enseñaba un comentario con un link
+*"Ver todos los comentarios"* y **ninguna caja**. Quien se queda ahí concluye
+que no puede comentar. **El reporte describía bien lo que el usuario vivió y mal
+dónde estaba** — por tercera vez. El link ahora dice *"Ver y responder
+comentarios"*.
+
+#### A8 y A9 por fin se vieron funcionar
+
+- **A8 @menciones:** Diego (Empleado) escribió `@` y salieron **Laura y Sofía**.
+  Es la **primera vez** que funcionan para alguien que no es Administrador.
+- **A2 asignarse:** Diego se puso de Responsable y **sobrevivió a recargar**.
+- **A9 tiempo real:** un comentario apareció en otra pestaña sin recargar.
+
+#### Lo arreglado de los hallazgos propios
+
+| | Qué era |
+|---|---|
+| **H-003** | la **barra lateral colapsada** no tenía un solo nombre accesible, y las tarjetas eran `<div>` con `onClick`: **ningún elemento enfocable en toda la pantalla**, imposible abrir un trámite con teclado. Se les dio rol, foco y Enter/Espacio — **no `<a>`**, porque el arrastre del Kanban vive en esos mismos pointer events |
+| **H-005** | la tabla "Información del Trámite" lee **solo `tramite_respuestas`**, pero prioridad, descripción y fecha promesa tienen **columna propia en `tickets`**. Decía *"Sin registrar"* tres renglones debajo de donde la misma pantalla mostraba el dato. Ahora caen a la columna y quedan **de solo lectura**: cada uno ya tiene su editor ahí, y dos editores para un dato es como nació la contradicción |
+| **H-006** | `actualizar_ultima_accion_ticket()` hace UPDATE sobre `tickets` al comentar; eso dispara el trigger que pone `ultima_modificacion = now()` y **nadie toca `modificado_por`**. La fecha avanzaba y el nombre se quedaba en el anterior — un dato de auditoría afirmando que alguien tocó el trámite cuando no lo tocó. Una línea, en la base y no en la pantalla, porque un comentario entra por varios caminos y todos pasan por ese trigger |
+| **H-007** | `grupos.find(...)?.nombre \|\| 'Sin equipo asignado'` — decía "sin equipo" siempre que no pudiera **nombrarlo**. Tener equipo y poder nombrarlo son dos preguntas distintas |
+
+**Fecha Promesa, regla nueva de Ricardo:** la ponen **Empleados**, Gerentes y
+Admins; el **Agente nunca la edita** y solo la ve cuando ya trae valor. Antes un
+Empleado que no fuera líder de equipo tampoco podía.
+
+#### 🔑 Tres cosas que conviene no volver a aprender
+
+1. **Este repo es PÚBLICO** (`crickmx/jiromovi`, verificado). Un hueco de
+   seguridad sin cerrar **no se describe en un archivo versionado**.
+2. **`fill()` no simula teclas.** El autocompletado de @menciones no se dispara
+   con `escribir`; con `tecla` sí. Una prueba dio falso negativo por esto.
+3. **El orden de `--pagina` no es el orden en que se abrieron las pestañas.**
+   Identificar cada una con `--resumen` antes de actuar.
 
 ---
 

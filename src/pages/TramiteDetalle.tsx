@@ -208,7 +208,13 @@ export function TramiteDetalle() {
   const isCommercialViewerOnly = userArea === 'Comercial' && isOperationalTicket && !isAdmin && !isOwner && !isAssigned;
 
   const canEdit = (isAdmin || isGerente || canEditForType) && !isCommercialViewerOnly;
-  const canEditFechaPromesa = isAdmin || isGerente || myTeamRole === 'lider';
+  // QA 2026-10-30 — regla de Ricardo: la Fecha Promesa la ponen Empleados,
+  // Gerentes y Administradores. El Agente NUNCA la edita; solo la ve cuando
+  // alguien más ya le puso un valor, y de eso se encarga la franja de fechas
+  // de arriba, que solo la pinta si el trámite la trae.
+  const isAgente = usuario?.rol === 'Agente';
+  const canEditFechaPromesa =
+    !isAgente && (isAdmin || isGerente || usuario?.rol === 'Empleado' || myTeamRole === 'lider');
   const isPoolTramite = !tramite?.assigned_to_user_id && !!tramite?.grupo_asignado_id;
   const canManageAssignment = isAdmin || myTeamRole === 'lider' || (myTeamRole === 'ejecutivo' && isPoolTramite);
   const canSelfAssignOnly = myTeamRole === 'ejecutivo' && !isAdmin && !isGerente;
@@ -2059,7 +2065,11 @@ export function TramiteDetalle() {
                   onClick={() => setActiveTab('comentarios')}
                   className="mt-2 text-xs font-semibold text-accent-ink hover:underline"
                 >
-                  Ver todos los comentarios →
+                  {/* QA 2026-10-30 (H-004) — decía "Ver todos los comentarios".
+                      Un usuario reportó que no encontraba dónde comentar: esta
+                      caja enseña un comentario y no dice que ahí mismo se
+                      responde. Nombrar la acción quita la duda. */}
+                  Ver y responder comentarios →
                 </button>
               </div>
             )}
@@ -2078,7 +2088,7 @@ export function TramiteDetalle() {
               selectedEstatusSlug={selectedEstatusSlug}
             />
 
-            {/* Fecha Promesa de Entrega — solo líderes, gerentes y admins */}
+            {/* Fecha Promesa de Entrega — Empleados, Gerentes y Admins. El Agente la ve en la franja de fechas, solo si ya tiene valor. */}
             {canEditFechaPromesa && (
               <div className="mt-6 pt-6 border-t border-neutral-100">
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -2111,9 +2121,24 @@ export function TramiteDetalle() {
                     // resolver) era una duplicación confusa, a veces con un valor ya obsoleto.
                     .filter(c => c.is_sistema && c.sistema_key !== 'estatus' && c.sistema_key !== 'asignado_a' && !(tipoEsInterno && (c.sistema_key === 'agente_vendedor' || c.sistema_key === 'oficina_jiro')))
                     .map(campo => {
-                      const val = respuestasDinamicas[campo.id];
+                      // QA 2026-10-30 (H-005) — estos campos de sistema NO viven en
+                      // `tramite_respuestas`: tienen columna propia en `tickets`. La tabla
+                      // leía solo las respuestas, así que decía "Sin registrar" sobre datos
+                      // que esta misma pantalla enseñaba dos renglones arriba (el chip de
+                      // Prioridad decía "Baja" y aquí decía "Sin registrar").
+                      // Se quedan de SOLO LECTURA a propósito: cada uno ya tiene su editor
+                      // en esta pantalla —el chip del encabezado, el input de Fecha Promesa,
+                      // Instrucciones— y dos editores para un mismo dato es exactamente
+                      // cómo nació esta contradicción.
+                      const valorDeColumna =
+                        campo.sistema_key === 'prioridad' ? (tramite.prioridad ?? null)
+                        : campo.sistema_key === 'descripcion' ? (tramite.instrucciones ?? null)
+                        : campo.sistema_key === 'fecha_promesa_entrega' ? (tramite.fecha_promesa_entrega ?? null)
+                        : null;
+                      const tieneColumnaPropia = valorDeColumna !== null || ['prioridad', 'descripcion', 'fecha_promesa_entrega'].includes(campo.sistema_key || '');
+                      const val = respuestasDinamicas[campo.id] ?? valorDeColumna;
                       const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
-                      const adminEditable = isAdmin && !isCerrado && campo.sistema_key !== 'fecha_finalizacion' && campo.sistema_key !== 'creado_por';
+                      const adminEditable = isAdmin && !isCerrado && campo.sistema_key !== 'fecha_finalizacion' && campo.sistema_key !== 'creado_por' && !tieneColumnaPropia;
                       const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700';
                       const muted  = 'px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-500 italic';
                       const inputCls = 'w-full px-3 py-2 border border-violet-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-surface-card';
