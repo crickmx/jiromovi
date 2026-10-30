@@ -25,3 +25,9 @@ dist-ssr
 infra/roundcube/.env
 *.local.mjs
 deploy-relay.php
+
+# QA con bots usuarios — nada de esto se versiona
+qa/node_modules
+qa/resultados
+qa/auth
+qa/capturas
