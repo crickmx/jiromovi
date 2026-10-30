@@ -86,8 +86,25 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
 
+      // QA 2026-10-22 (M10) — un fallo de la CONSULTA no es "este usuario no existe".
+      //
+      // `error` se capturaba y solo se imprimía: un corte de red y una cuenta
+      // borrada terminaban los dos en `setRealUser(null)`, y con el usuario en
+      // null la app pinta la pantalla de login. **La sesión de Supabase sigue
+      // intacta** — se comprobó cortando la red: sale el login, y al recargar
+      // vuelve a entrar sola. O sea que no te sacaba, te lo hacía creer, y de
+      // paso perdías lo que estabas capturando.
+      //
+      // Cualquier parpadeo de red sirve: un elevador, un cambio de wifi, el metro.
+      if (error) {
+        console.warn('[MoviAuth] loadProfile: la consulta falló, se conserva la sesión:', error.message);
+        setLoading(false);
+        return;
+      }
+
+      // Sin error y sin fila: la cuenta de verdad no está. Ahí sí, null.
       if (!data) {
-        console.log('[MoviAuth] No usuario found for userId=', userId, error?.message);
+        console.log('[MoviAuth] No usuario found for userId=', userId);
         setRealUser(null);
         setLoading(false);
         return;
@@ -123,8 +140,10 @@ function MoviAuthProviderInner({ children }: { children: ReactNode }) {
       setRealUser(u);
       setLoading(false);
     } catch (err: any) {
-      console.warn('[MoviAuth] loadProfile failed:', err?.message);
-      setRealUser(null);
+      // Mismo criterio que arriba: lo que truena aquí son peticiones (datos
+      // privados, permisos de Gerente, la consulta de usuarios_beta), no una
+      // señal de que la sesión se acabó. Se conserva el usuario que ya hubiera.
+      console.warn('[MoviAuth] loadProfile falló, se conserva la sesión:', err?.message);
       setLoading(false);
     }
   }

@@ -1254,22 +1254,34 @@ export function Tramites() {
                 ))}
               </div>
             )}
-            <div className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden">
-              <button
-                onClick={() => setViewMode('lista')}
-                className={`p-2 transition-colors ${viewMode === 'lista' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
-                title="Vista lista"
-              >
-                <LayoutList className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('kanban')}
-                className={`p-2 transition-colors ${viewMode === 'kanban' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
-                title="Vista tablero"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-            </div>
+            {/* QA 2026-10-22 (M9) — el Kanban SOLO existe en la pestaña Activos
+                (abajo: `activeTab === 'activos' && viewMode === 'kanban'`). Este par
+                se dibujaba siempre, así que en Concluidos "Vista tablero" marcaba
+                el botón de azul y dejaba la pantalla igual, y en Papelera los dos
+                no hacían nada. Se esconde donde no manda: un control que no hace
+                nada no debe estar en pantalla. */}
+            {activeTab === 'activos' && (
+              <div className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden">
+                <button
+                  onClick={() => setViewMode('lista')}
+                  aria-pressed={viewMode === 'lista'}
+                  aria-label="Vista lista"
+                  className={`p-2 transition-colors ${viewMode === 'lista' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
+                  title="Vista lista"
+                >
+                  <LayoutList className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  aria-pressed={viewMode === 'kanban'}
+                  aria-label="Vista tablero"
+                  className={`p-2 transition-colors ${viewMode === 'kanban' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
+                  title="Vista tablero"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <Button size="sm" onClick={() => setShowNuevoModal(true)}>
               <Plus className="w-4 h-4 mr-1.5" />
               Nuevo
