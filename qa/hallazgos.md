@@ -39,7 +39,7 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 
 | # | Qué | Quién lo vio | Estado |
 |---|---|---|---|
-| B5 | **siete** equipos llamados "Pruebas MOVI Digital" | reporte + confirmado 30/10 | **de Ricardo** — es dato, no código |
+| B5 | siete equipos **de áreas distintas** con el mismo nombre — NO es duplicado | reporte + diagnosticado bien el 04/11 | **de Ricardo** — se renombran, no se borran |
 | B7 | "Mesa de Control Aguascalienteses" | reporte + confirmado 30/10 | **de Ricardo** — es dato, no código |
 | H-009 | mencionar a alguien **no le avisa**: nada lee la tabla de menciones | Claude, 04/11 | nuevo |
 | H-010 | un Agente no se puede mencionar, ni siendo el solicitante del trámite | Claude, 04/11 | nuevo |
@@ -57,6 +57,29 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 | H-006 | "Última modificación" con el nombre equivocado | **verificado 04/11** — un comentario de Diego dejó su nombre, no el anterior |
 | H-007 | "Sin equipo asignado" teniendo equipo | **sin verificar** — es una rama transitoria, ver nota abajo |
 | Fecha Promesa | regla nueva de Ricardo: Empleados sí, Agentes nunca | **media**: Diego (Empleado) la puso y persistió. Falta la mitad del Agente — hace falta la contraseña de MATEO |
+
+### B5 · No eran duplicados — `corregido el diagnóstico`
+
+El 30/10 escribí aquí que había "siete equipos duplicados" y que había que
+decidir "cuál sobrevive". **Estaba mal, y actuar sobre eso habría roto la
+asignación de seis áreas.**
+
+Son **siete equipos de siete áreas distintas** (Administración, Comercial,
+Facturación/Cobranza, Mercadotecnia, Mesa de Control, Sistemas, Tesorería),
+creados en el mismo microsegundo por el script que levantó a los bots. El
+modelo exige uno por área. Lo único que está mal es que **los siete se llaman
+igual**.
+
+El arreglo es renombrarlos con su área. Verificado antes de proponerlo: **nadie
+empareja equipos por nombre** — los diez lugares del frontend buscan por `id` y
+leen el nombre solo para mostrarlo, y ninguna función de la base lo usa.
+
+🔑 **Lo que esto enseña:** "se ve repetido en un selector" no es un hallazgo
+terminado. Hay que preguntar **qué lo distingue en la base** antes de proponer
+borrar nada. Mismo error que el reporte de los bots cometió seis de once veces,
+ahora cometido por mí.
+
+---
 
 ## Pruebas cruzadas del 04/11 — cinco sesiones a la vez
 

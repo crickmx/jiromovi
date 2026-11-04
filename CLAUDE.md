@@ -61,19 +61,50 @@ Los otros: `+gerente@` LAURA · `+agente1@` MATEO · `+agente2@` VALERIA ·
 
 #### 🔴 De Ricardo, no de código — y bloquea cosas reales
 
-**B5: hay SIETE equipos llamados "Pruebas MOVI Digital".** No dos: siete,
-idénticos, en el filtro de Equipo y en el selector del detalle.
+**B5 NO ES UN DUPLICADO. Son siete equipos legítimos, uno por área, que se
+llaman igual.** (Corregido el 04/11; hasta esa fecha esta misma sección decía
+"hay que decidir cuál de los siete sobrevive" — **eso habría roto la
+asignación de seis áreas**.)
+
+| Área | id |
+|---|---|
+| Administración | `056dbe8e…` |
+| Comercial | `dbf4e7e9…` |
+| Facturación/Cobranza | `4d26130b…` |
+| Mercadotecnia | `661a491e…` |
+| Mesa de Control | `81b45058…` |
+| Sistemas | `83123c4e…` |
+| Tesorería | `3467ef12…` |
+
+Los siete nacieron **en el mismo microsegundo** (21/10, 17:03:20.842114): el
+script con el que Christofer creó a los bots levantó un equipo por área. El
+modelo **exige** un equipo por área —así resuelve `get_grupo_para_ticket`—, así
+que **borrar seis rompe seis áreas**. El defecto es **solo el nombre**.
 
 Y eso **explica una rareza que si no se sabe no se entiende**: a Diego el
 selector de Responsable solo le ofrece a sí mismo, mientras la lista de
 @menciones sí le trae a Laura y a Sofía. No son dos bugs — son **dos consultas
-pegándole a equipos distintos con el mismo nombre**. Diego es miembro de uno,
-el trámite está en otro.
+pegándole a equipos de áreas distintas que se llaman igual**.
 
-Limpiarlo **no es borrar seis filas**: de `tramites_grupos_miembros` salen los
-permisos de Trámites, las menciones y las reglas de asignación. Hay que decidir
-cuál sobrevive y mover ahí las membresías y las reglas, o la gente se queda
-fuera de su propio equipo.
+**El arreglo es renombrarlos**, y es seguro: se verificó que **nadie empareja
+equipos por nombre**. Los diez lugares del frontend buscan por `id` y leen el
+nombre solo para mostrarlo; ninguna función de la base lo usa.
+
+```sql
+update tramites_grupos_visualizacion g
+   set nombre = 'Pruebas MOVI Digital · ' || a.nombre
+  from tramites_areas a
+ where a.id = g.area_id
+   and g.nombre = 'Pruebas MOVI Digital';
+```
+
+Va por `area_id` (la FK) y **no** por `area_categoria`, que es la copia
+congelada del nombre y puede estar vieja — es la lección del 30/09.
+
+🔑 **La regla que sale de aquí:** antes de llamar "duplicado" a algo que se ve
+repetido en un selector, mirar **qué lo distingue en la base**. Siete filas con
+el mismo nombre y siete `area_id` distintos no son un duplicado: son una
+etiqueta mal puesta.
 
 **B7:** *"Mesa de Control Aguascalienteses"*, en ese mismo selector.
 
