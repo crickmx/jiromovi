@@ -2799,7 +2799,14 @@ export function TramiteDetalle() {
             })()}
           </>
         )}
-        {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} grupoId={tramite.grupo_asignado_id} />}
+        {activeTab === 'comentarios' && (
+          <TramiteComentarios
+            tramiteId={tramite.id}
+            grupoId={tramite.grupo_asignado_id}
+            agente={tramite.agente}
+            folio={tramite.folio}
+          />
+        )}
         {activeTab === 'archivos' && (
           <TramiteArchivos
             tramiteId={tramite.id}
