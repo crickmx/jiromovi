@@ -49,22 +49,61 @@ abrir.cmd diego 9223
 equipos usan la misma sesión, cuando uno la renueva el otro se queda con un
 token viejo y se cae la sesión en los dos.
 
-## Los cinco usuarios bot
+## Los cinco usuarios bot, y su puerto fijo
 
 Todos en la oficina **MOVI Digital**, apellido **PRUEBAS**, marcados con
 `usuarios.es_bot = true` — por eso no ensucian el tablero del Admin ni le
 mandan notificaciones a nadie (21/10).
 
-| | Rol de sistema | Qué alcanza a ver |
-|---|---|---|
-| MATEO, VALERIA | Agente | solo sus propios trámites |
-| DIEGO, SOFÍA | Empleado | lo suyo + lo de sus equipos |
-| LAURA | Gerente | lo de sus equipos |
+**Cada quien tiene SIEMPRE el mismo puerto**, para que decir "el 9224" sea
+siempre Diego, aquí y en el chat:
+
+| Puerto | Quién | Rol de sistema | Correo | Qué alcanza a ver |
+|---|---|---|---|---|
+| **9222** | MATEO | Agente | `ccjimenez+agente1@` | solo sus propios trámites |
+| **9223** | VALERIA | Agente | `ccjimenez+agente2@` | solo sus propios trámites |
+| **9224** | DIEGO | Empleado | `ccjimenez+empleado1@` | lo suyo + lo de sus equipos |
+| **9225** | SOFÍA | Empleado | `ccjimenez+empleado2@` | lo suyo + lo de sus equipos |
+| **9226** | LAURA | Gerente | `ccjimenez+gerente@` | lo de sus equipos |
+
+Todos los correos son **alias con `+`** de Christofer (`@jiro.com.mx`), así que
+**él recibe el correo de los cinco**, incluidos códigos de acceso y avisos de
+cambio de contraseña. Tenerlo presente antes de disparar algo que mande correo.
 
 **Ninguno es Administrador**, a propósito: ese rol lo maneja Ricardo.
 
-Si hace falta la contraseña de uno, se le pone desde Supabase →
-Authentication → Users. No hace falta pedírsela a nadie.
+Para abrir las cinco de un golpe:
+
+```
+cd C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\qa
+abrir-todos.cmd
+```
+
+⚠️ **Van de una en una con pausa a propósito.** Lanzar las cinco a la vez **no
+funciona**: Chrome se pisa a sí mismo y solo arranca una (probado el 04/11).
+
+### Ponerles contraseña
+
+Desde el SQL Editor de Supabase, las cinco de un golpe. **Comillas simples**:
+
+```sql
+update auth.users
+set encrypted_password = crypt('LA-QUE-SEA', gen_salt('bf'))
+where email in (
+  'ccjimenez+agente1@jiro.com.mx',    -- MATEO    (Agente)
+  'ccjimenez+agente2@jiro.com.mx',    -- VALERIA  (Agente)
+  'ccjimenez+empleado1@jiro.com.mx',  -- DIEGO    (Empleado)
+  'ccjimenez+empleado2@jiro.com.mx',  -- SOFÍA    (Empleado)
+  'ccjimenez+gerente@jiro.com.mx'     -- LAURA    (Gerente)
+);
+```
+
+Debe contestar **`UPDATE 5`**. Con comillas dobles sale
+`column "..." does not exist`: en Postgres las dobles son nombres de columna.
+
+**La contraseña la escribe Ricardo y no pasa por el chat.** La sesión se guarda
+en el perfil y **sobrevive a cerrar Chrome y al fin de semana** — comprobado el
+04/11: al reabrir entró directo, sin pedir nada.
 
 ## ⚠️ Lo que crean los bots cae en PRODUCCIÓN
 
