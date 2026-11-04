@@ -20,7 +20,9 @@ interface Props {
   cerradoPor?: UsuarioMin | null;
 }
 
-function fechaYHora(valor: string): string {
+/** El formato de fecha y hora del detalle. Exportado para que la tabla de
+ *  "Información del Trámite" use EXACTAMENTE el mismo (ver U-02). */
+export function fechaYHora(valor: string): string {
   return new Date(valor).toLocaleString('es-MX', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });

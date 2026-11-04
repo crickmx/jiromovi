@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers, Pencil, Check } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
-import { TramiteFechasBar } from '../components/tramites/TramiteFechasBar';
+import { TramiteFechasBar, fechaYHora } from '../components/tramites/TramiteFechasBar';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { DiagnosticoBugReport } from '../components/tramites/DiagnosticoBugReport';
@@ -2053,7 +2053,11 @@ export function TramiteDetalle() {
       <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card border border-soft dark:border-neutral-700 p-6">
         {activeTab === 'detalles' && (
           <>
-            {comentarioInicial && (
+            {/* UX 2026-11-04 (U-04) — el alta copia la descripción como primer
+                comentario, así que esta caja repetía, palabra por palabra, el
+                texto que ya está en "Instrucciones / Descripción" aquí abajo.
+                Solo se muestra cuando aporta algo distinto. */}
+            {comentarioInicial && comentarioInicial.mensaje?.trim() !== (tramite.instrucciones ?? '').trim() && (
               <div className="mb-6 p-4 rounded-2xl border border-blue-200 bg-blue-50">
                 <p className="text-xs font-semibold text-accent-ink uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -2119,7 +2123,11 @@ export function TramiteDetalle() {
                     // dedicado de arriba (Responsable/Equipo), y puede quedar desactualizado
                     // si el Responsable cambió después. Mostrarlo aquí (como UUID crudo, sin
                     // resolver) era una duplicación confusa, a veces con un valor ya obsoleto.
-                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus' && c.sistema_key !== 'asignado_a' && !(tipoEsInterno && (c.sistema_key === 'agente_vendedor' || c.sistema_key === 'oficina_jiro')))
+                    // `descripcion` se excluye desde el 04/11 (U-04): el mismo texto ya
+                    // sale completo en "Instrucciones / Descripción", dos renglones más
+                    // arriba, y como comentario inicial. Tres copias del mismo párrafo en
+                    // una pantalla no informan, estorban.
+                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus' && c.sistema_key !== 'asignado_a' && c.sistema_key !== 'descripcion' && !(tipoEsInterno && (c.sistema_key === 'agente_vendedor' || c.sistema_key === 'oficina_jiro')))
                     .map(campo => {
                       // QA 2026-10-30 (H-005) — estos campos de sistema NO viven en
                       // `tramite_respuestas`: tienen columna propia en `tickets`. La tabla
@@ -2178,6 +2186,18 @@ export function TramiteDetalle() {
                             )
                           ) : (
                             (() => {
+                              // UX 2026-11-04 (U-02) — las fechas salían EN CRUDO.
+                              //
+                              // Esta tabla pintaba el valor tal cual, así que la fecha de
+                              // creación decía "2026-11-04T22:33:11.806Z" mientras la franja
+                              // de arriba, con el MISMO dato, decía "04 nov 2026, 04:33 p.m.".
+                              // Lo grave no es el formato: es que el usuario lee 04:33 p.m.
+                              // en un lado y 22:33 en el otro. Son la misma hora —una es
+                              // UTC— pero nadie tiene por qué saberlo.
+                              //
+                              // Usa la MISMA función que la franja, no una copia.
+                              const esFecha = campo.sistema_key === 'fecha_creacion'
+                                || campo.sistema_key === 'fecha_finalizacion';
                               const displayVal = campo.sistema_key === 'agente_vendedor' && val
                                 ? (() => {
                                     const u = usuariosMovi.find(x => x.id === val);
@@ -2185,7 +2205,7 @@ export function TramiteDetalle() {
                                     const ag = agentesVendedor.find(a => a.id === val);
                                     return ag?.usuario_nombre ?? ag?.nombre ?? val;
                                   })()
-                                : val;
+                                : (esFecha && val ? fechaYHora(String(val)) : val);
                               return displayVal
                                 ? <div className={violet}>{displayVal}</div>
                                 : <div className={muted}>{campo.sistema_key === 'fecha_finalizacion' ? 'Al cerrar' : 'Sin registrar'}</div>;

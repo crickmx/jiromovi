@@ -732,10 +732,33 @@ export function NuevoTramiteModal({
     if (!isAgent || !usuario?.id) return;
     const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
     if (!agCampo) return;
-    setRespuestasDinamicas(prev =>
-      prev[agCampo.id] === usuario.id ? prev : { ...prev, [agCampo.id]: usuario.id }
-    );
-  }, [camposDinamicos, isAgent, usuario?.id]);
+
+    // UX 2026-11-04 (U-01) — y su OFICINA, por la misma razón.
+    //
+    // La oficina solo se llenaba dentro del `onChange` del selector de
+    // Solicitante. Pero cuando quien levanta el trámite es el propio Agente
+    // **ese selector ni siquiera se dibuja**: él es el solicitante y punto. O
+    // sea que el campo se quedaba esperando un evento que nunca iba a ocurrir,
+    // mostraba "Auto-completa al seleccionar agente" y el trámite nacía con la
+    // oficina en blanco ("Sin registrar" en el detalle).
+    //
+    // El dato siempre estuvo ahí: es la oficina del perfil de quien crea.
+    const ofCampo = camposDinamicos.find(c => c.sistema_key === 'oficina_jiro');
+    const ofNombre = usuario.oficina_id
+      ? (oficinas.find(o => o.id === usuario.oficina_id)?.nombre ?? '')
+      : '';
+
+    setRespuestasDinamicas(prev => {
+      const faltaAgente = prev[agCampo.id] !== usuario.id;
+      const faltaOficina = !!ofCampo && !!ofNombre && prev[ofCampo.id] !== ofNombre;
+      if (!faltaAgente && !faltaOficina) return prev;
+      return {
+        ...prev,
+        ...(faltaAgente ? { [agCampo.id]: usuario.id } : {}),
+        ...(faltaOficina && ofCampo ? { [ofCampo.id]: ofNombre } : {}),
+      };
+    });
+  }, [camposDinamicos, isAgent, usuario?.id, usuario?.oficina_id, oficinas]);
 
   // Resuelve la asignación mientras se llena el formulario, para poder mostrarla
   // antes de guardar. El submit vuelve a resolverla por su cuenta — esto es solo
@@ -3566,8 +3589,13 @@ No cayó en ninguna regla de asignación. Requiere asignarlo a mano.`,
           });
         })()}
 
+        {/* UX 2026-11-04 (U-07) — decía "El área y equipo se asignan
+            automáticamente según tu perfil", y lo PRIMERO que pide el
+            formulario es elegir el Área. El texto hablaba de los campos de
+            sistema que se esconden aquí, no del selector de arriba, pero quien
+            lo lee entiende que no debería tener que elegir nada. */}
         {isEmpleadoOAgente && (
-          <p className="text-xs text-neutral-500 text-center pt-2">El área y equipo se asignan automáticamente según tu perfil.</p>
+          <p className="text-xs text-neutral-500 text-center pt-2">El equipo que lo atenderá se asigna solo, según el área y tu perfil.</p>
         )}
       </div>
     </BaseModal>
