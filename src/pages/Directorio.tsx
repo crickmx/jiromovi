@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical, Phone, Loader2 } from 'lucide-react';
+import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical, Phone, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Globe } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
   syncUserTramiteTeamAssignments, puedeTenerEquiposTramite, normalizeCategory,
 } from '../lib/tramiteTeamAssignments';
 import AgentTramiteTeamsSection from '../components/tramites/AgentTramiteTeamsSection';
+import { normalizarTexto } from '../lib/utils';
 import { SolicitudesAltaPanel } from '../components/admin/SolicitudesAltaPanel';
 import { getOficinasDeGerente } from '../lib/oficinasUtils';
 
@@ -20,6 +21,22 @@ type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
 };
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
+const PAGINA_WEB_BASE = 'https://agentedeseguros.website';
+const MOVI_MI_PAGINA_URL = 'https://app.movi.digital/mercadotecnia/mi-pagina-web';
+const paginaWebDe = (slug: string) => `${PAGINA_WEB_BASE}/${slug}`;
+
+const escaparHtml = (t: string) =>
+  t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+type CampoOrden = 'usuario' | 'rol' | 'oficina';
+
+const valorOrden = (u: Usuario, campo: CampoOrden): string => {
+  switch (campo) {
+    case 'usuario': return normalizarTexto(`${u.nombre ?? ''} ${u.apellidos ?? ''}`);
+    case 'rol': return normalizarTexto(u.rol ?? '');
+    case 'oficina': return normalizarTexto(u.oficinas?.nombre ?? '');
+  }
+};
 
 export function Directorio() {
   const { usuario: currentUser, reloadUsuario: refreshUsuario } = useAuth();
@@ -32,6 +49,10 @@ export function Directorio() {
   // para que lo que se ve y lo que se filtra no puedan contradecirse.
   const [filterEstado, setFilterEstado] = useState<'' | 'activo' | 'inactivo'>('');
   const [loading, setLoading] = useState(true);
+  const [sendingWebId, setSendingWebId] = useState<string | null>(null);
+  const [webSentId, setWebSentId] = useState<string | null>(null);
+  // Orden de la tabla: clic en el encabezado alterna ascendente/descendente.
+  const [orden, setOrden] = useState<{ campo: CampoOrden; dir: 'asc' | 'desc' }>({ campo: 'usuario', dir: 'asc' });
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -85,6 +106,59 @@ export function Directorio() {
       // silent
     } finally {
       setSendingAccessId(null);
+    }
+  };
+
+  // Le manda al usuario su link personalizado por correo y WhatsApp. El correo
+  // además lo invita a personalizar su página desde MOVI.
+  const handleSendPaginaWeb = async (usuario: Usuario) => {
+    const slug = usuario.web_slug;
+    if (!slug || sendingWebId) return;
+    const email = usuario.email_laboral || usuario.email_personal;
+    const celular = usuario.celular_laboral || usuario.celular_personal;
+    if (!email && !celular) {
+      alert('Este usuario no tiene correo ni celular registrado.');
+      return;
+    }
+    setSendingWebId(usuario.id);
+    const url = paginaWebDe(slug);
+    const nombre = escaparHtml(usuario.nombre || '');
+    const html = `
+      <p>Hola ${nombre},</p>
+      <p>Tu página web personalizada ya está lista:</p>
+      <p style="margin:20px 0;"><a href="${url}" style="font-size:16px;font-weight:bold;color:#1d4ed8;">${url.replace('https://', '')}</a></p>
+      <p>Compártela con tus clientes: ahí pueden conocerte, contactarte y cotizar contigo.</p>
+      <p><strong>Te invitamos a personalizarla</strong> con tu foto, tu logotipo y tu información desde MOVI:</p>
+      <p style="margin:24px 0;"><a href="${MOVI_MI_PAGINA_URL}" style="background:#1d4ed8;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;">Personalizar mi página en MOVI</a></p>
+      <p style="color:#6b7280;font-size:13px;">MOVI › Mercadotecnia › Mi Página Web</p>`;
+    const mensaje = `Hola ${usuario.nombre || ''}, tu página web personalizada ya está lista:\n${url}\n\nCompártela con tus clientes. Puedes personalizarla desde MOVI: ${MOVI_MI_PAGINA_URL}`;
+
+    const resultados: string[] = [];
+    const fallas: string[] = [];
+    try {
+      const envios = await Promise.allSettled([
+        email
+          ? supabase.functions.invoke('send-direct-email', { body: { to: email, subject: 'Tu página web personalizada', html } })
+          : Promise.resolve(null),
+        celular
+          ? supabase.functions.invoke('send-direct-whatsapp', { body: { phone: celular, message: mensaje } })
+          : Promise.resolve(null),
+      ]);
+      const evaluar = (r: PromiseSettledResult<any>, canal: string, aplica: boolean) => {
+        if (!aplica) return;
+        const ok = r.status === 'fulfilled' && !r.value?.error && r.value?.data?.success !== false;
+        (ok ? resultados : fallas).push(canal);
+      };
+      evaluar(envios[0], 'correo', !!email);
+      evaluar(envios[1], 'WhatsApp', !!celular);
+    } finally {
+      setSendingWebId(null);
+    }
+    if (fallas.length === 0) {
+      setWebSentId(usuario.id);
+      setTimeout(() => setWebSentId(null), 5000);
+    } else {
+      alert(`Página enviada por: ${resultados.join(' y ') || 'ningún canal'}.\nNo se pudo enviar por: ${fallas.join(' y ')}.`);
     }
   };
 
@@ -324,6 +398,47 @@ export function Directorio() {
   });
 
   const puedeBulkEditar = isAdmin || isGerente;
+
+  // Los inactivos van arriba, en su propio apartado: son los que esperan que
+  // alguien los active. El orden elegido se aplica dentro de cada apartado.
+  const ordenados = [...filteredUsuarios].sort((a, b) => {
+    const va = valorOrden(a, orden.campo);
+    const vb = valorOrden(b, orden.campo);
+    // Vacíos (sin oficina, sin rol) siempre al final, en cualquier dirección.
+    if (!va && vb) return 1;
+    if (va && !vb) return -1;
+    const cmp = va.localeCompare(vb, 'es', { numeric: true })
+      || valorOrden(a, 'usuario').localeCompare(valorOrden(b, 'usuario'), 'es');
+    return orden.dir === 'asc' ? cmp : -cmp;
+  });
+  const pendientesActivar = ordenados.filter((u) => !u.activo);
+  const activosOrdenados = ordenados.filter((u) => !!u.activo);
+  const columnas = puedeBulkEditar ? 6 : 5;
+
+  const cambiarOrden = (campo: CampoOrden) =>
+    setOrden((prev) => prev.campo === campo
+      ? { campo, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+      : { campo, dir: 'asc' });
+
+  const EncabezadoOrdenable = ({ campo, children }: { campo: CampoOrden; children: React.ReactNode }) => {
+    const activo = orden.campo === campo;
+    const Icono = !activo ? ArrowUpDown : orden.dir === 'asc' ? ArrowUp : ArrowDown;
+    return (
+      <th
+        className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
+        aria-sort={activo ? (orden.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      >
+        <button
+          type="button"
+          onClick={() => cambiarOrden(campo)}
+          className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-neutral-800 ${activo ? 'text-neutral-800' : ''}`}
+        >
+          {children}
+          <Icono className={`w-3.5 h-3.5 ${activo ? '' : 'opacity-40'}`} />
+        </button>
+      </th>
+    );
+  };
   const allFilteredSelected = filteredUsuarios.length > 0 && filteredUsuarios.every((u) => selectedIds.has(u.id));
   const selectedUsuarios = usuarios.filter((u) => selectedIds.has(u.id));
   const selectedConEquipos = selectedUsuarios.filter((u) => puedeTenerEquiposTramite(u.rol));
@@ -461,6 +576,217 @@ export function Directorio() {
   if (loading) {
     return <LoadingState text="Cargando directorio..." />;
   }
+
+  const renderFila = (usuario: Usuario) => (
+                <tr key={usuario.id} className="hover:bg-slate-50 transition">
+                  {puedeBulkEditar && (
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(usuario.id)}
+                        onChange={() => toggleSelectedUser(usuario.id)}
+                        className="h-4 w-4 rounded border-neutral-300 text-accent-ink focus:ring-accent"
+                        aria-label={`Seleccionar ${usuario.nombre} ${usuario.apellidos}`}
+                      />
+                    </td>
+                  )}
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <div className="flex items-center">
+                      {usuario.imagen_perfil_url ? (
+                        <img
+                          src={usuario.imagen_perfil_url}
+                          alt=""
+                          crossOrigin="anonymous"
+                          className="w-10 h-10 rounded-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+                          <span className="text-white font-medium text-sm">
+                            {usuario.nombre[0]}{usuario.apellidos[0]}
+                          </span>
+                        </div>
+                      )}
+                      <div className="ml-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="text-sm font-medium text-neutral-900">
+                            {usuario.nombre} {usuario.apellidos}
+                          </div>
+                          {usuario.estado === 'pendiente' && (
+                            <span className="px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 rounded">
+                              Pendiente
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-neutral-500">{usuario.puesto}</div>
+                        {usuario.web_slug && (
+                          <a
+                            href={paginaWebDe(usuario.web_slug)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-accent-ink hover:underline"
+                            title="Abrir su página web personalizada"
+                          >
+                            <Globe className="w-3 h-3" />
+                            agentedeseguros.website/{usuario.web_slug}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        usuario.rol === 'Administrador'
+                          ? 'bg-red-100 text-red-800'
+                          : usuario.rol === 'Gerente'
+                          ? 'bg-purple-100 text-purple-800'
+                          : usuario.rol === 'Empleado'
+                          ? 'bg-primary-100 text-primary-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}
+                    >
+                      {usuario.rol}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap text-sm text-neutral-900">
+                    {usuario.oficinas?.nombre || '-'}
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    {isAdmin ? (
+                      <button
+                        onClick={() => handleToggleActive(usuario)}
+                        className="flex items-center space-x-2"
+                      >
+                        {usuario.activo ? (
+                          <>
+                            <ToggleRight className="w-6 h-6 text-green-600" />
+                            <span className="text-sm text-green-600 font-medium">Activo</span>
+                          </>
+                        ) : (
+                          <>
+                            <ToggleLeft className="w-6 h-6 text-neutral-500" />
+                            <span className="text-sm text-neutral-500 font-medium">Inactivo</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        {usuario.activo ? (
+                          <>
+                            <ToggleRight className="w-6 h-6 text-green-600" />
+                            <span className="text-sm text-green-600 font-medium">Activo</span>
+                          </>
+                        ) : (
+                          <>
+                            <ToggleLeft className="w-6 h-6 text-neutral-500" />
+                            <span className="text-sm text-neutral-500 font-medium">Inactivo</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end items-center space-x-1">
+                      {(isAdmin || isGerente) && usuario.estado === 'activo' && (
+                        <button
+                          onClick={() => handleSendAccess(usuario)}
+                          disabled={sendingAccessId === usuario.id || accessSentId === usuario.id}
+                          className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
+                            accessSentId === usuario.id
+                              ? 'text-green-700 bg-green-50'
+                              : 'text-neutral-600 hover:text-slate-900 hover:bg-slate-100'
+                          }`}
+                          title="Enviar código de acceso al correo y WhatsApp"
+                        >
+                          {accessSentId === usuario.id
+                            ? <CheckCircle className="w-4 h-4" />
+                            : sendingAccessId === usuario.id
+                            ? <span className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-500 rounded-full animate-spin" />
+                            : <Send className="w-4 h-4" />
+                          }
+                        </button>
+                      )}
+                      {(isAdmin || isGerente) && usuario.web_slug && (
+                        <button
+                          onClick={() => handleSendPaginaWeb(usuario)}
+                          disabled={sendingWebId === usuario.id || webSentId === usuario.id}
+                          className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
+                            webSentId === usuario.id
+                              ? 'text-green-700 bg-green-50'
+                              : 'text-neutral-600 hover:text-sky-700 hover:bg-sky-50'
+                          }`}
+                          title="Enviar su página web por correo y WhatsApp"
+                        >
+                          {webSentId === usuario.id
+                            ? <CheckCircle className="w-4 h-4" />
+                            : sendingWebId === usuario.id
+                            ? <span className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-500 rounded-full animate-spin" />
+                            : <Globe className="w-4 h-4" />
+                          }
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleToggleBeta(usuario)}
+                          disabled={togglingBetaId === usuario.id}
+                          className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
+                            betaIds.has(usuario.id)
+                              ? 'text-violet-700 bg-violet-50 hover:bg-violet-100'
+                              : 'text-neutral-500 hover:text-violet-700 hover:bg-violet-50'
+                          }`}
+                          title={betaIds.has(usuario.id) ? 'Quitar de Beta' : 'Agregar a Beta'}
+                        >
+                          {togglingBetaId === usuario.id
+                            ? <span className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
+                            : <FlaskConical className="w-4 h-4" />
+                          }
+                        </button>
+                      )}
+                      {isAdmin && usuario.id !== currentUser?.id && usuario.rol !== 'Administrador' && (
+                        <button
+                          disabled={!!impersonatingId}
+                          onClick={async () => {
+                            setImpersonatingId(usuario.id);
+                            const ok = await startImpersonation({ platform: 'movi', userId: usuario.id });
+                            if (ok) {
+                              window.location.href = '/dashboard';
+                            } else {
+                              setImpersonatingId(null);
+                            }
+                          }}
+                          className="flex items-center p-2 rounded-lg text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Ver como este usuario"
+                        >
+                          {impersonatingId === usuario.id
+                            ? <span className="w-4 h-4 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" />
+                            : <Eye className="w-4 h-4" />
+                          }
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setSelectedUser(usuario);
+                          setModalOpen(true);
+                        }}
+                        className="flex items-center p-2 text-accent-ink hover:text-primary-900 hover:bg-primary-50 rounded-lg transition"
+                        title={isReadOnly ? "Ver Usuario" : "Ver / Editar Usuario"}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteClick(usuario)}
+                          className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+  );
 
   return (
     <div className="space-y-5">
@@ -607,15 +933,9 @@ export function Directorio() {
                     />
                   </th>
                 )}
-                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Usuario
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Rol
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Oficina
-                </th>
+                {EncabezadoOrdenable({ campo: 'usuario', children: 'Usuario' })}
+                {EncabezadoOrdenable({ campo: 'rol', children: 'Rol' })}
+                {EncabezadoOrdenable({ campo: 'oficina', children: 'Oficina' })}
                 <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Estado
                 </th>
@@ -625,185 +945,24 @@ export function Directorio() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
-              {filteredUsuarios.map((usuario) => (
-                <tr key={usuario.id} className="hover:bg-slate-50 transition">
-                  {puedeBulkEditar && (
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(usuario.id)}
-                        onChange={() => toggleSelectedUser(usuario.id)}
-                        className="h-4 w-4 rounded border-neutral-300 text-accent-ink focus:ring-accent"
-                        aria-label={`Seleccionar ${usuario.nombre} ${usuario.apellidos}`}
-                      />
+              {pendientesActivar.length > 0 && (
+                <>
+                  <tr className="bg-amber-50">
+                    <td colSpan={columnas} className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-amber-800">
+                      Pendientes de activar ({pendientesActivar.length})
                     </td>
+                  </tr>
+                  {pendientesActivar.map(renderFila)}
+                  {activosOrdenados.length > 0 && (
+                    <tr className="bg-neutral-50">
+                      <td colSpan={columnas} className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        Activos ({activosOrdenados.length})
+                      </td>
+                    </tr>
                   )}
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {usuario.imagen_perfil_url ? (
-                        <img
-                          src={usuario.imagen_perfil_url}
-                          alt=""
-                          crossOrigin="anonymous"
-                          className="w-10 h-10 rounded-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
-                          <span className="text-white font-medium text-sm">
-                            {usuario.nombre[0]}{usuario.apellidos[0]}
-                          </span>
-                        </div>
-                      )}
-                      <div className="ml-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="text-sm font-medium text-neutral-900">
-                            {usuario.nombre} {usuario.apellidos}
-                          </div>
-                          {usuario.estado === 'pendiente' && (
-                            <span className="px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 rounded">
-                              Pendiente
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-neutral-500">{usuario.puesto}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        usuario.rol === 'Administrador'
-                          ? 'bg-red-100 text-red-800'
-                          : usuario.rol === 'Gerente'
-                          ? 'bg-purple-100 text-purple-800'
-                          : usuario.rol === 'Empleado'
-                          ? 'bg-primary-100 text-primary-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}
-                    >
-                      {usuario.rol}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-sm text-neutral-900">
-                    {usuario.oficinas?.nombre || '-'}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    {isAdmin ? (
-                      <button
-                        onClick={() => handleToggleActive(usuario)}
-                        className="flex items-center space-x-2"
-                      >
-                        {usuario.activo ? (
-                          <>
-                            <ToggleRight className="w-6 h-6 text-green-600" />
-                            <span className="text-sm text-green-600 font-medium">Activo</span>
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="w-6 h-6 text-neutral-500" />
-                            <span className="text-sm text-neutral-500 font-medium">Inactivo</span>
-                          </>
-                        )}
-                      </button>
-                    ) : (
-                      <div className="flex items-center space-x-2">
-                        {usuario.activo ? (
-                          <>
-                            <ToggleRight className="w-6 h-6 text-green-600" />
-                            <span className="text-sm text-green-600 font-medium">Activo</span>
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="w-6 h-6 text-neutral-500" />
-                            <span className="text-sm text-neutral-500 font-medium">Inactivo</span>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end items-center space-x-1">
-                      {(isAdmin || isGerente) && usuario.estado === 'activo' && (
-                        <button
-                          onClick={() => handleSendAccess(usuario)}
-                          disabled={sendingAccessId === usuario.id || accessSentId === usuario.id}
-                          className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
-                            accessSentId === usuario.id
-                              ? 'text-green-700 bg-green-50'
-                              : 'text-neutral-600 hover:text-slate-900 hover:bg-slate-100'
-                          }`}
-                          title="Enviar código de acceso al correo y WhatsApp"
-                        >
-                          {accessSentId === usuario.id
-                            ? <CheckCircle className="w-4 h-4" />
-                            : sendingAccessId === usuario.id
-                            ? <span className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-500 rounded-full animate-spin" />
-                            : <Send className="w-4 h-4" />
-                          }
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleToggleBeta(usuario)}
-                          disabled={togglingBetaId === usuario.id}
-                          className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
-                            betaIds.has(usuario.id)
-                              ? 'text-violet-700 bg-violet-50 hover:bg-violet-100'
-                              : 'text-neutral-500 hover:text-violet-700 hover:bg-violet-50'
-                          }`}
-                          title={betaIds.has(usuario.id) ? 'Quitar de Beta' : 'Agregar a Beta'}
-                        >
-                          {togglingBetaId === usuario.id
-                            ? <span className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
-                            : <FlaskConical className="w-4 h-4" />
-                          }
-                        </button>
-                      )}
-                      {isAdmin && usuario.id !== currentUser?.id && usuario.rol !== 'Administrador' && (
-                        <button
-                          disabled={!!impersonatingId}
-                          onClick={async () => {
-                            setImpersonatingId(usuario.id);
-                            const ok = await startImpersonation({ platform: 'movi', userId: usuario.id });
-                            if (ok) {
-                              window.location.href = '/dashboard';
-                            } else {
-                              setImpersonatingId(null);
-                            }
-                          }}
-                          className="flex items-center p-2 rounded-lg text-amber-700 hover:text-amber-900 hover:bg-amber-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Ver como este usuario"
-                        >
-                          {impersonatingId === usuario.id
-                            ? <span className="w-4 h-4 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" />
-                            : <Eye className="w-4 h-4" />
-                          }
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          setSelectedUser(usuario);
-                          setModalOpen(true);
-                        }}
-                        className="flex items-center p-2 text-accent-ink hover:text-primary-900 hover:bg-primary-50 rounded-lg transition"
-                        title={isReadOnly ? "Ver Usuario" : "Ver / Editar Usuario"}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDeleteClick(usuario)}
-                          className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition"
-                          title="Eliminar usuario"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                </>
+              )}
+              {activosOrdenados.map(renderFila)}
             </tbody>
           </table>
 
