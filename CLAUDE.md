@@ -81,10 +81,23 @@ script con el que Christofer creó a los bots levantó un equipo por área. El
 modelo **exige** un equipo por área —así resuelve `get_grupo_para_ticket`—, así
 que **borrar seis rompe seis áreas**. El defecto es **solo el nombre**.
 
-Y eso **explica una rareza que si no se sabe no se entiende**: a Diego el
-selector de Responsable solo le ofrece a sí mismo, mientras la lista de
-@menciones sí le trae a Laura y a Sofía. No son dos bugs — son **dos consultas
-pegándole a equipos de áreas distintas que se llaman igual**.
+⚠️ **Lo que NO explica** (corregido el 04/11, segunda corrección del mismo
+hilo): que a Diego el selector de Responsable solo le ofrezca a sí mismo
+mientras las @menciones le traen a Laura y a Sofía. Llegué a escribir aquí que
+eran "dos consultas pegándole a equipos distintos con el mismo nombre".
+**Falso**: se comprobó que el equipo Comercial tiene a los tres.
+
+**Las dos listas están bien.** `TramiteDetalles.tsx` lo dice con todas sus
+letras: *"Ejecutivo: solo puede asignarse a sí mismo"* —
+`canSelfAssignOnly = myTeamRole === 'ejecutivo' && !isAdmin && !isGerente`
+sustituye la lista de miembros por el propio usuario. Un ejecutivo **toma** el
+trámite, no se lo reparte a otro. Y la lista de menciones es el equipo entero
+menos uno mismo. Ninguna de las dos es un bug.
+
+🔑 Y la lección de método, que me costó dos diagnósticos malos seguidos en el
+mismo hilo: **dos listas que no coinciden no son prueba de nada.** Antes de
+explicar por qué diferen, hay que mirar qué pide cada una — aquí la respuesta
+estaba en un comentario del código, no en los datos.
 
 **El arreglo es renombrarlos**, y es seguro: se verificó que **nadie empareja
 equipos por nombre**. Los diez lugares del frontend buscan por `id` y leen el

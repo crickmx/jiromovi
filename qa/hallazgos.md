@@ -58,6 +58,33 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 | H-007 | "Sin equipo asignado" teniendo equipo | **sin verificar** — es una rama transitoria, ver nota abajo |
 | Fecha Promesa | regla nueva de Ricardo: Empleados sí, Agentes nunca | **media**: Diego (Empleado) la puso y persistió. Falta la mitad del Agente — hace falta la contraseña de MATEO |
 
+### La "rareza" del Responsable tampoco era un bug — `no-era-bug`
+
+Dos veces escribí que el selector de Responsable y la lista de @menciones se
+contradecían, y las dos veces di una causa equivocada (primero equipos
+distintos, luego nombres iguales). **Las dos listas están bien.**
+
+- **Responsable** le ofrecía solo a Diego porque él es **ejecutivo** del
+  equipo, y `TramiteDetalles.tsx` lo corta a propósito:
+  *"Ejecutivo: solo puede asignarse a sí mismo"*
+  (`canSelfAssignOnly = myTeamRole === 'ejecutivo' && !isAdmin && !isGerente`).
+  Un ejecutivo **toma** el trámite, no se lo reparte a otro.
+- **@menciones** le traía a Laura y Sofía porque es el equipo completo menos
+  uno mismo.
+
+Comprobado: el equipo Comercial tiene a los tres (Diego y Sofía ejecutivos,
+Laura líder), así que nunca fueron equipos distintos.
+
+🔑 **La lección, que costó dos diagnósticos malos seguidos:** dos listas que no
+coinciden **no son prueba de nada**. Antes de explicar por qué difieren hay que
+mirar qué pide cada una. Aquí la respuesta estaba en un comentario del código.
+
+Esto **no invalida el renombrado**: siete entradas idénticas en un selector
+siguen siendo imposibles de usar. Lo que se cae es la justificación que le puse
+encima.
+
+---
+
 ### B5 · No eran duplicados — `corregido el diagnóstico`
 
 El 30/10 escribí aquí que había "siete equipos duplicados" y que había que
