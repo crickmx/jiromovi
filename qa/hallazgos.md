@@ -41,8 +41,6 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 |---|---|---|---|
 | B5 | siete equipos **de áreas distintas** con el mismo nombre — NO es duplicado | reporte + diagnosticado bien el 04/11 | **de Ricardo** — se renombran, no se borran |
 | B7 | "Mesa de Control Aguascalienteses" | reporte + confirmado 30/10 | **de Ricardo** — es dato, no código |
-| H-009 | mencionar a alguien **no le avisa**: nada lee la tabla de menciones | Claude, 04/11 | nuevo |
-| H-010 | un Agente no se puede mencionar, ni siendo el solicitante del trámite | Claude, 04/11 | nuevo |
 
 ## Cerrados en esta corrida
 
@@ -56,6 +54,8 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 | H-005 | prioridad/descripción/promesa decían "Sin registrar" | **verificado 04/11** — PRIORIDAD dice "Media", igual que el chip |
 | H-006 | "Última modificación" con el nombre equivocado | **verificado 04/11** — un comentario de Diego dejó su nombre, no el anterior |
 | H-007 | "Sin equipo asignado" teniendo equipo | **sin verificar** — es una rama transitoria, ver nota abajo |
+| H-009 | mencionar a alguien no le avisaba | **verificado 04/11** — Sofía recibió "te mencionó" |
+| H-010 | no se podía mencionar al solicitante | **verificado 04/11** — Valeria ya sale en la lista |
 | Fecha Promesa | regla nueva de Ricardo: Empleados sí, Agentes nunca | **media**: Diego (Empleado) la puso y persistió. Falta la mitad del Agente — hace falta la contraseña de MATEO |
 
 ### La "rareza" del Responsable tampoco era un bug — `no-era-bug`
@@ -105,6 +105,73 @@ leen el nombre solo para mostrarlo, y ninguna función de la base lo usa.
 terminado. Hay que preguntar **qué lo distingue en la base** antes de proponer
 borrar nada. Mismo error que el reporte de los bots cometió seis de once veces,
 ahora cometido por mí.
+
+---
+
+## H-009 y H-010 — las menciones, de punta a punta (04/11)
+
+### Lo que se hizo
+
+| | |
+|---|---|
+| **H-010** | se suma el **solicitante** del trámite a la lista de menciones. Antes era solo el equipo, y un Agente no es miembro operativo de ninguno (la base lo prohíbe con un trigger, 15/10): la persona PARA QUIEN es el trámite era la única que no se podía llamar |
+| **H-009** | al enviar, cada mencionado recibe aviso con `crearNotificacion`, que ya existía |
+
+**Tres decisiones, con su porqué:**
+
+1. **Avisa en CADA mención, no solo la primera.** El upsert de
+   `ticket_usuarios_mencionados` usa `ignoreDuplicates`, así que la segunda vez
+   que mencionas a alguien en el mismo trámite **no inserta fila**. Por eso el
+   aviso NO puede colgarse de un trigger sobre esa tabla: avisaría de la
+   primera y callaría el resto. Esa tabla es *"a quién se ha mencionado aquí"*,
+   un conjunto, no una bitácora.
+2. **Campanita sí, WhatsApp no.** Una mención no es urgente, y ese camino ya
+   duplicó avisos en octubre. Es cambiar un `false` si algún día se quiere.
+3. **Un aviso que falla no tumba el comentario.** El comentario ya se guardó y
+   es lo que importa.
+
+El filtro de bots viene gratis: `enviar_notificacion_individual` ya trae la
+guarda `aviso_de_bot_para_persona` (21/10), que deduce el trámite del
+`accion_url` — por eso la url va exactamente como `/tramites/<uuid>`.
+
+### 🔴 El bug que introduje yo, y cómo se cerró
+
+Al probarlo en vivo, Valeria —que es la **solicitante**— recibió **dos**
+campanitas por el mismo comentario:
+
+```
+21:14:47  "DIEGO PRUEBAS te mencionó"              ← el nuevo
+21:15:00  "Nuevo comentario en trámite TK296E6"    ← el trigger de siempre
+```
+
+Un comentario ya dispara `tramite_comentario_nuevo`, y ese aviso va al
+solicitante y al responsable. **El mismo ruido que se arregló en A4/B22**, y lo
+puse yo.
+
+Se cierra preguntándole a `resolver_destinatarios_aviso` quién va a recibir ya
+el aviso de comentario, y restando a esos. Se le pregunta a **esa** función en
+vez de reimplementar las reglas en el frontend: es la única que las tiene desde
+el 19/10, y reimplementarlas es exactamente como nacen las dos copias que luego
+se desincronizan.
+
+Si el resolver falla, se avisa a **todos** los mencionados: una campanita de
+más molesta, una que desaparece en silencio es la que hace daño.
+
+### La prueba final, con tres sesiones
+
+Diego mencionó a Valeria **y** a Sofía en un mismo comentario:
+
+| Persona | Qué recibió |
+|---|---|
+| **Valeria** — solicitante, mencionada | **una sola**: *"Nuevo comentario en trámite TK296E6"* (21:22:00) |
+| **Sofía** — del equipo, mencionada, no destinataria del aviso de comentario | **una sola**: *"DIEGO PRUEBAS te mencionó"* (21:21:15) |
+
+Nadie recibió dos, y nadie se quedó sin enterarse.
+
+⚠️ **El aviso de comentario llega por cron, no al instante.** Sale a la vuelta
+del minuto (`21:21:xx` → `21:22:00`). Al probar avisos hay que esperar ese
+minuto antes de concluir que no llegó — la primera lectura dio "nada" y casi
+lo doy por roto.
 
 ---
 
