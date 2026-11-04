@@ -1,35 +1,54 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-30)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-04)
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-30
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-04
 
-**Todas las migraciones están corridas**, incluida la del 30 (`20261030000001`).
-**`produccion` NO se tocó** desde el merge del 12.
+**Todas las migraciones están corridas**, incluida la del 04/11
+(`20261104000001`). **`produccion` NO se tocó** desde el merge del 12.
 
-**El reporte de los bots del 22/10 quedó CERRADO por completo.** Once arreglados
-el 29; M9 y M10 verificados en navegador el 30; **M11 descartado con evidencia**
-(ver abajo). Lo único que sigue del reporte son **B5, B7 y A6**, que son datos y
-configuración, no código.
+**El reporte de los bots del 22/10 está CERRADO ENTERO.** Lo último que
+quedaba —B5, B7 y A6— se cerró el 04/11. No queda nada de ese reporte.
 
-#### ❌ Lo primero: probar en navegador lo del 30/10
+⚠️ **Hay más gente trabajando en `main`.** El 04/11 entraron tres commits
+ajenos a media sesión (Directorio, limpieza de Bolt) y hubo que rebasar dos
+veces. `git fetch` antes de empezar, siempre.
 
-Nada de lo del 30 se ha visto funcionar — se subió a `main` al cerrar la sesión
-y el build salió después. Con la sesión de **DIEGO** (Empleado):
+**Lo siguiente, acordado con Ricardo al cerrar el 04/11:** seguir el recorrido
+de experiencia de usuario **como Empleado y como Gerente**. El del Agente ya
+está hecho (16 hallazgos, 4 arreglados). Ahí vive lo de atender, reasignar y
+cerrar, que el Agente no toca.
 
-- **Fecha Promesa (regla nueva de Ricardo, 30/10):** un **Empleado** ya debe
-  poder ponerla —antes solo Admin, Gerente o líder de equipo—; un **Agente**
-  nunca la edita, y solo la ve en la franja de fechas **cuando ya trae valor**.
-- **H-003 teclado:** en /tramites, `Tab` debe recorrer las tarjetas con un
-  anillo visible y `Enter` debe abrir el trámite. En la barra lateral colapsada,
-  cada icono debe anunciarse con su nombre.
-- **H-005:** en el detalle, PRIORIDAD / DESCRIPCIÓN / FECHA PROMESA de la tabla
-  "Información del Trámite" ya no deben decir *"Sin registrar"* cuando el chip
-  del encabezado sí trae el dato. Quedan de **solo lectura** a propósito.
-- **H-006** (migración ya corrida): comentar y confirmar que *"Última
-  modificación"* dice **quien comentó**, no el anterior.
-- **H-007:** entrar en frío a un trámite con equipo y confirmar que la etiqueta
-  nunca dice *"Sin equipo asignado"* teniendo equipo.
+#### ❌ Lo que falta, en orden
+
+**1. Terminar el recorrido de UX como Empleado y como Gerente.** El del Agente
+está en `qa/hallazgos.md` ("Recorrido de experiencia de usuario — 04/11"), con
+16 hallazgos; cuatro ya arreglados y verificados. Faltan los roles que
+**atienden**: tomar un trámite del pool, reasignarlo, cambiar estatus con su
+nota, cerrar. Prioridad 1 de Ricardo: *"la experiencia del usuario"*.
+
+**2. Los 12 hallazgos de UX que quedaron sin tocar.** Los que Ricardo y yo
+pusimos arriba:
+
+- **"Crear Trámite" está habilitado con el formulario vacío** (U-12).
+- **Área y Tipo ocupan las dos primeras posiciones ya elegidos** (U-13),
+  empujando abajo lo que hay que llenar.
+- **"Compañía\*" cuyo texto dice "(opcional)"** (U-08) y **"Vehiculos"** sin
+  acento mostrado al usuario (U-09).
+- **Un trámite "Iniciado" y sin responsable aparece bajo "En proceso — Siendo
+  atendidos por el equipo"** (U-03). La clasificación puede ser correcta; la
+  leyenda es la que miente.
+- **"0d / 1d"** en cada tarjeta sin decir qué son (U-11).
+- **Ningún campo del alta tiene etiqueta programática** (U-16), misma familia
+  que H-003 y H-008.
+
+**3. De Ricardo, en sus pantallas de Admin:**
+
+- **B8** — *"informaicón"* en la ayuda del adjunto de Cotización (FormBuilder).
+- **"Es Renovación" viene MARCADO por defecto** (U-14). Si la mayoría de las
+  cotizaciones son negocio nuevo, el default está al revés.
+- **Reporte Semanal** — Ricardo dijo el 04/11 que lo configura él como admin,
+  dentro de algún tipo de trámite. **No lo toquemos.**
 
 #### Cómo se maneja un usuario bot desde esta máquina
 
@@ -59,67 +78,37 @@ Los otros: `+gerente@` LAURA · `+agente1@` MATEO · `+agente2@` VALERIA ·
 2. El orden de `--pagina` **no** es el orden en que se abrieron las pestañas.
    Identificar cada una con `--resumen` antes de actuar.
 
-#### 🔴 De Ricardo, no de código — y bloquea cosas reales
+#### ✅ B5 y B7 — resueltos el 04/11, y la lección que dejaron
 
-**B5 NO ES UN DUPLICADO. Son siete equipos legítimos, uno por área, que se
-llaman igual.** (Corregido el 04/11; hasta esa fecha esta misma sección decía
-"hay que decidir cuál de los siete sobrevive" — **eso habría roto la
-asignación de seis áreas**.)
+**B5 NO ERA UN DUPLICADO.** Eran **siete equipos legítimos, uno por área**
+(Administración, Comercial, Facturación/Cobranza, Mercadotecnia, Mesa de
+Control, Sistemas, Tesorería), creados en el mismo microsegundo por el script
+que levantó a los bots. El modelo **exige** uno por área: así resuelve
+`get_grupo_para_ticket`.
 
-| Área | id |
-|---|---|
-| Administración | `056dbe8e…` |
-| Comercial | `dbf4e7e9…` |
-| Facturación/Cobranza | `4d26130b…` |
-| Mercadotecnia | `661a491e…` |
-| Mesa de Control | `81b45058…` |
-| Sistemas | `83123c4e…` |
-| Tesorería | `3467ef12…` |
+Hasta el 04/11 esta misma sección decía *"hay que decidir cuál de los siete
+sobrevive"*. **Eso habría roto la asignación de seis áreas.** Lo único malo era
+el nombre, y se resolvió renombrándolos (`Pruebas MOVI Digital · <área>`).
 
-Los siete nacieron **en el mismo microsegundo** (21/10, 17:03:20.842114): el
-script con el que Christofer creó a los bots levantó un equipo por área. El
-modelo **exige** un equipo por área —así resuelve `get_grupo_para_ticket`—, así
-que **borrar seis rompe seis áreas**. El defecto es **solo el nombre**.
+**B7** era una errata en un solo equipo, ya corregida:
+*Aguascalient**eses*** → *Aguascalientes*.
 
-⚠️ **Lo que NO explica** (corregido el 04/11, segunda corrección del mismo
-hilo): que a Diego el selector de Responsable solo le ofrezca a sí mismo
-mientras las @menciones le traen a Laura y a Sofía. Llegué a escribir aquí que
-eran "dos consultas pegándole a equipos distintos con el mismo nombre".
-**Falso**: se comprobó que el equipo Comercial tiene a los tres.
+Renombrar fue seguro porque se verificó antes: **nadie empareja equipos por
+nombre**. Los diez lugares del frontend buscan por `id` y leen el nombre solo
+para mostrarlo; ninguna función de la base lo usa.
 
-**Las dos listas están bien.** `TramiteDetalles.tsx` lo dice con todas sus
-letras: *"Ejecutivo: solo puede asignarse a sí mismo"* —
-`canSelfAssignOnly = myTeamRole === 'ejecutivo' && !isAdmin && !isGerente`
-sustituye la lista de miembros por el propio usuario. Un ejecutivo **toma** el
-trámite, no se lo reparte a otro. Y la lista de menciones es el equipo entero
-menos uno mismo. Ninguna de las dos es un bug.
+🔑 **Dos reglas de método que costaron tres diagnósticos equivocados seguidos,
+todos míos:**
 
-🔑 Y la lección de método, que me costó dos diagnósticos malos seguidos en el
-mismo hilo: **dos listas que no coinciden no son prueba de nada.** Antes de
-explicar por qué diferen, hay que mirar qué pide cada una — aquí la respuesta
-estaba en un comentario del código, no en los datos.
-
-**El arreglo es renombrarlos**, y es seguro: se verificó que **nadie empareja
-equipos por nombre**. Los diez lugares del frontend buscan por `id` y leen el
-nombre solo para mostrarlo; ninguna función de la base lo usa.
-
-```sql
-update tramites_grupos_visualizacion g
-   set nombre = 'Pruebas MOVI Digital · ' || a.nombre
-  from tramites_areas a
- where a.id = g.area_id
-   and g.nombre = 'Pruebas MOVI Digital';
-```
-
-Va por `area_id` (la FK) y **no** por `area_categoria`, que es la copia
-congelada del nombre y puede estar vieja — es la lección del 30/09.
-
-🔑 **La regla que sale de aquí:** antes de llamar "duplicado" a algo que se ve
-repetido en un selector, mirar **qué lo distingue en la base**. Siete filas con
-el mismo nombre y siete `area_id` distintos no son un duplicado: son una
-etiqueta mal puesta.
-
-**B7:** *"Mesa de Control Aguascalienteses"*, en ese mismo selector.
+1. **Antes de llamar "duplicado" a algo que se ve repetido en un selector,
+   mirar qué lo distingue en la base.** Siete filas con el mismo nombre y siete
+   `area_id` distintos no son un duplicado: son una etiqueta mal puesta.
+2. **Dos listas que no coinciden no son prueba de nada.** El selector de
+   Responsable y el de @menciones mostraban cosas distintas; expliqué la
+   diferencia dos veces y las dos me equivoqué. Las dos listas estaban bien:
+   un **ejecutivo** solo puede asignarse a sí mismo (`canSelfAssignOnly`, está
+   escrito en el código), y las menciones son el equipo menos uno mismo. Hay
+   que mirar **qué pide cada consulta** antes de explicar por qué difieren.
 
 #### SeguWallet — FUERA de nuestros pendientes
 
@@ -165,6 +154,7 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261029000005_el_equipo_se_ve_a_si_mismo.sql` | **A8** — lectura por equipo en `tramites_grupos_miembros` | ✅ corrida |
 | `20261029000006_las_tablas_de_tramites_si_transmiten.sql` | **A9** — publica Trámites y Store en `supabase_realtime` | ✅ corrida |
 | `20261030000001_quien_comento_es_quien_modifico.sql` | **H-006** — comentar ya actualiza `modificado_por`, no solo la fecha | ✅ corrida |
+| `20261104000001_quitar_politica_de_menciones_rota.sql` | quita `tickets_mencionados_select`, una política de SELECT sobre `tickets` que nunca concedió nada y cuyo alcance no estaba ligado a la fila consultada | ✅ corrida |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
@@ -262,6 +252,151 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### ✅ 2026-11-04 — cinco sesiones a la vez, las menciones, y el recorrido de UX
+
+Día largo. Lo importante en orden de valor.
+
+#### Las cinco ventanas, una por bot
+
+`qa/abrir-todos.cmd` abre **una ventana de Chrome por usuario bot**, cada una
+con su perfil y **su puerto fijo**, para que decir "el 9224" sea siempre Diego:
+
+| Puerto | Quién | Rol |
+|---|---|---|
+| 9222 | MATEO | Agente |
+| 9223 | VALERIA | Agente |
+| 9224 | DIEGO | Empleado |
+| 9225 | SOFÍA | Empleado |
+| 9226 | LAURA | Gerente |
+
+⚠️ **Van de una en una con pausa a propósito**: lanzar las cinco a la vez **no
+funciona** —Chrome se pisa a sí mismo y solo arranca una, y las otras cuatro
+acaban como pestañas dentro de la primera—. Probado.
+
+La contraseña la pone Ricardo; el SQL para las cinco de un golpe está en
+`qa/README.md`. **La sesión sobrevive a cerrar Chrome y al fin de semana**:
+el 04/11 se reabrió y entró directo, sin pedir nada.
+
+#### Lo que solo se puede ver con sesiones de personas distintas
+
+- **Tiempo real ENTRE USUARIOS: funciona.** Diego comentó y apareció en la
+  pestaña de Valeria sin recargar. **No es la prueba del 29/10**, que eran dos
+  pestañas del mismo usuario: Realtime evalúa la RLS **por suscriptor**.
+- **Permisos correctos:** un trámite nuevo de Mateo lo ven Diego (del equipo) y
+  Laura (Gerente); **Valeria, que es otra Agente, no.**
+- **Fecha Promesa, la regla de Ricardo, verificada entera:** Valeria (Agente)
+  **ve** la fecha cuando el trámite la trae y **no tiene el campo** para
+  editarla; en un trámite sin fecha no le aparece nada.
+
+#### 🔴 Las menciones no avisaban a nadie (H-009)
+
+La mención se guardaba en `ticket_usuarios_mencionados` y **nada en el proyecto
+leía esa tabla**: ni el frontend, ni las edge functions, ni ningún trigger
+(se revisó `pg_trigger`, no solo el repo). El autocompletado que se arregló el
+29/10 servía para **escribir** la mención; la persona mencionada no se enteraba
+nunca. Comprobado consultando las notificaciones de Laura con su propia sesión.
+
+**Tres decisiones, con su porqué:**
+
+1. **El aviso NO puede colgarse de un trigger sobre esa tabla.** El upsert usa
+   `ignoreDuplicates`, así que la segunda mención a la misma persona en el
+   mismo trámite **no inserta fila**: un trigger avisaría de la primera y
+   callaría el resto. Esa tabla es *"a quién se ha mencionado aquí"*, un
+   conjunto, no una bitácora.
+2. **Campanita sí, WhatsApp no.** Es cambiar un `false` si se quiere.
+3. **Un aviso que falla no tumba el comentario.**
+
+**Y H-010:** a un **Agente no se le podía mencionar ni siendo el solicitante**,
+porque la lista eran los miembros del equipo y un Agente no es miembro
+operativo. Ahora se le suma aparte.
+
+**🔴 Un bug que introduje y cerré el mismo día:** Valeria, que es la
+solicitante, recibió **dos** campanitas por el mismo comentario —"te mencionó"
+y "Nuevo comentario"—, que es el ruido de A4/B22 otra vez. Se cierra
+preguntándole a **`resolver_destinatarios_aviso`** quién va a recibir ya el
+aviso de comentario y restando a esos; se le pregunta a **esa** función en vez
+de reimplementar las reglas, que es como nacen las copias que se desincronizan.
+Si falla, se avisa a todos: una campanita de más molesta, una que desaparece en
+silencio es la que hace daño.
+
+Prueba final, con tres sesiones: Diego mencionó a Valeria **y** a Sofía en un
+comentario. Valeria recibió **una** ("Nuevo comentario"), Sofía recibió **una**
+("te mencionó"). Nadie dos, nadie cero.
+
+#### A6 — eran dos tipos, y el arreglo no era el que parecía
+
+La consulta de diagnóstico que quedó escrita en octubre **sobre-reporta**:
+lista ocho tipos sin campo de sistema, pero **seis no tienen nada roto** porque
+ya tienen su **propio** campo de adjuntos.
+
+Los dos que fallaban —*Alta Usuario Beta* y *Reporte Semanal*— resultaron no
+necesitar campos nuevos: **ninguno se crea desde el formulario genérico en la
+vida real.** *Alta Usuario Beta* nace del botón "Únete al Programa Beta"
+(`SolicitudBetaModal`), que sí tiene su casilla y la guarda; *Reporte Semanal*
+no lo crea ninguna pantalla. **Los únicos dos trámites vacíos que existen son
+de la corrida de los bots del 22/10.**
+
+Decisión de Ricardo: **quitar *Alta Usuario Beta* de las altas genéricas.** Y
+eran **dos** puertas, no una: el alta de Trámites y "Iniciar trámite" desde un
+correo. La lista vive en `useTiposTramite` (`TIPOS_CON_PANTALLA_PROPIA`) y la
+usan las dos.
+
+**No se desactivó el tipo**: desactivarlo diría en Catálogos que está dado de
+baja, y no lo está. (`SolicitudBetaModal` lo busca **sin** filtrar por
+`activo`, así que desactivarlo tampoco habría roto el botón — pero habría
+dejado una pantalla mintiendo.)
+
+#### El recorrido de experiencia de usuario
+
+Pedido de Ricardo: *"la experiencia del usuario es la prioridad 1"*. Hecho
+**como usuario**, con la sesión de MATEO (Agente): se creó TK873C5 de principio
+a fin y se siguió hasta que Diego lo tomó. **16 hallazgos**, en
+`qa/hallazgos.md`.
+
+**Lo que funciona y no hay que tocar:** el contador de requeridos es honesto
+(`2/6` con Vehículos → `2/3` con Daños, y la sección Autos desaparece); el
+selector de aseguradoras pone las preferentes arriba; el agente **se entera**
+cuando alguien toma su trámite (campanita 32 → 33); el modal de confirmación
+solo sale cuando hay cambio de estatus.
+
+**Los cuatro que Ricardo aprobó, arreglados y verificados en navegador:**
+
+| | Antes | Ahora |
+|---|---|---|
+| **U-01** oficina | *"Auto-completa al seleccionar agente"*, vacía | **"Oficina MOVI Digital"** |
+| **U-02** fecha | tabla `2026-11-04T22:33:11.806Z` · franja `04 nov 2026, 04:33 p.m.` | **las dos iguales** |
+| **U-04** descripción | **3 veces** en el detalle | **1 vez** |
+| **U-07** texto | *"El área y equipo se asignan automáticamente…"* junto a un Área obligatoria | *"El equipo que lo atenderá se asigna solo…"* |
+
+🔑 **U-01 no se arregló con un valor por defecto.** La causa era que el campo
+solo se llenaba dentro del `onChange` del selector de Solicitante, y cuando el
+Agente levanta su propio trámite **ese selector ni se dibuja**: esperaba un
+evento imposible. Es el mismo molde que ya tenía al lado, con su comentario, de
+cuando al Solicitante le pasó exactamente lo mismo.
+
+🔑 **U-02 usa la MISMA función que la franja** (`fechaYHora`, ahora exportada),
+no una copia. Dos copias de un formato de fecha es cómo vuelven a divergir.
+
+#### 🔑 Tres trampas del manejador, anotadas
+
+1. **El verbo `texto` corta a 1500 caracteres.** Un texto que no aparece puede
+   estar más allá del corte; casi doy por no desplegado un cambio que sí estaba.
+2. **`--resumen` y `texto` incluyen TODAS las opciones de un `<select>`**, no
+   la elegida. Por eso el bloque de Equipo "decía" *Sin equipo asignado* con
+   "Pruebas MOVI Digital" seleccionado. Para saber qué se ve, leer
+   `select.value`.
+3. **Dar "Guardar" en el detalle no guarda**: abre *"Antes de guardar…"* y el
+   guardado real está en **"Guardar cambios"** del modal — el **primero** de
+   los dos con ese texto; el otro es la barra pegajosa de atrás, tapada por el
+   velo. Me costó concluir, mal, que no se mandaba ninguna petición.
+
+#### Lo que quedó de prueba en producción
+
+**TK873C5** — *"[PRUEBA UX 04/11] Cotización de auto…"*, de MATEO, tomado por
+DIEGO. Es de bot (`es_bot`), así que no sale en el tablero del Admin.
 
 ---
 
