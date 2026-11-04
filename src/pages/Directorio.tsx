@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical, Phone, Loader2 } from 'lucide-react';
+import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical, Phone, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,15 @@ type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
 };
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
+type CampoOrden = 'usuario' | 'rol' | 'oficina';
+
+const valorOrden = (u: Usuario, campo: CampoOrden): string => {
+  switch (campo) {
+    case 'usuario': return normalizarTexto(`${u.nombre ?? ''} ${u.apellidos ?? ''}`);
+    case 'rol': return normalizarTexto(u.rol ?? '');
+    case 'oficina': return normalizarTexto(u.oficinas?.nombre ?? '');
+  }
+};
 
 export function Directorio() {
   const { usuario: currentUser, reloadUsuario: refreshUsuario } = useAuth();
@@ -34,6 +43,8 @@ export function Directorio() {
   // para que lo que se ve y lo que se filtra no puedan contradecirse.
   const [filterEstado, setFilterEstado] = useState<'' | 'activo' | 'inactivo'>('');
   const [loading, setLoading] = useState(true);
+  // Orden de la tabla: clic en el encabezado alterna ascendente/descendente.
+  const [orden, setOrden] = useState<{ campo: CampoOrden; dir: 'asc' | 'desc' }>({ campo: 'usuario', dir: 'asc' });
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -329,6 +340,47 @@ export function Directorio() {
   });
 
   const puedeBulkEditar = isAdmin || isGerente;
+
+  // Los inactivos van arriba, en su propio apartado: son los que esperan que
+  // alguien los active. El orden elegido se aplica dentro de cada apartado.
+  const ordenados = [...filteredUsuarios].sort((a, b) => {
+    const va = valorOrden(a, orden.campo);
+    const vb = valorOrden(b, orden.campo);
+    // Vacíos (sin oficina, sin rol) siempre al final, en cualquier dirección.
+    if (!va && vb) return 1;
+    if (va && !vb) return -1;
+    const cmp = va.localeCompare(vb, 'es', { numeric: true })
+      || valorOrden(a, 'usuario').localeCompare(valorOrden(b, 'usuario'), 'es');
+    return orden.dir === 'asc' ? cmp : -cmp;
+  });
+  const pendientesActivar = ordenados.filter((u) => !u.activo);
+  const activosOrdenados = ordenados.filter((u) => !!u.activo);
+  const columnas = puedeBulkEditar ? 6 : 5;
+
+  const cambiarOrden = (campo: CampoOrden) =>
+    setOrden((prev) => prev.campo === campo
+      ? { campo, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+      : { campo, dir: 'asc' });
+
+  const EncabezadoOrdenable = ({ campo, children }: { campo: CampoOrden; children: React.ReactNode }) => {
+    const activo = orden.campo === campo;
+    const Icono = !activo ? ArrowUpDown : orden.dir === 'asc' ? ArrowUp : ArrowDown;
+    return (
+      <th
+        className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider"
+        aria-sort={activo ? (orden.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      >
+        <button
+          type="button"
+          onClick={() => cambiarOrden(campo)}
+          className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-neutral-800 ${activo ? 'text-neutral-800' : ''}`}
+        >
+          {children}
+          <Icono className={`w-3.5 h-3.5 ${activo ? '' : 'opacity-40'}`} />
+        </button>
+      </th>
+    );
+  };
   const allFilteredSelected = filteredUsuarios.length > 0 && filteredUsuarios.every((u) => selectedIds.has(u.id));
   const selectedUsuarios = usuarios.filter((u) => selectedIds.has(u.id));
   const selectedConEquipos = selectedUsuarios.filter((u) => puedeTenerEquiposTramite(u.rol));
@@ -467,168 +519,7 @@ export function Directorio() {
     return <LoadingState text="Cargando directorio..." />;
   }
 
-  return (
-    <div className="space-y-5">
-      <PageHeader
-        title="Usuarios"
-        description={isGerente ? 'Gestiona usuarios de tu oficina' : 'Directorio de usuarios del sistema (v2)'}
-        icon={Users}
-        badge={isReadOnly ? (
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">
-            Solo lectura
-          </span>
-        ) : undefined}
-        actions={
-          <Button size="sm" onClick={() => { setSelectedUser(null); setModalOpen(true); }}>
-            <UserPlus className="w-4 h-4 mr-1.5" />
-            Nuevo
-          </Button>
-        }
-      />
-
-      <SolicitudesAltaPanel isAdmin={isAdmin} onResuelta={loadData} />
-
-      {loadError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-sm text-red-700 dark:text-red-300 font-medium">Error cargando usuarios</p>
-          <p className="text-xs text-red-600 dark:text-red-400 mt-1 break-all">{loadError}</p>
-          <div className="mt-3 flex gap-2">
-            <button onClick={loadData} className="text-xs font-medium text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-md transition">
-              Reintentar
-            </button>
-            <button onClick={() => window.location.reload()} className="text-xs font-medium text-red-700 dark:text-red-300 border border-red-300 px-3 py-1.5 rounded-md hover:bg-red-100 transition">
-              Recargar pagina
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
-        <div className="p-4 border-b border-neutral-100 dark:border-white/5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            <div className="sm:col-span-2 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 dark:text-white/45" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, correo, telefono..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-500 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
-              />
-            </div>
-
-            <div className="flex items-center">
-              <MultiSelectDropdown
-                label="Rol"
-                options={[
-                  { value: 'Administrador', label: 'Administrador' },
-                  { value: 'Gerente', label: 'Gerente' },
-                  { value: 'Empleado', label: 'Empleado' },
-                  { value: 'Agente', label: 'Agente' },
-                ]}
-                selected={filterRol}
-                onChange={setFilterRol}
-              />
-            </div>
-
-            {currentUser?.rol !== 'Gerente' && (
-              <div className="flex items-center">
-                <MultiSelectDropdown
-                  label="Oficina"
-                  options={oficinas.map((o) => ({ value: o.id, label: o.nombre }))}
-                  selected={filterOficina}
-                  onChange={setFilterOficina}
-                />
-              </div>
-            )}
-
-            <select
-              value={filterEstado}
-              onChange={(e) => setFilterEstado(e.target.value as '' | 'activo' | 'inactivo')}
-              className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
-            >
-              <option value="">Activos e inactivos</option>
-              <option value="activo">Solo activos</option>
-              <option value="inactivo">Solo inactivos</option>
-            </select>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between">
-            <p className="text-xs text-neutral-500 dark:text-white/55">
-              {filteredUsuarios.length} de {usuarios.length} usuarios
-            </p>
-          </div>
-
-          {puedeBulkEditar && selectedIds.size > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 bg-accent/5 border border-accent/20 rounded-lg px-3 py-2">
-              <span className="text-xs font-semibold text-neutral-700 dark:text-white/80">
-                {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
-              </span>
-              {isAdmin && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => { setBulkEquiposTeamIds([]); setBulkEquiposResultado(null); setBulkEquiposOpen(true); }}
-                >
-                  <Users className="w-3.5 h-3.5 mr-1.5" />
-                  Editar equipos ({selectedConEquipos.length})
-                </Button>
-              )}
-              {isAdmin && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => { setBulkActivarResultado(null); setBulkActivarOpen(true); }}
-                >
-                  <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
-                  Activar ({selectedInactivos.length})
-                </Button>
-              )}
-              <Button size="sm" variant="outline" onClick={() => setBulkCelularOpen(true)}>
-                <Phone className="w-3.5 h-3.5 mr-1.5" />
-                Copiar celular personal → trabajo ({selectedConCelularFaltante.length})
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
-                Quitar selección
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <div className="overflow-auto max-h-[65vh]">
-          <table className="w-full min-w-[760px]">
-            <thead className="bg-neutral-50 border-b border-neutral-200 sticky top-0 z-10">
-              <tr>
-                {puedeBulkEditar && (
-                  <th className="px-3 py-3 text-left w-10">
-                    <input
-                      type="checkbox"
-                      checked={allFilteredSelected}
-                      onChange={toggleSelectAllFiltered}
-                      className="h-4 w-4 rounded border-neutral-300 text-accent-ink focus:ring-accent"
-                      aria-label="Seleccionar todos los filtrados"
-                    />
-                  </th>
-                )}
-                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Usuario
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Rol
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Oficina
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-3 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-neutral-200">
-              {filteredUsuarios.map((usuario) => (
+  const renderFila = (usuario: Usuario) => (
                 <tr key={usuario.id} className="hover:bg-slate-50 transition">
                   {puedeBulkEditar && (
                     <td className="px-3 py-3 whitespace-nowrap">
@@ -806,7 +697,181 @@ export function Directorio() {
                     </div>
                   </td>
                 </tr>
-              ))}
+  );
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Usuarios"
+        description={isGerente ? 'Gestiona usuarios de tu oficina' : 'Directorio de usuarios del sistema (v2)'}
+        icon={Users}
+        badge={isReadOnly ? (
+          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">
+            Solo lectura
+          </span>
+        ) : undefined}
+        actions={
+          <Button size="sm" onClick={() => { setSelectedUser(null); setModalOpen(true); }}>
+            <UserPlus className="w-4 h-4 mr-1.5" />
+            Nuevo
+          </Button>
+        }
+      />
+
+      <SolicitudesAltaPanel isAdmin={isAdmin} onResuelta={loadData} />
+
+      {loadError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-sm text-red-700 dark:text-red-300 font-medium">Error cargando usuarios</p>
+          <p className="text-xs text-red-600 dark:text-red-400 mt-1 break-all">{loadError}</p>
+          <div className="mt-3 flex gap-2">
+            <button onClick={loadData} className="text-xs font-medium text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-md transition">
+              Reintentar
+            </button>
+            <button onClick={() => window.location.reload()} className="text-xs font-medium text-red-700 dark:text-red-300 border border-red-300 px-3 py-1.5 rounded-md hover:bg-red-100 transition">
+              Recargar pagina
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-hidden">
+        <div className="p-4 border-b border-neutral-100 dark:border-white/5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="sm:col-span-2 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 dark:text-white/45" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre, correo, telefono..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-neutral-500 dark:placeholder:text-white/30 text-neutral-900 dark:text-white"
+              />
+            </div>
+
+            <div className="flex items-center">
+              <MultiSelectDropdown
+                label="Rol"
+                options={[
+                  { value: 'Administrador', label: 'Administrador' },
+                  { value: 'Gerente', label: 'Gerente' },
+                  { value: 'Empleado', label: 'Empleado' },
+                  { value: 'Agente', label: 'Agente' },
+                ]}
+                selected={filterRol}
+                onChange={setFilterRol}
+              />
+            </div>
+
+            {currentUser?.rol !== 'Gerente' && (
+              <div className="flex items-center">
+                <MultiSelectDropdown
+                  label="Oficina"
+                  options={oficinas.map((o) => ({ value: o.id, label: o.nombre }))}
+                  selected={filterOficina}
+                  onChange={setFilterOficina}
+                />
+              </div>
+            )}
+
+            <select
+              value={filterEstado}
+              onChange={(e) => setFilterEstado(e.target.value as '' | 'activo' | 'inactivo')}
+              className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
+            >
+              <option value="">Activos e inactivos</option>
+              <option value="activo">Solo activos</option>
+              <option value="inactivo">Solo inactivos</option>
+            </select>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-xs text-neutral-500 dark:text-white/55">
+              {filteredUsuarios.length} de {usuarios.length} usuarios
+            </p>
+          </div>
+
+          {puedeBulkEditar && selectedIds.size > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 bg-accent/5 border border-accent/20 rounded-lg px-3 py-2">
+              <span className="text-xs font-semibold text-neutral-700 dark:text-white/80">
+                {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+              </span>
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setBulkEquiposTeamIds([]); setBulkEquiposResultado(null); setBulkEquiposOpen(true); }}
+                >
+                  <Users className="w-3.5 h-3.5 mr-1.5" />
+                  Editar equipos ({selectedConEquipos.length})
+                </Button>
+              )}
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setBulkActivarResultado(null); setBulkActivarOpen(true); }}
+                >
+                  <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                  Activar ({selectedInactivos.length})
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={() => setBulkCelularOpen(true)}>
+                <Phone className="w-3.5 h-3.5 mr-1.5" />
+                Copiar celular personal → trabajo ({selectedConCelularFaltante.length})
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                Quitar selección
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="overflow-auto max-h-[65vh]">
+          <table className="w-full min-w-[760px]">
+            <thead className="bg-neutral-50 border-b border-neutral-200 sticky top-0 z-10">
+              <tr>
+                {puedeBulkEditar && (
+                  <th className="px-3 py-3 text-left w-10">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAllFiltered}
+                      className="h-4 w-4 rounded border-neutral-300 text-accent-ink focus:ring-accent"
+                      aria-label="Seleccionar todos los filtrados"
+                    />
+                  </th>
+                )}
+                {EncabezadoOrdenable({ campo: 'usuario', children: 'Usuario' })}
+                {EncabezadoOrdenable({ campo: 'rol', children: 'Rol' })}
+                {EncabezadoOrdenable({ campo: 'oficina', children: 'Oficina' })}
+                <th className="px-3 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  Estado
+                </th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-neutral-200">
+              {pendientesActivar.length > 0 && (
+                <>
+                  <tr className="bg-amber-50">
+                    <td colSpan={columnas} className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-amber-800">
+                      Pendientes de activar ({pendientesActivar.length})
+                    </td>
+                  </tr>
+                  {pendientesActivar.map(renderFila)}
+                  {activosOrdenados.length > 0 && (
+                    <tr className="bg-neutral-50">
+                      <td colSpan={columnas} className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        Activos ({activosOrdenados.length})
+                      </td>
+                    </tr>
+                  )}
+                </>
+              )}
+              {activosOrdenados.map(renderFila)}
             </tbody>
           </table>
 
