@@ -1746,6 +1746,8 @@ export function NuevoTramiteModal({
                         setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: files.filter((_, j) => j !== i) }));
                         setAdjuntoCatsArchivo(prev => ({ ...prev, [campo.id]: catsDeArchivo.filter((_, j) => j !== i) }));
                       }}
+                      aria-label={`Quitar ${f.name}`}
+                      title={`Quitar ${f.name}`}
                       className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

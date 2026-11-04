@@ -2607,6 +2607,8 @@ export function TramiteDetalle() {
                                 {editable && (
                                   <button type="button"
                                     onClick={() => set(archivos.filter((_, j) => j !== i))}
+                                    aria-label={`Quitar ${archivo.nombre}`}
+                                    title={`Quitar ${archivo.nombre}`}
                                     className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>

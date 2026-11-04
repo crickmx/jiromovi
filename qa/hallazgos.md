@@ -49,12 +49,62 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 | M9 | el par Lista/Tablero no hacía nada en Concluidos ni en Papelera | `b5f02343` — **verificado en navegador** |
 | M10 | un corte de red manda a la pantalla de login y borra lo capturado | `b5f02343` — **verificado en navegador** |
 | M11 | Diego no ve la caja de comentarios | **no-era-bug** — probado con su sesión real, ver ficha |
-| H-003 | barra lateral y tarjetas sin acceso por teclado | `DesktopSidebar.tsx` + `Tramites.tsx` — falta probar |
-| H-004 | "Ver todos los comentarios" no decía que ahí se responde | `TramiteDetalle.tsx` — falta probar |
-| H-005 | prioridad/descripción/promesa decían "Sin registrar" | `TramiteDetalle.tsx` — falta probar |
-| H-006 | "Última modificación" con el nombre equivocado | migración `20261030000001` — **falta correrla** |
-| H-007 | "Sin equipo asignado" teniendo equipo | `TramiteDetalles.tsx` — falta probar |
-| Fecha Promesa | regla nueva de Ricardo: Empleados sí, Agentes nunca | `TramiteDetalle.tsx` — falta probar |
+| H-003 | barra lateral y tarjetas sin acceso por teclado | **verificado 04/11** — 0 botones sin nombre (eran 13); `Tab` llega a la tarjeta con anillo y `Enter` abre el trámite |
+| H-004 | "Ver todos los comentarios" no decía que ahí se responde | **verificado 04/11** — el link ya dice "Ver y responder comentarios" |
+| H-005 | prioridad/descripción/promesa decían "Sin registrar" | **verificado 04/11** — PRIORIDAD dice "Media", igual que el chip |
+| H-006 | "Última modificación" con el nombre equivocado | **verificado 04/11** — un comentario de Diego dejó su nombre, no el anterior |
+| H-007 | "Sin equipo asignado" teniendo equipo | **sin verificar** — es una rama transitoria, ver nota abajo |
+| Fecha Promesa | regla nueva de Ricardo: Empleados sí, Agentes nunca | **media**: Diego (Empleado) la puso y persistió. Falta la mitad del Agente — hace falta la contraseña de MATEO |
+
+## Verificaciones del 2026-11-04 (build `3a077319`)
+
+El perfil de Chrome **sobrevivió el fin de semana**: al reabrir entró directo a
+/tramites sin pedir contraseña. Los tokens de Supabase se renuevan solos.
+
+| | Cómo se comprobó | Resultado |
+|---|---|---|
+| **H-003** barra lateral | `--resumen` sobre /tramites | **0 botones sin nombre**. Eran 13 |
+| **H-003** teclado | 40 `Tab` desde el inicio de la página | llega a la tarjeta: `role="button"`, se anuncia **"Trámite TK296E6"**, con anillo de foco. **`Enter` abrió el trámite** |
+| **H-004** | leer el link del bloque de comentarios | dice **"Ver y responder comentarios →"** |
+| **H-005** | tabla "Información del Trámite" | **PRIORIDAD: Media**, igual que el chip. Antes decía "Sin registrar" |
+| **H-006** | comentario nuevo de Diego | *"Última modificación · DIEGO PRUEBAS"*. Antes ponía el nombre del anterior |
+| **Fecha Promesa** | Diego (Empleado) la puso, guardó y se recargó | persistió: la franja dice **"PROMESA DE ENTREGA · 11 feb 2026"** |
+
+### H-007 — sin verificar, y por qué
+
+La rama que arreglé es la de **solo lectura**, y a Diego le toca la editable
+(un `<select>`), así que su etiqueta nunca pasa por ahí. La condición —lista de
+equipos sin cargar, o un equipo que el usuario no alcanza a ver— es
+**transitoria**, y no se dejó reproducir a voluntad. Queda como arreglo
+defensivo sin comprobación en vivo.
+
+⚠️ **Trampa de lectura, por si vuelve a pasar:** el `--resumen` y el `texto`
+incluyen **todas** las opciones de un `<select>`, no la elegida. Por eso el
+bloque de Equipo "decía" *Sin equipo asignado* cuando el selector traía
+**Pruebas MOVI Digital** seleccionado. Para saber qué se ve de verdad hay que
+leer `select.value`, no el texto.
+
+### H-008 · Dos botones de BORRAR sin nombre — `arreglado 04/11`
+
+- **ruta**: detalle del trámite y alta, en la lista de archivos de un campo adjunto
+- **pasó**: el bote de basura que quita un archivo no tenía `aria-label` ni
+  `title`. Un lector de pantalla anunciaba "botón" y nada más
+- **por qué sube de categoría**: los otros botones sin nombre eran de navegar;
+  **este borra**. Es el peor sitio donde dejar un control anónimo
+- **arreglo**: `aria-label` y `title` con el nombre del archivo (`Quitar
+  <archivo>`), en las dos pantallas
+- **de paso**: `BaseModal.tsx` **sí** traía su `aria-label="Cerrar"` — el modal
+  de "Antes de guardar…" está dibujado a mano y no lo usa
+
+### El guardado del detalle lleva confirmación
+
+Dar **Guardar** no guarda: abre *"Antes de guardar… ¿Deseas cambiar el estatus
+del trámite?"* y el guardado real está en **"Guardar cambios"** del modal.
+Me costó una conclusión equivocada ("no manda ninguna petición"). Y hay **dos**
+botones con ese texto: el del modal y el de la barra pegajosa de atrás, que
+queda tapada por el velo — hay que clicar el **primero**.
+
+---
 
 ## Verificado de lo de ayer
 
