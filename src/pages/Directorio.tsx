@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical, Phone, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Search, UserPlus, Pencil as Edit, Trash2, ToggleLeft, ToggleRight, Users, ListFilter as Filter, Send, CircleCheck as CheckCircle, Eye, FlaskConical, Phone, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Globe } from 'lucide-react';
 import { UserModal } from '../components/UserModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,13 @@ type Usuario = Database['public']['Tables']['usuarios']['Row'] & {
   oficinas?: { nombre: string } | null;
 };
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
+const PAGINA_WEB_BASE = 'https://agentedeseguros.website';
+const MOVI_MI_PAGINA_URL = 'https://app.movi.digital/mercadotecnia/mi-pagina-web';
+const paginaWebDe = (slug: string) => `${PAGINA_WEB_BASE}/${slug}`;
+
+const escaparHtml = (t: string) =>
+  t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 type CampoOrden = 'usuario' | 'rol' | 'oficina';
 
 const valorOrden = (u: Usuario, campo: CampoOrden): string => {
@@ -43,6 +50,8 @@ export function Directorio() {
   // para que lo que se ve y lo que se filtra no puedan contradecirse.
   const [filterEstado, setFilterEstado] = useState<'' | 'activo' | 'inactivo'>('');
   const [loading, setLoading] = useState(true);
+  const [sendingWebId, setSendingWebId] = useState<string | null>(null);
+  const [webSentId, setWebSentId] = useState<string | null>(null);
   // Orden de la tabla: clic en el encabezado alterna ascendente/descendente.
   const [orden, setOrden] = useState<{ campo: CampoOrden; dir: 'asc' | 'desc' }>({ campo: 'usuario', dir: 'asc' });
   const [modalOpen, setModalOpen] = useState(false);
@@ -98,6 +107,59 @@ export function Directorio() {
       // silent
     } finally {
       setSendingAccessId(null);
+    }
+  };
+
+  // Le manda al usuario su link personalizado por correo y WhatsApp. El correo
+  // además lo invita a personalizar su página desde MOVI.
+  const handleSendPaginaWeb = async (usuario: Usuario) => {
+    const slug = usuario.web_slug;
+    if (!slug || sendingWebId) return;
+    const email = usuario.email_laboral || usuario.email_personal;
+    const celular = usuario.celular_laboral || usuario.celular_personal;
+    if (!email && !celular) {
+      alert('Este usuario no tiene correo ni celular registrado.');
+      return;
+    }
+    setSendingWebId(usuario.id);
+    const url = paginaWebDe(slug);
+    const nombre = escaparHtml(usuario.nombre || '');
+    const html = `
+      <p>Hola ${nombre},</p>
+      <p>Tu página web personalizada ya está lista:</p>
+      <p style="margin:20px 0;"><a href="${url}" style="font-size:16px;font-weight:bold;color:#1d4ed8;">${url.replace('https://', '')}</a></p>
+      <p>Compártela con tus clientes: ahí pueden conocerte, contactarte y cotizar contigo.</p>
+      <p><strong>Te invitamos a personalizarla</strong> con tu foto, tu logotipo y tu información desde MOVI:</p>
+      <p style="margin:24px 0;"><a href="${MOVI_MI_PAGINA_URL}" style="background:#1d4ed8;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;">Personalizar mi página en MOVI</a></p>
+      <p style="color:#6b7280;font-size:13px;">MOVI › Mercadotecnia › Mi Página Web</p>`;
+    const mensaje = `Hola ${usuario.nombre || ''}, tu página web personalizada ya está lista:\n${url}\n\nCompártela con tus clientes. Puedes personalizarla desde MOVI: ${MOVI_MI_PAGINA_URL}`;
+
+    const resultados: string[] = [];
+    const fallas: string[] = [];
+    try {
+      const envios = await Promise.allSettled([
+        email
+          ? supabase.functions.invoke('send-direct-email', { body: { to: email, subject: 'Tu página web personalizada', html } })
+          : Promise.resolve(null),
+        celular
+          ? supabase.functions.invoke('send-direct-whatsapp', { body: { phone: celular, message: mensaje } })
+          : Promise.resolve(null),
+      ]);
+      const evaluar = (r: PromiseSettledResult<any>, canal: string, aplica: boolean) => {
+        if (!aplica) return;
+        const ok = r.status === 'fulfilled' && !r.value?.error && r.value?.data?.success !== false;
+        (ok ? resultados : fallas).push(canal);
+      };
+      evaluar(envios[0], 'correo', !!email);
+      evaluar(envios[1], 'WhatsApp', !!celular);
+    } finally {
+      setSendingWebId(null);
+    }
+    if (fallas.length === 0) {
+      setWebSentId(usuario.id);
+      setTimeout(() => setWebSentId(null), 5000);
+    } else {
+      alert(`Página enviada por: ${resultados.join(' y ') || 'ningún canal'}.\nNo se pudo enviar por: ${fallas.join(' y ')}.`);
     }
   };
 
@@ -561,6 +623,18 @@ export function Directorio() {
                           )}
                         </div>
                         <div className="text-sm text-neutral-500">{usuario.puesto}</div>
+                        {usuario.web_slug && (
+                          <a
+                            href={paginaWebDe(usuario.web_slug)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-accent-ink hover:underline"
+                            title="Abrir su página web personalizada"
+                          >
+                            <Globe className="w-3 h-3" />
+                            agentedeseguros.website/{usuario.web_slug}
+                          </a>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -634,6 +708,25 @@ export function Directorio() {
                             : sendingAccessId === usuario.id
                             ? <span className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-500 rounded-full animate-spin" />
                             : <Send className="w-4 h-4" />
+                          }
+                        </button>
+                      )}
+                      {(isAdmin || isGerente) && usuario.web_slug && (
+                        <button
+                          onClick={() => handleSendPaginaWeb(usuario)}
+                          disabled={sendingWebId === usuario.id || webSentId === usuario.id}
+                          className={`flex items-center p-2 rounded-lg transition disabled:opacity-60 ${
+                            webSentId === usuario.id
+                              ? 'text-green-700 bg-green-50'
+                              : 'text-neutral-600 hover:text-sky-700 hover:bg-sky-50'
+                          }`}
+                          title="Enviar su página web por correo y WhatsApp"
+                        >
+                          {webSentId === usuario.id
+                            ? <CheckCircle className="w-4 h-4" />
+                            : sendingWebId === usuario.id
+                            ? <span className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-500 rounded-full animate-spin" />
+                            : <Globe className="w-4 h-4" />
                           }
                         </button>
                       )}

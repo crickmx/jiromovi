@@ -1207,7 +1207,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                     />
                     <p className="text-xs text-neutral-500 mt-1">
                       {formData.web_slug ? (
-                        <>URL: <span className="font-mono text-accent-ink">agentedeseguros.website/{formData.web_slug}</span></>
+                        <>URL: <a href={`https://agentedeseguros.website/${formData.web_slug}`} target="_blank" rel="noopener noreferrer" className="font-mono text-accent-ink hover:underline">agentedeseguros.website/{formData.web_slug}</a></>
                       ) : (
                         'Solo letras minúsculas, números y guiones'
                       )}
