@@ -110,6 +110,27 @@ ahora cometido por mí.
 
 ---
 
+## Los cuatro arreglos de UX — verificados en navegador (04/11)
+
+Build `3294c17a`, con la sesión de **MATEO (Agente)**, el mismo rol con el que
+se encontraron.
+
+| | Antes | Ahora |
+|---|---|---|
+| **U-01** oficina | *"Auto-completa al seleccionar agente"*, en blanco · detalle: *"Sin registrar"* | **"Oficina MOVI Digital"** |
+| **U-02** fecha | tabla: `2026-11-04T22:33:11.806Z` · franja: `04 nov 2026, 04:33 p.m.` | **las dos: `04 nov 2026, 04:33 p.m.`** |
+| **U-04** descripción | **3 veces** en el detalle | **1 vez**, en "Instrucciones / Descripción" |
+| **U-07** texto del área | *"El área y equipo se asignan automáticamente…"* junto a un selector de Área obligatorio | *"El equipo que lo atenderá se asigna solo, según el área y tu perfil"* |
+
+Se comprobó además que la descripción **sigue saliendo** una vez: el riesgo de
+este arreglo era borrarla de más, no de menos.
+
+⚠️ **Trampa del manejador, anotada:** el verbo `texto` **corta a 1500
+caracteres**. Al buscar el texto nuevo del alta no aparecía y casi lo doy por
+no desplegado — estaba, pero más allá del corte.
+
+---
+
 ## Recorrido de experiencia de usuario — 04/11
 
 Pedido de Ricardo: *"revisa el proceso de creación de trámite y seguimiento de
