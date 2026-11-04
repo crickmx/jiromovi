@@ -310,10 +310,36 @@ export function TramiteComentarios({ tramiteId, grupoId, agente, folio }: Tramit
         const donde = folio ? `el trámite ${folio}` : 'un trámite';
         const extracto = mensajeTexto.slice(0, 160);
 
+        // QA 2026-11-04 — y NO avisarle dos veces a la misma persona.
+        //
+        // Un comentario ya dispara `tramite_comentario_nuevo` por trigger, y
+        // ese aviso va al solicitante y al responsable. Sin esta resta,
+        // mencionar al solicitante le dejaba DOS campanitas por el mismo
+        // comentario (se vio en vivo: "te mencionó" a las 21:14:47 y "Nuevo
+        // comentario" a las 21:15:00). Es el mismo ruido que se arregló en
+        // A4/B22.
+        //
+        // A quién le toca el aviso de comentario lo decide `resolver_
+        // destinatarios_aviso`, la única función con esas reglas desde el
+        // 19/10. Se le pregunta en vez de reimplementarlas aquí, que es como
+        // nacen las dos copias que luego se desincronizan.
+        let yaAvisados: string[] = [];
+        const { data: dest, error: errDest } = await supabase
+          .rpc('resolver_destinatarios_aviso', {
+            p_ticket_id: tramiteId,
+            p_codigo_tipo: 'tramite_comentario_nuevo',
+          });
+        // Si no se puede saber, se avisa a todos los mencionados. Una campanita
+        // de más molesta; una que desaparece en silencio es la que hace daño.
+        if (errDest) console.warn('[menciones] no se pudo saber a quién ya se le avisa:', errDest.message);
+        else yaAvisados = (dest as string[] | null) ?? [];
+
+        const porAvisar = mentionedIds.filter(uid => !yaAvisados.includes(uid));
+
         // Un aviso que no sale NO debe tumbar el comentario: el comentario ya
         // se guardó y es lo que importa. `crearNotificacion` ya atrapa y
         // registra su propio error.
-        await Promise.all(mentionedIds.map(uid => crearNotificacion({
+        await Promise.all(porAvisar.map(uid => crearNotificacion({
           user_id: uid,
           titulo: `${quien} te mencionó`,
           mensaje: `${quien} te mencionó en ${donde}${extracto ? `: "${extracto}"` : ''}`,
