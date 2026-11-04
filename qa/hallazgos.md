@@ -41,7 +41,8 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 |---|---|---|---|
 | B5 | siete equipos **de áreas distintas** con el mismo nombre — NO es duplicado | reporte + diagnosticado bien el 04/11 | **de Ricardo** — se renombran, no se borran |
 | B7 | "Mesa de Control Aguascalienteses" | confirmado 04/11 | **de Ricardo** — un `update`, id `296832ba…` |
-| A6 | dos tipos sin campo de descripción ni adjuntos | medido 04/11 | **de Ricardo** — se agregan en el FormBuilder |
+| A6 | "Alta Usuario Beta" salía en las altas genéricas | **arreglado 04/11** — ver abajo |
+| UX | 16 hallazgos del recorrido de usuario | Claude, 04/11 | nuevos — ver abajo |
 
 ## Cerrados en esta corrida
 
@@ -106,6 +107,136 @@ leen el nombre solo para mostrarlo, y ninguna función de la base lo usa.
 terminado. Hay que preguntar **qué lo distingue en la base** antes de proponer
 borrar nada. Mismo error que el reporte de los bots cometió seis de once veces,
 ahora cometido por mí.
+
+---
+
+## Recorrido de experiencia de usuario — 04/11
+
+Pedido de Ricardo: *"revisa el proceso de creación de trámite y seguimiento de
+los mismos. La experiencia del usuario es la prioridad 1"*.
+
+Hecho **como usuario**, con la sesión real de **MATEO (Agente)**, que es quien
+más trámites levanta: se creó TK873C5 de principio a fin y se siguió hasta que
+DIEGO lo tomó. Build `9691d346`.
+
+### ✅ Lo que funciona bien (para no tocarlo)
+
+- **El contador de requeridos es honesto.** Con Ramo=Vehículos dice `2/6`, al
+  cambiar a Daños dice `2/3` y la sección Autos desaparece. El arreglo de
+  octubre hace su trabajo.
+- **El selector de aseguradoras** pone las preferentes arriba y esconde el
+  resto tras *"+ Mostrar 17 más"*.
+- **Los permisos son correctos:** Diego (del equipo) y Laura (Gerente) ven el
+  trámite nuevo; **Valeria, que es otra Agente, no lo ve.**
+- **El agente se entera.** Cuando Diego se asignó el trámite, la campanita de
+  Mateo pasó de 32 a 33.
+- **El modal de confirmación solo sale cuando hay cambio de estatus**, no en
+  cada guardado.
+
+### 🔴 Campos vacíos que debieron llenarse solos
+
+**U-01 · OFICINA JIRO se queda vacía, y la pantalla ya sabe la respuesta.**
+
+- **ruta**: alta de Cotización como MATEO (Agente), y después en el detalle
+- **esperaba**: la oficina del agente, que está en su perfil
+- **pasó**: en el alta dice *"Auto-completa al seleccionar agente · Solo
+  lectura"* y queda en blanco; en el detalle queda **"Sin registrar"**
+- **se repite**: sí
+- **por qué es absurdo aquí**: cuando quien levanta el trámite es el propio
+  Agente, **no hay ningún agente que seleccionar** — el formulario ya dice
+  *"este trámite va a tu nombre"*. El campo espera un evento que nunca va a
+  ocurrir
+
+### 🔴 El mismo dato, dos respuestas distintas
+
+**U-02 · La fecha de creación sale dos veces, en dos formatos y con DOS HORAS.**
+
+- **ruta**: detalle de cualquier trámite
+- **pasó**: arriba dice **"04 nov 2026, 04:33 p.m."**; en la tabla de abajo, el
+  mismo dato dice **"2026-11-04T22:33:11.806Z"**
+- **se repite**: sí
+- **lo grave no es el formato crudo**: es que un usuario lee **04:33 p.m.** en
+  un lado y **22:33** en el otro. Son la misma hora (una es UTC), pero nadie
+  tiene por qué saberlo
+
+**U-03 · Un trámite recién creado, en estatus "Iniciado" y SIN responsable,
+aparece bajo "En proceso — Siendo atendidos por el equipo".**
+
+- **ruta**: /tramites, como el agente que acaba de crearlo
+- **esperaba**: que estuviera en la columna de pendientes, o en una que no
+  afirme que alguien lo está atendiendo
+- **pasó**: cae en "En proceso", cuya leyenda dice *"Siendo atendidos por el
+  equipo"*, y la propia tarjeta dice **"Sin responsable"**
+- **causa probable**: la columna se decide por quién hizo la última acción. Si
+  fuiste tú, deja de "requerir tu atención" y cae a "En proceso". La
+  clasificación puede ser correcta; **la leyenda es la que miente**
+
+### 🔴 Información repetida
+
+**U-04 · La descripción del trámite aparece CINCO veces.**
+
+En la tarjeta de la lista, dos veces (como descripción y como comentario
+inicial). En el detalle, tres: *"COMENTARIO INICIAL"*, *"Instrucciones /
+Descripción"* y *"DESCRIPCIÓN / NOTAS"* de la tabla.
+
+El comentario inicial **es una copia literal** de la descripción: lo escribe el
+alta sola. No aporta nada y ocupa el lugar más visible de la pantalla.
+
+**U-05 · El nombre del agente aparece SEIS veces en el detalle**: encabezado
+(Creado), Última modificación, Comentario inicial, Agente, TRÁMITE CREADO POR y
+AGENTE / VENDEDOR.
+
+Y en el alta, **"TRÁMITE CREADO POR"** y **"AGENTE / VENDEDOR"** muestran a la
+misma persona con dos explicaciones distintas —*"quién está registrando"* y
+*"este trámite va a tu nombre"*— cuando un Agente se levanta un trámite a sí
+mismo, que es **el caso más común de todos**.
+
+**U-06 · Área y Equipo también salen dos veces** en el detalle: en "Personas
+involucradas" y otra vez en la tabla de abajo. El Área, además, ya está como
+chip en el encabezado: **tres veces**.
+
+### 🟡 Textos que confunden
+
+**U-07 · El formulario dice que el área es automática, y es lo primero que te
+pide.** Al abrir "Nuevo Trámite" se lee *"El área y equipo se asignan
+automáticamente según tu perfil"*, y lo único en pantalla es un selector de
+**Área obligatorio**.
+
+**U-08 · "Compañía\*" tiene un marcador que dice "(opcional)".** El campo está
+marcado obligatorio con asterisco y su texto de ayuda dice *"Selecciona primero
+un ramo (opcional)..."*.
+
+**U-09 · "Se activa cuando «Ramo» sea «Vehiculos»"** — el valor crudo del
+catálogo, sin acento, mostrado al usuario.
+
+**U-10 · B8 sigue ahí:** *"que contengan **informaicón** relevante"*, en la
+ayuda del campo de adjuntos de Cotización. Se corrige en el FormBuilder.
+
+**U-11 · "0d / 1d" en cada tarjeta, sin decir qué son.** (Días abierto / SLA,
+suponemos.)
+
+### 🟡 Controles que estorban o engañan
+
+**U-12 · "Crear Trámite" está habilitado con el formulario vacío**, sin área ni
+tipo elegidos.
+
+**U-13 · Área y Tipo siguen ocupando las dos primeras posiciones del
+formulario** después de elegidos, editables y con la lista completa
+desplegable, empujando hacia abajo lo que de verdad hay que llenar.
+
+**U-14 · "Es Renovación" viene MARCADO por defecto.** Si la mayoría de las
+cotizaciones son de negocio nuevo, el default está al revés. **Decisión de
+Ricardo.**
+
+**U-15 · Al Agente le salen filtros y fichas que no puede usar:** los filtros
+**Agente** y **Oficina** (para él tienen una sola opción), y las fichas
+**"Sin Asignar / Sin responsable directo"**, sobre las que no puede actuar.
+Además, **la primera línea de cada tarjeta es el nombre del agente**, que para
+un Agente es el mismo en todas.
+
+**U-16 · Ningún campo del alta tiene etiqueta programática.** Los 14 controles
+del formulario salen como `(SIN ETIQUETA)`: la palabra "Área" está al lado, no
+asociada al control. Misma familia que H-003 y H-008.
 
 ---
 
