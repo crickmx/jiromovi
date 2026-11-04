@@ -7,7 +7,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
-import { useTiposTramite } from '@/hooks/useTiposTramite';
+import { useTiposTramite, TIPOS_CON_PANTALLA_PROPIA } from '@/hooks/useTiposTramite';
 
 interface EmailData {
   uid: number;
@@ -551,7 +551,9 @@ export function IniciarTramiteEmailModal({ isOpen, onClose, email, emailAccount,
                   onChange={e => setTipoTramite(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-accent/50"
                 >
-                  {tiposActivos.filter(t => t.value !== 'formulario_cotizacion').map(t => (
+                  {/* QA 2026-11-04 (A6) — misma puerta que el alta de Trámites:
+                      los tipos con su propia pantalla no se ofrecen aquí. */}
+                  {tiposActivos.filter(t => t.value !== 'formulario_cotizacion' && !TIPOS_CON_PANTALLA_PROPIA.includes(t.value)).map(t => (
                     <option key={t.value} value={t.value}>{t.label} ({t.area})</option>
                   ))}
                 </select>

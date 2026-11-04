@@ -16,6 +16,27 @@ export interface TipoTramiteDB {
   sla_horas: number | null;
 }
 
+/**
+ * Tipos que NO se ofrecen en las pantallas genéricas de alta, porque tienen su
+ * propia pantalla donde sí se captura lo que hace falta.
+ *
+ * QA 2026-11-04 (A6) — "Alta Usuario Beta" se levanta desde el botón "Únete al
+ * Programa Beta" del inicio (`SolicitudBetaModal`), que tiene su casilla de
+ * Comentarios y la guarda. Creándolo desde un formulario genérico no hay dónde
+ * escribir nada —ese tipo no trae campo de descripción—, así que el alta
+ * guardaba el relleno literal "Sin descripción" y el aviso por WhatsApp/correo
+ * salía sin decir de qué se trata. Los únicos dos trámites así que existen son
+ * de la corrida de los bots del 22/10.
+ *
+ * Se esconde aquí y NO se desactiva el tipo: desactivarlo diría en Catálogos
+ * que está dado de baja, y no lo está.
+ *
+ * Vive en este módulo porque son DOS las pantallas que ofrecen tipos para
+ * crear —el alta de Trámites y "Iniciar trámite" desde un correo— y una lista
+ * por pantalla es la segunda copia que se desincroniza.
+ */
+export const TIPOS_CON_PANTALLA_PROPIA = ['alta_usuario_beta'];
+
 const CACHE_KEY = 'tipos_tramite_v2';
 const CACHE_TTL = 10 * 60 * 1000; // 10 min
 

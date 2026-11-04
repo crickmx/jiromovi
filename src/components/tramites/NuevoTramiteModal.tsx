@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Upload, User, Users, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, ChevronDown, Lock, RotateCcw, Star, Layers } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { TIPOS_CON_PANTALLA_PROPIA } from '../../hooks/useTiposTramite';
 import { puedeVerCampo, puedeEditarCampo } from '../../lib/rolCampos';
 import { crearNotificacion, avisarPorEvento } from '../../lib/notificationHelpers';
 import { mensajeNuevoTramite } from '../../lib/tramiteAviso';
@@ -332,12 +333,16 @@ export function NuevoTramiteModal({
       .eq('activo', true)
       .order('orden');
     if (!data) return;
-    setTiposDb(data as Array<{ id: string; value: string; label: string; area: string; is_custom: boolean; es_interno: boolean }>);
+
+    // QA 2026-11-04 (A6) — los tipos que tienen su propia pantalla no se
+    // ofrecen aquí; el porqué está en `TIPOS_CON_PANTALLA_PROPIA`.
+    const visibles = data.filter(t => !TIPOS_CON_PANTALLA_PROPIA.includes(t.value));
+    setTiposDb(visibles as Array<{ id: string; value: string; label: string; area: string; is_custom: boolean; es_interno: boolean }>);
 
     // Admin y Gerente no tienen restricciones
     if (!usuario || ['Administrador', 'Gerente'].includes(usuario.rol)) return;
 
-    const tipoIds = data.map(t => t.id);
+    const tipoIds = visibles.map(t => t.id);
 
     // Permisos por rol
     const { data: rolData } = await supabase
