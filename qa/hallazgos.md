@@ -40,7 +40,8 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 | # | Qué | Quién lo vio | Estado |
 |---|---|---|---|
 | B5 | siete equipos **de áreas distintas** con el mismo nombre — NO es duplicado | reporte + diagnosticado bien el 04/11 | **de Ricardo** — se renombran, no se borran |
-| B7 | "Mesa de Control Aguascalienteses" | reporte + confirmado 30/10 | **de Ricardo** — es dato, no código |
+| B7 | "Mesa de Control Aguascalienteses" | confirmado 04/11 | **de Ricardo** — un `update`, id `296832ba…` |
+| A6 | dos tipos sin campo de descripción ni adjuntos | medido 04/11 | **de Ricardo** — se agregan en el FormBuilder |
 
 ## Cerrados en esta corrida
 
@@ -105,6 +106,66 @@ leen el nombre solo para mostrarlo, y ninguna función de la base lo usa.
 terminado. Hay que preguntar **qué lo distingue en la base** antes de proponer
 borrar nada. Mismo error que el reporte de los bots cometió seis de once veces,
 ahora cometido por mí.
+
+---
+
+## B7 y A6 — medidos contra la base el 04/11
+
+### B7 · Un solo equipo con errata
+
+De los equipos activos, **uno** tiene el nombre mal escrito:
+
+| Nombre actual | Debería decir | id |
+|---|---|---|
+| Mesa de Control Aguascalient**eses** | Mesa de Control Aguascalientes | `296832ba-7514-4169-9e61-8aebd417e9f6` |
+
+```sql
+update tramites_grupos_visualizacion
+   set nombre = 'Mesa de Control Aguascalientes'
+ where id = '296832ba-7514-4169-9e61-8aebd417e9f6';
+```
+
+Renombrar es seguro por lo mismo que en B5: **nadie empareja equipos por
+nombre**, todos buscan por `id` y leen el nombre solo para mostrarlo.
+
+### A6 · Son DOS tipos, no ocho
+
+La consulta de CLAUDE.md lista ocho tipos activos a los que les falta algún
+campo de sistema. **Seis de ellos no tienen nada roto**: no usan el
+`archivos_adjuntos` de sistema porque **ya tienen su propio campo de
+adjuntos**.
+
+| Tipo | ¿`descripcion`? | ¿`archivos_adjuntos`? | ¿campo de adjuntos propio? |
+|---|---|---|---|
+| Cambio bancario | sí | no | **sí** |
+| Cotización | sí | no | **sí** |
+| Registro de Póliza | sí | no | **sí** |
+| Registro Pedido MOVI STORE Comisiones | sí | no | **sí** |
+| Solicitud de comisiones | sí | no | **sí** |
+| Solicitud de Pago a Proveedores | sí | no | **sí** |
+| **Alta Usuario Beta** | **NO** | **NO** | **no** |
+| **Reporte Semanal** | **NO** | **NO** | **no** |
+
+**Lo que de verdad rompe** en esos dos: el alta guarda
+`instrucciones: descripcion.trim() || 'Sin descripción'`
+(`NuevoTramiteModal.tsx`), y sin campo de descripción `descripcion` nunca se
+llena. O sea que el trámite nace con el relleno literal *"Sin descripción"*, y
+el aviso por WhatsApp/correo sale sin esa línea (`tramiteAviso.ts` omite el
+relleno a propósito, así que no manda la palabra — manda un hueco). Y no hay
+dónde adjuntar nada.
+
+**Lo que NO se pierde:** lo que el usuario escribe en "Comentarios" sí se
+guarda, como comentario inicial.
+
+**El arreglo es del FormBuilder, no de código:** en Trámites → Catálogos →
+cada uno de esos dos tipos, agregar los campos de sistema **Descripción** y
+**Archivos adjuntos**. Es pantalla de Administrador, que maneja Ricardo.
+
+🔑 **Lo que esto enseña, otra vez:** la consulta de diagnóstico que quedó
+escrita en octubre **sobre-reporta**. Pregunta "¿le falta el campo de
+sistema?" cuando la pregunta real es "¿tiene dónde escribir una descripción y
+dónde adjuntar?". Un tipo con su propio campo de adjuntos contesta que sí por
+otro camino. Cruzar antes de concluir.
 
 ---
 
@@ -483,13 +544,14 @@ el mismo selector.
 
 Los dos son **datos, no código**: se arreglan desde la pantalla de equipos.
 
-### S-002 · Revisión de seguridad pendiente en una edge function — `pospuesto`
+### S-002 · Revisión de seguridad en una edge function — `fuera de alcance`
 
 Hay una función de SeguWallet que toca cuentas de `auth` y **no verifica quién
 la llama**. `auth.users` es compartida con MOVI, así que el alcance no se queda
 en SeguWallet.
 
-- **razón del pospuesto**: *"ahorita no quiero tocar nada de seguwallet / sólo MOVI"* (30/10)
+- **estado**: **fuera de nuestros pendientes** por decisión de Ricardo el 04/11
+  (*"SeguWallet déjalo fuera de nuestros pendientes"*). Ya no se le da seguimiento desde aquí
 - **el detalle, el plan de arreglo y la comprobación NO se escriben aquí**:
   este repo es **público**. Están en la conversación del 30/10
 - **de paso**: el botón "resetear contraseña" de SeguWallet Admin nunca

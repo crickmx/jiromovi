@@ -121,17 +121,15 @@ etiqueta mal puesta.
 
 **B7:** *"Mesa de Control Aguascalienteses"*, en ese mismo selector.
 
-#### ⏸️ Pospuesto por Ricardo el 30/10 — SeguWallet
+#### SeguWallet — FUERA de nuestros pendientes
 
-*"Ahorita no quiero tocar nada de seguwallet / sólo MOVI."* Queda una revisión
-de seguridad pendiente en una edge function de ese módulo que toca cuentas de
-`auth` —y `auth.users` es compartida con MOVI—. **El detalle NO se escribe en
-este repo porque es público**; está en la conversación del 30/10 y como ficha
-corta en `qa/hallazgos.md`.
+Decisión de Ricardo el 04/11: *"SeguWallet déjalo fuera de nuestros
+pendientes"*. No se trabaja ni se da seguimiento desde aquí. Lo que se sabe
+quedó en la conversación del 30/10 y como ficha corta en `qa/hallazgos.md`.
 
-🔑 **La regla que sale de aquí:** este repo es **público** (`crickmx/jiromovi`,
-verificado el 30/10). Un hueco sin cerrar no se describe en un archivo
-versionado.
+🔑 **La regla que salió de ese hilo, y que sí aplica siempre:** este repo es
+**público** (`crickmx/jiromovi`, verificado el 30/10). Un hueco de seguridad
+sin cerrar **no se describe en un archivo versionado**.
 
 ⚠️ **`main` autodespliega beta desde el 24/09** (job `deploy-beta` en `ci.yml`). Un push a `main` dispara build + gitleaks y, si pasan, sube `dist/` al servidor. **No hace falta Pull + Deploy en Plesk para beta**; lo que sí hay que vigilar es que nada llegue a `main` sin revisar, porque sale en vivo en minutos. `main` **no tiene protección de rama** (la API devuelve 404).
 
@@ -396,7 +394,7 @@ A1, A5, A10 y A12 entraron antes, en la pasada de `colorDeArea()` y los dashboar
 | | |
 |---|---|
 | **Código, pendiente** | **M9** "Vista tablero" no cambia la pantalla · **M10** comentar sin conexión no muestra nada · **M11** Diego no ve la caja de comentarios en trámites de Sistemas que él creó |
-| **Configuración de Ricardo** | **A6** — "Reporte Semanal" y "Alta Usuario Beta" no tienen los campos de sistema `descripcion` ni `archivos_adjuntos` en su FormBuilder, así que `instrucciones` se guarda como *"Sin descripción"* y no hay dónde adjuntar. **Lo que el usuario escribe en "Comentarios" SÍ se guarda** — lo que se pierde es el encabezado y el texto del aviso por WhatsApp/correo, que leen `instrucciones` |
+| **Configuración de Ricardo** | **A6** — medido contra la base el 04/11: son **exactamente dos tipos**, "Alta Usuario Beta" y "Reporte Semanal". Les faltan los campos de sistema `descripcion` y `archivos_adjuntos`, así que `instrucciones` se guarda como *"Sin descripción"* y no hay dónde adjuntar. **Lo que el usuario escribe en "Comentarios" SÍ se guarda** — lo que se pierde es el encabezado y la línea de descripción del aviso por WhatsApp/correo, que leen `instrucciones`. ⚠️ Otros **seis** tipos activos tampoco traen el `archivos_adjuntos` de sistema y **eso NO es un defecto**: ya tienen su propio campo de adjuntos (Cambio bancario, Cotización, Registro de Póliza, Registro Pedido MOVI STORE Comisiones, Solicitud de comisiones, Solicitud de Pago a Proveedores). La consulta de abajo los lista a todos; hay que cruzarla con los campos propios antes de concluir |
 | **Datos** | **B5** equipo "Pruebas MOVI Digital" duplicado · **B7** "Mesa de Control Aguascalienteses" · **B8** "informaicón" en la ayuda del adjunto de Cotización (está en el FormBuilder) |
 
 Para A6, qué tipos están así:
