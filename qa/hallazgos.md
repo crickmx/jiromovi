@@ -41,6 +41,8 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 |---|---|---|---|
 | B5 | **siete** equipos llamados "Pruebas MOVI Digital" | reporte + confirmado 30/10 | **de Ricardo** — es dato, no código |
 | B7 | "Mesa de Control Aguascalienteses" | reporte + confirmado 30/10 | **de Ricardo** — es dato, no código |
+| H-009 | mencionar a alguien **no le avisa**: nada lee la tabla de menciones | Claude, 04/11 | nuevo |
+| H-010 | un Agente no se puede mencionar, ni siendo el solicitante del trámite | Claude, 04/11 | nuevo |
 
 ## Cerrados en esta corrida
 
@@ -55,6 +57,73 @@ También: `no-era-bug` (con la razón) y `pospuesto` (con la razón).
 | H-006 | "Última modificación" con el nombre equivocado | **verificado 04/11** — un comentario de Diego dejó su nombre, no el anterior |
 | H-007 | "Sin equipo asignado" teniendo equipo | **sin verificar** — es una rama transitoria, ver nota abajo |
 | Fecha Promesa | regla nueva de Ricardo: Empleados sí, Agentes nunca | **media**: Diego (Empleado) la puso y persistió. Falta la mitad del Agente — hace falta la contraseña de MATEO |
+
+## Pruebas cruzadas del 04/11 — cinco sesiones a la vez
+
+Primera corrida con **una ventana por bot** (ver `README.md`, puerto fijo por
+persona). Lo que sigue solo se puede ver con sesiones de personas distintas.
+
+### ✅ Tiempo real ENTRE USUARIOS — funciona
+
+Diego (9224) comentó en TK296E6 y el comentario **apareció en la pestaña de
+Valeria (9223) sin recargar**.
+
+Esto no es lo mismo que la prueba del 29/10: aquella eran **dos pestañas del
+mismo usuario**, y Realtime evalúa la RLS **por suscriptor**. Hasta hoy nunca
+se había comprobado que un cambio de una persona llegue a otra.
+
+### H-009 · Mencionar a alguien no le avisa — `nuevo`
+
+- **ruta**: comentario con `@` en cualquier trámite
+- **esperaba**: que a la persona mencionada le llegara algo
+- **pasó**: Diego mencionó a `@LAURA`. La campanita de Laura **no se movió**,
+  ni en vivo ni recargando. Confirmado consultando sus notificaciones **con su
+  propia sesión** (pasando por la RLS): su aviso más reciente es del día
+  anterior
+- **se repite**: sí
+- **causa**: al enviar, la mención se guarda en `ticket_usuarios_mencionados`.
+  **Nada en el proyecto lee esa tabla para notificar** — ni `src/`, ni las
+  edge functions, ni ningún trigger de Postgres (se revisó `pg_trigger`, no
+  solo el repo, que es la regla de este proyecto)
+- **el matiz**: el autocompletado que se arregló el 29/10 **sí** funciona. Lo
+  que no existe es el aviso. Escribir la mención y que llegue son dos cosas
+- **estado**: nuevo — es una funcionalidad que falta, no una regresión.
+  Decisión de producto de Ricardo
+
+### H-010 · Un Agente no se puede mencionar — `nuevo`
+
+- **ruta**: `@` en un trámite cuyo solicitante es un Agente
+- **pasó**: en TK296E6 —cuyo agente es VALERIA— la lista ofreció a Laura y a
+  Sofía, **no a Valeria**
+- **causa**: la lista son los miembros del equipo, y un Agente no es miembro
+  operativo (la base lo prohíbe con un trigger, 15/10)
+- **por qué importa**: la persona para quien es el trámite es justo la que no
+  se puede mencionar
+- **estado**: nuevo — anotado, sin tocar
+
+### S-003 · Una política de RLS sobre `tickets` mal escrita — `arreglado 04/11`
+
+Encontrada tirando del hilo de H-009: `ticket_usuarios_mencionados` sí se lee
+en **un** lugar, dentro de una política de SELECT sobre `tickets`.
+
+La política `tickets_mencionados_select` quería decir *"si te mencionaron en un
+trámite, puedes verlo"*, y su condición **compara la tabla de menciones consigo
+misma** en vez de ligarla al trámite de la consulta.
+
+- **nunca concedió nada**: ser mencionado jamás dio acceso a un trámite
+- **y su alcance no estaba ligado a la fila consultada**, que es lo que de
+  verdad había que corregir
+
+**Decisión de Ricardo (04/11): borrarla, no repararla.** Como nunca concedió
+nada, quitarla **no le quita acceso a nadie**; y las permisivas se combinan con
+OR, así que restar una solo puede cerrar lo que nunca estuvo abierto. Repararla
+sería *abrir* algo nuevo, y eso es decisión de producto.
+
+Migración `20261104000001_quitar_politica_de_menciones_rota.sql`.
+**El detalle de por qué estaba mal NO se escribe con más precisión aquí**: este
+repo es público.
+
+---
 
 ## Verificaciones del 2026-11-04 (build `3a077319`)
 
