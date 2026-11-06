@@ -151,7 +151,7 @@ atienda"*. Hecho con seis sesiones reales.
 4. **Froilán lo ve** en Admin → Reportes de Bugs, encabezando la lista, y
    **pudo responder**: su comentario quedó guardado.
 
-### 🔴 D-01 · Quien levanta un reporte NO puede volver a verlo — `nuevo`
+### D-01 · Quien levanta un reporte no puede volver a verlo — `intencional`
 
 - **ruta**: cualquiera levanta un reporte con el botón; luego intenta abrirlo
 - **esperaba**: poder seguir su propio reporte y leer la respuesta
@@ -182,9 +182,19 @@ select polname, polcmd, polpermissive
  order by polpermissive desc, polname;
 ```
 
-- **por qué importa**: el botón de reportar está en todas las pantallas y es
-  el camino por el que la gente avisa de fallas. Si quien reporta nunca ve qué
-  pasó, deja de reportar
+- **✅ RESUELTO: es a propósito.** Decisión de Ricardo (06/11): *"no todos los
+  reportes de bugs son una responsabilidad para el equipo de desarrollo, a
+  veces no son bugs, a veces son sugerencias, o que el usuario no encontró
+  cómo resolver algo"*. El reporte entra a una bandeja interna, no a la vista
+  del usuario. **De momento se queda así.**
+- **lo único que queda, y es de forma, no de fondo**: la pantalla **no se lo
+  dice**. Rebota a `/tramites` en silencio. La misma política con un *"tu
+  reporte se envió y lo está revisando el equipo"* daría la misma reserva sin
+  parecer una falla. Anotado, no abierto
+- **la causa técnica, ya confirmada** (ver la consulta de políticas, 06/11):
+  hoy **hay UNA sola política de SELECT sobre `tickets`, `tickets_select_v10`**,
+  y no concede por `creado_por`. Las que describe el baseline
+  (`tickets_select_policy`, `tickets_select_v8`) **ya no existen**
 
 ### 🟡 D-02 · El Desarrollador no puede asignarse un reporte — `nuevo`
 

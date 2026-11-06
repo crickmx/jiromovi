@@ -259,6 +259,18 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261105182919_rol_desarrollador.sql` | `usuarios.es_desarrollador` — ve y prueba todos los módulos, pero de usuarios reales no ve ni una fila | ✅ corrida |
 | ~~`20261106000001_registrar_actividad_desarrollador.sql`~~ | **RETIRADA el 06/11, no correr** — ya existe `user_activity_logs`, ver abajo |
 
+🔑 **El baseline NO describe las políticas vivas de `tickets`.** Medido el
+06/11 contra `pg_policy`: hay **UNA sola de SELECT, `tickets_select_v10`**, y
+las que nombra el baseline (`tickets_select_policy`, `tickets_select_v8`) **ya
+no existen**. Antes de razonar sobre quién ve qué trámite, preguntar:
+
+```sql
+select polname, polcmd, polpermissive
+  from pg_policy
+ where polrelid = 'public.tickets'::regclass
+ order by polpermissive desc, polname;
+```
+
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
 #### Falta probar en navegador
@@ -651,7 +663,12 @@ order by t.label;
 
 #### ⚠️ Señalado a Ricardo, sin tocar
 
-- **Las tres políticas de UPDATE de `tickets` deberían ser una.** Hoy `tickets_update_by_role` deja a cualquier Gerente escribir en todo lo de su oficina sin más condición, y no se puede saber qué permite el conjunto sin leer las tres.
+- **Las políticas de UPDATE de `tickets` ya son CUATRO** (medido el 06/11):
+  `tickets_update_by_role`, `tickets_update_by_role_or_participant`,
+  `tickets_update_policy` y `tickets_update_por_equipo`. Siguen siendo
+  permisivas, o sea que se combinan con OR: **no se puede saber qué permite el
+  conjunto sin leer las cuatro**, y cada una que se suma solo puede abrir más.
+  Cuando se escribió esta nota eran tres.
 - **`tickets_update_by_role_or_participant` usa `get_my_oficina_id()` en singular**, mientras el 23/10 se agregó `get_my_oficina_ids()` plural. Un Gerente con oficina adicional **ve** esos trámites pero no los puede editar. Es una palabra, pero toca una política existente.
 - **`tramite_respuestas` tiene la escritura abierta**: cualquier usuario con sesión puede modificar las respuestas del formulario de cualquier trámite.
 
