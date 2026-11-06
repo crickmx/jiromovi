@@ -290,10 +290,22 @@ Deno.serve(async (req: Request) => {
     //    un hueco real el 15/10, en dos funciones.
     //
     // 2. UNA PERSONA, con su sesión y siendo Administrador.
+    //    El secreto preferido es REPORTE_SECRETO, una variable propia de esta
+    //    función: así nadie tiene que andar pegando la llave de servicio en el
+    //    SQL Editor, y se puede rotar sin tocar nada más. Se acepta también la
+    //    llave de servicio, por si se prefiere no crear la variable.
+    //
+    //    ⚠️ `SUPABASE_SERVICE_ROLE_KEY` NO es el JWT largo que el dashboard
+    //    llama "service_role": desde el cambio de llaves contiene una
+    //    `sb_secret_…` de ~41 caracteres (medido el 15/10). Comparar contra el
+    //    JWT viejo falla aunque "se vea bien".
+    const secretoPropio = Deno.env.get("REPORTE_SECRETO") || "";
     const secretoHeader = req.headers.get("x-llave-servicio") || "";
     const auth = (req.headers.get("Authorization") || "").replace("Bearer ", "");
 
-    let permitido = !!serviceKey && (secretoHeader === serviceKey || auth === serviceKey);
+    let permitido =
+      (!!secretoPropio && secretoHeader === secretoPropio) ||
+      (!!serviceKey && (secretoHeader === serviceKey || auth === serviceKey));
 
     if (!permitido && auth) {
       const { data: { user } } = await supabase.auth.getUser(auth);
@@ -303,7 +315,21 @@ Deno.serve(async (req: Request) => {
         permitido = !!quien && quien.activo !== false && quien.rol === "Administrador";
       }
     }
-    if (!permitido) return json({ error: "No autorizado" }, 401);
+    if (!permitido) {
+      // La pista dice qué LLEGÓ y qué está CONFIGURADO, nunca un valor. Sin
+      // esto, un 401 obliga a adivinar entre "no pegué la función nueva",
+      // "la variable no existe" y "la llave no es la que creo".
+      return json({
+        error: "No autorizado",
+        pista: {
+          llegoHeaderSecreto: !!secretoHeader,
+          largoDelQueLlego: secretoHeader.length || undefined,
+          hayReporteSecretoConfigurado: !!secretoPropio,
+          largoDeServiceRoleKey: serviceKey ? serviceKey.length : 0,
+          authEsUnJwt: auth.startsWith("eyJ"),
+        },
+      }, 401);
+    }
 
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const hastaD = body.hasta ? new Date(body.hasta) : new Date();
