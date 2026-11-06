@@ -170,7 +170,7 @@ export function Directorio() {
       // Direct query - works with both authenticated and anon roles
       const usersQuery = supabase
         .from('usuarios')
-        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, imagen_perfil_url, web_slug, is_deleted, es_desarrollador')
+        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, imagen_perfil_url, web_slug, is_deleted, es_desarrollador, rol_id')
         .eq('is_deleted', false)
         .order('nombre')
         .limit(2000);
