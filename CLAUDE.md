@@ -1,8 +1,8 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-04)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-06)
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-04
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-06
 
 **Todas las migraciones están corridas**, incluida la del 04/11
 (`20261104000001`). **`produccion` NO se tocó** desde el merge del 12.
@@ -19,94 +19,101 @@ de experiencia de usuario **como Empleado y como Gerente**. El del Agente ya
 está hecho (16 hallazgos, 4 arreglados). Ahí vive lo de atender, reasignar y
 cerrar, que el Agente no toca.
 
-#### 🔜 EN CURSO — perfil Desarrollador (Froilán) y el reporte semanal
-
-**Lo acordado el 06/11.** Estado medido contra la base ese día:
+#### ✅ Perfil Desarrollador (Froilán) — TERMINADO y verificado el 06/11
 
 | | |
 |---|---|
-| Migración `20261105182919` | ✅ corrida — la columna existe y se lee |
-| Cuenta de Froilán | ✅ existe — `4a2262c3-9b98-4ba5-b1c4-3faf9b1d936b`, rol Empleado, activa |
-| **`es_desarrollador`** | ✅ **activo desde el 06/11** — verificado contra la base |
-| Su correo | `desarrollo@jiro-operacion.mx` — vive en **`email_laboral`**; `usuarios.email` está en null y **no estorba**: el login resuelve por `email_laboral` (`MoviLogin.tsx`) |
+| `es_desarrollador` | ✅ activo |
+| `rol` / `rol_id` | **Administrador** (lo cambió Ricardo el 06/11) |
+| Equipo | agregado al de Sistemas, para poder **tomar** reportes y no solo comentarlos |
+| Correo | `desarrollo@jiro-operacion.mx`, en `email_laboral` — el login resuelve por ahí |
+| Su ventana de QA | puerto **9227**, perfil `froilan` |
 
-⚠️ **Son DOS cosas distintas con el mismo nombre, y se prestan a confusión:**
+**Las dos mitades, medidas con su sesión:**
+
+- **Ve y usa todos los módulos:** le aparece *Admin* y entra al Panel con sus
+  47 herramientas, sin peticiones fallidas.
+- **El candado aguantó:** ve **6 usuarios** (los 5 bots y él) y
+  `commission_details` le devuelve **0 filas** — **siendo Administrador**.
+  Ser Admin **no** le abrió los datos porque la política es `RESTRICTIVE` y se
+  combina con **Y**: ninguna permisiva de Admin puede anularla.
+
+🔑 **Son DOS cosas distintas con el mismo nombre, y se prestan a confusión:**
 
 | | Qué es | Qué hace |
 |---|---|---|
 | **Rol "Desarrollador"** del catálogo | un `rol_id`, con `rol_base = 'Empleado'` | solo destapa módulos vía `module_visibility` |
-| **Casilla "Perfil Desarrollador"** | la columna `es_desarrollador` | **esto es lo que manda**: de aquí cuelgan los permisos y el candado sobre datos de usuarios reales |
+| **Casilla "Perfil Desarrollador"** | la columna `es_desarrollador` | **esto es lo que manda**: permisos y candado |
 
-Froilán tiene las dos. Pero cambiar el rol **no** da el perfil.
+🔑 **Y `module_visibility` NO puede dar módulos, solo quitarlos.** El menú se
+arma con el **rol base** (`workspaceConfig`, `visibleTo: UserRole[]`) y la
+visibilidad corre **después**, como filtro. Por eso las filas de `/admin/*`
+configuradas para el rol Desarrollador estaban **inertes**, y por eso la
+solución fue que Ricardo lo pasara a Administrador.
 
-#### El reporte semanal de actividad — lo medido antes de diseñarlo
+#### 🔜 EN CURSO — el reporte semanal de actividad
 
-Ricardo quiere, **semanal**, las dos cosas: lo que Froilán entrega en GitHub y
-lo que hace dentro de MOVI. Y recibirlo **en MOVI para Admins y por correo, en
-PDF**.
+**Lo construido y subido** (falta lo de abajo para que corra):
 
-🔑 **Dato que define el diseño: su trabajo NO se ve en los commits.** Entra por
-**pull requests** desde ramas `Froi…`, así que en `main` solo quedan los merges:
-
-| Cómo se mida, en `medaunbrauni/lector-polizas` | Froilán |
+| Pieza | Estado |
 |---|---|
-| commits en `main`, últimos 30 días | **1** |
-| **pull requests**, histórico | **20** |
+| `reportes_repos` (migración `20261106000002`) | ✅ corrida — `crickmx/jiromovi` y `medaunbrauni/lector-polizas`, `contar_por = 'pr'` |
+| `reportes_personas` (migración `20261106000003`) | ✅ corrida — Froilán ↔ `Froilan-Perez-Garcia` |
+| `supabase/functions/resumen-semanal-actividad/index.ts` | ✅ escrita (409 líneas, un archivo) — **falta pegarla en el dashboard** |
+| Cron semanal | ❌ no hecho |
+| Pantalla de Admin que liste los PDF | ❌ no hecho |
 
-Un reporte que contara commits lo dejaría como si no trabajara. **Se arma por
-PRs.**
+**❌ Lo que falta, en orden, para destrabarlo:**
 
-**Los repos** (confirmados el 06/11, los dos **públicos**, así que se leen sin
-token):
+1. **Pegar la función** en el dashboard como `resumen-semanal-actividad`. Ojo:
+   se corrigió tres veces el 06/11, así que hay que pegar **la última**.
+2. **Crearle la variable `REPORTE_SECRETO`** en los *Secrets* de la función
+   (una cadena larga cualquiera; es solo para que el cron se identifique).
+3. **Probarla** desde el SQL Editor y mirar la respuesta:
 
-| Repo | Froilán |
-|---|---|
-| `crickmx/jiromovi` | colaborador con push, **0 commits, 0 PRs, 0 issues — nunca** |
-| `medaunbrauni/lector-polizas` | **ahí sí trabaja** (20 PRs) |
+```sql
+select net.http_post(
+  url := 'https://qhwvuuyjhcennqccgvse.supabase.co/functions/v1/resumen-semanal-actividad',
+  headers := jsonb_build_object(
+    'Content-Type',     'application/json',
+    'Authorization',    'Bearer <LA ANON KEY — es pública, está en el baseline>',
+    'x-llave-servicio', '<LO QUE SE PUSO EN REPORTE_SECRETO>'
+  ),
+  body := jsonb_build_object('desde','2026-08-01T00:00:00Z','hasta','2026-11-06T23:59:59Z')
+);
 
-⚠️ `crickmx/lector-qualitas-bolt` **no es** el repo del lector: él no es
-colaborador ahí y está parado desde junio. El bueno es `medaunbrauni/lector-polizas`.
-
-**Van a agregarse más repos**, así que la lista va **en la base, no en el
-código** — si no, cada repo nuevo obliga a un deploy.
-
-**Si un repo se vuelve privado, el reporte debe DECIR que no pudo leerlo**, no
-reportar cero en silencio.
-
-🔑 **SÍ EXISTE registro de actividad en MOVI, y es bueno. Me equivoqué el
-06/11 y casi construyo una segunda bitácora al lado.**
-
-Miré `audit_logs`, vi que solo tenía altas y bajas de usuarios, y concluí que
-no había nada. **La buena es `user_activity_logs`**, que encontré al abrir el
-panel de Admin con la sesión de Froilán:
-
-```
-user_id, user_name_snapshot, email_snapshot, office_id, office_name_snapshot,
-role_snapshot, module, event_type, action, entity_type, entity_id, summary,
-details, metadata, status, created_at
+-- a los pocos segundos:
+select status_code, left(content, 4000) from net._http_response order by id desc limit 1;
 ```
 
-Tiene su pantalla (**Admin → Actividad**, `/actividad-usuarios`) con filtros por
-módulo/evento/rol/oficina, exportación a CSV, y cuatro RPCs listas:
-`get_activity_logs`, `get_activity_kpis`, `get_top_active_users`,
-`get_top_modules`. Medido el 06/11: **91 eventos en el mes, 65 trámites
-atendidos**. Está viva.
+Sin `"para"` **no manda correo**, solo guarda: así se prueba sin arriesgar un
+envío. Si vuelve a dar 401, la respuesta trae un `pista` con qué llegó y qué
+está configurado (presencia y longitudes, nunca valores).
 
-**El reporte semanal se arma leyendo ESO**, no una bitácora nueva.
+🔑 **DOS trampas de autenticación que costaron dos intentos, y que valen para
+cualquier llamada de la base a una edge function:**
 
-⚠️ **El hueco real es de cobertura, no de mecanismo:** `src/lib/activityLogger.ts`
-tiene **41 funciones `track*`** (incluida `trackTramiteAction`) pero **solo 11
-pantallas las llaman**. Si falta registrar algo, se agrega la llamada donde
-falte — es frontend y es barato. **No** una segunda bitácora en la base.
+1. **El gateway exige que `Authorization` sea un JWT**, y
+   `SUPABASE_SERVICE_ROLE_KEY` **ya no lo es** (es una `sb_secret_…` de ~41
+   caracteres desde el cambio de llaves del 15/10). Mandarla ahí devuelve
+   `UNAUTHORIZED_INVALID_JWT_FORMAT` **antes de llegar a la función**. Por eso
+   las funciones de la base llaman con la **anon key**.
+2. **El JWT largo que el dashboard llama "service_role" NO es el valor de esa
+   variable.** Compararlo falla aunque "se vea bien". De ahí que la función
+   use su propio `REPORTE_SECRETO`, como `alta-finalizar`.
 
-🔑 **La regla, que el propio proyecto ya tenía escrita y yo no apliqué:** antes
-de construir un mecanismo de diagnóstico nuevo, revisar si el dato ya está en
-alguna tabla de log. Lo que me engañó fue mirar la tabla por su nombre
-(`audit_logs`) en vez de buscar la pantalla que ya lo enseña.
+**Lo medido que define el diseño, y que no hay que volver a averiguar:**
 
-**El PDF:** un solo generador (`jspdf`, el mismo de las Órdenes de Compra), el
-cron semanal lo guarda en Storage y lo manda por correo; la pantalla de Admin
-solo lista lo que ya existe. Así no hay dos versiones del mismo reporte.
+- 🔑 **El trabajo no se ve en los commits.** Froilán entra por **pull
+  requests** desde ramas propias: **1 commit en 30 días contra 20 PRs** en
+  `lector-polizas`. Contar commits lo dejaría como si no trabajara.
+  Verificado el 06/11 con la misma consulta que hace la función.
+- 🔑 **No se inventó bitácora nueva.** Dentro de MOVI se lee
+  **`user_activity_logs`** (ver abajo).
+- Los dos repos son **públicos**: GitHub se lee **sin token**. Si alguno deja
+  de serlo, el reporte **lo dice**; nunca informa cero en silencio.
+- ⚠️ `crickmx/lector-qualitas-bolt` **no** es el repo del lector. El bueno es
+  `medaunbrauni/lector-polizas`.
 
 #### ❌ Lo que falta, en orden
 
@@ -258,6 +265,8 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261105172354_cerrar_lectura_abierta_comisiones.sql` | `commission_details`/`errors` tenían `USING (true)`: cualquier usuario con sesión leía las comisiones y los clientes de TODOS los agentes | ✅ corrida |
 | `20261105182919_rol_desarrollador.sql` | `usuarios.es_desarrollador` — ve y prueba todos los módulos, pero de usuarios reales no ve ni una fila | ✅ corrida |
 | ~~`20261106000001_registrar_actividad_desarrollador.sql`~~ | **RETIRADA el 06/11, no correr** — ya existe `user_activity_logs`, ver abajo |
+| `20261106000002_repos_del_reporte_semanal.sql` | qué repos entran al reporte semanal; agregar uno es un INSERT, no un deploy | ✅ corrida |
+| `20261106000003_personas_del_reporte_semanal.sql` | a quién sigue el reporte y con qué cuenta de GitHub se le liga | ✅ corrida |
 
 🔑 **El baseline NO describe las políticas vivas de `tickets`.** Medido el
 06/11 contra `pg_policy`: hay **UNA sola de SELECT, `tickets_select_v10`**, y
@@ -367,6 +376,86 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### ✅ 2026-11-06 — el perfil Desarrollador, el circuito de reportes, y tres correcciones mías
+
+Día de arrancar en otra máquina, traer lo de ayer y probar de verdad.
+
+#### 🔴 Lo que más vale del día: corregí tres cosas que yo mismo había dicho mal
+
+1. **"MOVI no registra actividad" — FALSO.** Miré `audit_logs`, vi que solo
+   tenía altas y bajas de usuarios y concluí de más. **Existe
+   `user_activity_logs`**, con su pantalla (**Admin → Actividad**,
+   `/actividad-usuarios`), filtros, exportación y cuatro RPCs
+   (`get_activity_logs`, `get_activity_kpis`, `get_top_active_users`,
+   `get_top_modules`). Medido: **91 eventos en el mes, 65 trámites atendidos**.
+   Está viva. **Retiré la migración que iba a crear una segunda bitácora**
+   antes de que se corriera.
+
+   ⚠️ El hueco real es de **cobertura**: `activityLogger.ts` tiene **41
+   funciones `track*`** y solo **11 pantallas** las llaman. Si falta registrar
+   algo, se agrega la llamada donde falte. **No** una bitácora paralela.
+
+2. **"El desplegable de Rol no guarda" — sí guardaba.** `rol_id` apuntaba
+   correctamente al rol Desarrollador; lo que fallaba era el **dibujo** al
+   reabrir: el `.select()` del Directorio pedía `rol`, `estado` y hasta
+   `es_desarrollador`, **pero no `rol_id`**. Llegaba `undefined`, caía al
+   respaldo por nombre y pintaba "Empleado".
+
+   🔑 **Cuarta vez que muerde el mismo patrón**: el tipo declara la columna, la
+   cadena del `.select()` la omite, y TypeScript no valida esa cadena.
+
+3. **Casi reporto que "Reportes de Bugs" no estaba en el panel de Admin.**
+   Estaba: esa página mide **4,070 caracteres** y el verbo `texto` corta a
+   **1,500**. Para preguntas de *"¿aparece X?"*, **contar en el DOM**, no
+   buscar en el texto.
+
+#### El circuito del reporte de bugs, probado de punta a punta
+
+MATEO levantó un reporte con el botón → se volvió el trámite **TKEDDEE**
+(`revision_de_bugerror`), cayó solo en el equipo de Sistemas → **el diagnóstico
+automático por IA corrió y acertó** (señaló el formato crudo de la fecha, que
+es el U-02 del 04/11) → Froilán lo vio en Admin → Reportes de Bugs y respondió.
+
+**Quien levanta un reporte NO puede volver a verlo, y es a propósito.**
+Decisión de Ricardo: *"no todos los reportes son una responsabilidad para el
+equipo de desarrollo, a veces son sugerencias, o que el usuario no encontró
+cómo resolver algo"*. El código ya lo decía (`tickets_select_v9 excluye
+explícitamente los reportes de bug`). Lo único que se cambió es **lo que se le
+dice a quien reporta**: ahora *"La información será turnada al equipo de
+desarrollo para su revisión"*, y dos mensajes de error de ese modal dejaron de
+decirle "trámite" al usuario.
+
+#### Lo demás que se arregló
+
+| | |
+|---|---|
+| **Cambiar de equipo mentía** | `handleEquipoChange` no miraba el error del update, **avisaba al líder del equipo nuevo** de un trámite que nunca se movió, y remataba con "Cambios guardados automáticamente". Probado con SOFÍA: la RLS contestó **403** y la pantalla no dijo nada. Su hermano `handleResponsableChange` ya lo hacía bien desde el 29/10 |
+| **Y se le ofrecía a quien no puede** | el selector de Equipo se habilitaba con `canManageAssignment`, que incluye al ejecutivo. Mover de equipo es de Admin/Gerente/líder: un ejecutivo **toma** el trámite, no lo reparte |
+| **El toggle Reales/Bots es de cada persona** | su clave de `localStorage` llevaba nombre global, así que en una computadora compartida el segundo heredaba el del primero. Ahora lleva el id, respetando la preferencia anterior para que a nadie se le resetee |
+
+#### 🔑 El mapa de políticas de `tickets`, medido contra `pg_policy`
+
+**El baseline ya no las describe.** Hoy hay **UNA sola de SELECT**,
+`tickets_select_v10` —las que nombra el baseline ya no existen— y **CUATRO de
+UPDATE**. Razonar sobre quién ve qué leyendo el baseline lleva a conclusiones
+falsas; me pasó hoy. Preguntar siempre:
+
+```sql
+select polname, polcmd, polpermissive
+  from pg_policy
+ where polrelid = 'public.tickets'::regclass
+ order by polpermissive desc, polname;
+```
+
+#### Dos cosas de método
+
+- **Los backticks en `git commit -m "…"` los ejecuta bash.** Un mensaje perdió
+  dos palabras por eso. Para mensajes largos, heredoc entrecomillado (`<<'FIN'`).
+- **`gh repo list` y `gh repo view` se contradijeron** sobre si un repo era
+  público. Gana la API directa: `gh api repos/OWNER/NOMBRE --jq .private`.
 
 ---
 
