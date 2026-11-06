@@ -19,6 +19,65 @@ de experiencia de usuario **como Empleado y como Gerente**. El del Agente ya
 está hecho (16 hallazgos, 4 arreglados). Ahí vive lo de atender, reasignar y
 cerrar, que el Agente no toca.
 
+#### 🔜 EN CURSO — perfil Desarrollador (Froilán) y el reporte semanal
+
+**Lo acordado el 06/11.** Estado medido contra la base ese día:
+
+| | |
+|---|---|
+| Migración `20261105182919` | ✅ corrida — la columna existe y se lee |
+| Cuenta de Froilán | ✅ existe — `4a2262c3-9b98-4ba5-b1c4-3faf9b1d936b`, rol Empleado, activa |
+| **`es_desarrollador`** | ❌ **nadie lo tiene todavía** |
+| ⚠️ Su fila | **`email` en null** — confirmar con qué entra antes de que lo pruebe |
+
+**Falta activárselo** (casilla "Perfil Desarrollador" del modal de usuario, que
+ya está en beta desde el 06/11). **Sin la marca no hay nada que registrar**, así
+que esto va primero.
+
+#### El reporte semanal de actividad — lo medido antes de diseñarlo
+
+Ricardo quiere, **semanal**, las dos cosas: lo que Froilán entrega en GitHub y
+lo que hace dentro de MOVI. Y recibirlo **en MOVI para Admins y por correo, en
+PDF**.
+
+🔑 **Dato que define el diseño: su trabajo NO se ve en los commits.** Entra por
+**pull requests** desde ramas `Froi…`, así que en `main` solo quedan los merges:
+
+| Cómo se mida, en `medaunbrauni/lector-polizas` | Froilán |
+|---|---|
+| commits en `main`, últimos 30 días | **1** |
+| **pull requests**, histórico | **20** |
+
+Un reporte que contara commits lo dejaría como si no trabajara. **Se arma por
+PRs.**
+
+**Los repos** (confirmados el 06/11, los dos **públicos**, así que se leen sin
+token):
+
+| Repo | Froilán |
+|---|---|
+| `crickmx/jiromovi` | colaborador con push, **0 commits, 0 PRs, 0 issues — nunca** |
+| `medaunbrauni/lector-polizas` | **ahí sí trabaja** (20 PRs) |
+
+⚠️ `crickmx/lector-qualitas-bolt` **no es** el repo del lector: él no es
+colaborador ahí y está parado desde junio. El bueno es `medaunbrauni/lector-polizas`.
+
+**Van a agregarse más repos**, así que la lista va **en la base, no en el
+código** — si no, cada repo nuevo obliga a un deploy.
+
+**Si un repo se vuelve privado, el reporte debe DECIR que no pudo leerlo**, no
+reportar cero en silencio.
+
+**Dentro de MOVI no existe registro de actividad.** `audit_logs` solo guarda
+altas y bajas de usuarios (`activate_user`, `deactivate_user`). El plan: un
+trigger que escriba en `audit_logs` —que ya tiene las columnas correctas—
+**solo cuando quien actúa tiene `es_desarrollador`**. Volumen mínimo, y se apaga
+quitando la marca.
+
+**El PDF:** un solo generador (`jspdf`, el mismo de las Órdenes de Compra), el
+cron semanal lo guarda en Storage y lo manda por correo; la pantalla de Admin
+solo lista lo que ya existe. Así no hay dos versiones del mismo reporte.
+
 #### ❌ Lo que falta, en orden
 
 **1. Terminar el recorrido de UX como Empleado y como Gerente.** El del Agente
@@ -120,7 +179,18 @@ quedó en la conversación del 30/10 y como ficha corta en `qa/hallazgos.md`.
 **público** (`crickmx/jiromovi`, verificado el 30/10). Un hueco de seguridad
 sin cerrar **no se describe en un archivo versionado**.
 
-⚠️ **`main` autodespliega beta desde el 24/09** (job `deploy-beta` en `ci.yml`). Un push a `main` dispara build + gitleaks y, si pasan, sube `dist/` al servidor. **No hace falta Pull + Deploy en Plesk para beta**; lo que sí hay que vigilar es que nada llegue a `main` sin revisar, porque sale en vivo en minutos. `main` **no tiene protección de rama** (la API devuelve 404).
+⚠️ **BETA YA NO SE DESPLIEGA SOLA.** El 05/11 (`14b9d38c`) se eliminó el job
+`deploy-beta` de `ci.yml`: GitHub Actions **solo valida** build + secretos, y el
+único canal para publicar a beta es el **Pull + Deploy manual de Plesk**.
+
+Consecuencia directa para trabajar: **un push NO se puede verificar en
+navegador.** Hay que pedirle a Ricardo el Pull/Deploy y esperar. La barra
+naranja dice qué commit está sirviendo beta de verdad — es la forma de saber si
+ya entró.
+
+(Hasta el 05/11 esto decía lo contrario, que `main` autodesplegaba beta. Ya no.)
+
+`main` **no tiene protección de rama** (la API devuelve 404).
 
 ⚠️ **Al desplegar `process-poliza-pdf` desde el dashboard van DOS archivos.** El 19/10 se pegó por error el código de `escalar-tramite` (que es de un solo archivo) y el dashboard se llevó `extraccionExitosa.ts`; el deploy siguiente ya solo fallaba con *"Module not found … extraccionExitosa.ts"*. Se arregla volviendo a crear el archivo en el editor, no tocando el `index.ts`:
 
@@ -155,6 +225,8 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261029000006_las_tablas_de_tramites_si_transmiten.sql` | **A9** — publica Trámites y Store en `supabase_realtime` | ✅ corrida |
 | `20261030000001_quien_comento_es_quien_modifico.sql` | **H-006** — comentar ya actualiza `modificado_por`, no solo la fecha | ✅ corrida |
 | `20261104000001_quitar_politica_de_menciones_rota.sql` | quita `tickets_mencionados_select`, una política de SELECT sobre `tickets` que nunca concedió nada y cuyo alcance no estaba ligado a la fila consultada | ✅ corrida |
+| `20261105172354_cerrar_lectura_abierta_comisiones.sql` | `commission_details`/`errors` tenían `USING (true)`: cualquier usuario con sesión leía las comisiones y los clientes de TODOS los agentes | ✅ corrida |
+| `20261105182919_rol_desarrollador.sql` | `usuarios.es_desarrollador` — ve y prueba todos los módulos, pero de usuarios reales no ve ni una fila | ✅ corrida |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
