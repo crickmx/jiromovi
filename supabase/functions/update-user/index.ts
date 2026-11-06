@@ -33,6 +33,7 @@ interface UpdateUserRequest {
     equipo_celular?: string | null;
     plan_mkt_premium?: boolean;
     seguros_express_habilitado?: boolean;
+    es_desarrollador?: boolean;
     imagen_perfil_url?: string | null;
     mi_logotipo_url?: string | null;
     ubicacion_lat?: number | null;
@@ -228,6 +229,11 @@ Deno.serve(async (req: Request) => {
     if (userData.equipo_celular !== undefined) updateData.equipo_celular = userData.equipo_celular;
     if (userData.plan_mkt_premium !== undefined) updateData.plan_mkt_premium = userData.plan_mkt_premium;
     if (userData.seguros_express_habilitado !== undefined) updateData.seguros_express_habilitado = userData.seguros_express_habilitado;
+    // Solo Administrador puede activar/desactivar el perfil Desarrollador --
+    // un Gerente también puede llamar este endpoint y no debe poder tocarlo.
+    // (La base además lo bloquea vía proteger_campos_usuario(), esto evita
+    // que el intento ni siquiera llegue ahí con un error confuso.)
+    if (isAdmin && userData.es_desarrollador !== undefined) updateData.es_desarrollador = userData.es_desarrollador;
     if (userData.imagen_perfil_url !== undefined) updateData.imagen_perfil_url = userData.imagen_perfil_url;
     if (userData.mi_logotipo_url !== undefined) updateData.mi_logotipo_url = userData.mi_logotipo_url;
     if (userData.ubicacion_lat !== undefined) updateData.ubicacion_lat = userData.ubicacion_lat;

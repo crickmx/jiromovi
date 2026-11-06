@@ -35,6 +35,7 @@ interface CreateUserRequest {
     equipo_computo?: string | null;
     equipo_celular?: string | null;
     seguros_express_habilitado?: boolean;
+    es_desarrollador?: boolean;
     ubicacion_lat?: number | null;
     ubicacion_lng?: number | null;
     ubicacion_direccion_manual?: string | null;
@@ -224,6 +225,10 @@ Deno.serve(async (req: Request) => {
       equipo_computo: userData.equipo_computo || null,
       equipo_celular: userData.equipo_celular || null,
       seguros_express_habilitado: userData.seguros_express_habilitado ?? false,
+      // Solo un Administrador puede dar de alta a alguien ya marcado como
+      // Desarrollador -- un Gerente/equipo de Mercadotecnia también puede
+      // llamar este endpoint, y no debe poder auto-otorgarse ese nivel.
+      es_desarrollador: isAdmin ? (userData.es_desarrollador ?? false) : false,
       ubicacion_lat: userData.ubicacion_lat ?? null,
       ubicacion_lng: userData.ubicacion_lng ?? null,
       ubicacion_direccion_manual: userData.ubicacion_direccion_manual ?? null,

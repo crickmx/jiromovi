@@ -31,6 +31,7 @@ type Oficina = Database['public']['Tables']['oficinas']['Row'];
 type UsuarioModal = Usuario & {
   rol_id?: string | null;
   seguros_express_habilitado?: boolean | null;
+  es_desarrollador?: boolean | null;
   ubicacion_lat?: number | null;
   ubicacion_lng?: number | null;
   ubicacion_direccion_manual?: string | null;
@@ -100,6 +101,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
     equipo_celular: '',
     plan_mkt_premium: false,
     seguros_express_habilitado: false,
+    es_desarrollador: false,
   });
   const [ubic, setUbic] = useState<UbicacionValue>({ lat: null, lng: null, direccion_manual: null, metodo: null });
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
@@ -182,6 +184,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         equipo_celular: editableUser.equipo_celular || '',
         plan_mkt_premium: editableUser.plan_mkt_premium || false,
         seguros_express_habilitado: editableUser.seguros_express_habilitado || false,
+        es_desarrollador: editableUser.es_desarrollador || false,
       });
       setUbic({
         lat: editableUser.ubicacion_lat ?? null,
@@ -569,6 +572,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
 
         // seguros.express: habilitación (solo admin) + ubicación (editable por admin).
         updateData.seguros_express_habilitado = formData.seguros_express_habilitado;
+        updateData.es_desarrollador = formData.es_desarrollador;
         updateData.ubicacion_lat = ubic.lat;
         updateData.ubicacion_lng = ubic.lng;
         updateData.ubicacion_direccion_manual = ubic.direccion_manual;
@@ -668,6 +672,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
             equipo_celular: formData.equipo_celular || null,
             plan_mkt_premium: formData.plan_mkt_premium,
             seguros_express_habilitado: formData.seguros_express_habilitado,
+            es_desarrollador: formData.es_desarrollador,
             ubicacion_lat: ubic.lat,
             ubicacion_lng: ubic.lng,
             ubicacion_direccion_manual: ubic.direccion_manual,
@@ -1469,6 +1474,29 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
                     </label>
                     <p className="text-xs text-neutral-600 mt-1">
                       Permite al agente acceder a la funcionalidad completa de Personalizar Publicidad (edición de diseños con logo y texto personalizado)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Perfil Desarrollador — solo Administrador, y no sobre otro Administrador */}
+            {isAdmin && formData.rol !== 'Administrador' && (
+              <div className="bg-gradient-to-br from-violet-50 to-purple-50 border-2 border-violet-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="es_desarrollador"
+                    checked={formData.es_desarrollador}
+                    onChange={(e) => setFormData({ ...formData, es_desarrollador: e.target.checked })}
+                    className="mt-1 h-4 w-4 text-violet-600 border-neutral-300 rounded focus:ring-2 focus:ring-violet-400"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="es_desarrollador" className="text-sm font-medium text-neutral-900 cursor-pointer">
+                      Perfil Desarrollador
+                    </label>
+                    <p className="text-xs text-neutral-600 mt-1">
+                      Puede ver y probar todos los módulos como si administrara, y manipular libremente a los usuarios marcados como prueba. No ve ni puede editar datos de usuarios reales fuera de su propio perfil.
                     </p>
                   </div>
                 </div>
