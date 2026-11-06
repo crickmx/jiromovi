@@ -1,0 +1,22 @@
+{
+  "name": "hermes-agent-service",
+  "version": "2.0.0",
+  "description": "Hermes Agent & Autonomous WhatsApp Gateway with OpenAI-Compatible API and CLI",
+  "main": "server.js",
+  "type": "module",
+  "bin": {
+    "hermes": "./cli.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "cli": "node cli.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.19",
+    "express": "^4.21.2",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4",
+    "dotenv": "^16.4.7"
+  }
+}
