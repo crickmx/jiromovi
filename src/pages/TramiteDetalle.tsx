@@ -217,6 +217,16 @@ export function TramiteDetalle() {
     !isAgente && (isAdmin || isGerente || usuario?.rol === 'Empleado' || myTeamRole === 'lider');
   const isPoolTramite = !tramite?.assigned_to_user_id && !!tramite?.grupo_asignado_id;
   const canManageAssignment = isAdmin || myTeamRole === 'lider' || (myTeamRole === 'ejecutivo' && isPoolTramite);
+  // UX 2026-11-06 — MOVER el trámite de equipo no es lo mismo que asignarlo.
+  //
+  // El selector de Equipo se habilitaba con `canManageAssignment`, que incluye
+  // al **ejecutivo** cuando el trámite está en el pool. Pero la RLS solo deja
+  // mover de equipo a Admin/Gerente/líder (decisión del 29/10), así que a un
+  // ejecutivo se le ofrecía un control que SIEMPRE le iba a fallar: probado con
+  // SOFÍA, la base contestó 403.
+  //
+  // Un ejecutivo puede TOMAR el trámite; repartirlo a otro equipo, no.
+  const canMoverDeEquipo = isAdmin || isGerente || myTeamRole === 'lider';
   const canSelfAssignOnly = myTeamRole === 'ejecutivo' && !isAdmin && !isGerente;
   const claimedRef = useRef(false);
   const isCerrado = tramite?.cerrado_en !== null;
@@ -1610,11 +1620,28 @@ export function TramiteDetalle() {
 
   const handleEquipoChange = async (grupoId: string | null) => {
     if (!tramite || !usuario) return;
-    await supabase.from('tickets').update({
+    // UX 2026-11-06 — este guardado MENTÍA, y de tres formas a la vez.
+    //
+    // No miraba el error del update; avisaba al líder del equipo nuevo de que
+    // le habían asignado un trámite; y remataba con "Cambios guardados
+    // automáticamente". Probado con SOFÍA (Empleado): la RLS contestó **403**,
+    // la pantalla siguió mostrando el equipo nuevo, salió el toast de éxito y
+    // solo al recargar volvía el equipo real.
+    //
+    // Es el patrón #1 del proyecto en la tabla más importante. Su hermano
+    // `handleResponsableChange` ya lo hacía bien desde el 29/10; este se quedó
+    // fuera de aquella pasada. Mismo molde: revisar, decirlo, y SALIR antes de
+    // notificarle a nadie.
+    const { error: errEquipo } = await supabase.from('tickets').update({
       grupo_asignado_id: grupoId,
       assigned_to_user_id: null,
       modificado_por: usuario.id,
     }).eq('id', tramite.id);
+    if (errEquipo) {
+      showToast(`No se pudo cambiar el equipo: ${errEquipo.message}`, 'error');
+      await loadTramite();   // deshace lo que el selector ya pintó
+      return;
+    }
     if (grupoId) {
       const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoId });
       const lider = (miembros as Array<{ id: string; nombre_completo: string }>)?.[0];
@@ -2084,6 +2111,7 @@ export function TramiteDetalle() {
               setSelectedEstatus={setSelectedEstatus}
               canEdit={canEdit && !isCerrado}
               canManageAssignment={canManageAssignment && !isCerrado}
+              canMoverDeEquipo={canMoverDeEquipo && !isCerrado}
               canSelfAssignOnly={canSelfAssignOnly}
               grupoAsignadoId={tramite.grupo_asignado_id}
               onResponsableChange={handleResponsableChange}

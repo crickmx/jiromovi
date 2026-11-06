@@ -77,6 +77,8 @@ interface TramiteDetallesProps {
   setSelectedEstatus: (value: string) => void;
   canEdit?: boolean;
   canManageAssignment?: boolean;
+  /** Mover el trámite a OTRO equipo — solo Admin, Gerente o líder (ver U-18). */
+  canMoverDeEquipo?: boolean;
   canSelfAssignOnly?: boolean;
   grupoAsignadoId?: string | null;
   onResponsableChange?: (userId: string) => void;
@@ -92,6 +94,7 @@ export function TramiteDetalles({
   setSelectedEstatus,
   canEdit = false,
   canManageAssignment = false,
+  canMoverDeEquipo = false,
   canSelfAssignOnly = false,
   grupoAsignadoId,
   onResponsableChange,
@@ -286,7 +289,7 @@ export function TramiteDetalles({
               <Wrench className="w-4 h-4 inline mr-2" />
               Equipo
             </label>
-            {canManageAssignment && onEquipoChange ? (
+            {canMoverDeEquipo && onEquipoChange ? (
               <select
                 value={selectedGrupoId}
                 onChange={e => {
