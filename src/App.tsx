@@ -54,6 +54,7 @@ const TiendaCatalogo = lazy(() => import('./movistore/TiendaCatalogo').then(m =>
 
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+const isMoviRootDomain = HOST === 'movi.digital' || HOST === 'www.movi.digital';
 const isMutuusSite    = HOST === 'mutuus.mx' || HOST.endsWith('.mutuus.mx')
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'mutuus');
 const isAgenteSite    = HOST === 'agentedeseguros.website' || HOST.endsWith('.agentedeseguros.website');
@@ -72,6 +73,16 @@ const isTiendaSite     = HOST === 'tienda.movi.digital'
 const isMoviMainSite   = HOST === 'movi.digital' || HOST === 'www.movi.digital'
   || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('site') === 'movi');
 // Everything else (app.movi.digital, beta.movi.digital, localhost, Bolt preview, etc.) is MOVI App
+
+// ── Redirect helper for movi.digital / www.movi.digital -> beta.movi.digital/landing ─
+function MoviRootDomainRedirect() {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.location.replace('https://beta.movi.digital/landing');
+    }
+  }, []);
+  return <PageLoader />;
+}
 
 // ── Redirect helper for landings.movi.digital/mutuus -> mutuus.mx ──────────
 function RedirectToMutuusMx() {
@@ -433,6 +444,7 @@ function PageLoader() {
 }
 
 function App() {
+  if (isMoviRootDomain) return <MoviRootDomainRedirect />;
   if (isMutuusSite)     return <MutuusApp />;
   if (isLandingsSite)   return <LandingsApp />;
   if (isAgenteSite)     return <AgenteWebsiteApp />;

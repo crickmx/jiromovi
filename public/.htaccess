@@ -47,14 +47,21 @@ Options -MultiViews
   </FilesMatch>
 </IfModule>
 
-# --- 3. Redirección 301 de landings.movi.digital/mutuus a https://mutuus.mx/ ---
+# --- 3. Redirección 301 de movi.digital y www.movi.digital a https://beta.movi.digital/landing ---
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} ^(www\.)?movi\.digital$ [NC]
+  RewriteRule ^(.*)$ https://beta.movi.digital/landing [R=301,L]
+</IfModule>
+
+# --- 4. Redirección 301 de landings.movi.digital/mutuus a https://mutuus.mx/ ---
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteCond %{HTTP_HOST} ^(www\.)?landings\.movi\.digital$ [NC]
   RewriteRule ^mutuus(/.*)?$ https://mutuus.mx/ [R=301,L]
 </IfModule>
 
-# --- 4. Fallback del SPA (React Router) ------------------------------------
+# --- 5. Fallback del SPA (React Router) ------------------------------------
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
