@@ -34,7 +34,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-llave-servicio",
 };
 
 const BUCKET = "reportes-semanales";
@@ -273,12 +273,28 @@ Deno.serve(async (req: Request) => {
 
     // ── Quién puede dispararlo ───────────────────────────────────────────
     //
-    // El cron entra con la llave de servicio; una persona, con su sesión y
-    // siendo Administrador. La comparación de la llave es EXACTA: un
-    // `includes()` con la variable vacía daría siempre verdadero y cualquiera
-    // con la URL podría dispararlo (fue un hueco real el 15/10).
+    // Dos caminos, y el primero existe por una razón concreta:
+    //
+    // 1. EL CRON. La base llama a las edge functions por `net.http_post`, y el
+    //    gateway de Supabase exige que `Authorization` sea un **JWT**. La llave
+    //    de servicio **ya no lo es** (es una `sb_secret_…`, ver 15/10), así que
+    //    mandarla ahí devuelve `UNAUTHORIZED_INVALID_JWT_FORMAT` **antes de
+    //    llegar aquí** — probado el 06/11.
+    //
+    //    Por eso el patrón es el mismo de `alta-finalizar`: en `Authorization`
+    //    va la **anon key** (es pública y solo sirve para pasar el gateway), y
+    //    el secreto de verdad viaja en un header propio que se compara EXACTO.
+    //
+    //    Exacto y no `includes()`: con la variable vacía, `includes("")` es
+    //    siempre verdadero y cualquiera con la URL dispararía la función. Fue
+    //    un hueco real el 15/10, en dos funciones.
+    //
+    // 2. UNA PERSONA, con su sesión y siendo Administrador.
+    const secretoHeader = req.headers.get("x-llave-servicio") || "";
     const auth = (req.headers.get("Authorization") || "").replace("Bearer ", "");
-    let permitido = !!serviceKey && auth === serviceKey;
+
+    let permitido = !!serviceKey && (secretoHeader === serviceKey || auth === serviceKey);
+
     if (!permitido && auth) {
       const { data: { user } } = await supabase.auth.getUser(auth);
       if (user) {
