@@ -73,11 +73,36 @@ código** — si no, cada repo nuevo obliga a un deploy.
 **Si un repo se vuelve privado, el reporte debe DECIR que no pudo leerlo**, no
 reportar cero en silencio.
 
-**Dentro de MOVI no existe registro de actividad.** `audit_logs` solo guarda
-altas y bajas de usuarios (`activate_user`, `deactivate_user`). El plan: un
-trigger que escriba en `audit_logs` —que ya tiene las columnas correctas—
-**solo cuando quien actúa tiene `es_desarrollador`**. Volumen mínimo, y se apaga
-quitando la marca.
+🔑 **SÍ EXISTE registro de actividad en MOVI, y es bueno. Me equivoqué el
+06/11 y casi construyo una segunda bitácora al lado.**
+
+Miré `audit_logs`, vi que solo tenía altas y bajas de usuarios, y concluí que
+no había nada. **La buena es `user_activity_logs`**, que encontré al abrir el
+panel de Admin con la sesión de Froilán:
+
+```
+user_id, user_name_snapshot, email_snapshot, office_id, office_name_snapshot,
+role_snapshot, module, event_type, action, entity_type, entity_id, summary,
+details, metadata, status, created_at
+```
+
+Tiene su pantalla (**Admin → Actividad**, `/actividad-usuarios`) con filtros por
+módulo/evento/rol/oficina, exportación a CSV, y cuatro RPCs listas:
+`get_activity_logs`, `get_activity_kpis`, `get_top_active_users`,
+`get_top_modules`. Medido el 06/11: **91 eventos en el mes, 65 trámites
+atendidos**. Está viva.
+
+**El reporte semanal se arma leyendo ESO**, no una bitácora nueva.
+
+⚠️ **El hueco real es de cobertura, no de mecanismo:** `src/lib/activityLogger.ts`
+tiene **41 funciones `track*`** (incluida `trackTramiteAction`) pero **solo 11
+pantallas las llaman**. Si falta registrar algo, se agrega la llamada donde
+falte — es frontend y es barato. **No** una segunda bitácora en la base.
+
+🔑 **La regla, que el propio proyecto ya tenía escrita y yo no apliqué:** antes
+de construir un mecanismo de diagnóstico nuevo, revisar si el dato ya está en
+alguna tabla de log. Lo que me engañó fue mirar la tabla por su nombre
+(`audit_logs`) en vez de buscar la pantalla que ya lo enseña.
 
 **El PDF:** un solo generador (`jspdf`, el mismo de las Órdenes de Compra), el
 cron semanal lo guarda en Storage y lo manda por correo; la pantalla de Admin
@@ -232,7 +257,7 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261104000001_quitar_politica_de_menciones_rota.sql` | quita `tickets_mencionados_select`, una política de SELECT sobre `tickets` que nunca concedió nada y cuyo alcance no estaba ligado a la fila consultada | ✅ corrida |
 | `20261105172354_cerrar_lectura_abierta_comisiones.sql` | `commission_details`/`errors` tenían `USING (true)`: cualquier usuario con sesión leía las comisiones y los clientes de TODOS los agentes | ✅ corrida |
 | `20261105182919_rol_desarrollador.sql` | `usuarios.es_desarrollador` — ve y prueba todos los módulos, pero de usuarios reales no ve ni una fila | ✅ corrida |
-| `20261106000001_registrar_actividad_desarrollador.sql` | anota en `audit_logs` lo que escribe un `es_desarrollador`, en 5 tablas, solo nombres de columnas | ❌ **falta correrla** |
+| ~~`20261106000001_registrar_actividad_desarrollador.sql`~~ | **RETIRADA el 06/11, no correr** — ya existe `user_activity_logs`, ver abajo |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
