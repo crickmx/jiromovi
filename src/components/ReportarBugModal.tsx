@@ -35,14 +35,16 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
         .eq('id', 1)
         .maybeSingle();
       if (!bugConfig?.tipo_tramite_id) {
-        throw new Error('El administrador aún no configuró qué trámite se crea al reportar un problema.');
+        // Estos dos mensajes los LEE QUIEN REPORTA, así que no nombran
+        // trámites: desde su lado esto es un reporte, no un trámite (06/11).
+        throw new Error('El reporte no se puede enviar todavía: falta que un administrador termine de configurar esta función.');
       }
 
       const [{ data: tipo }, { data: estatusIniciado }] = await Promise.all([
         supabase.from('ticket_tipos').select('id, value, area').eq('id', bugConfig.tipo_tramite_id).maybeSingle(),
         supabase.from('ticket_estatus').select('id').eq('nombre', 'Iniciado').maybeSingle(),
       ]);
-      if (!tipo) throw new Error('El tipo de trámite configurado ya no existe.');
+      if (!tipo) throw new Error('El reporte no se puede enviar: la configuración de esta función quedó incompleta. Avísale a un administrador.');
       if (!estatusIniciado) throw new Error('No se encontró el estatus "Iniciado"');
 
       const { data: grupoData } = await supabase.rpc('get_grupo_para_ticket', {
@@ -246,8 +248,14 @@ export function ReportarBugModal({ screenshot, onClose }: Props) {
             <p className="text-base font-semibold text-neutral-900 dark:text-white">
               {tipoReporte === 'sugerencia' ? '¡Gracias por tu sugerencia!' : '¡Gracias por tu reporte!'}
             </p>
+            {/* Redacción pedida por Ricardo (06/11). Dice qué pasa con lo que
+                acabas de mandar SIN dar a entender que se abrió un trámite: el
+                reporte entra a una bandeja interna y el usuario no lo vuelve a
+                ver, que es a propósito (no todo reporte es trabajo de
+                desarrollo; muchos son sugerencias o dudas). Si el texto
+                prometiera seguimiento, la reserva se sentiría como una falla. */}
             <p className="text-sm text-neutral-500 dark:text-white/60">
-              Nuestro equipo lo va a revisar.
+              La información será turnada al equipo de desarrollo para su revisión.
             </p>
             <button
               onClick={onClose}
