@@ -27,12 +27,17 @@ cerrar, que el Agente no toca.
 |---|---|
 | Migración `20261105182919` | ✅ corrida — la columna existe y se lee |
 | Cuenta de Froilán | ✅ existe — `4a2262c3-9b98-4ba5-b1c4-3faf9b1d936b`, rol Empleado, activa |
-| **`es_desarrollador`** | ❌ **nadie lo tiene todavía** |
-| ⚠️ Su fila | **`email` en null** — confirmar con qué entra antes de que lo pruebe |
+| **`es_desarrollador`** | ✅ **activo desde el 06/11** — verificado contra la base |
+| Su correo | `desarrollo@jiro-operacion.mx` — vive en **`email_laboral`**; `usuarios.email` está en null y **no estorba**: el login resuelve por `email_laboral` (`MoviLogin.tsx`) |
 
-**Falta activárselo** (casilla "Perfil Desarrollador" del modal de usuario, que
-ya está en beta desde el 06/11). **Sin la marca no hay nada que registrar**, así
-que esto va primero.
+⚠️ **Son DOS cosas distintas con el mismo nombre, y se prestan a confusión:**
+
+| | Qué es | Qué hace |
+|---|---|---|
+| **Rol "Desarrollador"** del catálogo | un `rol_id`, con `rol_base = 'Empleado'` | solo destapa módulos vía `module_visibility` |
+| **Casilla "Perfil Desarrollador"** | la columna `es_desarrollador` | **esto es lo que manda**: de aquí cuelgan los permisos y el candado sobre datos de usuarios reales |
+
+Froilán tiene las dos. Pero cambiar el rol **no** da el perfil.
 
 #### El reporte semanal de actividad — lo medido antes de diseñarlo
 
@@ -227,6 +232,7 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261104000001_quitar_politica_de_menciones_rota.sql` | quita `tickets_mencionados_select`, una política de SELECT sobre `tickets` que nunca concedió nada y cuyo alcance no estaba ligado a la fila consultada | ✅ corrida |
 | `20261105172354_cerrar_lectura_abierta_comisiones.sql` | `commission_details`/`errors` tenían `USING (true)`: cualquier usuario con sesión leía las comisiones y los clientes de TODOS los agentes | ✅ corrida |
 | `20261105182919_rol_desarrollador.sql` | `usuarios.es_desarrollador` — ve y prueba todos los módulos, pero de usuarios reales no ve ni una fila | ✅ corrida |
+| `20261106000001_registrar_actividad_desarrollador.sql` | anota en `audit_logs` lo que escribe un `es_desarrollador`, en 5 tablas, solo nombres de columnas | ❌ **falta correrla** |
 
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
