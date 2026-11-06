@@ -13,6 +13,7 @@ REM   9223  VALERIA  Agente     ccjimenez+agente2@jiro.com.mx
 REM   9224  DIEGO    Empleado   ccjimenez+empleado1@jiro.com.mx
 REM   9225  SOFIA    Empleado   ccjimenez+empleado2@jiro.com.mx
 REM   9226  LAURA    Gerente    ccjimenez+gerente@jiro.com.mx
+REM   9227  FROILAN  Desarrollador (persona real)  desarrollo@jiro-operacion.mx
 REM
 REM La sesion de cada una se inicia A MANO y queda guardada en su perfil, en
 REM %LOCALAPPDATA%\movi-qa\perfiles\<nombre>, FUERA del repo. La contrasena
@@ -29,6 +30,7 @@ call :uno valeria 9223
 call :uno diego   9224
 call :uno sofia   9225
 call :uno laura   9226
+call :uno froilan 9227
 echo.
 echo Cinco ventanas abiertas. Inicia sesion en cada una; la contrasena no
 echo pasa por el chat. El puerto de cada quien esta en el titulo de arriba.
