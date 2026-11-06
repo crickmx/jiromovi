@@ -131,6 +131,96 @@ no desplegado — estaba, pero más allá del corte.
 
 ---
 
+## El circuito del reporte de bugs, de punta a punta — 06/11
+
+Pedido de Ricardo: *"usa MOVI como Froilán, que interactúe con los otros
+perfiles, que levanten reportes con el botón, ver si los ve Froilán, que los
+atienda"*. Hecho con seis sesiones reales.
+
+### ✅ Lo que funciona
+
+1. **MATEO (Agente)** levantó un reporte con el botón flotante. Formulario de
+   dos campos (tipo: error / sugerencia, y descripción). Confirmó **"ENVIADA"**,
+   sin peticiones fallidas.
+2. Se convirtió en el trámite **TKEDDEE**, tipo `revision_de_bugerror`, que
+   cayó solo en el equipo **Pruebas MOVI Digital · Sistemas**.
+3. **El diagnóstico automático por IA corrió y acertó.** Dejó un comentario:
+   *"La causa probable es un problema en el formato de la fecha en el frontend.
+   Revisar el componente que muestra la fecha en la ruta /tramites. Confianza:
+   alta."* — que es exactamente el U-02 que se arregló el 04/11.
+4. **Froilán lo ve** en Admin → Reportes de Bugs, encabezando la lista, y
+   **pudo responder**: su comentario quedó guardado.
+
+### 🔴 D-01 · Quien levanta un reporte NO puede volver a verlo — `nuevo`
+
+- **ruta**: cualquiera levanta un reporte con el botón; luego intenta abrirlo
+- **esperaba**: poder seguir su propio reporte y leer la respuesta
+- **pasó**: MATEO quedó fuera de su propio trámite. La pantalla **lo rebota a
+  `/tramites` sin decir nada**
+- **se repite**: sí
+- **medido con su propia sesión**, que es lo que lo vuelve concluyente:
+
+| | |
+|---|---|
+| id de MATEO | `50f907b6-0ca0-4289-b2f2-b83d3d23e0fc` |
+| `creado_por` de TKEDDEE | **el mismo** |
+| consulta por id | **200 con `[]`** — la RLS se lo quita |
+| sus trámites (`creado_por=eq.<él>`) | 6, y **TKEDDEE no está** |
+
+- **por qué la pantalla calla**: `TramiteDetalle.tsx:444` hace
+  `.select('*').eq('id', id).single()` y, si falla, `navigate('/tramites')`.
+  Con `.single()` y cero filas, PostgREST **devuelve error**, así que el
+  redirect es el camino normal cuando no tienes acceso. Sin mensaje
+- **lo que falta por saber**: qué política lo filtra. `tickets_select_policy`
+  del baseline incluye `creado_por = auth.uid()`, así que debería alcanzarle.
+  Hay que mirar las políticas vivas:
+
+```sql
+select polname, polcmd, polpermissive
+  from pg_policy
+ where polrelid = 'public.tickets'::regclass
+ order by polpermissive desc, polname;
+```
+
+- **por qué importa**: el botón de reportar está en todas las pantallas y es
+  el camino por el que la gente avisa de fallas. Si quien reporta nunca ve qué
+  pasó, deja de reportar
+
+### 🟡 D-02 · El Desarrollador no puede asignarse un reporte — `nuevo`
+
+- **ruta**: TKEDDEE como FROILÁN (Administrador + Desarrollador)
+- **pasó**: el selector de Responsable ofrece **LAURA, DIEGO y SOFÍA**. Froilán
+  **no está**, porque no es miembro del equipo *Pruebas MOVI Digital ·
+  Sistemas*, que es donde caen los reportes
+- **consecuencia**: puede comentar, no puede **tomar** el reporte. Para la
+  persona cuyo trabajo es atenderlos, es justo lo que necesita
+- **arreglo**: es configuración — agregarlo como ejecutivo al equipo que
+  atiende los reportes. **Decisión de Ricardo**
+
+### 🟡 D-03 · El toggle esconde los reportes de los bots — `nuevo`
+
+El toggle de Admin arranca en **"Solo trámites de personas"**, así que un
+reporte levantado por un bot **no aparece** en /tramites hasta cambiarlo a
+*"Personas y agentes de IA juntos"*. Es el comportamiento que Ricardo pidió el
+21/10 y está bien para su tablero — pero muerde justo a un desarrollador que
+prueba con cuentas de bot: tardé en encontrar TKEDDEE por esto.
+
+No es un bug; es algo que hay que saber. Queda anotado.
+
+### 🔑 Dos cosas del método
+
+1. **Casi reporto que "Reportes de Bugs" no estaba en el panel de Admin.**
+   Estaba: el texto de esa página mide **4,070 caracteres** y el verbo `texto`
+   corta a 1,500. Es la trampa que ya estaba anotada, y volvió a morder. Para
+   preguntas de *"¿aparece X?"*, contar en el DOM, no buscar en el texto.
+2. **El perfil Desarrollador quedó verificado en sus dos mitades**, con Froilán
+   ya como Administrador: ve el Panel con 47 herramientas y entra sin errores;
+   y el candado aguantó — ve **6 usuarios** (5 bots + él) y `commission_details`
+   le devuelve **0 filas**. Ser Administrador **no** le abrió los datos, porque
+   la política es `RESTRICTIVE` y se combina con **Y**.
+
+---
+
 ## Recorrido de experiencia de usuario — 04/11
 
 Pedido de Ricardo: *"revisa el proceso de creación de trámite y seguimiento de
