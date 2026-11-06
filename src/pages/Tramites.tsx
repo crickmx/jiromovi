@@ -80,7 +80,18 @@ const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
 
 /** Qué mitad del tablero se está mirando. Solo aplica al Administrador. */
 type ModoTablero = 'reales' | 'bots' | 'todo';
-const MODO_TABLERO_KEY = 'tramites_modo_tablero';
+// La preferencia del tablero es de CADA persona, no del navegador.
+//
+// Hasta el 06/11 la clave era global (`tramites_modo_tablero`), así que en una
+// computadora compartida el segundo que entrara heredaba el toggle del primero
+// sin darse cuenta. Ahora lleva el id de quien mira.
+//
+// Sigue viviendo en `localStorage`, o sea que es por navegador: entrar desde
+// otra máquina arranca de cero. Guardarlo en la base lo haría seguir a la
+// persona entre computadoras, pero es una columna nueva para una preferencia
+// de un clic — si algún día estorba, ese es el cambio.
+const MODO_TABLERO_KEY_VIEJA = 'tramites_modo_tablero';
+const modoTableroKey = (userId: string) => `tramites_modo_tablero_${userId}`;
 
 /**
  * Un trámite es "de bot" si lo levantó un agente de IA o si es para uno.
@@ -210,13 +221,11 @@ export function Tramites() {
   // Qué tablero mira el Administrador. Arranca en 'reales' a propósito: los bots
   // son los que saturan, así que esconderlos es el estado útil por default y ver
   // los suyos es la excepción que se pide.
-  const [modoTablero, setModoTablero] = useState<ModoTablero>(() => {
-    try {
-      const guardado = localStorage.getItem(MODO_TABLERO_KEY);
-      if (guardado === 'reales' || guardado === 'bots' || guardado === 'todo') return guardado;
-    } catch { /* ventana privada o storage bloqueado: el default sirve igual */ }
-    return 'reales';
-  });
+  // Arranca en 'reales' y la preferencia guardada se carga abajo, cuando ya se
+  // sabe QUIÉN está mirando: al recargar, `usuario` llega en null un instante,
+  // y leer la clave aquí daría siempre la de nadie.
+  const [modoTablero, setModoTablero] = useState<ModoTablero>('reales');
+  const modoTableroCargado = useRef<string | null>(null);
   const [tramitesCerrados20, setTramitesCerrados20] = useState<TramiteItem[]>([]);
 
   // Estatus filtered by selected tipos (cascade)
@@ -746,9 +755,26 @@ export function Tramites() {
   // - Líder (equipo, cualquier rol de sistema): todos los trámites de su equipo
   // - Agente (sistema, cliente externo): solo los propios
   // - Empleado y demás: lo propio + todo lo de sus equipos (asignado o no)
+  // Cargar la preferencia de ESTA persona. La guarda `modoTableroCargado` evita
+  // que un re-render tardío pise lo que el usuario acabe de elegir.
   useEffect(() => {
-    try { localStorage.setItem(MODO_TABLERO_KEY, modoTablero); } catch { /* da igual si no se puede guardar */ }
-  }, [modoTablero]);
+    const uid = usuario?.id;
+    if (!uid || modoTableroCargado.current === uid) return;
+    modoTableroCargado.current = uid;
+    try {
+      // Si todavía no tiene clave propia, se respeta la global de antes del
+      // 06/11 para que a nadie se le resetee el toggle de un día para otro.
+      const guardado = localStorage.getItem(modoTableroKey(uid))
+        ?? localStorage.getItem(MODO_TABLERO_KEY_VIEJA);
+      if (guardado === 'reales' || guardado === 'bots' || guardado === 'todo') setModoTablero(guardado);
+    } catch { /* ventana privada o storage bloqueado: el default sirve igual */ }
+  }, [usuario?.id]);
+
+  useEffect(() => {
+    const uid = usuario?.id;
+    if (!uid) return;   // sin saber de quién es, no se guarda
+    try { localStorage.setItem(modoTableroKey(uid), modoTablero); } catch { /* da igual si no se puede guardar */ }
+  }, [modoTablero, usuario?.id]);
 
   // El toggle de Reales/Bots es SOLO del Administrador: es el único que ve todo
   // y por eso el único a quien los bots le saturan el tablero. Para cualquier
