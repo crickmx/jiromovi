@@ -639,3 +639,25 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── App nativa (Capacitor) ─────────────────────────────────────────────
+   initNative() marca <html> con .native-app y .native-ios / .native-android.
+   En iOS la vista ocupa toda la pantalla (contentInset: never), así que el
+   contenido se aparta del notch y de la barra de inicio con las áreas seguras.
+   En la web estas reglas no aplican: env() vale 0 y las clases no existen. */
+html.native-app,
+html.native-app body {
+  background-color: #ffffff;
+  overscroll-behavior-y: none;
+}
+html.native-ios #root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  box-sizing: border-box;
+  min-height: 100vh;
+}
+html.native-app {
+  -webkit-tap-highlight-color: transparent;
+}

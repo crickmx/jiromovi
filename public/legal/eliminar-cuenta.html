@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eliminar mi cuenta — MOVI Digital y Seguwallet</title>
+<meta name="description" content="Solicita la eliminación de tu cuenta de MOVI Digital o de Seguwallet y de tus datos personales.">
+<link rel="stylesheet" href="/legal/estilos.css">
+</head>
+<body>
+<!-- Página que exige Google Play (sección "Eliminación de datos"): permite pedir
+     la baja sin tener la app instalada. Escribe en solicitudes_eliminacion_cuenta
+     vía la edge function solicitar-eliminacion-cuenta. -->
+<main>
+  <h1>Eliminar mi cuenta</h1>
+  <p>Aquí puedes pedir que eliminemos tu cuenta de <strong>MOVI Digital</strong> o de <strong>Seguwallet by MOVI Digital</strong>
+  y tus datos personales.</p>
+
+  <div class="tarjeta">
+    <p><strong>La forma más rápida es desde la app:</strong></p>
+    <ul>
+      <li><strong>Seguwallet:</strong> Perfil → Seguridad → Eliminar mi cuenta. Tu cuenta se desactiva en ese momento.</li>
+      <li><strong>MOVI Digital:</strong> Mi perfil → Eliminar mi cuenta.</li>
+    </ul>
+  </div>
+
+  <h2>¿No tienes la app? Pídelo aquí</h2>
+  <form id="f" novalidate>
+    <label for="app">Cuenta</label>
+    <select id="app" name="app">
+      <option value="seguwallet">Seguwallet by MOVI Digital</option>
+      <option value="movi">MOVI Digital</option>
+    </select>
+    <label for="email">Correo con el que entras</label>
+    <input id="email" name="email" type="email" autocomplete="email" required>
+    <label for="motivo">Motivo (opcional)</label>
+    <textarea id="motivo" name="motivo" rows="3" maxlength="1000"></textarea>
+    <button id="b" type="submit">Solicitar eliminación</button>
+    <p id="m" role="status" aria-live="polite"></p>
+  </form>
+
+  <h2>Qué pasa después</h2>
+  <ul>
+    <li>Para proteger tu cuenta, confirmaremos la solicitud escribiendo al correo registrado.</li>
+    <li>Eliminamos tu perfil, tu acceso, tu foto y tus datos de contacto en un <strong>máximo de 30 días</strong>.</li>
+    <li>Conservamos solo lo que la ley o la aseguradora obligan a guardar (por ejemplo, pólizas, recibos e información
+    fiscal), por el plazo legal, y después se elimina.</li>
+  </ul>
+  <p>¿Dudas? <a href="mailto:seguwallet@movi.digital">seguwallet@movi.digital</a> (Seguwallet) ·
+  <a href="mailto:contacto@movi.digital">contacto@movi.digital</a> (MOVI).</p>
+
+  <footer><a href="/legal/privacidad-seguwallet.html">Aviso de privacidad Seguwallet</a> ·
+  <a href="/legal/privacidad-movi.html">Aviso de privacidad MOVI</a></footer>
+</main>
+<script>
+(function () {
+  // La función se despliega con "Verify JWT" apagado: sin sesión solo registra
+  // la solicitud (no bloquea nada), así que no hace falta mandar ninguna llave.
+  var URL_FN = 'https://qhwvuuyjhcennqccgvse.supabase.co/functions/v1/solicitar-eliminacion-cuenta';
+  var q = new URLSearchParams(location.search).get('app');
+  if (q === 'movi' || q === 'seguwallet') document.getElementById('app').value = q;
+  else if (/movi\.digital$/.test(location.hostname)) document.getElementById('app').value = 'movi';
+  var f = document.getElementById('f'), b = document.getElementById('b'), m = document.getElementById('m');
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = f.email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { m.className = 'err'; m.textContent = 'Escribe un correo válido.'; return; }
+    b.disabled = true; m.className = ''; m.textContent = 'Enviando…';
+    fetch(URL_FN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plataforma: f.app.value, email: email, motivo: f.motivo.value.trim() || undefined })
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        if (x.ok && x.d.ok) { m.className = 'ok'; m.textContent = 'Recibimos tu solicitud. Te escribiremos al correo registrado en un máximo de 30 días.'; f.reset(); }
+        else { m.className = 'err'; m.textContent = (x.d && x.d.error) || 'No se pudo enviar. Intenta de nuevo.'; b.disabled = false; }
+      })
+      .catch(function () { m.className = 'err'; m.textContent = 'Sin conexión. Intenta de nuevo o escríbenos por correo.'; b.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

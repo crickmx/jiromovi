@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { EliminarCuentaCard } from '../components/cuenta/EliminarCuentaCard';
 import { supabase } from '../lib/supabase';
 import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck, Info, ExternalLink, Lock, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -919,6 +920,9 @@ export default function Perfil() {
 
           {/* ── Password Management Section ── */}
           <PasswordSection />
+
+          {/* ── Eliminar cuenta (requisito de App Store / Google Play) ── */}
+          <EliminarCuentaCard plataforma="movi" />
         </div>
       </div>
     </div>

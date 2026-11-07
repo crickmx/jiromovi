@@ -12,9 +12,22 @@
     "type-check": "tsc -b",
     "check:deploy": "git diff --check && npm run build && git status --short",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "native:movi": "node scripts/native/build.mjs movi sync",
+    "native:seguwallet": "node scripts/native/build.mjs seguwallet sync",
+    "native:movi:ios": "node scripts/native/build.mjs movi open-ios",
+    "native:movi:android": "node scripts/native/build.mjs movi open-android",
+    "native:seguwallet:ios": "node scripts/native/build.mjs seguwallet open-ios",
+    "native:seguwallet:android": "node scripts/native/build.mjs seguwallet open-android",
+    "native:assets": "node scripts/native/generar-assets.mjs"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/keyboard": "^8.0.6",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "@fontsource-variable/inter": "5.2.8",
     "@fontsource-variable/manrope": "^5.3.0",
     "@fontsource-variable/sora": "^5.3.0",
@@ -59,6 +72,9 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/ios": "^8.6.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",

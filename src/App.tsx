@@ -34,6 +34,7 @@ const SeguwalletCompleteProfile = lazy(() => import('./seguwallet/pages/Seguwall
 
 // ── Chava Agente pages (lazy) ──────────────────────────────────────────────
 import { ChavaAgenteProvider } from './chava-agente/lib/ChavaAgenteContext';
+import { APP_TARGET } from './native/platform';
 const ChavaAgenteLanding = lazy(() => import('./chava-agente/pages/ChavaAgenteLanding'));
 
 // ── Public advisor page (lazy, no auth) ───────────────────────────────────
@@ -214,7 +215,8 @@ function SeguwalletApp() {
         <SeguwalletStack>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<SeguwalletProductLanding />} />
+              {/* En la app nativa no hay página de venta: se entra directo a la cartera. */}
+              <Route path="/" element={APP_TARGET === 'seguwallet' ? <Navigate to="/dashboard" replace /> : <SeguwalletProductLanding />} />
               <Route path="/home" element={<SeguwalletProductLanding />} />
               <Route path="/landing" element={<SeguwalletProductLanding />} />
               <Route path="/login" element={<SeguwalletLogin />} />
@@ -433,6 +435,9 @@ function PageLoader() {
 }
 
 function App() {
+  // Dentro de la app nativa el host es "localhost": la build fija qué app es.
+  if (APP_TARGET === 'seguwallet') return <SeguwalletApp />;
+  if (APP_TARGET === 'movi')       return <MoviApp />;
   if (isMutuusSite)     return <MutuusApp />;
   if (isLandingsSite)   return <LandingsApp />;
   if (isAgenteSite)     return <AgenteWebsiteApp />;

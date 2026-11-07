@@ -2,9 +2,10 @@ import { type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSeguwallet } from '../lib/SeguwalletContext';
 import { useImpersonation } from '../../contexts/ImpersonationContext';
+import { APP_TARGET } from '../../native/platform';
 
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
-const isSeguwalletDomain = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
+const isSeguwalletDomain = APP_TARGET === 'seguwallet' || HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
 const LOGIN_PATH = isSeguwalletDomain ? '/login' : '/seguwallet/login';
 const COMPLETE_PROFILE_PATH = isSeguwalletDomain ? '/completa-perfil' : '/seguwallet/completa-perfil';
 

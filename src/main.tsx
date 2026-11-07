@@ -5,6 +5,7 @@ import '@fontsource-variable/manrope'
 import './index.css'
 import App from './App.tsx'
 import { initBugReportCapture } from './lib/bugReportCapture'
+import { initNative } from './native/initNative'
 import { ErrorBoundary, esErrorDeCarga, recargarUnaVez } from './components/ErrorBoundary'
 
 initBugReportCapture()
@@ -43,3 +44,6 @@ createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </StrictMode>,
 )
+
+// Solo hace algo dentro de la app de iOS/Android (Capacitor).
+initNative()

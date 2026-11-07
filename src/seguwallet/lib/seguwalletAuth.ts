@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { APP_TARGET } from '../../native/platform';
 
 export interface SeguwalletCustomer {
   id: string;
@@ -193,6 +194,7 @@ export async function logDownload(customerId: string, doc: {
 
 export function isSeguwallet(): boolean {
   if (typeof window === 'undefined') return false;
+  if (APP_TARGET === 'seguwallet') return true;
   const hostname = window.location.hostname;
   return hostname === 'app.seguwallet.mx' || hostname === 'seguwallet.mx';
 }
