@@ -18,11 +18,20 @@ Marca cada paso. **(Ricardo)** = necesita tu cuenta, un dato o una decisión.
   `20261107225905_push_nativo_trigger_sin_campos_cruzados`.
 - ✅ Edge functions desplegadas (las dos con Verify JWT apagado; validan por dentro):
   `solicitar-eliminacion-cuenta` y `enviar-push-nativo`.
-- [ ] **(Ricardo)** Pull + Deploy en Plesk (beta y producción) para publicar las páginas `/legal/` en
-  `app.movi.digital` **y** `seguwallet.mx`. Verificar que abren:
-  - https://seguwallet.mx/legal/privacidad-seguwallet.html
-  - https://seguwallet.mx/legal/eliminar-cuenta.html
-  - https://app.movi.digital/legal/privacidad-movi.html
+- ✅ Push a git del 07/11: todo a `main` (`725bb04d`) y **solo las páginas `/legal/`** a `produccion` (`8fec946c`),
+  sin arrastrar los 50 commits de `main` que producción no tiene.
+- [ ] **(Ricardo)** Pull + Deploy en Plesk de **movi.digital** (sirve la build de `main`, igual que beta) y verificar:
+  - https://movi.digital/legal/privacidad-seguwallet.html
+  - https://movi.digital/legal/privacidad-movi.html
+  - https://movi.digital/legal/eliminar-cuenta.html
+  - https://movi.digital/legal/soporte.html
+
+  Las fichas de las dos apps usan estas URLs de **movi.digital** a propósito:
+  - **seguwallet.mx no sirve la app**: redirige todo a `movi.digital/seguwallet/` (regla de Apache en Plesk), así que
+    `seguwallet.mx/legal/...` no existe. Si se quiere esa URL, en Plesk hay que exceptuar `/legal/` de la redirección.
+  - **app.movi.digital lleva desde el 23/10 sin desplegar** (sirve `f6f21cfa`, y `produccion` ya va en `8fec946c`):
+    su próximo Pull + Deploy también publicará lo que otros subieron a `produccion` desde entonces (Directorio, datos
+    bancarios). Conviene revisarlo antes, no depender de él para las tiendas.
 - [ ] **(Ricardo) Push**: dar de alta APNs y Firebase y cargar los Secrets — pasos en `store/README.md` → “Push”.
 
 ## 2. Legal

@@ -9,9 +9,9 @@
 | Categoría | **Finanzas** (secundaria: Productividad) — Play: **Finanzas** |
 | Precio | Gratis, sin compras dentro de la app, sin anuncios |
 | Clasificación | 4+ (Apple) · PEGI 3 / “Para todos” (IARC) |
-| URL de privacidad | https://seguwallet.mx/legal/privacidad-seguwallet.html |
-| URL de soporte | https://seguwallet.mx/legal/soporte.html?app=seguwallet |
-| URL de eliminación de cuenta (Play) | https://seguwallet.mx/legal/eliminar-cuenta.html?app=seguwallet |
+| URL de privacidad | https://movi.digital/legal/privacidad-seguwallet.html |
+| URL de soporte | https://movi.digital/legal/soporte.html?app=seguwallet |
+| URL de eliminación de cuenta (Play) | https://movi.digital/legal/eliminar-cuenta.html?app=seguwallet |
 | Sitio de marketing | https://seguwallet.mx |
 | Correo de contacto | seguwallet@movi.digital *(confirmar que el buzón existe y alguien lo lee)* |
 

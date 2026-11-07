@@ -10,9 +10,9 @@
 | Categoría | **Empresa / Business** (secundaria: Productividad) — Play: **Empresa** |
 | Precio | Gratis, sin compras dentro de la app, sin anuncios |
 | Clasificación | 4+ (Apple) · “Para todos” (IARC) |
-| URL de privacidad | https://app.movi.digital/legal/privacidad-movi.html |
-| URL de soporte | https://app.movi.digital/legal/soporte.html |
-| URL de eliminación de cuenta (Play) | https://app.movi.digital/legal/eliminar-cuenta.html?app=movi |
+| URL de privacidad | https://movi.digital/legal/privacidad-movi.html |
+| URL de soporte | https://movi.digital/legal/soporte.html |
+| URL de eliminación de cuenta (Play) | https://movi.digital/legal/eliminar-cuenta.html?app=movi |
 | Sitio de marketing | https://movi.digital |
 | Correo de contacto | contacto@movi.digital *(confirmar)* |
 
