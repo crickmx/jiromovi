@@ -2,6 +2,32 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-06)
 
+### 📱 2026-11-07 — Apps nativas de MOVI y Seguwallet (rama `claude/sweet-einstein-iuxeok`, sin merge)
+
+Todo lo de tiendas vive en **`store/`** (empezar por `store/CHECKLIST.md` y `store/README.md`).
+
+- **Capacitor 8**, dos apps desde el mismo código: `CAP_APP=movi|seguwallet` en `capacitor.config.ts`,
+  proyectos en `native/<app>/`. La build lleva `VITE_APP_TARGET` (`src/native/platform.ts`) porque dentro de la app
+  el host es `localhost`: **cualquier detección de Seguwallet por dominio debe mirar también `APP_TARGET`**.
+- Compilar SIEMPRE con `npm run native:<app>` (fija `CAP_APP`, no corre el postbuild de Plesk).
+  `scripts/native/ajustar-proyectos.py` reaplica Info.plist / Manifest / gradle / versiones si se regenera un proyecto.
+- **MOVI Android usa `com.wnapp.id1739907855051`** (reemplaza a “MOVI Digital (beta)” en Play, versionCode 100).
+  iOS es `digital.movi.app`. Seguwallet: `mx.seguwallet.app`. Cuentas de tienda: **hola@mekate.mx**.
+- **Corrido y desplegado el 07/11** (con el MCP de Supabase): migraciones `20261107225105` (solicitudes de
+  eliminación de cuenta), `20261107225844` + `20261107225905` (push nativo); funciones `solicitar-eliminacion-cuenta`
+  y `enviar-push-nativo`, las dos con **Verify JWT apagado** (validan por dentro).
+- **Push nativo**: trigger en `notificaciones` y `notifications` → `enviar-push-nativo` → APNs directo (iOS) / FCM
+  (Android). Solo dispara si el usuario tiene teléfono en `push_dispositivos`. **Faltan los Secrets** de APNs y FCM.
+  🔑 Un trigger que sirve a dos tablas con columnas distintas NO puede leer `new.columna_que_no_existe`, ni dentro
+  de un CASE: falla en el DECLARE y tumba el INSERT. Se lee por `to_jsonb(new)` (pasó y se corrigió en 21 s).
+- **Descargas** dentro de la app: `src/native/descargasNativas.ts` intercepta `<a download>`, `XLSX.writeFile`,
+  `jsPDF.save` y `window.open(blob:)` → guarda y abre Compartir. No hay que tocar cada pantalla.
+- **Seguwallet ganó “Entrar con contraseña”** (para la cuenta de revisión; los clientes no tienen contraseña).
+- Avisos de privacidad en `public/legal/`, generados por `scripts/native/avisos.py` con los datos de
+  https://jiro.mx/privacidad/. ⚠️ `grupojiro.com/aviso-de-privacidad` da **404** (Mutuus lo enlaza).
+
+---
+
 ### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-06
 
 **Todas las migraciones están corridas**, incluida la del 04/11

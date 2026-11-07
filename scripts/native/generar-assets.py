@@ -5,7 +5,7 @@ gráficos de las tiendas, a partir de los logos de store/marca/.
 
   python3 scripts/native/generar-assets.py
 
-Requiere Pillow (pip install pillow). `rasterizar_svg` (Playwright) queda para
+Requiere Pillow y numpy (pip install pillow numpy). `rasterizar_svg` (Playwright) queda para
 cuando haya un logo en SVG de mayor resolución.
 Las salidas ya están versionadas: solo hay que correrlo si cambia un logo.
 """
@@ -33,9 +33,16 @@ const {{ chromium }} = require('playwright');
 def recortar(img: Image.Image) -> Image.Image:
     return img.crop(img.getbbox())
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from escalar_logo import escalar_plano  # noqa: E402
+
+# Los logos del repo son chicos (512 y 177 px); se reconstruyen por color a 1400 px
+# para que el ícono de 1024 salga nítido (ver escalar_logo.py). Requiere numpy.
 LOGOS = {
-    'movi': recortar(Image.open(MARCA / 'movi-icono-512.png').convert('RGBA')),
-    'seguwallet': recortar(Image.open(MARCA / 'seguwallet-icono.png').convert('RGBA')),
+    'movi': recortar(escalar_plano(Image.open(MARCA / 'movi-icono-512.png'),
+                                   ['#3238f5', '#0f24e3', '#365aff', '#0889e6'], 1400)),
+    'seguwallet': recortar(escalar_plano(Image.open(MARCA / 'seguwallet-icono.png'),
+                                         ['#0e23e2', '#365aff', '#172ca5'], 1400)),
 }
 FONDO = {'movi': (255, 255, 255, 255), 'seguwallet': (255, 255, 255, 255)}
 

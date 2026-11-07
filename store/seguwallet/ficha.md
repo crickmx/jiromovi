@@ -59,11 +59,11 @@ seguros,póliza,aseguradora,siniestro,gastos médicos,auto,vida,recibos,cartera,
 
 ### Información para la revisión de Apple (App Review Information)
 
-- **Inicio de sesión**: obligatorio. Seguwallet entra con un **código de 6 dígitos** enviado por correo, así que el revisor no puede recibirlo. Hay que crear una cuenta de demostración que acepte un código fijo (ver `store/CHECKLIST.md`, paso “Cuenta demo”) y ponerla aquí:
-  - Usuario: `revision.apple@seguwallet.mx` *(crear)*
-  - Código: `000000` *(o el que se configure)*
+- **Inicio de sesión**: obligatorio. Cuenta demo con contraseña (ver `store/CHECKLIST.md` → “Cuentas demo”):
+  - Usuario: `revision@seguwallet.mx` *(crear)*
+  - Contraseña: la que se le ponga
 - **Notas** (pegar):
-> Seguwallet is the insurance wallet that licensed insurance agents of the Grupo JIRO network give to their clients in Mexico. Accounts are created by the client's agent, so we provide a demo account with sample policies. Login uses a one-time code instead of a password; the demo account above accepts the fixed code shown. Account deletion: Profile → Seguridad → Eliminar mi cuenta (the account is deactivated immediately and personal data is erased within 30 days). The app does not sell anything: there are no purchases, subscriptions or ads. Camera/photos are used only when the user chooses to attach an image (e.g. a claim photo).
+> Seguwallet is the insurance wallet that licensed insurance agents of the Grupo JIRO network give to their clients in Mexico. Accounts are created by the client's agent, so we provide a demo account with sample policies. Regular users log in with a one-time code sent by email/WhatsApp; to sign in with the demo account tap “¿Tienes contraseña? Entrar con contraseña” on the login screen and use the credentials above. Account deletion: Profile → Seguridad → Eliminar mi cuenta (the account is deactivated immediately and personal data is erased within 30 days). The app does not sell anything: there are no purchases, subscriptions or ads. Camera/photos are used only when the user chooses to attach an image (e.g. a claim photo).
 
 ### Privacidad (App Privacy “nutrition label”)
 
@@ -73,6 +73,7 @@ Respuestas para *Data Collection*. Ninguno se usa para rastreo (**Tracking: No**
 |---|---|---|---|
 | Contact Info → Name, Email Address, Phone Number | Sí | Sí | App Functionality |
 | Contact Info → Physical Address (estado/municipio) | Sí | Sí | App Functionality |
+| Identifiers → Device ID (token de notificaciones push) | Sí | Sí | App Functionality |
 | Financial Info → Other Financial Info (pólizas, recibos) | Sí | Sí | App Functionality |
 | Health & Fitness → Health (si tiene póliza de gastos médicos) | Sí | Sí | App Functionality |
 | User Content → Photos or Videos (siniestros, foto de perfil) | Sí | Sí | App Functionality |

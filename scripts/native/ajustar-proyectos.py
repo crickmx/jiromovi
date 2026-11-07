@@ -25,7 +25,14 @@ APPS = {
                        photos='Seguwallet accede a tus fotos solo cuando eliges una imagen para adjuntarla a un reporte o a tu perfil.'),
 }
 
-VERSION = '1.0.0'
+# MOVI reemplaza en Google Play a "MOVI Digital (beta)" v1.0 (com.wnapp.id1739907855051,
+# hecha con un generador de apps): para que entre como ACTUALIZACIÓN usa ese mismo
+# package y un versionCode mayor que el publicado (el generador no lo muestra; 100
+# deja margen de sobra). En iOS no había app: conserva digital.movi.app.
+VERSIONES = {
+    'movi':       dict(version='2.0.0', build=100, android_id='com.wnapp.id1739907855051'),
+    'seguwallet': dict(version='1.0.0', build=1,   android_id='mx.seguwallet.app'),
+}
 
 def plist_set(s, key, value_xml):
     pat = re.compile(r'(\s*<key>' + re.escape(key) + r'</key>\s*)(<[^>]+/>|<string>.*?</string>|<array>.*?</array>|<true/>|<false/>)', re.S)
@@ -34,6 +41,7 @@ def plist_set(s, key, value_xml):
     return s.replace('</dict>\n</plist>', f'\t<key>{key}</key>\n\t{value_xml}\n</dict>\n</plist>')
 
 for app, cfg in APPS.items():
+    VERSION = VERSIONES[app]['version']; BUILD = VERSIONES[app]['build']
     ios = ROOT / 'native' / app / 'ios' / 'App'
     plist = ios / 'App' / 'Info.plist'
     s = plist.read_text()
@@ -55,10 +63,42 @@ for app, cfg in APPS.items():
     s = plist_set(s, 'CFBundleLocalizations', '<array>\n\t\t<string>es</string>\n\t</array>')
     plist.write_text(s)
 
+    # Push (APNs): Capacitor necesita que AppDelegate le pase el token del teléfono.
+    ad = ios / 'App' / 'AppDelegate.swift'
+    a = ad.read_text()
+    if 'capacitorDidRegisterForRemoteNotifications' not in a:
+        a = a.rstrip()
+        assert a.endswith('}')
+        a = a[:-1] + '''
+    // Push (APNs): Capacitor recibe aquí el token del teléfono (ver src/native/pushNativo.ts).
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+    }
+}
+'''
+        ad.write_text(a)
+    # Permiso de push. Xcode lo cambia a "production" solo al archivar para la tienda.
+    (ios / 'App' / 'App.entitlements').write_text('''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+\t<key>aps-environment</key>
+\t<string>development</string>
+</dict>
+</plist>
+''')
+
     pbx = ios / 'App.xcodeproj' / 'project.pbxproj'
     p = pbx.read_text()
+    if 'CODE_SIGN_ENTITLEMENTS' not in p:
+        p = p.replace('PRODUCT_BUNDLE_IDENTIFIER = ', 'CODE_SIGN_ENTITLEMENTS = App/App.entitlements;\n\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = ')
     p = p.replace('TARGETED_DEVICE_FAMILY = "1,2";', 'TARGETED_DEVICE_FAMILY = 1;')
     p = re.sub(r'MARKETING_VERSION = [^;]+;', f'MARKETING_VERSION = {VERSION};', p)
+    p = re.sub(r'CURRENT_PROJECT_VERSION = [^;]+;', f'CURRENT_PROJECT_VERSION = {BUILD};', p)
     pbx.write_text(p)
 
     and_ = ROOT / 'native' / app / 'android' / 'app'
@@ -68,7 +108,8 @@ for app, cfg in APPS.items():
     m = m.replace('android:allowBackup="true"', 'android:allowBackup="false"')
     m = m.replace('android:launchMode="singleTask"', 'android:launchMode="singleTask"\n            android:screenOrientation="portrait"')
     m = m.replace('android:screenOrientation="portrait"\n            android:screenOrientation="portrait"', 'android:screenOrientation="portrait"')
-    for perm in cfg.get('android_perms', ['android.permission.CAMERA']):
+    # POST_NOTIFICATIONS: Android 13+ no muestra push sin él (el plugin no lo declara).
+    for perm in cfg.get('android_perms', ['android.permission.CAMERA']) + ['android.permission.POST_NOTIFICATIONS']:
         if perm not in m:
             m = m.replace('    <uses-permission android:name="android.permission.INTERNET" />',
                           f'    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="{perm}" />')
@@ -80,6 +121,8 @@ for app, cfg in APPS.items():
     g = and_ / 'build.gradle'
     t = g.read_text()
     t = re.sub(r'versionName "[^"]+"', f'versionName "{VERSION}"', t)
+    t = re.sub(r'versionCode \d+', f'versionCode {BUILD}', t)
+    t = re.sub(r'applicationId "[^"]+"', f'applicationId "{VERSIONES[app]["android_id"]}"', t)
     if 'keystore.properties' not in t:
         t = t.replace("apply plugin: 'com.android.application'\n", """apply plugin: 'com.android.application'
 

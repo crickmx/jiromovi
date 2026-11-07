@@ -3,6 +3,8 @@ import { Browser } from '@capacitor/browser';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { isNativeApp, nativePlatform } from './platform';
+import { initPushNativo } from './pushNativo';
+import { abrirBlobNativo, initDescargasNativas } from './descargasNativas';
 
 /**
  * Ajustes que solo aplican dentro de la app nativa. En la web no hace nada.
@@ -12,6 +14,8 @@ import { isNativeApp, nativePlatform } from './platform';
  * - Botón "atrás" de Android: navega hacia atrás y solo cierra la app en la raíz.
  * - Ligas externas (otro dominio, target=_blank, window.open) se abren en el
  *   navegador del sistema en lugar de sacar al usuario de la app sin regreso.
+ * - Descargas: guardar en el teléfono / compartir (descargasNativas.ts).
+ * - Push nativo: registro del teléfono y apertura del aviso (pushNativo.ts).
  * - Oculta el splash cuando React ya pintó.
  */
 export function initNative(): void {
@@ -48,6 +52,7 @@ export function initNative(): void {
       if (!a) return;
       const href = a.getAttribute('href') || '';
       if (/^(mailto|tel|sms|whatsapp):/i.test(href)) return; // el sistema los resuelve
+      if (a.hasAttribute('download')) return; // lo atiende descargasNativas.ts
       if (!esExterna(href)) return; // liga interna: navega dentro de la app
       e.preventDefault();
       Browser.open({ url: new URL(href, window.location.href).toString() }).catch(() => {});
@@ -58,12 +63,16 @@ export function initNative(): void {
   const openOriginal = window.open.bind(window);
   window.open = ((url?: string | URL, target?: string, features?: string) => {
     const href = url ? String(url) : '';
+    if (href && abrirBlobNativo(href)) return null; // PDF/Excel generado en el navegador
     if (href && esExterna(href)) {
       Browser.open({ url: new URL(href, window.location.href).toString() }).catch(() => {});
       return null;
     }
     return openOriginal(url as string, target, features);
   }) as typeof window.open;
+
+  initDescargasNativas();
+  initPushNativo();
 
   // React ya montó cuando corre esto (se llama después del render).
   window.setTimeout(() => SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}), 300);

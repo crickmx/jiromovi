@@ -31,3 +31,6 @@ qa/node_modules
 qa/resultados
 qa/auth
 qa/capturas
+
+# Python
+__pycache__/

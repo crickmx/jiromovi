@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Phone, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle } from 'lucide-react';
+import { Mail, Phone, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle, Lock } from 'lucide-react';
+import { verifySeguwalletCustomerAccess } from '../lib/seguwalletAuth';
 import { supabase } from '../../lib/supabase';
 import { APP_TARGET } from '../../native/platform';
 
@@ -60,7 +61,11 @@ function BackgroundLayer() {
   );
 }
 
-type Step = 'email' | 'code';
+// 'password': entrada alternativa para cuentas que SÍ tienen contraseña. Los
+// clientes normales no la tienen (entran con código), así que para ellos no
+// funciona. Existe para la cuenta de revisión de App Store / Google Play, que no
+// puede recibir el código por correo, y solo deja pasar a un cliente activo.
+type Step = 'email' | 'code' | 'password';
 
 export function SeguwalletLogin() {
   useEffect(() => { document.title = 'Seguwallet'; }, []);
@@ -69,6 +74,7 @@ export function SeguwalletLogin() {
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [maskedEmail, setMaskedEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -188,6 +194,30 @@ export function SeguwalletLogin() {
       }, 3000);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    const correo = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) || !password) {
+      setError('Escribe tu correo y tu contraseña.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error: authErr } = await supabase.auth.signInWithPassword({ email: correo, password });
+      if (authErr || !data.user) {
+        setError('Correo o contraseña incorrectos. Si no tienes contraseña, entra con código.');
+        return;
+      }
+      await verifySeguwalletCustomerAccess(data.user.id); // cierra sesión y lanza si no es cliente activo
+      navigate(DASHBOARD_PATH, { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error de conexión. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -380,6 +410,77 @@ export function SeguwalletLogin() {
                   <p className="mt-6 text-xs text-center" style={{ color: 'rgba(148,185,255,0.4)' }}>
                     Recibirás un código de 6 dígitos por correo y WhatsApp
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => { setStep('password'); setError(''); }}
+                    className="mt-3 w-full text-xs font-semibold text-center underline-offset-4 hover:underline"
+                    style={{ color: 'rgba(148,185,255,0.55)' }}
+                  >
+                    ¿Tienes contraseña? Entrar con contraseña
+                  </button>
+                </>
+              )}
+
+              {/* ── STEP: PASSWORD ── */}
+              {step === 'password' && (
+                <>
+                  <div className="mb-8">
+                    <button
+                      onClick={() => { setStep('email'); setError(''); setPassword(''); }}
+                      className="flex items-center gap-1.5 text-xs font-semibold mb-4"
+                      style={{ color: 'rgba(148,185,255,0.6)' }}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Entrar con código
+                    </button>
+                    <h2 className="text-2xl font-extrabold text-white tracking-tight">Entrar con contraseña</h2>
+                  </div>
+
+                  {error && (
+                    <div className="mb-5 px-4 py-3 rounded-2xl text-sm font-medium" role="alert" style={{
+                      background: 'rgba(239,68,68,0.13)',
+                      border: '1px solid rgba(239,68,68,0.28)',
+                      color: '#fca5a5',
+                    }}>
+                      {error}
+                    </div>
+                  )}
+
+                  <form onSubmit={handlePasswordSubmit} className="space-y-4" noValidate>
+                    <div className="space-y-1.5">
+                      <label htmlFor="sw-pass-email" className="block text-xs font-semibold tracking-wide uppercase"
+                        style={{ color: 'rgba(148,185,255,0.6)' }}>
+                        Correo electrónico
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(148,185,255,0.4)' }} />
+                        <input id="sw-pass-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                          placeholder="tu@correo.com" className={`${inputCls} pl-10 pr-4`} style={inputBase}
+                          onFocus={inputFocusOn} onBlur={inputFocusOff} autoComplete="username" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="sw-pass" className="block text-xs font-semibold tracking-wide uppercase"
+                        style={{ color: 'rgba(148,185,255,0.6)' }}>
+                        Contraseña
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(148,185,255,0.4)' }} />
+                        <input id="sw-pass" type="password" value={password} onChange={e => setPassword(e.target.value)}
+                          className={`${inputCls} pl-10 pr-4`} style={inputBase}
+                          onFocus={inputFocusOn} onBlur={inputFocusOff} autoComplete="current-password" autoFocus />
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl text-sm font-bold text-[#0a1e5e] bg-white disabled:opacity-60 mt-1"
+                    >
+                      {loading
+                        ? <div className="w-5 h-5 border-2 border-blue-900/30 border-t-blue-900 rounded-full animate-spin" />
+                        : <><span>Entrar</span><ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </form>
                 </>
               )}
 

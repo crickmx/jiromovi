@@ -1,101 +1,100 @@
 # Checklist de publicación
 
-Marca cada paso. Lo que dice **(Ricardo)** necesita una decisión, una cuenta o un dato que no está en el repo.
+Marca cada paso. **(Ricardo)** = necesita tu cuenta, un dato o una decisión.
 
-## 0. Decisiones antes de empezar
+## 0. Decisiones — ✅ tomadas el 07/11
 
-- [ ] **(Ricardo) La app de MOVI que ya existe en Google Play.** `src/constants/appLinks.ts` enlaza a
-  `com.wnapp.id1739907855051` (hecha con un generador de apps). Dos caminos:
-  - **Reemplazarla** con esta versión: hay que usar *ese mismo* package name y la *misma llave de firma*
-    (o tener Play App Signing activado en esa ficha). Requiere acceso a la cuenta de Play donde vive.
-  - **Publicar una app nueva** (`digital.movi.app`, lo que está configurado) y despublicar la vieja.
-- [ ] **(Ricardo) ¿MOVI pública o privada?** Al ser una herramienta interna, conviene *Unlisted App Distribution*
-  en Apple y prueba cerrada / disponibilidad restringida en Play (ver `movi/ficha.md`).
-- [ ] **(Legal) Avisos de privacidad**: revisar `public/legal/privacidad-movi.html` y `privacidad-seguwallet.html`,
-  confirmar razón social para el copyright y que los buzones `contacto@movi.digital` y `seguwallet@movi.digital` existen.
+- ✅ **MOVI reemplaza a “MOVI Digital (beta)” en Google Play** (`com.wnapp.id1739907855051`, v1.0, publicada con
+  ccjimenez@mekate.mx). El Android de MOVI ya usa ese package y `versionCode 100`, para entrar como actualización.
+  En iOS no había app: MOVI se publica nueva como `digital.movi.app`.
+- ✅ **Cuenta demo de Seguwallet con contraseña.** El login de Seguwallet ganó “¿Tienes contraseña? Entrar con
+  contraseña”. Los clientes normales no tienen contraseña, así que para ellos no cambia nada, y solo deja pasar a un
+  cliente activo de Seguwallet.
+- ✅ **Cuentas de desarrollador**: las de **hola@mekate.mx** (Apple Developer y Google Play Console).
 
-## 1. Cuentas de desarrollador (a nombre de la empresa)
+## 1. Backend — ✅ hecho el 07/11
 
-- [ ] **Apple Developer Program — Organización** (USD 99/año). Necesita **número D-U-N-S** de la razón social.
-- [ ] **Google Play Console — Organización** (USD 25 único). Las cuentas nuevas de *persona física* deben hacer
-  una prueba cerrada con 12 testers durante 14 días antes de publicar; como **organización** no aplica.
-- [ ] Dar acceso de desarrollador a quien vaya a compilar (Xcode y Play Console).
-
-## 2. Backend (una sola vez)
-
-- [ ] Correr `supabase/migrations/20261107000001_solicitudes_eliminacion_cuenta.sql` en el SQL Editor.
-- [ ] Desplegar la edge function `solicitar-eliminacion-cuenta` desde el dashboard (un solo archivo `index.ts`) con **Verify JWT apagado** (la página pública no manda llave; la función valida la sesión por dentro).
-- [ ] Desplegar la web (Pull + Deploy en Plesk) para que existan las páginas `/legal/*.html` en
+- ✅ Migraciones corridas: `20261107225105_solicitudes_eliminacion_cuenta`, `20261107225844_push_nativo_dispositivos`,
+  `20261107225905_push_nativo_trigger_sin_campos_cruzados`.
+- ✅ Edge functions desplegadas (las dos con Verify JWT apagado; validan por dentro):
+  `solicitar-eliminacion-cuenta` y `enviar-push-nativo`.
+- [ ] **(Ricardo)** Pull + Deploy en Plesk (beta y producción) para publicar las páginas `/legal/` en
   `app.movi.digital` **y** `seguwallet.mx`. Verificar que abren:
   - https://seguwallet.mx/legal/privacidad-seguwallet.html
   - https://seguwallet.mx/legal/eliminar-cuenta.html
   - https://app.movi.digital/legal/privacidad-movi.html
-- [ ] Probar la eliminación: con un cliente de prueba de Seguwallet → Perfil → Seguridad → Eliminar mi cuenta.
-  Debe cerrar sesión y no dejar volver a entrar. Revisar:
+- [ ] **(Ricardo) Push**: dar de alta APNs y Firebase y cargar los Secrets — pasos en `store/README.md` → “Push”.
+
+## 2. Legal
+
+- ✅ Avisos de privacidad completados con los datos del aviso integral de JIRO (jiro.mx/privacidad, 09/09/2025):
+  responsable, domicilio, finalidades primarias y secundarias, datos sensibles, transferencias, ARCO con plazos,
+  revocación, cómo limitar el uso, tecnologías de seguimiento, cambios y autoridad. Se generan con
+  `python3 scripts/native/avisos.py`.
+- [ ] **(Legal)** Revisión final de los dos avisos.
+- [ ] **(Legal / Ricardo)** Los **términos de Seguwallet** (Admin → Seguwallet → Términos) deben incluir el
+  **consentimiento expreso para datos sensibles** (pólizas de gastos médicos/vida): el aviso dice que se otorga al
+  aceptarlos.
+- [ ] Confirmar que existen y alguien lee `contacto@movi.digital` y `seguwallet@movi.digital` (soporte de las apps).
+  Las solicitudes ARCO van a `contacto@jiro.mx`, que es el canal del aviso integral.
+- ⚠️ El enlace viejo `https://www.grupojiro.com/aviso-de-privacidad` da **404** (lo usa también la landing de Mutuus).
+  El vigente es https://jiro.mx/privacidad/.
+
+## 3. Cuentas demo para los revisores
+
+- [ ] **MOVI**: crear un usuario **Agente** de prueba (oficina de prueba, `es_bot = true`) con trámites ficticios.
+- [ ] **Seguwallet**: crear el cliente desde **Admin → Seguwallet** con el correo `revision@seguwallet.mx` (o el que
+  elijas), ligarlo a un agente de prueba y a un cliente SICAS de prueba para que tenga pólizas. Ponerle contraseña
+  desde el SQL Editor (comillas simples; la contraseña no pasa por el chat):
 
 ```sql
-select plataforma, email, origen, cuenta_bloqueada, estado, creado_en
-from solicitudes_eliminacion_cuenta order by creado_en desc limit 10;
+update auth.users
+set encrypted_password = crypt('LA-QUE-SEA', gen_salt('bf'))
+where email = 'revision@seguwallet.mx';
 ```
 
-- [ ] **Procedimiento para atender solicitudes** (dentro de 30 días): dar de baja al usuario desde Admin
-  (MOVI) o borrar al cliente de Seguwallet, y marcar la fila:
+- [ ] Probar en seguwallet.mx → “Entrar con contraseña” antes de mandarla a revisión.
+- [ ] Las dos cuentas van en *App Review Information* (Apple) y en *Acceso a la app* (Play).
 
-```sql
-update solicitudes_eliminacion_cuenta
-set estado = 'procesada', procesado_en = now(), notas = '...'
-where id = '<id>';
-```
+## 4. iOS (en una Mac, con la cuenta de hola@mekate.mx)
 
-## 3. Cuentas demo para los revisores (obligatorio en las dos tiendas)
+- [ ] `npm install` y `npm run native:seguwallet` (luego `npm run native:movi`).
+- [ ] `npm run native:seguwallet:ios` → Xcode → *Signing & Capabilities* → elegir el **Team** de Mekate.
+- [ ] App Store Connect → crear las apps: `mx.seguwallet.app` y `digital.movi.app`.
+- [ ] *Product → Archive* → *Distribute App → App Store Connect* → probar en **TestFlight** en un iPhone real:
+  login, foto desde la cámara (pide permiso en español), descargar un PDF/Excel (abre “Compartir”), recibir un push,
+  eliminar cuenta.
+- [ ] Llenar la ficha con `seguwallet/ficha.md` / `movi/ficha.md` y enviar a revisión.
 
-- [ ] **MOVI**: crear un usuario **Agente** de prueba (oficina de prueba, `es_bot = true` para que no ensucie el
-  tablero) con contraseña, y algunos trámites ficticios. Va en *App Review Information* y en Play → *Acceso a la app*.
-- [ ] **(Ricardo) Seguwallet**: el acceso es por **código de 6 dígitos**, que el revisor no puede recibir.
-  Opciones (elegir una):
-  1. Permitir un código fijo **solo** para el correo de revisión, configurado en los Secrets de
-     `verify-login-code` y retirado al aprobarse. Es un cambio de seguridad en el login: no lo hice sin tu visto bueno.
-  2. Darle al revisor un correo que él pueda abrir (p. ej. un buzón de prueba con su contraseña en las notas).
-  3. Agregar contraseña opcional a Seguwallet solo para esa cuenta.
-- [ ] Al cliente demo de Seguwallet, cargarle 3–4 pólizas ficticias para que la revisión vea contenido.
+## 5. Android (con la cuenta de Play de hola@mekate.mx)
 
-## 4. Compilar y subir — iOS (en una Mac)
-
-- [ ] `npm install` y `npm run native:seguwallet` (luego `movi`).
-- [ ] `npm run native:seguwallet:ios` → en Xcode: *Signing & Capabilities* → elegir el **Team**.
-- [ ] En App Store Connect crear la app con el Bundle ID `mx.seguwallet.app` (y `digital.movi.app`).
-- [ ] Xcode → *Product → Archive* → *Distribute App → App Store Connect*.
-- [ ] Probar en **TestFlight** en un iPhone real: iniciar sesión, adjuntar foto (debe pedir permiso de cámara con el
-  texto en español), abrir una liga externa, eliminar cuenta.
-- [ ] Llenar la ficha con `seguwallet/ficha.md`: textos, capturas `capturas/ios-6.9/`, privacidad, clasificación,
-  cuenta demo, notas. *Exportación de cifrado* ya va resuelta en el Info.plist (`ITSAppUsesNonExemptEncryption = NO`).
-- [ ] Enviar a revisión.
-
-## 5. Compilar y subir — Android
-
-- [ ] Crear la llave de subida **una vez por app** y guardarla fuera del repo (el repo es público):
+**Seguwallet (app nueva)**
+- [ ] Crear la llave de subida y guardarla fuera del repo:
 
 ```bash
 keytool -genkeypair -v -keystore seguwallet-upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-- [ ] Crear `native/seguwallet/android/keystore.properties` (ya está en `.gitignore`):
+- [ ] `native/seguwallet/android/keystore.properties` (ya ignorado por git) con `storeFile`, `storePassword`,
+  `keyAlias`, `keyPassword`.
+- [ ] `npm run native:seguwallet:android` → *Build → Generate Signed App Bundle* → Play Console → app nueva →
+  **Prueba interna** → ficha, *Seguridad de los datos*, *Contenido*, URL de eliminación → Producción.
 
-```
-storeFile=/ruta/segura/seguwallet-upload.jks
-storePassword=...
-keyAlias=upload
-keyPassword=...
-```
-
-- [ ] `npm run native:seguwallet:android` → Android Studio → *Build → Generate Signed App Bundle* (`.aab`).
-- [ ] Play Console → crear app → activar **Play App Signing** → subir el `.aab` a **Prueba interna** primero.
-- [ ] Llenar ficha, *Seguridad de los datos*, *Contenido de la app* y la **URL de eliminación de cuenta** con
-  `seguwallet/ficha.md`. Gráficos en `graficos/` y capturas en `capturas/android/`.
-- [ ] Promover a Producción.
+**MOVI (actualización de “MOVI Digital (beta)”)**
+- [ ] **(Ricardo)** En Play Console, ficha de MOVI Digital (beta) → *Integridad de la app* → *Firma de apps*: ver si
+  **Play App Signing** está activo.
+  - **Sí** (lo normal en apps publicadas desde 2021): si no tienes la llave de subida que usó el generador, pide
+    **“Restablecer la clave de subida”** ahí mismo con una llave nueva (`keytool` igual que arriba). Google la
+    aprueba en ~48 h.
+  - **No**: se necesita la llave original del generador (pedírsela al proveedor de `wnapp`). Sin ella no se puede
+    actualizar y habría que publicar como app nueva.
+- [ ] Revisar en *Explorador de App Bundles* el **versionCode** publicado; si fuera ≥ 100, subir el de
+  `scripts/native/ajustar-proyectos.py` (VERSIONES → movi → build) y correr el script.
+- [ ] Generar el AAB firmado → subir a **Prueba interna** → probar que **se instala encima** de la versión vieja →
+  Producción. Actualizar la ficha (nombre “MOVI Digital”, sin “(beta)”) con `movi/ficha.md`.
 
 ## 6. Cada versión nueva
 
-- [ ] Subir `MARKETING_VERSION` / `versionName` (en `scripts/native/ajustar-proyectos.py`, `VERSION`) y el número
-  de build: `CURRENT_PROJECT_VERSION` en Xcode y `versionCode` en `android/app/build.gradle` (siempre +1).
-- [ ] `npm run native:<app>` antes de archivar: **la app lleva la web empaquetada**, un deploy de Plesk no la actualiza.
+- [ ] Subir versión y build en `scripts/native/ajustar-proyectos.py` (VERSIONES) y correrlo.
+- [ ] `npm run native:<app>` antes de archivar: **la app lleva la web empaquetada**, un deploy de Plesk no la
+  actualiza.

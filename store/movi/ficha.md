@@ -2,9 +2,10 @@
 
 | | |
 |---|---|
-| Bundle ID (iOS) / Package (Android) | `digital.movi.app` *(ver decisión sobre la app que ya existe en Play, en `store/CHECKLIST.md`)* |
+| Bundle ID (iOS) | `digital.movi.app` (app nueva) |
+| Package (Android) | `com.wnapp.id1739907855051` — **actualiza** a “MOVI Digital (beta)” |
 | Nombre en el teléfono | MOVI Digital |
-| Versión | 1.0.0 (build 1 / versionCode 1) |
+| Versión | 2.0.0 (build 100 / versionCode 100) |
 | Idioma principal | Español (México) |
 | Categoría | **Empresa / Business** (secundaria: Productividad) — Play: **Empresa** |
 | Precio | Gratis, sin compras dentro de la app, sin anuncios |
@@ -53,7 +54,9 @@ agente de seguros,trámites,comisiones,cotizador,CRM,pólizas,aseguradoras,produ
 >
 > MOVI Digital es para agentes y colaboradores con una cuenta asignada por Grupo JIRO o su oficina.
 
-**Novedades**: `Primera versión de MOVI Digital para iPhone.`
+**Novedades** (iOS): `Primera versión de MOVI Digital para iPhone.`
+
+**Novedades** (Play, reemplaza a la beta): `Nueva app de MOVI Digital: más rápida, con notificaciones al instante, descarga de documentos y acceso a todos los módulos.`
 
 ### Información para la revisión de Apple
 
@@ -74,13 +77,13 @@ Tracking: **No**. Publicidad: **No**.
 | Location → Precise / Coarse (*opcional*, solo si el usuario la comparte) | Sí | App Functionality |
 | User Content → Photos or Videos, Audio (videollamadas), Customer Support, Other User Content | Sí | App Functionality |
 | Contacts → (no: los clientes del CRM los captura el agente, no se leen de la agenda del teléfono) | — | — |
-| Identifiers → User ID | Sí | App Functionality |
+| Identifiers → User ID, Device ID (token push) | Sí | App Functionality |
 | Usage Data → Product Interaction (bitácora de actividad) | Sí | Analytics (interna) / App Functionality |
 | Diagnostics → Crash Data, Other Diagnostic Data (al usar “Reportar un problema”) | Sí | App Functionality |
 
 ## Google Play Console
 
-**Nombre**: `MOVI Digital`
+**Nombre**: `MOVI Digital` *(antes “MOVI Digital (beta)”)*
 
 **Descripción breve** (≤80): `Trámites, comisiones, CRM y cotizaciones para agentes de seguros.`
 

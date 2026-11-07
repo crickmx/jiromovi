@@ -5,7 +5,9 @@ La app **empaqueta la build** (no carga un sitio remoto): Apple rechaza las apps
 
 | | MOVI Digital | Seguwallet by MOVI Digital |
 |---|---|---|
-| ID | `digital.movi.app` | `mx.seguwallet.app` |
+| ID iOS | `digital.movi.app` | `mx.seguwallet.app` |
+| ID Android | `com.wnapp.id1739907855051` (reemplaza a “MOVI Digital (beta)” en Play) | `mx.seguwallet.app` |
+| Versión | 2.0.0 (build/versionCode 100) | 1.0.0 (1) |
 | Proyecto iOS | `native/movi/ios/App/App.xcodeproj` | `native/seguwallet/ios/App/App.xcodeproj` |
 | Proyecto Android | `native/movi/android` | `native/seguwallet/android` |
 | Arranca en | `/login` → `/dashboard` | `/login` → `/dashboard` (sin landing) |
@@ -21,6 +23,11 @@ Pasos para publicar: **[CHECKLIST.md](CHECKLIST.md)**.
 - `src/native/initNative.ts` (solo corre en la app): barra de estado, botón atrás de Android, ligas externas al
   navegador del sistema, ocultar el splash. En la web no hace nada.
 - `src/index.css` → bloque “App nativa”: áreas seguras del iPhone (notch y barra de inicio).
+- `src/native/descargasNativas.ts`: dentro de la app, cualquier descarga (Excel, PDF, ZIP, CSV, archivos de
+  Storage) se guarda en el teléfono y abre la hoja de **Compartir / Guardar en Archivos**. Intercepta los 4 caminos
+  por los que descarga la web, así que no hubo que tocar las ~50 pantallas.
+- `src/native/pushNativo.ts` + tabla `push_dispositivos` + edge function `enviar-push-nativo`: **cada aviso de la
+  campanita llega también como notificación push al teléfono**. Al tocarla abre el trámite. Ver “Push” abajo.
 
 ## Comandos (en una Mac para iOS, cualquier PC para Android)
 
@@ -61,10 +68,38 @@ Las capturas son **simuladas** (datos ficticios, pantallas dibujadas en `scripts
 con el diseño de la app). Apple y Google las aceptan mientras reflejen la app real; si alguna pantalla cambia
 mucho, hay que actualizar su dibujo.
 
-## Lo que queda fuera de esta primera versión (no bloquea la publicación)
+## Push: lo que hay que configurar una vez
 
-| | Por qué | Cómo se haría |
-|---|---|---|
-| **Notificaciones push nativas** | Hoy son Web Push (VAPID), que **no funciona dentro de la app** de iOS ni de Android. La campanita interna y los avisos por WhatsApp/correo sí siguen llegando. | `@capacitor/push-notifications` + proyecto de Firebase (FCM) + llave APNs, y guardar el token del dispositivo junto a las suscripciones web. |
-| **Descargas generadas en el navegador** (Excel/PDF armados con `blob:`) | Un WebView no tiene carpeta de “Descargas”. Los PDF que vienen de una URL sí abren. | `@capacitor/filesystem` + `@capacitor/share` en los helpers de descarga. |
-| **Ligas universales** (abrir `seguwallet.mx/...` directo en la app) | No es requisito. | `apple-app-site-association` y `assetlinks.json` en `public/.well-known/`. |
+El código y la base ya están (tabla, trigger y función desplegados). Falta dar de alta los proveedores:
+
+**iPhone (APNs, sin Firebase)**
+1. developer.apple.com → *Keys* → crear una llave con **Apple Push Notifications service (APNs)**. Bajar el `.p8`
+   (solo se puede una vez) y anotar el **Key ID** y el **Team ID**.
+2. Supabase → Edge Functions → Secrets: `APNS_KEY_P8` (contenido del .p8), `APNS_KEY_ID`, `APNS_TEAM_ID`.
+   Para probar desde Xcode (build de desarrollo) agregar `APNS_SANDBOX=true` y quitarlo antes de TestFlight.
+3. En Xcode, *Signing & Capabilities* ya trae **Push Notifications** (`App.entitlements`).
+
+**Android (Firebase Cloud Messaging)**
+1. console.firebase.google.com → proyecto “MOVI Apps” → agregar **dos apps Android**:
+   `com.wnapp.id1739907855051` y `mx.seguwallet.app`.
+2. Bajar cada `google-services.json` a `native/movi/android/app/` y `native/seguwallet/android/app/`.
+3. Configuración del proyecto → Cuentas de servicio → *Generar nueva clave privada* → pegar el JSON completo en el
+   Secret `FCM_SERVICE_ACCOUNT`.
+4. Compilar Android con `VITE_PUSH_ANDROID=1` en el `.env` (sin `google-services.json`, registrar el push cierra la
+   app; por eso está apagado por omisión).
+
+**Probar**: entrar a la app, aceptar notificaciones y verificar que el teléfono quedó registrado:
+
+```sql
+select plataforma, app, app_id, actualizado_en from push_dispositivos order by actualizado_en desc limit 5;
+```
+
+Después, cualquier aviso nuevo de la campanita para ese usuario debe llegar al teléfono. Si no llega, los logs de
+`enviar-push-nativo` dicen si fue APNs/FCM y por qué.
+
+## Pendiente menor
+
+- **Ligas universales** (abrir `seguwallet.mx/...` directo en la app): no es requisito de las tiendas.
+  Se harían con `apple-app-site-association` y `assetlinks.json` en `public/.well-known/`.
+- Los íconos se reconstruyeron por color desde logos de 512 y 177 px (`scripts/native/escalar_logo.py`): se ven
+  nítidos, pero si existe el logo en **vector** (SVG/AI) conviene usarlo.
