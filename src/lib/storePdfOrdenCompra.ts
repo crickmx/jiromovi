@@ -42,7 +42,7 @@ export function construirPDFOrdenCompra(pedido: StorePedidoCompleto): jsPDF {
     fecha: pedido.created_at,
   });
 
-  const envio = Number(pedido.costo_envio) || 0;
+  const cargos = pedido.cargos || [];
 
   y = tablaConceptos(doc, y, 'articulos', [
     ...pedido.detalle.map(item => ({
@@ -54,20 +54,25 @@ export function construirPDFOrdenCompra(pedido: StorePedidoCompleto): jsPDF {
     // El envío va como renglón aparte, no sumado en silencio al precio de los
     // artículos (decisión de Ricardo, 09/11): así el cliente ve de dónde sale
     // el total. Sin envío capturado, el renglón no existe.
-    // Dice "envío" y nada más: la recolección la coordina el cliente por su
-    // cuenta y no se le cobra, así que nombrarla aquí —en el documento que
-    // sustenta un cargo— sugeriría que sí tiene costo (Ricardo, 09/11).
-    ...(envio > 0 ? [{
-      concepto: 'Envío',
-      detalle: 'Costo de envío',
+    // Los cargos al cliente, cada uno con SU concepto y como renglón aparte
+    // (decisión de Ricardo, 09/11), para que se vea de dónde sale el total.
+    // El concepto lo escribe quien administra Store: envío, producción
+    // express, lo que surja. Sin cargos capturados, no hay renglones.
+    //
+    // ⚠️ Aquí NO se menciona la recolección: la coordina el cliente por su
+    // cuenta y no se le cobra, así que nombrarla en el documento que sustenta
+    // un cargo sugeriría que tiene costo.
+    ...cargos.map(c => ({
+      concepto: c.concepto,
+      detalle: null,
       cantidad: 1,
-      precioUnitario: envio,
-    }] : []),
+      precioUnitario: Number(c.monto) || 0,
+    })),
   ]);
 
-  // Las piezas son artículos; el envío no es una pieza que se entregue.
+  // Las piezas son artículos; un cargo no es una pieza que se entregue.
   const totalPiezas = pedido.detalle.reduce((s, i) => s + i.cantidad, 0);
-  const total = totalDelPedido(pedido.detalle, pedido.costo_envio);
+  const total = totalDelPedido(pedido.detalle, cargos);
 
   doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');

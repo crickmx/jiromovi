@@ -5,6 +5,7 @@ import { Package, Eye, ListFilter as Filter, Download, Search, Calendar, Trash2,
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerTodosPedidos, eliminarPedido, tieneAccesoEquipoStore, esLiderDeEquipoConAccesoStore } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
+import { importeCargos } from '../lib/storePedidoTotal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
@@ -149,9 +150,10 @@ export default function StorePedidos() {
             ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
             : (pedido.metodo_pago || 'N/A'),
 
-          // Va antes del total porque el total YA lo incluye: sin esta
+          // Van antes del total porque el total YA los incluye: sin esta
           // columna nadie puede cuadrar los subtotales contra el total.
-          'Costo de Envío': `$${(Number(pedido.costo_envio) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          'Cargos al Cliente': `$${importeCargos(pedido.cargos).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          'Conceptos de los Cargos': (pedido.cargos || []).map(c => c.concepto).join(' · '),
           'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
 
           'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
@@ -196,9 +198,10 @@ export default function StorePedidos() {
               ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
               : (pedido.metodo_pago || 'N/A'),
 
-            // Va antes del total porque el total YA lo incluye: sin esta
+            // Van antes del total porque el total YA los incluye: sin esta
             // columna nadie puede cuadrar los subtotales contra el total.
-            'Costo de Envío': `$${(Number(pedido.costo_envio) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            'Cargos al Cliente': `$${importeCargos(pedido.cargos).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            'Conceptos de los Cargos': (pedido.cargos || []).map(c => c.concepto).join(' · '),
             'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
 
             'Dirección Entrega': pedido.direccion_entrega || 'No especificada',

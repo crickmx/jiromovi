@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { gruposConAcceso, tieneAccesoEquipo, esLiderDeEquipoConAcceso, miembrosConAcceso } from './equiposAcceso';
-import { totalDelPedido, type LineaDePedido } from './storePedidoTotal';
+import { totalDelPedido, type LineaDePedido, type CargoAlCliente } from './storePedidoTotal';
 import type {
   StoreCategoria,
   StoreProducto,
@@ -11,7 +11,8 @@ import type {
   StorePedidoNota,
   StorePedidoHistorial,
   StorePedidoCompleto,
-  StorePedidoPago
+  StorePedidoPago,
+  StorePedidoCargo
 } from './storeTypes';
 
 // ── Acceso al store por equipo (Admin > Tienda MOVI > Equipos con acceso) ──
@@ -453,6 +454,17 @@ export async function actualizarEstatus(id: string, cambios: Partial<StoreEstatu
 // PEDIDOS
 // ============================================
 
+/** Agrupa filas que traen `pedido_id` por pedido. Lo usan las dos listas. */
+function agruparPorPedido<T>(filas: ({ pedido_id: string } & T)[] | null | undefined) {
+  const porPedido = new Map<string, T[]>();
+  (filas || []).forEach(fila => {
+    const lista = porPedido.get(fila.pedido_id) || [];
+    lista.push(fila);
+    porPedido.set(fila.pedido_id, lista);
+  });
+  return porPedido;
+}
+
 export async function obtenerPedidosUsuario(usuarioId: string) {
   const { data: pedidos, error } = await supabase
     .from('store_pedidos')
@@ -473,18 +485,20 @@ export async function obtenerPedidosUsuario(usuarioId: string) {
     .select('pedido_id, cantidad, precio_unitario')
     .in('pedido_id', pedidoIds);
 
+  // Y los cargos al cliente, que tambien suman al total.
+  const { data: cargos } = await supabase
+    .from('store_pedido_cargos')
+    .select('pedido_id, monto')
+    .in('pedido_id', pedidoIds);
+
   // Agrupar los renglones por pedido; el total lo saca `totalDelPedido`, que
   // es el mismo que usan la pantalla, la OC, los avisos y la bitácora.
-  const lineasPorPedido = new Map<string, LineaDePedido[]>();
-  (detalles || []).forEach(detalle => {
-    const lista = lineasPorPedido.get(detalle.pedido_id) || [];
-    lista.push(detalle);
-    lineasPorPedido.set(detalle.pedido_id, lista);
-  });
+  const lineasPorPedido = agruparPorPedido<LineaDePedido>(detalles);
+  const cargosPorPedido = agruparPorPedido<CargoAlCliente>(cargos);
 
   const pedidosConTotal = pedidos.map(pedido => ({
     ...pedido,
-    total: totalDelPedido(lineasPorPedido.get(pedido.id), pedido.costo_envio)
+    total: totalDelPedido(lineasPorPedido.get(pedido.id), cargosPorPedido.get(pedido.id))
   }));
 
   return pedidosConTotal as StorePedido[];
@@ -546,6 +560,12 @@ export async function obtenerTodosPedidos() {
       `)
       .in('pedido_id', pedidoIds);
 
+    const { data: cargos } = await supabase
+      .from('store_pedido_cargos')
+      .select('pedido_id, concepto, monto')
+      .in('pedido_id', pedidoIds);
+    const cargosPorPedido = agruparPorPedido<CargoAlCliente>(cargos);
+
     const detallesPorPedido = new Map<string, any[]>();
 
     (detalles || []).forEach((detalle: any) => {
@@ -587,7 +607,8 @@ export async function obtenerTodosPedidos() {
         oc_generada_por_usuario: ocGenerador ? {
           nombre_completo: ocGenerador.nombre_completo
         } : undefined,
-        total: totalDelPedido(detallesPorPedido.get(pedido.id), pedido.costo_envio),
+        total: totalDelPedido(detallesPorPedido.get(pedido.id), cargosPorPedido.get(pedido.id)),
+        cargos: cargosPorPedido.get(pedido.id) || [],
         detalles: detallesPorPedido.get(pedido.id) || []
       };
     }) as StorePedido[];
@@ -779,8 +800,21 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     };
   });
 
-  // El total del pedido: artículos + envío, con la única función que lo sabe.
-  const total = totalDelPedido(detallesMapeados, pedidoConUsuario.costo_envio);
+  // Los cargos al cliente (envío, producción express, lo que surja). Van en el
+  // pedido y no solo en la pantalla porque de aquí sale el total que leen la
+  // Orden de Compra y el `{{monto_total}}` de los avisos.
+  const { data: cargos, error: cargosError } = await supabase
+    .from('store_pedido_cargos')
+    .select('*')
+    .eq('pedido_id', pedidoId)
+    .order('created_at', { ascending: true });
+
+  // Si los cargos no se pueden leer, el total saldría MENOR que el real y
+  // nadie se enteraría. Mejor que truene aquí que cobrarle de menos al cliente.
+  if (cargosError) throw cargosError;
+
+  // El total del pedido: artículos + cargos, con la única función que lo sabe.
+  const total = totalDelPedido(detallesMapeados, cargos || []);
 
   console.log(`💰 Total calculado para pedido ${pedidoId}: $${total.toFixed(2)}`);
   console.log(`📦 Detalles: ${detallesMapeados.length} productos`);
@@ -788,6 +822,7 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
   return {
     ...pedidoConUsuario,
     detalle: detallesMapeados as StorePedidoDetalle[],
+    cargos: (cargos || []) as StorePedidoCargo[],
     total,
     notas: notas as StorePedidoNota[],
     historial: historial as StorePedidoHistorial[],
@@ -1030,7 +1065,7 @@ export const PLACEHOLDERS_TRIGGER_PEDIDO: { key: string; label: string }[] = [
 export function resolverTemplatePedido(template: string, pedido: StorePedidoCompleto): string {
   // Incluye el envío: este `{{monto_total}}` es el que sale por WhatsApp y
   // correo, así que tiene que decir lo mismo que la Orden de Compra.
-  const totalMonto = totalDelPedido(pedido.detalle, pedido.costo_envio);
+  const totalMonto = totalDelPedido(pedido.detalle, pedido.cargos);
   const productos = pedido.detalle
     .map(item => `${item.cantidad} x ${item.producto?.titulo ?? 'Producto sin nombre'}`)
     .join(', ');

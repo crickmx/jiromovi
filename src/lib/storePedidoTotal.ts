@@ -20,6 +20,11 @@ export interface LineaDePedido {
   precio_unitario?: number | string | null;
 }
 
+/** Lo mínimo de un cargo al cliente (envío, producción express, lo que surja). */
+export interface CargoAlCliente {
+  monto?: number | string | null;
+}
+
 /** Un número de dinero que puede venir como texto desde PostgREST. */
 function monto(v: number | string | null | undefined): number {
   const n = typeof v === 'string' ? parseFloat(v) : v;
@@ -43,18 +48,27 @@ export function importeArticulos(lineas: readonly LineaDePedido[] | null | undef
 }
 
 /**
- * El total que se le cobra al cliente: artículos + envío.
+ * Lo que suman los cargos al cliente: envío, producción express, lo que surja.
+ * Es `cargos` en la bitácora, y sale de `store_pedido_cargos`.
+ */
+export function importeCargos(cargos: readonly CargoAlCliente[] | null | undefined): number {
+  if (!cargos) return 0;
+  return aCentavos(cargos.reduce((suma, c) => suma + monto(c.monto), 0));
+}
+
+/**
+ * El total que se le cobra al cliente: artículos + cargos.
  *
- * El envío es un cargo AL CLIENTE y por eso entra aquí. No confundir con
+ * Los cargos son AL CLIENTE y por eso entran aquí. No confundir con
  * `store_pedido_gastos`, que es lo que JIRO gasta (margen) y nunca se suma al
  * total — por eso un pedido puede decir "Total $650.00" y "Costo $686.12" sin
  * contradecirse.
  */
 export function totalDelPedido(
   lineas: readonly LineaDePedido[] | null | undefined,
-  costoEnvio?: number | string | null
+  cargos?: readonly CargoAlCliente[] | null
 ): number {
-  return aCentavos(importeArticulos(lineas) + monto(costoEnvio));
+  return aCentavos(importeArticulos(lineas) + importeCargos(cargos));
 }
 
 // ── Autocomprobación ───────────────────────────────────────────────────────
