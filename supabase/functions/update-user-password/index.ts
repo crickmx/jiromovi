@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: quienLlama } = await supabaseAdmin
       .from('usuarios')
-      .select('id, rol, activo')
+      .select('id, rol, activo, es_desarrollador')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -87,8 +87,16 @@ Deno.serve(async (req: Request) => {
     if (!userId) return json({ error: 'Falta el userId' }, 400);
     if (!password && !email) return json({ error: 'Falta la contraseña o el correo' }, 400);
 
-    const esAdmin = quienLlama.rol === 'Administrador';
     const esSuPropiaCuenta = quienLlama.id === userId;
+    // El perfil Desarrollador tiene rol Administrador para ver todos los
+    // módulos, pero no opera cuentas de personas reales: fuera de la suya,
+    // solo las de los usuarios bot (es_bot) con los que prueba.
+    let esAdmin = quienLlama.rol === 'Administrador';
+    if (esAdmin && quienLlama.es_desarrollador && !esSuPropiaCuenta) {
+      const { data: destino } = await supabaseAdmin
+        .from('usuarios').select('es_bot').eq('id', userId).maybeSingle();
+      esAdmin = destino?.es_bot === true;
+    }
 
     // ── 3. SI PUEDE ───────────────────────────────────────────────────────────
     if (!esAdmin && !esSuPropiaCuenta) {

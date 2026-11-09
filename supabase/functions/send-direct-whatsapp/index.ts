@@ -12,9 +12,47 @@ interface WhatsAppRequest {
   message: string;
 }
 
+// ── Quién puede mandar ──────────────────────────────────────────────────────
+// Esta función manda mensajes con el remitente de la empresa a cualquier
+// destinatario, así que solo la usan: otras funciones del servidor (con la
+// llave de servidor, en `Authorization: Bearer` o en `apikey`) y usuarios
+// activos de MOVI con su sesión. La llave pública de la app no alcanza.
+function llavesDeServidor(): string[] {
+  const keys: string[] = [];
+  try {
+    const raw = Deno.env.get('SUPABASE_SECRET_KEYS');
+    if (raw) for (const v of Object.values(JSON.parse(raw) as Record<string, unknown>)) {
+      if (typeof v === 'string' && v.length > 0) keys.push(v);
+    }
+  } catch { /* ausente o mal formada */ }
+  const legacy = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (legacy) keys.push(legacy);
+  return keys;
+}
+
+async function verificarLlamante(req: Request): Promise<boolean> {
+  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  const apikey = (req.headers.get('apikey') || '').trim();
+  const llaves = llavesDeServidor();
+  if (llaves.some((k) => k === bearer || k === apikey)) return true;
+  if (!bearer) return false;
+  const { createClient: crear } = await import('npm:@supabase/supabase-js@2.57.4');
+  const admin = crear(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+  const { data } = await admin.auth.getUser(bearer);
+  if (!data?.user) return false;
+  const { data: u } = await admin.from('usuarios').select('activo').eq('id', data.user.id).maybeSingle();
+  return !!u?.activo;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
+  if (!(await verificarLlamante(req))) {
+    return new Response(JSON.stringify({ success: false, error: 'No autorizado' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
