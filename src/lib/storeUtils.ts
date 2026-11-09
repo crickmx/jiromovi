@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { gruposConAcceso, tieneAccesoEquipo, esLiderDeEquipoConAcceso, miembrosConAcceso } from './equiposAcceso';
+import { totalDelPedido, type LineaDePedido } from './storePedidoTotal';
 import type {
   StoreCategoria,
   StoreProducto,
@@ -472,22 +473,18 @@ export async function obtenerPedidosUsuario(usuarioId: string) {
     .select('pedido_id, cantidad, precio_unitario')
     .in('pedido_id', pedidoIds);
 
-  // Calcular totales
-  const totalesPorPedido = new Map<string, number>();
-  if (detalles) {
-    detalles.forEach(detalle => {
-      const total = totalesPorPedido.get(detalle.pedido_id) || 0;
-      totalesPorPedido.set(
-        detalle.pedido_id,
-        total + (detalle.cantidad * detalle.precio_unitario)
-      );
-    });
-  }
+  // Agrupar los renglones por pedido; el total lo saca `totalDelPedido`, que
+  // es el mismo que usan la pantalla, la OC, los avisos y la bitácora.
+  const lineasPorPedido = new Map<string, LineaDePedido[]>();
+  (detalles || []).forEach(detalle => {
+    const lista = lineasPorPedido.get(detalle.pedido_id) || [];
+    lista.push(detalle);
+    lineasPorPedido.set(detalle.pedido_id, lista);
+  });
 
-  // Agregar totales a pedidos
   const pedidosConTotal = pedidos.map(pedido => ({
     ...pedido,
-    total: totalesPorPedido.get(pedido.id) || 0
+    total: totalDelPedido(lineasPorPedido.get(pedido.id), pedido.costo_envio)
   }));
 
   return pedidosConTotal as StorePedido[];
@@ -549,16 +546,12 @@ export async function obtenerTodosPedidos() {
       `)
       .in('pedido_id', pedidoIds);
 
-    const totalesPorPedido = new Map<string, number>();
     const detallesPorPedido = new Map<string, any[]>();
 
     (detalles || []).forEach((detalle: any) => {
       const precioUnitario = typeof detalle.precio_unitario === 'string'
         ? parseFloat(detalle.precio_unitario)
         : (detalle.precio_unitario || 0);
-      const subtotal = (detalle.cantidad || 0) * precioUnitario;
-      totalesPorPedido.set(detalle.pedido_id, (totalesPorPedido.get(detalle.pedido_id) || 0) + subtotal);
-
       const list = detallesPorPedido.get(detalle.pedido_id) || [];
       const prod = detalle.store_productos;
       list.push({
@@ -594,7 +587,7 @@ export async function obtenerTodosPedidos() {
         oc_generada_por_usuario: ocGenerador ? {
           nombre_completo: ocGenerador.nombre_completo
         } : undefined,
-        total: totalesPorPedido.get(pedido.id) || 0,
+        total: totalDelPedido(detallesPorPedido.get(pedido.id), pedido.costo_envio),
         detalles: detallesPorPedido.get(pedido.id) || []
       };
     }) as StorePedido[];
@@ -786,10 +779,8 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     };
   });
 
-  // Calcular total del pedido desde los detalles
-  const total = detallesMapeados.reduce((sum, d) => {
-    return sum + ((d.cantidad || 0) * (d.precio_unitario || 0));
-  }, 0);
+  // El total del pedido: artículos + envío, con la única función que lo sabe.
+  const total = totalDelPedido(detallesMapeados, pedidoConUsuario.costo_envio);
 
   console.log(`💰 Total calculado para pedido ${pedidoId}: $${total.toFixed(2)}`);
   console.log(`📦 Detalles: ${detallesMapeados.length} productos`);
@@ -1037,7 +1028,9 @@ export const PLACEHOLDERS_TRIGGER_PEDIDO: { key: string; label: string }[] = [
 
 // Reemplaza los placeholders de PLACEHOLDERS_TRIGGER_PEDIDO con datos reales del pedido
 export function resolverTemplatePedido(template: string, pedido: StorePedidoCompleto): string {
-  const totalMonto = pedido.detalle.reduce((sum, item) => sum + item.cantidad * item.precio_unitario, 0);
+  // Incluye el envío: este `{{monto_total}}` es el que sale por WhatsApp y
+  // correo, así que tiene que decir lo mismo que la Orden de Compra.
+  const totalMonto = totalDelPedido(pedido.detalle, pedido.costo_envio);
   const productos = pedido.detalle
     .map(item => `${item.cantidad} x ${item.producto?.titulo ?? 'Producto sin nombre'}`)
     .join(', ');

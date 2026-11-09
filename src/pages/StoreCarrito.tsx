@@ -11,6 +11,7 @@ import {
   crearPedido
 } from '../lib/storeUtils';
 import type { StoreCarritoItem } from '../lib/storeTypes';
+import { BaseModal } from '../components/BaseModal';
 
 export default function StoreCarrito() {
   const { usuario } = useAuth();
@@ -22,6 +23,7 @@ export default function StoreCarrito() {
   const [oficinas, setOficinas] = useState<{ id: string; nombre: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [procesando, setProcesando] = useState(false);
+  const [avisoEnvio, setAvisoEnvio] = useState(false);
 
   useEffect(() => {
     cargarCarrito();
@@ -313,7 +315,7 @@ export default function StoreCarrito() {
                 )}
 
                 <button
-                  onClick={handleRealizarPedido}
+                  onClick={() => setAvisoEnvio(true)}
                   disabled={procesando || !areaEntrega.trim()}
                   className="w-full bg-accent text-accent-foreground px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-accent-hover transition-colors font-semibold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -328,6 +330,49 @@ export default function StoreCarrito() {
           </div>
         )}
       </div>
+
+      {/* Lo que el catálogo NO dice, y hay que decirlo ANTES de pedir: el
+          precio mostrado no trae envío. Sale aquí y no como nota al pie
+          porque una nota al pie no se lee. */}
+      <BaseModal
+        isOpen={avisoEnvio}
+        onClose={() => setAvisoEnvio(false)}
+        title="Antes de confirmar tu pedido"
+        maxWidth="md"
+        closeOnEscape
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <button
+              onClick={() => setAvisoEnvio(false)}
+              disabled={procesando}
+              className="px-4 py-2 rounded-lg border border-neutral-300 dark:border-white/20 text-sm font-medium text-neutral-700 dark:text-white/80 hover:bg-neutral-50 dark:hover:bg-white/5 disabled:opacity-50"
+            >
+              Volver al carrito
+            </button>
+            <button
+              onClick={handleRealizarPedido}
+              disabled={procesando}
+              className="px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
+            >
+              {procesando ? 'Procesando...' : 'Entendido, realizar pedido'}
+            </button>
+          </div>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-3 text-sm text-neutral-700 dark:text-white/75">
+            <p>
+              <strong className="text-neutral-900 dark:text-white">Los costos de envío no están incluidos</strong> en
+              los precios que muestra el catálogo.
+            </p>
+            <p>
+              Una persona del equipo de Mercadotecnia se pondrá en contacto contigo para coordinar el
+              <strong> envío o la recolección</strong> de tu pedido, y para confirmarte el costo si aplica.
+            </p>
+          </div>
+        </div>
+      </BaseModal>
     </>
   );
 }

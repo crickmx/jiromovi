@@ -149,6 +149,9 @@ export default function StorePedidos() {
             ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
             : (pedido.metodo_pago || 'N/A'),
 
+          // Va antes del total porque el total YA lo incluye: sin esta
+          // columna nadie puede cuadrar los subtotales contra el total.
+          'Costo de Envío': `$${(Number(pedido.costo_envio) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
           'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
 
           'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
@@ -193,6 +196,9 @@ export default function StorePedidos() {
               ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
               : (pedido.metodo_pago || 'N/A'),
 
+            // Va antes del total porque el total YA lo incluye: sin esta
+            // columna nadie puede cuadrar los subtotales contra el total.
+            'Costo de Envío': `$${(Number(pedido.costo_envio) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
 
             'Dirección Entrega': pedido.direccion_entrega || 'No especificada',

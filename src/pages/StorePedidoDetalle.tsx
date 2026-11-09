@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2, Settings } from 'lucide-react';
 import { BaseModal } from '../components/BaseModal';
 import { PageHeader } from '@/components/ui/page-header';
+import { totalDelPedido, importeArticulos } from '../lib/storePedidoTotal';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, parsearCapasPersonalizacion, IMAGEN_FINAL_PERSONALIZACION_KEY } from '../lib/storeUtils';
 import { PersonalizacionPreview } from '../components/store/PersonalizarLogoScreen';
 import type { StorePedidoCompleto, StoreEstatusPedido, StoreMetodoPago, StoreParcialidad, StoreFrecuenciaPago, StoreMetodoPagoCombinacion, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
@@ -58,6 +59,7 @@ export default function StorePedidoDetalle() {
   const [nuevaCombParcialidad, setNuevaCombParcialidad] = useState('');
   const [nuevaCombFrecuencia, setNuevaCombFrecuencia] = useState('');
   const [observacionesOC, setObservacionesOC] = useState('');
+  const [costoEnvio, setCostoEnvio] = useState('');
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [generandoOC, setGenerandoOC] = useState(false);
 
@@ -106,6 +108,7 @@ export default function StorePedidoDetalle() {
       setMetodoPago(pedido.metodo_pago || '');
       setMetodoPagoOtroDetalle(pedido.metodo_pago_otro_detalle || '');
       setObservacionesOC(pedido.observaciones_oc || '');
+      setCostoEnvio(pedido.costo_envio ? String(pedido.costo_envio) : '');
       cargarUsuariosOficina();
       if (isAdmin) {
         cargarGastosPedido();
@@ -497,6 +500,8 @@ export default function StorePedidoDetalle() {
         forma_pago: formaPago,
         metodo_pago: metodoPago,
         metodo_pago_otro_detalle: metodoPago === 'Otro' ? metodoPagoOtroDetalle : null,
+        // La columna es NOT NULL con default 0: un campo vacío es cero, no null.
+        costo_envio: Number(costoEnvio) || 0,
         observaciones_oc: observacionesOC || null,
       }).eq('id', pedidoId);
       if (error) throw error;
@@ -644,7 +649,11 @@ export default function StorePedidoDetalle() {
   };
 
   // Calculations
-  const calcularTotal = () => pedido?.detalle.reduce((sum, item) => sum + (item.precio_unitario * item.cantidad), 0) || 0;
+  // El total incluye el envío. Es la misma función que usan la Orden de
+  // Compra, la lista, los avisos y la vista `store_bitacora_view`: si aquí se
+  // sumara distinto, el cliente vería un total y se le cobraría otro.
+  const calcularTotal = () => totalDelPedido(pedido?.detalle, pedido?.costo_envio);
+  const calcularArticulos = () => importeArticulos(pedido?.detalle);
 
   const calcularCostoProductos = () => {
     if (!pedido) return 0;
@@ -699,6 +708,7 @@ export default function StorePedidoDetalle() {
   }
 
   const ingresos = calcularTotal();
+  const envioCobrado = Number(pedido.costo_envio) || 0;
   const costoProductos = calcularCostoProductos();
   const gastosTotales = calcularGastosTotales();
   const gananciaNeta = ingresos - costoProductos - gastosTotales;
@@ -900,6 +910,20 @@ export default function StorePedidoDetalle() {
                 })}
               </div>
               <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-white/10">
+                {/* El desglose solo aparece cuando hay envío: sin él, repetir
+                    el mismo número dos veces sobra. */}
+                {envioCobrado > 0 && (
+                  <div className="space-y-1 mb-3 text-sm">
+                    <div className="flex justify-between text-neutral-600 dark:text-white/60">
+                      <span>Artículos</span>
+                      <span>${calcularArticulos().toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between text-neutral-600 dark:text-white/60">
+                      <span>Envío</span>
+                      <span>${envioCobrado.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-neutral-900 dark:text-white">Total</span>
                   <span className="text-2xl font-bold text-accent-ink">
@@ -1314,6 +1338,25 @@ export default function StorePedidoDetalle() {
                     {!metodoPago && (
                       <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">Selecciona primero el metodo de pago</p>
                     )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Costo de Envío</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-white/50">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={costoEnvio}
+                        onChange={e => setCostoEnvio(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full pl-6 pr-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                      />
+                    </div>
+                    <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">
+                      Se le cobra al cliente: suma al total y sale como renglón aparte en la OC. Déjalo en 0 si no hay envío.
+                    </p>
                   </div>
                   <textarea value={observacionesOC} onChange={e => setObservacionesOC(e.target.value)} placeholder="Observaciones..." className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg" rows={2} />
                 </div>

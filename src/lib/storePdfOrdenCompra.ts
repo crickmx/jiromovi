@@ -12,6 +12,7 @@ import type { StorePedidoCompleto } from './storeTypes';
 import { supabase } from './supabase';
 import { getDisplayName } from './utils';
 import { desglosarFormaPago, planDeCobro, pesos } from './cobroDesglose';
+import { totalDelPedido } from './storePedidoTotal';
 import { dibujarFranja, tablaConceptos, bloqueCobro, bloqueDatos, pieDocumento } from './ordenCompraPdf';
 
 /**
@@ -41,15 +42,29 @@ export function construirPDFOrdenCompra(pedido: StorePedidoCompleto): jsPDF {
     fecha: pedido.created_at,
   });
 
-  y = tablaConceptos(doc, y, 'articulos', pedido.detalle.map(item => ({
-    concepto: item.producto?.titulo || 'Producto sin nombre',
-    detalle: item.producto?.categoria?.nombre || null,
-    cantidad: item.cantidad,
-    precioUnitario: item.precio_unitario,
-  })));
+  const envio = Number(pedido.costo_envio) || 0;
 
+  y = tablaConceptos(doc, y, 'articulos', [
+    ...pedido.detalle.map(item => ({
+      concepto: item.producto?.titulo || 'Producto sin nombre',
+      detalle: item.producto?.categoria?.nombre || null,
+      cantidad: item.cantidad,
+      precioUnitario: item.precio_unitario,
+    })),
+    // El envío va como renglón aparte, no sumado en silencio al precio de los
+    // artículos (decisión de Ricardo, 09/11): así el cliente ve de dónde sale
+    // el total. Sin envío capturado, el renglón no existe.
+    ...(envio > 0 ? [{
+      concepto: 'Envío',
+      detalle: 'Costo de envío o recolección',
+      cantidad: 1,
+      precioUnitario: envio,
+    }] : []),
+  ]);
+
+  // Las piezas son artículos; el envío no es una pieza que se entregue.
   const totalPiezas = pedido.detalle.reduce((s, i) => s + i.cantidad, 0);
-  const total = pedido.detalle.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0);
+  const total = totalDelPedido(pedido.detalle, pedido.costo_envio);
 
   doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');

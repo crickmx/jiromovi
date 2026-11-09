@@ -118,6 +118,12 @@ export interface StorePedido {
   created_at: string;
   updated_at: string;
   total?: number;
+  /**
+   * Lo que se le cobra al cliente por el envío. SUMA al total (`totalDelPedido`
+   * en `storePedidoTotal.ts`). No confundir con `store_pedido_gastos`, que son
+   * costos de JIRO para medir margen y NO se le cobran al cliente.
+   */
+  costo_envio?: number;
   responsable_pago_id?: string;
   // Campos de Orden de Compra
   forma_pago?: string;
