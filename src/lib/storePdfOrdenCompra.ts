@@ -54,9 +54,12 @@ export function construirPDFOrdenCompra(pedido: StorePedidoCompleto): jsPDF {
     // El envío va como renglón aparte, no sumado en silencio al precio de los
     // artículos (decisión de Ricardo, 09/11): así el cliente ve de dónde sale
     // el total. Sin envío capturado, el renglón no existe.
+    // Dice "envío" y nada más: la recolección la coordina el cliente por su
+    // cuenta y no se le cobra, así que nombrarla aquí —en el documento que
+    // sustenta un cargo— sugeriría que sí tiene costo (Ricardo, 09/11).
     ...(envio > 0 ? [{
       concepto: 'Envío',
-      detalle: 'Costo de envío o recolección',
+      detalle: 'Costo de envío',
       cantidad: 1,
       precioUnitario: envio,
     }] : []),
