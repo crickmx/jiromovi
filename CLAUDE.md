@@ -1,6 +1,6 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-06)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-09)
 
 ### 📱 2026-11-07 — Apps nativas de MOVI y Seguwallet (rama `claude/sweet-einstein-iuxeok`, sin merge)
 
@@ -293,6 +293,9 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | ~~`20261106000001_registrar_actividad_desarrollador.sql`~~ | **RETIRADA el 06/11, no correr** — ya existe `user_activity_logs`, ver abajo |
 | `20261106000002_repos_del_reporte_semanal.sql` | qué repos entran al reporte semanal; agregar uno es un INSERT, no un deploy | ✅ corrida |
 | `20261106000003_personas_del_reporte_semanal.sql` | a quién sigue el reporte y con qué cuenta de GitHub se le liga | ✅ corrida |
+| `20261107225105_solicitudes_eliminacion_cuenta.sql` | solicitudes de eliminación de cuenta (apps nativas) | ✅ corrida el 07/11 |
+| `20261107225844` + `…905_push_nativo*.sql` | push nativo a dispositivos; el trigger lee por `to_jsonb(new)` | ✅ corridas el 07/11 |
+| `20261109000001_costo_de_envio_en_el_pedido.sql` | `store_pedidos.costo_envio` + la vista de pagos lo suma al monto | ⏳ **FALTA CORRERLA** |
 
 🔑 **El baseline NO describe las políticas vivas de `tickets`.** Medido el
 06/11 contra `pg_policy`: hay **UNA sola de SELECT, `tickets_select_v10`**, y
@@ -309,6 +312,15 @@ select polname, polcmd, polpermissive
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
 #### Falta probar en navegador
+- **Costo de envío de Store (09/11), después de correr la migración:** en un
+  pedido de prueba, capturar un envío en *Información de Pago* y confirmar que
+  (a) el **Total** de la pantalla sube por ese monto y aparece el desglose
+  *Artículos / Envío*, (b) la **Orden de Compra** lo trae como renglón aparte y
+  su *Importe* coincide con la pantalla, (c) el **control de pagos** de la
+  Bitácora dice el mismo monto —si dijera el viejo, la vista no se recreó—,
+  (d) un pedido **sin** envío sigue diciendo exactamente lo que decía antes, y
+  (e) al levantar un pedido desde el **carrito** sale la ventana del aviso y
+  *"Volver al carrito"* no crea nada.
 - **Lo del 29/10, después de correr las dos migraciones que faltan:**
   - **@menciones (A8):** entrar con un **Empleado o Gerente** —no Administrador, que es el único a quien le funcionaban— a un trámite con equipo, escribir `@` en un comentario y confirmar que sale la lista de compañeros. De paso, que "Mi equipo" deje de decir **1 integrante**.
   - **Tiempo real (A9):** dos navegadores en el mismo trámite; comentar en uno y verlo aparecer en el otro **sin recargar**. Y en el tablero, cambiar un estatus en una pestaña y ver moverse la tarjeta en la otra.
@@ -402,6 +414,105 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### ✅ 2026-11-09 — el costo de envío de MOVI Store, y los SIETE totales
+
+Pedido de Ricardo: *"hace falta campo para agregar los costos de envío a un
+pedido. Ese campo debe sumarle al total"*, más una ventana que avise al usuario
+que el envío no viene en el precio del catálogo.
+
+**⏳ Lo que falta que haga Ricardo:** correr
+`20261109000001_costo_de_envio_en_el_pedido.sql` y hacer **Pull + Deploy** en
+Plesk (commit `4ada82a4`). Hasta entonces no se puede ver en navegador.
+
+#### 🔑 Lo de fondo: el total del pedido se calculaba en SIETE lugares
+
+Medido antes de tocar nada. Cada uno con su propia copia:
+
+| | |
+|---|---|
+| `StorePedidoDetalle.tsx` | el Total de la pantalla, y de ahí el margen y la validación de "Liquidado" |
+| `storePdfOrdenCompra.ts` | el importe y el plan de cobro de la **Orden de Compra** |
+| `storeUtils → obtenerPedidosUsuario` | el total en **Mis Pedidos** |
+| `storeUtils → obtenerTodosPedidos` | el total en la lista de **Admin** y en su Excel |
+| `storeUtils → obtenerPedidoCompleto` | el `total` del pedido completo |
+| `storeUtils → resolverTemplatePedido` | el `{{monto_total}}` de los avisos por **WhatsApp y correo** |
+| `store_bitacora_view` (SQL) | `monto`, `saldo` y `estado_pago` del **control de pagos** |
+
+Mientras los siete sumaran lo mismo, no se notaba. **Agregar el envío a unos y
+no a otros es el bug que ya se pagó en octubre con Marketing Premium** —la
+bitácora decía *"$0 de $200"* y el panel de pagos $2,400—, y aquí habría sido
+peor: el cliente ve un total y se le cobra otro.
+
+Ahora hay **uno solo**: `totalDelPedido()` en `src/lib/storePedidoTotal.ts`, y
+los siete lo llaman.
+
+- **Vive aparte de `storeUtils`** a propósito: ahí dentro vive `supabase`, y
+  este archivo tiene que poder correrse fuera del navegador para su
+  autocomprobación (`npx tsx src/lib/storePedidoTotal.test.mjs`).
+- **Redondea a centavos.** `19.99 × 3` en flotante da `59.97000000000001`, y
+  `estado_pago` compara contra lo pagado con tolerancia de **un centavo**: sin
+  eso, un pedido pagado al exacto puede salir *"debe"*.
+- **Convierte el texto de PostgREST.** `numeric` llega como cadena; sin
+  convertir, `"185.50"` se **concatena** en vez de sumarse y el total sale
+  `800185.5` sin dar ningún error.
+
+#### Por qué una columna propia y no `store_pedido_gastos`
+
+Esa tabla ya existía y parecía el lugar obvio. **Pero sus gastos son del lado
+del COSTO**: lo que JIRO gasta, para medir margen. Por eso un pedido puede
+decir **Total $650.00** junto a **Costo $686.12** sin contradecirse — son dos
+cosas distintas, y hasta hay un `tipo = 'envio'` ahí que es *lo que nos cuesta
+mandarlo*.
+
+El envío de Ricardo es lo contrario: **un cargo al cliente**. Mezclarlos dejaría
+un pedido que nadie puede leer sin preguntar de cuál de los dos se habla.
+
+🔑 **Si algún día se quiere el margen del envío**, los dos datos ya están
+separados: `costo_envio` es lo que se cobra y el gasto `tipo='envio'` lo que
+costó. Juntarlos en una sola columna habría borrado esa resta para siempre.
+
+#### Dónde se ve
+
+| | |
+|---|---|
+| **Captura** | *Información de Pago* del detalle del pedido. **Solo quien administra Store** — es la única gente con acceso a esa pantalla (lo confirmó Ricardo) |
+| **Orden de Compra** | **renglón aparte "Envío"**, debajo de los artículos (decisión suya), para que se vea de dónde sale el total. Las **piezas no lo cuentan**: un envío no es una pieza que se entregue |
+| **Detalle del pedido** | desglose *Artículos / Envío* arriba del Total, **solo cuando hay envío**; sin él, repetir el mismo número dos veces sobra |
+| **Excel de Admin** | columna *"Costo de Envío"* **antes** de *Total Pedido*: el total ya lo incluye, y sin la columna nadie podría cuadrar la suma de los subtotales |
+| **Carrito** | la ventana de aviso, **antes** de crear el pedido |
+
+**El texto del aviso**, con sus palabras: que los costos de envío **no están
+incluidos** en los precios del catálogo, y que **una persona de Mercadotecnia
+se pondrá en contacto** para coordinar el envío o la recolección. Va como
+**ventana y no como nota al pie** porque una nota al pie no se lee. Solo hay
+**una puerta** para levantar un pedido (`crearPedido`, un único llamador), así
+que no quedó ningún camino sin el aviso.
+
+#### Dos cosas de método
+
+1. **La vista se reconstruyó de su definición VIVA**, extraída del baseline con
+   `awk`, no de memoria — la regla del 19/10. Solo se cambió `monto_total` para
+   que sume el envío. Y dentro de la vista el total **también** se escribe una
+   sola vez ahora (en un subselect), en vez de repetir la expresión en `monto`,
+   en `saldo` y **tres veces más** en el `CASE`.
+   ⚠️ `create or replace view` **no deja cambiar** nombre, orden ni tipo de las
+   columnas que ya existen; solo deja **agregar al final**. Por eso `articulos`
+   y `costo_envio` van al final.
+2. 🔴 **Escribí un `GRANT` que sobraba, con un comentario falso al lado.** Puse
+   *"esta tabla da permisos columna por columna"*: **no es cierto**,
+   `store_pedidos` los tiene **a nivel de tabla** (verificado contra el
+   baseline), así que una columna nueva queda cubierta sola. El `grant` era
+   inofensivo; el comentario no — una explicación equivocada dentro de una
+   migración es lo que desvía al siguiente. Se quitaron los dos.
+
+**El default es `0`**, así que **ningún pedido existente cambia de monto**. La
+comprobación está escrita al pie de la migración.
+
+Typecheck **322 líneas antes y después** (medido con `git stash`, cero errores
+nuevos) y build verde.
 
 ---
 
