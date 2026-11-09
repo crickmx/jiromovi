@@ -20,7 +20,7 @@ Marca cada paso. **(Ricardo)** = necesita tu cuenta, un dato o una decisión.
   `solicitar-eliminacion-cuenta` y `enviar-push-nativo`.
 - ✅ Push a git del 07/11: todo a `main` (`725bb04d`) y **solo las páginas `/legal/`** a `produccion` (`8fec946c`),
   sin arrastrar los 50 commits de `main` que producción no tiene.
-- [ ] **(Ricardo)** Pull + Deploy en Plesk de **movi.digital** (sirve la build de `main`, igual que beta) y verificar:
+- ✅ Páginas `/legal/` publicadas el 09/11 (copiadas a `beta.movi.digital/dist/legal/`, sin build):
   - https://movi.digital/legal/privacidad-seguwallet.html
   - https://movi.digital/legal/privacidad-movi.html
   - https://movi.digital/legal/eliminar-cuenta.html
@@ -49,21 +49,28 @@ Marca cada paso. **(Ricardo)** = necesita tu cuenta, un dato o una decisión.
 - ⚠️ El enlace viejo `https://www.grupojiro.com/aviso-de-privacidad` da **404** (lo usa también la landing de Mutuus).
   El vigente es https://jiro.mx/privacidad/.
 
-## 3. Cuentas demo para los revisores
+## 3. Cuentas demo para los revisores — ✅ creadas el 09/11 (falta poner las contraseñas)
 
-- [ ] **MOVI**: crear un usuario **Agente** de prueba (oficina de prueba, `es_bot = true`) con trámites ficticios.
-- [ ] **Seguwallet**: crear el cliente desde **Admin → Seguwallet** con el correo `revision@seguwallet.mx` (o el que
-  elijas), ligarlo a un agente de prueba y a un cliente SICAS de prueba para que tenga pólizas. Ponerle contraseña
-  desde el SQL Editor (comillas simples; la contraseña no pasa por el chat):
+| App | Correo | Qué tiene |
+|---|---|---|
+| **MOVI** | `ccjimenez+agente1@jiro.com.mx` (MATEO PRUEBAS, Agente, `es_bot`) | 10 trámites de prueba; como bot no le avisa a personas reales |
+| **Seguwallet** | `revision@seguwallet.mx` (Mariana López Demo, cliente de MATEO) | perfil y términos completos + 4 pólizas ficticias `DEMO-*` (auto, GMM, hogar, vida) |
+
+- [ ] **(Ricardo)** Ponerles contraseña desde el SQL Editor (comillas simples; la contraseña no pasa por el chat):
 
 ```sql
 update auth.users
 set encrypted_password = crypt('LA-QUE-SEA', gen_salt('bf'))
-where email = 'revision@seguwallet.mx';
+where email in ('revision@seguwallet.mx', 'ccjimenez+agente1@jiro.com.mx');
 ```
 
-- [ ] Probar en seguwallet.mx → “Entrar con contraseña” antes de mandarla a revisión.
-- [ ] Las dos cuentas van en *App Review Information* (Apple) y en *Acceso a la app* (Play).
+- [ ] Probar en seguwallet.mx → “¿Tienes contraseña? Entrar con contraseña”, y en app.movi.digital con MATEO.
+- [ ] Ponerlas en *App Review Information* (Apple) y en *Acceso a la app* (Play).
+- Para quitar el demo después de aprobadas:
+
+```sql
+update seguwallet_external_policies set deleted_at = now() where policy_number like 'DEMO-%';
+```
 
 ## 4. iOS (en una Mac, con la cuenta de hola@mekate.mx)
 

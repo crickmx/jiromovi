@@ -60,7 +60,7 @@ agente de seguros,trámites,comisiones,cotizador,CRM,pólizas,aseguradoras,produ
 
 ### Información para la revisión de Apple
 
-- **Cuenta demo**: obligatoria (la app es solo para usuarios dados de alta). Crear un usuario **Agente** de demostración con datos ficticios (ver checklist) y ponerlo aquí con su contraseña.
+- **Cuenta demo**: `ccjimenez+agente1@jiro.com.mx` (MATEO PRUEBAS, Agente de prueba con trámites ficticios) + la contraseña que se le ponga.
 - **Notas** (pegar):
 > MOVI Digital is the internal workspace for licensed insurance agents and staff of the Grupo JIRO network in Mexico (policy requests, commissions, CRM, quotes). Accounts are created by the company, so we provide a demo agent account with sample data. There are no purchases, subscriptions or ads in the app; any services between the company and its agents are billed under their commercial contract, outside the app. Account deletion request: Mi perfil → Eliminar mi cuenta. Location is requested only when the user taps “use my location” in their profile; camera/microphone only for document photos and video meetings.
 

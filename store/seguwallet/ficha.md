@@ -60,7 +60,7 @@ seguros,póliza,aseguradora,siniestro,gastos médicos,auto,vida,recibos,cartera,
 ### Información para la revisión de Apple (App Review Information)
 
 - **Inicio de sesión**: obligatorio. Cuenta demo con contraseña (ver `store/CHECKLIST.md` → “Cuentas demo”):
-  - Usuario: `revision@seguwallet.mx` *(crear)*
+  - Usuario: `revision@seguwallet.mx` *(creado el 09/11, con 4 pólizas DEMO)*
   - Contraseña: la que se le ponga
 - **Notas** (pegar):
 > Seguwallet is the insurance wallet that licensed insurance agents of the Grupo JIRO network give to their clients in Mexico. Accounts are created by the client's agent, so we provide a demo account with sample policies. Regular users log in with a one-time code sent by email/WhatsApp; to sign in with the demo account tap “¿Tienes contraseña? Entrar con contraseña” on the login screen and use the credentials above. Account deletion: Profile → Seguridad → Eliminar mi cuenta (the account is deactivated immediately and personal data is erased within 30 days). The app does not sell anything: there are no purchases, subscriptions or ads. Camera/photos are used only when the user chooses to attach an image (e.g. a claim photo).
