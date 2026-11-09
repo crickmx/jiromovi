@@ -295,7 +295,7 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261106000003_personas_del_reporte_semanal.sql` | a quién sigue el reporte y con qué cuenta de GitHub se le liga | ✅ corrida |
 | `20261107225105_solicitudes_eliminacion_cuenta.sql` | solicitudes de eliminación de cuenta (apps nativas) | ✅ corrida el 07/11 |
 | `20261107225844` + `…905_push_nativo*.sql` | push nativo a dispositivos; el trigger lee por `to_jsonb(new)` | ✅ corridas el 07/11 |
-| `20261109000001_costo_de_envio_en_el_pedido.sql` | `store_pedidos.costo_envio` + la vista de pagos lo suma al monto | ⏳ **FALTA CORRERLA** |
+| `20261109000001_costo_de_envio_en_el_pedido.sql` | `store_pedidos.costo_envio` + la vista de pagos lo suma al monto | ✅ corrida |
 
 🔑 **El baseline NO describe las políticas vivas de `tickets`.** Medido el
 06/11 contra `pg_policy`: hay **UNA sola de SELECT, `tickets_select_v10`**, y
@@ -520,9 +520,9 @@ Pedido de Ricardo: *"hace falta campo para agregar los costos de envío a un
 pedido. Ese campo debe sumarle al total"*, más una ventana que avise al usuario
 que el envío no viene en el precio del catálogo.
 
-**⏳ Lo que falta que haga Ricardo:** correr
-`20261109000001_costo_de_envio_en_el_pedido.sql` y hacer **Pull + Deploy** en
-Plesk (commit `4ada82a4`). Hasta entonces no se puede ver en navegador.
+**Migración ✅ corrida.** ⏳ **Falta el Pull + Deploy** en Plesk: la barra
+naranja tiene que acabar diciendo **`f9c9f269`** o posterior. Hasta entonces no
+se puede ver en navegador.
 
 #### 🔑 Lo de fondo: el total del pedido se calculaba en SIETE lugares
 
@@ -575,11 +575,31 @@ costó. Juntarlos en una sola columna habría borrado esa resta para siempre.
 
 | | |
 |---|---|
-| **Captura** | *Información de Pago* del detalle del pedido. **Solo quien administra Store** — es la única gente con acceso a esa pantalla (lo confirmó Ricardo) |
+| **Captura** | ficha propia **"Envío y otros costos (A cargo del cliente)"**, pegada debajo de **"Gastos generales del pedido (A cargo de Jiro)"**. **Solo quien administra Store** — es la única gente con acceso a esa pantalla (lo confirmó Ricardo) |
 | **Orden de Compra** | **renglón aparte "Envío"**, debajo de los artículos (decisión suya), para que se vea de dónde sale el total. Las **piezas no lo cuentan**: un envío no es una pieza que se entregue |
 | **Detalle del pedido** | desglose *Artículos / Envío* arriba del Total, **solo cuando hay envío**; sin él, repetir el mismo número dos veces sobra |
 | **Excel de Admin** | columna *"Costo de Envío"* **antes** de *Total Pedido*: el total ya lo incluye, y sin la columna nadie podría cuadrar la suma de los subtotales |
 | **Carrito** | la ventana de aviso, **antes** de crear el pedido |
+
+🔑 **Las dos fichas van pegadas y etiquetadas a propósito.** Son las dos caras
+del mismo pedido —lo que **gasta JIRO** y lo que se le **cobra al cliente**— y
+verlas juntas con su etiqueta es lo que evita confundirlas. Esa confusión es de
+donde salía el lío de un pedido que dice *Total $650.00* junto a *Costo
+$686.12*. Primero el campo vivía dentro de *Información de Pago*; Ricardo pidió
+moverlo el mismo día.
+
+⚠️ **El envío NO se guarda con "Guardar Pago"**: su ficha trae **su propio
+botón**. Dejarlo en los dos lados haría que dos botones escribieran el mismo
+dato, que es como nacen las copias que se desincronizan. Y al guardar
+**recarga el pedido**, porque si no, el Total y el desglose de arriba seguirían
+mostrando el monto viejo — el patrón de "la pantalla miente" que ya mordió en
+la papelera y en el toggle de equipos.
+
+⚠️ **En la OC el renglón dice solo "Costo de envío"**, sin mencionar la
+recolección (Ricardo, 09/11): esa la coordina el cliente por su cuenta y no se
+le cobra, así que nombrarla en el documento que sustenta un cargo sugeriría que
+tiene costo. En el aviso del carrito **sí** se mencionan las dos, porque ahí se
+está coordinando, no cobrando.
 
 **El texto del aviso**, con sus palabras: que los costos de envío **no están
 incluidos** en los precios del catálogo, y que **una persona de Mercadotecnia
