@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2, Settings } from 'lucide-react';
+import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2, Settings, Truck } from 'lucide-react';
 import { BaseModal } from '../components/BaseModal';
 import { PageHeader } from '@/components/ui/page-header';
 import { totalDelPedido, importeArticulos } from '../lib/storePedidoTotal';
@@ -60,6 +60,8 @@ export default function StorePedidoDetalle() {
   const [nuevaCombFrecuencia, setNuevaCombFrecuencia] = useState('');
   const [observacionesOC, setObservacionesOC] = useState('');
   const [costoEnvio, setCostoEnvio] = useState('');
+  const [guardandoEnvio, setGuardandoEnvio] = useState(false);
+  const [envioGuardado, setEnvioGuardado] = useState(false);
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [generandoOC, setGenerandoOC] = useState(false);
 
@@ -491,6 +493,42 @@ export default function StorePedidoDetalle() {
   };
 
 
+  /**
+   * El envío se guarda solo, no con "Guardar Pago".
+   *
+   * Tiene su propia ficha porque es lo único que se le COBRA al cliente, y
+   * dejarlo también dentro de Información de Pago haría que dos botones
+   * escribieran el mismo dato — así es como nacen las copias que se
+   * desincronizan. Recarga el pedido al terminar: si no, el Total y el
+   * desglose de arriba seguirían diciendo el monto viejo, que es exactamente
+   * la pantalla que miente.
+   */
+  const handleGuardarEnvio = async () => {
+    if (!pedidoId || !isAdmin) return;
+    const monto = costoEnvio.trim() === '' ? 0 : Number(costoEnvio);
+    if (!Number.isFinite(monto) || monto < 0) {
+      showToast('El costo de envío tiene que ser un número de 0 o más.', 'error');
+      return;
+    }
+    try {
+      setGuardandoEnvio(true);
+      // La columna es NOT NULL con default 0: un campo vacío es cero, no null.
+      const { error } = await supabase.from('store_pedidos')
+        .update({ costo_envio: monto })
+        .eq('id', pedidoId);
+      if (error) throw error;
+      await cargarDatos();
+      setEnvioGuardado(true);
+      setTimeout(() => setEnvioGuardado(false), 1500);
+      showToast('Costo de envío guardado.', 'success');
+    } catch (err: any) {
+      console.error('[Store] Error guardando el costo de envío:', err);
+      showToast(`No se pudo guardar el costo de envío: ${err?.message || 'error desconocido'}`, 'error');
+    } finally {
+      setGuardandoEnvio(false);
+    }
+  };
+
   const handleGuardarPago = async () => {
     if (!pedidoId || !isAdmin || !formaPago || !metodoPago) return;
     try {
@@ -500,8 +538,6 @@ export default function StorePedidoDetalle() {
         forma_pago: formaPago,
         metodo_pago: metodoPago,
         metodo_pago_otro_detalle: metodoPago === 'Otro' ? metodoPagoOtroDetalle : null,
-        // La columna es NOT NULL con default 0: un campo vacío es cero, no null.
-        costo_envio: Number(costoEnvio) || 0,
         observaciones_oc: observacionesOC || null,
       }).eq('id', pedidoId);
       if (error) throw error;
@@ -939,6 +975,7 @@ export default function StorePedidoDetalle() {
                 <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
                   Gastos generales del pedido
+                  <span className="text-sm font-normal text-neutral-500 dark:text-white/55">(A cargo de Jiro)</span>
                 </h2>
                 {pedidoGastos.length > 0 && (
                   <ul className="space-y-2 mb-4">
@@ -996,6 +1033,62 @@ export default function StorePedidoDetalle() {
                     )}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Lo que SÍ se le cobra al cliente. Va pegada a la ficha de arriba
+                a propósito: son las dos caras del mismo pedido —lo que gasta
+                JIRO y lo que se cobra— y verlas juntas es lo que evita
+                confundirlas, que es de donde salía el lío. */}
+            {isAdmin && (
+              <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-1 flex items-center gap-2">
+                  <Truck className="w-5 h-5" />
+                  Envío y otros costos
+                  <span className="text-sm font-normal text-neutral-500 dark:text-white/55">(A cargo del cliente)</span>
+                </h2>
+                <p className="text-xs text-neutral-500 dark:text-white/55 mb-4">
+                  Suma al total del pedido y sale como renglón aparte en la Orden de Compra.
+                </p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label htmlFor="costo-envio" className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">
+                      Costo de envío
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-white/50">$</span>
+                      <input
+                        id="costo-envio"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={costoEnvio}
+                        onChange={e => setCostoEnvio(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleGuardarEnvio()}
+                        placeholder="0.00"
+                        className="w-full pl-6 pr-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleGuardarEnvio}
+                    disabled={guardandoEnvio}
+                    className="px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-sm font-medium disabled:opacity-40 flex items-center gap-1.5"
+                  >
+                    {guardandoEnvio
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : envioGuardado
+                        ? <CheckCircle className="w-4 h-4" />
+                        : <Save className="w-4 h-4" />}
+                    Guardar
+                  </button>
+                </div>
+                {/* Déjalo en 0 si no hay envío: la recolección la coordina el
+                    cliente y no se le cobra. */}
+                <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-2">
+                  Déjalo en <strong>0</strong> si el cliente recoge su pedido: la recolección no tiene costo.
+                </p>
               </div>
             )}
 
@@ -1338,25 +1431,6 @@ export default function StorePedidoDetalle() {
                     {!metodoPago && (
                       <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">Selecciona primero el metodo de pago</p>
                     )}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-600 dark:text-white/60 mb-1">Costo de Envío</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-white/50">$</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        inputMode="decimal"
-                        value={costoEnvio}
-                        onChange={e => setCostoEnvio(e.target.value)}
-                        placeholder="0.00"
-                        className="w-full pl-6 pr-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
-                      />
-                    </div>
-                    <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">
-                      Se le cobra al cliente: suma al total y sale como renglón aparte en la OC. Déjalo en 0 si no hay envío.
-                    </p>
                   </div>
                   <textarea value={observacionesOC} onChange={e => setObservacionesOC(e.target.value)} placeholder="Observaciones..." className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg" rows={2} />
                 </div>
