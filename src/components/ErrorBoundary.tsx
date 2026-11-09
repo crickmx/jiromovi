@@ -28,7 +28,19 @@ const VENTANA_MS = 30_000;
 /** ¿El error es por un fragmento de código que no se pudo descargar? */
 export function esErrorDeCarga(error: unknown): boolean {
   const msg = error instanceof Error ? `${error.name} ${error.message}` : String(error);
-  return /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(msg);
+  return (
+    /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(msg) ||
+    // Las tripas de `React.lazy` cuando la importación resolvió con `undefined`
+    // en vez de rechazar: `_result.default` sobre un `_result` que no existe.
+    // Visto en producción como:
+    //   TypeError: can't access property "default", u._result is undefined
+    // La causa estaba en `main.tsx` —cancelar `vite:preloadError` convertía el
+    // rechazo en un `undefined`— y ya está corregida; esto queda porque las
+    // pestañas que siguen abiertas con el build viejo todavía lo producen, y
+    // porque `_result`/`_payload` solo existen dentro de la carga diferida: un
+    // error con esa forma nunca viene del código de la app.
+    /\b_(result|payload)\b.*\b(undefined|null)\b|\bundefined\b.*\b_(result|payload)\b/i.test(msg)
+  );
 }
 
 /** Recarga una vez y solo una. Devuelve false si ya se intentó hace poco. */
