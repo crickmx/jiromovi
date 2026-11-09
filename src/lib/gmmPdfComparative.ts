@@ -74,7 +74,7 @@ export async function generateComparativeQuotePDF(
       try {
         const logoWidth = 25;
         const logoHeight = 17;
-        doc.addImage(logoBase64, 'PNG', marginLeft, yPosition - 3, logoWidth, logoHeight);
+        doc.addImage(logoBase64, 'PNG', marginLeft, yPosition - 3, logoWidth, logoHeight, undefined, 'FAST');
       } catch (error) {
         console.error('Error adding logo to PDF:', error);
       }

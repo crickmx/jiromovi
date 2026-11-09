@@ -165,7 +165,7 @@ export async function generateUnifiedQuotePDF(
     const logoBase64 = await loadImageAsBase64(logoUrl);
     if (logoBase64) {
       try {
-        doc.addImage(logoBase64, 'PNG', margin, yPos, 25, 12);
+        doc.addImage(logoBase64, 'PNG', margin, yPos, 25, 12, undefined, 'FAST');
       } catch (error) {
         console.error('Error adding logo:', error);
       }

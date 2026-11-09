@@ -82,7 +82,7 @@ export async function generateQuotePDF(
       try {
         const logoWidth = 30;
         const logoHeight = 20;
-        doc.addImage(logoBase64, 'PNG', marginLeft, yPosition - 5, logoWidth, logoHeight);
+        doc.addImage(logoBase64, 'PNG', marginLeft, yPosition - 5, logoWidth, logoHeight, undefined, 'FAST');
       } catch (error) {
         console.error('Error adding logo to PDF:', error);
       }
