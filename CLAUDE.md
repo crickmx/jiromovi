@@ -28,7 +28,21 @@ Todo lo de tiendas vive en **`store/`** (empezar por `store/CHECKLIST.md` y `sto
 
 ---
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-06
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-09
+
+**Lo de MOVI Store quedó TERMINADO y probado por Ricardo** ("ya funciona", 09/11).
+Todas las migraciones corridas, todo desplegado. Lo que sigue abierto de ese
+hilo es una sola cosa, y es un ofrecimiento sin respuesta:
+
+- ⏳ **La ficha "Gastos generales del pedido" sigue sin edición en su lugar.**
+  La de cargos al cliente ya la tiene (clic en el texto → se guarda al salir);
+  la de gastos todavía es solo agregar y quitar. Se le ofreció emparejarlas y
+  no contestó. Es copiar el mismo patrón.
+
+⏳ **Y lo del servidor que se cae al desplegar**: falta que Ricardo corra los
+dos comandos por SSH. Está en la sección del 09/11, más abajo.
+
+### 🔜 Lo que venía de antes — abierto desde el 2026-11-06
 
 **Todas las migraciones están corridas**, incluida la del 04/11
 (`20261104000001`). **`produccion` NO se tocó** desde el merge del 12.
@@ -296,6 +310,7 @@ El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
 | `20261107225105_solicitudes_eliminacion_cuenta.sql` | solicitudes de eliminación de cuenta (apps nativas) | ✅ corrida el 07/11 |
 | `20261107225844` + `…905_push_nativo*.sql` | push nativo a dispositivos; el trigger lee por `to_jsonb(new)` | ✅ corridas el 07/11 |
 | `20261109000001_costo_de_envio_en_el_pedido.sql` | `store_pedidos.costo_envio` + la vista de pagos lo suma al monto | ✅ corrida |
+| `20261109000002_cargos_al_cliente_del_pedido.sql` | **reemplaza a la de arriba el mismo día**: `store_pedido_cargos` (varios, con concepto), `store_puede_administrar()`, las DOS vistas, y quita `costo_envio` | ✅ corrida |
 
 🔑 **El baseline NO describe las políticas vivas de `tickets`.** Medido el
 06/11 contra `pg_policy`: hay **UNA sola de SELECT, `tickets_select_v10`**, y
@@ -312,15 +327,11 @@ select polname, polcmd, polpermissive
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
 #### Falta probar en navegador
-- **Costo de envío de Store (09/11), después de correr la migración:** en un
-  pedido de prueba, capturar un envío en *Información de Pago* y confirmar que
-  (a) el **Total** de la pantalla sube por ese monto y aparece el desglose
-  *Artículos / Envío*, (b) la **Orden de Compra** lo trae como renglón aparte y
-  su *Importe* coincide con la pantalla, (c) el **control de pagos** de la
-  Bitácora dice el mismo monto —si dijera el viejo, la vista no se recreó—,
-  (d) un pedido **sin** envío sigue diciendo exactamente lo que decía antes, y
-  (e) al levantar un pedido desde el **carrito** sale la ventana del aviso y
-  *"Volver al carrito"* no crea nada.
+- ~~**Cargos al cliente de Store (09/11)**~~ — ✅ **probado por Ricardo el
+  09/11**: *"listo, ya funciona"*. Lo único que no se alcanzó a mirar con él es
+  el **aviso del carrito** (que al levantar un pedido salga la ventana de que
+  el envío no está incluido, y que *"Volver al carrito"* no cree nada) y el
+  **Excel** con sus columnas nuevas.
 - **Lo del 29/10, después de correr las dos migraciones que faltan:**
   - **@menciones (A8):** entrar con un **Empleado o Gerente** —no Administrador, que es el único a quien le funcionaban— a un trámite con equipo, escribir `@` en un comentario y confirmar que sale la lista de compañeros. De paso, que "Mi equipo" deje de decir **1 integrante**.
   - **Tiempo real (A9):** dos navegadores en el mismo trámite; comentar en uno y verlo aparecer en el otro **sin recargar**. Y en el tablero, cambiar un estatus en una pestaña y ver moverse la tarjeta en la otra.
@@ -514,17 +525,18 @@ primero, pero no resuelve.
 
 ---
 
-### ✅ 2026-11-09 — el costo de envío de MOVI Store, y los SIETE totales
+### ✅ 2026-11-09 — los cargos al cliente de MOVI Store, y los OCHO totales
 
-Pedido de Ricardo: *"hace falta campo para agregar los costos de envío a un
-pedido. Ese campo debe sumarle al total"*, más una ventana que avise al usuario
-que el envío no viene en el precio del catálogo.
+Arrancó como *"hace falta campo para agregar los costos de envío a un pedido,
+debe sumarle al total"* y terminó, el mismo día y por petición suya, en una
+tabla de cargos con concepto libre. **Probado por Ricardo: "ya funciona".**
 
-**Migración ✅ corrida.** ⏳ **Falta el Pull + Deploy** en Plesk: la barra
-naranja tiene que acabar diciendo **`f9c9f269`** o posterior. Hasta entonces no
-se puede ver en navegador.
+⚠️ **El día tuvo DOS migraciones y la segunda deshace parte de la primera.** La
+`…000001` agregó `store_pedidos.costo_envio`; la `…000002`, unas horas después,
+la convirtió en renglones y **borró la columna**. Las dos están corridas. Si
+alguien lee solo la primera, va a buscar una columna que ya no existe.
 
-#### 🔑 Lo de fondo: el total del pedido se calculaba en SIETE lugares
+#### 🔑 Lo de fondo: el total del pedido se calculaba en OCHO lugares
 
 Medido antes de tocar nada. Cada uno con su propia copia:
 
@@ -536,15 +548,16 @@ Medido antes de tocar nada. Cada uno con su propia copia:
 | `storeUtils → obtenerTodosPedidos` | el total en la lista de **Admin** y en su Excel |
 | `storeUtils → obtenerPedidoCompleto` | el `total` del pedido completo |
 | `storeUtils → resolverTemplatePedido` | el `{{monto_total}}` de los avisos por **WhatsApp y correo** |
-| `store_bitacora_view` (SQL) | `monto`, `saldo` y `estado_pago` del **control de pagos** |
+| `store_bitacora_view` (SQL) | …que **el frontend no lee** (ver abajo) |
+| **`bitacora_comercial_view`** (SQL) | **ESTA es la del control de pagos de la Bitácora** |
 
-Mientras los siete sumaran lo mismo, no se notaba. **Agregar el envío a unos y
-no a otros es el bug que ya se pagó en octubre con Marketing Premium** —la
-bitácora decía *"$0 de $200"* y el panel de pagos $2,400—, y aquí habría sido
-peor: el cliente ve un total y se le cobra otro.
+Mientras los ocho sumaran lo mismo, no se notaba. **Agregar un cargo a unos y no
+a otros es el bug que ya se pagó en octubre con Marketing Premium** —la bitácora
+decía *"$0 de $200"* y el panel de pagos $2,400—, y aquí habría sido peor: el
+cliente ve un total y se le cobra otro.
 
 Ahora hay **uno solo**: `totalDelPedido()` en `src/lib/storePedidoTotal.ts`, y
-los siete lo llaman.
+los ocho lo llaman.
 
 - **Vive aparte de `storeUtils`** a propósito: ahí dentro vive `supabase`, y
   este archivo tiene que poder correrse fuera del navegador para su
@@ -556,80 +569,107 @@ los siete lo llaman.
   convertir, `"185.50"` se **concatena** en vez de sumarse y el total sale
   `800185.5` sin dar ningún error.
 
-#### Por qué una columna propia y no `store_pedido_gastos`
+#### 🔴 Actualicé la vista equivocada, y casi se va así
 
-Esa tabla ya existía y parecía el lugar obvio. **Pero sus gastos son del lado
-del COSTO**: lo que JIRO gasta, para medir margen. Por eso un pedido puede
-decir **Total $650.00** junto a **Costo $686.12** sin contradecirse — son dos
-cosas distintas, y hasta hay un `tipo = 'envio'` ahí que es *lo que nos cuesta
-mandarlo*.
+La migración de la mañana actualizó `store_bitacora_view`. **El frontend no la
+lee.** La pantalla de Bitácora consulta **`bitacora_comercial_view`**
+(`VISTA_BITACORA` en `src/lib/bitacoraConfig.ts`), que calcula el monto de Store
+por su cuenta — así que el envío **no llegaba al control de pagos** y habría dado
+saldos mal.
 
-El envío de Ricardo es lo contrario: **un cargo al cliente**. Mezclarlos dejaría
-un pedido que nadie puede leer sin preguntar de cuál de los dos se habla.
+🔑 **La lección:** haber grepeado el nombre de la vista en `src/` habría bastado,
+y es exactamente la comprobación que este proyecto ya tiene escrita para las
+pantallas de configuración (*"si solo aparece donde se guarda, no sirve para
+nada"*). No se aplicó al revés: **antes de arreglar una vista, preguntar quién
+la consulta.** `store_bitacora_view` hoy no la consulta nadie en el frontend; se
+dejó correcta igual, y la migración trae al pie una consulta que **exige que las
+dos digan lo mismo del mismo pedido**.
 
-🔑 **Si algún día se quiere el margen del envío**, los dos datos ya están
-separados: `costo_envio` es lo que se cobra y el gasto `tipo='envio'` lo que
-costó. Juntarlos en una sola columna habría borrado esa resta para siempre.
+#### El modelo: dos tablas que son el reverso una de la otra
+
+| | Qué es | Dónde |
+|---|---|---|
+| **`store_pedido_gastos`** | lo que **GASTA JIRO**. De aquí sale el **margen**. No se le cobra al cliente | ficha *Gastos generales del pedido **(A cargo de Jiro)*** |
+| **`store_pedido_cargos`** | lo que se le **COBRA al cliente** además de los artículos. **SUMA al total** | ficha *Envío y otros costos **(A cargo del cliente)*** |
+
+Por eso un pedido puede decir **Total $650.00** junto a **Costo $686.12** sin
+contradecirse: son dos cosas distintas. Las dos fichas van **pegadas y
+etiquetadas** a propósito — verlas juntas es lo que evita confundirlas.
+
+🔑 **Por qué `store_pedido_cargos` es una tabla aparte y no un `a_cargo_de` en
+`store_pedido_gastos`.** Esa tabla ya tenía concepto, monto y tipo, así que
+parecía el lugar obvio. Pero marcar sus filas obligaría a filtrar en los **tres**
+lectores que hoy suman el margen (`StorePedidoDetalle`, `StorePedidosReporte` y
+el cálculo de ganancia), y **olvidar uno haría que un cargo al cliente se
+contara como costo de JIRO en silencio**. Una tabla aparte no toca nada de lo
+que ya funciona.
+
+🔑 **Y si algún día se quiere el margen del envío**, los dos datos ya están
+separados: el cargo es lo que se cobra y el gasto `tipo='envio'` lo que costó.
+Juntarlos en un solo lugar habría borrado esa resta para siempre.
 
 #### Dónde se ve
 
 | | |
 |---|---|
-| **Captura** | ficha propia **"Envío y otros costos (A cargo del cliente)"**, pegada debajo de **"Gastos generales del pedido (A cargo de Jiro)"**. **Solo quien administra Store** — es la única gente con acceso a esa pantalla (lo confirmó Ricardo) |
-| **Orden de Compra** | **renglón aparte "Envío"**, debajo de los artículos (decisión suya), para que se vea de dónde sale el total. Las **piezas no lo cuentan**: un envío no es una pieza que se entregue |
-| **Detalle del pedido** | desglose *Artículos / Envío* arriba del Total, **solo cuando hay envío**; sin él, repetir el mismo número dos veces sobra |
-| **Excel de Admin** | columna *"Costo de Envío"* **antes** de *Total Pedido*: el total ya lo incluye, y sin la columna nadie podría cuadrar la suma de los subtotales |
+| **Captura** | ficha **"Envío y otros costos (A cargo del cliente)"**. Concepto **libre** y **varios** por pedido; concepto y monto **se editan en su lugar** (clic al texto, guarda al salir del campo) y se pueden quitar. **Solo quien administra Store** |
+| **Total de la pantalla** | desglose que **nombra cada cargo** (*Artículos / Envío / Producción express*), no un "Otros" que obligue a ir a buscar de qué se trata. Solo aparece si hay cargos |
+| **Orden de Compra** | **un renglón por cargo**, con su concepto, debajo de los artículos. Las **piezas no los cuentan**: un cargo no es una pieza que se entregue |
+| **Excel de Admin** | *"Cargos al Cliente"* (la suma) + *"Conceptos de los Cargos"*, antes de *Total Pedido*, porque el total ya los incluye |
+| **Bitácora** | `monto`, `saldo` y `estado_pago` los suman, en **las dos** vistas |
 | **Carrito** | la ventana de aviso, **antes** de crear el pedido |
 
-🔑 **Las dos fichas van pegadas y etiquetadas a propósito.** Son las dos caras
-del mismo pedido —lo que **gasta JIRO** y lo que se le **cobra al cliente**— y
-verlas juntas con su etiqueta es lo que evita confundirlas. Esa confusión es de
-donde salía el lío de un pedido que dice *Total $650.00* junto a *Costo
-$686.12*. Primero el campo vivía dentro de *Información de Pago*; Ricardo pidió
-moverlo el mismo día.
-
-⚠️ **El envío NO se guarda con "Guardar Pago"**: su ficha trae **su propio
-botón**. Dejarlo en los dos lados haría que dos botones escribieran el mismo
-dato, que es como nacen las copias que se desincronizan. Y al guardar
-**recarga el pedido**, porque si no, el Total y el desglose de arriba seguirían
-mostrando el monto viejo — el patrón de "la pantalla miente" que ya mordió en
-la papelera y en el toggle de equipos.
-
-⚠️ **En la OC el renglón dice solo "Costo de envío"**, sin mencionar la
-recolección (Ricardo, 09/11): esa la coordina el cliente por su cuenta y no se
-le cobra, así que nombrarla en el documento que sustenta un cargo sugeriría que
-tiene costo. En el aviso del carrito **sí** se mencionan las dos, porque ahí se
-está coordinando, no cobrando.
-
 **El texto del aviso**, con sus palabras: que los costos de envío **no están
-incluidos** en los precios del catálogo, y que **una persona de Mercadotecnia
-se pondrá en contacto** para coordinar el envío o la recolección. Va como
-**ventana y no como nota al pie** porque una nota al pie no se lee. Solo hay
-**una puerta** para levantar un pedido (`crearPedido`, un único llamador), así
-que no quedó ningún camino sin el aviso.
+incluidos** en los precios del catálogo, y que **una persona de Mercadotecnia se
+pondrá en contacto** para coordinar el envío o la recolección. Va como **ventana
+y no como nota al pie** porque una nota al pie no se lee. Solo hay **una puerta**
+para levantar un pedido (`crearPedido`, un único llamador), así que no quedó
+ningún camino sin el aviso.
 
-#### Dos cosas de método
+⚠️ **En la OC NO se menciona la recolección** (Ricardo, 09/11): esa la coordina
+el cliente por su cuenta y no se le cobra, así que nombrarla en el documento que
+sustenta un cargo sugeriría que tiene costo. En el aviso del carrito **sí** se
+mencionan las dos, porque ahí se está coordinando, no cobrando.
 
-1. **La vista se reconstruyó de su definición VIVA**, extraída del baseline con
-   `awk`, no de memoria — la regla del 19/10. Solo se cambió `monto_total` para
-   que sume el envío. Y dentro de la vista el total **también** se escribe una
-   sola vez ahora (en un subselect), en vez de repetir la expresión en `monto`,
-   en `saldo` y **tres veces más** en el `CASE`.
+#### Cuatro cosas de método
+
+1. **Las vistas se reconstruyeron de su definición VIVA**, extraída del baseline,
+   no de memoria — la regla del 19/10. En `bitacora_comercial_view` se cambió
+   **solo** el monto de la rama de Store; la de Premium quedó letra por letra.
    ⚠️ `create or replace view` **no deja cambiar** nombre, orden ni tipo de las
-   columnas que ya existen; solo deja **agregar al final**. Por eso `articulos`
-   y `costo_envio` van al final.
-2. 🔴 **Escribí un `GRANT` que sobraba, con un comentario falso al lado.** Puse
+   columnas que ya existen; solo deja **agregar al final**. Por eso
+   `bitacora_comercial_view` entró con `replace` (solo cambian expresiones) y
+   `store_bitacora_view` necesitó `drop` + `create` + **reponer su `grant`**.
+2. 🔑 **La política de lectura de los cargos es "si puedes ver el pedido"**,
+   escrita como un `EXISTS` contra `store_pedidos` en vez de repetir sus
+   condiciones — esa subconsulta ya pasa por la RLS de esa tabla, así que las
+   dos reglas no pueden separarse nunca. **Y es lo que mantiene honesta a la
+   Bitácora:** las vistas son `security_invoker`, así que si alguien pudiera ver
+   el pedido pero no sus cargos, la suma le saldría **más baja sin avisar** —
+   una vista que dice un monto distinto según quién la mire.
+3. **`store_puede_administrar()`** recoge en una sola definición el `EXISTS` que
+   `store_pedido_gastos` repite en **ocho políticas superpuestas**. Mismo molde
+   que `mkt_puede_administrar()`, que ya existía. `SECURITY DEFINER` a propósito:
+   sin eso, consultar `usuarios` desde dentro de una política choca con su RLS.
+4. 🔴 **Escribí un `GRANT` que sobraba, con un comentario falso al lado.** Puse
    *"esta tabla da permisos columna por columna"*: **no es cierto**,
-   `store_pedidos` los tiene **a nivel de tabla** (verificado contra el
-   baseline), así que una columna nueva queda cubierta sola. El `grant` era
-   inofensivo; el comentario no — una explicación equivocada dentro de una
-   migración es lo que desvía al siguiente. Se quitaron los dos.
+   `store_pedidos` los tiene **a nivel de tabla**. El `grant` era inofensivo; el
+   comentario no — una explicación equivocada dentro de una migración es lo que
+   desvía al siguiente. Se quitaron los dos.
 
-**El default es `0`**, así que **ningún pedido existente cambia de monto**. La
-comprobación está escrita al pie de la migración.
+#### Detalles de implementación que se prestan a romperse
 
-Typecheck **322 líneas antes y después** (medido con `git stash`, cero errores
-nuevos) y build verde.
+- **Los campos de cada renglón de cargos son NO controlados** (`defaultValue` +
+  guardar al salir del campo), así que su `key` **lleva el contenido**
+  (`${c.id}-${c.concepto}-${c.monto}`): sin eso, al cambiar el dato en la base
+  el campo seguiría enseñando lo viejo.
+- **`obtenerPedidoCompleto` lanza si no puede leer los cargos**, en vez de
+  seguir con un total menor al real. Un cargo que no se leyó es cobrarle de
+  menos al cliente.
+- **Los tres handlers (alta, edición, baja) recargan el pedido** al terminar y
+  **miran el error** del update. Sin lo primero, el Total de arriba se queda en
+  el monto viejo; sin lo segundo, la pantalla da por bueno algo que no se
+  guardó.
 
 ---
 
