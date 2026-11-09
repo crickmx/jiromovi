@@ -417,6 +417,103 @@ Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado 
 
 ---
 
+### ✅ 2026-11-09 — "u._result is undefined", y por qué se cae el servidor al desplegar
+
+Dos síntomas que Ricardo reportó como cosas de "sesión abierta mucho tiempo".
+Son dos causas distintas y ninguna es la sesión.
+
+#### 🔴 El `TypeError` lo fabricaba nuestra propia red de seguridad
+
+Con una pestaña abierta desde antes de un despliegue, al entrar a `/admin/deploy`:
+
+```
+TypeError: can't access property "default", u._result is undefined
+```
+
+y la pantalla decía **"Algo salió mal"** —el mensaje genérico— cuando lo que
+pasaba era justo lo que el `ErrorBoundary` ya sabe tratar: un fragmento de
+código que ya no existe en el servidor porque hubo un deploy.
+
+**La causa, leída del bundle ya compilado y no de memoria.** El ayudante de
+precarga de Vite es, literal:
+
+```js
+function c(f){ const g = new Event("vite:preloadError", {cancelable:!0});
+               g.payload = f; window.dispatchEvent(g);
+               if (!g.defaultPrevented) throw f }
+return a().catch(c)
+```
+
+`c` **relanza el error solo si nadie canceló el evento**. Nuestro listener en
+`main.tsx` hacía `e.preventDefault()`, así que `c` no lanzaba, el `.catch`
+devolvía `undefined` y **la importación RESOLVÍA con `undefined`** en vez de
+rechazar. `React.lazy` lo guarda como módulo bueno (`_status = Resolved`,
+`_result = undefined`) y al siguiente render lee `_result.default`.
+
+🔑 **La lección:** cancelar el evento de error de una librería no es
+"manejarlo"; puede convertir un rechazo legible en un éxito falso que revienta
+tres capas más arriba, con un mensaje que no se parece en nada a la causa. Las
+**tres** redes que ya existían (`vite:preloadError`, `unhandledrejection` y el
+`ErrorBoundary`) estaban bien escritas y ninguna lo reconocía, porque lo que
+llegaba ya no era un error de carga.
+
+Quitar ese `preventDefault` es todo el arreglo. De paso `esErrorDeCarga`
+reconoce esa forma —las pestañas abiertas con el build viejo todavía la
+producen— y **los casos que NO deben recargar quedaron escritos** en
+`src/components/ErrorBoundary.test.mjs`: recargar ante un bug real lo esconde y
+le quita al usuario el mensaje con el que lo reportaría.
+
+Verificado de paso: `beta.movi.digital/index.html` se sirve con
+`Cache-Control: no-cache, no-store, must-revalidate`, o sea que **la recarga sí
+trae HTML fresco**. El único defecto era el mensaje.
+
+#### ⏳ Por qué se cae el servidor al hacer Pull + Deploy — falta confirmarlo con Ricardo
+
+Ricardo: *"al hacer pull y deploy, seguido se cae el servidor y hay que
+reiniciarlo"*. Encaja exacto con el incidente del **06/11**: Plesk daba 500 con
+`Plesk\Exception\Database` / *Connection refused* —o sea **MariaDB caído**—
+mientras **los tres sitios seguían respondiendo 200**, que es justo lo que pasa
+cuando muere la base y no el servidor web.
+
+**Lo medido:**
+
+- `dist/` **no está versionado**, así que el servidor **compila en cada Deploy**.
+- El script es `node --max-old-space-size=4096 … vite build`: **pide hasta 4 GB
+  de heap**.
+- Pico real medido el 09/11 en la máquina de Ricardo: **2,184 MB** sumando
+  todos los `node`. El servidor hace eso **además** de `npm install`.
+
+**La hipótesis:** el build se come la RAM, entra el *OOM killer* de Linux y mata
+al proceso más grande, que en un Plesk casi siempre es **`mysqld`**. Por eso
+"se cae" y hay que reiniciar.
+
+**Cómo confirmarlo o descartarlo en 30 segundos, por SSH:**
+
+```bash
+free -h                                  # RAM total y swap (swap en 0 es la señal)
+sudo dmesg -T | grep -iE "killed process|out of memory" | tail -20
+sudo journalctl -u mariadb --since "7 days ago" | grep -iE "killed|oom|signal" | tail
+```
+
+Si ahí sale `Killed process … (mysqld)`, está probado.
+
+**Qué haríamos según el resultado** (ninguno toca el código de MOVI):
+
+1. **Swap**, si `free -h` dice 0. Es lo primero y lo más barato: un pico de
+   compilación pagina a disco en vez de invitar al OOM killer.
+2. **Blindar MariaDB** con `OOMScoreAdjust=-900` en su unidad de systemd: si
+   algo tiene que morir, que sea el build y no la base.
+3. **Que el servidor deje de compilar**: compilar en GitHub Actions y publicar
+   el `dist`. Es el arreglo de fondo, pero cambia el canal de despliegue —y el
+   05/11 Ricardo quitó a propósito el job `deploy-beta`—, así que es decisión
+   suya.
+
+⚠️ **Bajar `--max-old-space-size` NO es el arreglo**: no reduce lo que el build
+necesita, solo cambia *morir el servidor* por *fallar el build*. Mejor que lo
+primero, pero no resuelve.
+
+---
+
 ### ✅ 2026-11-09 — el costo de envío de MOVI Store, y los SIETE totales
 
 Pedido de Ricardo: *"hace falta campo para agregar los costos de envío a un
