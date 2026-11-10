@@ -98,3 +98,48 @@ Ya existe un estado `filterChannel` que la lista aplica, pero sin control visibl
 4. Pantalla de plantillas de WhatsApp y 4 modales del hilo sin botón que los abra (código inalcanzable).
 5. Tiempo real de WhatsApp sin filtro: cualquier mensaje de cualquier agente recarga todo.
 6. `MiWhatsApp.tsx` y 4 componentes de `contactCenter/` no se usan.
+
+---
+
+## D. Verificación después del rediseño (10/11/2026)
+
+Cada punto se revisó contra la pantalla nueva. Las pruebas automáticas están en
+`qa/ui-correo/` (ver su README).
+
+| # | Dónde quedó | Estado |
+|---|---|---|
+| E1–E5 | Sin cambios de lógica (máscara, configuración, conectando, error de conexión) | ✅ |
+| E6 | Roundcube ahora es **"Vista alternativa"** (panel de carpetas → Herramientas). Conserva Contactos, Actualizar y el reintento por `RATE_LIMITED`; "Volver al correo" regresa | ✅ |
+| E7 | Carpetas · lista · lectura; en celular una columna y carpetas en panel deslizable | ✅ |
+| E8 | Contactos: panel de carpetas y vista alternativa. **Nuevo:** importar CSV o vCard | ✅ |
+| E9 | El correo configurado se ve bajo "Redactar" | ✅ |
+| E10 | Buscar arriba de la lista, **ahora también en celular**; opción "buscar en el contenido"; resultados resaltados; `/` enfoca | ✅ |
+| E11–E15 | Contactos, Actualizar (lista), Configurar cuenta, Vista alternativa, Redactar (`c`) | ✅ |
+| E16 | Los errores salen en avisos o en la propia lista con "Reintentar" | ✅ |
+| E17 | Carpetas con contador de no leídos, **también en celular** | ✅ |
+| E18–E21 | Paginación, fila, esqueleto/vacíos, abrir marca leído | ✅ |
+| E22–E29 | Volver, folio ligado, leído/no leído, eliminar, destinatarios, adjuntos, cuerpo aislado, responder/a todos/reenviar | ✅ |
+| E30–E31 | **Crear trámite / Ver trámite** y **Agregar a trámite**: primeros en la barra de lectura; también en el menú de cada fila y en lote. Los modales y las funciones del servidor son los mismos | ✅ probado |
+| E32 | La detección del agente al crear el trámite no cambió (servidor). **Nuevo:** tarjeta del remitente en la lectura y etiqueta en la lista, con el mismo criterio de correo | ✅ probado |
+| E33–E40 | Redactar: mismos campos, firma, límites, hilo y envío. **Nuevo:** ventana flotante, arrastrar archivos, plantillas, borrador con adjuntos y respuestas | ✅ |
+| W1–W16 | Sin cambios de datos ni de envío. **Nuevo:** filtro de buzón, panel del contacto en celular, plantillas alcanzables | ✅ |
+
+### Servidor de correo (`ionos-webmail`, versión 76)
+
+Las acciones existentes no cambiaron. Se agregaron, opcionales:
+`withSnippet` (fragmento en la lista y en la búsqueda), `inBody` (buscar en el contenido),
+`quota` (espacio usado) y `thread` (correos del mismo hilo). La búsqueda escapa las comillas
+y prueba primero con `CHARSET UTF-8`; si el servidor no lo acepta, repite como antes.
+
+⚠️ La versión que estaba desplegada (v75) era **más nueva que el repo**: guardaba los adjuntos
+en la copia de "Enviados". Se integró al repo antes de desplegar. El código desplegado se
+comparó byte a byte con el del repo: idéntico.
+
+### Lo que no se pudo verificar aquí
+
+- Contra un buzón real de IONOS: fragmentos, `GETQUOTAROOT`, `BODY` y el hilo se probaron
+  con respuestas IMAP simuladas. Si el servidor no informa el espacio, el panel lo dice.
+- La carpeta **Archivo**: si el buzón no la tiene, "Archivar" no aparece (deslizar a la
+  derecha marca como leído).
+- Tiempo real de WhatsApp con el filtro por usuario: depende de que Realtime acepte el
+  filtro `agent_user_id=eq.…` (es el mismo filtro que ya aplica la consulta).

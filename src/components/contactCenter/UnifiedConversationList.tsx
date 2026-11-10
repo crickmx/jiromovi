@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Search, MessageSquare, X, Archive, Inbox, MailWarning } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cnSistema as cn } from '@/lib/utils';
 import { type CCChannel } from '@/lib/contactCenterTypes';
 import {
   type UnifiedConversation,
@@ -182,7 +182,7 @@ export function UnifiedConversationList({
               onClick={() => onEstadoChange(e.value)}
               className={cn(
                 'flex-1 min-h-[44px] flex items-center justify-center gap-1.5 text-caption font-semibold transition-colors border-b-2 -mb-px',
-                'focus-visible:outline-none focus-visible:bg-accent-softer',
+                'focus-visible:outline-none focus-visible:bg-accent-softer dark:focus-visible:bg-accent/10',
                 activo
                   ? 'border-accent text-accent-ink'
                   : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200',
@@ -192,7 +192,7 @@ export function UnifiedConversationList({
               {n > 0 && (
                 <span className={cn(
                   'text-micro font-bold px-1.5 rounded-full tabular-nums',
-                  activo ? 'bg-accent-soft text-accent-ink' : 'bg-surface-muted text-neutral-500 dark:text-neutral-400',
+                  activo ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink' : 'bg-surface-muted text-neutral-500 dark:text-neutral-400',
                 )}>
                   {n > 999 ? '999+' : n}
                 </span>

@@ -2,6 +2,30 @@
 
 ## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-09)
 
+### ✉️ 2026-11-10 — Correo y WhatsApp rediseñados (rama `claude/optimistic-johnson-dfrcq6`, sin merge)
+
+Inventario, verificación y riesgos: **`docs/correo-whatsapp/inventario.md`**. Pruebas: **`qa/ui-correo/`**
+(`node qa/ui-correo/prueba.mjs` — crear/agregar a trámite y remitente, con datos simulados).
+
+- **Correo** (`GestorEmails.tsx` ahora solo orquesta; piezas en `src/components/email/gestor/`, lógica pura
+  con pruebas en `src/lib/correo/`): Inicio, carpetas con espacio usado, lista con fragmento, selección
+  múltiple, filtros, deslizar con Deshacer, lectura con tarjeta del remitente, hilo, adjuntos con vista previa,
+  aviso de remitente sospechoso, imágenes externas bloqueadas, redactar flotante con plantillas y borrador
+  con adjuntos (IndexedDB). Roundcube = **"Vista alternativa"**. Los modales de trámite NO cambiaron.
+- **Acciones de lo destructivo con Deshacer no llegan al servidor hasta que se cierra el aviso (5 s).**
+- **`ionos-webmail` v76 desplegada** (MCP): acciones nuevas opcionales `withSnippet`, `inBody`, `quota`,
+  `thread`; las viejas igual. 🔑 La v75 desplegada era más nueva que el repo (adjuntos en "Enviados") —
+  antes de desplegar una función, **comparar con `get_edge_function`**.
+- **Migración `20261110191059`** (corrida): `correo_reglas` y `correo_plantillas_respuesta`, solo del dueño.
+  Las reglas se aplican al abrir el correo (decisión de Ricardo).
+- **WhatsApp**: filtro **Todos / MOVI / Personal** (`src/lib/buzonWhatsApp.ts`), tiempo real filtrado al
+  usuario, "Trámites ligados" ahora sale de `task_contact_center_items` (antes consultaba columnas
+  inexistentes), pestaña Plantillas alcanzable.
+- 🔑 **`cn()` borra los tamaños del sistema** (`text-body-sm`, `text-micro`…) si van con un color:
+  tailwind-merge los toma por colores. Se agregó `cnSistema` en `src/lib/utils.ts` y lo usan los archivos
+  nuevos; `cn` no se tocó (afectaría toda la app).
+- ⏳ Falta: verlo en beta con un buzón real (fragmento, espacio, hilo) y decidir si se mergea.
+
 ### 📱 2026-11-07 — Apps nativas de MOVI y Seguwallet (rama `claude/sweet-einstein-iuxeok`, sin merge)
 
 Todo lo de tiendas vive en **`store/`** (empezar por `store/CHECKLIST.md` y `store/README.md`).

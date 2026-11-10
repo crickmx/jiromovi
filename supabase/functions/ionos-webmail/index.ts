@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { getMailboxPassword, setMailboxPassword } from '../_shared/emailCredentials.ts';
 import { emailCorsHeaders, forbiddenOriginResponse } from '../_shared/emailCors.ts';
+import { parsearFragmentos, asuntoBase, imapQuoted } from './snippet.ts';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -25,7 +26,13 @@ interface EmailHeader {
   flagged: boolean;
   hasAttachments: boolean;
   size: number;
+  // Agregados el 10/11/2026 (opcionales: los clientes viejos los ignoran)
+  inReplyTo?: string;
+  references?: string;
+  snippet?: string;
 }
+
+const HEADER_FIELDS = 'FROM TO CC SUBJECT DATE MESSAGE-ID CONTENT-TYPE IN-REPLY-TO REFERENCES';
 
 interface EmailFull {
   uid: number;
@@ -42,6 +49,8 @@ interface EmailFull {
   bodyHtml: string | null;
   bodyText: string | null;
   attachments: { filename: string; contentType: string; size: number; partId: string }[];
+  inReplyTo?: string;
+  references?: string;
 }
 
 // ── IMAP Low-level helpers ────────────────────────────────────────
@@ -203,7 +212,7 @@ async function listFolders(conn: Deno.TlsConn): Promise<ImapFolder[]> {
   return folders;
 }
 
-async function listMessages(conn: Deno.TlsConn, folder: string, page: number, perPage: number): Promise<{ messages: EmailHeader[]; total: number }> {
+async function listMessages(conn: Deno.TlsConn, folder: string, page: number, perPage: number, withSnippet = false): Promise<{ messages: EmailHeader[]; total: number }> {
   const selResp = await imapCommand(conn, `SELECT "${folder}"`);
   const existsM = selResp.match(/\* (\d+) EXISTS/);
   const total = existsM ? parseInt(existsM[1]) : 0;
@@ -214,10 +223,44 @@ async function listMessages(conn: Deno.TlsConn, folder: string, page: number, pe
   const start = Math.max(1, end - perPage + 1);
   if (end < 1) return { messages: [], total };
 
-  const resp = await imapCommand(conn, `FETCH ${start}:${end} (UID FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (FROM TO CC SUBJECT DATE MESSAGE-ID CONTENT-TYPE)])`);
+  const resp = await imapCommand(conn, `FETCH ${start}:${end} (UID FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (${HEADER_FIELDS})])`);
 
   const messages = parseHeaderResponses(resp);
+  if (withSnippet && messages.length > 0) {
+    await addSnippets(conn, messages, `${start}:${end}`, false);
+  }
   return { messages: messages.reverse(), total };
+}
+
+// Fragmento del cuerpo: un FETCH aparte para no tocar el que ya funciona.
+// Si falla, la lista sale igual que antes, sin fragmento.
+async function addSnippets(conn: Deno.TlsConn, messages: EmailHeader[], set: string, byUid: boolean): Promise<void> {
+  try {
+    const cmd = `${byUid ? 'UID ' : ''}FETCH ${set} (UID BODY.PEEK[HEADER.FIELDS (CONTENT-TYPE CONTENT-TRANSFER-ENCODING)] BODY.PEEK[TEXT]<0.2048>)`;
+    const resp = await imapCommand(conn, cmd);
+    const byUidMap = parsearFragmentos(resp, (h, n) => extractHeaderValue(h, n));
+    for (const m of messages) {
+      const sn = byUidMap.get(m.uid);
+      if (sn) m.snippet = sn;
+    }
+  } catch { /* sin fragmento */ }
+}
+
+// Búsqueda con CHARSET UTF-8 (para acentos); si el servidor no la acepta,
+// se repite sin CHARSET, que es como funcionaba antes.
+async function uidSearch(conn: Deno.TlsConn, criteria: string): Promise<number[]> {
+  let resp = await imapCommand(conn, `UID SEARCH CHARSET UTF-8 ${criteria}`);
+  if (!/\* SEARCH/.test(resp)) resp = await imapCommand(conn, `UID SEARCH ${criteria}`);
+  const m = resp.match(/\* SEARCH ([\d\s]*)/);
+  return m ? m[1].trim().split(/\s+/).filter(Boolean).map(Number) : [];
+}
+
+async function detectFolder(conn: Deno.TlsConn, candidates: string[]): Promise<string | null> {
+  const listResp = await imapCommand(conn, 'LIST "" "*"');
+  for (const c of candidates) {
+    if (listResp.includes(`"${c}"`) || new RegExp(`\\s${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\r?$`, 'm').test(listResp)) return c;
+  }
+  return null;
 }
 
 function parseHeaderResponses(resp: string): EmailHeader[] {
@@ -250,10 +293,12 @@ function parseHeaderResponses(resp: string): EmailHeader[] {
       const date = extractHeaderValue(headerBlock, 'Date') || '';
       const messageId = extractHeaderValue(headerBlock, 'Message-ID') || '';
       const contentType = extractHeaderValue(headerBlock, 'Content-Type') || '';
+      const inReplyTo = extractHeaderValue(headerBlock, 'In-Reply-To') || undefined;
+      const references = extractHeaderValue(headerBlock, 'References') || undefined;
 
       const hasAttachments = /mixed/i.test(contentType) || /attachment/i.test(part);
 
-      messages.push({ uid, messageId, from: fromName, fromEmail, to, cc, subject, date, seen: flags.includes('\\Seen'), flagged: flags.includes('\\Flagged'), hasAttachments, size });
+      messages.push({ uid, messageId, from: fromName, fromEmail, to, cc, subject, date, seen: flags.includes('\\Seen'), flagged: flags.includes('\\Flagged'), hasAttachments, size, inReplyTo, references });
     } catch { /* skip malformed */ }
   }
   return messages;
@@ -327,7 +372,9 @@ async function getMessage(conn: Deno.TlsConn, uid: number, folder: string): Prom
     bodyText = decodeBodyContent(body, headers);
   }
 
-  return { uid, messageId, from: fromName, fromEmail, to, cc, bcc, subject, date, seen: flags.includes('\\Seen'), flagged: flags.includes('\\Flagged'), bodyHtml, bodyText, attachments };
+  const inReplyTo = extractHeaderValue(headers, 'In-Reply-To') || undefined;
+  const references = extractHeaderValue(headers, 'References') || undefined;
+  return { uid, messageId, from: fromName, fromEmail, to, cc, bcc, subject, date, seen: flags.includes('\\Seen'), flagged: flags.includes('\\Flagged'), bodyHtml, bodyText, attachments, inReplyTo, references };
 }
 
 function parseParts(body: string, boundary: string, handler: (ct: string, disp: string, headers: string, body: string, partId: string) => void): void {
@@ -504,7 +551,9 @@ async function smtpSend(email: string, password: string, fromName: string, to: s
 
 // ── Build RFC822 for IMAP APPEND ─────────────────────────────────
 
-function buildRfc822Message(fromEmail: string, fromName: string, to: string[], cc: string[], subject: string, bodyHtml: string, bodyText: string, inReplyTo?: string, references?: string): string {
+function buildRfc822Message(fromEmail: string, fromName: string, to: string[], cc: string[], subject: string, bodyHtml: string, bodyText: string, attachments: SmtpAttachment[] = [], inReplyTo?: string, references?: string): string {
+  const hasAttachments = attachments.length > 0;
+  const mixedBoundary = `----=_Mixed_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const altBoundary = `----=_Alt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   let msg = `From: "${fromName}" <${fromEmail}>\r\n`;
   msg += `To: ${to.join(', ')}\r\n`;
@@ -515,7 +564,13 @@ function buildRfc822Message(fromEmail: string, fromName: string, to: string[], c
   if (inReplyTo) msg += `In-Reply-To: ${inReplyTo}\r\n`;
   if (references) msg += `References: ${references}\r\n`;
   msg += `MIME-Version: 1.0\r\n`;
-  msg += `Content-Type: multipart/alternative; boundary="${altBoundary}"\r\n\r\n`;
+  if (hasAttachments) {
+    msg += `Content-Type: multipart/mixed; boundary="${mixedBoundary}"\r\n\r\n`;
+    msg += `--${mixedBoundary}\r\n`;
+    msg += `Content-Type: multipart/alternative; boundary="${altBoundary}"\r\n\r\n`;
+  } else {
+    msg += `Content-Type: multipart/alternative; boundary="${altBoundary}"\r\n\r\n`;
+  }
   msg += `--${altBoundary}\r\n`;
   msg += `Content-Type: text/plain; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n`;
   msg += btoa(unescape(encodeURIComponent(bodyText || subject))) + '\r\n';
@@ -523,6 +578,19 @@ function buildRfc822Message(fromEmail: string, fromName: string, to: string[], c
   msg += `Content-Type: text/html; charset="UTF-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n`;
   msg += btoa(unescape(encodeURIComponent(bodyHtml))) + '\r\n';
   msg += `--${altBoundary}--\r\n`;
+  if (hasAttachments) {
+    for (const attachment of attachments) {
+      const encodedName = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(attachment.filename)))}?=`;
+      msg += `--${mixedBoundary}\r\n`;
+      msg += `Content-Type: ${attachment.contentType}; name="${encodedName}"\r\n`;
+      msg += `Content-Disposition: attachment; filename="${encodedName}"\r\n`;
+      msg += 'Content-Transfer-Encoding: base64\r\n\r\n';
+      for (let i = 0; i < attachment.content.length; i += 76) {
+        msg += attachment.content.substring(i, i + 76) + '\r\n';
+      }
+    }
+    msg += `--${mixedBoundary}--\r\n`;
+  }
   return msg;
 }
 
@@ -630,7 +698,7 @@ Deno.serve(async (req: Request) => {
         const conn = await imapConnect('imap.ionos.mx', 993);
         try {
           if (!await imapLogin(conn, creds.email, creds.password)) throw new Error('AUTH_FAILED');
-          const { messages, total } = await listMessages(conn, body.folder || 'INBOX', body.page || 1, body.perPage || 25);
+          const { messages, total } = await listMessages(conn, body.folder || 'INBOX', body.page || 1, body.perPage || 25, body.withSnippet === true);
           result = { messages, total, page: body.page || 1, perPage: body.perPage || 25 };
           await imapLogout(conn);
         } catch (e) { try { conn.close(); } catch {} throw e; }
@@ -659,7 +727,7 @@ Deno.serve(async (req: Request) => {
 
         // Append sent message to Sent folder via IMAP
         try {
-          const sentMsg = buildRfc822Message(creds.email, creds.nombre, body.to, body.cc || [], body.subject, body.bodyHtml, body.bodyText || '', body.inReplyTo, body.references);
+          const sentMsg = buildRfc822Message(creds.email, creds.nombre, body.to, body.cc || [], body.subject, body.bodyHtml, body.bodyText || '', attachments, body.inReplyTo, body.references);
           const sentMsgBytes = new TextEncoder().encode(sentMsg);
           const conn = await imapConnect('imap.ionos.mx', 993);
           if (await imapLogin(conn, creds.email, creds.password)) {
@@ -765,17 +833,24 @@ Deno.serve(async (req: Request) => {
         try {
           if (!await imapLogin(conn, creds.email, creds.password)) throw new Error('AUTH_FAILED');
           await imapCommand(conn, `SELECT "${body.folder || 'INBOX'}"`);
-          const searchResp = await imapCommand(conn, `UID SEARCH OR OR SUBJECT "${body.query}" FROM "${body.query}" TO "${body.query}"`);
-          const matchLine = searchResp.match(/\* SEARCH ([\d\s]*)/);
-          const uids = matchLine ? matchLine[1].trim().split(/\s+/).filter(Boolean).map(Number) : [];
+          // inBody (opcional, 10/11/2026): busca también en el contenido.
+          const q = imapQuoted(body.query);
+          const criteria = body.inBody === true
+            ? `OR OR OR SUBJECT ${q} FROM ${q} TO ${q} BODY ${q}`
+            : `OR OR SUBJECT ${q} FROM ${q} TO ${q}`;
+          const uids = await uidSearch(conn, criteria);
           const limited = uids.slice(-(body.maxResults || 50)).reverse();
 
           // Fetch headers for found UIDs
           let messages: EmailHeader[] = [];
           if (limited.length > 0) {
             const uidSet = limited.join(',');
-            const fetchResp = await imapCommand(conn, `UID FETCH ${uidSet} (UID FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (FROM TO CC SUBJECT DATE MESSAGE-ID CONTENT-TYPE)])`);
+            const fetchResp = await imapCommand(conn, `UID FETCH ${uidSet} (UID FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (${HEADER_FIELDS})])`);
             messages = parseHeaderResponses(fetchResp);
+            if (body.withSnippet === true) await addSnippets(conn, messages, uidSet, true);
+            // El FETCH no garantiza orden: más reciente primero, como la lista.
+            const orden = new Map(limited.map((u, i) => [u, i]));
+            messages.sort((a, b) => (orden.get(a.uid) ?? 0) - (orden.get(b.uid) ?? 0));
           }
           result = { messages, total: uids.length };
           await imapLogout(conn);
@@ -795,6 +870,48 @@ Deno.serve(async (req: Request) => {
           if (!dataM) throw new Error('No se pudo obtener el adjunto');
           const rawData = dataM[2].substring(0, parseInt(dataM[1]));
           result = { content: rawData.replace(/\s/g, ''), contentType: 'application/octet-stream' };
+          await imapLogout(conn);
+        } catch (e) { try { conn.close(); } catch {} throw e; }
+        break;
+      }
+
+      // ── Acciones agregadas el 10/11/2026 (no cambian las anteriores) ──
+
+      case 'quota': {
+        const conn = await imapConnect('imap.ionos.mx', 993);
+        try {
+          if (!await imapLogin(conn, creds.email, creds.password)) throw new Error('AUTH_FAILED');
+          const resp = await imapCommand(conn, 'GETQUOTAROOT INBOX');
+          const m = resp.match(/STORAGE (\d+) (\d+)/i);
+          // RFC 2087: unidades de 1024 octetos
+          result = m ? { usedBytes: parseInt(m[1]) * 1024, limitBytes: parseInt(m[2]) * 1024 } : { usedBytes: null, limitBytes: null };
+          await imapLogout(conn);
+        } catch (e) { try { conn.close(); } catch {} throw e; }
+        break;
+      }
+
+      case 'thread': {
+        // Correos del mismo hilo en Entrada y Enviados. Se busca por asunto
+        // base y el cliente se queda con los que comparten referencias.
+        const base = asuntoBase(body.subject || '');
+        if (!base) { result = { messages: [] }; break; }
+        const conn = await imapConnect('imap.ionos.mx', 993);
+        try {
+          if (!await imapLogin(conn, creds.email, creds.password)) throw new Error('AUTH_FAILED');
+          const sent = await detectFolder(conn, ['Sent', 'Enviados', 'Sent Items', 'Sent Messages', 'INBOX.Sent']);
+          const folders = [...new Set([body.folder || 'INBOX', 'INBOX', ...(sent ? [sent] : [])])];
+          const out: (EmailHeader & { folder: string })[] = [];
+          for (const f of folders) {
+            const sel = await imapCommand(conn, `SELECT "${f}"`);
+            if (!/OK/.test(sel)) continue;
+            const uids = (await uidSearch(conn, `SUBJECT ${imapQuoted(base)}`)).slice(-25);
+            if (uids.length === 0) continue;
+            const fr = await imapCommand(conn, `UID FETCH ${uids.join(',')} (UID FLAGS RFC822.SIZE BODY.PEEK[HEADER.FIELDS (${HEADER_FIELDS})])`);
+            const msgs = parseHeaderResponses(fr);
+            await addSnippets(conn, msgs, uids.join(','), true);
+            for (const m of msgs) out.push({ ...m, folder: f });
+          }
+          result = { messages: out };
           await imapLogout(conn);
         } catch (e) { try { conn.close(); } catch {} throw e; }
         break;

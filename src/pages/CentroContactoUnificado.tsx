@@ -4,7 +4,7 @@ import { Info, X, MessageSquare, QrCode, Zap, Wifi, WifiOff, CircleAlert as Aler
 import { supabase } from '@/lib/supabase';
 import { tokenDeSesion, SESION_EXPIRADA } from '@/lib/sesionActiva';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
+import { cnSistema as cn } from '@/lib/utils';
 import { CHANNEL_COLORS, CHANNEL_LABELS } from '@/lib/contactCenterTypes';
 import { type Buzon, type EstadoLista, esBuzon } from '@/lib/buzonWhatsApp';
 import {

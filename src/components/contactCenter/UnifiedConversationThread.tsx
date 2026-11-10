@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, ArrowLeft, Loader as Loader2, MoveVertical as MoreVertical, SquareCheck as CheckSquare, Square, Sparkles, Bot, FileText, FolderInput as FormInput, ListTodo, Plus, Smile, X, ClipboardList, ExternalLink, Image as ImageIcon, File, MapPin, Check, CheckCheck, CircleAlert as AlertCircle, Clock, Paperclip, User, Star, Zap, RefreshCw, WifiOff, ChevronDown, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
+import { cnSistema as cn } from '@/lib/utils';
 import {
   type UnifiedConversation, type UnifiedMessage,
   getConversationDisplayName, CHANNEL_LABELS, formatMoviPhone,
@@ -1071,7 +1071,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
           </div>
         ) : (
           <>
-            <div aria-hidden className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center text-sm font-bold text-accent-ink flex-shrink-0">
+            <div aria-hidden className="w-10 h-10 rounded-full bg-accent-soft dark:bg-accent/20 flex items-center justify-center text-sm font-bold text-accent-ink flex-shrink-0">
               {name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -1107,7 +1107,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                   onClick={onShowInfo}
                   aria-label={infoOpen ? 'Ocultar información del contacto' : 'Ver información del contacto'}
                   aria-pressed={!!infoOpen}
-                  className={cn('w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0', infoOpen && 'bg-accent-soft text-accent-ink')}
+                  className={cn('w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0', infoOpen && 'bg-accent-soft dark:bg-accent/20 text-accent-ink')}
                 >
                   <Info className="w-5 h-5" />
                 </button>
