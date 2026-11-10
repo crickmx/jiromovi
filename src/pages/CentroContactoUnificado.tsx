@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { tokenDeSesion, SESION_EXPIRADA } from '@/lib/sesionActiva';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { type CCChannel, type CCStatus } from '@/lib/contactCenterTypes';
+import { CHANNEL_COLORS, CHANNEL_LABELS } from '@/lib/contactCenterTypes';
+import { type Buzon, type EstadoLista, esBuzon } from '@/lib/buzonWhatsApp';
 import {
   type UnifiedConversation,
   mergeConversations,
@@ -47,8 +48,12 @@ export default function CentroContactoUnificado() {
   const [participantNames, setParticipantNames] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<UnifiedConversation | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filterChannel, setFilterChannel] = useState<CCChannel | 'all'>('all');
-  const [filterStatus, setFilterStatus] = useState<CCStatus | 'all'>('open');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Buzón elegido: se recuerda por persona (clave con su id) para que en una
+  // computadora compartida nadie herede el filtro de otro.
+  const buzonKey = usuario?.id ? `movi_wa_buzon_${usuario.id}` : null;
+  const [buzon, setBuzonState] = useState<Buzon>('all');
+  const [estado, setEstado] = useState<EstadoLista>('open');
   const [search, setSearch] = useState('');
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
@@ -71,6 +76,19 @@ export default function CentroContactoUnificado() {
   const [templates, setTemplates] = useState<UserTemplate[]>([]);
 
   const userId = usuario?.id;
+
+  useEffect(() => {
+    if (!buzonKey) return;
+    try {
+      const v = localStorage.getItem(buzonKey);
+      if (esBuzon(v)) setBuzonState(v);
+    } catch { /* sin almacenamiento: se queda en Todos */ }
+  }, [buzonKey]);
+
+  const setBuzon = useCallback((v: Buzon) => {
+    setBuzonState(v);
+    if (buzonKey) { try { localStorage.setItem(buzonKey, v); } catch { /* ignore */ } }
+  }, [buzonKey]);
 
   // ── Edge function helper ─────────────────────────────────────────
   const callEdgeFunction = useCallback(async (action: string, extra?: Record<string, unknown>) => {
@@ -129,7 +147,8 @@ export default function CentroContactoUnificado() {
       // accidentally mixing another user's rows if policies drift.
       moviQuery = moviQuery.eq('agent_user_id', userId);
 
-      const { data: moviMsgs } = await moviQuery.limit(500);
+      const { data: moviMsgs, error: moviErr } = await moviQuery.limit(500);
+      if (moviErr) throw moviErr;
 
       // Resolve CRM contact names for WA MOVI phones (normalized comparison)
       const moviPhones = [...new Set((moviMsgs || []).map((m: any) => m.contact_phone).filter(Boolean))];
@@ -167,12 +186,13 @@ export default function CentroContactoUnificado() {
       }
 
       // 2. WA Personal: whatsapp_conversations
-      const { data: waConvs } = await supabase
+      const { data: waConvs, error: waErr } = await supabase
         .from('whatsapp_conversations')
         .select('id, user_id, remote_phone, remote_name, remote_avatar_url, last_message_text, last_message_at, unread_count, is_group, group_name, is_archived')
         .eq('user_id', userId)
         .order('last_message_at', { ascending: false, nullsFirst: false })
         .limit(200);
+      if (waErr) throw waErr;
 
       const merged = mergeConversations({
         moviMsgs: moviMsgs || [],
@@ -185,6 +205,11 @@ export default function CentroContactoUnificado() {
       });
 
       setConversations(merged);
+      setLoadError(null);
+    } catch (err) {
+      // Antes un fallo dejaba la lista vacía, igual que "no tienes mensajes".
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : 'Error desconocido';
+      setLoadError(msg);
     } finally {
       setLoading(false);
     }
@@ -267,17 +292,26 @@ export default function CentroContactoUnificado() {
   useEffect(() => {
     if (!userId) return;
 
+    // Solo los cambios del propio usuario (la lista ya filtra igual), y una
+    // ráfaga de eventos se junta en una sola recarga.
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const recargar = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { loadAll(); }, 400);
+    };
+
     const ch1 = supabase
-      .channel('wa_unified_movi')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contact_center_messages' }, () => loadAll())
+      .channel(`wa_unified_movi_${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contact_center_messages', filter: `agent_user_id=eq.${userId}` }, recargar)
       .subscribe();
 
     const ch2 = supabase
-      .channel('wa_unified_personal')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_conversations' }, () => loadAll())
+      .channel(`wa_unified_personal_${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_conversations', filter: `user_id=eq.${userId}` }, recargar)
       .subscribe();
 
     return () => {
+      if (timer) clearTimeout(timer);
       supabase.removeChannel(ch1);
       supabase.removeChannel(ch2);
     };
@@ -360,49 +394,65 @@ export default function CentroContactoUnificado() {
   const waMoviActive = true;
   const waPersonalConnected = waSession?.status === 'connected';
 
+  const SUBTABS: { key: SubTab; icon: typeof MessageSquare; label: string }[] = [
+    { key: 'conversations', icon: MessageSquare, label: 'Conversaciones' },
+    { key: 'templates', icon: FileText, label: 'Plantillas' },
+    { key: 'connection', icon: QrCode, label: 'Conexión' },
+  ];
+
   return (
-    <div className="h-full flex flex-col bg-neutral-50 dark:bg-neutral-950">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <h1 className="text-sm font-semibold text-neutral-800 dark:text-white">WhatsApp</h1>
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full text-[11px] font-medium">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-              MOVI
+    <div className="h-full flex flex-col bg-surface-canvas">
+      {/* Encabezado del módulo */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 sm:px-4 py-2.5 bg-surface-card border-b border-soft flex-shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <h1 className="font-display text-title-sm font-semibold text-neutral-900 dark:text-white">WhatsApp</h1>
+          <div className="flex items-center gap-1.5 min-w-0" aria-label="Estado de las líneas">
+            <span className={cn('inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-micro font-semibold', CHANNEL_COLORS.wa_movi.bg, CHANNEL_COLORS.wa_movi.text)}>
+              <span aria-hidden className={cn('w-1.5 h-1.5 rounded-full', CHANNEL_COLORS.wa_movi.dot)} />
+              {CHANNEL_LABELS.wa_movi}
             </span>
-            <span className={cn(
-              'flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
-              waPersonalConnected
-                ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400'
-                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-500'
-            )}>
-              <span className={cn('w-1.5 h-1.5 rounded-full', waPersonalConnected ? 'bg-teal-500' : 'bg-neutral-300 dark:bg-neutral-600')} />
-              Personal {waPersonalConnected ? '' : '(sin conectar)'}
-            </span>
+            <button
+              type="button"
+              onClick={() => setSubTab('connection')}
+              title={waPersonalConnected ? 'WA personal conectado' : 'Conectar WA personal'}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-micro font-semibold transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                waPersonalConnected
+                  ? cn(CHANNEL_COLORS.wa_personal.bg, CHANNEL_COLORS.wa_personal.text)
+                  : 'bg-surface-muted text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100',
+              )}
+            >
+              <span aria-hidden className={cn('w-1.5 h-1.5 rounded-full', waPersonalConnected ? CHANNEL_COLORS.wa_personal.dot : 'bg-neutral-300 dark:bg-neutral-600')} />
+              <span className="truncate">{waPersonalConnected ? 'WA personal' : 'WA personal · sin conectar'}</span>
+            </button>
           </div>
         </div>
 
-        {/* Subtab navigation */}
-        <div className="flex items-center gap-1">
-          {([
-            { key: 'conversations' as SubTab, icon: MessageSquare, label: 'Conversaciones' },
-            { key: 'connection' as SubTab, icon: QrCode, label: 'Conexión' },
-          ]).map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setSubTab(tab.key)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all',
-                subTab === tab.key
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200'
-              )}
-            >
-              <tab.icon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          ))}
+        <div role="tablist" aria-label="Secciones de WhatsApp" className="flex items-center gap-1 p-1 rounded-[var(--radius-sm)] bg-surface-muted">
+          {SUBTABS.map(tab => {
+            const activo = subTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={activo}
+                aria-label={tab.label}
+                onClick={() => setSubTab(tab.key)}
+                className={cn(
+                  'min-h-[36px] min-w-[40px] flex items-center justify-center gap-1.5 px-3 rounded-[var(--radius-xs)] text-caption font-semibold transition-colors duration-fast',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                  activo
+                    ? 'bg-surface-card text-accent-ink shadow-e1'
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100',
+                )}
+              >
+                <tab.icon className="w-4 h-4" aria-hidden />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -414,8 +464,10 @@ export default function CentroContactoUnificado() {
             participantNames={participantNames}
             selected={selected}
             loading={loading}
-            filterChannel={filterChannel}
-            filterStatus={filterStatus}
+            loadError={loadError}
+            onRetry={() => { setLoading(true); loadAll(); }}
+            buzon={buzon}
+            estado={estado}
             search={search}
             showContactPanel={showContactPanel}
             mobileView={mobileView}
@@ -423,9 +475,11 @@ export default function CentroContactoUnificado() {
             waPersonalConnected={waPersonalConnected}
             onSelect={handleSelectConversation}
             onSearchChange={setSearch}
-            onFilterChange={setFilterChannel}
-            onStatusChange={setFilterStatus}
+            onBuzonChange={setBuzon}
+            onEstadoChange={setEstado}
             onToggleContactPanel={() => setShowContactPanel(v => !v)}
+            onCloseContactPanel={() => setShowContactPanel(false)}
+            onGoToConnection={() => setSubTab('connection')}
             onBack={() => setMobileView('list')}
           />
         )}
@@ -460,40 +514,68 @@ export default function CentroContactoUnificado() {
 
 // ── Contact Info Panel ─────────────────────────────────────────────────────
 
-function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation }) {
-  const [tickets, setTickets] = useState<Array<{ id: string; folio: string; instrucciones: string; estatus_nombre: string; tipo_tramite: string }>>([]);
+interface TramiteRelacionado { id: string; folio: string; instrucciones: string; estatus: string; cerrado: boolean }
+
+// Trámites a los que ya se ligaron mensajes de este teléfono. El vínculo real
+// vive en `task_contact_center_items` → `contact_center_messages`; antes se
+// consultaban columnas de `tickets` que no existen y siempre salía vacío.
+async function cargarTramitesRelacionados(phone: string): Promise<TramiteRelacionado[]> {
+  const norm = normalizeMexicanPhone(phone);
+  const variantes = [...new Set([phone, norm, `52${norm}`, `521${norm}`].filter(Boolean))];
+  const { data: msgs, error: e1 } = await supabase
+    .from('contact_center_messages')
+    .select('id')
+    .in('contact_phone', variantes)
+    .limit(500);
+  if (e1) throw e1;
+  const msgIds = (msgs || []).map((m: { id: string }) => m.id);
+  if (msgIds.length === 0) return [];
+  const { data: links, error: e2 } = await supabase
+    .from('task_contact_center_items')
+    .select('ticket_id')
+    .in('contact_center_message_id', msgIds);
+  if (e2) throw e2;
+  const ticketIds = [...new Set((links || []).map((l: { ticket_id: string | null }) => l.ticket_id).filter(Boolean))] as string[];
+  if (ticketIds.length === 0) return [];
+  const { data: tks, error: e3 } = await supabase
+    .from('tickets')
+    .select('id, folio, instrucciones, custom_estatus_label, cerrado, eliminado_at, fecha_creacion')
+    .in('id', ticketIds)
+    .is('eliminado_at', null)
+    .order('fecha_creacion', { ascending: false })
+    .limit(10);
+  if (e3) throw e3;
+  return (tks || []).map((t: any) => ({
+    id: t.id,
+    folio: t.folio || '—',
+    instrucciones: t.instrucciones || '',
+    estatus: t.custom_estatus_label || '',
+    cerrado: !!t.cerrado,
+  }));
+}
+
+function ContactInfoPanel({ conversation, onClose }: { conversation: UnifiedConversation; onClose: () => void }) {
+  const [tickets, setTickets] = useState<TramiteRelacionado[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
-  const [ticketsLoaded, setTicketsLoaded] = useState(false);
+  const [ticketsError, setTicketsError] = useState(false);
 
   const phone = conversation.contactPhone;
   const name = conversation.contactName;
   const channel = conversation.channel;
-  const CHANNEL_LABELS: Record<string, string> = { wa_movi: 'WA MOVI', wa_personal: 'WA Personal', chat: 'Chat Interno' };
-  const CHANNEL_COLORS: Record<string, string> = { wa_movi: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400', wa_personal: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400', chat: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' };
+  const colors = CHANNEL_COLORS[channel] || CHANNEL_COLORS.wa_movi;
 
-  // Load related tickets on mount
   useEffect(() => {
-    if (!phone || ticketsLoaded) return;
+    let vivo = true;
+    setTickets([]);
+    setTicketsError(false);
+    if (!phone) return;
     setTicketsLoading(true);
-    setTicketsLoaded(true);
-    supabase
-      .from('tickets')
-      .select('id, folio, instrucciones, tipo_tramite')
-      .or(`contacto_telefono.eq.${phone},contacto_nombre.ilike.%${name || ''}%`)
-      .order('created_at', { ascending: false })
-      .limit(5)
-      .then(({ data }) => {
-        setTickets((data || []).map((t: any) => ({
-          id: t.id,
-          folio: t.folio || '—',
-          instrucciones: t.instrucciones || '',
-          estatus_nombre: t.estatus_nombre || t.estatus || '',
-          tipo_tramite: t.tipo_tramite || '',
-        })));
-      })
-      .catch(() => {})
-      .finally(() => setTicketsLoading(false));
-  }, [phone, name, ticketsLoaded]);
+    cargarTramitesRelacionados(phone)
+      .then(r => { if (vivo) setTickets(r); })
+      .catch(() => { if (vivo) setTicketsError(true); })
+      .finally(() => { if (vivo) setTicketsLoading(false); });
+    return () => { vivo = false; };
+  }, [phone]);
 
   const initials = (name || '?')
     .split(' ')
@@ -502,161 +584,137 @@ function ContactInfoPanel({ conversation }: { conversation: UnifiedConversation 
     .join('')
     .toUpperCase();
 
-  const whatsappUrl = phone
-    ? `https://wa.me/${phone.replace(/\D/g, '')}`
-    : null;
+  const whatsappUrl = phone ? `https://wa.me/${phone.replace(/\D/g, '')}` : null;
+
+  const Etiqueta = ({ icon: Icon, children }: { icon: typeof User; children: React.ReactNode }) => (
+    <p className="movi-eyebrow text-micro font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+      <Icon className="w-3.5 h-3.5" aria-hidden /> {children}
+    </p>
+  );
 
   return (
-    <div className="w-64 h-full bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700 overflow-y-auto flex flex-col">
-      {/* Header: avatar + name */}
-      <div className="p-4 border-b border-neutral-100 dark:border-neutral-800 text-center">
-        <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-base font-bold text-emerald-700 dark:text-emerald-400 mx-auto mb-2">
+    <aside aria-label="Información del contacto" className="w-full h-full bg-surface-card border-l border-soft overflow-y-auto flex flex-col">
+      <div className="flex justify-end px-2 pt-2">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar información del contacto"
+          className="w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="px-4 pb-4 border-b border-soft text-center">
+        <div aria-hidden className={cn('w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2', colors.bg, colors.text)}>
           {initials}
         </div>
-        {name && (
-          <p className="text-sm font-semibold text-neutral-800 dark:text-white leading-snug">{name}</p>
-        )}
-        {phone && (
-          <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-0.5 font-mono">{phone}</p>
-        )}
-        <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium mt-2', CHANNEL_COLORS[channel] || CHANNEL_COLORS.wa_movi)}>
+        {name && <p className="text-body font-semibold text-neutral-900 dark:text-white leading-snug break-words">{name}</p>}
+        {phone && <p className="text-caption text-neutral-500 dark:text-neutral-400 mt-0.5 tabular-nums">{phone}</p>}
+        <span className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-micro font-semibold mt-2', colors.bg, colors.text)}>
+          <span aria-hidden className={cn('w-1.5 h-1.5 rounded-full', colors.dot)} />
           {CHANNEL_LABELS[channel] || channel}
         </span>
       </div>
 
-      {/* Quick actions */}
-      <div className="p-3 border-b border-neutral-100 dark:border-neutral-800 flex gap-2">
-        {phone && (
-          <a
-            href={`tel:${phone.replace(/\D/g, '')}`}
-            className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors text-center"
-            title="Llamar"
-          >
-            <Phone className="w-4 h-4" />
-            <span className="text-[11px]">Llamar</span>
-          </a>
-        )}
-        {whatsappUrl && (
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-neutral-500 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors text-center"
-            title="Abrir en WhatsApp"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span className="text-[11px]">WhatsApp</span>
-          </a>
-        )}
-      </div>
-
-      {/* Contact data */}
-      <div className="p-3 space-y-4 flex-1">
-
-        {/* Contact info */}
-        <div>
-          <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-            <User className="w-3 h-3" /> Contacto
-          </p>
-          <div className="space-y-1.5">
-            {name && (
-              <div className="flex items-start gap-2">
-                <span className="text-[11px] text-neutral-500 w-12 flex-shrink-0 pt-0.5">Nombre</span>
-                <span className="text-xs text-neutral-700 dark:text-neutral-200 leading-snug">{name}</span>
-              </div>
-            )}
-            {phone && (
-              <div className="flex items-start gap-2">
-                <span className="text-[11px] text-neutral-500 w-12 flex-shrink-0 pt-0.5">Telefono</span>
-                <span className="text-xs text-neutral-700 dark:text-neutral-200 font-mono">{phone}</span>
-              </div>
-            )}
-            {conversation.agentUserId && (
-              <div className="flex items-start gap-2">
-                <span className="text-[11px] text-neutral-500 w-12 flex-shrink-0 pt-0.5">Canal</span>
-                <span className="text-xs text-neutral-700 dark:text-neutral-200">{CHANNEL_LABELS[channel]}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Related tickets */}
-        <div>
-          <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-            <ClipboardList className="w-3 h-3" /> Tramites relacionados
-          </p>
-          {ticketsLoading ? (
-            <div className="space-y-1.5">
-              {[1, 2].map(i => (
-                <div key={i} className="h-10 rounded-lg bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
-              ))}
-            </div>
-          ) : tickets.length === 0 ? (
-            <p className="text-[11px] text-neutral-500 dark:text-neutral-500 py-1">Sin tramites encontrados</p>
-          ) : (
-            <div className="space-y-1.5">
-              {tickets.map(t => (
-                <div key={t.id} className="p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700">
-                  <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <span className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-200">{t.folio}</span>
-                    {t.estatus_nombre && (
-                      <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 flex-shrink-0">{t.estatus_nombre}</span>
-                    )}
-                  </div>
-                  {t.instrucciones && (
-                    <p className="text-[11px] text-neutral-500 line-clamp-2 leading-snug">{t.instrucciones}</p>
-                  )}
-                </div>
-              ))}
-            </div>
+      {(phone || whatsappUrl) && (
+        <div className="p-3 border-b border-soft grid grid-cols-2 gap-2">
+          {phone && (
+            <a
+              href={`tel:${phone.replace(/\D/g, '')}`}
+              className="min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-[var(--radius-sm)] bg-surface-muted hover:bg-surface-sunken text-neutral-600 dark:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <Phone className="w-4 h-4" aria-hidden />
+              <span className="text-micro font-semibold">Llamar</span>
+            </a>
+          )}
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-[var(--radius-sm)] bg-surface-muted hover:bg-surface-sunken text-neutral-600 dark:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <ExternalLink className="w-4 h-4" aria-hidden />
+              <span className="text-micro font-semibold">Abrir en WhatsApp</span>
+            </a>
           )}
         </div>
+      )}
 
-        {/* Conversation metadata */}
-        <div>
-          <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-            <FileText className="w-3 h-3" /> Conversacion
-          </p>
-          <div className="space-y-1.5">
-            <div className="flex items-start gap-2">
-              <span className="text-[11px] text-neutral-500 w-16 flex-shrink-0 pt-0.5">Estado</span>
-              <span className={cn(
-                'text-[11px] px-1.5 py-0.5 rounded-full font-medium',
-                conversation.status === 'open'
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500'
-              )}>
-                {conversation.status === 'open' ? 'Abierta' : 'Archivada'}
-              </span>
+      <div className="p-4 space-y-5 flex-1">
+        <section>
+          <Etiqueta icon={ClipboardList}>Trámites ligados</Etiqueta>
+          {ticketsLoading ? (
+            <div className="space-y-2" aria-busy="true">
+              {[1, 2].map(i => <div key={i} className="h-12 rounded-[var(--radius-sm)] bg-surface-muted animate-pulse" />)}
             </div>
-            {conversation.unreadCount > 0 && (
-              <div className="flex items-start gap-2">
-                <span className="text-[11px] text-neutral-500 w-16 flex-shrink-0 pt-0.5">No leidos</span>
-                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{conversation.unreadCount}</span>
-              </div>
-            )}
-          </div>
-        </div>
+          ) : ticketsError ? (
+            <p className="text-caption text-red-600 dark:text-red-400">No se pudieron cargar los trámites.</p>
+          ) : tickets.length === 0 ? (
+            <p className="text-caption text-neutral-500 dark:text-neutral-400">
+              Ningún mensaje de este contacto se ha ligado a un trámite.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {tickets.map(t => (
+                <li key={t.id}>
+                  <a
+                    href={`/tramites/${t.id}`}
+                    className="block p-2.5 rounded-[var(--radius-sm)] bg-surface-muted hover:bg-surface-sunken border border-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <span className="text-caption font-bold text-accent-ink">{t.folio}</span>
+                      {(t.estatus || t.cerrado) && (
+                        <span className="text-micro px-1.5 py-0.5 rounded-full bg-surface-card text-neutral-600 dark:text-neutral-300 truncate max-w-[60%]">
+                          {t.estatus || 'Cerrado'}
+                        </span>
+                      )}
+                    </div>
+                    {t.instrucciones && (
+                      <p className="text-caption text-neutral-500 dark:text-neutral-400 line-clamp-2 leading-snug">{t.instrucciones}</p>
+                    )}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section>
+          <Etiqueta icon={FileText}>Conversación</Etiqueta>
+          <dl className="space-y-1.5 text-caption">
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-neutral-500 dark:text-neutral-400">Estado</dt>
+              <dd className="font-semibold text-neutral-700 dark:text-neutral-200">{conversation.status === 'archived' ? 'Archivada' : 'Abierta'}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-neutral-500 dark:text-neutral-400">Sin leer</dt>
+              <dd className="font-semibold text-neutral-700 dark:text-neutral-200 tabular-nums">{conversation.unreadCount}</dd>
+            </div>
+          </dl>
+        </section>
       </div>
-    </div>
+    </aside>
   );
 }
 
 // ── Conversations Sub-view ─────────────────────────────────────────────────
 
 function ConversationsView({
-  conversations, participantNames, selected, loading,
-  filterChannel, filterStatus, search, showContactPanel,
+  conversations, participantNames, selected, loading, loadError, onRetry,
+  buzon, estado, search, showContactPanel,
   mobileView, userId, waPersonalConnected,
-  onSelect, onSearchChange, onFilterChange, onStatusChange,
-  onToggleContactPanel, onBack,
+  onSelect, onSearchChange, onBuzonChange, onEstadoChange,
+  onToggleContactPanel, onCloseContactPanel, onGoToConnection, onBack,
 }: {
   conversations: UnifiedConversation[];
   participantNames: Record<string, string>;
   selected: UnifiedConversation | null;
   loading: boolean;
-  filterChannel: CCChannel | 'all';
-  filterStatus: CCStatus | 'all';
+  loadError: string | null;
+  onRetry: () => void;
+  buzon: Buzon;
+  estado: EstadoLista;
   search: string;
   showContactPanel: boolean;
   mobileView: 'list' | 'thread';
@@ -664,18 +722,20 @@ function ConversationsView({
   waPersonalConnected: boolean;
   onSelect: (conv: UnifiedConversation) => void;
   onSearchChange: (v: string) => void;
-  onFilterChange: (v: CCChannel | 'all') => void;
-  onStatusChange: (v: CCStatus | 'all') => void;
+  onBuzonChange: (v: Buzon) => void;
+  onEstadoChange: (v: EstadoLista) => void;
   onToggleContactPanel: () => void;
+  onCloseContactPanel: () => void;
+  onGoToConnection: () => void;
   onBack: () => void;
 }) {
   return (
     <div className="h-full flex">
-      {/* Conversation list */}
+      {/* Lista */}
       <div className={cn(
-        'flex-shrink-0 flex flex-col border-r border-neutral-200 dark:border-neutral-700',
-        'w-full sm:w-80 lg:w-[320px]',
-        mobileView === 'thread' ? 'hidden sm:flex' : 'flex'
+        'flex-shrink-0 flex flex-col border-r border-soft',
+        'w-full md:w-80 lg:w-[340px]',
+        mobileView === 'thread' ? 'hidden md:flex' : 'flex'
       )}>
         <UnifiedConversationList
           conversations={conversations}
@@ -683,70 +743,69 @@ function ConversationsView({
           onSelect={onSelect}
           search={search}
           onSearchChange={onSearchChange}
-          filterChannel={filterChannel}
-          onFilterChange={onFilterChange}
-          filterStatus={filterStatus}
-          onStatusChange={onStatusChange}
+          buzon={buzon}
+          onBuzonChange={onBuzonChange}
+          estado={estado}
+          onEstadoChange={onEstadoChange}
           loading={loading}
+          error={loadError}
+          onRetry={onRetry}
           participantNames={participantNames}
         />
       </div>
 
-      {/* Thread + Contact panel */}
+      {/* Hilo + panel del contacto */}
       <div className={cn(
-        'flex-1 flex overflow-hidden',
-        mobileView === 'list' ? 'hidden sm:flex' : 'flex'
+        'relative flex-1 flex overflow-hidden min-w-0',
+        mobileView === 'list' ? 'hidden md:flex' : 'flex'
       )}>
         {selected ? (
           <>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <UnifiedConversationThread
                 conversation={selected}
                 onBack={onBack}
                 currentUserId={userId}
                 participantNames={participantNames}
+                onShowInfo={onToggleContactPanel}
+                infoOpen={showContactPanel}
               />
             </div>
 
-            <div className={cn(
-              'transition-all duration-200 overflow-hidden flex-shrink-0',
-              showContactPanel ? 'w-64' : 'w-0'
-            )}>
-              {showContactPanel && (
-                <ContactInfoPanel conversation={selected} />
-              )}
-            </div>
-
-            <div className="hidden lg:flex flex-col items-center justify-start pt-4 px-1 bg-white dark:bg-neutral-900 border-l border-neutral-100 dark:border-neutral-800">
-              <button
-                onClick={onToggleContactPanel}
-                className={cn(
-                  'p-2 rounded-lg transition-colors',
-                  showContactPanel
-                    ? 'bg-accent/10 text-accent-ink'
-                    : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600'
-                )}
-                title={showContactPanel ? 'Ocultar info' : 'Ver info del contacto'}
-              >
-                {showContactPanel ? <X className="w-4 h-4" /> : <Info className="w-4 h-4" />}
-              </button>
-            </div>
+            {/* En pantallas grandes, columna; en chicas, panel encima del chat */}
+            {showContactPanel && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Cerrar información del contacto"
+                  onClick={onCloseContactPanel}
+                  className="xl:hidden absolute inset-0 z-20 bg-black/30 animate-overlay"
+                />
+                <div className="absolute xl:static right-0 inset-y-0 z-30 w-[min(20rem,100%)] xl:w-72 flex-shrink-0 animate-fade-in shadow-e3 xl:shadow-none">
+                  <ContactInfoPanel conversation={selected} onClose={onCloseContactPanel} />
+                </div>
+              </>
+            )}
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 text-center p-8">
-            <div className="w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
-              <MessageSquare className="w-8 h-8 text-neutral-300 dark:text-neutral-600" />
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+            <div className="w-16 h-16 rounded-[var(--radius-lg)] bg-surface-card shadow-e1 flex items-center justify-center mb-4">
+              <MessageSquare className="w-7 h-7 text-accent-ink" aria-hidden />
             </div>
-            <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
-              Selecciona una conversacion
+            <h3 className="font-display text-title-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-1">
+              Selecciona una conversación
             </h3>
-            <p className="text-xs text-neutral-500 dark:text-neutral-500 max-w-xs">
-              Elige una conversacion del panel izquierdo para ver el historial y responder.
+            <p className="text-body-sm text-neutral-500 dark:text-neutral-400 max-w-xs">
+              Elige una conversación de la lista para ver el historial, responder o ligarla a un trámite.
             </p>
             {!waPersonalConnected && (
-              <p className="text-[11px] text-teal-500 dark:text-teal-400 mt-4 max-w-xs">
-                Conecta tu WA Personal en la pestaña "Conexión" para ver tambien esas conversaciones aqui.
-              </p>
+              <button
+                type="button"
+                onClick={onGoToConnection}
+                className="mt-5 min-h-[40px] px-4 rounded-[var(--radius-sm)] border border-soft bg-surface-card text-caption font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                Conectar mi WA personal
+              </button>
             )}
           </div>
         )}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, ArrowLeft, Loader as Loader2, MoveVertical as MoreVertical, SquareCheck as CheckSquare, Square, Sparkles, Bot, FileText, FolderInput as FormInput, ListTodo, Plus, Smile, X, ClipboardList, ExternalLink, Image as ImageIcon, File, MapPin, Check, CheckCheck, CircleAlert as AlertCircle, Clock, Paperclip, User, Star, Zap, RefreshCw, WifiOff, ChevronDown } from 'lucide-react';
+import { Send, ArrowLeft, Loader as Loader2, MoveVertical as MoreVertical, SquareCheck as CheckSquare, Square, Sparkles, Bot, FileText, FolderInput as FormInput, ListTodo, Plus, Smile, X, ClipboardList, ExternalLink, Image as ImageIcon, File, MapPin, Check, CheckCheck, CircleAlert as AlertCircle, Clock, Paperclip, User, Star, Zap, RefreshCw, WifiOff, ChevronDown, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -100,6 +100,9 @@ interface Props {
   onBack?: () => void;
   currentUserId: string;
   participantNames: Record<string, string>;
+  /** Abre o cierra el panel de información del contacto. */
+  onShowInfo?: () => void;
+  infoOpen?: boolean;
 }
 
 // ── Status icon ───────────────────────────────────────────────────────────────
@@ -300,7 +303,7 @@ function RichMessageBubble({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function UnifiedConversationThread({ conversation, onBack, currentUserId, participantNames }: Props) {
+export function UnifiedConversationThread({ conversation, onBack, currentUserId, participantNames, onShowInfo, infoOpen }: Props) {
   const { usuario } = useAuth();
   const isAdmin = usuario?.rol === 'Administrador';
   const isEmpleado = ['Empleado', 'Ejecutivo', 'Gerente'].includes(usuario?.rol || '');
@@ -1041,38 +1044,40 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
   });
 
   return (
-    <div className="flex flex-col h-full bg-neutral-50 dark:bg-neutral-950 relative">
+    <div className="flex flex-col h-full bg-surface-canvas relative">
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+      <div className="flex items-center gap-2 px-2 sm:px-3 py-2 bg-surface-card border-b border-soft flex-shrink-0 min-h-[60px]">
         {onBack && (
-          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
-            <ArrowLeft className="w-4 h-4" />
+          <button type="button" onClick={onBack} aria-label="Volver a la lista" className="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0">
+            <ArrowLeft className="w-5 h-5" />
           </button>
         )}
 
         {selectionMode ? (
-          <div className="flex items-center gap-2 flex-1">
-            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{selectedIds.size} seleccionados</span>
-            <button onClick={openCreateTicket} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-accent text-accent-foreground rounded-lg hover:bg-accent/90">
-              <Plus className="w-3 h-3" /> Crear tramite
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-body-sm font-semibold text-neutral-800 dark:text-neutral-100 whitespace-nowrap" aria-live="polite">
+              {selectedIds.size} <span className="hidden sm:inline">seleccionados</span>
+            </span>
+            <button type="button" onClick={openCreateTicket} className="min-h-[40px] flex items-center gap-1.5 px-3 text-caption font-semibold bg-accent text-accent-foreground rounded-[var(--radius-sm)] hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
+              <Plus className="w-4 h-4" aria-hidden /> <span>Crear<span className="hidden sm:inline"> trámite</span></span>
             </button>
-            <button onClick={openAddTicket} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 rounded-lg hover:bg-neutral-50">
-              <ListTodo className="w-3 h-3" /> Agregar a tramite
+            <button type="button" onClick={openAddTicket} className="min-h-[40px] flex items-center gap-1.5 px-3 text-caption font-semibold bg-surface-card border border-strong text-neutral-700 dark:text-neutral-200 rounded-[var(--radius-sm)] hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              <ListTodo className="w-4 h-4" aria-hidden /> <span>Agregar<span className="hidden sm:inline"> a trámite</span></span>
             </button>
-            <button onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} className="ml-auto p-1.5 text-neutral-500 hover:text-neutral-600">
-              <X className="w-4 h-4" />
+            <button type="button" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} aria-label="Salir de la selección" className="ml-auto w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0">
+              <X className="w-5 h-5" />
             </button>
           </div>
         ) : (
           <>
-            <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent-ink flex-shrink-0">
+            <div aria-hidden className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center text-sm font-bold text-accent-ink flex-shrink-0">
               {name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-semibold text-neutral-800 dark:text-white truncate">{name}</p>
-                <ChannelBadge channel={conversation.channel} size="sm" />
+              <div className="flex items-center gap-1.5 min-w-0">
+                <p className="text-body font-semibold text-neutral-900 dark:text-white truncate">{name}</p>
+                <ChannelBadge channel={conversation.channel} size="sm" className="flex-shrink-0" />
                 {autoMode && (
                   <span className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800">
                     <Bot className="w-2.5 h-2.5" /> Auto activo
@@ -1080,34 +1085,51 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                 )}
               </div>
               {conversation.contactPhone && (
-                <p className="text-[11px] text-neutral-500">{formatMoviPhone(conversation.contactPhone)}</p>
+                <p className="text-caption text-neutral-500 dark:text-neutral-400 truncate tabular-nums">{formatMoviPhone(conversation.contactPhone)}</p>
               )}
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {/* Selection mode */}
-              <button onClick={() => setSelectionMode(true)} title="Seleccionar para Trámite" className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-lime-400 to-green-500 hover:from-lime-500 hover:to-green-600 text-black font-bold text-xs transition-colors shadow-sm">
-                <CheckSquare className="w-4 h-4" />
-                <span>Seleccionar para Trámite</span>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Acción principal: ligar mensajes a un trámite */}
+              <button
+                type="button"
+                onClick={() => setSelectionMode(true)}
+                aria-label="Seleccionar mensajes para trámite"
+                title="Seleccionar mensajes para crear o agregar a un trámite"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-[var(--radius-sm)] bg-accent text-accent-foreground font-semibold text-caption hover:bg-accent-hover shadow-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              >
+                <ClipboardList className="w-4 h-4" aria-hidden />
+                <span className="hidden lg:inline">Trámite</span>
               </button>
+              {onShowInfo && (
+                <button
+                  type="button"
+                  onClick={onShowInfo}
+                  aria-label={infoOpen ? 'Ocultar información del contacto' : 'Ver información del contacto'}
+                  aria-pressed={!!infoOpen}
+                  className={cn('w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0', infoOpen && 'bg-accent-soft text-accent-ink')}
+                >
+                  <Info className="w-5 h-5" />
+                </button>
+              )}
               {/* Menu */}
               <div className="relative" ref={menuRef}>
-                <button onClick={() => setShowMenu(v => !v)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
-                  <MoreVertical className="w-4 h-4" />
+                <button type="button" onClick={() => setShowMenu(v => !v)} aria-label="Más acciones" aria-haspopup="menu" aria-expanded={showMenu} className="w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0">
+                  <MoreVertical className="w-5 h-5" />
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-surface-card dark:bg-neutral-800 rounded-xl border border-soft dark:border-neutral-700 shadow-lg z-20 py-1 text-xs">
-                    <button onClick={() => { setSelectionMode(true); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left">
+                  <div role="menu" className="absolute right-0 top-full mt-1 w-52 bg-surface-card rounded-[var(--radius-md)] border border-soft shadow-e3 z-20 py-1 text-body-sm animate-scale-in">
+                    <button onClick={() => { setSelectionMode(true); setShowMenu(false); }} role="menuitem" className="w-full min-h-[44px] flex items-center gap-2.5 px-3 hover:bg-surface-muted text-neutral-700 dark:text-neutral-200 text-left">
                       <CheckSquare className="w-3.5 h-3.5 text-neutral-500" /> Seleccionar mensajes
                     </button>
-                    <button onClick={() => { openCreateTicket(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left">
+                    <button onClick={() => { openCreateTicket(); setShowMenu(false); }} role="menuitem" className="w-full min-h-[44px] flex items-center gap-2.5 px-3 hover:bg-surface-muted text-neutral-700 dark:text-neutral-200 text-left">
                       <Plus className="w-3.5 h-3.5 text-accent-ink" /> Crear tramite
                     </button>
-                    <button onClick={() => { openAddTicket(); setShowMenu(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left">
+                    <button onClick={() => { openAddTicket(); setShowMenu(false); }} role="menuitem" className="w-full min-h-[44px] flex items-center gap-2.5 px-3 hover:bg-surface-muted text-neutral-700 dark:text-neutral-200 text-left">
                       <ListTodo className="w-3.5 h-3.5 text-neutral-500" /> Agregar a tramite
                     </button>
                     {isWaPersonal && (
-                      <button onClick={() => { syncHistory(); setShowMenu(false); }} disabled={syncingHistory} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left disabled:opacity-50">
+                      <button onClick={() => { syncHistory(); setShowMenu(false); }} disabled={syncingHistory} role="menuitem" className="w-full min-h-[44px] flex items-center gap-2.5 px-3 hover:bg-surface-muted text-neutral-700 dark:text-neutral-200 text-left disabled:opacity-50">
                         <RefreshCw className={cn('w-3.5 h-3.5 text-neutral-500', syncingHistory && 'animate-spin')} /> Sincronizar historial
                       </button>
                     )}
@@ -1251,12 +1273,16 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                   sameAsNext ? 'mb-0.5' : 'mb-1.5'
                 )}
                 onClick={selectionMode ? () => toggleSelect(msg.id) : undefined}
+                role={selectionMode ? 'checkbox' : undefined}
+                aria-checked={selectionMode ? isSelected : undefined}
+                tabIndex={selectionMode ? 0 : undefined}
+                onKeyDown={selectionMode ? (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleSelect(msg.id); } } : undefined}
               >
                 {selectionMode && (
                   <div className="flex items-end pb-1 mr-2">
                     {isSelected
                       ? <CheckSquare className="w-4 h-4 text-accent-ink" />
-                      : <Square className="w-4 h-4 text-neutral-300" />}
+                      : <Square className="w-4 h-4 text-neutral-400 dark:text-neutral-500" />}
                   </div>
                 )}
                 {/* Inbound avatar placeholder — only show on last in group */}
@@ -1277,7 +1303,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
                     bubbleCorners,
                     isOut
                       ? 'bg-accent text-accent-foreground'
-                      : 'bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 border border-neutral-100 dark:border-neutral-700'
+                      : 'bg-surface-card text-neutral-800 dark:text-neutral-100 border border-soft'
                   )}>
                     <RichMessageBubble
                       msg={msg}
@@ -1297,8 +1323,10 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       {/* ── Scroll to bottom button ───────────────────────────────── */}
       {showScrollBtn && (
         <button
+          type="button"
           onClick={() => { scrollToBottom('smooth'); }}
-          className="absolute bottom-[72px] right-4 z-10 w-9 h-9 rounded-full bg-surface-card dark:bg-neutral-800 border border-soft dark:border-neutral-700 shadow-md flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
+          aria-label="Ir al último mensaje"
+          className="absolute bottom-[96px] right-4 z-10 w-10 h-10 rounded-full bg-surface-card border border-soft shadow-e2 flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
           title="Ir al ultimo mensaje"
         >
           <ChevronDown className="w-4 h-4" />
@@ -1306,7 +1334,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
       )}
 
       {/* ── Composer ─────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 px-3 py-2.5 relative">
+      <div className="flex-shrink-0 bg-surface-card border-t border-soft px-3 pt-2 pb-[max(0.625rem,env(safe-area-inset-bottom))] relative">
         {/* Hidden file input for wa_personal */}
         <input
           ref={fileInputRef}
@@ -1331,25 +1359,30 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
               <p className="text-[11px] text-neutral-500">{(pendingAttachment.file.size / 1024).toFixed(0)} KB</p>
               {pendingAttachment.error && <p className="text-[11px] text-red-500">{pendingAttachment.error}</p>}
             </div>
-            <button onClick={() => setPendingAttachment(null)} className="p-1 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 flex-shrink-0">
-              <X className="w-3.5 h-3.5" />
+            <button type="button" onClick={() => setPendingAttachment(null)} aria-label="Quitar archivo" className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-sunken text-neutral-500 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
         {/* Toolbar */}
         <div className="flex items-center gap-1 mb-2">
-          <button onClick={() => setShowEmoji(v => !v)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-600 transition-colors" title="Emojis">
+          <button type="button" onClick={() => setShowEmoji(v => !v)} aria-label="Emojis" aria-expanded={showEmoji} className="min-h-[36px] flex items-center gap-1.5 px-2 rounded-[var(--radius-xs)] hover:bg-surface-muted text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors text-caption font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" title="Emojis">
             <Smile className="w-4 h-4" />
+          </button>
+          <button type="button" onClick={openWaTemplates} className="min-h-[36px] flex items-center gap-1.5 px-2 rounded-[var(--radius-xs)] hover:bg-surface-muted text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors text-caption font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" title="Mis plantillas">
+            <FileText className="w-4 h-4" aria-hidden /> <span>Plantillas</span>
           </button>
           {/* WA Personal: file attachment button */}
           {isWaPersonal && (
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-600 transition-colors text-[11px] font-medium"
+              className="min-h-[36px] flex items-center gap-1.5 px-2 rounded-[var(--radius-xs)] hover:bg-surface-muted text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors text-caption font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               title="Adjuntar archivo"
+              aria-label="Adjuntar archivo"
             >
-              <Paperclip className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Archivo</span>
+              <Paperclip className="w-4 h-4" /> <span className="hidden sm:inline">Archivo</span>
             </button>
           )}
         </div>
@@ -1374,15 +1407,18 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Escribe un mensaje... (Enter para enviar)"
+            placeholder="Escribe un mensaje"
+            aria-label="Mensaje (Enter envía, Shift+Enter salto de línea)"
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-800 dark:text-neutral-200 px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-accent/40 placeholder:text-neutral-500 max-h-24 overflow-y-auto"
-            style={{ minHeight: '42px' }}
+            className="flex-1 min-w-0 resize-none rounded-[var(--radius-md)] border border-soft bg-surface-muted text-body text-neutral-800 dark:text-neutral-100 px-3.5 py-2.5 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 max-h-32 overflow-y-auto"
+            style={{ minHeight: '44px' }}
           />
           <button
+            type="button"
             onClick={pendingAttachment ? sendAttachment : sendMessage}
             disabled={(!text.trim() && !pendingAttachment) || sending}
-            className="p-2.5 bg-accent text-accent-foreground rounded-xl hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+            aria-label="Enviar mensaje"
+            className="w-11 h-11 flex items-center justify-center bg-accent text-accent-foreground rounded-full hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
@@ -1391,7 +1427,7 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
           <div className="flex items-center gap-2 mt-1.5 px-2.5 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg">
             <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />
             <p className="text-[11px] text-red-600 dark:text-red-400 flex-1">{sendError}</p>
-            <button onClick={() => setSendError(null)} className="text-red-400 hover:text-red-600 flex-shrink-0">
+            <button type="button" onClick={() => setSendError(null)} aria-label="Cerrar aviso" className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex-shrink-0 p-1">
               <X className="w-3 h-3" />
             </button>
           </div>
@@ -1676,12 +1712,17 @@ export function UnifiedConversationThread({ conversation, onBack, currentUserId,
 
 // ── Reusable modal wrapper ────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] animate-overlay backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md mx-4 bg-surface-card dark:bg-neutral-900 rounded-2xl shadow-e4 border border-soft dark:border-neutral-700 overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
-          <h3 className="text-sm font-bold text-neutral-800 dark:text-white">{title}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 transition-colors">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-neutral-950/45 backdrop-blur-sm animate-overlay" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={title} className="w-full sm:max-w-md sm:mx-4 bg-surface-card rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] shadow-e4 border border-soft overflow-hidden animate-scale-in pb-[env(safe-area-inset-bottom)]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-soft">
+          <h3 className="font-display text-body font-semibold text-neutral-900 dark:text-white">{title}</h3>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-muted text-neutral-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
             <X className="w-4 h-4" />
           </button>
         </div>
