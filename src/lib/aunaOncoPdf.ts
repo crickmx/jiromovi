@@ -196,16 +196,29 @@ export async function generarPdfAunaOnco(datos: DatosPdf): Promise<Blob> {
   doc.text(fechaLarga(datos.fecha), PW - M, y, { align: 'right' });
   y += 4;
 
-  // Aviso "no es cotización oficial" (naranja Auna)
-  doc.setFillColor(255, 241, 228);
-  doc.rect(M, y, ancho, 7, 'F');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...AUNA_NARANJA);
-  doc.text(AVISO_NO_OFICIAL, M + 2.5, y + 4.6);
-  y += 11;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.2); doc.setTextColor(...GRIS);
-  const lRef = doc.splitTextToSize(AVISO_REFERENCIA, ancho);
-  doc.text(lRef, M, y);
-  y += lRef.length * 3 + 3;
+  // Aviso "no es cotización oficial": las dos leyendas juntas en un solo
+  // recuadro destacado, para que no se lean como letra chica.
+  {
+    const padX = 4;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.6);
+    const lTit = doc.splitTextToSize(AVISO_NO_OFICIAL, ancho - padX * 2 - 1.5);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.6);
+    const lRef = doc.splitTextToSize(AVISO_REFERENCIA, ancho - padX * 2 - 1.5);
+    const alto = 4 + lTit.length * 3.8 + 1.6 + lRef.length * 3.3 + 2.6;
+    doc.setFillColor(255, 241, 228);
+    doc.setDrawColor(...AUNA_NARANJA); doc.setLineWidth(0.5);
+    doc.roundedRect(M, y, ancho, alto, 2, 2, 'FD');
+    doc.setFillColor(...AUNA_NARANJA);
+    doc.rect(M, y, 1.8, alto, 'F');
+    let yy = y + 5;
+    // Texto en naranja oscuro: el naranja de marca sobre el fondo durazno no da contraste.
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.6); doc.setTextColor(176, 64, 0);
+    doc.text(lTit, M + padX + 1.5, yy);
+    yy += lTit.length * 3.8 + 1.6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.6); doc.setTextColor(...NAVY);
+    doc.text(lRef, M + padX + 1.5, yy);
+    y += alto + 5;
+  }
 
   // Datos del ejercicio
   const par = (etq: string, val: string, x: number, yy: number, alinear: 'left' | 'right' = 'left') => {
@@ -345,6 +358,34 @@ export async function generarPdfAunaOnco(datos: DatosPdf): Promise<Blob> {
       headStyles: { fillColor: [...AUNA_DEEP], textColor: 255, fontSize: 8 },
       bodyStyles: { fontSize: 8.4, textColor: [...NAVY] },
       columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right', fontStyle: 'bold' } },
+      theme: 'grid',
+      styles: { lineColor: [226, 232, 240], lineWidth: 0.2, cellPadding: 1.4 },
+    });
+    y = finY() + 5;
+  }
+
+  // Motivos de la extraprima, por asegurado
+  if (hayExtra) {
+    const conExtra = r.lineas.filter(l => l.extraprima > 0);
+    y = nuevaPagina(y, 20);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: M, right: M, top: 36 },
+      head: [['Asegurado', 'Motivo de la extraprima', '%', 'Ref. Extraprima']],
+      body: conExtra.flatMap(l => {
+        const motivos = l.motivosExtraprima?.length
+          ? l.motivosExtraprima
+          : [{ label: 'Extraprima preliminar', pct: l.extraprimaPct }];
+        return motivos.map((m, i) => [
+          i === 0 ? l.nombre.toUpperCase() : '',
+          m.label,
+          `${Math.round(m.pct * 100)}%`,
+          i === 0 ? fmt(l.extraprima) : '',
+        ]);
+      }),
+      headStyles: { fillColor: [...AUNA_DEEP], textColor: 255, fontSize: 8 },
+      bodyStyles: { fontSize: 7.8, textColor: [...NAVY] },
+      columnStyles: { 0: { cellWidth: 52, fontStyle: 'bold' }, 2: { halign: 'center', cellWidth: 16 }, 3: { halign: 'right', cellWidth: 32 } },
       theme: 'grid',
       styles: { lineColor: [226, 232, 240], lineWidth: 0.2, cellPadding: 1.4 },
     });

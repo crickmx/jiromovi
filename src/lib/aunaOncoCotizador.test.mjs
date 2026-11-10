@@ -98,3 +98,14 @@ const siete = Array.from({ length: 7 }, (_, i) => base({ nombre: `P${i}`, sexo: 
 assert.equal(cotizar(siete.map(p => ({ ...p, fechaNacimiento: '2010-01-01' })), 'anual', 0, dia).valido, false);
 
 console.log('✓ aunaOncoCotizador: todo bien');
+
+// Motivos de la extraprima (se imprimen en el PDF)
+{
+  const m = cotizar([base({ nombre: 'M', sexo: 'F', fechaNacimiento: '1970-01-01', extraprimas: ['tab_leve', 'lupus'] }), base({ nombre: 'S', sexo: 'M', fechaNacimiento: '1980-01-01' })], 'anual', 0, dia);
+  assert.deepEqual(m.lineas[0].motivosExtraprima, [
+    { label: 'Tabaquismo leve (1 o 2 cigarros al día)', pct: 0.20 },
+    { label: 'Lupus', pct: 0.30 },
+  ]);
+  assert.deepEqual(m.lineas[1].motivosExtraprima, []);
+  console.log('motivos de extraprima: OK');
+}

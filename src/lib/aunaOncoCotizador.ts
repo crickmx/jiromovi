@@ -191,6 +191,8 @@ export interface LineaAsegurado {
   primaBase: number;
   extraprimaPct: number;
   extraprima: number;
+  /** Por qué lleva extraprima: una entrada por motivo de la matriz (vacío si no lleva). */
+  motivosExtraprima: { label: string; pct: number }[];
   primaNeta: number;
   /** Prima + 9.5% de ese asegurado cuando el pago es mensual (igual a primaNeta en anual). */
   primaConRecargo: number;
@@ -264,6 +266,10 @@ export function cotizar(
       primaBase: base,
       extraprimaPct: extraPct,
       extraprima: extra,
+      motivosExtraprima: a.extraprimas
+        .map(id => EXTRAPRIMAS.find(e => e.id === id))
+        .filter((e): e is Extraprima => !!e)
+        .map(e => ({ label: e.label, pct: e.pct })),
       primaNeta: r2(base + extra),
       primaConRecargo: r2((base + extra) * (formaPago === 'mensual' ? 1 + RECARGO_MENSUAL : 1)),
       error,
