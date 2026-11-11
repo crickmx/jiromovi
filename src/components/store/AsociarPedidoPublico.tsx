@@ -132,6 +132,21 @@ export function AsociarPedidoPublico({ pedido, puedeAsociar, onCambio }: Props) 
         )}
       </dl>
 
+      <div className="mb-4 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 p-3 text-xs">
+        <p className="font-semibold text-neutral-700 dark:text-white/70 mb-1.5">Confirmación al cliente</p>
+        {pedido.confirmacion_enviada_en ? (
+          <div className="flex flex-wrap gap-1.5">
+            <EstadoEnvio ok={pedido.confirmacion_email_ok} etiqueta="Correo" />
+            <EstadoEnvio ok={pedido.confirmacion_whatsapp_ok} etiqueta="WhatsApp" />
+          </div>
+        ) : (
+          <p className="text-neutral-500 dark:text-white/50">Pendiente de envío.</p>
+        )}
+        {pedido.confirmacion_error && (
+          <p className="mt-1.5 text-rose-700 dark:text-rose-300 break-words">{pedido.confirmacion_error}</p>
+        )}
+      </div>
+
       {asociado ? (
         <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 p-3 text-sm">
           <p className="text-emerald-900 dark:text-emerald-200">
@@ -190,5 +205,19 @@ export function AsociarPedidoPublico({ pedido, puedeAsociar, onCambio }: Props) 
         </div>
       )}
     </div>
+  );
+}
+
+function EstadoEnvio({ ok, etiqueta }: { ok?: boolean | null; etiqueta: string }) {
+  const clase =
+    ok === true
+      ? 'bg-emerald-100 text-emerald-800'
+      : ok === false
+        ? 'bg-rose-100 text-rose-800'
+        : 'bg-neutral-100 text-neutral-600';
+  return (
+    <span className={`px-2 py-0.5 rounded-full font-semibold ${clase}`}>
+      {etiqueta}: {ok === true ? 'enviado' : ok === false ? 'falló' : 'en proceso'}
+    </span>
   );
 }

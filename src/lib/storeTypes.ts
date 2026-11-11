@@ -143,6 +143,10 @@ export interface StorePedido {
   invitado_oficina_nombre?: string | null;
   asociado_por?: string | null;
   asociado_en?: string | null;
+  confirmacion_enviada_en?: string | null;
+  confirmacion_email_ok?: boolean | null;
+  confirmacion_whatsapp_ok?: boolean | null;
+  confirmacion_error?: string | null;
   // Relaciones
   estatus?: StoreEstatusPedido;
   usuario?: {
