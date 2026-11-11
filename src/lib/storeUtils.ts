@@ -584,6 +584,7 @@ export async function obtenerTodosPedidos() {
 
     return pedidos.map((pedido: any) => {
       const u = usuariosMap.get(pedido.usuario_id);
+      const invitado = !u && pedido.es_publico ? usuarioDesdeInvitado(pedido) : undefined;
       const responsable = usuariosMap.get(pedido.responsable_pago_id);
       const ocGenerador = usuariosMap.get(pedido.oc_generada_por);
       return {
@@ -599,7 +600,7 @@ export async function obtenerTodosPedidos() {
           email: u.email_personal,
           email_laboral: u.email_laboral,
           rol: u.rol
-        } : undefined,
+        } : invitado,
         responsable_pago: responsable ? {
           nombre: responsable.nombre,
           nombre_completo: responsable.nombre_completo
@@ -632,15 +633,17 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
 
   if (pedidoError) throw pedidoError;
 
-  // Obtener usuario del pedido con información completa
-  const { data: usuarioData } = await supabase
-    .from('usuarios')
-    .select('nombre, nombre_completo, oficina_id, celular_laboral, celular_personal, email_laboral, rol')
-    .eq('id', pedido.usuario_id)
-    .single();
+  // Obtener usuario del pedido con información completa (null en pedidos públicos sin asociar)
+  const { data: usuarioData } = pedido.usuario_id
+    ? await supabase
+        .from('usuarios')
+        .select('nombre, nombre_completo, oficina_id, celular_laboral, celular_personal, email_laboral, rol')
+        .eq('id', pedido.usuario_id)
+        .maybeSingle()
+    : { data: null };
 
   // Obtener información de la oficina si existe
-  let oficinaData = null;
+  let oficinaData: { nombre: string } | null = null;
   if (usuarioData?.oficina_id) {
     const { data } = await supabase
       .from('oficinas')
@@ -671,7 +674,7 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
   }
 
   // Obtener información del responsable de pago (si existe)
-  let responsablePago = null;
+  let responsablePago: { nombre: string; nombre_completo: string | null } | null = null;
   if (pedido.responsable_pago_id) {
     const { data } = await supabase
       .from('usuarios')
@@ -682,7 +685,7 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
   }
 
   // Obtener información del admin que generó la OC (si existe)
-  let ocGeneradaPorUsuario = null;
+  let ocGeneradaPorUsuario: { nombre_completo: string | null } | null = null;
   if (pedido.oc_generada_por) {
     const { data } = await supabase
       .from('usuarios')
@@ -693,7 +696,7 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
   }
 
   // Construir objeto usuario completo
-  const usuario = {
+  const usuario = !pedido.usuario_id && pedido.es_publico ? usuarioDesdeInvitado(pedido) : {
     nombre: usuarioData?.nombre || '',
     nombre_completo: usuarioData?.nombre_completo || usuarioData?.nombre || '',
     nombre_sicas: nombreSicas,
@@ -828,6 +831,107 @@ export async function obtenerPedidoCompleto(pedidoId: string): Promise<StorePedi
     historial: historial as StorePedidoHistorial[],
     oc_generada_por_usuario: ocGeneradaPorUsuario
   } as StorePedidoCompleto;
+}
+
+// ============================================
+// PEDIDOS PÚBLICOS (sin sesión, tienda.movi.digital)
+// ============================================
+
+/** Datos de contacto del invitado con la forma de `pedido.usuario`, para listas y exportes. */
+export function usuarioDesdeInvitado(pedido: {
+  invitado_nombre?: string | null;
+  invitado_email?: string | null;
+  invitado_whatsapp?: string | null;
+  invitado_oficina_nombre?: string | null;
+}) {
+  return {
+    nombre: pedido.invitado_nombre || 'Invitado',
+    nombre_completo: pedido.invitado_nombre || 'Invitado',
+    nombre_sicas: undefined as string | undefined,
+    clave_agente: undefined as string | undefined,
+    oficina: pedido.invitado_oficina_nombre || 'Sin oficina',
+    telefono: pedido.invitado_whatsapp || 'Sin teléfono',
+    celular_personal: pedido.invitado_whatsapp || undefined,
+    celular_laboral: undefined as string | undefined,
+    email: pedido.invitado_email || undefined,
+    email_laboral: pedido.invitado_email || undefined,
+    rol: 'Invitado',
+  };
+}
+
+export interface UsuarioAsociable {
+  id: string;
+  nombre_completo: string | null;
+  nombre: string | null;
+  email_laboral: string | null;
+  email_personal: string | null;
+  celular_laboral: string | null;
+  celular_personal: string | null;
+  oficina_nombre: string | null;
+  coincide?: 'email' | 'whatsapp';
+}
+
+const ultimos10 = (t?: string | null) => (t || '').replace(/\D/g, '').slice(-10);
+
+async function conOficina(usuarios: any[]): Promise<UsuarioAsociable[]> {
+  const ids = [...new Set(usuarios.map(u => u.oficina_id).filter(Boolean))];
+  const mapa = new Map<string, string>();
+  if (ids.length) {
+    const { data } = await supabase.from('oficinas').select('id, nombre').in('id', ids);
+    (data || []).forEach((o: any) => mapa.set(o.id, o.nombre));
+  }
+  return usuarios.map(u => ({ ...u, oficina_nombre: u.oficina_id ? mapa.get(u.oficina_id) ?? null : null }));
+}
+
+const CAMPOS_USUARIO_ASOCIABLE = 'id, nombre, nombre_completo, email_laboral, email_personal, celular_laboral, celular_personal, oficina_id';
+
+/** Usuarios MOVI cuyo correo o WhatsApp coincide con el del invitado. */
+export async function sugerirUsuariosParaPedido(email?: string | null, whatsapp?: string | null): Promise<UsuarioAsociable[]> {
+  const filtros: string[] = [];
+  const correo = (email || '').trim().toLowerCase();
+  if (correo) filtros.push(`email_laboral.ilike.${correo}`, `email_personal.ilike.${correo}`);
+  const tel = ultimos10(whatsapp);
+  if (tel.length === 10) filtros.push(`celular_laboral.ilike.%${tel}`, `celular_personal.ilike.%${tel}`);
+  if (!filtros.length) return [];
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select(CAMPOS_USUARIO_ASOCIABLE)
+    .is('deleted_at', null)
+    .or(filtros.join(','))
+    .limit(10);
+  if (error) {
+    console.error('Error sugiriendo usuarios:', error);
+    return [];
+  }
+  const lista = await conOficina(data || []);
+  return lista.map(u => ({
+    ...u,
+    coincide: [u.email_laboral, u.email_personal].some(e => (e || '').toLowerCase() === correo) ? 'email' : 'whatsapp',
+  }));
+}
+
+/** Búsqueda libre por nombre o correo para asociar un pedido. */
+export async function buscarUsuariosParaAsociar(texto: string): Promise<UsuarioAsociable[]> {
+  const q = texto.trim().replace(/[,()%]/g, ' ').trim();
+  if (q.length < 2) return [];
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select(CAMPOS_USUARIO_ASOCIABLE)
+    .is('deleted_at', null)
+    .or(`nombre_completo.ilike.%${q}%,nombre.ilike.%${q}%,email_laboral.ilike.%${q}%,email_personal.ilike.%${q}%`)
+    .order('nombre_completo')
+    .limit(15);
+  if (error) throw error;
+  return conOficina(data || []);
+}
+
+/** Asocia (o desasocia con null) un pedido público a un usuario MOVI. */
+export async function asociarPedidoUsuario(pedidoId: string, usuarioId: string | null) {
+  const { error } = await supabase.rpc('store_asociar_pedido_usuario', {
+    p_pedido_id: pedidoId,
+    p_usuario_id: usuarioId,
+  });
+  if (error) throw new Error(error.message);
 }
 
 export async function crearPedido(

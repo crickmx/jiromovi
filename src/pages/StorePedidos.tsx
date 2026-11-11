@@ -19,6 +19,7 @@ export default function StorePedidos() {
   const [loading, setLoading] = useState(true);
   const [filtroEstatus, setFiltroEstatus] = useState<string>('');
   const [busqueda, setBusqueda] = useState('');
+  const [soloPublicosSinAsociar, setSoloPublicosSinAsociar] = useState(false);
   const [pedidoAEliminar, setPedidoAEliminar] = useState<StorePedido | null>(null);
   const [eliminando, setEliminando] = useState(false);
   const [puedeVerReporte, setPuedeVerReporte] = useState(false);
@@ -36,7 +37,7 @@ export default function StorePedidos() {
 
   useEffect(() => {
     aplicarFiltros();
-  }, [pedidos, filtroEstatus, busqueda]);
+  }, [pedidos, filtroEstatus, busqueda, soloPublicosSinAsociar]);
 
   const cargarPedidos = async () => {
     try {
@@ -60,13 +61,18 @@ export default function StorePedidos() {
       resultado = resultado.filter(p => p.estatus_id === filtroEstatus);
     }
 
+    if (soloPublicosSinAsociar) {
+      resultado = resultado.filter(p => p.es_publico && !p.usuario_id);
+    }
+
     if (busqueda) {
       const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
       const q = norm(busqueda);
       resultado = resultado.filter(p =>
         norm(p.id).includes(q) ||
         norm(p.folio_oc ?? '').includes(q) ||
-        norm(p.usuario?.nombre ?? '').includes(q)
+        norm(p.usuario?.nombre ?? '').includes(q) ||
+        norm(p.invitado_email ?? '').includes(q)
       );
     }
 
@@ -367,6 +373,24 @@ export default function StorePedidos() {
               </select>
             </div>
 
+            <button
+              type="button"
+              aria-pressed={soloPublicosSinAsociar}
+              onClick={() => setSoloPublicosSinAsociar(v => !v)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                soloPublicosSinAsociar
+                  ? 'bg-amber-400 border-amber-400 text-[#040c1f]'
+                  : 'border-amber-300 text-amber-800 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+              }`}
+            >
+              Públicos sin asociar
+              {pedidos.some(p => p.es_publico && !p.usuario_id) && (
+                <span className="min-w-[20px] h-5 px-1 rounded-full bg-[#040c1f] text-white text-[11px] flex items-center justify-center">
+                  {pedidos.filter(p => p.es_publico && !p.usuario_id).length}
+                </span>
+              )}
+            </button>
+
             {pedidosFiltrados.length > 0 && (
               <button
                 onClick={exportarAExcel}
@@ -384,7 +408,7 @@ export default function StorePedidos() {
           <div className="text-center py-12 bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10">
             <Package className="w-16 h-16 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
-              {busqueda || filtroEstatus ? 'No se encontraron pedidos' : 'No hay pedidos aún'}
+              {busqueda || filtroEstatus || soloPublicosSinAsociar ? 'No se encontraron pedidos' : 'No hay pedidos aún'}
             </h3>
             <p className="text-neutral-500 dark:text-white/50">
               {busqueda || filtroEstatus ? 'Intenta con otros filtros' : 'Los pedidos aparecerán aquí'}
@@ -432,9 +456,15 @@ export default function StorePedidos() {
                           <span className="text-sm font-medium text-neutral-900 dark:text-white">
                             {pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}
                           </span>
-                          <span className="text-xs text-neutral-500 dark:text-white/50">
-                            SICAS: {pedido.usuario?.nombre_sicas || 'Sin usuario SICAS relacionado'}
-                          </span>
+                          {pedido.es_publico && !pedido.usuario_id ? (
+                            <span className="mt-0.5 inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900">
+                              Público · sin asociar
+                            </span>
+                          ) : (
+                            <span className="text-xs text-neutral-500 dark:text-white/50">
+                              SICAS: {pedido.usuario?.nombre_sicas || 'Sin usuario SICAS relacionado'}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

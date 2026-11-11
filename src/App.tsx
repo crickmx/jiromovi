@@ -52,6 +52,7 @@ const SegurosExpressCotizar = lazy(() => import('./seguros-express/CotizarPage')
 const TiendaHome     = lazy(() => import('./movistore/TiendaHome').then(m => ({ default: m.TiendaHome })));
 const TiendaProducto = lazy(() => import('./movistore/TiendaProducto').then(m => ({ default: m.TiendaProducto })));
 const TiendaCatalogo = lazy(() => import('./movistore/TiendaCatalogo').then(m => ({ default: m.TiendaCatalogo })));
+const TiendaPedidoPublico = lazy(() => import('./movistore/TiendaPedidoPublico').then(m => ({ default: m.TiendaPedidoPublico })));
 
 // ── Domain detection ──────────────────────────────────────────────────────
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
@@ -298,6 +299,7 @@ function MoviTiendaApp() {
           <Routes>
             <Route path="/producto/:id" element={<TiendaProducto />} />
             <Route path="/catalogo/:slug" element={<TiendaCatalogo />} />
+            <Route path="/pedido" element={<TiendaPedidoPublico />} />
             <Route path="/*" element={<TiendaHome />} />
           </Routes>
         </Suspense>

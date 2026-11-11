@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { totalDelPedido, importeArticulos } from '../lib/storePedidoTotal';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, parsearCapasPersonalizacion, IMAGEN_FINAL_PERSONALIZACION_KEY } from '../lib/storeUtils';
 import { PersonalizacionPreview } from '../components/store/PersonalizarLogoScreen';
+import { AsociarPedidoPublico } from '../components/store/AsociarPedidoPublico';
 import type { StorePedidoCompleto, StoreEstatusPedido, StoreMetodoPago, StoreParcialidad, StoreFrecuenciaPago, StoreMetodoPagoCombinacion, StorePedidoGasto, StorePedidoDetalleGasto, StorePedidoPago } from '../lib/storeTypes';
 import { TIPO_GASTO_OPTIONS, METODO_PAGO_OPCIONES } from '../lib/storeTypes';
 import { format } from 'date-fns';
@@ -1363,6 +1364,10 @@ export default function StorePedidoDetalle() {
 
           {/* Right sidebar */}
           <div className="space-y-6">
+            {pedido.es_publico && (
+              <AsociarPedidoPublico pedido={pedido} puedeAsociar={isAdmin} onCambio={cargarDatos} />
+            )}
+
             {/* Client info */}
             <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
