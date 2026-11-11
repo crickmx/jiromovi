@@ -37,9 +37,10 @@ interface BonosPerms {
   can_admin: boolean;
   can_campanias: boolean;
   can_users: boolean;
+  can_simulador: boolean;
 }
 
-const DEFAULT_PERMS: BonosPerms = { role: '', can_admin: false, can_campanias: false, can_users: false };
+const DEFAULT_PERMS: BonosPerms = { role: '', can_admin: false, can_campanias: false, can_users: false, can_simulador: false };
 
 type SectionDef = {
   label: string;
@@ -57,6 +58,7 @@ const SECTIONS: SectionDef[] = [
   { label: 'Cob. Pendiente', path: '/etl/cobranza-pendiente/', icon: Clock, show: () => true },
   { label: 'Renovaciones', path: '/reporting/renovaciones/', icon: RefreshCw, show: () => true },
   { label: 'Produccion', path: '/calculations/results/', icon: DollarSign, show: () => true },
+  { label: 'Simulador de Bonos', path: '/simulador/', icon: Calculator, show: p => p.can_simulador },
   { label: 'Metas', path: '/metas/', icon: Target, show: p => p.can_admin },
   { label: 'Config. Metas', path: '/metas/config/', icon: Target, show: no_dirreg },
   { label: 'Config. de Bonos', path: '/catalogs/', icon: BookOpen, show: no_dirreg },
@@ -256,6 +258,7 @@ export default function BonosPage() {
           can_admin: !!(event.data.can_admin ?? event.data.payload?.can_admin),
           can_campanias: !!(event.data.can_campanias ?? event.data.payload?.can_campanias),
           can_users: !!(event.data.can_users ?? event.data.payload?.can_users),
+          can_simulador: !!(event.data.can_simulador ?? event.data.payload?.can_simulador),
         });
       }
     }
