@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { StoreCategoria, StoreProducto, TipoItem } from '@/lib/storeTypes';
+import { esProductoPublico } from './carritoPublico';
+import { BotonCarritoPublico, CtaPedidoPublico, InsigniaSinRegistro } from './PedidoPublicoUI';
+import { HeroPedidoPublico } from './HeroPedidoPublico';
 
 const BRAND = '#164281';
 const BRAND_BRIGHT = '#1e70d1';
@@ -70,7 +73,7 @@ export function TiendaHome() {
         .order('nombre'),
       supabase
         .from('store_productos')
-        .select('*, categoria:store_categorias(id, nombre)')
+        .select('*, categoria:store_categorias(id, nombre, permite_pedido_publico), atributos:store_producto_atributos(*, opciones:store_producto_atributo_opciones(*))')
         .eq('activo', true)
         .order('orden', { ascending: true })
     ]).then(([resCat, resCatalogos, resProd]) => {
@@ -159,6 +162,7 @@ export function TiendaHome() {
   const totalServiciosCount = productos.filter(p => p.tipo_item === 'servicio').length;
   const hayFiltrosActivos = Boolean(catActiva || busqueda.trim() || tipoFiltro || orden !== 'recomendados');
   const catActivaData = categorias.find(c => c.id === catActiva) ?? null;
+  const productosPublicos = useMemo(() => productos.filter(esProductoPublico), [productos]);
 
   return (
     <div className="min-h-screen bg-surface-50 text-surface-900 flex flex-col font-sans selection:bg-[#164281] selection:text-white">
@@ -199,7 +203,8 @@ export function TiendaHome() {
           </Link>
 
           {/* Quick Stats / Direct MOVI App CTA */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <BotonCarritoPublico />
             <a
               href="https://app.movi.digital/store"
               target="_blank"
@@ -213,7 +218,7 @@ export function TiendaHome() {
               href="https://app.movi.digital"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl bg-accent hover:bg-[#1e5fac] text-accent-foreground transition-all shadow-md shadow-blue-900/40"
+              className="inline-flex items-center gap-2 text-xs font-bold px-3 sm:px-4 py-2 rounded-xl bg-accent hover:bg-[#1e5fac] text-accent-foreground transition-all shadow-md shadow-blue-900/40"
             >
               <ShoppingBag className="w-3.5 h-3.5" />
               <span>Acceder a MOVI</span>
@@ -221,6 +226,11 @@ export function TiendaHome() {
           </div>
         </div>
       </header>
+
+      {/* Pedido sin registro: productos de categorías públicas / temporales */}
+      {productosPublicos.length > 0 && !busqueda.trim() && !catActiva && (
+        <HeroPedidoPublico productos={productosPublicos} />
+      )}
 
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#040c1f] via-[#081a38] to-[#164281] text-white py-12 sm:py-16 border-b border-white/10">
@@ -319,7 +329,7 @@ export function TiendaHome() {
         {/* Controls Bar: Categories & Quick Filter Chips */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-surface-200 mb-8">
           {/* Item Type & Categories Pills */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
             {/* Type selector (Todos / Productos / Servicios) */}
             <div className="inline-flex p-1 bg-surface-200/70 rounded-xl">
               <button
@@ -451,6 +461,7 @@ export function TiendaHome() {
                 const esServicio = p.tipo_item === 'servicio';
                 const esPorPedido = p.disponibilidad === 'por_pedido';
                 const comprarUrl = `https://app.movi.digital/store?producto=${p.id}`;
+                const esPublico = esProductoPublico(p);
 
                 return (
                   <div
@@ -469,6 +480,7 @@ export function TiendaHome() {
                       />
                       {/* Badges */}
                       <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 items-start">
+                        {esPublico && <InsigniaSinRegistro />}
                         {p.categoria && (
                           <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-white/95 text-surface-800 shadow-sm backdrop-blur-sm">
                             {p.categoria.nombre}
@@ -521,6 +533,9 @@ export function TiendaHome() {
 
                     {/* Quick Order in MOVI button */}
                     <div className="p-4 pt-0">
+                      {esPublico ? (
+                        <CtaPedidoPublico producto={p} />
+                      ) : (
                       <a
                         href={comprarUrl}
                         target="_blank"
@@ -530,6 +545,7 @@ export function TiendaHome() {
                         <span>{esServicio ? 'Solicitar en MOVI' : 'Comprar en MOVI'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </a>
+                      )}
                     </div>
                   </div>
                 );
