@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { getMailboxPassword, setMailboxPassword } from '../_shared/emailCredentials.ts';
 import { emailCorsHeaders, forbiddenOriginResponse } from '../_shared/emailCors.ts';
-import { parsearFragmentos, asuntoBase, imapQuoted } from './snippet.ts';
+import { parsearFragmentos, asuntoBase, imapQuoted, valorEncabezado } from './snippet.ts';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -163,16 +163,11 @@ function extractName(str: string): string {
   return m ? m[1].trim() : '';
 }
 
+// Se lee en snippet.ts (función pura con prueba). Antes `\s*` cruzaba el salto
+// de línea: con un encabezado vacío ("Subject: ") devolvía el SIGUIENTE
+// encabezado, y la lista mostraba "Message-Id: <…>" como asunto.
 function extractHeaderValue(block: string, name: string): string | null {
-  const re = new RegExp(`^${name}:\\s*(.+?)$`, 'mi');
-  const m = block.match(re);
-  if (!m) return null;
-  let val = m[1];
-  const startIdx = block.indexOf(m[0]) + m[0].length;
-  const rest = block.substring(startIdx);
-  const cont = rest.match(/^(\r?\n[ \t]+.+)+/);
-  if (cont) val += cont[0].replace(/\r?\n[ \t]+/g, ' ');
-  return val.trim();
+  return valorEncabezado(block, name);
 }
 
 function splitHeadersBody(raw: string): { headers: string; body: string } {

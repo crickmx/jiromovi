@@ -44,3 +44,15 @@ const mp = parsearFragmentos(resp, hv);
 assert.equal(mp.get(41), 'Hola, envío cotización');
 assert.equal(mp.get(42), 'Segundo');
 console.log('parsearFragmentos: OK');
+
+// Encabezados: uno vacío NO debe tomar el siguiente (bug "Message-Id" como asunto)
+import { valorEncabezado } from './snippet.ts';
+const blq = 'From: MOVI Digital - Grupo JIRO <a@b.mx>\r\nSubject: \r\nMessage-Id: <Q7JGE9A@x>\r\nDate: Mon, 19 Oct 2026\r\n';
+assert.equal(valorEncabezado(blq, 'Subject'), '');
+assert.equal(valorEncabezado(blq, 'Message-ID'), '<Q7JGE9A@x>');
+assert.equal(valorEncabezado(blq, 'Cc'), null);
+assert.equal(valorEncabezado('Subject:\r\n =?UTF-8?B?SG9sYQ==?=\r\n =?UTF-8?B?IHF1ZQ==?=\r\nTo: x\r\n', 'Subject'), '=?UTF-8?B?SG9sYQ==?= =?UTF-8?B?IHF1ZQ==?=');
+assert.equal(valorEncabezado('Subject: Hola\r\n  mundo\r\nX: y', 'subject'), 'Hola mundo');
+assert.equal(valorEncabezado('In-Reply-To: <a@b>\r\n', 'In-Reply-To'), '<a@b>');
+assert.equal(valorEncabezado('X-Subject: no\r\nSubject: si\r\n', 'Subject'), 'si', 'no confunde X-Subject');
+console.log('valorEncabezado: OK');

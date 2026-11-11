@@ -11,7 +11,7 @@ import { normalizarCorreo } from '@/lib/correo/identidadRemitente';
 import { planearReglas, type ReglaCorreo } from '@/lib/correo/reglasCorreo';
 import {
   type ImapFolder, type EmailHeader, type EmailFull,
-  callWebmail, carpetaPorRol, etiquetaCarpeta, rolCarpeta,
+  callWebmail, carpetaPorRol, etiquetaCarpeta, rolCarpeta, normalizarCarpetas,
 } from '@/components/email/gestor/tipos';
 import { AvisosProvider, useAvisos } from '@/components/email/gestor/avisos';
 import { PanelCarpetas, type Cuota } from '@/components/email/gestor/PanelCarpetas';
@@ -144,7 +144,7 @@ function GestorEmailsInterno() {
   };
 
   const refreshFolders = useCallback(async () => {
-    try { setFolders(await callWebmail('list-folders')); } catch { /* el contador se queda como estaba */ }
+    try { setFolders(normalizarCarpetas((await callWebmail('list-folders')) || [])); } catch { /* el contador se queda como estaba */ }
   }, []);
 
   const loadCuota = useCallback(async () => {
@@ -197,7 +197,7 @@ function GestorEmailsInterno() {
   const loadFolders = async (primeraVez = false) => {
     try {
       const data = await callWebmail('list-folders');
-      setFolders(data);
+      setFolders(normalizarCarpetas(data || []));
       setConnectionFailed(false);
       setInitialLoading(false);
       const inbox = await loadMessages('INBOX', 1);

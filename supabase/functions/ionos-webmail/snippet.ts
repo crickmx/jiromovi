@@ -31,9 +31,20 @@ function decodeQP(str: string, charset: string): string {
   try { return new TextDecoder(charset, { fatal: false }).decode(new Uint8Array(bytes)); } catch { return cleaned; }
 }
 
+/**
+ * Valor de un encabezado MIME (sin distinguir mayúsculas), uniendo sus líneas
+ * de continuación. Un encabezado vacío devuelve '' — nunca el encabezado de
+ * la línea siguiente. Si no existe, null.
+ */
+export function valorEncabezado(block: string, name: string): string | null {
+  const nombre = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = block.match(new RegExp(`^${nombre}:[ \\t]*([^\\r\\n]*)((?:\\r?\\n[ \\t]+[^\\r\\n]*)*)`, 'mi'));
+  if (!m) return null;
+  return (m[1] + m[2].replace(/\r?\n[ \t]+/g, ' ')).trim();
+}
+
 function header(block: string, name: string): string {
-  const m = block.match(new RegExp(`^${name}:\\s*([^\\r\\n]*(?:\\r?\\n[ \\t][^\\r\\n]*)*)`, 'mi'));
-  return m ? m[1].replace(/\r?\n[ \t]+/g, ' ').trim() : '';
+  return valorEncabezado(block, name) ?? '';
 }
 
 const ENTIDADES: Record<string, string> = { nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", aacute: 'á', eacute: 'é', iacute: 'í', oacute: 'ó', uacute: 'ú', ntilde: 'ñ', Aacute: 'Á', Eacute: 'É', Iacute: 'Í', Oacute: 'Ó', Uacute: 'Ú', Ntilde: 'Ñ' };

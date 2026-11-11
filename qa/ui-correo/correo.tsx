@@ -10,7 +10,7 @@ const msgs = [
   { uid: 5, messageId: '<m5@x>', from: 'José Hernández Martínez de la Garza', fromEmail: 'cliente@empresa.com', to: ['ricardo@movi-demo.mx'], cc: [], subject: 'Cotización de seguro de auto para flotilla de 12 unidades modelo 2024', date: new Date(ahora - 18e5).toUTCString(), seen: false, flagged: false, hasAttachments: true, size: 1, snippet: 'Buenas tardes, les escribo para solicitar la cotización de la flotilla que platicamos la semana pasada.' },
   { uid: 4, messageId: '<m2@x>', from: 'MATEO PRUEBAS', fromEmail: 'mateo@movi-demo.mx', to: ['ricardo@movi-demo.mx'], cc: [], subject: 'Re: Póliza GNP renovación', date: new Date(ahora - 9e6).toUTCString(), seen: true, flagged: false, hasAttachments: false, size: 1, snippet: 'Te confirmo que ya se envió la renovación al cliente.' },
   { uid: 3, messageId: '<m3@x>', from: 'Soporte JIRO', fromEmail: 'avisos@jiro-seguridad.com', to: ['ricardo@movi-demo.mx'], cc: [], subject: 'Verifica tu cuenta', date: new Date(ahora - 9e7).toUTCString(), seen: false, flagged: false, hasAttachments: false, size: 1, snippet: 'Tu cuenta será suspendida si no la verificas hoy.' },
-  { uid: 2, messageId: '<m1@x>', from: 'Boletín', fromEmail: 'news@aseguradora.com', to: [], cc: [], subject: 'Novedades de noviembre', date: new Date(ahora - 4e8).toUTCString(), seen: true, flagged: false, hasAttachments: false, size: 1 },
+  { uid: 2, messageId: '<m1@x>', from: 'Boletín', fromEmail: 'news@aseguradora.com', to: [], cc: [], subject: '', date: new Date(ahora - 4e8).toUTCString(), seen: true, flagged: false, hasAttachments: false, size: 1 },
 ];
 const full = (uid: number) => {
   const h: any = msgs.find(m => m.uid === uid)!;
@@ -39,7 +39,8 @@ window.fetch = async (input: any, init?: any) => {
         { name: 'INBOX', path: 'INBOX', flags: [], total: 1284, unseen: 2 }, { name: 'Sent', path: 'Sent', flags: ['\\Sent'], total: 300, unseen: 0 },
         { name: 'Drafts', path: 'Drafts', flags: ['\\Drafts'], total: 2, unseen: 0 }, { name: 'Spam', path: 'Spam', flags: ['\\Junk'], total: 9, unseen: 3 },
         { name: 'Trash', path: 'Trash', flags: ['\\Trash'], total: 40, unseen: 0 }, { name: 'Archive', path: 'Archive', flags: [], total: 12, unseen: 0 },
-        { name: 'INBOX.Clientes VIP', path: 'INBOX.Clientes VIP', flags: [], total: 5, unseen: 1 }]);
+        { name: 'INBOX.Clientes VIP', path: 'INBOX.Clientes VIP', flags: [], total: 5, unseen: 1 },
+        { name: 'Archivo', path: 'Archivo', flags: [], total: 3, unseen: 0 }, { name: 'Archivo/2022', path: 'Archivo/2022', flags: [], total: 3, unseen: 0 }, { name: 'Notes', path: 'Notes', flags: [], total: 0, unseen: 0 }]);
       case 'list-messages': return r({ messages: msgs, total: 1284 });
       case 'quota': return r({ usedBytes: 1.6e9, limitBytes: 2e9 });
       case 'get-message': return r(full(body.uid));

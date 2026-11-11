@@ -79,7 +79,12 @@ const POR_FLAG: Record<string, RolCarpeta> = {
   '\\sent': 'sent', '\\drafts': 'drafts', '\\junk': 'spam', '\\trash': 'trash', '\\archive': 'archive',
 };
 
+// Marcas internas que pone normalizarCarpetas (no vienen del servidor).
+const SIN_ROL = '\\MoviSinRol';
+const NOMBRE_REAL = '\\MoviNombreReal';
+
 export function rolCarpeta(f: Pick<ImapFolder, 'path' | 'flags'>): RolCarpeta {
+  if ((f.flags || []).includes(SIN_ROL)) return 'otra';
   for (const fl of f.flags || []) {
     const r = POR_FLAG[fl.toLowerCase()];
     if (r) return r;
@@ -97,10 +102,61 @@ const META: Record<RolCarpeta, { label: string; icon: typeof Inbox; orden: numbe
   otra: { label: '', icon: FolderOpen, orden: 9 },
 };
 
+const NOMBRES_COMUNES: Record<string, string> = { notes: 'Notas', starred: 'Destacados', templates: 'Plantillas' };
+
+/**
+ * IMAP guarda los nombres de carpeta con acentos en "UTF-7 modificado"
+ * (RFC 3501): "Mar&AO0-a" es "María". Solo para mostrar: la ruta no se toca.
+ */
+export function decodificarNombreImap(s: string): string {
+  return s.replace(/&([^-]*)-/g, (_m, b64: string) => {
+    if (b64 === '') return '&';
+    try {
+      const bin = atob(b64.replace(/,/g, '/') + '==='.slice((b64.length + 3) % 4));
+      let out = '';
+      for (let i = 0; i + 1 < bin.length; i += 2) out += String.fromCharCode((bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1));
+      return out;
+    } catch { return `&${b64}-`; }
+  });
+}
+
+/** Nombre real de la carpeta, con las subcarpetas como «Padre › Hija». */
+function nombreReal(path: string): string {
+  // IONOS separa subcarpetas con "/"; los servidores tipo Courier usan "INBOX.".
+  const sinInbox = path.replace(/^INBOX[./]/i, '');
+  const partes = (/^INBOX\./i.test(path) ? sinInbox.split('.') : sinInbox.split('/')).filter(Boolean).map(decodificarNombreImap);
+  if (partes.length <= 1) return NOMBRES_COMUNES[sinInbox.toLowerCase()] || partes[0] || sinInbox;
+  return partes.join(' › ');
+}
+
 export function etiquetaCarpeta(f: Pick<ImapFolder, 'path' | 'flags'>): string {
+  if ((f.flags || []).includes(NOMBRE_REAL)) return nombreReal(f.path);
   const r = rolCarpeta(f);
   if (r !== 'otra') return META[r].label;
-  return f.path.replace(/^INBOX[./]/i, '');
+  return nombreReal(f.path);
+}
+
+/**
+ * Si el buzón tiene dos carpetas del mismo tipo (p. ej. "Archive" y "Archivo"),
+ * antes las dos salían como "Archivo". Solo una conserva el papel —la que el
+ * servidor marca con su bandera, o la de nombre estándar— y, cuando hay
+ * varias, todas se muestran con su nombre real para poder distinguirlas.
+ */
+export function normalizarCarpetas(fs: ImapFolder[]): ImapFolder[] {
+  const porRol = new Map<RolCarpeta, ImapFolder[]>();
+  for (const f of fs) {
+    const r = rolCarpeta(f);
+    if (r === 'otra' || r === 'inbox') continue;
+    porRol.set(r, [...(porRol.get(r) || []), f]);
+  }
+  const marcas = new Map<string, string[]>();
+  for (const [, grupo] of porRol) {
+    if (grupo.length < 2) continue;
+    const conBandera = grupo.find(f => (f.flags || []).some(fl => POR_FLAG[fl.toLowerCase()]));
+    const principal = conBandera || grupo[0];
+    for (const f of grupo) marcas.set(f.path, f === principal ? [NOMBRE_REAL] : [NOMBRE_REAL, SIN_ROL]);
+  }
+  return fs.map(f => (marcas.has(f.path) ? { ...f, flags: [...(f.flags || []), ...marcas.get(f.path)!] } : f));
 }
 export function iconoCarpeta(f: Pick<ImapFolder, 'path' | 'flags'>) { return META[rolCarpeta(f)].icon; }
 
