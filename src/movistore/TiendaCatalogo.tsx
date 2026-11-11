@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { StoreProducto, TipoItem } from '@/lib/storeTypes';
+import { esProductoPublico } from './carritoPublico';
+import { BotonCarritoPublico, CtaPedidoPublico, InsigniaSinRegistro } from './PedidoPublicoUI';
 
 const BRAND = '#164281';
 const PLACEHOLDER_SVG =
@@ -71,7 +73,7 @@ export function TiendaCatalogo() {
 
         const { data: rels } = await supabase
           .from('store_catalogo_productos')
-          .select('producto_id, orden, producto:store_productos(*, categoria:store_categorias(id, nombre))')
+          .select('producto_id, orden, producto:store_productos(*, categoria:store_categorias(id, nombre, permite_pedido_publico), atributos:store_producto_atributos(*, opciones:store_producto_atributo_opciones(*)))')
           .eq('catalogo_id', cat.id)
           .order('orden', { ascending: true });
 
@@ -193,6 +195,8 @@ export function TiendaCatalogo() {
             </span>
           </Link>
 
+          <div className="flex items-center gap-2">
+          <BotonCarritoPublico />
           <a
             href="https://app.movi.digital/store"
             target="_blank"
@@ -202,6 +206,7 @@ export function TiendaCatalogo() {
             <span>Ir a MOVI</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
+          </div>
         </div>
       </header>
 
@@ -361,6 +366,7 @@ export function TiendaCatalogo() {
               const esServicio = p.tipo_item === 'servicio';
               const esPorPedido = p.disponibilidad === 'por_pedido';
               const comprarUrl = `https://app.movi.digital/store?producto=${p.id}`;
+              const esPublico = esProductoPublico(p);
 
               return (
                 <div
@@ -376,7 +382,8 @@ export function TiendaCatalogo() {
                         (e.target as HTMLImageElement).src = PLACEHOLDER_SVG;
                       }}
                     />
-                    <div className="absolute top-2.5 left-2.5">
+                    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 items-start">
+                      {esPublico && <InsigniaSinRegistro />}
                       {p.categoria && (
                         <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-white/95 text-surface-800 shadow-sm backdrop-blur-sm">
                           {p.categoria.nombre}
@@ -427,6 +434,9 @@ export function TiendaCatalogo() {
                   </div>
 
                   <div className="p-4 pt-0">
+                    {esPublico ? (
+                      <CtaPedidoPublico producto={p} />
+                    ) : (
                     <a
                       href={comprarUrl}
                       target="_blank"
@@ -436,6 +446,7 @@ export function TiendaCatalogo() {
                       <span>{esServicio ? 'Solicitar en MOVI' : 'Comprar en MOVI'}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </a>
+                    )}
                   </div>
                 </div>
               );

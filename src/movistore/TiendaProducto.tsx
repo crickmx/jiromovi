@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   CheckCircle,
@@ -14,10 +14,15 @@ import {
   ChevronRight,
   Truck,
   CheckCircle2,
-  Share2
+  Share2,
+  Minus,
+  Plus,
+  UserX
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { StoreProducto } from '@/lib/storeTypes';
+import { agregarAlCarritoPublico, esProductoPublico, precioConVariante } from './carritoPublico';
+import { BotonCarritoPublico } from './PedidoPublicoUI';
 
 const BRAND = '#164281';
 const PLACEHOLDER_SVG =
@@ -37,13 +42,16 @@ export function TiendaProducto() {
   const [planSeleccionado, setPlanSeleccionado] = useState<'mensual' | 'anual'>('anual');
   const [variantesMkt, setVariantesMkt] = useState<{ mensual?: StoreProducto; anual?: StoreProducto }>({});
   const [copiado, setCopiado] = useState(false);
+  const [seleccion, setSeleccion] = useState<Record<string, string>>({});
+  const [cantidad, setCantidad] = useState(1);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!id) return;
     setCargando(true);
     supabase
       .from('store_productos')
-      .select('*, categoria:store_categorias(id, nombre), atributos:store_producto_atributos(*, opciones:store_producto_atributo_opciones(*))')
+      .select('*, categoria:store_categorias(id, nombre, permite_pedido_publico), atributos:store_producto_atributos(*, opciones:store_producto_atributo_opciones(*))')
       .eq('id', id)
       .eq('activo', true)
       .maybeSingle()
@@ -96,7 +104,22 @@ export function TiendaProducto() {
 
   const comprarUrl = `https://app.movi.digital/store${productoEfectivoId ? `?producto=${productoEfectivoId}` : ''}`;
 
-  const atributosConOpciones = (producto?.atributos ?? []).filter(a => (a.opciones ?? []).length > 0);
+  const atributosConOpciones = (producto?.atributos ?? [])
+    .filter(a => (a.opciones ?? []).some(o => o.activo))
+    .sort((a, b) => a.orden - b.orden);
+  const esPublico = esProductoPublico(producto) && !esPremium;
+  const faltanOpciones = atributosConOpciones.filter(a => !seleccion[a.nombre]);
+  const precioPublico = producto && esPublico ? precioConVariante(producto) : precioEfectivo;
+
+  const agregarPedido = (irAlPedido: boolean) => {
+    if (!producto || faltanOpciones.length > 0) return;
+    agregarAlCarritoPublico(producto, cantidad, seleccion);
+    if (irAlPedido) navigate('/pedido');
+    else {
+      setSeleccion({});
+      setCantidad(1);
+    }
+  };
 
   const ogImage = producto?.imagen_url || 'https://app.movi.digital/movirecurso_7.png';
   const ogTitle = producto ? `${producto.titulo} — MOVI Store` : 'MOVI Store';
@@ -153,6 +176,7 @@ export function TiendaProducto() {
           </Link>
 
           <div className="flex items-center gap-2">
+            <BotonCarritoPublico />
             <button
               onClick={compartir}
               className="p-2 rounded-lg bg-white/10 text-neutral-200 hover:text-white hover:bg-white/20 transition-colors text-xs font-medium flex items-center gap-1.5"
@@ -247,7 +271,7 @@ export function TiendaProducto() {
               <div className="bg-surface-card p-5 rounded-2xl border border-surface-200/80 shadow-card">
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl sm:text-4xl font-black text-accent-ink leading-none">
-                    {fmt(precioEfectivo)}
+                    {fmt(esPublico ? precioPublico : precioEfectivo)}
                   </span>
                   <span className="text-xs font-bold uppercase tracking-wider text-surface-500">
                     MXN {esPremium ? `/ ${planSeleccionado === 'mensual' ? 'mes' : 'año'}` : ''}
@@ -325,7 +349,7 @@ export function TiendaProducto() {
               )}
 
               {/* Attributes / Options preview */}
-              {!esPremium && atributosConOpciones.length > 0 && (
+              {!esPremium && !esPublico && atributosConOpciones.length > 0 && (
                 <div className="bg-surface-card p-5 rounded-2xl border border-surface-200/80 shadow-card space-y-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-surface-700">
                     Opciones y Variantes Disponibles:
@@ -370,13 +394,93 @@ export function TiendaProducto() {
                 </div>
               )}
 
+              {/* Pedido sin registro (categorías públicas) */}
+              {esPublico && (
+                <div className="bg-surface-card p-5 rounded-2xl border-2 border-amber-400 shadow-card space-y-4">
+                  <div className="flex items-start gap-2.5">
+                    <UserX className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-sm text-surface-700">
+                      <strong className="text-surface-900">Puedes pedirlo sin registrarte.</strong> Solo te pediremos nombre, correo, WhatsApp y oficina.
+                    </p>
+                  </div>
+
+                  {atributosConOpciones.map(attr => (
+                    <fieldset key={attr.id} className="space-y-1.5">
+                      <legend className="text-xs font-bold text-surface-700 mb-1.5">{attr.nombre} *</legend>
+                      <div className="flex flex-wrap gap-2">
+                        {(attr.opciones ?? [])
+                          .filter(o => o.activo)
+                          .sort((a, b) => a.orden - b.orden)
+                          .map(opt => {
+                            const activa = seleccion[attr.nombre] === opt.valor;
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                aria-pressed={activa}
+                                onClick={() => setSeleccion(prev => ({ ...prev, [attr.nombre]: opt.valor }))}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border-2 transition-all ${
+                                  activa
+                                    ? 'border-accent bg-blue-50 text-surface-900'
+                                    : 'border-surface-200 bg-white text-surface-700 hover:border-surface-300'
+                                }`}
+                              >
+                                {opt.valor}
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </fieldset>
+                  ))}
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-surface-700">Cantidad</span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" aria-label="Menos" onClick={() => setCantidad(c => Math.max(1, c - 1))} disabled={cantidad <= 1} className="w-8 h-8 rounded-lg border border-surface-300 flex items-center justify-center disabled:opacity-40">
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="w-8 text-center font-bold">{cantidad}</span>
+                      <button type="button" aria-label="Más" onClick={() => setCantidad(c => Math.min(999, c + 1))} className="w-8 h-8 rounded-lg border border-surface-300 flex items-center justify-center">
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => agregarPedido(true)}
+                      disabled={faltanOpciones.length > 0}
+                      className="inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-[#040c1f] font-black text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Pedir sin registro
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => agregarPedido(false)}
+                      disabled={faltanOpciones.length > 0}
+                      className="inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-surface-300 bg-white hover:bg-surface-50 text-surface-800 font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" /> Agregar y seguir viendo
+                    </button>
+                  </div>
+                  {faltanOpciones.length > 0 && (
+                    <p className="text-[11px] text-surface-500">
+                      Elige {faltanOpciones.map(a => a.nombre.toLowerCase()).join(' y ')} para continuar.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Purchase CTA */}
               <div className="space-y-3 pt-2">
                 <a
                   href={comprarUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-2 py-4 px-8 rounded-2xl text-accent-foreground font-bold text-base bg-accent hover:bg-[#1e5fac] active:scale-[0.99] transition-all shadow-lg shadow-blue-900/30"
+                  className={esPublico
+                    ? 'w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-2xl text-accent-ink font-bold text-sm border border-surface-300 bg-white hover:bg-surface-50 transition-all'
+                    : 'w-full inline-flex items-center justify-center gap-2 py-4 px-8 rounded-2xl text-accent-foreground font-bold text-base bg-accent hover:bg-[#1e5fac] active:scale-[0.99] transition-all shadow-lg shadow-blue-900/30'}
                 >
                   <span>
                     {esServicio
@@ -388,7 +492,9 @@ export function TiendaProducto() {
                   <ExternalLink className="w-4 h-4" />
                 </a>
                 <p className="text-[11px] text-surface-400 text-center font-medium">
-                  Se abrirá tu sesión en MOVI Digital para confirmar métodos de pago, personalización y entrega.
+                  {esPublico
+                    ? '¿Ya tienes cuenta MOVI? También puedes pedirlo desde la plataforma.'
+                    : 'Se abrirá tu sesión en MOVI Digital para confirmar métodos de pago, personalización y entrega.'}
                 </p>
               </div>
             </div>
