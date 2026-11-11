@@ -3,6 +3,8 @@ export interface StoreCategoria {
   nombre: string;
   descripcion?: string;
   activo: boolean;
+  /** Productos de esta categoría se pueden pedir sin sesión en tienda.movi.digital */
+  permite_pedido_publico?: boolean;
   created_at: string;
 }
 
@@ -132,6 +134,15 @@ export interface StorePedido {
   cobrado?: boolean;
   cobrado_en?: string;
   cobrado_por?: string;
+  // Pedido público (sin sesión) — usuario_id es null hasta asociarlo
+  es_publico?: boolean;
+  invitado_nombre?: string | null;
+  invitado_email?: string | null;
+  invitado_whatsapp?: string | null;
+  invitado_oficina_id?: string | null;
+  invitado_oficina_nombre?: string | null;
+  asociado_por?: string | null;
+  asociado_en?: string | null;
   // Relaciones
   estatus?: StoreEstatusPedido;
   usuario?: {
