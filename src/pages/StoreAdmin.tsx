@@ -720,6 +720,11 @@ export default function StoreAdmin() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-1">{categoria.nombre}</h3>
+                      {categoria.permite_pedido_publico && (
+                        <span className="inline-block mb-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900">
+                          Pedido sin registro
+                        </span>
+                      )}
                       {categoria.descripcion && (
                         <p className="text-sm text-neutral-600 dark:text-white/60">{categoria.descripcion}</p>
                       )}
@@ -1544,6 +1549,7 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
   const [nombre, setNombre] = useState(categoria?.nombre || '');
   const [descripcion, setDescripcion] = useState(categoria?.descripcion || '');
   const [activo, setActivo] = useState(categoria?.activo ?? true);
+  const [permitePedidoPublico, setPermitePedidoPublico] = useState(categoria?.permite_pedido_publico ?? false);
   const [guardando, setGuardando] = useState(false);
 
   const handleGuardar = async () => {
@@ -1558,7 +1564,8 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
       const datos = {
         nombre,
         descripcion,
-        activo
+        activo,
+        permite_pedido_publico: permitePedidoPublico
       };
 
       if (categoria) {
@@ -1621,6 +1628,22 @@ function CategoriaModal({ categoria, onClose, onGuardar }: CategoriaModalProps) 
           />
           <label htmlFor="activo-cat" className="text-sm font-medium text-neutral-700 dark:text-white/70">
             Categoría activa
+          </label>
+        </div>
+
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 p-3">
+          <input
+            type="checkbox"
+            id="publico-cat"
+            checked={permitePedidoPublico}
+            onChange={(e) => setPermitePedidoPublico(e.target.checked)}
+            className="w-4 h-4 mt-0.5 text-accent-ink rounded focus:ring-2 focus:ring-accent/40"
+          />
+          <label htmlFor="publico-cat" className="text-sm text-neutral-700 dark:text-white/70">
+            <span className="font-semibold text-neutral-900 dark:text-white">Temporal / Pública: permite pedido sin registro</span>
+            <span className="block text-xs mt-0.5">
+              Sus productos aparecen destacados en tienda.movi.digital y cualquiera puede pedirlos con nombre, correo, WhatsApp y oficina. Luego se asocian a un usuario MOVI desde Pedidos.
+            </span>
           </label>
         </div>
 
