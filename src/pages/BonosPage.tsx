@@ -58,7 +58,7 @@ const SECTIONS: SectionDef[] = [
   { label: 'Cob. Pendiente', path: '/etl/cobranza-pendiente/', icon: Clock, show: () => true },
   { label: 'Renovaciones', path: '/reporting/renovaciones/', icon: RefreshCw, show: () => true },
   { label: 'Produccion', path: '/calculations/results/', icon: DollarSign, show: () => true },
-  { label: 'Simulador de Bonos', path: '/simulador/', icon: Calculator, show: p => p.can_simulador },
+  { label: 'Simulador de Metas', path: '/simulador/', icon: Calculator, show: p => p.can_simulador },
   { label: 'Metas', path: '/metas/', icon: Target, show: p => p.can_admin },
   { label: 'Config. Metas', path: '/metas/config/', icon: Target, show: no_dirreg },
   { label: 'Config. de Bonos', path: '/catalogs/', icon: BookOpen, show: no_dirreg },
