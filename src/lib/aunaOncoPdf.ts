@@ -99,7 +99,8 @@ function dibujarLogo(doc: jsPDF, img: { data: string; w: number; h: number }, x:
   const w = img.w * escala;
   const h = img.h * escala;
   const fmtImg = img.data.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-  doc.addImage(img.data, fmtImg, alinear === 'izq' ? x : x - w, y + (maxH - h) / 2, w, h);
+  // 'FAST' = deflate: sin él jsPDF guarda el PNG sin comprimir (logojiro.png de 3789 px → PDF de 22 MB).
+  doc.addImage(img.data, fmtImg, alinear === 'izq' ? x : x - w, y + (maxH - h) / 2, w, h, undefined, 'FAST');
 }
 
 const COBERTURAS_ALCANCE: [string, string][] = [

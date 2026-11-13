@@ -254,7 +254,9 @@ export async function generateCommissionPDF(
       dimensions.x,
       dimensions.y,
       dimensions.width,
-      dimensions.height
+      dimensions.height,
+      undefined,
+      'FAST'
     );
   } catch (error) {
     console.warn('No se pudo cargar el logo de oficina:', error);
@@ -506,7 +508,9 @@ export async function generateOrdenDePagoPDF(
       marginLeft,
       8,
       dimensions.width,
-      dimensions.height
+      dimensions.height,
+      undefined,
+      'FAST'
     );
   } catch (error) {
     console.warn('No se pudo cargar el logo de oficina:', error);
