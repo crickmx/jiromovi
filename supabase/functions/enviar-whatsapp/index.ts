@@ -2,6 +2,63 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
 import { readWazzupResponse } from "../_shared/wazzupDelivery.ts";
+// ===== Guardia de autenticación MOVI (2026-11-17) =====
+// Uso, al inicio del handler (después de OPTIONS):
+//   const __denied = await __moviGuard(req, { roles: [...], allowService: true });
+//   if (__denied) return __denied;
+// roles: valores de usuarios.rol permitidos para llamadas con sesión ([] = ninguna).
+// allowService: acepta llamadas internas (cron/SQL/otras funciones) con la service key
+//   legacy (== SUPABASE_SERVICE_ROLE_KEY) o con una llave sb_secret_ válida
+//   (se valida contra /auth/v1/admin y se cachea en memoria).
+const __moviOkSecrets = new Set<string>();
+async function __moviGuard(req: Request, opts: { roles: string[]; allowService: boolean }): Promise<Response | null> {
+  const h = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Content-Type": "application/json" };
+  const deny = (status: number, msg: string) => new Response(JSON.stringify({ success: false, error: msg }), { status, headers: h });
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const legacyService = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const apikeyHdr = (req.headers.get("apikey") ?? "").trim();
+  if (opts.allowService) {
+    for (const k of [bearer, apikeyHdr]) {
+      if (!k) continue;
+      if (legacyService && k === legacyService) return null;
+      if (k.startsWith("sb_secret_")) {
+        if (__moviOkSecrets.has(k)) return null;
+        const r = await fetch(`${url}/auth/v1/admin/users?per_page=1`, { headers: { apikey: k } });
+        await r.body?.cancel();
+        if (r.ok) { __moviOkSecrets.add(k); return null; }
+      }
+    }
+    // El gateway convierte las llaves sb_secret_ en un JWT temporal con role=service_role.
+    // Se valida la firma pidiéndole a Auth un endpoint de admin con ese JWT.
+    if (bearer.startsWith("eyJ")) {
+      let role = "";
+      try {
+        const b64 = bearer.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        role = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)))?.role ?? "";
+      } catch { /* no es JWT */ }
+      if (role === "service_role") {
+        if (__moviOkSecrets.has(bearer)) return null;
+        const r = await fetch(`${url}/auth/v1/admin/users?per_page=1`, { headers: { Authorization: `Bearer ${bearer}`, apikey: Deno.env.get("SUPABASE_ANON_KEY") ?? bearer } });
+        await r.body?.cancel();
+        if (r.ok) { __moviOkSecrets.add(bearer); return null; }
+      }
+    }
+  }
+  if (!bearer || !bearer.startsWith("eyJ")) return deny(401, "No autenticado");
+  if (opts.roles.length === 0) return deny(403, "No autorizado");
+  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? legacyService;
+  const ur = await fetch(`${url}/auth/v1/user`, { headers: { Authorization: `Bearer ${bearer}`, apikey: anon } });
+  if (!ur.ok) { await ur.body?.cancel(); return deny(401, "No autenticado"); }
+  const user = await ur.json();
+  if (!user?.id) return deny(401, "No autenticado");
+  const q = await fetch(`${url}/rest/v1/usuarios?id=eq.${encodeURIComponent(user.id)}&select=rol,activo,is_deleted`, { headers: { Authorization: `Bearer ${legacyService}`, apikey: legacyService } });
+  const rows = q.ok ? await q.json() : [];
+  const me = Array.isArray(rows) ? rows[0] : null;
+  if (!me || me.activo === false || me.is_deleted === true || !opts.roles.includes(me.rol)) return deny(403, "No autorizado");
+  return null;
+}
+// ===== fin guardia =====
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,6 +113,8 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
+  const __denied = await __moviGuard(req, { roles: ["Administrador","Gerente","Ejecutivo","Empleado"], allowService: true });
+  if (__denied) return __denied;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
