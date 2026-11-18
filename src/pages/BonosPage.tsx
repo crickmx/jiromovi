@@ -103,7 +103,11 @@ export default function BonosPage() {
   const ssoConfirmedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxRetries = 2;
-  const SSO_TIMEOUT_MS = 20000;
+  // CP manda su aviso cuando el servidor termina la página, y la de Inicio de quien ve
+  // toda la producción puede tardar más de 20 s. Reintentar por lentitud NO acelera:
+  // recarga el iframe y arranca otro cálculo pesado mientras el anterior sigue ocupando
+  // un worker de CP, y eso alentaba el portal para todos. Por eso el timeout ya no reintenta.
+  const SSO_TIMEOUT_MS = 60000;
   type ErrorReason = 'no_session' | 'timeout' | 'login_redirect' | null;
   const [errorReason, setErrorReason] = useState<ErrorReason>(null);
   const [showTramiteModal, setShowTramiteModal] = useState(false);
@@ -176,12 +180,8 @@ export default function BonosPage() {
       setSrc(url);
       timeoutRef.current = setTimeout(() => {
         if (!ssoConfirmedRef.current) {
-          if (retryCount < maxRetries) {
-            setRetryCount(c => c + 1);
-          } else {
-            setError(true);
-            setErrorReason('timeout');
-          }
+          setError(true);
+          setErrorReason('timeout');
         }
       }, SSO_TIMEOUT_MS);
     });
