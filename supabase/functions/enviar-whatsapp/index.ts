@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
+import { readWazzupResponse } from "../_shared/wazzupDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -126,8 +127,9 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
+    const { text: msgText, messageId: providerMessageId } = await readWazzupResponse(msgRes);
     if (!msgRes.ok) {
-      const errText = await msgRes.text();
+      const errText = msgText;
       return new Response(
         JSON.stringify({ success: false, error: `Wazzup ${msgRes.status}: ${errText}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -194,7 +196,7 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
-      await supabase.rpc('registrar_envio_notificacion', {
+      const { data: historialId } = await supabase.rpc('registrar_envio_notificacion', {
         p_tipo_notificacion_codigo: 'whatsapp_directo',
         p_canal_envio: 'whatsapp',
         p_usuario_id: null,
@@ -207,8 +209,12 @@ Deno.serve(async (req: Request) => {
         p_error_mensaje: null,
         p_enviado_por: null,
         p_evento_id: payload.evento_id || null,
-        p_provider_response: { documents_sent: documentsSent, documents_failed: failedDocuments }
+        p_provider_response: { messageId: providerMessageId, documents_sent: documentsSent, documents_failed: failedDocuments }
       });
+      // Para que el webhook pueda marcarlo como fallido si WhatsApp lo rechaza después.
+      if (historialId && providerMessageId) {
+        await supabase.from('correo_historial_envios').update({ provider_message_id: providerMessageId, proveedor: 'wazzup24' }).eq('id', historialId);
+      }
     } catch (logErr) {
       console.error('enviar-whatsapp: error logging send:', logErr);
     }

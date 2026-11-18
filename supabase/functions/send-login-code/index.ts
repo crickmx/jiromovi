@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
+import { readWazzupResponse } from "../_shared/wazzupDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -571,6 +572,7 @@ Deno.serve(async (req: Request) => {
     // ── Send WhatsApp via Wazzup ──────────────────────────────────────────────
     let whatsappSent = false;
     let whatsappError: string | null = null;
+    let whatsappMessageId: string | null = null;
 
     if (userPhone && waApiKey && waConfigChannelId) {
       const normalizedPhone = normalizePhoneMX(userPhone);
@@ -588,10 +590,12 @@ Deno.serve(async (req: Request) => {
             text: whatsappText,
           }),
         });
+        const waResp = await readWazzupResponse(waRes);
         if (waRes.ok) {
           whatsappSent = true;
+          whatsappMessageId = waResp.messageId;
         } else {
-          const waBody = await waRes.text();
+          const waBody = waResp.text;
           console.error('Wazzup error:', waRes.status, waBody, 'phone:', normalizedPhone);
           whatsappError = `${waRes.status}: ${waBody.slice(0, 200)}`;
         }
@@ -617,6 +621,7 @@ Deno.serve(async (req: Request) => {
         channel_id: waChannelId,
         channel_name: waChannelName,
         channel_type: 'whatsapp_wazzup24',
+        provider_message_id: whatsappMessageId,
         fecha_envio: whatsappSent ? new Date().toISOString() : null,
       }).then(({ error: logErr }) => {
         if (logErr) console.error('WhatsApp log insert error:', logErr.message);

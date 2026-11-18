@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
+import { markWazzupDeliveryFailed, describeWazzupError } from "../_shared/wazzupDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,9 +72,12 @@ Deno.serve(async (req: Request) => {
 
     // Handle status updates
     if (parsedPayload!.statuses && Array.isArray(parsedPayload!.statuses)) {
-      const statuses = parsedPayload!.statuses as Array<{ status: string; messageId: string }>;
+      const statuses = parsedPayload!.statuses as Array<{ status: string; messageId: string; error?: unknown }>;
       for (const s of statuses) {
-        if (["sent", "delivered", "read"].includes(s.status)) {
+        if (s.status === "error" && s.messageId) {
+          const r = await markWazzupDeliveryFailed(supabase, s.messageId, s.error);
+          logs.push(`status_error_${s.messageId}_historial=${r.historial}${r.errors.length ? "_err=" + r.errors.join("|") : ""}`);
+        } else if (["sent", "delivered", "read"].includes(s.status)) {
           await supabase
             .from("contact_center_messages")
             .update({ status: s.status, updated_at: new Date().toISOString() })
@@ -235,6 +239,14 @@ Deno.serve(async (req: Request) => {
 
         logs.push(`msg_${msg.messageId}_status=${msg.status}_echo=${msg.isEcho}_inbound=${isInbound}_type=${msg.type}`);
 
+        // WhatsApp rechazó un mensaje que Wazzup ya había aceptado: marcar el envío como fallido
+        // (historial de notificaciones + centro de contacto) para que no se vea como "enviado".
+        const deliveryFailed = msg.status === "error";
+        if (deliveryFailed && msg.messageId) {
+          const r = await markWazzupDeliveryFailed(supabase, msg.messageId as string, msg.error);
+          logs.push(`delivery_error_${msg.messageId}_historial=${r.historial}${r.errors.length ? "_err=" + r.errors.join("|") : ""}`);
+        }
+
         // Non-echo outbound: just update status
         if (!isInbound && !isOutboundEcho) {
           if (["sent", "delivered", "read"].includes(msg.status as string)) {
@@ -299,7 +311,7 @@ Deno.serve(async (req: Request) => {
             }
           }
           direction = "outbound";
-          status = "sent";
+          status = deliveryFailed ? "failed" : "sent";
           senderType = "user";
         } else {
           // INBOUND: chatId is the SENDER (client phone)
@@ -341,6 +353,7 @@ Deno.serve(async (req: Request) => {
             provider: "wazzup",
             provider_message_id: msg.messageId,
             provider_response: msg,
+            error_message: deliveryFailed ? `Wazzup: ${describeWazzupError(msg.error)}` : null,
             attachment_urls: attachmentUrls,
             created_at: msg.dateTime || new Date().toISOString(),
             updated_at: new Date().toISOString(),
