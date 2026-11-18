@@ -382,6 +382,7 @@ Deno.serve(async (req: Request) => {
           channel_id: waChannel.channel_id,
           channel_name: waChannel.channel_name,
           channel_type: "whatsapp_wazzup24",
+          provider_message_id: waOk ? (waBody as { messageId?: string })?.messageId ?? null : null,
         });
 
         results.whatsapp = {

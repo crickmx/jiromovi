@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
+import { readWazzupResponse } from "../_shared/wazzupDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -517,6 +518,7 @@ Deno.serve(async (req: Request) => {
                 headers: { Authorization: `Bearer ${waChannel.api_key}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ channelId: waChannel.channel_id_uuid, chatType: "whatsapp", chatId, text: message }),
               });
+              const waResp = await readWazzupResponse(msgRes);
 
               if (msgRes.ok) {
                 if (isTicketEvent && ticketId) {
@@ -555,11 +557,12 @@ Deno.serve(async (req: Request) => {
                   channel_id: waChannel.channel_id || null,
                   channel_name: waChannel.channel_name || null,
                   channel_type: "whatsapp_wazzup24",
+                  provider_message_id: waResp.messageId,
                   fecha_envio: new Date().toISOString(),
                 });
                 processed++;
               } else {
-                const errText = await msgRes.text();
+                const errText = waResp.text;
                 await supabase
                   .from("notification_jobs")
                   .update({

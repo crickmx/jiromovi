@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     // IMPORTANTE: Registrar envío en historial
     console.log('Registering WhatsApp in history...');
     try {
-      await supabaseClient.rpc('registrar_envio_notificacion', {
+      const { data: historialId } = await supabaseClient.rpc('registrar_envio_notificacion', {
         p_tipo_notificacion_codigo: 'whatsapp_directo',
         p_canal_envio: 'whatsapp',
         p_usuario_id: null,
@@ -156,6 +156,11 @@ Deno.serve(async (req) => {
         p_evento_id: null,
         p_provider_response: wazzupData
       });
+      // Para que el webhook pueda marcarlo como fallido si WhatsApp lo rechaza después.
+      const providerMessageId = typeof wazzupData?.messageId === 'string' ? wazzupData.messageId : null;
+      if (success && historialId && providerMessageId) {
+        await supabaseClient.from('correo_historial_envios').update({ provider_message_id: providerMessageId, proveedor: 'wazzup24' }).eq('id', historialId);
+      }
       console.log('WhatsApp logged successfully');
     } catch (logErr) {
       console.error('Exception logging WhatsApp:', logErr);

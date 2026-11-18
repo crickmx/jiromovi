@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
+import { readWazzupResponse } from "../_shared/wazzupDelivery.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -370,7 +371,7 @@ async function sendWhatsApp(
   phone: string,
   message: string,
   attachments: Array<{ fileName: string; filePath: string }>
-): Promise<{ sent: boolean; documentsSent: number; error?: string; failedDocs: string[] }> {
+): Promise<{ sent: boolean; documentsSent: number; error?: string; failedDocs: string[]; messageId?: string | null }> {
   let normalizedPhone = phone.replace(/[^0-9]/g, "");
   if (normalizedPhone.length === 10) {
     normalizedPhone = "521" + normalizedPhone;
@@ -382,6 +383,7 @@ async function sendWhatsApp(
   const chatId = normalizedPhone;
   const failedDocs: string[] = [];
   let documentsSent = 0;
+  let messageId: string | null = null;
 
   try {
     const res = await fetch("https://api.wazzup24.com/v3/message", {
@@ -389,8 +391,10 @@ async function sendWhatsApp(
       headers: { Authorization: `Bearer ${channel.api_key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ channelId: channel.channel_id_uuid, chatType: "whatsapp", chatId, text: message }),
     });
+    const resp = await readWazzupResponse(res);
+    messageId = resp.messageId;
     if (!res.ok) {
-      const err = await res.text();
+      const err = resp.text;
       return { sent: false, documentsSent: 0, error: `Wazzup ${res.status}: ${err}`, failedDocs: attachments.map(a => a.fileName) };
     }
   } catch (err) {
@@ -415,7 +419,7 @@ async function sendWhatsApp(
     } catch { failedDocs.push(att.fileName); }
   }
 
-  return { sent: true, documentsSent, failedDocs };
+  return { sent: true, documentsSent, failedDocs, messageId };
 }
 
 // ============================================================
@@ -583,6 +587,7 @@ Deno.serve(async (req: Request) => {
     // 8. Send WhatsApp via resolved channel
     let whatsappSent = false;
     let whatsappError: string | null = null;
+    let whatsappMessageId: string | null = null;
     let whatsappDocsSent = 0;
     let whatsappFailedDocs: string[] = [];
 
@@ -590,6 +595,7 @@ Deno.serve(async (req: Request) => {
       const waResult = await sendWhatsApp(waChannel, supabase, userPhone, renderedWhatsApp, attachments);
       whatsappSent = waResult.sent;
       whatsappError = waResult.error || null;
+      whatsappMessageId = waResult.messageId ?? null;
       whatsappDocsSent = waResult.documentsSent;
       whatsappFailedDocs = waResult.failedDocs;
     } else if (!waChannel) {
@@ -713,6 +719,7 @@ Deno.serve(async (req: Request) => {
         channel_id: waChannel?.channel_id || null,
         channel_name: waChannel?.channel_name || null,
         channel_type: waChannel ? "whatsapp_wazzup24" : null,
+        provider_message_id: whatsappMessageId,
         error_mensaje: whatsappError || null,
         fecha_envio: new Date().toISOString(),
       }).catch(() => {});
