@@ -890,7 +890,7 @@ export function SegurosEducationOnDemand() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className="text-base font-bold text-neutral-900 dark:text-white">Lecciones disponibles</h2>
-            <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">{filteredLessons.length} lección{filteredLessons.length !== 1 ? 'es' : ''}</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">{filteredLessons.length} {filteredLessons.length === 1 ? 'lección' : 'lecciones'}</p>
           </div>
           {isAdmin && (
             <div className="flex gap-2 flex-wrap">
@@ -1185,7 +1185,7 @@ export function SegurosEducationOnDemand() {
 
             {/* Video: 16:9 con techo de altura para que quepa el material */}
             <div className="w-full shrink-0 overflow-hidden bg-black">
-              <div className="mx-auto aspect-video max-h-[56vh] w-full">
+              <div className="relative mx-auto aspect-video max-h-[56vh] w-full overflow-hidden">
                 <VideoPlayer
                   videoUrl={selectedLesson.video_url}
                   initialTime={selectedLesson.tiempo_reproduccion || 0}
