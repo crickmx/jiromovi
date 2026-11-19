@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
             upsert: true,
             duplex: 'half',
           } as unknown as { contentType: string; upsert: boolean });
-        if (error) throw error;
+        if (error) throw new Error(error.message || JSON.stringify(error));
         subido = true;
       } catch (e) {
         console.warn('aula-daily-webhook: streaming falló, se reintenta en memoria', e);
@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
         const { error } = await admin.storage
           .from('aula-grabaciones')
           .upload(path, buf, { contentType: 'video/mp4', upsert: true });
-        if (error) throw error;
+        if (error) throw new Error(error.message || JSON.stringify(error));
         subido = true;
       }
 

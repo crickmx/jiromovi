@@ -101,9 +101,9 @@ async function transcribir(audio: Uint8Array): Promise<string | null> {
 }
 
 // ── Portada con IA ──────────────────────────────────────────────────────────
-async function generarPortada(titulo: string, categoria: string | null): Promise<string | null> {
+async function generarPortada(titulo: string, categoria: string | null): Promise<{ url: string | null; error: string | null }> {
   const key = Deno.env.get('OPENAI_API_KEY');
-  if (!key) return null;
+  if (!key) return { url: null, error: 'Falta OPENAI_API_KEY' };
 
   const prompt = [
     'Portada corporativa horizontal para una clase en línea de seguros y capacitación profesional.',
@@ -114,10 +114,28 @@ async function generarPortada(titulo: string, categoria: string | null): Promise
     'Composición amplia con espacio negativo, sin texto, sin letras, sin logotipos, sin personas reconocibles.',
   ].join(' ');
 
-  const modelos = [
-    { model: 'gpt-image-1', size: '1536x1024' },
-    { model: 'dall-e-3', size: '1792x1024' },
-  ];
+  // Los nombres de modelo cambian con la cuenta: se pregunta cuáles hay.
+  let disponibles: string[] = [];
+  try {
+    const lista = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${key}` } });
+    if (lista.ok) {
+      const data = await lista.json();
+      disponibles = (data?.data ?? []).map((m: { id: string }) => m.id).filter((id: string) => /image|dall|flux|sdxl/i.test(id));
+    }
+  } catch {
+    /* si no se puede listar, se intenta con los nombres conocidos */
+  }
+
+  const candidatos = disponibles.length
+    ? disponibles
+    : ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
+
+  const modelos = candidatos.flatMap((model) =>
+    model.includes('dall-e-2')
+      ? [{ model, size: '1024x1024' }]
+      : [{ model, size: '1536x1024' }, { model, size: '1024x1024' }],
+  );
+  let ultimoError: string | null = null;
 
   for (const cfg of modelos) {
     try {
@@ -127,7 +145,9 @@ async function generarPortada(titulo: string, categoria: string | null): Promise
         body: JSON.stringify({ ...cfg, n: 1, prompt }),
       });
       if (!res.ok) {
-        console.error('portada', cfg.model, res.status, (await res.text()).slice(0, 200));
+        const detalle = (await res.text()).slice(0, 200);
+        ultimoError = [cfg.model + ': ' + detalle, ultimoError].filter(Boolean).join(' || ');
+        console.error('portada', cfg.model, res.status, detalle);
         continue;
       }
       const data = await res.json();
@@ -148,13 +168,17 @@ async function generarPortada(titulo: string, categoria: string | null): Promise
       const { error } = await admin.storage
         .from('aula-portadas')
         .upload(path, bytes, { contentType: 'image/png', upsert: false });
-      if (error) continue;
-      return admin.storage.from('aula-portadas').getPublicUrl(path).data.publicUrl;
+      if (error) {
+        ultimoError = `storage: ${error.message}`;
+        continue;
+      }
+      return { url: admin.storage.from('aula-portadas').getPublicUrl(path).data.publicUrl, error: null };
     } catch (e) {
-      console.error('portada', cfg.model, e instanceof Error ? e.message : e);
+      ultimoError = e instanceof Error ? e.message : String(e);
+      console.error('portada', cfg.model, ultimoError);
     }
   }
-  return null;
+  return { url: null, error: ultimoError ?? 'sin respuesta de OpenAI' };
 }
 
 Deno.serve(async (req) => {
@@ -177,7 +201,7 @@ Deno.serve(async (req) => {
   try {
     const { data: evento } = await admin
       .from('aula_eventos')
-      .select('id, titulo, descripcion, fecha_inicio, estado, leccion_id, categoria_id, portada_url, transcribir')
+      .select('id, titulo, descripcion, fecha_inicio, estado, leccion_id, categoria_id, portada_url, transcribir, creado_por')
       .eq('id', eventoId)
       .maybeSingle();
     if (!evento) return json({ error: 'Evento no encontrado' }, 404);
@@ -195,7 +219,7 @@ Deno.serve(async (req) => {
       const { data, error } = await admin.storage
         .from(BUCKET_VIDEO)
         .createSignedUploadUrl(path);
-      if (error) throw error;
+      if (error) throw new Error(error.message || JSON.stringify(error));
 
       return json({ path, token: data.token, signedUrl: data.signedUrl });
     }
@@ -235,6 +259,7 @@ Deno.serve(async (req) => {
 
     // 2) Portada con IA (si ya hay una, se respeta)
     let portada = evento.portada_url as string | null;
+    let portadaError: string | null = null;
     if (!portada) {
       let categoriaNombre: string | null = null;
       if (evento.categoria_id) {
@@ -245,7 +270,10 @@ Deno.serve(async (req) => {
           .maybeSingle();
         categoriaNombre = cat?.nombre ?? null;
       }
-      portada = await generarPortada(evento.titulo as string, categoriaNombre);
+      const gen = await generarPortada(evento.titulo as string, categoriaNombre);
+      portada = gen.url;
+      portadaError = gen.error;
+      if (gen.error) console.error('aula-publicar: portada', gen.error);
     }
 
     // 3) Lección On Demand
@@ -257,7 +285,9 @@ Deno.serve(async (req) => {
       video_url: videoUrl,
       duracion: minutos(duracion),
       es_grabacion: true,
-      session_id: eventoId,
+      // Ojo: seguros_lessons.session_id apunta a seguros_sessions (el temario de
+      // On Demand), no al evento. El vínculo clase→lección vive en
+      // aula_eventos.leccion_id y aquí no se toca.
       fecha_creacion: evento.fecha_inicio ?? new Date().toISOString(),
       oficinas_asignadas: null,
     };
@@ -270,7 +300,7 @@ Deno.serve(async (req) => {
         .insert({ ...payloadLeccion, creado_por: user?.id ?? null })
         .select('id')
         .maybeSingle();
-      if (error) throw error;
+      if (error) throw new Error(error.message || JSON.stringify(error));
       leccionId = nueva!.id;
     }
 
@@ -299,10 +329,21 @@ Deno.serve(async (req) => {
       .select('nombre, empresa')
       .eq('evento_id', eventoId)
       .order('primera_entrada');
-    const { data: hosts } = await admin
+    let { data: hosts } = await admin
       .from('aula_evento_hosts')
       .select('rol, usuarios(nombre_completo, nombre, apellidos)')
       .eq('evento_id', eventoId);
+
+    // Clases creadas fuera de la UI (o antes de esta versión) no tienen host
+    // registrado: se usa el creador del evento para que la ficha nunca salga vacía.
+    if (!hosts?.length && evento.creado_por) {
+      const { data: autor } = await admin
+        .from('usuarios')
+        .select('nombre_completo, nombre, apellidos')
+        .eq('id', evento.creado_por as string)
+        .maybeSingle();
+      if (autor) hosts = [{ rol: 'host', usuarios: autor } as unknown as typeof hosts[number]];
+    }
 
     type HostRow = { rol: string; usuarios?: { nombre_completo?: string; nombre?: string; apellidos?: string } | null };
     type InvitadoRow = { nombre: string; empresa: string };
@@ -411,7 +452,7 @@ Deno.serve(async (req) => {
       .update({ leccion_id: leccionId, portada_url: portada })
       .eq('id', eventoId);
 
-    return json({ ok: true, leccion_id: leccionId, portada_url: portada, documentos: docs.length, transcrito: !!transcripcion });
+    return json({ ok: true, leccion_id: leccionId, portada_url: portada, portada_error: portadaError, documentos: docs.length, transcrito: !!transcripcion });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Error interno';
     console.error('aula-publicar', accion, msg);
