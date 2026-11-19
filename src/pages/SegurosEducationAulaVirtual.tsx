@@ -251,6 +251,8 @@ export function SegurosEducationAulaVirtual() {
       .insert({
         titulo: datos.titulo.trim(),
         descripcion: datos.descripcion.trim() || null,
+        // `ponente` es legado del calendario, pero la portada del módulo lo pinta.
+        ponente: nombreUsuario(usuario),
         fecha: datos.fecha,
         hora: `${datos.hora}:00`,
         fecha_inicio: inicio.toISOString(),

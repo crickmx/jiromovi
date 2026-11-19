@@ -169,6 +169,14 @@ Deno.serve(async (req) => {
   const auth = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
   if (!esServicio(auth)) return json({ error: 'No autorizado' }, 401);
 
+  // `dry_run` encola sin enviar: sirve para probar el motor sin mandar correos.
+  let cuerpo: Record<string, unknown> = {};
+  try {
+    cuerpo = await req.json();
+  } catch {
+    /* el cron manda cuerpo vacío */
+  }
+
   try {
     const ahora = Date.now();
     const { data: proximos } = await admin
@@ -186,7 +194,7 @@ Deno.serve(async (req) => {
       else if (faltan <= 6 && faltan >= 4) encolados += await encolar(evento, '5m', 5);
     }
 
-    const drenado = await drenar();
+    const drenado = cuerpo.dry_run ? { enviados: 0, errores: 0, seco: true } : await drenar();
     return json({ ok: true, encolados, ...drenado });
   } catch (e) {
     console.error('aula-recordatorios', e);
