@@ -859,15 +859,16 @@ export function SegurosEducationOnDemand() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showVideoModal]);
 
-  // `seguros_lessons.duracion` guarda MINUTOS. Antes se formateaba como
-  // segundos, así que una clase de una hora se leía "1:00" (parecía un minuto).
-  const formatDuration = (minutos: number | null | undefined) => {
-    if (!minutos || minutos <= 0) return null;
-    const total = Math.round(minutos);
-    const horas = Math.floor(total / 60);
-    const resto = total % 60;
-    if (horas > 0) return resto ? `${horas} h ${resto} min` : `${horas} h`;
-    return `${resto} min`;
+  // `seguros_lessons.duracion` está en SEGUNDOS (así lo guarda el módulo al
+  // leer el video). Se muestra legible: "1 h 44 min", "45 min", "38 s".
+  const formatDuration = (segundos: number | null | undefined) => {
+    if (!segundos || segundos <= 0) return null;
+    const total = Math.round(segundos);
+    const horas = Math.floor(total / 3600);
+    const minutos = Math.round((total % 3600) / 60);
+    if (horas > 0) return minutos ? `${horas} h ${minutos} min` : `${horas} h`;
+    if (minutos > 0) return `${minutos} min`;
+    return `${total} s`;
   };
 
 

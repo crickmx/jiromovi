@@ -62,11 +62,6 @@ async function puedeAdministrar(eventoId: string, usuarioId: string | null) {
   return data === true;
 }
 
-function minutos(segundos: number | null | undefined) {
-  const s = Math.max(0, Math.round(segundos ?? 0));
-  return Math.max(1, Math.round(s / 60));
-}
-
 function mmss(segundos: number) {
   const h = Math.floor(segundos / 3600);
   const m = Math.floor((segundos % 3600) / 60);
@@ -445,7 +440,8 @@ Deno.serve(async (req) => {
       descripcion: (evento.descripcion as string | null) ?? null,
       miniatura_url: portada,
       video_url: videoUrl,
-      duracion: minutos(duracion),
+      // La columna está en segundos en todo el módulo; no convertir.
+      duracion: duracion ? Math.round(duracion) : null,
       es_grabacion: true,
       // seguros_lessons.session_id apunta a seguros_sessions (el temario de On
       // Demand), no al evento. El vínculo clase→lección vive en
