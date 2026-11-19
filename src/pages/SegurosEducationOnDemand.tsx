@@ -382,7 +382,7 @@ export function SegurosEducationOnDemand() {
       setUploadProgress(70);
 
       // Upload thumbnail if provided
-      let thumbnailUrl = null;
+      let thumbnailUrl: string | null = null;
       if (thumbnailFile) {
         console.log('[handleUploadLesson] Starting thumbnail upload');
         const thumbFileName = `${Date.now()}-${thumbnailFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
@@ -841,17 +841,32 @@ export function SegurosEducationOnDemand() {
     setSelectedLesson(null);
   };
 
-  const formatDuration = (seconds: number | null | undefined) => {
-    if (!seconds || seconds <= 0) return null;
+  // Esc cierra el reproductor y se bloquea el scroll del fondo mientras está abierto.
+  useEffect(() => {
+    if (!showVideoModal) return;
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeVideoModal();
+    };
+    const overflowPrevio = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', alTeclear);
+    return () => {
+      window.removeEventListener('keydown', alTeclear);
+      document.body.style.overflow = overflowPrevio;
+    };
+    // closeVideoModal se recrea en cada render; solo importa al abrir/cerrar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showVideoModal]);
 
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    if (hours > 0) {
-      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  // `seguros_lessons.duracion` guarda MINUTOS. Antes se formateaba como
+  // segundos, así que una clase de una hora se leía "1:00" (parecía un minuto).
+  const formatDuration = (minutos: number | null | undefined) => {
+    if (!minutos || minutos <= 0) return null;
+    const total = Math.round(minutos);
+    const horas = Math.floor(total / 60);
+    const resto = total % 60;
+    if (horas > 0) return resto ? `${horas} h ${resto} min` : `${horas} h`;
+    return `${resto} min`;
   };
 
 
@@ -906,8 +921,67 @@ export function SegurosEducationOnDemand() {
           )}
         </div>
 
+        {/* Continuar viendo: lo que quedó a medias, a un clic */}
+        {(() => {
+          const enCurso = lessons.filter((l) => (l.progreso || 0) > 0 && !l.completado);
+          if (enCurso.length === 0) return null;
+          return (
+            <section className="rounded-2xl border border-soft bg-surface-card p-3 shadow-card dark:border-white/10 sm:p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-body font-bold text-neutral-900 dark:text-white">
+                  <Play className="h-4 w-4 text-accent-ink" fill="currentColor" />
+                  Continuar viendo
+                </h2>
+                <span className="text-caption text-neutral-400">{enCurso.length}</span>
+              </div>
+              <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-1">
+                {enCurso.slice(0, 8).map((lesson) => (
+                  <button
+                    key={lesson.id}
+                    onClick={() => handleLessonClick(lesson)}
+                    className="group w-[240px] shrink-0 snap-start overflow-hidden rounded-xl border border-neutral-200/70 bg-surface-card text-left transition hover:border-accent/40 hover:shadow-card dark:border-white/10"
+                  >
+                    <div className="relative aspect-video overflow-hidden bg-neutral-100 dark:bg-white/5">
+                      {lesson.miniatura_url ? (
+                        <img
+                          src={lesson.miniatura_url}
+                          alt={lesson.titulo}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Video className="h-8 w-8 text-neutral-300 dark:text-white/20" />
+                        </div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 h-1 bg-black/30">
+                        <div className="h-full bg-accent" style={{ width: `${lesson.progreso || 0}%` }} />
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition group-hover:opacity-100">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 shadow-lg">
+                          <Play className="ml-0.5 h-4 w-4 text-accent-ink" fill="currentColor" />
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-2.5">
+                      <p className="line-clamp-2 text-caption font-semibold leading-snug text-neutral-900 dark:text-white">
+                        {lesson.titulo}
+                      </p>
+                      <p className="mt-1 text-[11px] text-accent-ink">
+                        {Math.floor(lesson.progreso || 0)}% visto
+                        {formatDuration(lesson.duracion) ? ` · ${formatDuration(lesson.duracion)}` : ''}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
+
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <input
@@ -934,7 +1008,7 @@ export function SegurosEducationOnDemand() {
         </div>
 
         {/* Lessons Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filteredLessons.length === 0 ? (
             <div className="col-span-full bg-surface-card dark:bg-white/[0.03] rounded-2xl border-2 border-dashed border-soft dark:border-white/10 p-14 text-center">
               <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-4">
@@ -979,9 +1053,9 @@ export function SegurosEducationOnDemand() {
                   </div>
 
                   {/* Progress bar */}
-                  {lesson.progreso > 0 && (
+                  {(lesson.progreso ?? 0) > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
-                      <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso}%` }} />
+                      <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso ?? 0}%` }} />
                     </div>
                   )}
 
@@ -1045,11 +1119,11 @@ export function SegurosEducationOnDemand() {
                     </p>
                   )}
 
-                  {lesson.progreso > 0 && !lesson.completado && (
+                  {(lesson.progreso ?? 0) > 0 && !lesson.completado && (
                     <div className="mt-2">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[11px] text-neutral-500 dark:text-white/55">Progreso</span>
-                        <span className="text-[11px] font-semibold text-[#1C37E0]">{Math.floor(lesson.progreso)}%</span>
+                        <span className="text-[11px] font-semibold text-[#1C37E0]">{Math.floor(lesson.progreso ?? 0)}%</span>
                       </div>
                       <div className="h-1 bg-neutral-100 dark:bg-white/10 rounded-full overflow-hidden">
                         <div className="h-full bg-[#1C37E0] rounded-full" style={{ width: `${lesson.progreso}%` }} />
@@ -1063,90 +1137,90 @@ export function SegurosEducationOnDemand() {
         </div>
       </div>
 
-      {/* Video Player Modal */}
+      {/* Reproductor de la clase grabada */}
       {showVideoModal && selectedLesson && (
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-ios flex items-center justify-center z-50 animate-fade-in p-0 sm:p-4"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-neutral-950/80 backdrop-blur-sm sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label={selectedLesson.titulo}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeVideoModal();
+          }}
         >
-          <div className="w-full h-full sm:w-[95vw] sm:h-[90vh] lg:w-[1200px] lg:h-[720px] bg-white sm:rounded-2xl shadow-ios-xl overflow-hidden animate-scale-in flex flex-col">
-            {/* Header - minimizado en móvil */}
-            <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 sm:py-3 border-b border-ios-gray-200/50 flex justify-between items-center gap-2 flex-shrink-0">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-[14px] sm:text-[18px] font-semibold text-ios-gray-900 truncate">
+          <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-surface-card shadow-2xl sm:h-auto sm:max-h-[92vh] sm:w-[min(1080px,96vw)] sm:rounded-2xl sm:border sm:border-soft">
+            {/* Encabezado: título legible y cierre siempre a la vista */}
+            <header className="flex shrink-0 items-start gap-3 border-b border-neutral-200 px-4 py-3 dark:border-white/10 sm:px-5 sm:py-4">
+              <div className="min-w-0 flex-1">
+                <h2 className="line-clamp-2 text-title-sm font-bold leading-snug text-neutral-900 dark:text-white">
                   {selectedLesson.titulo}
                 </h2>
-                <div className="hidden md:flex items-center gap-2 mt-1 flex-wrap">
-                  {selectedLesson.categorias && selectedLesson.categorias.length > 0 && selectedLesson.categorias.map(cat => (
-                    <span key={cat.id} className="inline-flex items-center px-2 py-0.5 bg-accent/10 text-accent-ink rounded-ios text-[11px] font-medium">
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {selectedLesson.categorias?.map((cat) => (
+                    <span key={cat.id} className="rounded-md bg-accent-soft px-2 py-0.5 text-micro font-semibold text-accent-ink">
                       {cat.nombre}
                     </span>
                   ))}
                   {formatDuration(selectedLesson.duracion) && (
-                    <span className="flex items-center gap-1 text-ios-gray-600 text-[11px]">
-                      <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
+                    <span className="flex items-center gap-1 text-caption text-neutral-500 dark:text-white/55">
+                      <Clock className="h-3.5 w-3.5" />
                       {formatDuration(selectedLesson.duracion)}
+                    </span>
+                  )}
+                  {selectedLesson.completado && (
+                    <span className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-micro font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                      <Award className="h-3 w-3" /> Completada
                     </span>
                   )}
                 </div>
               </div>
               <button
                 onClick={closeVideoModal}
-                className="text-ios-gray-500 hover:text-ios-gray-900 hover:bg-ios-gray-200 p-1.5 rounded-ios transition-all active:scale-95 flex-shrink-0"
-                title="Cerrar"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-neutral-500 transition hover:bg-surface-100 hover:text-neutral-900 dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
+                title="Cerrar (Esc)"
               >
-                <X className="w-5 h-5 stroke-[2]" />
+                <X className="h-5 w-5" />
               </button>
+            </header>
+
+            {/* Video: 16:9 con techo de altura para que quepa el material */}
+            <div className="w-full shrink-0 overflow-hidden bg-black">
+              <div className="mx-auto aspect-video max-h-[56vh] w-full">
+                <VideoPlayer
+                  videoUrl={selectedLesson.video_url}
+                  initialTime={selectedLesson.tiempo_reproduccion || 0}
+                  onProgressUpdate={handleProgressUpdate}
+                  onComplete={handleVideoComplete}
+                  lessonId={selectedLesson.id}
+                />
+              </div>
             </div>
 
-            {/* Video Container - con altura fija y minima */}
-            <div className="bg-black w-full flex-1 min-h-0 relative">
-              <VideoPlayer
-                videoUrl={selectedLesson.video_url}
-                initialTime={selectedLesson.tiempo_reproduccion || 0}
-                onProgressUpdate={handleProgressUpdate}
-                onComplete={handleVideoComplete}
-                lessonId={selectedLesson.id}
-              />
-            </div>
+            {/* Descripción, progreso y material de apoyo */}
+            <div className="min-h-0 flex-1 overflow-y-auto bg-surface-50 px-4 py-3 dark:bg-white/[0.02] sm:px-5 sm:py-4">
+              {selectedLesson.descripcion && (
+                <p className="mb-3 text-body-sm leading-relaxed text-neutral-600 dark:text-white/60">
+                  {selectedLesson.descripcion}
+                </p>
+              )}
 
-            {/* Footer - super compacto en móvil */}
-            <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 border-t border-ios-gray-200/50 flex-shrink-0 max-h-[30vh] overflow-y-auto">
-              <div className="flex flex-col gap-2">
-                {/* Progress row */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {selectedLesson.completado ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-green/10 text-ios-green rounded-ios text-[11px] sm:text-[12px] font-medium">
-                        <Award className="w-3 h-3 stroke-[1.5]" />
-                        <span className="hidden sm:inline">Completado</span>
-                      </span>
-                    ) : selectedLesson.progreso > 0 ? (
-                      <span className="text-[11px] sm:text-[12px] text-ios-gray-600">
-                        Progreso: <span className="font-semibold text-accent-ink">{Math.floor(selectedLesson.progreso)}%</span>
-                      </span>
-                    ) : (
-                      <span className="text-[11px] sm:text-[12px] text-ios-gray-500">Sin progreso</span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => {
-                      closeVideoModal();
-                    }}
-                    className="px-3 sm:px-4 py-1 sm:py-1.5 bg-accent text-accent-foreground rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-accent-dark transition-colors active:scale-95 flex-shrink-0"
-                  >
-                    Cerrar
-                  </button>
-                </div>
-
-                {/* Documents row */}
-                <div className="border-t border-ios-gray-200/50 pt-2">
-                  <LessonDocuments
-                    lessonId={selectedLesson.id}
-                    isAdmin={isAdmin}
-                    isEditMode={false}
+              <div className="mb-3 flex items-center gap-3">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all"
+                    style={{ width: `${Math.min(100, Math.floor(selectedLesson.progreso || 0))}%` }}
                   />
                 </div>
+                <span className="shrink-0 text-caption font-semibold text-neutral-600 dark:text-white/60">
+                  {selectedLesson.completado
+                    ? 'Completada'
+                    : (selectedLesson.progreso ?? 0) > 0
+                    ? `${Math.floor(selectedLesson.progreso ?? 0)}%`
+                    : 'Sin progreso'}
+                </span>
               </div>
+
+              <LessonDocuments lessonId={selectedLesson.id} isAdmin={isAdmin} isEditMode={false} />
             </div>
           </div>
         </div>
