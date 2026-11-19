@@ -101,20 +101,63 @@ async function transcribir(audio: Uint8Array): Promise<string | null> {
 }
 
 // ── Portada con IA ──────────────────────────────────────────────────────────
-async function generarPortada(titulo: string, categoria: string | null): Promise<{ url: string | null; error: string | null }> {
+/**
+ * Portada de la clase.
+ *
+ * El arte de fondo lo genera la IA, pero el texto NO: los modelos de imagen
+ * escriben mal el español. El título, quién conduce y los ponentes invitados
+ * con su empresa se componen encima en SVG, así siempre salen legibles y con
+ * la identidad de Seguros Education.
+ */
+
+function escaparXml(t: string) {
+  return t
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/** Corta el texto en líneas de `max` caracteres sin partir palabras. */
+function envolver(texto: string, max: number, maxLineas: number): string[] {
+  const palabras = texto.split(/\s+/).filter(Boolean);
+  const lineas: string[] = [];
+  let actual = '';
+  for (const palabra of palabras) {
+    const candidato = actual ? `${actual} ${palabra}` : palabra;
+    if (candidato.length <= max) {
+      actual = candidato;
+    } else {
+      if (actual) lineas.push(actual);
+      actual = palabra;
+      if (lineas.length === maxLineas) break;
+    }
+  }
+  if (actual && lineas.length < maxLineas) lineas.push(actual);
+  if (lineas.length === maxLineas) {
+    const ultima = lineas[maxLineas - 1];
+    const resto = palabras.join(' ').slice(lineas.join(' ').length).trim();
+    if (resto.length > 0 && !ultima.endsWith('…')) {
+      lineas[maxLineas - 1] = `${ultima.replace(/\s+\S*$/, '')}…`;
+    }
+  }
+  return lineas;
+}
+
+async function generarFondo(titulo: string, categoria: string | null): Promise<{ dataUri: string | null; error: string | null }> {
   const key = Deno.env.get('OPENAI_API_KEY');
-  if (!key) return { url: null, error: 'Falta OPENAI_API_KEY' };
+  if (!key) return { dataUri: null, error: 'Falta OPENAI_API_KEY' };
 
   const prompt = [
-    'Portada corporativa horizontal para una clase en línea de seguros y capacitación profesional.',
+    'Ilustración de fondo horizontal para una clase en línea de seguros y capacitación profesional.',
     `Tema: "${titulo}".`,
     categoria ? `Categoría: ${categoria}.` : '',
-    'Estilo: ilustración vectorial limpia y moderna, profesional y cálida, profundidad sutil,',
-    'paleta azul corporativo #1C37E0 con blancos y un acento ámbar.',
-    'Composición amplia con espacio negativo, sin texto, sin letras, sin logotipos, sin personas reconocibles.',
+    'Estilo vectorial limpio y moderno, azul corporativo #1C37E0 con blancos y acento ámbar.',
+    'Composición con la mitad inferior despejada y oscura para poner texto encima.',
+    'Sin texto, sin letras, sin números, sin logotipos, sin marcas de agua, sin personas reconocibles.',
   ].join(' ');
 
-  // Los nombres de modelo cambian con la cuenta: se pregunta cuáles hay.
   let disponibles: string[] = [];
   try {
     const lista = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${key}` } });
@@ -123,62 +166,139 @@ async function generarPortada(titulo: string, categoria: string | null): Promise
       disponibles = (data?.data ?? []).map((m: { id: string }) => m.id).filter((id: string) => /image|dall|flux|sdxl/i.test(id));
     }
   } catch {
-    /* si no se puede listar, se intenta con los nombres conocidos */
+    /* se intenta con los nombres conocidos */
   }
 
-  const candidatos = disponibles.length
-    ? disponibles
-    : ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
-
+  const candidatos = disponibles.length ? disponibles : ['gpt-image-1', 'dall-e-3'];
   const modelos = candidatos.flatMap((model) =>
-    model.includes('dall-e-2')
-      ? [{ model, size: '1024x1024' }]
+    model.includes('dall-e-3')
+      ? [{ model, size: '1792x1024' }]
       : [{ model, size: '1536x1024' }, { model, size: '1024x1024' }],
   );
-  let ultimoError: string | null = null;
 
+  let ultimoError: string | null = null;
   for (const cfg of modelos) {
     try {
       const res = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...cfg, n: 1, prompt }),
+        body: JSON.stringify({ ...cfg, n: 1, prompt, output_format: 'jpeg', output_compression: 80 }),
       });
       if (!res.ok) {
         const detalle = (await res.text()).slice(0, 200);
-        ultimoError = [cfg.model + ': ' + detalle, ultimoError].filter(Boolean).join(' || ');
-        console.error('portada', cfg.model, res.status, detalle);
+        ultimoError = [ultimoError, `${cfg.model}: ${detalle}`].filter(Boolean).join(' || ');
         continue;
       }
       const data = await res.json();
       const item = data?.data?.[0];
       if (!item) continue;
 
-      let bytes: Uint8Array;
-      if (item.b64_json) {
-        bytes = Uint8Array.from(atob(item.b64_json), (c) => c.charCodeAt(0));
-      } else if (item.url) {
+      if (item.b64_json) return { dataUri: `data:image/jpeg;base64,${item.b64_json}`, error: null };
+      if (item.url) {
         const img = await fetch(item.url);
-        bytes = new Uint8Array(await img.arrayBuffer());
-      } else {
-        continue;
+        const buf = new Uint8Array(await img.arrayBuffer());
+        let bin = '';
+        for (let i = 0; i < buf.length; i += 8192) {
+          bin += String.fromCharCode(...buf.subarray(i, i + 8192));
+        }
+        return { dataUri: `data:image/jpeg;base64,${btoa(bin)}`, error: null };
       }
-
-      const path = `portadas/${crypto.randomUUID()}.png`;
-      const { error } = await admin.storage
-        .from('aula-portadas')
-        .upload(path, bytes, { contentType: 'image/png', upsert: false });
-      if (error) {
-        ultimoError = `storage: ${error.message}`;
-        continue;
-      }
-      return { url: admin.storage.from('aula-portadas').getPublicUrl(path).data.publicUrl, error: null };
     } catch (e) {
       ultimoError = e instanceof Error ? e.message : String(e);
-      console.error('portada', cfg.model, ultimoError);
     }
   }
-  return { url: null, error: ultimoError ?? 'sin respuesta de OpenAI' };
+  return { dataUri: null, error: ultimoError ?? 'sin respuesta de OpenAI' };
+}
+
+function componerPortada(datos: {
+  titulo: string;
+  fondo: string | null;
+  instructores: string[];
+  invitados: Array<{ nombre: string; empresa: string }>;
+  fecha: string | null;
+}) {
+  const W = 1536;
+  const H = 864;
+  const M = 96;
+
+  const lineasTitulo = envolver(datos.titulo, 34, 3);
+
+  // Bloque inferior: se apila desde abajo hacia arriba para que nunca se
+  // encime con el título, sin importar cuántos ponentes haya.
+  const pie: Array<{ clase: string; texto: string }> = [];
+  if (datos.instructores.length) {
+    pie.push({ clase: 'instructor', texto: `Imparte: ${datos.instructores.join(' · ')}` });
+  }
+  for (const g of datos.invitados.slice(0, 3)) {
+    pie.push({ clase: 'invitado', texto: `${g.nombre} · ${g.empresa}` });
+  }
+
+  const PASO = 38;
+  const yUltima = H - 140;
+  const yPrimera = yUltima - (pie.length - 1) * PASO;
+  const yDivisor = yPrimera - 46;
+  const yTituloUltima = yDivisor - 40;
+  const yTituloPrimera = yTituloUltima - (lineasTitulo.length - 1) * 76;
+
+  const titulo = lineasTitulo
+    .map((l, i) => `<text x="${M}" y="${yTituloPrimera + i * 76}" class="titulo">${escaparXml(l)}</text>`)
+    .join('');
+
+  const pieSvg = pie
+    .map((l, i) => `<text x="${M}" y="${yPrimera + i * PASO}" class="${l.clase}">${escaparXml(l.texto)}</text>`)
+    .join('');
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <linearGradient id="velo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b1444" stop-opacity="0.10"/>
+      <stop offset="42%" stop-color="#0b1444" stop-opacity="0.62"/>
+      <stop offset="100%" stop-color="#050b2e" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="marca" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1C37E0"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <style>
+      .marca { font-family: Sora, Manrope, Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 5px; fill: #dbeafe; }
+      .titulo { font-family: Sora, Manrope, Helvetica, Arial, sans-serif; font-size: 64px; font-weight: 700; fill: #ffffff; letter-spacing: -1.5px; }
+      .instructor { font-family: Manrope, Helvetica, Arial, sans-serif; font-size: 26px; font-weight: 600; fill: #e0e7ff; }
+      .invitado { font-family: Manrope, Helvetica, Arial, sans-serif; font-size: 25px; font-weight: 500; fill: #fcd34d; }
+      .pie { font-family: Sora, Manrope, Helvetica, Arial, sans-serif; font-size: 20px; font-weight: 600; fill: #ffffff; opacity: 0.72; }
+      .fecha { font-family: Manrope, Helvetica, Arial, sans-serif; font-size: 19px; font-weight: 500; fill: #c7d2fe; opacity: 0.8; }
+    </style>
+  </defs>
+
+  ${datos.fondo
+    ? `<image href="${datos.fondo}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`
+    : `<rect width="${W}" height="${H}" fill="#0b1444"/>
+       <circle cx="1260" cy="150" r="300" fill="#1C37E0" opacity="0.35"/>
+       <circle cx="1420" cy="330" r="180" fill="#22d3ee" opacity="0.18"/>`}
+
+  <rect width="${W}" height="${H}" fill="url(#velo)"/>
+  <rect x="0" y="0" width="${W}" height="10" fill="url(#marca)"/>
+
+  <rect x="${M}" y="${M}" width="52" height="6" rx="3" fill="#22d3ee"/>
+  <text x="${M + 70}" y="${M + 10}" class="marca">SEGUROS EDUCATION</text>
+
+  ${titulo}
+
+  <line x1="${M}" y1="${yDivisor}" x2="${W - M}" y2="${yDivisor}" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2"/>
+
+  ${pieSvg}
+
+  <text x="${W - M}" y="${H - 54}" text-anchor="end" class="pie">MOVI Digital</text>
+  ${datos.fecha ? `<text x="${W - M}" y="${H - 88}" text-anchor="end" class="fecha">${escaparXml(datos.fecha)}</text>` : ''}
+</svg>`;
+}
+
+async function publicarPortada(svg: string): Promise<{ url: string | null; error: string | null }> {
+  const path = `portadas/${crypto.randomUUID()}.svg`;
+  const { error } = await admin.storage
+    .from('aula-portadas')
+    .upload(path, new TextEncoder().encode(svg), { contentType: 'image/svg+xml', upsert: false });
+  if (error) return { url: null, error: error.message };
+  return { url: admin.storage.from('aula-portadas').getPublicUrl(path).data.publicUrl, error: null };
 }
 
 Deno.serve(async (req) => {
@@ -257,9 +377,32 @@ Deno.serve(async (req) => {
       if (audio) transcripcion = await transcribir(new Uint8Array(await audio.arrayBuffer()));
     }
 
-    // 2) Portada con IA (si ya hay una, se respeta)
+    // 2) Portada: fondo con IA + texto compuesto (título, quién imparte y
+    //    ponentes invitados con su empresa). Si ya existe, se respeta.
     let portada = evento.portada_url as string | null;
     let portadaError: string | null = null;
+
+    // Quién condujo y quiénes fueron invitados: sirve para la portada y la ficha.
+    let { data: hosts } = await admin
+      .from('aula_evento_hosts')
+      .select('rol, usuarios(nombre_completo, nombre, apellidos)')
+      .eq('evento_id', eventoId)
+      .order('rol');
+    if (!hosts?.length && evento.creado_por) {
+      const { data: autor } = await admin
+        .from('usuarios')
+        .select('nombre_completo, nombre, apellidos')
+        .eq('id', evento.creado_por as string)
+        .maybeSingle();
+      if (autor) hosts = [{ rol: 'host', usuarios: autor } as unknown as typeof hosts[number]];
+    }
+
+    const { data: invitados } = await admin
+      .from('aula_invitados')
+      .select('nombre, empresa')
+      .eq('evento_id', eventoId)
+      .order('primera_entrada');
+
     if (!portada) {
       let categoriaNombre: string | null = null;
       if (evento.categoria_id) {
@@ -270,13 +413,32 @@ Deno.serve(async (req) => {
           .maybeSingle();
         categoriaNombre = cat?.nombre ?? null;
       }
-      const gen = await generarPortada(evento.titulo as string, categoriaNombre);
-      portada = gen.url;
-      portadaError = gen.error;
-      if (gen.error) console.error('aula-publicar: portada', gen.error);
+
+      const fondo = await generarFondo(evento.titulo as string, categoriaNombre);
+      if (fondo.error) console.error('aula-publicar: fondo', fondo.error);
+
+      const nombreDe = (row: { usuarios?: { nombre_completo?: string; nombre?: string; apellidos?: string } | null }) =>
+        row.usuarios?.nombre_completo ||
+        [row.usuarios?.nombre, row.usuarios?.apellidos].filter(Boolean).join(' ') ||
+        'Equipo MOVI';
+
+      const svg = componerPortada({
+        titulo: evento.titulo as string,
+        fondo: fondo.dataUri,
+        instructores: (hosts ?? []).map((h) => nombreDe(h as never)),
+        invitados: (invitados ?? []) as Array<{ nombre: string; empresa: string }>,
+        fecha: evento.fecha_inicio
+          ? new Date(evento.fecha_inicio as string).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+          : null,
+      });
+
+      const subida = await publicarPortada(svg);
+      portada = subida.url;
+      portadaError = fondo.error ?? subida.error;
+      if (subida.error) console.error('aula-publicar: portada', subida.error);
     }
 
-    // 3) Lección On Demand
+    // 3) Lección en On Demand (se crea o se actualiza si la clase se republica)
     let leccionId = evento.leccion_id as string | null;
     const payloadLeccion = {
       titulo: evento.titulo as string,
@@ -285,8 +447,8 @@ Deno.serve(async (req) => {
       video_url: videoUrl,
       duracion: minutos(duracion),
       es_grabacion: true,
-      // Ojo: seguros_lessons.session_id apunta a seguros_sessions (el temario de
-      // On Demand), no al evento. El vínculo clase→lección vive en
+      // seguros_lessons.session_id apunta a seguros_sessions (el temario de On
+      // Demand), no al evento. El vínculo clase→lección vive en
       // aula_eventos.leccion_id y aquí no se toca.
       fecha_creacion: evento.fecha_inicio ?? new Date().toISOString(),
       oficinas_asignadas: null,
@@ -307,42 +469,8 @@ Deno.serve(async (req) => {
     if (evento.categoria_id) {
       await admin
         .from('seguros_lesson_categories')
-        .upsert(
-          { lesson_id: leccionId, category_id: evento.categoria_id },
-          { onConflict: 'lesson_id,category_id' },
-        )
+        .upsert({ lesson_id: leccionId, category_id: evento.categoria_id }, { onConflict: 'lesson_id,category_id' })
         .then(() => null, () => null);
-    }
-
-    // 4) Material de apoyo
-    const docs: Array<{
-      nombre_archivo: string;
-      archivo_url: string;
-      tipo_archivo: string;
-      tamano_bytes: number | null;
-      descripcion: string;
-      orden: number;
-    }> = [];
-
-    const { data: invitados } = await admin
-      .from('aula_invitados')
-      .select('nombre, empresa')
-      .eq('evento_id', eventoId)
-      .order('primera_entrada');
-    let { data: hosts } = await admin
-      .from('aula_evento_hosts')
-      .select('rol, usuarios(nombre_completo, nombre, apellidos)')
-      .eq('evento_id', eventoId);
-
-    // Clases creadas fuera de la UI (o antes de esta versión) no tienen host
-    // registrado: se usa el creador del evento para que la ficha nunca salga vacía.
-    if (!hosts?.length && evento.creado_por) {
-      const { data: autor } = await admin
-        .from('usuarios')
-        .select('nombre_completo, nombre, apellidos')
-        .eq('id', evento.creado_por as string)
-        .maybeSingle();
-      if (autor) hosts = [{ rol: 'host', usuarios: autor } as unknown as typeof hosts[number]];
     }
 
     type HostRow = { rol: string; usuarios?: { nombre_completo?: string; nombre?: string; apellidos?: string } | null };
@@ -369,6 +497,16 @@ Deno.serve(async (req) => {
         ? ((invitados ?? []) as unknown as InvitadoRow[]).map((i) => `- ${i.nombre} — ${i.empresa}`)
         : ['- Sin ponentes externos en esta sesión']),
     ].join('\n');
+
+    // 4) Material de apoyo
+    const docs: Array<{
+      nombre_archivo: string;
+      archivo_url: string;
+      tipo_archivo: string;
+      tamano_bytes: number | null;
+      descripcion: string;
+      orden: number;
+    }> = [];
 
     const subirDoc = async (nombre: string, contenido: string, mime: string, descripcion: string, orden: number) => {
       const ext = nombre.split('.').pop() || 'txt';
