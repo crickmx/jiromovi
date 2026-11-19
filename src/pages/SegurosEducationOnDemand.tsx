@@ -1141,7 +1141,7 @@ export function SegurosEducationOnDemand() {
       {/* Reproductor de la clase grabada */}
       {showVideoModal && selectedLesson && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-neutral-950/80 backdrop-blur-sm sm:items-center sm:p-6"
+          className="fixed inset-0 z-[9999] flex items-end justify-center bg-neutral-950/80 backdrop-blur-sm sm:items-center sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label={selectedLesson.titulo}
