@@ -377,12 +377,17 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ properties }),
       });
 
+      const rolFinal = rol === 'oyente' && esAdmin ? 'host' : rol;
+
       return json({
         room_url: sala.daily_room_url,
         room_name: sala.daily_room_name,
         token: token.token,
-        rol: rol === 'oyente' && esAdmin ? 'host' : rol,
+        rol: rolFinal,
         nombre,
+        // Solo quien conduce recibe el token del link para invitar ponentes.
+        // El origen lo pone el navegador, así beta y producción no se mezclan.
+        link_token: rolFinal !== 'oyente' ? sala.link_token : null,
       });
     }
 
