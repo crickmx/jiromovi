@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { trackCourseStart } from '../lib/activityLogger';
@@ -1138,7 +1139,7 @@ export function SegurosEducationOnDemand() {
       </div>
 
       {/* Reproductor de la clase grabada */}
-      {showVideoModal && selectedLesson && (
+      {showVideoModal && selectedLesson && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-end justify-center bg-neutral-950/80 backdrop-blur-sm sm:items-center sm:p-6"
           role="dialog"
@@ -1223,7 +1224,8 @@ export function SegurosEducationOnDemand() {
               <LessonDocuments lessonId={selectedLesson.id} isAdmin={isAdmin} isEditMode={false} />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Upload Modal */}
