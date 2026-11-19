@@ -93,6 +93,7 @@ const SegurosEducation = lazy(() => import('./SegurosEducation'));
 const SegurosEducationOnDemand = lazy(() => import('./SegurosEducationOnDemand'));
 const SegurosEducationAulaVirtual = lazy(() => import('./SegurosEducationAulaVirtual'));
 const AulaVirtualSala = lazy(() => import('./AulaVirtualSala'));
+const AulaInvitado = lazy(() => import('./AulaInvitado'));
 const SegurosEducationCedulaA = lazy(() => import('./CursoCedulaA'));
 const CedulaAExamenes = lazy(() => import('./CedulaAExamenes'));
 const ModuloViewer = lazy(() => import('./ModuloViewer'));
@@ -179,6 +180,8 @@ export default function MoviFullRoutes() {
         {/* Landings públicas */}
         <Route path="/mutuus" element={<MutuusLanding />} />
         <Route path="/landings/mutuus" element={<MutuusLanding />} />
+        {/* Invitación a ponente externo del Aula Virtual: entra sin cuenta. */}
+        <Route path="/aula/:token" element={<AulaInvitado />} />
 
         {/* Public / no-layout routes */}
         <Route path="/alta" element={<Alta brand="movi" />} />
