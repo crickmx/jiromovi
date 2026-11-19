@@ -160,6 +160,12 @@ export function SalaAula({
       const local = objeto.participants()?.local;
       setMic(!!local?.audio);
       setCam(!!local?.video);
+
+      // La grabación en nube la arranca el servidor, pero solo cuando ya hay
+      // alguien dentro: Daily no graba salas vacías.
+      if (anfitrion && conGrabacion) {
+        void aulaDaily.iniciarGrabacionNube(eventoId).catch(() => null);
+      }
     };
 
     const alMensaje = (e: { data?: Record<string, unknown>; fromId?: string }) => {

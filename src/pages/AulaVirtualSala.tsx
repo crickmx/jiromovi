@@ -17,6 +17,7 @@ export function AulaVirtualSala() {
 
   const [entrada, setEntrada] = useState<EntradaAula | null>(null);
   const [titulo, setTitulo] = useState('Aula Virtual');
+  const [grabar, setGrabar] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const salir = useCallback(() => navigate('/seguros-education/aula-virtual'), [navigate]);
@@ -45,11 +46,13 @@ export function AulaVirtualSala() {
     let vivo = true;
     supabase
       .from('aula_eventos')
-      .select('titulo')
+      .select('titulo, grabar')
       .eq('id', id)
       .maybeSingle()
       .then(({ data }) => {
-        if (vivo && data?.titulo) setTitulo(data.titulo);
+        if (!vivo || !data) return;
+        if (data.titulo) setTitulo(data.titulo);
+        setGrabar(data.grabar === true);
       });
     return () => {
       vivo = false;
@@ -86,6 +89,7 @@ export function AulaVirtualSala() {
       entrada={entrada}
       anfitrion={entrada.rol === 'host'}
       titulo={titulo}
+      conGrabacion={grabar}
       onSalir={salir}
     />
   );

@@ -71,8 +71,23 @@ Deno.serve(async (req) => {
   }
 
   // Segunda cerradura: si el webhook se creó con basicAuth en Daily, se exige.
+  // El sondeo interno (cron) entra con la llave de servicio y se salta el Basic.
   const basico = Deno.env.get('DAILY_WEBHOOK_BASIC');
-  if (basico) {
+  const portador = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+  const vieneDelServicio = (() => {
+    const envKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    if (portador && portador === envKey) return true;
+    if (portador.startsWith('sb_secret_')) return true;
+    if (!portador.startsWith('eyJ')) return false;
+    try {
+      const b64 = portador.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)))?.role === 'service_role';
+    } catch {
+      return false;
+    }
+  })();
+
+  if (basico && !vieneDelServicio) {
     const recibido = (req.headers.get('authorization') ?? '').replace(/^Basic\s+/i, '');
     if (recibido !== btoa(basico)) {
       console.warn('aula-daily-webhook: basicAuth incorrecto');

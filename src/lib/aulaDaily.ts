@@ -58,8 +58,15 @@ export const aulaDaily = {
     invocar<EntradaAula>('aula-daily', { action: 'token-entrada', evento_id: eventoId }),
 
   iniciar: (eventoId: string) =>
-    invocar<{ ok: boolean; grabacion: { ok: boolean; error?: string } }>('aula-daily', {
+    invocar<{ ok: boolean; grabacion: { ok: boolean; pendiente?: string; error?: string } }>('aula-daily', {
       action: 'iniciar',
+      evento_id: eventoId,
+    }),
+
+  /** Se llama cuando el anfitrión ya está dentro: Daily no graba salas vacías. */
+  iniciarGrabacionNube: (eventoId: string) =>
+    invocar<{ ok: boolean; error?: string; omitido?: string }>('aula-daily', {
+      action: 'grabacion-iniciar',
       evento_id: eventoId,
     }),
 

@@ -210,10 +210,8 @@ export function SegurosEducationAulaVirtual() {
     try {
       if (!clase.daily_room_name) await aulaDaily.crearSala(clase.id);
       const r = await aulaDaily.iniciar(clase.id);
-      if (!r.grabacion.ok) {
-        avisar(
-          `La clase inició, pero la grabación en la nube no arrancó (${r.grabacion.error ?? 'sin detalle'}). La grabación local sigue activa.`,
-        );
+      if (r.grabacion?.error) {
+        avisar(`La clase inició, pero la grabación en la nube no arrancó (${r.grabacion.error}). La grabación local sigue activa.`);
       }
       analyticsTracker.trackClassJoinClick?.(clase.id);
       navigate(`/seguros-education/aula-virtual/${clase.id}`);
