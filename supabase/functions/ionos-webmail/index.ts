@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 import { getMailboxPassword, setMailboxPassword } from '../_shared/emailCredentials.ts';
 import { emailCorsHeaders, forbiddenOriginResponse } from '../_shared/emailCors.ts';
 import { parsearFragmentos, asuntoBase, imapQuoted, valorEncabezado } from './snippet.ts';
+import { enLotes, uidsDe, llegoAlTope, UIDS_POR_COMANDO } from './lotes.ts';
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -589,6 +590,49 @@ function buildRfc822Message(fromEmail: string, fromName: string, to: string[], c
   return msg;
 }
 
+// ── Contención de recursos ─────────────────────────────────────────
+//
+// Cada acción de esta función abre y cierra su propia conexión TLS contra
+// imap.ionos.mx: no hay pool, ni caché de mensajes, ni nada que reutilice la
+// sesión entre dos peticiones. Con el uso normal de una persona leyendo su
+// correo eso es correcto, pero tiene dos consecuencias que sí hay que acotar,
+// porque IONOS limita las conexiones simultáneas POR BUZÓN:
+//
+//   1. Una ráfaga (refresco en bucle, pestaña que reintenta sola, un script)
+//      puede dejar el buzón de esa persona sin poder abrir sesión.
+//   2. Operar sobre N correos no puede ser N conexiones. Por eso las acciones
+//      sobre varios mensajes viajan en UN lote y por UNA sola conexión.
+//
+// Las reglas de ambas cosas viven en `lotes.ts`, que es puro y tiene prueba.
+
+type AdminClient = ReturnType<typeof createClient>;
+
+/**
+ * ¿Se pasó del tope? Nunca estorba: si la tabla no existe (migración sin
+ * correr) o la consulta falla, `count` llega en null y se deja pasar. Un
+ * limitador roto no puede dejar a nadie sin su correo.
+ */
+async function excedioElLimite(admin: AdminClient, usuarioId: string): Promise<boolean> {
+  const desde = new Date(Date.now() - 60_000).toISOString();
+  const { count } = await admin
+    .from('email_webmail_eventos')
+    .select('id', { count: 'exact', head: true })
+    .eq('usuario_id', usuarioId)
+    .gte('creado_en', desde);
+  return llegoAlTope(count ?? 0);
+}
+
+/** Anota el evento y de paso tira lo viejo. Best-effort: nunca lanza. */
+async function anotarEvento(admin: AdminClient, usuarioId: string): Promise<void> {
+  const desde = new Date(Date.now() - 60_000).toISOString();
+  await admin
+    .from('email_webmail_eventos')
+    .delete()
+    .eq('usuario_id', usuarioId)
+    .lt('creado_en', desde);
+  await admin.from('email_webmail_eventos').insert({ usuario_id: usuarioId });
+}
+
 // ── Main handler ───────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -615,6 +659,19 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Token invalido' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // Tope anti-abuso: se mira ANTES de abrir ninguna conexión, que es lo
+    // único que esta función gasta de verdad.
+    if (await excedioElLimite(supabase, user.id)) {
+      return new Response(
+        JSON.stringify({
+          error: 'Hiciste demasiadas operaciones seguidas en el correo. Espera unos segundos y vuelve a intentar.',
+          code: 'RATE_LIMITED',
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    await anotarEvento(supabase, user.id);
+
     const body = await req.json();
     const { action } = body;
 
@@ -626,10 +683,16 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ error: 'Correo y contrasena requeridos' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      // Se normaliza una sola vez y se usa el mismo valor para el login, la
+      // comprobación de ocupado y lo que se guarda: el índice único de
+      // `email_configuraciones` compara en minúsculas, así que guardar el
+      // correo con espacios sería una fila que el índice no reconoce.
+      const correo = String(email).trim();
+
       const conn = await imapConnect('imap.ionos.mx', 993);
       let verified = false;
       try {
-        verified = await imapLogin(conn, email, password);
+        verified = await imapLogin(conn, correo, password);
         await imapLogout(conn);
       } catch (e: any) {
         try { conn.close(); } catch { /* ignore */ }
@@ -639,17 +702,49 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ error: 'Credenciales incorrectas', code: 'AUTH_FAILED' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      // Un buzón, una cuenta. Si otra persona ya configuró este correo, el
+      // gestor abriría el doble de sesiones contra el mismo buzón y IONOS
+      // corta por conexiones simultáneas. Lo mismo impone el índice
+      // `email_configuraciones_email_unico`; aquí es para poder decirlo en
+      // español en vez de devolver el error crudo de Postgres.
+      // Va DESPUÉS de verificar la contraseña a propósito: a quien no puede
+      // entrar al buzón no se le dice en qué cuenta está.
+      const { data: ocupante } = await supabase
+        .from('email_configuraciones')
+        .select('usuario_id')
+        .ilike('email', correo)
+        .neq('usuario_id', user.id)
+        .maybeSingle();
+
+      if (ocupante) {
+        return new Response(
+          JSON.stringify({
+            error: 'Ese correo ya está configurado por otra persona en MOVI. Cada buzón puede estar en una sola cuenta.',
+            code: 'EMAIL_EN_USO',
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
       const { error: upsertError } = await supabase
         .from('email_configuraciones')
         .upsert({
           usuario_id: user.id,
-          email,
+          email: correo,
           nombre_remitente: nombreRemitente || null,
           activa: true,
           estado_conexion: 'conectado',
         }, { onConflict: 'usuario_id' });
       if (upsertError) {
-        return new Response(JSON.stringify({ error: upsertError.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        // Dos personas guardando el mismo buzón a la vez: la comprobación de
+        // arriba ya no alcanzó y quien decide es el índice único.
+        const esCorreoEnUso = upsertError.code === '23505' || /email_configuraciones_email_unico/.test(upsertError.message || '');
+        return new Response(
+          JSON.stringify(esCorreoEnUso
+            ? { error: 'Ese correo ya está configurado por otra persona en MOVI. Cada buzón puede estar en una sola cuenta.', code: 'EMAIL_EN_USO' }
+            : { error: upsertError.message }),
+          { status: esCorreoEnUso ? 409 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
       }
 
       await setMailboxPassword(supabase, user.id, password);
@@ -771,54 +866,71 @@ Deno.serve(async (req: Request) => {
       }
 
       case 'mark-read': {
-        if (!body.uid || !body.folder) throw new Error('uid y folder son requeridos');
+        const uids = uidsDe(body);
+        if (uids.length === 0 || !body.folder) throw new Error('uid(s) y folder son requeridos');
         const conn = await imapConnect('imap.ionos.mx', 993);
         try {
           if (!await imapLogin(conn, creds.email, creds.password)) throw new Error('AUTH_FAILED');
           await imapCommand(conn, `SELECT "${body.folder}"`);
           const op = body.read !== false ? '+FLAGS' : '-FLAGS';
-          await imapCommand(conn, `UID STORE ${body.uid} ${op} (\\Seen)`);
+          // Un STORE por lote: la selección entera del usuario cuesta UNA
+          // conexión, no una por correo.
+          for (const lote of enLotes(uids, UIDS_POR_COMANDO)) {
+            await imapCommand(conn, `UID STORE ${lote.join(',')} ${op} (\\Seen)`);
+          }
           await imapLogout(conn);
         } catch (e) { try { conn.close(); } catch {} throw e; }
-        result = { success: true };
+        result = { success: true, aplicados: uids.length };
         break;
       }
 
       case 'move-message': {
-        if (!body.uid || !body.fromFolder || !body.toFolder) throw new Error('uid, fromFolder y toFolder son requeridos');
+        const uids = uidsDe(body);
+        if (uids.length === 0 || !body.fromFolder || !body.toFolder) throw new Error('uid(s), fromFolder y toFolder son requeridos');
         const conn = await imapConnect('imap.ionos.mx', 993);
         try {
           if (!await imapLogin(conn, creds.email, creds.password)) throw new Error('AUTH_FAILED');
           await imapCommand(conn, `SELECT "${body.fromFolder}"`);
-          // Try MOVE, fallback to COPY+DELETE
-          const moveResp = await imapCommand(conn, `UID MOVE ${body.uid} "${body.toFolder}"`);
-          if (!moveResp.includes('OK')) {
-            await imapCommand(conn, `UID COPY ${body.uid} "${body.toFolder}"`);
-            await imapCommand(conn, `UID STORE ${body.uid} +FLAGS (\\Deleted)`);
-            await imapCommand(conn, 'EXPUNGE');
+          // Mover en lote: la selección entera del usuario cuesta UNA conexión.
+          for (const lote of enLotes(uids, UIDS_POR_COMANDO)) {
+            const set = lote.join(',');
+            // Try MOVE, fallback to COPY+DELETE
+            const moveResp = await imapCommand(conn, `UID MOVE ${set} "${body.toFolder}"`);
+            if (!moveResp.includes('OK')) {
+              await imapCommand(conn, `UID COPY ${set} "${body.toFolder}"`);
+              await imapCommand(conn, `UID STORE ${set} +FLAGS (\\Deleted)`);
+              await imapCommand(conn, 'EXPUNGE');
+            }
           }
           await imapLogout(conn);
         } catch (e) { try { conn.close(); } catch {} throw e; }
-        result = { success: true };
+        result = { success: true, aplicados: uids.length };
         break;
       }
 
       case 'delete-message': {
-        if (!body.uid || !body.folder) throw new Error('uid y folder son requeridos');
+        const uids = uidsDe(body);
+        if (uids.length === 0 || !body.folder) throw new Error('uid(s) y folder son requeridos');
         const conn = await imapConnect('imap.ionos.mx', 993);
         try {
           if (!await imapLogin(conn, creds.email, creds.password)) throw new Error('AUTH_FAILED');
           await imapCommand(conn, `SELECT "${body.folder}"`);
-          // Move to Trash
-          const moveResp = await imapCommand(conn, `UID MOVE ${body.uid} "Trash"`);
-          if (!moveResp.includes('OK')) {
-            await imapCommand(conn, `UID COPY ${body.uid} "Trash"`);
-            await imapCommand(conn, `UID STORE ${body.uid} +FLAGS (\\Deleted)`);
-            await imapCommand(conn, 'EXPUNGE');
+          // A la papelera. Se busca su nombre real en el buzón en vez de
+          // suponer "Trash": en un buzón en español no existe con ese nombre.
+          const papelera = (await detectFolder(conn, ['Trash', 'Papelera', 'Deleted Items', 'Deleted Messages', 'INBOX.Trash'])) || 'Trash';
+          // Borrar en lote: la selección entera del usuario cuesta UNA conexión.
+          for (const lote of enLotes(uids, UIDS_POR_COMANDO)) {
+            const set = lote.join(',');
+            const moveResp = await imapCommand(conn, `UID MOVE ${set} "${papelera}"`);
+            if (!moveResp.includes('OK')) {
+              await imapCommand(conn, `UID COPY ${set} "${papelera}"`);
+              await imapCommand(conn, `UID STORE ${set} +FLAGS (\\Deleted)`);
+              await imapCommand(conn, 'EXPUNGE');
+            }
           }
           await imapLogout(conn);
         } catch (e) { try { conn.close(); } catch {} throw e; }
-        result = { success: true };
+        result = { success: true, aplicados: uids.length };
         break;
       }
 
