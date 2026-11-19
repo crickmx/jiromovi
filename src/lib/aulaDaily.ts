@@ -19,6 +19,7 @@ export interface EntradaAula {
 }
 
 export interface EntradaInvitado extends EntradaAula {
+  evento_id: string;
   sesion: string;
   participante_id: string;
   invitado_id: string;

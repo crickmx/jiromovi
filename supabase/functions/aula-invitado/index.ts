@@ -346,6 +346,8 @@ Deno.serve(async (req) => {
     if (pErr) throw pErr;
 
     return json({
+      evento_id: evento.id,
+      room_name: evento.daily_room_name,
       room_url: evento.daily_room_url,
       token: tk.token,
       sesion,

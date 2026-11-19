@@ -81,7 +81,7 @@ export function AulaInvitado() {
     return (
       <div className="min-h-screen bg-surface-canvas p-3">
         <SalaAula
-          eventoId={sesion.room_name.replace(/^aula-/, '')}
+          eventoId={sesion.evento_id}
           entrada={{ ...sesion, rol: 'ponente' }}
           anfitrion={false}
           esInvitado
