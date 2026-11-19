@@ -17,6 +17,51 @@ Deno.serve(async (req: Request) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // ── Autorización ──────────────────────────────────────────────────────────────
+    // Antes NO había ninguna. La única barrera era la lista de orígenes CORS, que un
+    // script (curl, un backend, n8n) ignora por completo — mientras esta función usa
+    // service_role y abre buzones por IMAP con las credenciales guardadas.
+    // Se aceptan dos vías, igual que en delete-user:
+    //   1. Automatizaciones: cabecera X-Ia-Monitor-Secret con el valor de IA_MONITOR_SECRET
+    //   2. Sesión de un Administrador activo: Authorization: Bearer <token>
+    const secretoEsperado = Deno.env.get("IA_MONITOR_SECRET") ?? "";
+    const secretoRecibido = req.headers.get("X-Ia-Monitor-Secret") ?? "";
+    let autorizado = false;
+
+    if (secretoEsperado && secretoRecibido.length === secretoEsperado.length) {
+      let dif = 0; // comparación en tiempo constante
+      for (let i = 0; i < secretoEsperado.length; i++) {
+        dif |= secretoEsperado.charCodeAt(i) ^ secretoRecibido.charCodeAt(i);
+      }
+      autorizado = dif === 0;
+    }
+
+    if (!autorizado) {
+      const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+      if (!token) {
+        return new Response(
+          JSON.stringify({ error: "Se requiere Authorization o X-Ia-Monitor-Secret" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (!user) {
+        return new Response(
+          JSON.stringify({ error: "Token inválido o expirado" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const { data: perfil } = await supabase
+        .from("usuarios").select("rol, activo").eq("id", user.id).maybeSingle();
+      if (!perfil || perfil.rol !== "Administrador" || perfil.activo !== true) {
+        return new Response(
+          JSON.stringify({ error: "Solo los Administradores activos pueden ejecutar el monitor de correo" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      autorizado = true;
+    }
+
     const body = await req.json().catch(() => ({})) as {
       cuenta_id?: string;
       folder?: string;
