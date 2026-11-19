@@ -180,12 +180,23 @@ function GestorEmailsInterno() {
     if (e || !data?.length) return;
     const plan = planearReglas(data as ReglaCorreo[], inbox, 'INBOX');
     if (plan.length === 0) return;
-    let hechas = 0;
+
+    // Las reglas se agrupan por destino: mover doce correos a la misma carpeta
+    // es UNA petición (y UNA conexión IMAP), no doce.
+    const grupos = new Map<string, { accion: ReglaCorreo['accion']; carpeta_destino: string | null; uids: number[] }>();
     for (const a of plan) {
+      const clave = `${a.regla.accion}|${a.regla.carpeta_destino ?? ''}`;
+      const g = grupos.get(clave) ?? { accion: a.regla.accion, carpeta_destino: a.regla.carpeta_destino ?? null, uids: [] };
+      g.uids.push(a.uid);
+      grupos.set(clave, g);
+    }
+
+    let hechas = 0;
+    for (const g of grupos.values()) {
       try {
-        if (a.regla.accion === 'mover') await callWebmail('move-message', { uid: a.uid, fromFolder: 'INBOX', toFolder: a.regla.carpeta_destino });
-        else await callWebmail('mark-read', { uid: a.uid, folder: 'INBOX', read: true });
-        hechas++;
+        if (g.accion === 'mover') await callWebmail('move-message', { uids: g.uids, fromFolder: 'INBOX', toFolder: g.carpeta_destino });
+        else await callWebmail('mark-read', { uids: g.uids, folder: 'INBOX', read: true });
+        hechas += g.uids.length;
       } catch { /* una regla que falla no detiene a las demás */ }
     }
     if (hechas > 0) {
@@ -278,11 +289,23 @@ function GestorEmailsInterno() {
     return n;
   });
 
-  const ejecutarSobre = async (uids: number[], fn: (uid: number) => Promise<unknown>) => {
-    const r = await Promise.allSettled(uids.map(fn));
-    const fallos = r.filter(x => x.status === 'rejected').length;
-    if (fallos) avisar(`${fallos} de ${uids.length} no se pudieron procesar. Actualiza para ver el estado real.`, 'error');
-    return uids.length - fallos;
+  // Toda acción sobre varios correos viaja en UNA sola petición: el servidor
+  // abre una conexión IMAP y aplica el lote completo. Antes era una conexión
+  // por correo, así que marcar 40 mensajes abría 40 sesiones a la vez contra el
+  // mismo buzón — justo lo que IONOS corta por conexiones simultáneas.
+  const ejecutarSobre = async (uids: number[], lote: (uids: number[]) => Promise<unknown>) => {
+    try {
+      await lote(uids);
+      return uids.length;
+    } catch (err) {
+      avisar(
+        err instanceof Error && err.message
+          ? err.message
+          : `No se pudieron procesar ${uids.length === 1 ? 'el correo' : 'los correos'}. Actualiza para ver el estado real.`,
+        'error',
+      );
+      return 0;
+    }
   };
 
   const accion = async (a: AccionCorreo, uids: number[], folder = currentFolder) => {
@@ -304,7 +327,7 @@ function GestorEmailsInterno() {
       case 'leido': {
         setMessages(prev => prev.map(m => (uids.includes(m.uid) ? { ...m, seen: a.valor } : m)));
         if (selectedMessage && uids.includes(selectedMessage.uid)) setSelectedMessage({ ...selectedMessage, seen: a.valor });
-        await ejecutarSobre(uids, uid => callWebmail('mark-read', { uid, folder, read: a.valor }));
+        await ejecutarSobre(uids, lote => callWebmail('mark-read', { uids: lote, folder, read: a.valor }));
         void refreshFolders();
         return;
       }
@@ -322,9 +345,9 @@ function GestorEmailsInterno() {
         conDeshacer(
           `${plural} ${etiqueta}`,
           async () => {
-            const ok = await ejecutarSobre(uids, uid => (a.tipo === 'eliminar'
-              ? callWebmail('delete-message', { uid, folder })
-              : callWebmail('move-message', { uid, fromFolder: folder, toFolder: destino })));
+            const ok = await ejecutarSobre(uids, lote => (a.tipo === 'eliminar'
+              ? callWebmail('delete-message', { uids: lote, folder })
+              : callWebmail('move-message', { uids: lote, fromFolder: folder, toFolder: destino })));
             if (ok > 0) {
               setMessages(prev => prev.filter(m => !uids.includes(m.uid)));
               setSearchResults(prev => prev && prev.filter(m => !uids.includes(m.uid)));
