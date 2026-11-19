@@ -88,6 +88,7 @@ export function AulaVirtualSala() {
       eventoId={id!}
       entrada={entrada}
       anfitrion={entrada.rol === 'host'}
+      usuarioId={usuario?.id ?? null}
       titulo={titulo}
       conGrabacion={grabar}
       onSalir={salir}

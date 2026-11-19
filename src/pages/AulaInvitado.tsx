@@ -86,6 +86,7 @@ export function AulaInvitado() {
           anfitrion={false}
           esInvitado
           sesionInvitado={sesion.sesion}
+          usuarioId={null}
           titulo={sesion.clase}
           onSalir={() => setSesion(null)}
         />

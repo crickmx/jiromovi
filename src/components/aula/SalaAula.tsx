@@ -6,7 +6,6 @@ import {
   Users, PhoneOff, Paperclip, Send, Shield, Volume2, CircleStop, Radio, X, Crown,
 } from 'lucide-react';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import { aulaDaily, aulaInvitado, aulaPublicar, subirConUrlFirmada, type EntradaAula } from '../../lib/aulaDaily';
 import { GrabadorClase } from '../../lib/aulaGrabacion';
 
@@ -27,6 +26,8 @@ interface Props {
   anfitrion: boolean;
   esInvitado?: boolean;
   sesionInvitado?: string | null;
+  /** Id del usuario de MOVI. En la ruta pública del invitado viene nulo. */
+  usuarioId?: string | null;
   titulo: string;
   conGrabacion?: boolean;
   onSalir: () => void;
@@ -106,11 +107,11 @@ export function SalaAula({
   anfitrion,
   esInvitado = false,
   sesionInvitado = null,
+  usuarioId = null,
   titulo,
   conGrabacion = false,
   onSalir,
 }: Props) {
-  const { usuario } = useAuth();
   const [call, setCall] = useState<DailyCall | null>(null);
   const [participantes, setParticipantes] = useState<DailyParticipant[]>([]);
   const [estado, setEstado] = useState<'conectando' | 'dentro' | 'error'>('conectando');
@@ -317,12 +318,12 @@ export function SalaAula({
     const arriba = !mano;
     setMano(arriba);
     call.sendAppMessage({ tipo: 'mano', arriba, nombre: entrada.nombre }, '*');
-    if (!esInvitado && usuario?.id) {
+    if (!esInvitado && usuarioId) {
       await supabase
         .from('aula_participantes')
         .update({ mano_levantada: arriba, mano_levantada_at: arriba ? new Date().toISOString() : null })
         .eq('evento_id', eventoId)
-        .eq('usuario_id', usuario.id)
+        .eq('usuario_id', usuarioId)
         .is('salido_at', null)
         .then(() => null, () => null);
     }
@@ -382,7 +383,7 @@ export function SalaAula({
         const { error: e } = await supabase.from('aula_chat').insert({
           evento_id: eventoId,
           autor_tipo: 'usuario',
-          autor_id: usuario?.id ?? null,
+          autor_id: usuarioId,
           autor_nombre: entrada.nombre,
           autor_rol: entrada.rol,
           texto: limpio,
@@ -426,7 +427,7 @@ export function SalaAula({
         await supabase.from('aula_chat').insert({
           evento_id: eventoId,
           autor_tipo: 'usuario',
-          autor_id: usuario?.id ?? null,
+          autor_id: usuarioId,
           autor_nombre: entrada.nombre,
           autor_rol: entrada.rol,
           adjunto_path: path,
