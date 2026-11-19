@@ -70,6 +70,16 @@ Deno.serve(async (req) => {
     return json({ error: 'Firma inválida' }, 401);
   }
 
+  // Segunda cerradura: si el webhook se creó con basicAuth en Daily, se exige.
+  const basico = Deno.env.get('DAILY_WEBHOOK_BASIC');
+  if (basico) {
+    const recibido = (req.headers.get('authorization') ?? '').replace(/^Basic\s+/i, '');
+    if (recibido !== btoa(basico)) {
+      console.warn('aula-daily-webhook: basicAuth incorrecto');
+      return json({ error: 'No autorizado' }, 401);
+    }
+  }
+
   let payload: Record<string, unknown> = {};
   try {
     payload = JSON.parse(raw);

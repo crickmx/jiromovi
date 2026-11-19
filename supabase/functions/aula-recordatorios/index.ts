@@ -21,8 +21,22 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 const ROLES = ['Agente', 'Empleado', 'Gerente', 'Administrador'];
 const LOTE = 20;
 
-function plantilla(minutos: number) {
-  return { tipo: minutos <= 5 ? '5m' : '30m', minutos };
+/**
+ * Solo el cron. El gateway convierte las llaves `sb_secret_` en un JWT con
+ * role=service_role, así que se acepta tanto la llave legacy como ese JWT.
+ */
+function esServicio(token: string) {
+  if (!token) return false;
+  if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) return true;
+  if (token.startsWith('sb_secret_')) return true;
+  if (!token.startsWith('eyJ')) return false;
+  try {
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)));
+    return payload?.role === 'service_role';
+  } catch {
+    return false;
+  }
 }
 
 async function encolar(evento: {
@@ -153,7 +167,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return json({ ok: true });
 
   const auth = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
-  if (auth !== Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) return json({ error: 'No autorizado' }, 401);
+  if (!esServicio(auth)) return json({ error: 'No autorizado' }, 401);
 
   try {
     const ahora = Date.now();

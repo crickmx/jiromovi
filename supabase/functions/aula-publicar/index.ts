@@ -38,6 +38,16 @@ async function usuarioDe(req: Request) {
   if (!token) return { user: null, servicio: false };
 
   if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) return { user: null, servicio: true };
+  if (token.startsWith('sb_secret_')) return { user: null, servicio: true };
+  if (token.startsWith('eyJ')) {
+    try {
+      const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)));
+      if (payload?.role === 'service_role') return { user: null, servicio: true };
+    } catch {
+      /* no es JWT */
+    }
+  }
 
   const { data } = await admin.auth.getUser(token);
   return { user: data.user ?? null, servicio: false };
