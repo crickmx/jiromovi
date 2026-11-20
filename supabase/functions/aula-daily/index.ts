@@ -133,9 +133,15 @@ async function asegurarSala(evento: Evento, creador: string) {
   // Los dos links de invitación se garantizan SIEMPRE, también cuando la sala
   // ya existía: antes solo se generaban al crear la sala, así que los eventos
   // anteriores se quedaban sin link de oyentes para siempre.
-  const tokens: Record<string, string> = {};
+  const tokens: Record<string, string | boolean> = {};
   if (!evento.link_token) tokens.link_token = crypto.randomUUID().replace(/-/g, '');
   if (!evento.link_token_asistente) tokens.link_token_asistente = crypto.randomUUID().replace(/-/g, '');
+  // Un evento que sigue en pie nunca debe tener los links apagados: al
+  // finalizar se apagan, pero si se reabre o se reprograma hay que reconectar.
+  if (!evento.link_activo && evento.estado !== 'finalizado' && evento.estado !== 'cancelado') {
+    tokens.link_activo = true;
+    evento.link_activo = true;
+  }
   if (Object.keys(tokens).length > 0) {
     await admin.from('aula_eventos').update(tokens).eq('id', evento.id);
     Object.assign(evento, tokens);
