@@ -99,7 +99,11 @@ Deno.serve(async (req: Request) => {
     }
 
     // Step 5: Generate recovery link
-    const appUrl = 'https://app.movi.digital';
+    // El enlace tiene que volver al mismo sitio desde el que se pidió: si no,
+    // con la lista de redirecciones del proyecto, un usuario de producción acaba
+    // aterrizando en beta y sin pantalla donde escribir su contraseña.
+    const origen = req.headers.get('Origin') || '';
+    const appUrl = /^https:\/\/(app|beta)\.movi\.digital$/.test(origen) ? origen : 'https://app.movi.digital';
     const redirectUrl = `${appUrl}/reset-password`;
 
     const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
@@ -151,9 +155,16 @@ Deno.serve(async (req: Request) => {
               <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
                 Hola <strong>${userName}</strong>,
               </p>
-              <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+              <p style="color:#4a5568; font-size:16px; line-height:1.6; margin:0 0 24px;">
                 Recibimos una solicitud para restablecer la contrasena de tu cuenta en MOVI Digital. Haz clic en el boton de abajo para crear una nueva contrasena:
               </p>
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 16px; margin:0 0 24px;">
+                <p style="color:#4a5568; font-size:13px; line-height:1.6; margin:0;">
+                  <strong>La contrasena nueva debe tener:</strong> al menos 8 caracteres, una minuscula, una MAYUSCULA,
+                  un numero y un simbolo (!@#$%...). Tampoco puede ser una contrasena que aparezca en filtraciones
+                  de datos conocidas.
+                </p>
+              </div>
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" style="padding: 16px 0 32px;">

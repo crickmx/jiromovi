@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { generarPasswordSegura, mensajeDeRechazo } from '../_shared/passwordPolicy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,12 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
-function generateSecurePassword(): string {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
-  const arr = new Uint8Array(24);
-  crypto.getRandomValues(arr);
-  return Array.from(arr).map(b => chars[b % chars.length]).join('');
-}
+// La contraseña la genera el servidor y el usuario la cambia al entrar con
+// Ingreso Express; tiene que cumplir la política del proyecto o el alta falla
+// con un 422 que parece bug de la función (ver _shared/passwordPolicy.ts).
 
 interface CreateUserRequest {
   userData: {
@@ -140,7 +138,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Auto-generate a secure internal password - user authenticates via code only
-    const password = generateSecurePassword();
+    const password = generarPasswordSegura(24);
 
     if (!userData.nombre || !userData.apellidos) {
       return new Response(
@@ -183,7 +181,7 @@ Deno.serve(async (req: Request) => {
     if (authError) {
       console.error('[create-user] Auth error:', authError);
       return new Response(
-        JSON.stringify({ error: 'Error en autenticación: ' + authError.message }),
+        JSON.stringify({ error: 'Error en autenticación: ' + (mensajeDeRechazo(authError) || authError.message) }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

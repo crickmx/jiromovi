@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { esPasswordValida, errorDePasswordInvalida, mensajeDeRechazo } from '../_shared/passwordPolicy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -74,6 +75,15 @@ Deno.serve(async (req: Request) => {
 
     const rol = userData.rol === 'Agente' ? 'Agente' : 'Empleado';
     const emailAcceso = (userData.email_laboral || userData.email_personal)?.trim().toLowerCase();
+
+    // La contraseña llega del formulario de alta: se valida aquí porque la
+    // política la impone el servidor de auth y su error viene en inglés.
+    if (password && !esPasswordValida(String(password))) {
+      return new Response(
+        JSON.stringify({ error: errorDePasswordInvalida(String(password)) }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
 
     if (!emailAcceso || !password) {
       return new Response(
@@ -172,6 +182,13 @@ Deno.serve(async (req: Request) => {
 
     if (authError) {
       console.error('[register-employee] Auth error:', authError);
+      const rechazo = mensajeDeRechazo(authError, String(password));
+      if (rechazo) {
+        return new Response(
+          JSON.stringify({ error: rechazo }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
       return new Response(
         JSON.stringify({ error: 'Error en autenticación: ' + authError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
