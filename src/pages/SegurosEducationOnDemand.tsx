@@ -6,6 +6,14 @@ import { trackCourseStart } from '../lib/activityLogger';
 import { Search, Plus, Video, ListFilter as Filter, Play, Clock, Award, Upload, X, Settings, Trash2, Pencil as Edit2, FileText } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
+import { SelectorEtiquetas, PildorasEtiquetas } from '../components/segurosEducation/SelectorEtiquetas';
+import {
+  cargarEtiquetas,
+  guardarEtiquetasLeccion,
+  resolverEtiquetas,
+  coincide,
+  type Etiqueta,
+} from '../lib/etiquetas';
 import { analyticsTracker } from '../lib/analyticsTracker';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 
@@ -25,6 +33,7 @@ interface Lesson {
   titulo: string;
   descripcion: string;
   categorias: { nombre: string; id: string }[];
+  etiquetas: Etiqueta[];
   miniatura_url: string | null;
   video_url: string;
   duracion: number;
@@ -59,6 +68,11 @@ export function SegurosEducationOnDemand() {
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [catalogoEtiquetas, setCatalogoEtiquetas] = useState<Etiqueta[]>([]);
+  const [filtroAseguradora, setFiltroAseguradora] = useState<string>('all');
+  const [filtroRamo, setFiltroRamo] = useState<string>('all');
+  const [filtroSubramo, setFiltroSubramo] = useState<string>('all');
+  const [etiquetasSeleccion, setEtiquetasSeleccion] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -139,7 +153,7 @@ export function SegurosEducationOnDemand() {
           : Promise.resolve({ data: [] as Oficina[] }),
         supabase
           .from('seguros_lessons')
-          .select('id, titulo, descripcion, miniatura_url, video_url, duracion, fecha_creacion, oficinas_asignadas, seguros_lesson_categories(seguros_categories(id, nombre))')
+          .select('id, titulo, descripcion, miniatura_url, video_url, duracion, fecha_creacion, oficinas_asignadas, seguros_lesson_categories(seguros_categories(id, nombre)), seguros_leccion_etiquetas(etiqueta_id)')
           .order('fecha_creacion', { ascending: false }),
         supabase
           .from('seguros_progress')
@@ -151,17 +165,22 @@ export function SegurosEducationOnDemand() {
       setOficinas(ofisRes.data || []);
 
       const progressByLesson = new Map((progressRes.data || []).map((p) => [p.lesson_id, p]));
-      type LessonRow = Omit<Lesson, 'categorias'> & {
+      type LessonRow = Omit<Lesson, 'categorias' | 'etiquetas'> & {
         seguros_lesson_categories: { seguros_categories: { id: string; nombre: string } | null }[] | null;
+        seguros_leccion_etiquetas: { etiqueta_id: string }[] | null;
       };
 
-      setLessons(((lessonsRes.data || []) as unknown as LessonRow[]).map(({ seguros_lesson_categories, ...lesson }) => {
+      const catalogo = catalogoEtiquetas.length > 0 ? catalogoEtiquetas : await cargarEtiquetas();
+      if (catalogoEtiquetas.length === 0) setCatalogoEtiquetas(catalogo);
+
+      setLessons(((lessonsRes.data || []) as unknown as LessonRow[]).map(({ seguros_lesson_categories, seguros_leccion_etiquetas, ...lesson }) => {
         const progress = progressByLesson.get(lesson.id);
         return {
           ...lesson,
           categorias: (seguros_lesson_categories || [])
             .map((lc) => lc.seguros_categories)
             .filter((c): c is { id: string; nombre: string } => !!c),
+          etiquetas: resolverEtiquetas((seguros_leccion_etiquetas || []).map((e) => e.etiqueta_id), catalogo),
           progreso: progress?.progreso || 0,
           completado: progress?.completado || false,
           tiempo_reproduccion: progress?.tiempo_reproduccion || 0,
@@ -176,14 +195,45 @@ export function SegurosEducationOnDemand() {
   };
 
   const filteredLessons = useMemo(() => {
-    const term = searchTerm.toLowerCase();
-    return lessons.filter((lesson) =>
-      (!term ||
-        lesson.titulo.toLowerCase().includes(term) ||
-        (lesson.descripcion && lesson.descripcion.toLowerCase().includes(term))) &&
-      (selectedCategory === 'all' || lesson.categorias?.some(cat => cat.id === selectedCategory))
-    );
-  }, [lessons, searchTerm, selectedCategory]);
+    const term = searchTerm.trim();
+    return lessons.filter((lesson) => {
+      const coincideTexto =
+        !term ||
+        coincide(lesson.titulo, term) ||
+        (lesson.descripcion ? coincide(lesson.descripcion, term) : false) ||
+        lesson.etiquetas.some((e) => coincide(e.nombre, term));
+      if (!coincideTexto) return false;
+      if (selectedCategory !== 'all' && !lesson.categorias?.some((cat) => cat.id === selectedCategory)) return false;
+
+      const ids = new Set(lesson.etiquetas.map((e) => e.id));
+      if (filtroAseguradora !== 'all' && !ids.has(filtroAseguradora)) return false;
+      if (filtroRamo !== 'all' && !ids.has(filtroRamo)) return false;
+      if (filtroSubramo !== 'all' && !ids.has(filtroSubramo)) return false;
+      return true;
+    });
+  }, [lessons, searchTerm, selectedCategory, filtroAseguradora, filtroRamo, filtroSubramo]);
+
+  const aseguradoras = useMemo(() => catalogoEtiquetas.filter((e) => e.tipo === 'aseguradora'), [catalogoEtiquetas]);
+  const ramos = useMemo(() => catalogoEtiquetas.filter((e) => e.tipo === 'ramo'), [catalogoEtiquetas]);
+  const subramos = useMemo(() => {
+    const todos = catalogoEtiquetas.filter((e) => e.tipo === 'subramo');
+    return filtroRamo === 'all' ? todos : todos.filter((e) => e.padre_id === filtroRamo);
+  }, [catalogoEtiquetas, filtroRamo]);
+
+  const hayFiltros =
+    selectedCategory !== 'all' ||
+    filtroAseguradora !== 'all' ||
+    filtroRamo !== 'all' ||
+    filtroSubramo !== 'all' ||
+    searchTerm.trim() !== '';
+
+  const limpiarFiltros = () => {
+    setSearchTerm('');
+    setSelectedCategory('all');
+    setFiltroAseguradora('all');
+    setFiltroRamo('all');
+    setFiltroSubramo('all');
+  };
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;
@@ -449,6 +499,15 @@ export function SegurosEducationOnDemand() {
         // No throw - lesson was created successfully, just log the error
       }
 
+      // Etiquetas de clasificación (aseguradora, ramo, subramo…)
+      if (etiquetasSeleccion.length > 0 && newLesson) {
+        try {
+          await guardarEtiquetasLeccion(newLesson.id, etiquetasSeleccion);
+        } catch (err) {
+          console.error('Error guardando etiquetas:', err);
+        }
+      }
+
       setUploadProgress(95);
 
       // Upload pending documents if any
@@ -588,6 +647,12 @@ export function SegurosEducationOnDemand() {
         p_lesson_id: editingLesson.id,
         p_category_ids: formData.categoria_ids
       });
+      try {
+        await guardarEtiquetasLeccion(editingLesson.id, etiquetasSeleccion);
+      } catch (err) {
+        console.error('Error guardando etiquetas:', err);
+      }
+
 
       if (categoriesError) {
         console.error('Error updating categories:', categoriesError);
@@ -619,6 +684,7 @@ export function SegurosEducationOnDemand() {
       categoria_ids: lesson.categorias?.map(c => c.id) || [],
       oficinas_asignadas: lesson.oficinas_asignadas ?? [],
     });
+    setEtiquetasSeleccion(lesson.etiquetas.map((e) => e.id));
     setShowUploadModal(true);
   };
 
@@ -913,7 +979,11 @@ export function SegurosEducationOnDemand() {
                 {recalculatingDurations ? `${recalcProgress.current}/${recalcProgress.total}` : 'Recalc. duraciones'}
               </button>
               <button
-                onClick={() => setShowUploadModal(true)}
+                onClick={() => {
+                  setEditingLesson(null);
+                  setEtiquetasSeleccion([]);
+                  setShowUploadModal(true);
+                }}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1C37E0] text-white text-xs font-semibold hover:bg-[#1630C8] transition-all shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -1007,6 +1077,43 @@ export function SegurosEducationOnDemand() {
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Etiquetas: aseguradora, ramo y subramo */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { valor: filtroAseguradora, set: setFiltroAseguradora, vacio: 'Aseguradora', lista: aseguradoras },
+            { valor: filtroRamo, set: (v: string) => { setFiltroRamo(v); setFiltroSubramo('all'); }, vacio: 'Ramo', lista: ramos },
+            { valor: filtroSubramo, set: setFiltroSubramo, vacio: 'Subramo', lista: subramos },
+          ].map((filtro) => (
+            <select
+              key={filtro.vacio}
+              value={filtro.valor}
+              onChange={(e) => filtro.set(e.target.value)}
+              className={`rounded-lg border px-2.5 py-1.5 text-caption font-semibold transition ${
+                filtro.valor === 'all'
+                  ? 'border-neutral-200 text-neutral-500 dark:border-white/10 dark:text-white/55'
+                  : 'border-accent bg-accent-soft text-accent-ink'
+              }`}
+            >
+              <option value="all">{filtro.vacio}</option>
+              {filtro.lista.map((etiqueta) => (
+                <option key={etiqueta.id} value={etiqueta.id}>{etiqueta.nombre}</option>
+              ))}
+            </select>
+          ))}
+
+          {hayFiltros && (
+            <button
+              onClick={limpiarFiltros}
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-caption font-semibold text-neutral-400 transition hover:text-accent-ink"
+            >
+              <X className="h-3.5 w-3.5" /> Limpiar
+            </button>
+          )}
+          <span className="ml-auto text-caption text-neutral-400">
+            {filteredLessons.length} {filteredLessons.length === 1 ? 'lección' : 'lecciones'}
+          </span>
         </div>
 
         {/* Lessons Grid */}
@@ -1115,6 +1222,12 @@ export function SegurosEducationOnDemand() {
                     {lesson.titulo}
                   </h3>
 
+                  {lesson.etiquetas.length > 0 && (
+                    <div className="mb-2">
+                      <PildorasEtiquetas etiquetas={lesson.etiquetas} max={3} />
+                    </div>
+                  )}
+
                   {lesson.descripcion && (
                     <p className="text-xs text-neutral-500 dark:text-white/55 line-clamp-2 mb-2">
                       {lesson.descripcion}
@@ -1175,6 +1288,11 @@ export function SegurosEducationOnDemand() {
                     </span>
                   )}
                 </div>
+                {selectedLesson.etiquetas.length > 0 && (
+                  <div className="mt-1.5">
+                    <PildorasEtiquetas etiquetas={selectedLesson.etiquetas} max={5} />
+                  </div>
+                )}
               </div>
               <button
                 onClick={closeVideoModal}
@@ -1316,6 +1434,30 @@ export function SegurosEducationOnDemand() {
                     })}
                   </div>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Etiquetas
+                  <span className="ml-2 text-xs font-normal text-neutral-500">
+                    Aseguradora, ramo y subramo para filtrar el directorio
+                  </span>
+                </label>
+                <div className="rounded-lg border border-neutral-300 p-3 dark:border-white/10">
+                  <SelectorEtiquetas
+                    etiquetas={catalogoEtiquetas}
+                    valor={etiquetasSeleccion}
+                    onChange={setEtiquetasSeleccion}
+                    onNuevaEtiqueta={(nueva) =>
+                      setCatalogoEtiquetas((prev) =>
+                        prev.some((e) => e.id === nueva.id)
+                          ? prev
+                          : [...prev, nueva].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+                      )
+                    }
+                    compacto
+                  />
+                </div>
               </div>
 
               <div>
