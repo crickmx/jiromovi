@@ -84,7 +84,10 @@ export function PageHeader({
         <div className="pointer-events-none absolute -right-12 -top-12 w-64 h-64 rounded-full bg-accent/10 dark:bg-accent/15 blur-3xl" />
         <div className="pointer-events-none absolute right-40 -bottom-10 w-48 h-48 rounded-full bg-blue-500/10 blur-2xl" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+        {/* Apilado hasta xl: con muchas acciones el título se quedaba en una
+            columna de 3 letras. Ahora las acciones bajan a su propia fila y,
+            cuando van al lado, nunca se llevan más del 62% del ancho. */}
+        <div className="relative z-10 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           {/* Lado Izquierdo: Icono + Título + Badge + Descripción */}
           <div className="flex items-start sm:items-center gap-4 min-w-0 flex-1">
             {Icon && (
@@ -119,7 +122,7 @@ export function PageHeader({
 
           {/* Lado Derecho: Botones / Acciones */}
           {(actions || action) && (
-            <div className="flex-shrink-0 flex flex-wrap items-center gap-2.5">
+            <div className="flex w-full flex-wrap items-center gap-2.5 xl:w-auto xl:max-w-[62%] xl:flex-shrink-0 xl:justify-end">
               {action && typeof action === 'object' && 'label' in action ? (
                 <button
                   onClick={action.onClick}

@@ -1327,10 +1327,10 @@ export function Tramites() {
         }
       >
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-neutral-200 dark:border-white/8">
+        <div className="flex gap-1 overflow-x-auto border-b border-neutral-200 dark:border-white/8 [-ms-overflow-style:none] [scrollbar-width:none]">
           <button
             onClick={() => setActiveTab('activos')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === 'activos'
                 ? 'text-accent-ink border-accent'
                 : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
@@ -1341,7 +1341,7 @@ export function Tramites() {
           </button>
           <button
             onClick={() => setActiveTab('cerrados')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === 'cerrados'
                 ? 'text-accent-ink border-accent'
                 : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
@@ -1353,7 +1353,7 @@ export function Tramites() {
           {esRolSistemaAdmin && (
             <button
               onClick={() => setActiveTab('papelera')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+              className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
                 activeTab === 'papelera'
                   ? 'text-red-500 border-red-500'
                   : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
