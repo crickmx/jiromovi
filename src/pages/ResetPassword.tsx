@@ -18,6 +18,14 @@ import PasswordRules, { PasswordStrengthBar } from '../components/PasswordRules'
  * `PASSWORD_RECOVERY`) y basta con escribir la nueva contraseña; si no hay
  * sesión, el enlace expiró y se ofrece pedir otro.
  */
+/**
+ * El token de recuperación se canjea UNA vez. React monta los efectos dos veces
+ * en modo estricto (desarrollo), y un segundo `verifyOtp` con el mismo token
+ * contesta "ya usado" y pintaba "el enlace no sirve" aunque el primero hubiera
+ * funcionado. Esta marca sobrevive al re-montaje porque vive en el módulo.
+ */
+let tokenEnCanje: string | null = null;
+
 export function ResetPassword() {
   const navigate = useNavigate();
   const [estado, setEstado] = useState<'verificando' | 'listo' | 'sin-enlace' | 'guardado'>('verificando');
@@ -40,13 +48,52 @@ export function ResetPassword() {
       }
     });
 
+    // Enlace actual: la app recibe `?token_hash=…&type=recovery` y canjea el
+    // token por POST. Se hace así porque el enlace directo de Supabase
+    // (`/auth/v1/verify?...`) se gasta con la PRIMERA visita: la vista previa de
+    // WhatsApp o el escáner del correo lo abren antes que la persona, y al
+    // abrirlo de verdad contesta "enlace inválido o expirado". Un GET al token
+    // no lo consume; solo lo consume este canje.
+    const params = new URLSearchParams(window.location.search);
+    const tokenHash = params.get('token_hash');
+
+    if (tokenHash) {
+      // Segundo montaje o refresco con el mismo token: ya se canjeó, así que no
+      // se repite la llamada; basta con mirar si quedó sesión.
+      if (tokenEnCanje === tokenHash) {
+        supabase.auth
+          .getSession()
+          .then(({ data: { session } }) => { if (!cancelado) setEstado(session ? 'listo' : 'sin-enlace'); })
+          .catch(() => { if (!cancelado) setEstado('sin-enlace'); });
+        return () => { cancelado = true; subscription.unsubscribe(); };
+      }
+      tokenEnCanje = tokenHash;
+
+      supabase.auth
+        .verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        .then(async ({ error: err }) => {
+          if (cancelado) return;
+          // El token fuera de la barra de direcciones: un refresco no puede
+          // reintentar un canje ya usado (y la sesión ya está creada).
+          window.history.replaceState({}, '', window.location.pathname);
+          if (!err) { setEstado('listo'); return; }
+          // Si el canje se rechazó pero hay sesión (por ejemplo la acabó de
+          // crear el primer montaje), la pantalla sirve igual.
+          const { data: { session } } = await supabase.auth.getSession();
+          if (cancelado) return;
+          setEstado(session ? 'listo' : 'sin-enlace');
+        })
+        .catch(() => { if (!cancelado) setEstado('sin-enlace'); });
+      return () => { cancelado = true; subscription.unsubscribe(); };
+    }
+
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => {
         if (cancelado) return;
         if (session) { setEstado('listo'); return; }
-        // El enlace se procesa al arrancar la app: si en un momento no hay
-        // sesión, el enlace no sirve (expirado o ya usado).
+        // Enlaces antiguos (tokens en el fragmento) los procesa supabase-js al
+        // arrancar; si no hay sesión, el enlace no sirve.
         setTimeout(() => {
           if (!cancelado) setEstado((prev) => (prev === 'verificando' ? 'sin-enlace' : prev));
         }, 1500);

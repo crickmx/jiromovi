@@ -119,9 +119,13 @@ Deno.serve(async (req: Request) => {
       throw new Error('Error al generar enlace de recuperacion');
     }
 
-    console.log('Link de recuperacion generado');
+    // El enlace NO es el `action_link` de Supabase: ese se gasta con la primera
+    // visita (la vista previa de WhatsApp, el escáner del correo) y la persona
+    // se encuentra "enlace inválido o expirado". Se manda el token a la app
+    // (`?token_hash=…`) y la pantalla lo canjea por POST cuando ya está abierta.
+    const resetUrl = `${redirectUrl}?token_hash=${encodeURIComponent(resetData.properties.hashed_token)}&type=recovery`;
 
-    const resetUrl = resetData.properties.action_link;
+    console.log('Link de recuperacion generado');
     const userName = usuario.nombre_completo || `${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim() || 'Usuario';
 
     // Step 6: Send email directly via Resend
