@@ -34,10 +34,13 @@ interface Session {
 
 
 
-function formatDuration(seconds: number) {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+function formatDuration(segundos: number) {
+  const total = Math.round(segundos || 0);
+  if (total <= 0) return '';
+  const h = Math.floor(total / 3600);
+  const m = Math.round((total % 3600) / 60);
+  if (h > 0) return m ? `${h} h ${m} min` : `${h} h`;
+  return `${m} min`;
 }
 
 function Skeleton({ className }: { className?: string }) {
