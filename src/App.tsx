@@ -8,6 +8,7 @@ import { LoadingProvider } from './contexts/LoadingContext';
 import { LoadingOverlay } from './components/loading/LoadingOverlay';
 import MoviFullRoutes from './pages/MoviFullRoutes';
 import MoviLogin from './pages/MoviLogin';
+import ResetPassword from './pages/ResetPassword';
 import { useAppUpdate } from './lib/useAppUpdate';
 import { AppUpdateBanner } from './components/AppUpdateBanner';
 
@@ -356,6 +357,11 @@ function MoviApp() {
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/login" element={<MoviLogin />} />
+                {/* Enlace del correo de recuperación de contraseña. Fuera del
+                    área protegida: se llega con la sesión de recuperación del
+                    propio enlace y hace falta funcionar aunque no haya sesión. */}
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/restablecer-contrasena" element={<ResetPassword />} />
                 <Route path="/mutuus" element={<RedirectToMutuusMx />} />
 
                 {/* Landings públicas de Producto MOVI */}

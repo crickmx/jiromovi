@@ -4,6 +4,7 @@ import { Mail, ArrowRight, ChevronLeft, RotateCcw, CircleCheck as CheckCircle, L
 import { supabase } from '../lib/supabase';
 import { BetaBanner } from '../components/BetaBanner';
 import { isBetaHost } from '../lib/betaAccess';
+import { describeLoginError, passwordRuleSummary } from '../lib/passwordPolicy';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -46,7 +47,7 @@ function BackgroundLayer() {
   );
 }
 
-type Step = 'main' | 'express-code';
+type Step = 'main' | 'express-code' | 'recuperar';
 
 export default function MoviLogin() {
   useEffect(() => { document.title = 'MOVI Mi Oficina Virtual'; }, []);
@@ -64,6 +65,11 @@ export default function MoviLogin() {
   const [noPasswordMsg, setNoPasswordMsg] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  // Recuperación de contraseña: se pide por correo, nunca por celular — el
+  // enlace restablece la contraseña de una cuenta concreta y un teléfono puede
+  // estar compartido por varias.
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoverySent, setRecoverySent] = useState(false);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,26 +88,20 @@ export default function MoviLogin() {
     }, 1000);
   }
 
-  async function resolveEmail(input: string): Promise<string | null> {
+  // Resolver el identificador a un correo.
+  //
+  // El teléfono lo resuelve el servidor (`resolver_login_email`) por dos
+  // motivos: la tabla `usuarios` no es legible con la llave anónima, y un mismo
+  // celular puede estar en varias cuentas. Antes se pedía "la primera" y el
+  // usuario acababa validando su contraseña contra la cuenta de otra persona.
+  async function resolveEmail(input: string): Promise<{ email: string | null; cuentas: number }> {
     const trimmed = input.trim();
-    if (!isPhoneInput(trimmed)) return trimmed.toLowerCase();
+    if (!isPhoneInput(trimmed)) return { email: trimmed.toLowerCase(), cuentas: 1 };
 
-    const digits = trimmed.replace(/\D/g, '');
-    let phone10 = digits;
-    if (digits.length === 12 && digits.startsWith('52')) phone10 = digits.slice(2);
-    else if (digits.length === 13 && digits.startsWith('521')) phone10 = digits.slice(3);
-    else if (digits.length > 10) phone10 = digits.slice(-10);
-
-    const { data } = await supabase
-      .from('usuarios')
-      .select('email_laboral')
-      .or(`celular_laboral.ilike.%${phone10}%,celular_personal.ilike.%${phone10}%`)
-      .eq('estado', 'activo')
-      .is('deleted_at', null)
-      .limit(1)
-      .maybeSingle();
-
-    return data?.email_laboral?.toLowerCase() || null;
+    const { data, error } = await supabase.rpc('resolver_login_email', { p_identificador: trimmed });
+    if (error) return { email: null, cuentas: 0 };
+    const res = (data || {}) as { email?: string | null; cuentas?: number };
+    return { email: res.email ?? null, cuentas: Number(res.cuentas ?? 0) };
   }
 
   async function handlePasswordLogin(e: React.FormEvent) {
@@ -114,31 +114,26 @@ export default function MoviLogin() {
 
     setLoading(true);
     try {
-      const email = await resolveEmail(trimmed);
+      const { email, cuentas } = await resolveEmail(trimmed);
       if (!email) {
-        setError('No encontramos una cuenta activa con ese dato.');
+        setError(cuentas > 1
+          ? 'Ese número está registrado en más de una cuenta. Ingresa con tu correo electrónico.'
+          : 'No encontramos una cuenta activa con ese dato.');
         return;
       }
 
       const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr) {
         if (authErr.message.includes('Invalid login credentials')) {
-          const { data: userExists } = await supabase
-            .from('usuarios')
-            .select('id')
-            .eq('email_laboral', email)
-            .eq('estado', 'activo')
-            .is('deleted_at', null)
-            .maybeSingle();
-
-          if (userExists) {
-            setNoPasswordMsg(true);
-          } else {
-            setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
-          }
+          // No se consulta aquí si la cuenta existe: la tabla `usuarios` no es
+          // legible con la llave anónima (42501) y, aunque lo fuera, distinguir
+          // "existe pero la contraseña no cuadra" sirve para enumerar cuentas.
+          // El aviso de ayuda se muestra igual y no afirma nada sobre la cuenta.
+          setError(describeLoginError(authErr));
+          setNoPasswordMsg(true);
           return;
         }
-        setError('Error al iniciar sesión. Intenta de nuevo.');
+        setError(describeLoginError(authErr));
         return;
       }
 
@@ -160,10 +155,12 @@ export default function MoviLogin() {
 
     setLoading(true);
     try {
+      // El teléfono va como `phone`: mandarlo dentro de `email` hacía que el
+      // servidor buscara una cuenta con ese "correo" y no encontrara ninguna.
       const res = await fetch(`${SUPABASE_URL}/functions/v1/send-login-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-        body: JSON.stringify({ email: trimmed, platform: 'movi' }),
+        body: JSON.stringify(isPhoneInput(trimmed) ? { phone: trimmed, platform: 'movi' } : { email: trimmed, platform: 'movi' }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -267,7 +264,11 @@ export default function MoviLogin() {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/send-login-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-        body: JSON.stringify({ email: identifier.trim().toLowerCase(), platform: 'movi' }),
+        body: JSON.stringify(
+          isPhoneInput(identifier.trim())
+            ? { phone: identifier.trim(), platform: 'movi' }
+            : { email: identifier.trim().toLowerCase(), platform: 'movi' },
+        ),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -284,6 +285,36 @@ export default function MoviLogin() {
       }
       startCooldown(120);
       setTimeout(() => codeInputRef.current?.focus(), 100);
+    } catch {
+      setError('Error de conexión. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Pedir el enlace de restablecimiento. La respuesta es siempre la misma
+  // ("si el correo existe…") para no revelar qué cuentas existen.
+  async function handleRecoveryRequest(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    const correo = recoveryEmail.trim().toLowerCase();
+    if (!correo || !correo.includes('@')) {
+      setError('Escribe tu correo electrónico para enviarte el enlace.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/reset-password-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ email: correo }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || 'No se pudo enviar el enlace. Intenta de nuevo.');
+        return;
+      }
+      setRecoverySent(true);
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {
@@ -382,18 +413,35 @@ export default function MoviLogin() {
 
                   {noPasswordMsg && (
                     <div className="mb-4 px-4 py-3 rounded-xl text-sm bg-blue-50 border border-blue-200 text-blue-900">
-                      <p className="font-medium mb-1">Contraseña no configurada</p>
+                      <p className="font-medium mb-1">¿Sin contraseña o no la recuerdas?</p>
                       <p className="text-xs text-blue-800/80">
-                        Aún no tienes una contraseña. Utiliza Ingreso Express y después podrás crear tu contraseña desde tu perfil.
+                        Si todavía no tienes una, entra con Ingreso Express (código) y créala desde tu perfil.
+                        Si la olvidaste, pide un enlace para restablecerla.
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => { setMode('express'); setNoPasswordMsg(false); setError(''); }}
-                        className="mt-2 text-xs font-semibold flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors"
-                      >
-                        <Zap className="w-3.5 h-3.5" />
-                        Ir a Ingreso Express
-                      </button>
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => { setMode('express'); setNoPasswordMsg(false); setError(''); }}
+                          className="text-xs font-semibold flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                          Ir a Ingreso Express
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStep('recuperar');
+                            setRecoveryEmail(isPhoneInput(identifier) ? '' : identifier.trim().toLowerCase());
+                            setRecoverySent(false);
+                            setNoPasswordMsg(false);
+                            setError('');
+                          }}
+                          className="text-xs font-semibold flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          Restablecer mi contraseña
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -450,6 +498,21 @@ export default function MoviLogin() {
                           </>
                         )}
                       </button>
+
+                      <div className="text-center pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStep('recuperar');
+                            setRecoveryEmail(isPhoneInput(identifier) ? '' : identifier.trim().toLowerCase());
+                            setRecoverySent(false);
+                            setError('');
+                          }}
+                          className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                          ¿Olvidaste tu contraseña?
+                        </button>
+                      </div>
                     </form>
                   )}
 
@@ -522,6 +585,84 @@ export default function MoviLogin() {
                       : 'Recibirás un código de 6 dígitos por correo y WhatsApp'
                     }
                   </p>
+                </>
+              )}
+
+              {/* ── STEP: RECUPERAR CONTRASEÑA ── */}
+              {step === 'recuperar' && (
+                <>
+                  <div className="mb-8">
+                    <button
+                      onClick={() => { setStep('main'); setError(''); setRecoverySent(false); }}
+                      className="flex items-center gap-1.5 text-xs font-semibold mb-4 text-slate-500 hover:text-slate-800 transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Volver
+                    </button>
+                    <h2 className="font-display text-2xl font-semibold text-slate-900 tracking-[-0.025em]">Restablecer contraseña</h2>
+                    <p className="mt-1.5 text-sm text-slate-500">
+                      Te enviamos un enlace a tu correo para que la cambies tú mismo.
+                    </p>
+                  </div>
+
+                  {error && <div className={avisoError}>{error}</div>}
+
+                  {!recoverySent && (
+                    <form onSubmit={handleRecoveryRequest} className="space-y-4" noValidate>
+                      <div className="space-y-1.5">
+                        <label className={labelCls}>Correo electrónico</label>
+                        <div className="relative">
+                          <Mail className={iconCls} />
+                          <input
+                            type="email"
+                            value={recoveryEmail}
+                            onChange={e => setRecoveryEmail(e.target.value)}
+                            placeholder="tu@correo.com"
+                            className={`${inputCls} pl-10 pr-4`}
+                            autoComplete="email"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+
+                      <button type="submit" disabled={loading} className={btnPrimario}>
+                        {loading ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <span>Enviar enlace</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </button>
+
+                      <p className="text-xs text-center text-slate-500 leading-relaxed">
+                        La contraseña nueva debe cumplir: {passwordRuleSummary()}
+                      </p>
+                    </form>
+                  )}
+
+                  {recoverySent && (
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-800">
+                        <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                        <p className="text-sm">
+                          Si <strong>{recoveryEmail}</strong> está dado de alta, recibirás un enlace para crear tu
+                          contraseña. Vence en 24 horas; revisa también el correo no deseado.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setStep('main'); setRecoverySent(false); setError(''); }}
+                        className={btnSecundario}
+                      >
+                        Volver al inicio de sesión
+                      </button>
+                      <p className="text-xs text-center text-slate-500">
+                        ¿Tienes prisa? Entra con Ingreso Express (código) y no necesitas contraseña.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 

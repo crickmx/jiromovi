@@ -21,6 +21,7 @@
 // más, solo un Administrador.** Cambiar un correo es siempre de Administrador,
 // porque el correo es con lo que se entra.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { esPasswordValida, errorDePasswordInvalida, mensajeDeRechazo } from '../_shared/passwordPolicy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -112,6 +113,12 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Solo un Administrador puede cambiar el correo' }, 403);
     }
 
+    // La contraseña se valida antes de tocar auth: el error de GoTrue llega en
+    // inglés y sin decir qué regla falta.
+    if (password && !esPasswordValida(password)) {
+      return json({ error: errorDePasswordInvalida(password) }, 400);
+    }
+
     const updateData: { password?: string; email?: string; email_confirm?: boolean } = {};
     if (password) updateData.password = password;
     if (email) {
@@ -123,7 +130,7 @@ Deno.serve(async (req: Request) => {
 
     if (error) {
       console.error('[update-user-password] Error de Supabase:', error.message);
-      return json({ error: error.message }, 400);
+      return json({ error: mensajeDeRechazo(error, password) || error.message }, 400);
     }
 
     // Queda constancia de quién le cambió la cuenta a quién. Cambiar una

@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { esPasswordValida, errorDePasswordInvalida, mensajeDeRechazo } from "../_shared/passwordPolicy.ts";
 
 // create-seguwallet-customer
 // POST: da de alta un cliente de Seguwallet (cuenta de acceso + ficha).
@@ -100,7 +101,7 @@ Deno.serve(async (req: Request) => {
       const userId: string | undefined = body.user_id || body.auth_user_id;
       const password: string | undefined = body.password || body.new_password;
       if (!userId || !password) return json({ error: "Missing user_id or password" }, 400);
-      if (String(password).length < 8) return json({ error: "La contraseña debe tener al menos 8 caracteres." }, 400);
+      if (!esPasswordValida(String(password))) return json({ error: errorDePasswordInvalida(String(password)) }, 400);
 
       // Solo cuentas de clientes de Seguwallet; nunca una cuenta de MOVI.
       const { data: cliente } = await supabaseAdmin
@@ -115,7 +116,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password });
-      if (error) return json({ error: error.message }, 400);
+      if (error) return json({ error: mensajeDeRechazo(error, String(password)) || error.message }, 400);
       return json({ success: true });
     }
 
