@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { GraduationCap, Camera, ShieldCheck, Video, Building2, User, AlertCircle } from 'lucide-react';
+import { Camera, ShieldCheck, Video, Building2, User, AlertCircle } from 'lucide-react';
+import { SEGUROS_EDUCATION_LOGO } from '../components/segurosEducation/SegurosEducationLayout';
 import { aulaInvitado, type EntradaInvitado } from '../lib/aulaDaily';
 import { SalaAula } from '../components/aula/SalaAula';
 
@@ -97,14 +98,9 @@ export function AulaInvitado() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#101a3a] via-[#16205c] to-[#1C37E0] px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center justify-center gap-2 text-white">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
-            <GraduationCap className="h-5 w-5" />
-          </div>
-          <div className="text-left leading-tight">
-            <p className="text-body-sm font-bold">Seguros Education</p>
-            <p className="text-[11px] text-white/70">Aula Virtual · MOVI Digital</p>
-          </div>
+        <div className="mb-6 flex flex-col items-center gap-2 text-white">
+          <img src={SEGUROS_EDUCATION_LOGO} alt="Seguros Education" className="h-12 w-auto select-none" />
+          <p className="text-[11px] tracking-wide text-white/70">Aula Virtual · MOVI Digital</p>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-2xl dark:bg-surface-900">

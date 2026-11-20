@@ -10,6 +10,25 @@ import { supabase } from './supabase';
 
 export type RolAula = 'host' | 'cohost' | 'oyente' | 'ponente';
 
+/**
+ * Sube la imagen miniatura de una clase a `aula-portadas` y devuelve su URL pública.
+ * Es la misma imagen que `aula-publicar` copia a `seguros_lessons.miniatura_url`
+ * cuando la grabación se publica en On Demand.
+ */
+export async function subirPortadaClase(archivo: File): Promise<string> {
+  if (!archivo.type.startsWith('image/')) throw new Error('La imagen miniatura debe ser un archivo de imagen');
+  if (archivo.size > 8 * 1024 * 1024) throw new Error('La imagen miniatura no debe pesar más de 8 MB');
+
+  const ext = (archivo.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const path = `eventos/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage
+    .from('aula-portadas')
+    .upload(path, archivo, { contentType: archivo.type || 'image/png', cacheControl: '3600', upsert: false });
+  if (error) throw new Error(`No se pudo subir la imagen miniatura: ${error.message}`);
+
+  return supabase.storage.from('aula-portadas').getPublicUrl(path).data.publicUrl;
+}
+
 export interface EntradaAula {
   room_url: string;
   room_name: string;

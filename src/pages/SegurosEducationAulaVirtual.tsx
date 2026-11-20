@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, Clock, Plus, Users, Video, Radio, Link as LinkIcon, Check,
-  CircleCheck, CircleAlert as AlertCircle, Play, FileVideo, ExternalLink, Loader2, Crown, Hand,
+  CircleCheck, CircleAlert as AlertCircle, Play, FileVideo, ExternalLink, Loader2, Crown, Hand, Image as ImageIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase';
 import { BaseModal } from '../components/BaseModal';
 import { aulaDaily } from '../lib/aulaDaily';
 import { analyticsTracker } from '../lib/analyticsTracker';
+import { subirPortadaClase } from '../lib/aulaDaily';
 
 interface Clase {
   id: string;
@@ -238,11 +239,16 @@ export function SegurosEducationAulaVirtual() {
     transcribir: boolean;
     categoriaId: string | null;
     cohosts: string[];
+    portada: File;
   }) => {
     if (!usuario) throw new Error('Sesión no disponible');
 
     const inicio = new Date(`${datos.fecha}T${datos.hora}:00`);
     const fin = new Date(inicio.getTime() + datos.duracionMin * 60_000);
+
+    // La portada se sube antes de crear el evento: es obligatoria y es la misma
+    // imagen que después viaja como miniatura de la lección en On Demand.
+    const portadaUrl = await subirPortadaClase(datos.portada);
 
     const { data, error } = await supabase
       .from('aula_eventos')
@@ -260,6 +266,7 @@ export function SegurosEducationAulaVirtual() {
         grabar: datos.grabar,
         transcribir: datos.transcribir,
         categoria_id: datos.categoriaId,
+        portada_url: portadaUrl,
         creado_por: usuario.id,
         visible_para_todos: true,
         link_activo: true,
@@ -594,6 +601,7 @@ function FormularioClase({
     transcribir: boolean;
     categoriaId: string | null;
     cohosts: string[];
+    portada: File;
   }) => Promise<{ id: string; link: string | null }>;
   onCreada: (link: string | null) => void;
 }) {
@@ -607,11 +615,24 @@ function FormularioClase({
   const [transcribir, setTranscribir] = useState(true);
   const [categoriaId, setCategoriaId] = useState<string>('');
   const [cohosts, setCohosts] = useState<string[]>([]);
+  const [portada, setPortada] = useState<File | null>(null);
+  const [portadaPreview, setPortadaPreview] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const elegirPortada = (archivo: File | null) => {
+    setPortada(archivo);
+    setPortadaPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return archivo ? URL.createObjectURL(archivo) : null;
+    });
+  };
+
   const guardar = async () => {
     if (titulo.trim().length < 3) return setError('Ponle un nombre a la clase');
+    if (!portada) return setError('Carga la imagen miniatura de la clase');
+    if (!portada.type.startsWith('image/')) return setError('La imagen miniatura debe ser un archivo de imagen');
+    if (portada.size > 8 * 1024 * 1024) return setError('La imagen miniatura no debe pesar más de 8 MB');
     setGuardando(true);
     setError(null);
     try {
@@ -626,6 +647,7 @@ function FormularioClase({
         transcribir,
         categoriaId: categoriaId || null,
         cohosts,
+        portada,
       });
       onCreada(res.link);
     } catch (e) {
@@ -677,6 +699,39 @@ function FormularioClase({
             placeholder="Qué se va a ver en la clase"
             className="w-full resize-none rounded-xl border border-neutral-200 bg-surface-50 px-3 py-2.5 text-body text-neutral-900 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
           />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-caption font-semibold text-neutral-700 dark:text-white/70">
+            Imagen miniatura <span className="text-red-500">*</span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-neutral-300 p-3 transition hover:border-accent dark:border-white/15">
+            <span className="relative flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-100 dark:bg-white/10">
+              {portadaPreview ? (
+                <img src={portadaPreview} alt="Miniatura" className="h-full w-full object-cover" />
+              ) : (
+                <ImageIcon className="h-5 w-5 text-neutral-400" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-caption font-semibold text-neutral-700 dark:text-white/75">
+                {portada ? portada.name : 'Cargar imagen (JPG o PNG, hasta 8 MB)'}
+              </span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-neutral-400">
+                Obligatoria. Es la portada del evento y la misma imagen que se publica como miniatura de la lección
+                en On Demand.
+              </span>
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                elegirPortada(e.target.files?.[0] ?? null);
+                e.target.value = '';
+              }}
+            />
+          </label>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
