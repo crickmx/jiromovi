@@ -48,6 +48,11 @@ export interface EntradaInvitado extends EntradaAula {
   avatar_url: string | null;
   clase: string;
   grabar: boolean;
+  tipo?: 'ponente' | 'asistente';
+  oficina?: { id: string; nombre: string } | null;
+  /** Si el alta del usuario pendiente falló, aquí viene el motivo (el invitado entra igual). */
+  registro_error?: string | null;
+  ya_era_usuario?: boolean;
 }
 
 async function invocar<T>(funcion: string, body: Record<string, unknown>): Promise<T> {
@@ -71,7 +76,12 @@ async function invocar<T>(funcion: string, body: Record<string, unknown>): Promi
 
 export const aulaDaily = {
   crearSala: (eventoId: string) =>
-    invocar<{ room_name: string; room_url: string; link_token: string | null }>('aula-daily', {
+    invocar<{
+      room_name: string;
+      room_url: string;
+      link_token: string | null;
+      link_token_asistente: string | null;
+    }>('aula-daily', {
       action: 'crear-sala',
       evento_id: eventoId,
     }),
@@ -102,12 +112,28 @@ export const aulaDaily = {
     ),
 };
 
+export interface InfoInvitacion {
+  evento_id: string;
+  clase: string;
+  estado: string;
+  /** `asistente` = link abierto para oyentes; `ponente` = link de invitados con voz. */
+  tipo: 'ponente' | 'asistente';
+  ponente: string | null;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  /** Solo llega en el link de asistentes: la ruta pública no puede leer `oficinas`. */
+  oficinas: { id: string; nombre: string }[];
+}
+
+export interface DatosAsistente {
+  nombre: string;
+  email: string;
+  whatsapp: string;
+  oficina_id: string;
+}
+
 export const aulaInvitado = {
-  info: (token: string) =>
-    invocar<{ clase: string; estado: string; fecha_inicio: string | null; fecha_fin: string | null }>(
-      'aula-invitado',
-      { action: 'info', token },
-    ),
+  info: (token: string) => invocar<InfoInvitacion>('aula-invitado', { action: 'info', token }),
 
   entrar: (token: string, nombre: string, empresa: string, avatar?: string | null) =>
     invocar<EntradaInvitado>('aula-invitado', {
@@ -117,6 +143,10 @@ export const aulaInvitado = {
       empresa,
       avatar: avatar ?? null,
     }),
+
+  /** Alta del asistente externo: queda registrado como usuario pendiente de activación. */
+  entrarAsistente: (token: string, datos: DatosAsistente) =>
+    invocar<EntradaInvitado>('aula-invitado', { action: 'join', token, ...datos }),
 
   mensaje: (sesion: string, texto: string) =>
     invocar<{ ok: boolean; id: string }>('aula-invitado', { action: 'mensaje', sesion, texto }),

@@ -1,38 +1,62 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Camera, ShieldCheck, Video, Building2, User, AlertCircle } from 'lucide-react';
+import { Camera, ShieldCheck, Video, Building2, User, AlertCircle, Mail, Phone, MapPin, LogIn, Loader2 } from 'lucide-react';
 import { SEGUROS_EDUCATION_LOGO } from '../components/segurosEducation/SegurosEducationLayout';
-import { aulaInvitado, type EntradaInvitado } from '../lib/aulaDaily';
+import { aulaInvitado, aulaDaily, type EntradaAula, type EntradaInvitado, type InfoInvitacion } from '../lib/aulaDaily';
+import { supabase } from '../lib/supabase';
 import { SalaAula } from '../components/aula/SalaAula';
 
 /**
- * Entrada del ponente invitado: sin cuenta, sin login.
- * Solo nombre, empresa y —opcional— una foto. El resto del acceso lo resuelve
- * la edge function `aula-invitado` con el link del evento.
+ * Entrada por el link de un evento del Aula Virtual.
+ *
+ * Hay dos links por clase y los dos caen aquí:
+ *  - `link_token`          → invitado con voz (ponente): nombre, empresa y foto.
+ *  - `link_token_asistente` → asistente: nombre, correo, WhatsApp y oficina. Se
+ *    registra como usuario nuevo (rol Agente, pendiente de activación) y entra
+ *    a la sala como oyente.
+ *
+ * Quien ya tiene cuenta MOVI puede entrar con ella: el link no lo obliga a
+ * pasar por el formulario de invitado.
  */
 export function AulaInvitado() {
   const { token } = useParams<{ token: string }>();
 
-  const [info, setInfo] = useState<{ clase: string; estado: string } | null>(null);
+  const [info, setInfo] = useState<InfoInvitacion | null>(null);
+  const [fechaTexto, setFechaTexto] = useState<string | null>(null);
   const [errorLink, setErrorLink] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
 
   const [nombre, setNombre] = useState('');
   const [empresa, setEmpresa] = useState('');
+  const [email, setEmail] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [oficinaId, setOficinaId] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [sesion, setSesion] = useState<EntradaInvitado | null>(null);
+  const [sesionMovi, setSesionMovi] = useState<EntradaAula | null>(null);
+  const [usuarioMovi, setUsuarioMovi] = useState<string | null>(null);
   const fotoRef = useRef<HTMLInputElement | null>(null);
+
+  const esAsistente = info?.tipo === 'asistente';
 
   useEffect(() => {
     if (!token) return;
     let vivo = true;
+
     aulaInvitado
       .info(token)
       .then((r) => {
-        if (vivo) setInfo({ clase: r.clase, estado: r.estado });
+        if (!vivo) return;
+        setInfo(r);
+        if (r.fecha_inicio) {
+          const d = new Date(r.fecha_inicio);
+          setFechaTexto(
+            d.toLocaleString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }),
+          );
+        }
       })
       .catch((e: Error) => {
         if (vivo) setErrorLink(e.message || 'Este link no es válido');
@@ -40,6 +64,15 @@ export function AulaInvitado() {
       .finally(() => {
         if (vivo) setCargando(false);
       });
+
+    // Si ya hay sesión MOVI en este navegador, se ofrece entrar con la cuenta.
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (vivo && data.session?.user) setUsuarioMovi(data.session.user.id);
+      })
+      .catch(() => null);
+
     return () => {
       vivo = false;
     };
@@ -62,17 +95,44 @@ export function AulaInvitado() {
   };
 
   const entrar = async () => {
-    if (!token) return;
+    if (!token || !info) return;
     if (nombre.trim().length < 2) return setError('Escribe tu nombre');
-    if (empresa.trim().length < 2) return setError('Escribe tu empresa');
 
     setEnviando(true);
     setError(null);
     try {
-      const r = await aulaInvitado.entrar(token, nombre.trim(), empresa.trim(), avatar);
-      setSesion(r);
+      if (esAsistente) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) return setError('Escribe un correo válido');
+        if (whatsapp.replace(/[^0-9]/g, '').length !== 10) return setError('El WhatsApp debe tener 10 dígitos');
+        if (!oficinaId) return setError('Selecciona tu oficina');
+
+        const r = await aulaInvitado.entrarAsistente(token, {
+          nombre: nombre.trim(),
+          email: email.trim().toLowerCase(),
+          whatsapp: whatsapp.replace(/[^0-9]/g, ''),
+          oficina_id: oficinaId,
+        });
+        setSesion(r);
+      } else {
+        if (empresa.trim().length < 2) return setError('Escribe tu empresa');
+        const r = await aulaInvitado.entrar(token, nombre.trim(), empresa.trim(), avatar);
+        setSesion(r);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo entrar a la clase');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const entrarConCuenta = async () => {
+    if (!info) return;
+    setEnviando(true);
+    setError(null);
+    try {
+      setSesionMovi(await aulaDaily.entrar(info.evento_id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo entrar con tu cuenta MOVI');
     } finally {
       setEnviando(false);
     }
@@ -83,7 +143,7 @@ export function AulaInvitado() {
       <div className="min-h-screen bg-surface-canvas p-3">
         <SalaAula
           eventoId={sesion.evento_id}
-          entrada={{ ...sesion, rol: 'ponente' }}
+          entrada={{ ...sesion, rol: sesion.tipo === 'asistente' ? 'oyente' : 'ponente' }}
           anfitrion={false}
           esInvitado
           sesionInvitado={sesion.sesion}
@@ -94,6 +154,26 @@ export function AulaInvitado() {
       </div>
     );
   }
+
+  if (sesionMovi) {
+    return (
+      <div className="min-h-screen bg-surface-canvas p-3">
+        <SalaAula
+          eventoId={info!.evento_id}
+          entrada={sesionMovi}
+          anfitrion={false}
+          esInvitado={false}
+          usuarioId={usuarioMovi}
+          titulo={info!.clase}
+          onSalir={() => setSesionMovi(null)}
+        />
+      </div>
+    );
+  }
+
+  const input =
+    'w-full rounded-xl border border-neutral-200 bg-surface-50 px-3 py-2.5 text-body text-neutral-900 placeholder:text-neutral-400 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white';
+  const etiqueta = 'mb-1 flex items-center gap-1.5 text-caption font-semibold text-neutral-700 dark:text-white/70';
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#101a3a] via-[#16205c] to-[#1C37E0] px-4 py-10">
@@ -123,74 +203,142 @@ export function AulaInvitado() {
 
           {!cargando && !errorLink && info && (
             <>
-              <p className="text-micro font-semibold uppercase tracking-wide text-accent-ink">Invitación a ponencia</p>
+              <p className="text-micro font-semibold uppercase tracking-wide text-accent-ink">
+                {esAsistente ? 'Invitación a la clase' : 'Invitación como ponente'}
+              </p>
               <h1 className="mt-1 text-title font-bold leading-snug text-neutral-900 dark:text-white">{info.clase}</h1>
               <p className="mt-1 text-body-sm text-neutral-500 dark:text-white/60">
-                Entras como ponente externo. No necesitas cuenta.
+                {[fechaTexto, info.ponente].filter(Boolean).join(' · ') || 'Clase en vivo del Aula Virtual'}
               </p>
+
+              {usuarioMovi && (
+                <>
+                  <button
+                    onClick={() => void entrarConCuenta()}
+                    disabled={enviando}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-accent bg-accent/5 px-4 py-3 text-body font-semibold text-accent-ink transition hover:bg-accent/10 disabled:opacity-60"
+                  >
+                    <LogIn className="h-4 w-4" /> Entrar con mi cuenta MOVI
+                  </button>
+                  <p className="mt-2 text-center text-[11px] text-neutral-400">
+                    Entras como oyente con tu cuenta, sin llenar el formulario.
+                  </p>
+                  <div className="my-4 flex items-center gap-3 text-[11px] uppercase tracking-wide text-neutral-300">
+                    <span className="h-px flex-1 bg-neutral-200 dark:bg-white/10" /> o como invitado{' '}
+                    <span className="h-px flex-1 bg-neutral-200 dark:bg-white/10" />
+                  </div>
+                </>
+              )}
+
+              {!usuarioMovi && (
+                <p className="mt-3 text-body-sm text-neutral-500 dark:text-white/60">
+                  {esAsistente
+                    ? 'Entras como oyente. Si ya tienes cuenta MOVI, '
+                    : 'Entras como ponente externo. No necesitas cuenta.'}
+                  {esAsistente && (
+                    <a
+                      href={`/login?redirect=${encodeURIComponent(`/aula/${token ?? ''}`)}`}
+                      className="font-semibold text-accent-ink hover:underline"
+                    >
+                      inicia sesión aquí
+                    </a>
+                  )}
+                </p>
+              )}
 
               <div className="mt-5 space-y-3">
                 <div>
-                  <label className="mb-1 flex items-center gap-1.5 text-caption font-semibold text-neutral-700 dark:text-white/70">
+                  <label className={etiqueta}>
                     <User className="h-3.5 w-3.5" /> Nombre completo
                   </label>
-                  <input
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
-                    placeholder="Ana Martínez"
-                    maxLength={80}
-                    className="w-full rounded-xl border border-neutral-200 bg-surface-50 px-3 py-2.5 text-body text-neutral-900 placeholder:text-neutral-400 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
-                  />
+                  <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ana Martínez" maxLength={80} className={input} />
                 </div>
 
-                <div>
-                  <label className="mb-1 flex items-center gap-1.5 text-caption font-semibold text-neutral-700 dark:text-white/70">
-                    <Building2 className="h-3.5 w-3.5" /> Empresa
-                  </label>
-                  <input
-                    value={empresa}
-                    onChange={(e) => setEmpresa(e.target.value)}
-                    placeholder="Aseguradora"
-                    maxLength={80}
-                    className="w-full rounded-xl border border-neutral-200 bg-surface-50 px-3 py-2.5 text-body text-neutral-900 placeholder:text-neutral-400 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
-                  />
-                </div>
+                {esAsistente ? (
+                  <>
+                    <div>
+                      <label className={etiqueta}>
+                        <Mail className="h-3.5 w-3.5" /> Correo electrónico
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="ana@correo.com"
+                        maxLength={160}
+                        autoComplete="email"
+                        className={input}
+                      />
+                    </div>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => fotoRef.current?.click()}
-                    className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-neutral-300 text-neutral-400 transition hover:border-accent hover:text-accent dark:border-white/15"
-                    title="Agregar foto"
-                  >
-                    {avatar ? (
-                      <img src={avatar} alt="Foto" className="h-full w-full object-cover" />
-                    ) : (
-                      <Camera className="h-5 w-5" />
-                    )}
-                  </button>
-                  <div className="text-caption text-neutral-500 dark:text-white/55">
-                    <p className="font-semibold text-neutral-700 dark:text-white/75">Foto (opcional)</p>
-                    <p>Se muestra junto a tu nombre durante la clase.</p>
+                    <div>
+                      <label className={etiqueta}>
+                        <Phone className="h-3.5 w-3.5" /> WhatsApp (10 dígitos)
+                      </label>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        value={whatsapp}
+                        onChange={(e) => setWhatsapp(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
+                        placeholder="3312345678"
+                        className={input}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={etiqueta}>
+                        <MapPin className="h-3.5 w-3.5" /> Oficina
+                      </label>
+                      <select value={oficinaId} onChange={(e) => setOficinaId(e.target.value)} className={input}>
+                        <option value="">Selecciona tu oficina</option>
+                        {info.oficinas.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className={etiqueta}>
+                      <Building2 className="h-3.5 w-3.5" /> Empresa
+                    </label>
+                    <input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Aseguradora" maxLength={80} className={input} />
                   </div>
-                  <input
-                    ref={fotoRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) void elegirFoto(f);
-                      e.target.value = '';
-                    }}
-                  />
-                </div>
+                )}
+
+                {!esAsistente && (
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => fotoRef.current?.click()}
+                      className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-neutral-300 text-neutral-400 transition hover:border-accent hover:text-accent dark:border-white/15"
+                      title="Agregar foto"
+                    >
+                      {avatar ? <img src={avatar} alt="Foto" className="h-full w-full object-cover" /> : <Camera className="h-5 w-5" />}
+                    </button>
+                    <div className="text-caption text-neutral-500 dark:text-white/55">
+                      <p className="font-semibold text-neutral-700 dark:text-white/75">Foto (opcional)</p>
+                      <p>Se muestra junto a tu nombre durante la clase.</p>
+                    </div>
+                    <input
+                      ref={fotoRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void elegirFoto(f);
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               {error && (
-                <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-caption text-red-600 dark:bg-red-500/15 dark:text-red-400">
-                  {error}
-                </p>
+                <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-caption text-red-600 dark:bg-red-500/15 dark:text-red-400">{error}</p>
               )}
 
               <button
@@ -200,7 +348,7 @@ export function AulaInvitado() {
               >
                 {enviando ? (
                   <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Entrando…
                   </>
                 ) : (
@@ -212,16 +360,15 @@ export function AulaInvitado() {
 
               <p className="mt-4 flex items-start gap-1.5 text-[11px] leading-relaxed text-neutral-400">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                La clase se graba para publicarse en On Demand. Tus datos (nombre y empresa) aparecerán en el
-                material de la clase.
+                {esAsistente
+                  ? 'La clase se graba para publicarse en On Demand. Tus datos se registran para que el equipo de MOVI complete tu alta.'
+                  : 'La clase se graba para publicarse en On Demand. Tus datos (nombre y empresa) aparecerán en el material de la clase.'}
               </p>
             </>
           )}
         </div>
 
-        <p className="mt-5 text-center text-[11px] text-white/50">
-          MOVI Digital · Seguros Education
-        </p>
+        <p className="mt-5 text-center text-[11px] text-white/50">MOVI Digital · Seguros Education</p>
       </div>
     </div>
   );

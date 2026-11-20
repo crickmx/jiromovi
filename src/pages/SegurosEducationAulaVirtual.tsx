@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, Clock, Plus, Users, Video, Radio, Link as LinkIcon, Check,
-  CircleCheck, CircleAlert as AlertCircle, Play, FileVideo, ExternalLink, Loader2, Crown, Hand, Image as ImageIcon,
+  CircleCheck, CircleAlert as AlertCircle, Play, FileVideo, ExternalLink, Loader2, Crown, Hand, Image as ImageIcon, UserPlus,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -25,6 +25,7 @@ interface Clase {
   grabar: boolean;
   transcribir: boolean;
   link_token: string | null;
+  link_token_asistente: string | null;
   daily_room_name: string | null;
   portada_url: string | null;
   leccion_id: string | null;
@@ -94,6 +95,7 @@ export function SegurosEducationAulaVirtual() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCrear, setShowCrear] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [invitacion, setInvitacion] = useState<{ clase: Clase; url: string; mensaje: string } | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
 
@@ -105,7 +107,7 @@ export function SegurosEducationAulaVirtual() {
   const cargar = useCallback(async () => {
     const { data: eventos } = await supabase
       .from('aula_eventos')
-      .select('id, titulo, descripcion, fecha_inicio, fecha_fin, estado, max_participantes, grabar, transcribir, link_token, daily_room_name, portada_url, leccion_id, categoria_id, creado_por')
+      .select('id, titulo, descripcion, fecha_inicio, fecha_fin, estado, max_participantes, grabar, transcribir, link_token, link_token_asistente, daily_room_name, portada_url, leccion_id, categoria_id, creado_por')
       .order('fecha_inicio', { ascending: false, nullsFirst: false })
       .limit(200);
 
@@ -205,6 +207,48 @@ export function SegurosEducationAulaVirtual() {
     }
   };
 
+  /**
+   * Invitación de asistentes: el mensaje lleva la ficha de la clase (título,
+   * fecha, quién la imparte) y el link público donde se registran.
+   */
+  const invitarAsistentes = (clase: Clase) => {
+    if (!clase.link_token_asistente) {
+      avisar('La sala todavía no está creada. Abre la clase para generar el link de invitación.');
+      return;
+    }
+    const url = `${window.location.origin}/aula/${clase.link_token_asistente}`;
+    const cuando = clase.fecha_inicio
+      ? new Date(clase.fecha_inicio).toLocaleString('es-MX', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null;
+    const mensaje = [
+      `Te invito a la clase "${clase.titulo}" de Seguros Education.`,
+      cuando ? `📅 ${cuando}` : null,
+      'Entra desde aquí (puedes usar tu cuenta MOVI o registrarte como invitado):',
+      url,
+      '',
+      'La clase se graba y queda publicada en On Demand.',
+    ]
+      .filter((l) => l !== null)
+      .join('\n');
+    setInvitacion({ clase, url, mensaje });
+  };
+
+  const copiarMensaje = async () => {
+    if (!invitacion) return;
+    try {
+      await navigator.clipboard.writeText(invitacion.mensaje);
+      avisar('Invitación copiada al portapapeles.');
+    } catch {
+      window.prompt('Copia la invitación:', invitacion.mensaje);
+    }
+  };
+
   const iniciarClase = async (clase: Clase) => {
     if (!confirm(`¿Iniciar "${clase.titulo}"? Se abrirá la grabación en la nube y los asistentes podrán entrar.`)) return;
     setOcupado(clase.id);
@@ -284,7 +328,10 @@ export function SegurosEducationAulaVirtual() {
 
     const sala = await aulaDaily.crearSala(id);
     await cargar();
-    return { id, link: sala.link_token ? `${window.location.origin}/aula/${sala.link_token}` : null };
+    return {
+      id,
+      link: sala.link_token_asistente ? `${window.location.origin}/aula/${sala.link_token_asistente}` : null,
+    };
   };
 
   if (loading) {
@@ -368,6 +415,15 @@ export function SegurosEducationAulaVirtual() {
                         {copiado === clase.id ? <Check className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
                       </button>
                     )}
+                    {puedeAdministrar(clase.id) && (
+                      <button
+                        onClick={() => invitarAsistentes(clase)}
+                        className="flex items-center gap-1.5 rounded-lg bg-white/20 px-3 py-2.5 text-caption font-semibold transition hover:bg-white/30"
+                        title="Invitar asistentes con la información de la clase"
+                      >
+                        <UserPlus className="h-4 w-4" /> Invitar
+                      </button>
+                    )}
                     <button
                       onClick={() => entrar(clase)}
                       className="rounded-lg bg-white px-5 py-2.5 text-body-sm font-bold text-red-600 transition hover:bg-red-50"
@@ -449,6 +505,15 @@ export function SegurosEducationAulaVirtual() {
                           title="Copiar link del ponente externo"
                         >
                           {copiado === clase.id ? <Check className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+                        </button>
+                      )}
+                      {puedeAdministrar(clase.id) && (
+                        <button
+                          onClick={() => invitarAsistentes(clase)}
+                          className="flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-caption font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+                          title="Invitar asistentes con la información de la clase"
+                        >
+                          <UserPlus className="h-3.5 w-3.5" /> Invitar
                         </button>
                       )}
                       {puedeAdministrar(clase.id) ? (
@@ -564,6 +629,57 @@ export function SegurosEducationAulaVirtual() {
             if (link) void navigator.clipboard.writeText(link).catch(() => null);
           }}
         />
+      )}
+
+      {invitacion && (
+        <BaseModal
+          isOpen
+          onClose={() => setInvitacion(null)}
+          title="Invitar a la clase"
+          maxWidth="lg"
+          footer={
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                onClick={() => void copiarMensaje()}
+                className="flex items-center gap-1.5 rounded-xl border border-neutral-200 px-3.5 py-2 text-body-sm font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+              >
+                <LinkIcon className="h-4 w-4" /> Copiar invitación
+              </button>
+              <button
+                onClick={() =>
+                  window.open(`https://wa.me/?text=${encodeURIComponent(invitacion.mensaje)}`, '_blank')
+                }
+                className="flex items-center gap-1.5 rounded-xl border border-neutral-200 px-3.5 py-2 text-body-sm font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+              >
+                WhatsApp
+              </button>
+              <button
+                onClick={() =>
+                  window.open(
+                    `mailto:?subject=${encodeURIComponent(`Invitación: ${invitacion.clase.titulo}`)}&body=${encodeURIComponent(invitacion.mensaje)}`,
+                    '_blank',
+                  )
+                }
+                className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-body-sm font-semibold text-white transition hover:bg-accent-hover"
+              >
+                Enviar por correo
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            <p className="text-body-sm text-neutral-500 dark:text-white/60">
+              El invitado entra con su cuenta MOVI o se registra como invitado con nombre, correo, WhatsApp y
+              oficina. Queda dado de alta como usuario pendiente de activación y entra a la clase como oyente.
+            </p>
+            <pre className="whitespace-pre-wrap rounded-xl bg-surface-50 p-3 font-sans text-caption leading-relaxed text-neutral-700 dark:bg-white/5 dark:text-white/70">
+              {invitacion.mensaje}
+            </pre>
+            <p className="text-[11px] text-neutral-400">
+              El link es por evento y deja de funcionar cuando la clase termina.
+            </p>
+          </div>
+        </BaseModal>
       )}
 
       {aviso && (

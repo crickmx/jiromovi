@@ -74,13 +74,14 @@ type Evento = {
   max_participantes: number | null;
   grabar: boolean;
   link_token: string | null;
+  link_token_asistente: string | null;
   link_activo: boolean;
 };
 
 async function cargarEvento(eventoId: string): Promise<Evento | null> {
   const { data } = await admin
     .from('aula_eventos')
-    .select('id, titulo, estado, fecha_inicio, fecha_fin, creado_por, daily_room_name, daily_room_url, max_participantes, grabar, link_token, link_activo')
+    .select('id, titulo, estado, fecha_inicio, fecha_fin, creado_por, daily_room_name, daily_room_url, max_participantes, grabar, link_token, link_token_asistente, link_activo')
     .eq('id', eventoId)
     .maybeSingle();
   return (data as Evento) ?? null;
@@ -195,11 +196,13 @@ async function asegurarSala(evento: Evento, creador: string) {
     .update({ daily_room_name: room.name ?? name, daily_room_url: room.url ?? null })
     .eq('id', evento.id);
 
-  if (!evento.link_token) {
-    await admin
-      .from('aula_eventos')
-      .update({ link_token: crypto.randomUUID().replace(/-/g, '') })
-      .eq('id', evento.id);
+  // Dos links por evento: el de ponentes (compartir pantalla) y el de
+  // asistentes (entran como oyentes y se registran con sus datos).
+  const tokens: Record<string, string> = {};
+  if (!evento.link_token) tokens.link_token = crypto.randomUUID().replace(/-/g, '');
+  if (!evento.link_token_asistente) tokens.link_token_asistente = crypto.randomUUID().replace(/-/g, '');
+  if (Object.keys(tokens).length > 0) {
+    await admin.from('aula_eventos').update(tokens).eq('id', evento.id);
   }
 
   console.log('aula-daily: sala creada', name, 'por', creador);
@@ -331,10 +334,14 @@ Deno.serve(async (req) => {
       const sala = await asegurarSala(evento, user.id);
       const { data: actualizado } = await admin
         .from('aula_eventos')
-        .select('link_token, daily_room_name, daily_room_url')
+        .select('link_token, link_token_asistente, daily_room_name, daily_room_url')
         .eq('id', eventoId)
         .maybeSingle();
-      return json({ ...sala, link_token: actualizado?.link_token ?? null });
+      return json({
+        ...sala,
+        link_token: actualizado?.link_token ?? null,
+        link_token_asistente: actualizado?.link_token_asistente ?? null,
+      });
     }
 
     if (accion === 'token-entrada') {
@@ -385,9 +392,10 @@ Deno.serve(async (req) => {
         token: token.token,
         rol: rolFinal,
         nombre,
-        // Solo quien conduce recibe el token del link para invitar ponentes.
+        // Solo quien conduce recibe los tokens de los links de invitación.
         // El origen lo pone el navegador, así beta y producción no se mezclan.
         link_token: rolFinal !== 'oyente' ? sala.link_token : null,
+        link_token_asistente: rolFinal !== 'oyente' ? sala.link_token_asistente : null,
       });
     }
 

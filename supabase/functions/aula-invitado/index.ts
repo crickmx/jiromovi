@@ -49,25 +49,82 @@ async function daily(path: string, init: RequestInit = {}) {
 const limpio = (v: unknown, max: number) =>
   String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 
-// Límite simple por IP: evita que un link filtrado se use como puerta abierta.
-const intentos = new Map<string, { n: number; hasta: number }>();
-function permitido(ip: string) {
-  const ahora = Date.now();
-  const actual = intentos.get(ip);
-  if (!actual || actual.hasta < ahora) {
-    intentos.set(ip, { n: 1, hasta: ahora + 60_000 });
-    return true;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/**
+ * Registra al asistente externo como usuario nuevo de MOVI.
+ *
+ * Queda con rol Agente y status 'pendiente_activacion': la cuenta existe pero
+ * sin equipos de trámite, y son los administradores quienes completan el
+ * registro y la activan (los triggers de `usuarios` ya les avisan).
+ * Si el correo ya pertenece a un usuario, no se toca nada.
+ */
+async function registrarAsistente(datos: {
+  nombre: string;
+  email: string;
+  whatsapp: string;
+  oficinaId: string;
+  eventoId: string;
+  clase: string;
+}): Promise<{ usuarioId: string | null; yaEraUsuario: boolean; error: string | null }> {
+  const { nombre, email, whatsapp, oficinaId, eventoId, clase } = datos;
+
+  for (const columna of ['email_laboral', 'email_personal', 'email']) {
+    const { data } = await admin.from('usuarios').select('id').ilike(columna, email).limit(1).maybeSingle();
+    if (data?.id) return { usuarioId: data.id as string, yaEraUsuario: true, error: null };
   }
-  if (actual.n >= 8) return false;
-  actual.n += 1;
-  return true;
+
+  const { data: authData, error: authError } = await admin.auth.admin.createUser({
+    email,
+    password: `${crypto.randomUUID()}Aa1!`,
+    email_confirm: false,
+  });
+  if (authError || !authData?.user) {
+    return { usuarioId: null, yaEraUsuario: false, error: authError?.message || 'No se pudo crear la cuenta' };
+  }
+
+  const usuarioId = authData.user.id;
+  const { error: insertError } = await admin.from('usuarios').insert({
+    id: usuarioId,
+    rol: 'Agente',
+    nombre,
+    apellidos: '',
+    email_laboral: email,
+    email,
+    celular_personal: `521${whatsapp}`,
+    oficina_id: oficinaId,
+    activo: true,
+    estado: 'activo',
+    status: 'pendiente_activacion',
+  } as never);
+
+  if (insertError) {
+    // Sin la fila en `usuarios` la cuenta no sirve: no se deja huérfana.
+    await admin.auth.admin.deleteUser(usuarioId);
+    return { usuarioId: null, yaEraUsuario: false, error: insertError.message };
+  }
+
+  // Rastro para el seguimiento comercial, igual que el registro del login.
+  await admin.from('registro_interesados').insert({
+    nombre,
+    apellidos: '',
+    email,
+    whatsapp: `521${whatsapp}`,
+    es_agente_jiro: true,
+    oficina_id: oficinaId,
+    source: 'aula_invitado',
+    metadata: { evento_id: eventoId, clase },
+  } as never);
+
+  return { usuarioId, yaEraUsuario: false, error: null };
 }
+
+// Sin tope de usos por link (decisión de producto): el link es por evento y
+// deja de servir cuando la clase termina. El alta es idempotente por correo, así
+// que reintentar no duplica cuentas.
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
-
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'desconocida';
-  if (!permitido(ip)) return json({ error: 'Demasiados intentos, espera un minuto' }, 429);
 
   let body: Record<string, unknown> = {};
   try {
@@ -103,7 +160,7 @@ Deno.serve(async (req) => {
             autor_tipo: 'invitado',
             autor_id: part.id,
             autor_nombre: part.nombre,
-            autor_rol: 'ponente',
+            autor_rol: part.rol,
             texto,
           })
           .select('id')
@@ -201,42 +258,87 @@ Deno.serve(async (req) => {
 
     // ── Entrada ──
     const token = limpio(body.token, 64);
-    const nombre = limpio(body.nombre, 80);
-    const empresa = limpio(body.empresa, 80);
-
     if (!token) return json({ error: 'Link inválido' }, 400);
 
-    // Solo para mostrar el nombre de la clase antes de pedir los datos.
-    if (accion === 'info') {
-      const { data } = await admin
-        .from('aula_eventos')
-        .select('titulo, estado, link_activo, fecha_inicio, fecha_fin')
-        .eq('link_token', token)
-        .maybeSingle();
-      if (!data) return json({ error: 'Este link no es válido' }, 404);
-      if (!data.link_activo || data.estado === 'finalizado' || data.estado === 'cancelado') {
-        return json({ error: 'Esta clase ya terminó' }, 410);
-      }
-      return json({
-        clase: data.titulo,
-        estado: data.estado,
-        fecha_inicio: data.fecha_inicio,
-        fecha_fin: data.fecha_fin,
-      });
-    }
-    if (nombre.length < 2) return json({ error: 'Escribe tu nombre' }, 400);
-    if (empresa.length < 2) return json({ error: 'Escribe tu empresa' }, 400);
+    // El mismo endpoint atiende los dos links del evento: el de ponentes
+    // (`link_token`) y el de asistentes (`link_token_asistente`). El tipo sale
+    // de en qué columna apareció el token.
+    const CAMPOS =
+      'id, titulo, estado, link_activo, daily_room_name, daily_room_url, fecha_inicio, fecha_fin, max_participantes, grabar, ponente, link_token, link_token_asistente';
 
-    const { data: evento } = await admin
+    const { data: porPonente } = await admin
       .from('aula_eventos')
-      .select('id, titulo, estado, link_activo, daily_room_name, daily_room_url, fecha_inicio, fecha_fin, max_participantes, grabar')
+      .select(CAMPOS)
       .eq('link_token', token)
       .maybeSingle();
+
+    let tipo: 'ponente' | 'asistente' = 'ponente';
+    let evento = porPonente;
+
+    if (!evento) {
+      const { data: porAsistente } = await admin
+        .from('aula_eventos')
+        .select(CAMPOS)
+        .eq('link_token_asistente', token)
+        .maybeSingle();
+      evento = porAsistente;
+      tipo = 'asistente';
+    }
 
     if (!evento) return json({ error: 'Este link no es válido' }, 404);
     if (!evento.link_activo || evento.estado === 'finalizado' || evento.estado === 'cancelado') {
       return json({ error: 'Esta clase ya terminó' }, 410);
     }
+
+    // Solo para pintar la ficha de la clase antes de pedir los datos.
+    if (accion === 'info') {
+      // La ruta pública no puede leer `oficinas` (RLS): las sirve la función.
+      let oficinas: { id: string; nombre: string }[] = [];
+      if (tipo === 'asistente') {
+        const { data } = await admin.from('oficinas').select('id, nombre').order('nombre');
+        oficinas = (data as { id: string; nombre: string }[]) ?? [];
+      }
+      return json({
+        evento_id: evento.id,
+        clase: evento.titulo,
+        estado: evento.estado,
+        tipo,
+        ponente: evento.ponente,
+        fecha_inicio: evento.fecha_inicio,
+        fecha_fin: evento.fecha_fin,
+        oficinas,
+      });
+    }
+
+    const nombre = limpio(body.nombre, 80);
+    if (nombre.length < 2) return json({ error: 'Escribe tu nombre' }, 400);
+
+    const email = limpio(body.email, 160).toLowerCase();
+    const whatsappCrudo = limpio(body.whatsapp, 20).replace(/[^0-9]/g, '');
+    const oficinaId = limpio(body.oficina_id, 40);
+    const empresa = limpio(body.empresa, 80);
+
+    if (tipo === 'asistente') {
+      if (!EMAIL_RE.test(email)) return json({ error: 'Escribe un correo válido' }, 400);
+      if (whatsappCrudo.length !== 10) return json({ error: 'El WhatsApp debe tener 10 dígitos' }, 400);
+      if (!oficinaId) return json({ error: 'Selecciona tu oficina' }, 400);
+    } else if (empresa.length < 2) {
+      return json({ error: 'Escribe tu empresa' }, 400);
+    }
+
+    // Para el asistente, "empresa" es su oficina: es lo que se muestra en la
+    // sala y lo que pide la columna, que no es nula.
+    let oficinaNombre = empresa;
+    if (tipo === 'asistente') {
+      const { data: oficina } = await admin
+        .from('oficinas')
+        .select('id, nombre')
+        .eq('id', oficinaId)
+        .maybeSingle();
+      if (!oficina) return json({ error: 'La oficina seleccionada no existe' }, 400);
+      oficinaNombre = oficina.nombre as string;
+    }
+
     if (!evento.daily_room_name || !evento.daily_room_url) {
       return json({ error: 'La sala todavía no está lista. Intenta en un momento.' }, 409);
     }
@@ -250,10 +352,10 @@ Deno.serve(async (req) => {
 
     const { data: previo } = await admin
       .from('aula_invitados')
-      .select('id, entradas')
+      .select('id, entradas, usuario_id')
       .eq('evento_id', evento.id)
-      .ilike('nombre', nombre)
-      .ilike('empresa', empresa)
+      .eq('tipo', tipo)
+      .ilike(tipo === 'asistente' ? 'email' : 'nombre', tipo === 'asistente' ? email : nombre)
       .maybeSingle();
 
     const tope = evento.max_participantes ?? 100;
@@ -290,6 +392,34 @@ Deno.serve(async (req) => {
       }
     }
 
+    // El asistente externo se registra como usuario nuevo de MOVI antes de
+    // entrar. Si el registro falla se avisa, pero la clase no se bloquea.
+    let usuarioId = previo?.usuario_id ?? null;
+    let registroError: string | null = null;
+    let yaEraUsuario = false;
+    if (tipo === 'asistente' && !usuarioId) {
+      const registro = await registrarAsistente({
+        nombre,
+        email,
+        whatsapp: whatsappCrudo,
+        oficinaId,
+        eventoId: evento.id,
+        clase: evento.titulo,
+      });
+      usuarioId = registro.usuarioId;
+      registroError = registro.error;
+      yaEraUsuario = registro.yaEraUsuario;
+    }
+
+    const comunes: Record<string, unknown> = {
+      nombre,
+      empresa: oficinaNombre,
+      ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+      ...(tipo === 'asistente'
+        ? { email, whatsapp: `521${whatsappCrudo}`, oficina_id: oficinaId, usuario_id: usuarioId }
+        : {}),
+    };
+
     let invitadoId = previo?.id ?? null;
     if (invitadoId) {
       await admin
@@ -297,13 +427,18 @@ Deno.serve(async (req) => {
         .update({
           ultima_entrada: new Date().toISOString(),
           entradas: (previo?.entradas ?? 0) + 1,
-          ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+          ...comunes,
         })
         .eq('id', invitadoId);
     } else {
       const { data: nuevo, error } = await admin
         .from('aula_invitados')
-        .insert({ evento_id: evento.id, nombre, empresa, avatar_url: avatarUrl })
+        .insert({
+          evento_id: evento.id,
+          tipo,
+          registrado: tipo === 'asistente' && Boolean(usuarioId),
+          ...comunes,
+        })
         .select('id')
         .maybeSingle();
       if (error) throw error;
@@ -314,31 +449,42 @@ Deno.serve(async (req) => {
       (evento.fecha_fin ? new Date(evento.fecha_fin).getTime() : Date.now() + 4 * 3600_000) / 1000,
     ) + 7200;
 
+    const esAsistente = tipo === 'asistente';
+
     const tk = await daily('/meeting-tokens', {
       method: 'POST',
       body: JSON.stringify({
         properties: {
           room_name: evento.daily_room_name,
-          user_name: `${nombre} · ${empresa}`.slice(0, 60),
+          user_name: `${nombre} · ${oficinaNombre}`.slice(0, 60),
           user_id: `inv-${invitadoId!.slice(0, 32)}`,
           is_owner: false,
           exp,
           eject_at_token_exp: true,
-          enable_screenshare: true,
-          permissions: { canSend: ['audio', 'video', 'screenVideo', 'screenAudio'] },
+          enable_screenshare: !esAsistente,
+          // El asistente entra como oyente: cámara y micrófono apagados y sin
+          // compartir pantalla, igual que un oyente con cuenta MOVI.
+          ...(esAsistente
+            ? {
+                start_audio_off: true,
+                start_video_off: true,
+                permissions: { canSend: ['audio', 'video'] },
+              }
+            : { permissions: { canSend: ['audio', 'video', 'screenVideo', 'screenAudio'] } }),
         },
       }),
     });
 
     const sesion = crypto.randomUUID();
+    const etiqueta = `${nombre} · ${oficinaNombre}`;
 
     const { data: participante, error: pErr } = await admin
       .from('aula_participantes')
       .insert({
         evento_id: evento.id,
         invitado_id: invitadoId,
-        rol: 'ponente',
-        nombre: `${nombre} · ${empresa}`,
+        rol: esAsistente ? 'oyente' : 'ponente',
+        nombre: etiqueta,
         sesion_token: sesion,
       })
       .select('id')
@@ -354,10 +500,16 @@ Deno.serve(async (req) => {
       participante_id: participante?.id,
       invitado_id: invitadoId,
       nombre,
-      empresa,
+      empresa: oficinaNombre,
       avatar_url: avatarUrl,
       clase: evento.titulo,
       grabar: evento.grabar,
+      tipo,
+      oficina: esAsistente ? { id: oficinaId, nombre: oficinaNombre } : null,
+      // El alta del usuario es best-effort: si falló, la pantalla lo dice y el
+      // invitado entra igual. Un fallo aquí no se disfraza de éxito.
+      registro_error: registroError,
+      ya_era_usuario: yaEraUsuario,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Error interno';
