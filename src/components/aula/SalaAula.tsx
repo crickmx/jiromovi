@@ -4,7 +4,7 @@ import type { DailyCall, DailyParticipant } from '@daily-co/daily-js';
 import {
   Mic, MicOff, Video, VideoOff, MonitorUp, MonitorX, Hand, MessageSquare,
   Users, PhoneOff, Paperclip, Send, Shield, Volume2, CircleStop, Radio, X, Crown,
-  UserPlus, Copy, Check, Mail, MessageCircle,
+  Copy, Check, Mail, MessageCircle,
 } from 'lucide-react';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../lib/supabase';
 import { aulaDaily, aulaInvitado, aulaPublicar, subirConUrlFirmada, type EntradaAula } from '../../lib/aulaDaily';
@@ -32,6 +32,8 @@ interface Props {
   usuarioId?: string | null;
   /** Link público para invitar ponentes externos. Solo lo recibe quien conduce. */
   linkInvitado?: string | null;
+  /** Link público para invitar oyentes (público, sin voz). */
+  linkOyente?: string | null;
   titulo: string;
   conGrabacion?: boolean;
   onSalir: () => void;
@@ -113,6 +115,7 @@ export function SalaAula({
   sesionInvitado = null,
   usuarioId = null,
   linkInvitado = null,
+  linkOyente = null,
   titulo,
   conGrabacion = false,
   onSalir,
@@ -134,7 +137,7 @@ export function SalaAula({
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [invitarAbierto, setInvitarAbierto] = useState(false);
+  const [invitarTipo, setInvitarTipo] = useState<'ponente' | 'oyente' | null>(null);
   const [linkCopiado, setLinkCopiado] = useState(false);
 
   const [grabando, setGrabando] = useState(false);
@@ -465,35 +468,47 @@ export function SalaAula({
     }
   };
 
-  // ── Invitar a ponente externo ────────────────────────────────────────────
-  const mensajeInvitacion = [
-    `Te invito a participar como ponente en "${titulo}".`,
-    '',
-    'Entra desde aquí (no necesitas cuenta, solo tu nombre y empresa):',
-    linkInvitado ?? '',
-    '',
-    'La clase se graba y queda publicada en On Demand.',
-  ].join('\n');
+  // ── Las dos invitaciones ─────────────────────────────────────────────────
+  const esPonente = invitarTipo === 'ponente';
+  const linkActual = esPonente ? linkInvitado : linkOyente;
+
+  const mensajeInvitacion = esPonente
+    ? [
+        `Te invito como PONENTE a la clase "${titulo}".`,
+        '',
+        'Entra desde aquí (no necesitas cuenta, solo tu nombre, tu empresa y una foto):',
+        linkInvitado ?? '',
+        '',
+        'Podrás hablar y compartir tu pantalla cuando te ceda la palabra quien conduce.',
+      ].join('\n')
+    : [
+        `Te invito a la clase "${titulo}".`,
+        '',
+        'Entra desde aquí como oyente (puedes usar tu cuenta MOVI o registrarte como invitado):',
+        linkOyente ?? '',
+        '',
+        'La sesión se graba y queda publicada en On Demand.',
+      ].join('\n');
 
   const copiarLink = async () => {
-    if (!linkInvitado) return;
+    if (!linkActual) return;
     try {
-      await navigator.clipboard.writeText(linkInvitado);
+      await navigator.clipboard.writeText(linkActual);
       setLinkCopiado(true);
       window.setTimeout(() => setLinkCopiado(false), 2000);
     } catch {
-      window.prompt('Copia el link del ponente:', linkInvitado);
+      window.prompt('Copia el link:', linkActual);
     }
   };
 
   const enviarPorCorreo = () => {
-    if (!linkInvitado) return;
-    const asunto = `Invitación como ponente: ${titulo}`;
+    if (!linkActual) return;
+    const asunto = esPonente ? `Invitación como ponente: ${titulo}` : `Invitación a la clase: ${titulo}`;
     window.open(`mailto:?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(mensajeInvitacion)}`, '_blank');
   };
 
   const enviarPorWhatsapp = () => {
-    if (!linkInvitado) return;
+    if (!linkActual) return;
     window.open(`https://wa.me/?text=${encodeURIComponent(mensajeInvitacion)}`, '_blank');
   };
 
@@ -631,11 +646,20 @@ export function SalaAula({
           <div className="flex items-center gap-2">
             {anfitrion && linkInvitado && (
               <button
-                onClick={() => setInvitarAbierto(true)}
-                className="flex items-center gap-1.5 rounded-xl bg-accent-soft px-3 py-2 text-caption font-semibold text-accent-ink transition hover:bg-accent/15"
-                title="Invitar a un ponente externo"
+                onClick={() => setInvitarTipo('ponente')}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-accent px-3 py-2 text-caption font-semibold text-white transition hover:bg-accent-hover"
+                title="Ponente externo: habla y comparte pantalla"
               >
-                <UserPlus className="h-4 w-4" /> Invitar a ponente
+                <Mic className="h-4 w-4" /> Invitar ponente
+              </button>
+            )}
+            {anfitrion && linkOyente && (
+              <button
+                onClick={() => setInvitarTipo('oyente')}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-accent-soft px-3 py-2 text-caption font-semibold text-accent-ink transition hover:bg-accent/15"
+                title="Oyentes: entran como público, sin micrófono ni cámara"
+              >
+                <Users className="h-4 w-4" /> Invitar oyentes
               </button>
             )}
             {anfitrion && conGrabacion && (
@@ -977,21 +1001,45 @@ export function SalaAula({
       )}
 
       <BaseModal
-        isOpen={invitarAbierto}
-        onClose={() => setInvitarAbierto(false)}
-        title="Invitar a un ponente"
+        isOpen={invitarTipo !== null}
+        onClose={() => setInvitarTipo(null)}
+        title={esPonente ? 'Invitar a un ponente externo' : 'Invitar a oyentes'}
         maxWidth="lg"
       >
         <div className="space-y-4">
-          <p className="text-body-sm text-neutral-600 dark:text-white/70">
-            Comparte este link con el ponente externo. No necesita cuenta: solo escribe su nombre y su
-            empresa, y entra directo a la clase con permiso para compartir pantalla.
-          </p>
+          <div
+            className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 ${
+              esPonente
+                ? 'border-accent/30 bg-accent-soft/60 dark:bg-accent/10'
+                : 'border-sky-200 bg-sky-50 dark:border-sky-500/30 dark:bg-sky-500/10'
+            }`}
+          >
+            {esPonente ? (
+              <Mic className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" />
+            ) : (
+              <Users className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+            )}
+            <p className="text-caption leading-relaxed text-neutral-700 dark:text-white/75">
+              {esPonente ? (
+                <>
+                  <strong className="font-semibold">Ponente.</strong> No necesita cuenta: escribe su nombre,
+                  su empresa y una foto, y entra con voz y pantalla compartida. Tú decides cuándo le cedes la
+                  palabra.
+                </>
+              ) : (
+                <>
+                  <strong className="font-semibold">Oyente.</strong> Entra como público: micrófono y cámara
+                  apagados, con chat, archivos y mano levantada. Puede entrar con su cuenta MOVI o
+                  registrarse como invitado.
+                </>
+              )}
+            </p>
+          </div>
 
           <div className="flex items-center gap-2">
             <input
               readOnly
-              value={linkInvitado ?? ''}
+              value={linkActual ?? ''}
               onFocus={(e) => e.currentTarget.select()}
               className="min-w-0 flex-1 rounded-xl border border-neutral-200 bg-surface-50 px-3 py-2.5 text-caption text-neutral-700 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white/80"
             />
@@ -1022,8 +1070,10 @@ export function SalaAula({
           </div>
 
           <p className="rounded-lg bg-surface-50 px-3 py-2 text-[11px] leading-relaxed text-neutral-500 dark:bg-white/5 dark:text-white/50">
-            El link sirve para todo el evento y deja de funcionar cuando finalizas la clase. Quien entre
-            por aquí queda registrado como ponente invitado, con nombre y empresa en la ficha de On Demand.
+            El link sirve para todo el evento y deja de funcionar cuando finalizas la clase.
+            {esPonente
+              ? ' Quien entre por aquí queda registrado como ponente invitado, con nombre y empresa en la ficha de On Demand.'
+              : ' Los oyentes no pueden hablar ni encender cámara hasta que tú les des la palabra.'}
           </p>
         </div>
       </BaseModal>

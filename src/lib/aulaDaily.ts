@@ -37,6 +37,8 @@ export interface EntradaAula {
   nombre: string;
   /** Token del link público para invitar ponentes (solo lo recibe quien conduce). */
   link_token?: string | null;
+  /** Token del link público para invitar oyentes (solo lo recibe quien conduce). */
+  link_token_asistente?: string | null;
 }
 
 export interface EntradaInvitado extends EntradaAula {

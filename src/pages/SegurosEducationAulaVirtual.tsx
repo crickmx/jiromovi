@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Calendar, Clock, Plus, Users, Video, Radio, Link as LinkIcon, Check,
-  CircleCheck, CircleAlert as AlertCircle, Play, FileVideo, ExternalLink, Loader2, Crown, Hand, Image as ImageIcon, UserPlus,
+  Calendar, Clock, Plus, Users, Video, Radio, Link as LinkIcon,
+  CircleCheck, CircleAlert as AlertCircle, Play, FileVideo, ExternalLink, Loader2, Crown, Hand, Image as ImageIcon, Mic,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -94,8 +94,12 @@ export function SegurosEducationAulaVirtual() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showCrear, setShowCrear] = useState(false);
-  const [copiado, setCopiado] = useState<string | null>(null);
-  const [invitacion, setInvitacion] = useState<{ clase: Clase; url: string; mensaje: string } | null>(null);
+  const [invitacion, setInvitacion] = useState<{
+    tipo: 'ponente' | 'oyente';
+    clase: Clase;
+    url: string;
+    mensaje: string;
+  } | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
 
@@ -175,6 +179,43 @@ export function SegurosEducationAulaVirtual() {
     return hosts.some((h) => h.evento_id === claseId && h.usuario_id === usuario.id);
   };
 
+  // La sala se prepara con la clase, no al entrar: así el link de ponente y el
+  // de oyentes existen desde el primer momento y se pueden mandar con días de
+  // anticipación. Cubre también las clases viejas que quedaron sin sala.
+  const provisionados = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!usuario) return;
+    const pendientes = clases.filter(
+      (c) =>
+        puedeAdministrar(c.id) &&
+        (!c.daily_room_name || !c.link_token_asistente) &&
+        !provisionados.current.has(c.id) &&
+        c.estado !== 'finalizado' &&
+        c.estado !== 'cancelado',
+    );
+    if (pendientes.length === 0) return;
+
+    let cancelado = false;
+    void (async () => {
+      let cambio = false;
+      for (const c of pendientes) {
+        provisionados.current.add(c.id);
+        try {
+          await aulaDaily.crearSala(c.id);
+          cambio = true;
+        } catch {
+          // Sin permiso o Daily caído: se reintenta al abrir la clase.
+        }
+      }
+      if (!cancelado && cambio) await cargar();
+    })();
+
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clases, usuario, isAdmin, hosts, cargar]);
+
   // Mantiene "próximas" y la etiqueta "Pronto" al día sin leer el reloj en render.
   useEffect(() => {
     const id = window.setInterval(() => setAhora(Date.now()), 60_000);
@@ -192,28 +233,36 @@ export function SegurosEducationAulaVirtual() {
     [clases],
   );
 
-  const copiarEnlace = async (clase: Clase) => {
+  /**
+   * Dos invitaciones distintas y separadas a propósito:
+   *  - ponente: entra con nombre + empresa y puede hablar y compartir pantalla.
+   *  - oyente: entra como público, con micrófono y cámara apagados.
+   */
+  const invitarPonente = (clase: Clase) => {
     if (!clase.link_token) {
-      avisar('La sala todavía no está creada. Abre la clase para generarla.');
+      avisar('La sala todavía no está lista. Espera un momento y vuelve a intentar.');
       return;
     }
     const url = `${window.location.origin}/aula/${clase.link_token}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiado(clase.id);
-      window.setTimeout(() => setCopiado(null), 2000);
-    } catch {
-      window.prompt('Copia el link para el ponente externo:', url);
-    }
+    const mensaje = [
+      `Te invito como PONENTE a la clase "${clase.titulo}" de Seguros Education.`,
+      clase.fecha_inicio
+        ? `📅 ${new Date(clase.fecha_inicio).toLocaleString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`
+        : null,
+      '',
+      'Entra desde aquí. No necesitas cuenta: solo tu nombre, tu empresa y una foto.',
+      url,
+      '',
+      'Podrás hablar y compartir tu pantalla cuando quien conduce te ceda la palabra.',
+    ]
+      .filter((l) => l !== null)
+      .join('\n');
+    setInvitacion({ tipo: 'ponente', clase, url, mensaje });
   };
 
-  /**
-   * Invitación de asistentes: el mensaje lleva la ficha de la clase (título,
-   * fecha, quién la imparte) y el link público donde se registran.
-   */
-  const invitarAsistentes = (clase: Clase) => {
+  const invitarOyentes = (clase: Clase) => {
     if (!clase.link_token_asistente) {
-      avisar('La sala todavía no está creada. Abre la clase para generar el link de invitación.');
+      avisar('La sala todavía no está lista. Espera un momento y vuelve a intentar.');
       return;
     }
     const url = `${window.location.origin}/aula/${clase.link_token_asistente}`;
@@ -232,11 +281,11 @@ export function SegurosEducationAulaVirtual() {
       'Entra desde aquí (puedes usar tu cuenta MOVI o registrarte como invitado):',
       url,
       '',
-      'La clase se graba y queda publicada en On Demand.',
+      'Entras como oyente: puedes seguir la clase y participar en el chat. La sesión se graba y queda en On Demand.',
     ]
       .filter((l) => l !== null)
       .join('\n');
-    setInvitacion({ clase, url, mensaje });
+    setInvitacion({ tipo: 'oyente', clase, url, mensaje });
   };
 
   const copiarMensaje = async () => {
@@ -408,20 +457,20 @@ export function SegurosEducationAulaVirtual() {
                   <div className="flex shrink-0 items-center gap-2">
                     {puedeAdministrar(clase.id) && (
                       <button
-                        onClick={() => void copiarEnlace(clase)}
-                        className="rounded-lg bg-white/20 p-2.5 transition hover:bg-white/30"
-                        title="Copiar link del ponente externo"
+                        onClick={() => invitarPonente(clase)}
+                        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-white/20 px-3 py-2.5 text-caption font-semibold transition hover:bg-white/30"
+                        title="Ponente externo: habla y comparte pantalla"
                       >
-                        {copiado === clase.id ? <Check className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+                        <Mic className="h-4 w-4" /> Invitar ponente
                       </button>
                     )}
                     {puedeAdministrar(clase.id) && (
                       <button
-                        onClick={() => invitarAsistentes(clase)}
-                        className="flex items-center gap-1.5 rounded-lg bg-white/20 px-3 py-2.5 text-caption font-semibold transition hover:bg-white/30"
-                        title="Invitar asistentes con la información de la clase"
+                        onClick={() => invitarOyentes(clase)}
+                        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-white px-3 py-2.5 text-caption font-semibold text-red-600 transition hover:bg-red-50"
+                        title="Oyentes: entran como público, con micrófono y cámara apagados"
                       >
-                        <UserPlus className="h-4 w-4" /> Invitar
+                        <Users className="h-4 w-4" /> Invitar oyentes
                       </button>
                     )}
                     <button
@@ -500,20 +549,20 @@ export function SegurosEducationAulaVirtual() {
                     <div className="flex items-center gap-1.5">
                       {puedeAdministrar(clase.id) && (
                         <button
-                          onClick={() => void copiarEnlace(clase)}
-                          className="rounded-lg p-2 text-neutral-400 transition hover:bg-surface-100 hover:text-accent-ink dark:hover:bg-white/10"
-                          title="Copiar link del ponente externo"
+                          onClick={() => invitarPonente(clase)}
+                          className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-neutral-200 px-2.5 py-1.5 text-caption font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+                          title="Ponente externo: habla y comparte pantalla"
                         >
-                          {copiado === clase.id ? <Check className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+                          <Mic className="h-3.5 w-3.5" /> Invitar ponente
                         </button>
                       )}
                       {puedeAdministrar(clase.id) && (
                         <button
-                          onClick={() => invitarAsistentes(clase)}
-                          className="flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-caption font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
-                          title="Invitar asistentes con la información de la clase"
+                          onClick={() => invitarOyentes(clase)}
+                          className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-accent-soft px-2.5 py-1.5 text-caption font-semibold text-accent-ink transition hover:bg-accent/15"
+                          title="Oyentes: entran como público, con micrófono y cámara apagados"
                         >
-                          <UserPlus className="h-3.5 w-3.5" /> Invitar
+                          <Users className="h-3.5 w-3.5" /> Invitar oyentes
                         </button>
                       )}
                       {puedeAdministrar(clase.id) ? (
@@ -635,7 +684,7 @@ export function SegurosEducationAulaVirtual() {
         <BaseModal
           isOpen
           onClose={() => setInvitacion(null)}
-          title="Invitar a la clase"
+          title={invitacion.tipo === 'ponente' ? 'Invitar a un ponente' : 'Invitar a oyentes'}
           maxWidth="lg"
           footer={
             <div className="flex flex-wrap justify-end gap-2">
@@ -649,14 +698,16 @@ export function SegurosEducationAulaVirtual() {
                 onClick={() =>
                   window.open(`https://wa.me/?text=${encodeURIComponent(invitacion.mensaje)}`, '_blank')
                 }
-                className="flex items-center gap-1.5 rounded-xl border border-neutral-200 px-3.5 py-2 text-body-sm font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+                className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-body-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
               >
                 WhatsApp
               </button>
               <button
                 onClick={() =>
                   window.open(
-                    `mailto:?subject=${encodeURIComponent(`Invitación: ${invitacion.clase.titulo}`)}&body=${encodeURIComponent(invitacion.mensaje)}`,
+                    `mailto:?subject=${encodeURIComponent(
+                      `${invitacion.tipo === 'ponente' ? 'Invitación como ponente' : 'Invitación a la clase'}: ${invitacion.clase.titulo}`,
+                    )}&body=${encodeURIComponent(invitacion.mensaje)}`,
                     '_blank',
                   )
                 }
@@ -668,15 +719,61 @@ export function SegurosEducationAulaVirtual() {
           }
         >
           <div className="space-y-3">
-            <p className="text-body-sm text-neutral-500 dark:text-white/60">
-              El invitado entra con su cuenta MOVI o se registra como invitado con nombre, correo, WhatsApp y
-              oficina. Queda dado de alta como usuario pendiente de activación y entra a la clase como oyente.
-            </p>
+            <div
+              className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 ${
+                invitacion.tipo === 'ponente'
+                  ? 'border-accent/30 bg-accent-soft/60 dark:bg-accent/10'
+                  : 'border-sky-200 bg-sky-50 dark:border-sky-500/30 dark:bg-sky-500/10'
+              }`}
+            >
+              {invitacion.tipo === 'ponente' ? (
+                <Mic className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" />
+              ) : (
+                <Users className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+              )}
+              <p className="text-caption leading-relaxed text-neutral-700 dark:text-white/75">
+                {invitacion.tipo === 'ponente' ? (
+                  <>
+                    <strong className="font-semibold">Ponente externo.</strong> No necesita cuenta ni
+                    contraseña: escribe su nombre, su empresa y una foto, y entra con voz y pantalla
+                    compartida. Puede intervenir cuando le cedas la palabra.
+                  </>
+                ) : (
+                  <>
+                    <strong className="font-semibold">Oyente.</strong> Entra como público: micrófono y cámara
+                    apagados, con chat y mano levantada. Si tiene cuenta MOVI también puede entrar desde la
+                    plataforma.
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={invitacion.url}
+                onFocus={(e) => e.currentTarget.select()}
+                className="min-w-0 flex-1 rounded-xl border border-neutral-200 bg-surface-50 px-3 py-2.5 text-caption text-neutral-700 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white/80"
+              />
+              <button
+                onClick={() => {
+                  void navigator.clipboard?.writeText(invitacion.url);
+                  avisar('Link copiado.');
+                }}
+                className="shrink-0 rounded-xl border border-neutral-200 px-3 py-2.5 text-caption font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+              >
+                Copiar link
+              </button>
+            </div>
+
             <pre className="whitespace-pre-wrap rounded-xl bg-surface-50 p-3 font-sans text-caption leading-relaxed text-neutral-700 dark:bg-white/5 dark:text-white/70">
               {invitacion.mensaje}
             </pre>
             <p className="text-[11px] text-neutral-400">
               El link es por evento y deja de funcionar cuando la clase termina.
+              {invitacion.tipo === 'ponente'
+                ? ' Los ponentes invitados aparecen con su nombre y empresa en la ficha de On Demand.'
+                : ''}
             </p>
           </div>
         </BaseModal>

@@ -130,6 +130,17 @@ function unix(iso: string | null, fallbackMs: number) {
 }
 
 async function asegurarSala(evento: Evento, creador: string) {
+  // Los dos links de invitación se garantizan SIEMPRE, también cuando la sala
+  // ya existía: antes solo se generaban al crear la sala, así que los eventos
+  // anteriores se quedaban sin link de oyentes para siempre.
+  const tokens: Record<string, string> = {};
+  if (!evento.link_token) tokens.link_token = crypto.randomUUID().replace(/-/g, '');
+  if (!evento.link_token_asistente) tokens.link_token_asistente = crypto.randomUUID().replace(/-/g, '');
+  if (Object.keys(tokens).length > 0) {
+    await admin.from('aula_eventos').update(tokens).eq('id', evento.id);
+    Object.assign(evento, tokens);
+  }
+
   if (evento.daily_room_name) {
     // La sala ya existe: se refresca la caducidad por si movieron la fecha.
     const exp = unix(evento.fecha_fin, Date.now() + 4 * 3600_000) + 7200;
@@ -195,15 +206,6 @@ async function asegurarSala(evento: Evento, creador: string) {
     .from('aula_eventos')
     .update({ daily_room_name: room.name ?? name, daily_room_url: room.url ?? null })
     .eq('id', evento.id);
-
-  // Dos links por evento: el de ponentes (compartir pantalla) y el de
-  // asistentes (entran como oyentes y se registran con sus datos).
-  const tokens: Record<string, string> = {};
-  if (!evento.link_token) tokens.link_token = crypto.randomUUID().replace(/-/g, '');
-  if (!evento.link_token_asistente) tokens.link_token_asistente = crypto.randomUUID().replace(/-/g, '');
-  if (Object.keys(tokens).length > 0) {
-    await admin.from('aula_eventos').update(tokens).eq('id', evento.id);
-  }
 
   console.log('aula-daily: sala creada', name, 'por', creador);
   return { room_name: room.name ?? name, room_url: room.url ?? null };

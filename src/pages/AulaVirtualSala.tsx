@@ -90,6 +90,7 @@ export function AulaVirtualSala() {
       anfitrion={entrada.rol === 'host'}
       usuarioId={usuario?.id ?? null}
       linkInvitado={entrada.link_token ? `${window.location.origin}/aula/${entrada.link_token}` : null}
+      linkOyente={entrada.link_token_asistente ? `${window.location.origin}/aula/${entrada.link_token_asistente}` : null}
       titulo={titulo}
       conGrabacion={grabar}
       onSalir={salir}
