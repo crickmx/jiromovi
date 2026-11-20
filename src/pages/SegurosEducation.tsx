@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Video, Calendar, Clock, Play, Award, TrendingUp, GraduationCap, ChartBar as BarChart3, BookOpen, ArrowRight, CircleCheck as CheckCircle2, ChevronRight, Zap } from 'lucide-react';
+import { Video, Calendar, Clock, Play, GraduationCap, ChartBar as BarChart3, BookOpen, ArrowRight, CircleCheck as CheckCircle2, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { obtenerSesiones } from '../lib/aulaVirtualUtils';
@@ -32,51 +32,7 @@ interface Session {
   tipo: 'sesion' | 'evento';
 }
 
-interface Stats {
-  completados: number;
-  en_proceso: number;
-  ultima_leccion: string | null;
-  tiempo_total: number;
-}
 
-const QUICK_ACCESS = [
-  {
-    label: 'Cédula A',
-    desc: 'Preparación CNSF completa',
-    path: '/seguros-education/cedula-a',
-    icon: GraduationCap,
-    color: 'from-amber-500 to-orange-500',
-    badge: 'Certificación',
-    badgeColor: 'bg-amber-100 text-amber-700',
-  },
-  {
-    label: 'On Demand',
-    desc: 'Lecciones grabadas',
-    path: '/seguros-education/on-demand',
-    icon: Video,
-    color: 'from-[#1C37E0] to-blue-500',
-    badge: 'Biblioteca',
-    badgeColor: 'bg-blue-100 text-blue-700',
-  },
-  {
-    label: 'Aula Virtual',
-    desc: 'Capacitaciones en vivo',
-    path: '/seguros-education/aula-virtual',
-    icon: Calendar,
-    color: 'from-emerald-500 to-teal-500',
-    badge: 'En vivo',
-    badgeColor: 'bg-emerald-100 text-emerald-700',
-  },
-  {
-    label: 'Manuales',
-    desc: 'Guías y documentación',
-    path: '/manuales',
-    icon: BookOpen,
-    color: 'from-violet-500 to-purple-500',
-    badge: 'Referencia',
-    badgeColor: 'bg-violet-100 text-violet-700',
-  },
-];
 
 function formatDuration(seconds: number) {
   const mins = Math.floor(seconds / 60);
@@ -93,12 +49,8 @@ export function SegurosEducation() {
   const navigate = useNavigate();
   const [proxSessions, setProxSessions] = useState<Session[]>([]);
   const [recentLessons, setRecentLessons] = useState<Lesson[]>([]);
-  const [stats, setStats] = useState<Stats>({ completados: 0, en_proceso: 0, ultima_leccion: null, tiempo_total: 0 });
   const [loading, setLoading] = useState(true);
   const isAdmin = ['admin', 'administrador'].includes(usuario?.rol?.toLowerCase() || '');
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchData(); }, [usuario?.id]);
 
   const fetchData = async () => {
     if (!usuario) return;
@@ -108,12 +60,14 @@ export function SegurosEducation() {
       // Todo en paralelo y acotado a lo que se muestra (4 próximas, 4 recientes).
       const [sessionsData, eventosRes, lessonsRes, progressRes] = await Promise.all([
         obtenerSesiones(4),
+        // Clases del Aula Virtual con fecha real (fecha_inicio), no el `fecha`
+        // legado del calendario, que venía vacío o con la fecha de alta.
         supabase
           .from('aula_eventos')
-          .select('id, titulo, descripcion, fecha, hora, ponente')
-          .gte('fecha', new Date().toISOString().split('T')[0])
-          .order('fecha', { ascending: true })
-          .order('hora', { ascending: true })
+          .select('id, titulo, descripcion, fecha_inicio, fecha_fin, fecha, hora, ponente, estado')
+          .in('estado', ['programado', 'en_vivo'])
+          .gte('fecha_inicio', new Date(Date.now() - 30 * 60_000).toISOString())
+          .order('fecha_inicio', { ascending: true })
           .limit(4),
         supabase
           .from('seguros_lessons')
@@ -131,17 +85,24 @@ export function SegurosEducation() {
         .filter(s => new Date(s.fecha_inicio) > now && s.estado === 'programada' && !s.esta_activa)
         .map(s => ({ ...s, tipo: 'sesion' as const }));
 
-      const upcomingEvents = (eventosRes.data || []).map(e => ({
-        id: e.id,
-        titulo: e.titulo,
-        descripcion: e.descripcion,
-        fecha_inicio: `${e.fecha}T${e.hora}`,
-        duracion_minutos: 60,
-        instructor: { id: '', nombre_completo: e.ponente },
-        esta_activa: false,
-        estado: 'programada' as const,
-        tipo: 'evento' as const,
-      }));
+      const upcomingEvents = (eventosRes.data || [])
+        .filter(e => !!e.fecha_inicio)
+        .map(e => {
+          const inicio = new Date(e.fecha_inicio as string);
+          const fin = e.fecha_fin ? new Date(e.fecha_fin as string) : null;
+          const minutos = fin && fin > inicio ? Math.round((fin.getTime() - inicio.getTime()) / 60_000) : 60;
+          return {
+            id: e.id,
+            titulo: e.titulo,
+            descripcion: e.descripcion,
+            fecha_inicio: e.fecha_inicio as string,
+            duracion_minutos: minutos,
+            instructor: { id: '', nombre_completo: e.ponente ?? '' },
+            esta_activa: e.estado === 'en_vivo',
+            estado: 'programada' as const,
+            tipo: 'evento' as const,
+          };
+        });
 
       setProxSessions([...upcomingSessions, ...upcomingEvents]
         .sort((a, b) => new Date(a.fecha_inicio).getTime() - new Date(b.fecha_inicio).getTime())
@@ -166,12 +127,6 @@ export function SegurosEducation() {
         categoria: seguros_lesson_categories?.[0]?.seguros_categories ?? null,
       })) as unknown as Lesson[]);
 
-      const completados = progressData.filter(p => p.completado).length;
-      const en_proceso = progressData.filter(p => !p.completado && (p.progreso || 0) > 0).length;
-      const ultima = progressData.reduce<ProgressRow | null>((max, p) =>
-        !max || new Date(p.ultima_vista || 0) > new Date(max.ultima_vista || 0) ? p : max, null);
-      const tiempo_total = progressData.reduce((sum, p) => sum + (p.completado ? (p.lesson?.duracion || 0) : (p.tiempo_reproduccion || 0)), 0);
-      setStats({ completados, en_proceso, ultima_leccion: ultima?.lesson?.titulo || null, tiempo_total: Math.floor(tiempo_total / 60) });
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -179,265 +134,241 @@ export function SegurosEducation() {
     }
   };
 
+  // Primer carga y cada cambio de usuario.
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); }, [usuario?.id]);
+
+  const proxima = proxSessions[0] ?? null;
+  const proximaFecha = proxima ? new Date(proxima.fecha_inicio) : null;
+
   return (
     <>
       <SegurosEducationLayout>
-        <div className="space-y-6">
+        <div className="space-y-5">
 
-          {/* ── Stats strip ─────────────────────────────────────── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { icon: CheckCircle2, label: 'Completados', value: loading ? null : stats.completados, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-              { icon: TrendingUp, label: 'En Proceso', value: loading ? null : stats.en_proceso, color: 'text-[#1C37E0]', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-              { icon: Clock, label: 'Minutos totales', value: loading ? null : stats.tiempo_total, suffix: 'min', color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-              { icon: Play, label: 'Última lección', value: null, text: loading ? null : (stats.ultima_leccion || 'Ninguna'), color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-500/10' },
-            ].map(stat => (
-              <div key={stat.label} className="bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-4 flex items-center gap-3">
-                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0', stat.bg)}>
-                  <stat.icon className={cn('w-4.5 h-4.5', stat.color)} />
+          {/* ── 1. Próxima clase de Aula Virtual ───────────────── */}
+          {loading ? (
+            <Skeleton className="h-36 w-full rounded-2xl" />
+          ) : proxima && proximaFecha ? (
+            <button
+              onClick={() => navigate('/seguros-education/aula-virtual')}
+              className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#141d4b] via-[#1a2a72] to-[#1C37E0] p-5 text-left shadow-card transition-shadow hover:shadow-xl sm:p-6"
+            >
+              {/* halo decorativo */}
+              <div className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+
+              <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur-sm">
+                  <span className="text-2xl font-bold leading-none">{format(proximaFecha, 'd', { locale: es })}</span>
+                  <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide opacity-80">
+                    {format(proximaFecha, 'MMM', { locale: es })}
+                  </span>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-neutral-500 dark:text-white/55 font-medium uppercase tracking-wide">{stat.label}</p>
-                  {loading ? (
-                    <Skeleton className="h-5 w-12 mt-1" />
-                  ) : stat.text !== undefined ? (
-                    <p className="text-xs font-semibold text-neutral-800 dark:text-white mt-0.5 truncate">{stat.text}</p>
-                  ) : (
-                    <p className="text-xl font-bold text-neutral-900 dark:text-white leading-none mt-0.5">
-                      {stat.value}<span className="text-xs text-neutral-500 dark:text-white/45 ml-0.5 font-medium">{stat.suffix}</span>
-                    </p>
-                  )}
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+                      Próxima clase
+                    </span>
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide',
+                        proxima.esta_activa ? 'bg-red-500 text-white' : 'bg-emerald-400 text-emerald-950',
+                      )}
+                    >
+                      {proxima.esta_activa ? 'En vivo ahora' : 'Aula Virtual'}
+                    </span>
+                  </div>
+
+                  <h2 className="mt-2 line-clamp-2 text-lg font-bold leading-snug text-white sm:text-xl">
+                    {proxima.titulo}
+                  </h2>
+
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-white/75">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {format(proximaFecha, 'HH:mm')} · {proxima.duracion_minutos} min
+                    </span>
+                    {proxima.instructor?.nombre_completo && (
+                      <span className="truncate">{proxima.instructor.nombre_completo}</span>
+                    )}
+                  </div>
+                </div>
+
+                <span className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-caption font-bold text-[#1C37E0] transition group-hover:gap-2.5">
+                  {proxima.esta_activa ? 'Entrar ahora' : 'Ir al Aula Virtual'} <ArrowRight className="h-4 w-4" />
+                </span>
+              </div>
+            </button>
+          ) : (
+            <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed border-neutral-300 bg-surface-card p-5 dark:border-white/15 dark:bg-white/[0.03] sm:flex-row sm:items-center">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
+                <Calendar className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-neutral-900 dark:text-white">No hay clases programadas</p>
+                <p className="text-caption text-neutral-500 dark:text-white/55">
+                  Cuando se agende una clase del Aula Virtual aparecerá aquí, con su fecha y su hora.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/seguros-education/aula-virtual')}
+                className="shrink-0 rounded-xl bg-accent px-4 py-2 text-caption font-semibold text-white transition hover:bg-accent-hover"
+              >
+                Programar una clase
+              </button>
+            </div>
+          )}
+
+          {/* ── 2. Últimas clases de On Demand ─────────────────── */}
+          <section className="rounded-2xl border border-soft bg-surface-card p-4 dark:border-white/[0.06] dark:bg-white/[0.03] sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
+                  <Video className="h-4 w-4 text-[#1C37E0]" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Últimas clases grabadas</h2>
+                  <p className="text-[11px] text-neutral-500">Lo más reciente de On Demand</p>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* ── Quick access ────────────────────────────────────── */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-3.5 h-3.5 text-neutral-500" />
-              <h2 className="text-xs font-bold text-neutral-500 dark:text-white/55 uppercase tracking-wider">Acceso Rápido</h2>
+              <button
+                onClick={() => navigate('/seguros-education/on-demand')}
+                className="flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#1C37E0] hover:underline"
+              >
+                Ver todas <ChevronRight className="h-3 w-3" />
+              </button>
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {QUICK_ACCESS.map(item => (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className="group relative overflow-hidden bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-4 text-left hover:border-transparent hover:shadow-lg hover:shadow-neutral-200/50 dark:hover:shadow-none transition-all duration-200 focus:outline-none"
-                >
-                  {/* Gradient accent on hover */}
-                  <div className={cn('absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-2xl', item.color)} style={{ opacity: 0 }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = '0')}
-                  />
-                  <div className="relative">
-                    <div className={cn('w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center mb-3 shadow-sm', item.color)}>
-                      <item.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <p className="font-bold text-sm text-neutral-900 dark:text-white group-hover:text-neutral-900">{item.label}</p>
-                    <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5 group-hover:text-neutral-600">{item.desc}</p>
-                    <div className="flex items-center justify-between mt-3">
-                      <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded-full', item.badgeColor)}>{item.badge}</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-neutral-300 group-hover:text-neutral-500 group-hover:translate-x-0.5 transition-all" />
+
+            {loading ? (
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="overflow-hidden rounded-xl border border-neutral-100 dark:border-white/[0.04]">
+                    <Skeleton className="aspect-video w-full rounded-none" />
+                    <div className="space-y-2 p-3">
+                      <Skeleton className="h-3 w-1/3" />
+                      <Skeleton className="h-3.5 w-2/3" />
                     </div>
                   </div>
-                </button>
-              ))}
-              {isAdmin && (
-                <button
-                  onClick={() => navigate('/seguros-education/analytics')}
-                  className="group relative overflow-hidden bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] p-4 text-left hover:border-transparent hover:shadow-lg hover:shadow-neutral-200/50 transition-all duration-200 focus:outline-none"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center mb-3 shadow-sm">
-                    <BarChart3 className="w-5 h-5 text-white" />
-                  </div>
-                  <p className="font-bold text-sm text-neutral-900 dark:text-white">Analytics</p>
-                  <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-0.5">Métricas y reportes</p>
-                  <div className="flex items-center justify-between mt-3">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">Admin</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-neutral-300 group-hover:text-neutral-500 transition-colors" />
-                  </div>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ── Main content grid ────────────────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-
-            {/* Proximas Capacitaciones — 2/5 */}
-            <div className="lg:col-span-2 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] overflow-hidden flex flex-col">
-              <div className="px-5 py-4 border-b border-neutral-100 dark:border-white/[0.05] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
-                    <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Próximas sesiones</h2>
-                    <p className="text-[11px] text-neutral-500">Capacitaciones programadas</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/seguros-education/aula-virtual')}
-                  className="text-[11px] text-[#1C37E0] font-semibold hover:underline flex items-center gap-0.5"
-                >
-                  Ver todas <ChevronRight className="w-3 h-3" />
-                </button>
+                ))}
               </div>
-              <div className="flex-1 p-4 space-y-2.5">
-                {loading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="p-3 rounded-xl bg-neutral-50 dark:bg-white/[0.02] space-y-2">
-                      <Skeleton className="h-3.5 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
-                    </div>
-                  ))
-                ) : proxSessions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center mb-3">
-                      <Calendar className="w-5 h-5 text-neutral-300" />
-                    </div>
-                    <p className="text-sm font-semibold text-neutral-500 dark:text-white/55">Sin sesiones próximas</p>
-                    <p className="text-xs text-neutral-500 mt-0.5">Revisa el aula virtual para más detalles</p>
-                  </div>
-                ) : (
-                  proxSessions.map(session => {
-                    const sessionDate = new Date(session.fecha_inicio);
-                    const day = format(sessionDate, 'd', { locale: es });
-                    const month = format(sessionDate, 'MMM', { locale: es });
-                    const time = format(sessionDate, 'HH:mm');
-                    const isEvento = session.tipo === 'evento';
-                    return (
-                      <button
-                        key={session.id}
-                        onClick={() => navigate('/seguros-education/aula-virtual')}
-                        className="w-full flex items-start gap-3 p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors text-left group"
-                      >
-                        {/* Date bubble */}
-                        <div className={cn('flex flex-col items-center justify-center w-10 h-12 rounded-xl flex-shrink-0 text-white font-bold leading-none', isEvento ? 'bg-emerald-500' : 'bg-[#1C37E0]')}>
-                          <span className="text-lg leading-none">{day}</span>
-                          <span className="text-[10.5px] uppercase opacity-80 mt-0.5">{month}</span>
+            ) : recentLessons.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 dark:bg-white/5">
+                  <Video className="h-5 w-5 text-neutral-300" />
+                </div>
+                <p className="text-sm font-semibold text-neutral-500 dark:text-white/55">Sin lecciones disponibles</p>
+                <p className="text-xs text-neutral-500">Aparecerán aquí cuando se publiquen.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {recentLessons.slice(0, 4).map(lesson => (
+                  <button
+                    key={lesson.id}
+                    onClick={() => navigate('/seguros-education/on-demand')}
+                    className="group overflow-hidden rounded-xl border border-soft bg-surface-card text-left transition-all hover:border-[#1C37E0]/30 hover:shadow-card dark:border-white/[0.05] dark:bg-white/[0.02]"
+                  >
+                    <div className="relative aspect-video overflow-hidden bg-neutral-100 dark:bg-white/5">
+                      {lesson.miniatura_url ? (
+                        <img
+                          src={lesson.miniatura_url}
+                          alt={lesson.titulo}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Video className="h-8 w-8 text-neutral-300" />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-neutral-900 dark:text-white line-clamp-1 group-hover:text-[#1C37E0] transition-colors">{session.titulo}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[11px] text-neutral-500 flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{time}</span>
-                            <span className="text-[11px] text-neutral-500">{session.duracion_minutos} min</span>
-                          </div>
-                          {session.instructor?.nombre_completo && (
-                            <p className="text-[11px] text-neutral-500 mt-0.5 truncate">{session.instructor.nombre_completo}</p>
-                          )}
-                        </div>
-                        <span className={cn('flex-shrink-0 px-1.5 py-0.5 rounded text-[10.5px] font-bold', isEvento ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700')}>
-                          {isEvento ? 'Evento' : 'Sesión'}
-                        </span>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Ultimos Cursos — 3/5 */}
-            <div className="lg:col-span-3 bg-surface-card dark:bg-white/[0.03] rounded-2xl border border-neutral-200/50 dark:border-white/[0.06] overflow-hidden flex flex-col">
-              <div className="px-5 py-4 border-b border-neutral-100 dark:border-white/[0.05] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
-                    <Video className="w-3.5 h-3.5 text-[#1C37E0]" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Últimos cursos</h2>
-                    <p className="text-[11px] text-neutral-500">Contenido reciente disponible</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/seguros-education/on-demand')}
-                  className="text-[11px] text-[#1C37E0] font-semibold hover:underline flex items-center gap-0.5"
-                >
-                  Ver todos <ChevronRight className="w-3 h-3" />
-                </button>
-              </div>
-              <div className="flex-1 p-4">
-                {loading ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="rounded-xl overflow-hidden border border-neutral-100 dark:border-white/[0.04]">
-                        <Skeleton className="aspect-video w-full rounded-none" />
-                        <div className="p-3 space-y-2">
-                          <Skeleton className="h-3 w-1/3" />
-                          <Skeleton className="h-3.5 w-2/3" />
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                        <div className="flex h-9 w-9 scale-90 items-center justify-center rounded-full bg-white opacity-0 shadow-lg transition-all group-hover:scale-100 group-hover:opacity-100">
+                          <Play className="ml-0.5 h-4 w-4 text-neutral-900" />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : recentLessons.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center mb-3">
-                      <Video className="w-5 h-5 text-neutral-300" />
+                      {(lesson.progreso || 0) > 0 && (
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-black/20">
+                          <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso}%` }} />
+                        </div>
+                      )}
+                      {lesson.completado && (
+                        <div className="absolute right-2 top-2">
+                          <span className="flex items-center gap-1 rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> Visto
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm font-semibold text-neutral-500 dark:text-white/55">Sin lecciones disponibles</p>
-                    <p className="text-xs text-neutral-500 mt-0.5">Los cursos aparecerán aquí cuando estén publicados</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {recentLessons.slice(0, 4).map(lesson => (
-                      <button
-                        key={lesson.id}
-                        onClick={() => navigate('/seguros-education/on-demand')}
-                        className="group rounded-xl overflow-hidden border border-soft dark:border-white/[0.05] bg-surface-card dark:bg-white/[0.02] hover:border-[#1C37E0]/30 hover:shadow-card-hover hover:shadow-neutral-200/40 transition-all text-left focus:outline-none"
-                      >
-                        {/* Thumbnail */}
-                        <div className="aspect-video bg-neutral-100 dark:bg-white/5 relative overflow-hidden">
-                          {lesson.miniatura_url ? (
-                            <img src={lesson.miniatura_url} alt={lesson.titulo} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Video className="w-8 h-8 text-neutral-300" />
-                            </div>
-                          )}
-                          {/* Play overlay */}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                            <div className="w-9 h-9 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
-                              <Play className="w-4 h-4 text-neutral-900 ml-0.5" />
-                            </div>
-                          </div>
-                          {/* Progress bar */}
-                          {(lesson.progreso || 0) > 0 && (
-                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
-                              <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso}%` }} />
-                            </div>
-                          )}
-                          {lesson.completado && (
-                            <div className="absolute top-2 right-2">
-                              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500 text-white text-[10.5px] font-bold">
-                                <CheckCircle2 className="w-2.5 h-2.5" /> Visto
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        {/* Info */}
-                        <div className="p-3">
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            {lesson.categoria && (
-                              <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-50 dark:bg-blue-500/10 text-accent-ink dark:text-blue-400">
-                                {lesson.categoria.nombre}
-                              </span>
-                            )}
-                            <span className="text-[11px] text-neutral-500 ml-auto flex-shrink-0">{formatDuration(lesson.duracion)}</span>
-                          </div>
-                          <p className="text-xs font-semibold text-neutral-800 dark:text-white line-clamp-2 group-hover:text-[#1C37E0] transition-colors leading-snug">
-                            {lesson.titulo}
-                          </p>
-                          {(lesson.progreso || 0) > 0 && (lesson.progreso || 0) < 100 && (
-                            <p className="text-[11px] text-neutral-500 mt-1">{Math.floor(lesson.progreso || 0)}% visto</p>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                    <div className="p-2.5">
+                      <div className="mb-1 flex items-center gap-1.5">
+                        {lesson.categoria && (
+                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-accent-ink dark:bg-blue-500/10 dark:text-blue-400">
+                            {lesson.categoria.nombre}
+                          </span>
+                        )}
+                        <span className="ml-auto shrink-0 text-[10px] text-neutral-500">{formatDuration(lesson.duracion)}</span>
+                      </div>
+                      <p className="line-clamp-2 text-xs font-semibold leading-snug text-neutral-800 transition-colors group-hover:text-[#1C37E0] dark:text-white">
+                        {lesson.titulo}
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
-            </div>
+            )}
+          </section>
+
+          {/* ── 3. Entradas principales ─────────────────────────── */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button
+              onClick={() => navigate('/seguros-education/aula-virtual')}
+              className="group flex items-center gap-3 rounded-2xl border border-soft bg-surface-card p-4 text-left transition-all hover:border-emerald-300 hover:shadow-card dark:border-white/[0.06] dark:bg-white/[0.03]"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500">
+                <Calendar className="h-5 w-5 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-neutral-900 dark:text-white">Aula Virtual</p>
+                <p className="text-[11px] text-neutral-500 dark:text-white/55">Clases en vivo, invitados y grabaciones</p>
+              </div>
+              <ArrowRight className="h-4 w-4 shrink-0 text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-emerald-600" />
+            </button>
+
+            <button
+              onClick={() => navigate('/seguros-education/on-demand')}
+              className="group flex items-center gap-3 rounded-2xl border border-soft bg-surface-card p-4 text-left transition-all hover:border-blue-300 hover:shadow-card dark:border-white/[0.06] dark:bg-white/[0.03]"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1C37E0] to-blue-500">
+                <Video className="h-5 w-5 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-neutral-900 dark:text-white">On Demand</p>
+                <p className="text-[11px] text-neutral-500 dark:text-white/55">Biblioteca de clases grabadas</p>
+              </div>
+              <ArrowRight className="h-4 w-4 shrink-0 text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-[#1C37E0]" />
+            </button>
+          </div>
+
+          {/* ── 4. Resto del módulo ─────────────────────────────── */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-400 dark:text-white/40">
+              Más
+            </span>
+            {[
+              { label: 'Cédula A', path: '/seguros-education/cedula-a', icon: GraduationCap },
+              ...(isAdmin ? [{ label: 'Analytics', path: '/seguros-education/analytics', icon: BarChart3 }] : []),
+              { label: 'Manuales', path: '/manuales', icon: BookOpen },
+            ].map(item => (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className="flex items-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-[11px] font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+              >
+                <item.icon className="h-3.5 w-3.5" /> {item.label}
+              </button>
+            ))}
           </div>
 
         </div>
@@ -445,4 +376,5 @@ export function SegurosEducation() {
     </>
   );
 }
+
 export default SegurosEducation;
