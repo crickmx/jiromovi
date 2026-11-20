@@ -89,9 +89,10 @@ async function registrarAsistente(datos: {
     rol: 'Agente',
     nombre,
     apellidos: '',
+    // Contacto de trabajo, no personal: el alta la hace la empresa.
     email_laboral: email,
     email,
-    celular_personal: `521${whatsapp}`,
+    celular_laboral: `521${whatsapp}`,
     oficina_id: oficinaId,
     activo: true,
     estado: 'activo',

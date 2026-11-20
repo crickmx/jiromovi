@@ -13,6 +13,14 @@ import { BaseModal } from '../components/BaseModal';
 import { aulaDaily } from '../lib/aulaDaily';
 import { analyticsTracker } from '../lib/analyticsTracker';
 import { subirPortadaClase } from '../lib/aulaDaily';
+import { SelectorEtiquetas, PildorasEtiquetas } from '../components/segurosEducation/SelectorEtiquetas';
+import {
+  cargarEtiquetas,
+  etiquetasDeEventos,
+  guardarEtiquetasEvento,
+  resolverEtiquetas,
+  type Etiqueta,
+} from '../lib/etiquetas';
 
 interface Clase {
   id: string;
@@ -31,6 +39,7 @@ interface Clase {
   leccion_id: string | null;
   categoria_id: string | null;
   creado_por: string | null;
+  etiquetas: Etiqueta[];
 }
 
 interface Host {
@@ -86,6 +95,7 @@ export function SegurosEducationAulaVirtual() {
   const [hosts, setHosts] = useState<Host[]>([]);
   const [grabaciones, setGrabaciones] = useState<Grabacion[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [catalogoEtiquetas, setCatalogoEtiquetas] = useState<Etiqueta[]>([]);
   const [equipo, setEquipo] = useState<UsuarioBrief[]>([]);
   const [asistentes, setAsistentes] = useState<Record<string, number>>({});
   // Se refresca por intervalo para no leer el reloj durante el render.
@@ -116,16 +126,22 @@ export function SegurosEducationAulaVirtual() {
       .limit(200);
 
     const lista = (eventos ?? []) as Clase[];
-    setClases(lista);
 
     if (lista.length) {
       const ids = lista.map((c) => c.id);
-      const [{ data: h }, { data: g }, { data: p }] = await Promise.all([
+      const [{ data: h }, { data: g }, { data: p }, mapaEtiquetas, catalogo] = await Promise.all([
         supabase.from('aula_evento_hosts').select('evento_id, usuario_id, rol, usuarios(nombre_completo, nombre, apellidos)').in('evento_id', ids),
         supabase.from('aula_grabaciones').select('id, evento_id, origen, estado, duracion_segundos, leccion_id').in('evento_id', ids),
         supabase.from('aula_participantes').select('evento_id').in('evento_id', ids).is('salido_at', null),
+        etiquetasDeEventos(ids),
+        cargarEtiquetas(),
       ]);
 
+      setCatalogoEtiquetas(catalogo);
+      for (const clase of lista) {
+        clase.etiquetas = resolverEtiquetas(mapaEtiquetas[clase.id], catalogo);
+      }
+      setClases(lista);
       setHosts((h ?? []) as unknown as Host[]);
       setGrabaciones((g ?? []) as Grabacion[]);
 
@@ -135,6 +151,7 @@ export function SegurosEducationAulaVirtual() {
       }
       setAsistentes(cuenta);
     } else {
+      setClases([]);
       setHosts([]);
       setGrabaciones([]);
       setAsistentes({});
@@ -331,6 +348,7 @@ export function SegurosEducationAulaVirtual() {
     grabar: boolean;
     transcribir: boolean;
     categoriaId: string | null;
+    etiquetas: string[];
     cohosts: string[];
     portada: File;
   }) => {
@@ -374,6 +392,14 @@ export function SegurosEducationAulaVirtual() {
       { evento_id: id, usuario_id: usuario.id, rol: 'host' },
       ...datos.cohosts.filter((u) => u !== usuario.id).map((u) => ({ evento_id: id, usuario_id: u, rol: 'cohost' })),
     ]);
+
+    if (datos.etiquetas.length > 0) {
+      try {
+        await guardarEtiquetasEvento(id, datos.etiquetas);
+      } catch (err) {
+        console.error('Error guardando etiquetas del evento:', err);
+      }
+    }
 
     const sala = await aulaDaily.crearSala(id);
     await cargar();
@@ -534,6 +560,11 @@ export function SegurosEducationAulaVirtual() {
                           </span>
                         )}
                       </div>
+                      {clase.etiquetas?.length > 0 && (
+                        <div className="mt-1 mb-1">
+                          <PildorasEtiquetas etiquetas={clase.etiquetas} max={3} />
+                        </div>
+                      )}
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-caption text-neutral-500 dark:text-white/50">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -669,6 +700,14 @@ export function SegurosEducationAulaVirtual() {
           abierto
           onCerrar={() => setShowCrear(false)}
           categorias={categorias}
+          catalogoEtiquetas={catalogoEtiquetas}
+          onNuevaEtiqueta={(nueva) =>
+            setCatalogoEtiquetas((prev) =>
+              prev.some((e) => e.id === nueva.id)
+                ? prev
+                : [...prev, nueva].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+            )
+          }
           equipo={equipo}
           propioId={usuario?.id ?? ''}
           onCrear={crearClase}
@@ -793,6 +832,8 @@ function FormularioClase({
   abierto,
   onCerrar,
   categorias,
+  catalogoEtiquetas,
+  onNuevaEtiqueta,
   equipo,
   propioId,
   onCrear,
@@ -801,6 +842,8 @@ function FormularioClase({
   abierto: boolean;
   onCerrar: () => void;
   categorias: Categoria[];
+  catalogoEtiquetas: Etiqueta[];
+  onNuevaEtiqueta: (etiqueta: Etiqueta) => void;
   equipo: UsuarioBrief[];
   propioId: string;
   onCrear: (datos: {
@@ -813,6 +856,7 @@ function FormularioClase({
     grabar: boolean;
     transcribir: boolean;
     categoriaId: string | null;
+    etiquetas: string[];
     cohosts: string[];
     portada: File;
   }) => Promise<{ id: string; link: string | null }>;
@@ -827,6 +871,7 @@ function FormularioClase({
   const [grabar, setGrabar] = useState(true);
   const [transcribir, setTranscribir] = useState(true);
   const [categoriaId, setCategoriaId] = useState<string>('');
+  const [etiquetasElegidas, setEtiquetasElegidas] = useState<string[]>([]);
   const [cohosts, setCohosts] = useState<string[]>([]);
   const [portada, setPortada] = useState<File | null>(null);
   const [portadaPreview, setPortadaPreview] = useState<string | null>(null);
@@ -859,6 +904,7 @@ function FormularioClase({
         grabar,
         transcribir,
         categoriaId: categoriaId || null,
+        etiquetas: etiquetasElegidas,
         cohosts,
         portada,
       });
@@ -982,6 +1028,24 @@ function FormularioClase({
               <option key={c.id} value={c.id}>{c.nombre}</option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-caption font-semibold text-neutral-700 dark:text-white/70">
+            Etiquetas
+            <span className="ml-2 text-micro font-normal text-neutral-400">
+              Aseguradora, ramo y subramo; también filtran en On Demand
+            </span>
+          </label>
+          <div className="rounded-xl border border-neutral-200 bg-surface-50 p-3 dark:border-white/10 dark:bg-white/5">
+            <SelectorEtiquetas
+              etiquetas={catalogoEtiquetas}
+              valor={etiquetasElegidas}
+              onChange={setEtiquetasElegidas}
+              onNuevaEtiqueta={onNuevaEtiqueta}
+              compacto
+            />
+          </div>
         </div>
 
         <div>

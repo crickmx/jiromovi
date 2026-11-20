@@ -176,14 +176,17 @@ export function AulaInvitado() {
   const etiqueta = 'mb-1 flex items-center gap-1.5 text-caption font-semibold text-neutral-700 dark:text-white/70';
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#101a3a] via-[#16205c] to-[#1C37E0] px-4 py-10">
-      <div className="w-full max-w-md">
+    // `m-auto` en el hijo en vez de items-center: centra igual pero, cuando el
+    // formulario no cabe (móvil en horizontal, zoom alto), empieza arriba y se
+    // puede desplazar; con items-center la parte de arriba quedaba fuera.
+    <div className="flex min-h-[100dvh] flex-col overflow-y-auto bg-gradient-to-br from-[#101a3a] via-[#16205c] to-[#1C37E0] px-4 py-6">
+      <div className="m-auto w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-2 text-white">
           <img src={SEGUROS_EDUCATION_LOGO} alt="Seguros Education" className="h-12 w-auto select-none" />
           <p className="text-[11px] tracking-wide text-white/70">Aula Virtual · MOVI Digital</p>
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow-2xl dark:bg-surface-900">
+        <div className="rounded-2xl bg-white p-5 shadow-2xl dark:bg-surface-900 sm:p-6">
           {cargando && (
             <div className="flex flex-col items-center gap-3 py-10">
               <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-accent/20 border-t-accent" />
@@ -258,7 +261,7 @@ export function AulaInvitado() {
                   <>
                     <div>
                       <label className={etiqueta}>
-                        <Mail className="h-3.5 w-3.5" /> Correo electrónico
+                        <Mail className="h-3.5 w-3.5" /> Correo laboral
                       </label>
                       <input
                         type="email"
@@ -273,7 +276,7 @@ export function AulaInvitado() {
 
                     <div>
                       <label className={etiqueta}>
-                        <Phone className="h-3.5 w-3.5" /> WhatsApp (10 dígitos)
+                        <Phone className="h-3.5 w-3.5" /> WhatsApp laboral (10 dígitos)
                       </label>
                       <input
                         type="tel"
