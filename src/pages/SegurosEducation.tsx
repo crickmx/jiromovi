@@ -278,7 +278,7 @@ export function SegurosEducation() {
                           alt={lesson.titulo}
                           loading="lazy"
                           decoding="async"
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : (
