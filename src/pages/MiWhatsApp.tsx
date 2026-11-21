@@ -193,6 +193,9 @@ export default function MiWhatsApp() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Evita pedir un QR nuevo en cada re-render mientras siga desconectado. */
+  const autoQrRef = useRef(false);
+  const connectRef = useRef<() => Promise<void>>(async () => {});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const convListRef = useRef<HTMLDivElement>(null);
@@ -336,6 +339,22 @@ export default function MiWhatsApp() {
       if (statusResult.session?.status === 'connected' || statusResult.session?.status === 'disconnected') {
         setQrCode(null);
       }
+    }
+
+    // Sin sesión activa no hay chats que mostrar: se vacía todo y quien se
+    // encarga de pedir el QR es el efecto que observa el estado.
+    if (statusResult?.session?.status !== 'connected') {
+      setConversations([]);
+      setSelectedConversation(null);
+      setMessages([]);
+      setContactNames({});
+      setHasMoreConversations(false);
+      setConvOffset(0);
+      setShowMobileChat(false);
+      setTemplates(tplData || []);
+      setFormTemplates(formData || []);
+      setLoading(false);
+      return;
     }
 
     const [convsResult, contactsResult] = await Promise.all([
@@ -769,6 +788,48 @@ export default function MiWhatsApp() {
     await callEdgeFunction('disconnect');
     loadSessionAndConversations();
   };
+
+  connectRef.current = handleConnect;
+
+  /**
+   * Si la cuenta se cae (cerró sesión en el celular, se invalidó el token),
+   * se borran los chats en pantalla y se pide un QR nuevo sin que el usuario
+   * tenga que buscarlo.
+   */
+  useEffect(() => {
+    if (!session) return;
+
+    if (session.status === 'connected') {
+      autoQrRef.current = false;
+      return;
+    }
+
+    setConversations([]);
+    setSelectedConversation(null);
+    setMessages([]);
+    setContactNames({});
+    setHasMoreConversations(false);
+    setConvOffset(0);
+    setShowMobileChat(false);
+
+    if (session.status === 'disconnected' || session.status === 'error') {
+      setActiveView('connection');
+      if (!autoQrRef.current) {
+        autoQrRef.current = true;
+        window.setTimeout(() => { void connectRef.current(); }, 300);
+      }
+    }
+  }, [session?.status]);
+
+  // Vigila la sesión en segundo plano: así la caída se nota sin recargar.
+  useEffect(() => {
+    if (!usuario) return;
+    const id = window.setInterval(async () => {
+      const st = await callEdgeFunction('get-status');
+      if (st?.session) setSession(st.session);
+    }, 20_000);
+    return () => window.clearInterval(id);
+  }, [usuario?.id]);
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'unassigned'>('all');
   const [showContactPanel, setShowContactPanel] = useState(true);
