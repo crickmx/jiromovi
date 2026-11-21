@@ -169,7 +169,7 @@ export function SegurosEducation() {
                       alt={proxima.titulo}
                       loading="lazy"
                       decoding="async"
-                      className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                      className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
@@ -278,7 +278,7 @@ export function SegurosEducation() {
                       onClick={() => navigate('/seguros-education/on-demand')}
                       className="group flex min-h-0 flex-col overflow-hidden rounded-xl border border-soft bg-surface-card text-left transition hover:border-[#1C37E0]/30 hover:shadow-card dark:border-white/[0.05] dark:bg-white/[0.02]"
                     >
-                      <div className="relative min-h-0 flex-1 overflow-hidden bg-neutral-100 dark:bg-white/5">
+                      <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-100 dark:bg-white/5 lg:aspect-auto lg:min-h-0 lg:flex-1">
                         {lesson.miniatura_url ? (
                           <img
                             src={lesson.miniatura_url}
