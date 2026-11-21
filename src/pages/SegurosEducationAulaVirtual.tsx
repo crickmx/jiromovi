@@ -87,6 +87,13 @@ function duracion(segundos: number | null) {
   return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m} min`;
 }
 
+const ZONA_MX = 'America/Mexico_City';
+
+/** Fecha/hora siempre en horario de México, sin importar el navegador. */
+function fmtMX(fecha: Date, opciones: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat('es-MX', { timeZone: ZONA_MX, ...opciones }).format(fecha);
+}
+
 export function SegurosEducationAulaVirtual() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
@@ -354,7 +361,9 @@ export function SegurosEducationAulaVirtual() {
   }) => {
     if (!usuario) throw new Error('Sesión no disponible');
 
-    const inicio = new Date(`${datos.fecha}T${datos.hora}:00`);
+    // La hora se captura en horario de México: se fija el desfase para que no
+    // dependa de la zona horaria del navegador de quien crea la capacitación.
+    const inicio = new Date(`${datos.fecha}T${datos.hora}:00-06:00`);
     const fin = new Date(inicio.getTime() + datos.duracionMin * 60_000);
 
     // La portada se sube antes de crear el evento: es obligatoria y es la misma
@@ -441,7 +450,7 @@ export function SegurosEducationAulaVirtual() {
           <div className="flex items-center gap-2 text-body-sm text-neutral-500 dark:text-white/55">
             <Video className="h-4 w-4 text-accent-ink" />
             <span>
-              {proximas.length + enVivo.length} {proximas.length + enVivo.length === 1 ? 'clase activa' : 'clases activas'}
+              {proximas.length + enVivo.length} {proximas.length + enVivo.length === 1 ? 'capacitación activa' : 'capacitaciones activas'}
             </span>
           </div>
           {isAdmin && (
@@ -582,9 +591,9 @@ export function SegurosEducationAulaVirtual() {
                       {inicio && (
                         <div className="absolute left-2 top-2 flex min-w-[42px] flex-col items-center rounded-xl bg-black/65 px-2 py-1 text-white backdrop-blur-sm">
                           <span className="text-[10px] font-bold uppercase leading-none opacity-90">
-                            {format(inicio, 'MMM', { locale: es })}
+                            {fmtMX(inicio, { month: 'short' }).replace('.', '')}
                           </span>
-                          <span className="mt-0.5 text-base font-bold leading-none">{format(inicio, 'd')}</span>
+                          <span className="mt-0.5 text-base font-bold leading-none">{fmtMX(inicio, { day: 'numeric' })}</span>
                         </div>
                       )}
 
@@ -610,7 +619,9 @@ export function SegurosEducationAulaVirtual() {
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-neutral-500 dark:text-white/55">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5" />
-                          {inicio ? format(inicio, "d MMM · HH:mm", { locale: es }) : 'Sin fecha'}
+                          {inicio
+                            ? `${fmtMX(inicio, { day: 'numeric', month: 'short' }).replace('.', '')} · ${fmtMX(inicio, { hour: '2-digit', minute: '2-digit', hour12: false })}`
+                            : 'Sin fecha'}
                           {minutos ? ` · ${minutos} min` : ''}
                         </span>
                         <span className="flex items-center gap-1">

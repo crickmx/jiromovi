@@ -161,7 +161,11 @@ async function drenar() {
             fecha,
             duracion,
             descripcion: evento.descripcion?.trim() || 'Te esperamos en el Aula Virtual de Seguros Education.',
-            imagen: evento.portada_url || `${Deno.env.get('APP_URL') ?? 'https://app.movi.digital'}/movirecurso_11.png`,
+            // Gmail y Outlook no pintan SVG: si la portada es vectorial se usa
+            // el logo en PNG para que el correo nunca salga sin imagen.
+            imagen: !evento.portada_url || evento.portada_url.toLowerCase().endsWith('.svg')
+              ? `${Deno.env.get('APP_URL') ?? 'https://app.movi.digital'}/movirecurso_11.png`
+              : evento.portada_url,
             url: urlClase,
           },
         }),
