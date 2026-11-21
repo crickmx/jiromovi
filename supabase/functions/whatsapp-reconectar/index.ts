@@ -27,7 +27,7 @@ const API_KEY = Deno.env.get('WHATSAPP_SERVER_API_KEY') ?? '';
 /** Espera mínima entre intentos para no martillar al servidor. */
 const ESPERA_MS = 2 * 60_000;
 /** Tope de intentos seguidos: si el teléfono cerró sesión, deja de insistir. */
-const MAX_INTENTOS = 10;
+const MAX_INTENTOS = 3;
 
 function esServicio(token: string) {
   if (!token) return false;
@@ -74,7 +74,9 @@ Deno.serve(async (req) => {
     .from('whatsapp_sessions')
     .select('id, user_id, status, phone_number, intentos_reconexion, ultimo_intento_reconexion')
     .eq('auto_reconnect', true)
-    .neq('status', 'connected')
+    // 'qr_pending' significa que ya hay un QR en pantalla: volver a pedir
+    // connect generaría uno nuevo y rompería el que la persona está escaneando.
+    .in('status', ['disconnected', 'error'])
     .lt('intentos_reconexion', MAX_INTENTOS)
     .order('ultimo_intento_reconexion', { ascending: true, nullsFirst: true })
     .limit(25);
