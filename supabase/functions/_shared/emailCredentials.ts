@@ -44,6 +44,61 @@ export async function setMailboxPassword(admin: AdminClient, usuarioId: string, 
   if (error) throw new Error(`No se pudo guardar la credencial cifrada: ${error.message}`);
 }
 
+/** Cifra y guarda la contraseña IMAP/SMTP de una CUENTA concreta (no del usuario). Nunca en texto plano. */
+export async function setMailboxPasswordDeCuenta(
+  admin: AdminClient,
+  configuracionId: string,
+  plainSecret: string,
+): Promise<void> {
+  const masterKey = getMasterKey();
+  const { error } = await admin.rpc('email_cred_set_cuenta', {
+    p_configuracion_id: configuracionId,
+    p_password: plainSecret,
+    p_key: masterKey,
+  });
+  if (error) throw new Error(`No se pudo guardar la credencial cifrada: ${error.message}`);
+}
+
+/**
+ * Lee el secreto de una cuenta concreta. Devuelve la contraseña tal cual o el
+ * JSON de tokens si la cuenta es de OAuth — quien llama decide según
+ * `getMailboxTipoDeCuenta`.
+ */
+export async function getMailboxSecretDeCuenta(
+  admin: AdminClient,
+  configuracionId: string,
+): Promise<string | null> {
+  const masterKey = getMasterKey();
+  const { data, error } = await admin.rpc('email_cred_get_cuenta', {
+    p_configuracion_id: configuracionId,
+    p_key: masterKey,
+  });
+  if (!error && data) return data as string;
+  return null;
+}
+
+/** 'password' | 'oauth'. Dice cómo hay que leer el secreto de esa cuenta. */
+export async function getMailboxTipoDeCuenta(
+  admin: AdminClient,
+  configuracionId: string,
+): Promise<'password' | 'oauth'> {
+  const { data, error } = await admin.rpc('email_cred_tipo_cuenta', { p_configuracion_id: configuracionId });
+  return !error && data === 'oauth' ? 'oauth' : 'password';
+}
+
+/** Marca la credencial de una cuenta como OAuth (o la devuelve a contraseña). */
+export async function setMailboxTipoDeCuenta(
+  admin: AdminClient,
+  configuracionId: string,
+  tipo: 'password' | 'oauth',
+): Promise<void> {
+  const { error } = await admin.rpc('email_cred_set_tipo_cuenta', {
+    p_configuracion_id: configuracionId,
+    p_tipo: tipo,
+  });
+  if (error) throw new Error(`No se pudo marcar el tipo de credencial: ${error.message}`);
+}
+
 /**
  * Igual que `getMailboxPassword` pero para las cuentas de correo del módulo
  * de Automatización IA (`ia_cuentas_correo`), donde la clave es el id de la
