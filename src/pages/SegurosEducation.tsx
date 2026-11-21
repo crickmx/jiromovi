@@ -8,6 +8,7 @@ import { es } from 'date-fns/locale';
 import { obtenerSesiones } from '../lib/aulaVirtualUtils';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 import { cn } from '@/lib/utils';
+import { useModuleVisibility } from '@/lib/useModuleVisibility';
 
 interface Lesson {
   id: string;
@@ -55,6 +56,9 @@ export function SegurosEducation() {
   const [recentLessons, setRecentLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const isAdmin = ['admin', 'administrador'].includes(usuario?.rol?.toLowerCase() || '');
+  const { isVisible } = useModuleVisibility();
+  const puedeVer = (ruta: string) =>
+    isVisible(ruta, usuario?.rol ?? 'Agente', usuario?.oficina_id ?? null, usuario?.id ?? null);
 
   const fetchData = async () => {
     if (!usuario) return;
@@ -362,7 +366,9 @@ export function SegurosEducation() {
                 ? [{ label: 'Analytics', desc: 'Métricas y reportes', path: '/seguros-education/analytics', icon: BarChart3 }]
                 : []),
               { label: 'Manuales', desc: 'Guías y documentación', path: '/manuales', icon: BookOpen },
-            ].map(item => (
+            ]
+              .filter((item) => puedeVer(item.path))
+              .map(item => (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
