@@ -22,6 +22,8 @@ import { VentanaRedactar, type ModoRedactar } from '@/components/email/gestor/Ve
 import { ReglasCorreo } from '@/components/email/gestor/ReglasCorreo';
 import { useIdentidades, useTramitesLigados } from '@/components/email/gestor/useIdentidades';
 import type { AccionCorreo } from '@/components/email/gestor/MenuCorreo';
+import { BuzonExterno, type CanalExterno } from './CorreoExternoBuzon';
+import CorreoExterno from './CorreoExterno';
 
 // Traduce los códigos de error del SSO de Roundcube a un mensaje claro en
 // español (el edge function responde con códigos crudos tipo "RATE_LIMITED").
@@ -96,6 +98,11 @@ function GestorEmailsInterno() {
   const [showContacts, setShowContacts] = useState(false);
   const [carpetasMovil, setCarpetasMovil] = useState(false);
   const [showReglas, setShowReglas] = useState(false);
+  // Cuentas externas (POP3/SMTP): viven dentro de este mismo módulo, no en uno
+  // aparte. `cuentaExternaId` en null = se está viendo la cuenta de JIRO.
+  const [cuentasExternas, setCuentasExternas] = useState<CanalExterno[]>([]);
+  const [cuentaExternaId, setCuentaExternaId] = useState<string | null>(null);
+  const [showCuentasExternas, setShowCuentasExternas] = useState(false);
   const [cuota, setCuota] = useState<Cuota | null>(null);
   const [ocultos, setOcultos] = useState<Set<number>>(new Set());
 
@@ -142,6 +149,23 @@ function GestorEmailsInterno() {
       setInitialLoading(false);
     }
   };
+
+  // Las cuentas externas se cargan aparte de `checkConfig`: un usuario puede
+  // tener correo externo sin tener configurada la cuenta de JIRO. Si la consulta
+  // falla, la sección simplemente no aparece y el gestor sigue igual.
+  useEffect(() => {
+    if (!usuario?.id) return;
+    let vivo = true;
+    void (async () => {
+      const { data } = await supabase
+        .from('correo_externo_canales')
+        .select('id,nombre,email,dejar_copia,estado_conexion,ultimo_error,ultima_sincronizacion')
+        .eq('activo', true)
+        .order('created_at', { ascending: true });
+      if (vivo) setCuentasExternas((data as CanalExterno[]) ?? []);
+    })();
+    return () => { vivo = false; };
+  }, [usuario?.id]);
 
   const refreshFolders = useCallback(async () => {
     try { setFolders(normalizarCarpetas((await callWebmail('list-folders')) || [])); } catch { /* el contador se queda como estaba */ }
@@ -485,6 +509,28 @@ function GestorEmailsInterno() {
     return <ContactosMovi onClose={() => setShowContacts(false)} onCompose={composeToContact} />;
   }
 
+  // Alta, prueba, edición y baja de las cuentas externas. Es una vista de este
+  // mismo módulo (no una pantalla aparte): así el correo externo queda dentro de
+  // E-Mail y no como un módulo adicional.
+  if (showCuentasExternas) {
+    return (
+      <div className="h-full flex flex-col bg-surface-canvas overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-soft bg-surface-card">
+          <button
+            type="button"
+            onClick={() => setShowCuentasExternas(false)}
+            className="inline-flex items-center gap-2 min-h-[40px] px-3 rounded-[var(--radius-sm)] text-body-sm text-neutral-700 dark:text-neutral-200 hover:bg-surface-muted"
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden /> Volver al correo
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <CorreoExterno />
+        </div>
+      </div>
+    );
+  }
+
   if (mailView === 'roundcube') {
     return (
       <div className="h-full flex flex-col bg-surface-canvas overflow-hidden">
@@ -604,6 +650,11 @@ function GestorEmailsInterno() {
       onConfiguracion={() => setShowSetup(true)}
       onVistaAlternativa={showRoundcube}
       abriendoAlternativa={openingRoundcube}
+      cuentasExternas={cuentasExternas}
+      cuentaExternaActiva={cuentaExternaId}
+      onCuentaExterna={(id) => { setCarpetasMovil(false); setCuentaExternaId(id); }}
+      onVolverAJiro={() => { setCarpetasMovil(false); setCuentaExternaId(null); }}
+      onAdministrarCuentas={() => { setCarpetasMovil(false); setShowCuentasExternas(true); }}
     />
   );
 
@@ -623,7 +674,14 @@ function GestorEmailsInterno() {
         </div>
       )}
 
-      {vista === 'inicio' ? (
+      {cuentaExternaId ? (
+        <main className="flex-1 min-w-0 overflow-y-auto">
+          <BuzonExterno
+            canalId={cuentaExternaId}
+            onAbrirCuentas={() => setShowCuentasExternas(true)}
+          />
+        </main>
+      ) : vista === 'inicio' ? (
         <main className="flex-1 min-w-0 flex flex-col">
           <div className="md:hidden flex items-center gap-1 px-2 py-2 bg-surface-card border-b border-soft">
             <button type="button" onClick={() => setCarpetasMovil(true)} aria-label="Abrir carpetas" className="w-10 h-10 flex items-center justify-center rounded-full text-neutral-600 dark:text-neutral-300 hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
