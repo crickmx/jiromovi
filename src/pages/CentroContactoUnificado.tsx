@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Info, X, MessageSquare, QrCode, Zap, Wifi, WifiOff, CircleAlert as AlertCircle, RefreshCw, Settings, Plus, Star, Send, Copy, Trash2, Tag, Pencil as Edit3, Phone, ExternalLink, User, FileText, ClipboardList } from 'lucide-react';
+import { X, MessageSquare, QrCode, Zap, Wifi, WifiOff, CircleAlert as AlertCircle, RefreshCw, Settings, Plus, Star, Send, Copy, Trash2, Tag, Pencil as Edit3, Phone, ExternalLink, User, FileText, ClipboardList } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { tokenDeSesion, SESION_EXPIRADA } from '@/lib/sesionActiva';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,6 +71,9 @@ export default function CentroContactoUnificado() {
   const [syncingHistory, setSyncingHistory] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Evita pedir un QR nuevo en bucle mientras la cuenta siga caída. */
+  const autoQrRef = useRef(false);
+  const connectRef = useRef<() => Promise<void>>(async () => {});
 
   // ── Templates state ──────────────────────────────────────────────
   const [templates, setTemplates] = useState<UserTemplate[]>([]);
@@ -253,6 +256,34 @@ export default function CentroContactoUnificado() {
     loadTemplates();
   }, [loadAll, loadConnectionStatus, loadTemplates]);
 
+  // Al caerse la cuenta: los chats de WhatsApp personal se van y aparece el QR.
+  useEffect(() => {
+    if (!waSession) return;
+
+    if (waSession.status === 'connected') {
+      autoQrRef.current = false;
+      return;
+    }
+    if (waSession.status !== 'disconnected' && waSession.status !== 'error') return;
+
+    // Solo se ocultan los de WhatsApp personal; el buzón de MOVI sigue.
+    setConversations(prev => prev.filter(c => c.channel !== 'wa_personal'));
+    setSelected(null);
+    setSubTab('connection');
+
+    if (!autoQrRef.current) {
+      autoQrRef.current = true;
+      window.setTimeout(() => { void connectRef.current(); }, 400);
+    }
+  }, [waSession?.status]);
+
+  // Vigila la conexión mientras la página está abierta (caída sin recargar).
+  useEffect(() => {
+    if (!userId) return;
+    const id = window.setInterval(() => { void loadConnectionStatus(); }, 25_000);
+    return () => window.clearInterval(id);
+  }, [userId, loadConnectionStatus]);
+
   // ── Deep link desde "Llamada perdida": ?telefono=&nombre= ────────
   const deepLinkHandledRef = useRef(false);
   useEffect(() => {
@@ -362,6 +393,9 @@ export default function CentroContactoUnificado() {
       }
     }, 5000);
   };
+
+
+  connectRef.current = handleConnect;
 
   const handleDisconnect = async () => {
     await callEdgeFunction('disconnect');

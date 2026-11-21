@@ -86,6 +86,10 @@ Deno.serve(async (req: Request) => {
                   phone_number: statusData.phone || statusData.phone_number || session.phone_number,
                   connected_at: session.connected_at || new Date().toISOString(),
                   last_activity_at: new Date().toISOString(),
+                  // Vinculada = el cron la revive sola si el servidor se cae.
+                  auto_reconnect: true,
+                  intentos_reconexion: 0,
+                  error_message: null,
                   updated_at: new Date().toISOString(),
                 })
                 .eq("id", session.id);
@@ -424,6 +428,10 @@ Deno.serve(async (req: Request) => {
             status: "disconnected",
             disconnected_at: new Date().toISOString(),
             session_data: null,
+            // Desvinculación explícita: el cron no debe revivirla.
+            auto_reconnect: false,
+            intentos_reconexion: 0,
+            error_message: null,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
