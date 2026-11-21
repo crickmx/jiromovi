@@ -20,12 +20,24 @@ interface Tramite {
   estatus: { nombre: string; color?: string | null } | null;
 }
 
-interface Correo {
-  id: string;
-  remitente_nombre: string | null;
-  remitente_email: string | null;
-  asunto: string | null;
-  fecha: string | null;
+interface CuentaCorreo {
+  email: string;
+  estado_conexion: string | null;
+}
+
+/**
+ * El gestor de correo lee del buzón EN VIVO: no guarda copia local. Por eso la
+ * tarjeta no puede contar correos ni decir "bandeja al día" — lo único que se
+ * sabe de verdad es si la cuenta está configurada y si el último intento entró.
+ * Antes esto se medía contra `correos_usuario`, que está vacía y va a seguir
+ * vacía: la tarjeta decía "Correo sin sincronizar" a todo el mundo, para
+ * siempre, y mandaba a una pantalla que ya no existe.
+ */
+function textoCorreo(cuenta: CuentaCorreo | null): string {
+  if (!cuenta) return 'Sin cuenta de correo';
+  return cuenta.estado_conexion === 'conectado'
+    ? `Conectado · ${cuenta.email}`
+    : `Sin conexión · ${cuenta.email}`;
 }
 
 interface ChatWa {
@@ -102,9 +114,7 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
   const [ahora, setAhora] = useState(0);
   const [tramites, setTramites] = useState<Tramite[]>([]);
   const [totalTramites, setTotalTramites] = useState(0);
-  const [correos, setCorreos] = useState<Correo[]>([]);
-  const [totalCorreos, setTotalCorreos] = useState(0);
-  const [correosSincronizados, setCorreosSincronizados] = useState(true);
+  const [cuentaCorreo, setCuentaCorreo] = useState<CuentaCorreo | null>(null);
   const [chats, setChats] = useState<ChatWa[]>([]);
   const [totalChats, setTotalChats] = useState(0);
   const [comunicado, setComunicado] = useState<Comunicado | null>(null);
@@ -126,11 +136,12 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
           .order('fecha_creacion', { ascending: true })
           .limit(30),
         supabase
-          .from('correos_usuario')
-          .select('id, remitente_nombre, remitente_email, asunto, fecha, leido')
+          .from('email_configuraciones')
+          .select('email, estado_conexion')
           .eq('usuario_id', usuario.id)
-          .order('fecha', { ascending: false })
-          .limit(60),
+          .eq('activa', true)
+          .order('created_at', { ascending: true })
+          .limit(1),
         // `unread_count` no se llena: lo real es "el cliente escribió al final".
         supabase.rpc('wa_sin_responder', { p_user_id: usuario.id, p_dias: 14, p_limite: 12 }),
         supabase
@@ -166,12 +177,8 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
       setTramites(ordenados.slice(0, 4));
       setTotalTramites(ordenados.length);
 
-      const todosCorreos = (correosRes.data ?? []) as (Correo & { leido?: boolean })[];
-      const sinLeer = todosCorreos.filter(c => !c.leido);
-      setCorreos(sinLeer.slice(0, 3));
-      setTotalCorreos(sinLeer.length);
-      // Si no hay ningún correo guardado, la cuenta no está sincronizada.
-      setCorreosSincronizados(todosCorreos.length > 0);
+      const cuentas = (correosRes.data ?? []) as CuentaCorreo[];
+      setCuentaCorreo(cuentas[0] ?? null);
 
       type Pendiente = { conversation_id: string; nombre: string | null; telefono: string | null; ultimo: string | null; cuando: string | null };
       const pendientes = (chatsRes.data ?? []) as Pendiente[];
@@ -296,17 +303,11 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
             icono={Mail}
             titulo="Correos"
             tono="azul"
-            total={totalCorreos}
+            total={0}
             cargando={cargando}
-            vacio={correosSincronizados ? 'Bandeja al día' : 'Correo sin sincronizar'}
-            pista={correosSincronizados ? undefined : 'Sincroniza tu cuenta para verlos aquí'}
-            items={correos.map(c => ({
-              id: c.id,
-              titulo: c.remitente_nombre || c.remitente_email || 'Remitente',
-              detalle: c.asunto || '(sin asunto)',
-              cuando: hace(c.fecha, ahora),
-            }))}
-            onVerTodo={() => navigate('/centro-contacto/correos')}
+            vacio={textoCorreo(cuentaCorreo)}
+            items={[]}
+            onVerTodo={() => navigate('/centro-contacto/email')}
           />
 
           <BandejaMensajes
