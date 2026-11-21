@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, Wrench, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet, UserPlus, FileSignature, BarChart3, Store, Package, Crown, Tags, Settings2, ListTree, FileText } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Wrench, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MailPlus, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet, UserPlus, FileSignature, BarChart3, Store, Package, Crown, Tags, Settings2, ListTree, FileText } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type WorkspaceId =
@@ -83,6 +83,7 @@ const WORKSPACE_CENTRO_CONTACTO: WorkspaceDefinition = {
   items: [
     { path: '/centro-contacto/whatsapp', label: 'WhatsApp', icon: MessageCircle, visibleTo: NOT_AGENT },
     { path: '/centro-contacto/email', label: 'Email', icon: Mail, visibleTo: ALL_ROLES },
+    { path: '/centro-contacto/correo-externo', label: 'Correo externo', icon: MailPlus, visibleTo: ALL_ROLES },
     { path: '/centro-contacto/chat', label: 'Chat', icon: MessageSquare, visibleTo: NOT_AGENT },
     { path: '/directorio-jiro', label: 'Directorio JIRO', icon: Building2, visibleTo: NOT_AGENT },
     { path: '/centro-contacto/notificaciones', label: 'Notificaciones', icon: Bell, visibleTo: ADMIN_ONLY },
