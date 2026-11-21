@@ -184,8 +184,12 @@ export function getConversationDisplayName(
     if (name) return name;
   }
   if (conv.contactName) return conv.contactName;
-  if (conv.contactPhone) return formatMoviPhone(conv.contactPhone);
-  return 'Sin nombre';
+  // Los chats del protocolo nuevo llegan con un "lid" de 14-16 dígitos en vez
+  // de un teléfono: mostrarlo como número confunde más que ayudar.
+  if (conv.contactPhone && conv.contactPhone.replace(/\D/g, '').length <= 13) {
+    return formatMoviPhone(conv.contactPhone);
+  }
+  return 'Contacto sin nombre';
 }
 
 export function formatMoviPhone(phone: string): string {
