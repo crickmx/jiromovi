@@ -283,7 +283,7 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
         </section>
 
         {/* Mensajes sin leer */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2 lg:flex lg:flex-col">
           <BandejaMensajes
             icono={Mail}
             titulo="Correos"
@@ -550,7 +550,7 @@ function TarjetaMedia({
         ) : (
           <div className={cn('absolute inset-0 bg-gradient-to-br', fondos[tono])} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
 
         <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
           <Icono className="h-3 w-3" /> {etiqueta}
@@ -562,14 +562,14 @@ function TarjetaMedia({
           </span>
         )}
 
-        <h3 className="absolute inset-x-3 bottom-3 line-clamp-2 text-sm font-bold leading-snug text-white drop-shadow">
-          {titulo}
-        </h3>
       </div>
 
-      <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
-        <p className="truncate text-[11px] text-neutral-500 dark:text-white/50">{pie}</p>
-        <span className="flex shrink-0 items-center gap-0.5 text-[11px] font-bold text-accent-ink">
+      <div className="flex flex-1 flex-col p-3.5">
+        <h3 className="line-clamp-2 text-[13px] font-bold leading-snug text-neutral-900 dark:text-white">
+          {titulo}
+        </h3>
+        <p className="mt-1 truncate text-[11px] text-neutral-500 dark:text-white/50">{pie}</p>
+        <span className="mt-2 flex items-center gap-0.5 text-[11px] font-bold text-accent-ink">
           {cta} <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
         </span>
       </div>
