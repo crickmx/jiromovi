@@ -23,6 +23,7 @@ import type { ComunicadoPublicacion } from '../lib/comunicadosTypes';
 import { SolicitudBetaModal } from '../components/dashboard/SolicitudBetaModal';
 import { ProduccionResumenCard } from '../components/dashboard/ProduccionResumenCard';
 import { CampaniasActivasCard } from '../components/dashboard/CampaniasActivasCard';
+import { PanelDelDia } from '../components/dashboard/PanelDelDia';
 import { ConvencionCard } from '../components/dashboard/ConvencionCard';
 import { VendedorSections } from '../components/dashboard/VendedorSections';
 import { GerenteSections } from '../components/dashboard/GerenteSections';
@@ -123,56 +124,32 @@ const BETA_FAVORITOS = [
 
 function WelcomeHero({ usuario }: { usuario: Usuario }) {
   const accentColor = usuario.oficina?.accent_color || '#164281';
-  const GreetingIcon = getGreetingIcon();
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl p-5 sm:p-6 shadow-md border border-white/10"
-      style={{
-        backgroundColor: accentColor,
-        backgroundImage: `linear-gradient(135deg, ${accentColor} 0%, rgba(10, 25, 55, 0.95) 100%)`,
-      }}
+      className="relative overflow-hidden rounded-2xl border border-white/10 shadow-md"
+      style={{ backgroundColor: accentColor }}
     >
-      {/* Luces decorativas ambientales */}
-      <div
-        className="absolute -top-12 -right-12 w-64 h-64 rounded-full pointer-events-none opacity-40 blur-2xl"
-        style={{ background: 'radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent 70%)' }}
-      />
-      <div
-        className="absolute -bottom-16 -left-12 w-72 h-48 rounded-full pointer-events-none opacity-30 blur-2xl"
-        style={{ background: 'radial-gradient(circle, rgba(255, 215, 0, 0.35), transparent 70%)' }}
-      />
+      {/* Capa animada, muy tenue: da vida sin distraer */}
+      <div className="movi-aurora pointer-events-none absolute inset-0" aria-hidden />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-black/15 via-transparent to-black/45" aria-hidden />
 
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white/95 text-[11px] font-semibold mb-2 shadow-sm">
-            <GreetingIcon className="w-3.5 h-3.5 text-amber-300" />
-            <span>{getGreeting()}</span>
-          </div>
-
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight truncate leading-tight">
-            {usuario.nombre} <span className="font-light opacity-95">{usuario.apellidos}</span>
-          </h1>
-
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-white/85 mt-1.5 font-medium">
-            <span>{formatDate()}</span>
-            {usuario.oficina?.nombre && (
-              <>
-                <span className="opacity-50">·</span>
-                <span className="inline-flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-md border border-white/15">
-                  🏢 {usuario.oficina.nombre}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="shrink-0 flex items-center gap-2 self-start sm:self-center">
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold text-white bg-white/20 backdrop-blur-md border border-white/30 shadow-sm whitespace-nowrap tracking-wide uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            {usuario.rol}
-          </span>
-        </div>
+      <div className="relative z-10 px-5 py-6 sm:px-7 sm:py-7">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
+          {getGreeting()}
+        </p>
+        <h1 className="mt-1.5 text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl">
+          {usuario.nombre} <span className="font-light text-white/85">{usuario.apellidos}</span>
+        </h1>
+        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-white/70">
+          <span>{formatDate()}</span>
+          {usuario.oficina?.nombre && (
+            <>
+              <span className="text-white/30">·</span>
+              <span>{usuario.oficina.nombre}</span>
+            </>
+          )}
+        </p>
       </div>
     </div>
   );
@@ -542,13 +519,16 @@ export default function Dashboard() {
       {/* 1. Encabezado Personal y Contexto */}
       <WelcomeHero usuario={usuario} />
 
-      {/* 2. Resumen Operativo Relevante por Rol */}
+      {/* 2. Lo del día: atención, mensajes, novedades y producción */}
+      <PanelDelDia usuario={usuario} />
+
+      {/* 3. Resumen Operativo Relevante por Rol */}
       {esAgente && <VendedorSections usuario={usuario} />}
       {esEjecutivo && <EjecutivoSections usuario={usuario} />}
       {esGerente && <GerenteSections usuario={usuario} />}
       {esDireccion && <DireccionSections usuario={usuario} />}
 
-      {/* 3. Grid Principal de Módulos y Widgets */}
+      {/* 4. Grid Principal de Módulos y Widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Columna Principal (2 columnas en desktop) */}
         <div className="lg:col-span-2 space-y-6">

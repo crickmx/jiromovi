@@ -662,3 +662,27 @@ html.native-ios #root {
 html.native-app {
   -webkit-tap-highlight-color: transparent;
 }
+
+
+/* Bienvenida del dashboard: capa de color que gira muy despacio */
+@keyframes movi-aurora {
+  from { transform: rotate(0deg) scale(1.6); }
+  to   { transform: rotate(360deg) scale(1.6); }
+}
+.movi-aurora {
+  background: conic-gradient(
+    from 0deg at 35% 45%,
+    rgba(28, 55, 224, 0.55),
+    rgba(255, 255, 255, 0),
+    rgba(118, 87, 255, 0.45),
+    rgba(255, 255, 255, 0),
+    rgba(28, 55, 224, 0.55)
+  );
+  filter: blur(46px);
+  opacity: 0.75;
+  animation: movi-aurora 34s linear infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .movi-aurora { animation: none; }
+}
