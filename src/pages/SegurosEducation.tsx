@@ -354,21 +354,30 @@ export function SegurosEducation() {
           </div>
 
           {/* ── 4. Resto del módulo ─────────────────────────────── */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-400 dark:text-white/40">
-              Más
-            </span>
+          {/* Botones del mismo tipo que los de arriba, pero sin color y más bajos */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {[
-              { label: 'Cédula A', path: '/seguros-education/cedula-a', icon: GraduationCap },
-              ...(isAdmin ? [{ label: 'Analytics', path: '/seguros-education/analytics', icon: BarChart3 }] : []),
-              { label: 'Manuales', path: '/manuales', icon: BookOpen },
+              { label: 'Cédula A', desc: 'Certificación CNSF', path: '/seguros-education/cedula-a', icon: GraduationCap },
+              ...(isAdmin
+                ? [{ label: 'Analytics', desc: 'Métricas y reportes', path: '/seguros-education/analytics', icon: BarChart3 }]
+                : []),
+              { label: 'Manuales', desc: 'Guías y documentación', path: '/manuales', icon: BookOpen },
             ].map(item => (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className="flex items-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-[11px] font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+                className="group flex items-center gap-3 rounded-xl border border-soft bg-surface-card px-3 py-2.5 text-left transition hover:border-accent/40 hover:shadow-card dark:border-white/[0.06] dark:bg-white/[0.03]"
               >
-                <item.icon className="h-3.5 w-3.5" /> {item.label}
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500 transition group-hover:bg-accent-soft group-hover:text-accent-ink dark:bg-white/[0.07] dark:text-white/60">
+                  <item.icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold leading-tight text-neutral-800 dark:text-white">
+                    {item.label}
+                  </p>
+                  <p className="truncate text-[11px] text-neutral-500 dark:text-white/50">{item.desc}</p>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-accent-ink" />
               </button>
             ))}
           </div>
