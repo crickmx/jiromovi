@@ -1,8 +1,10 @@
-import { Home, PenSquare, SlidersHorizontal, ContactRound, Settings, LayoutPanelLeft, HardDrive } from 'lucide-react';
+import { Home, PenSquare, SlidersHorizontal, ContactRound, Settings, LayoutPanelLeft, HardDrive, Building2, Mail } from 'lucide-react';
 import { cnSistema as cn } from '@/lib/utils';
 import { type ImapFolder, etiquetaCarpeta, iconoCarpeta, ordenarCarpetas, formatSize } from './tipos';
 
 export interface Cuota { usedBytes: number | null; limitBytes: number | null }
+
+export interface CuentaExternaMenu { id: string; nombre: string; email: string }
 
 interface Props {
   carpetas: ImapFolder[];
@@ -17,6 +19,13 @@ interface Props {
   onConfiguracion: () => void;
   onVistaAlternativa: () => void;
   abriendoAlternativa?: boolean;
+  /** Cuentas externas (POP3/SMTP). Si no se pasan, la sección no aparece. */
+  cuentasExternas?: CuentaExternaMenu[];
+  /** Cuenta externa que se está viendo; null = la de JIRO. */
+  cuentaExternaActiva?: string | null;
+  onCuentaExterna?: (id: string) => void;
+  onVolverAJiro?: () => void;
+  onAdministrarCuentas?: () => void;
 }
 
 const item = 'w-full min-h-[44px] flex items-center gap-3 px-3 rounded-[var(--radius-sm)] text-body-sm transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
@@ -51,6 +60,47 @@ export function PanelCarpetas(p: Props) {
           <Home className="w-[18px] h-[18px] flex-shrink-0" aria-hidden />
           <span className="flex-1 text-left truncate">Inicio</span>
         </button>
+
+        {/* Cuentas: la de JIRO (IONOS, la de siempre) y las externas (POP3/SMTP).
+            Cada cuenta tiene su propio buzón; no se mezclan. */}
+        {p.onCuentaExterna && (
+          <>
+            <p className="movi-eyebrow text-neutral-400 dark:text-neutral-500 px-3 pt-3 pb-1">Cuentas</p>
+            <button
+              type="button"
+              onClick={p.onVolverAJiro}
+              aria-current={!p.cuentaExternaActiva ? 'page' : undefined}
+              className={cn(item, !p.cuentaExternaActiva ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold' : 'text-neutral-700 dark:text-neutral-200 hover:bg-surface-muted')}
+            >
+              <Building2 className="w-[18px] h-[18px] flex-shrink-0" aria-hidden />
+              <span className="flex-1 text-left truncate">JIRO (IONOS)</span>
+            </button>
+            {(p.cuentasExternas ?? []).map(c => {
+              const activa = p.cuentaExternaActiva === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => p.onCuentaExterna?.(c.id)}
+                  aria-current={activa ? 'page' : undefined}
+                  title={`${c.nombre} — ${c.email}`}
+                  className={cn(item, activa ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold' : 'text-neutral-700 dark:text-neutral-200 hover:bg-surface-muted')}
+                >
+                  <Mail className="w-[18px] h-[18px] flex-shrink-0" aria-hidden />
+                  <span className="flex-1 text-left truncate">{c.nombre || c.email}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={p.onAdministrarCuentas}
+              className={cn(item, 'text-neutral-600 dark:text-neutral-300 hover:bg-surface-muted')}
+            >
+              <Settings className="w-[18px] h-[18px] flex-shrink-0" aria-hidden />
+              <span className="flex-1 text-left truncate">Cuentas externas</span>
+            </button>
+          </>
+        )}
 
         <p className="movi-eyebrow text-neutral-400 dark:text-neutral-500 px-3 pt-3 pb-1">Carpetas</p>
         {carpetas.map(f => {
