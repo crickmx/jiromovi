@@ -30,6 +30,7 @@ interface Session {
   esta_activa: boolean;
   estado: 'programada' | 'en_vivo' | 'finalizada' | 'cancelada';
   tipo: 'sesion' | 'evento';
+  portada_url?: string | null;
 }
 
 
@@ -67,7 +68,7 @@ export function SegurosEducation() {
         // legado del calendario, que venía vacío o con la fecha de alta.
         supabase
           .from('aula_eventos')
-          .select('id, titulo, descripcion, fecha_inicio, fecha_fin, fecha, hora, ponente, estado')
+          .select('id, titulo, descripcion, fecha_inicio, fecha_fin, fecha, hora, ponente, estado, portada_url')
           .in('estado', ['programado', 'en_vivo'])
           .gte('fecha_inicio', new Date(Date.now() - 30 * 60_000).toISOString())
           .order('fecha_inicio', { ascending: true })
@@ -102,6 +103,7 @@ export function SegurosEducation() {
             duracion_minutos: minutos,
             instructor: { id: '', nombre_completo: e.ponente ?? '' },
             esta_activa: e.estado === 'en_vivo',
+            portada_url: (e.portada_url as string | null) ?? null,
             estado: 'programada' as const,
             tipo: 'evento' as const,
           };
@@ -149,45 +151,57 @@ export function SegurosEducation() {
       <SegurosEducationLayout>
         <div className="space-y-5">
 
-          {/* ── 1. Próxima capacitación de Aula Virtual ───────────────── */}
-          {loading ? (
-            <Skeleton className="h-36 w-full rounded-2xl" />
-          ) : proxima && proximaFecha ? (
-            <button
-              onClick={() => navigate('/seguros-education/aula-virtual')}
-              className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#141d4b] via-[#1a2a72] to-[#1C37E0] p-5 text-left shadow-card transition-shadow hover:shadow-xl sm:p-6"
-            >
-              {/* halo decorativo */}
-              <div className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+          {/* ── 1. Aula Virtual + últimas de On Demand (misma altura) ── */}
+          <div className="grid gap-4 lg:grid-cols-2">
 
-              <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur-sm">
-                  <span className="text-2xl font-bold leading-none">{format(proximaFecha, 'd', { locale: es })}</span>
-                  <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide opacity-80">
-                    {format(proximaFecha, 'MMM', { locale: es })}
+            {/* Izquierda: próxima capacitación con miniatura */}
+            {loading ? (
+              <Skeleton className="h-80 w-full rounded-2xl" />
+            ) : proxima && proximaFecha ? (
+              <button
+                onClick={() => navigate('/seguros-education/aula-virtual')}
+                className="group flex h-full flex-col overflow-hidden rounded-2xl border border-soft bg-surface-card text-left shadow-card transition hover:shadow-xl dark:border-white/[0.06] dark:bg-white/[0.03]"
+              >
+                <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-gradient-to-br from-[#141d4b] via-[#1a2a72] to-[#1C37E0]">
+                  {proxima.portada_url ? (
+                    <img
+                      src={proxima.portada_url}
+                      alt={proxima.titulo}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Calendar className="h-10 w-10 text-white/40" />
+                    </div>
+                  )}
+
+                  <div className="absolute left-3 top-3 flex min-w-[46px] flex-col items-center rounded-xl bg-black/65 px-2.5 py-1.5 text-white backdrop-blur-sm">
+                    <span className="text-[10px] font-bold uppercase leading-none opacity-90">
+                      {format(proximaFecha, 'MMM', { locale: es })}
+                    </span>
+                    <span className="mt-0.5 text-lg font-bold leading-none">{format(proximaFecha, 'd')}</span>
+                  </div>
+
+                  <span
+                    className={cn(
+                      'absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
+                      proxima.esta_activa ? 'bg-red-500 text-white' : 'bg-white/90 text-[#1C37E0]',
+                    )}
+                  >
+                    {proxima.esta_activa ? 'En vivo' : 'Aula Virtual'}
                   </span>
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
-                      Próxima capacitación
-                    </span>
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide',
-                        proxima.esta_activa ? 'bg-red-500 text-white' : 'bg-emerald-400 text-emerald-950',
-                      )}
-                    >
-                      {proxima.esta_activa ? 'En vivo ahora' : 'Aula Virtual'}
-                    </span>
-                  </div>
-
-                  <h2 className="mt-2 line-clamp-2 text-lg font-bold leading-snug text-white sm:text-xl">
+                <div className="flex flex-1 flex-col p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-accent-ink">
+                    Próxima capacitación
+                  </p>
+                  <h2 className="mt-1 line-clamp-2 text-title-sm font-bold leading-snug text-neutral-900 dark:text-white">
                     {proxima.titulo}
                   </h2>
-
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-white/75">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-neutral-500 dark:text-white/55">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
                       {format(proximaFecha, 'HH:mm')} · {proxima.duracion_minutos} min
@@ -196,132 +210,117 @@ export function SegurosEducation() {
                       <span className="truncate">{proxima.instructor.nombre_completo}</span>
                     )}
                   </div>
+
+                  <span className="mt-auto flex items-center gap-1.5 pt-3 text-caption font-bold text-accent-ink">
+                    {proxima.esta_activa ? 'Entrar ahora' : 'Ir al Aula Virtual'}
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                  </span>
                 </div>
-
-                <span className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-caption font-bold text-[#1C37E0] transition group-hover:gap-2.5">
-                  {proxima.esta_activa ? 'Entrar ahora' : 'Ir al Aula Virtual'} <ArrowRight className="h-4 w-4" />
-                </span>
-              </div>
-            </button>
-          ) : (
-            <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed border-neutral-300 bg-surface-card p-5 dark:border-white/15 dark:bg-white/[0.03] sm:flex-row sm:items-center">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
-                <Calendar className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-neutral-900 dark:text-white">No hay capacitaciones programadas</p>
-                <p className="text-caption text-neutral-500 dark:text-white/55">
-                  Cuando se agende una capacitación del Aula Virtual aparecerá aquí, con su fecha y su hora.
-                </p>
-              </div>
-              <button
-                onClick={() => navigate('/seguros-education/aula-virtual')}
-                className="shrink-0 rounded-xl bg-accent px-4 py-2 text-caption font-semibold text-white transition hover:bg-accent-hover"
-              >
-                Programar una clase
               </button>
-            </div>
-          )}
-
-          {/* ── 2. Últimas clases de On Demand ─────────────────── */}
-          <section className="rounded-2xl border border-soft bg-surface-card p-4 dark:border-white/[0.06] dark:bg-white/[0.03] sm:p-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
-                  <Video className="h-4 w-4 text-[#1C37E0]" />
+            ) : (
+              <div className="flex h-full flex-col items-start justify-center gap-3 rounded-2xl border border-dashed border-neutral-300 bg-surface-card p-6 dark:border-white/15 dark:bg-white/[0.03]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
+                  <Calendar className="h-6 w-6 text-emerald-600" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Últimas capacitaciones grabadas</h2>
-                  <p className="text-[11px] text-neutral-500">Lo más reciente de On Demand</p>
+                  <p className="text-body font-bold text-neutral-900 dark:text-white">
+                    No hay capacitaciones programadas
+                  </p>
+                  <p className="text-caption text-neutral-500 dark:text-white/55">
+                    Cuando se agende una aparecerá aquí, con su fecha y su hora.
+                  </p>
                 </div>
-              </div>
-              <button
-                onClick={() => navigate('/seguros-education/on-demand')}
-                className="flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#1C37E0] hover:underline"
-              >
-                Ver todas <ChevronRight className="h-3 w-3" />
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="overflow-hidden rounded-xl border border-neutral-100 dark:border-white/[0.04]">
-                    <Skeleton className="aspect-video w-full rounded-none" />
-                    <div className="space-y-2 p-3">
-                      <Skeleton className="h-3 w-1/3" />
-                      <Skeleton className="h-3.5 w-2/3" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : recentLessons.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 dark:bg-white/5">
-                  <Video className="h-5 w-5 text-neutral-300" />
-                </div>
-                <p className="text-sm font-semibold text-neutral-500 dark:text-white/55">Sin lecciones disponibles</p>
-                <p className="text-xs text-neutral-500">Aparecerán aquí cuando se publiquen.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                {recentLessons.slice(0, 4).map(lesson => (
-                  <button
-                    key={lesson.id}
-                    onClick={() => navigate('/seguros-education/on-demand')}
-                    className="group overflow-hidden rounded-xl border border-soft bg-surface-card text-left transition-all hover:border-[#1C37E0]/30 hover:shadow-card dark:border-white/[0.05] dark:bg-white/[0.02]"
-                  >
-                    <div className="relative aspect-video overflow-hidden bg-neutral-100 dark:bg-white/5">
-                      {lesson.miniatura_url ? (
-                        <img
-                          src={lesson.miniatura_url}
-                          alt={lesson.titulo}
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <Video className="h-8 w-8 text-neutral-300" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
-                        <div className="flex h-9 w-9 scale-90 items-center justify-center rounded-full bg-white opacity-0 shadow-lg transition-all group-hover:scale-100 group-hover:opacity-100">
-                          <Play className="ml-0.5 h-4 w-4 text-neutral-900" />
-                        </div>
-                      </div>
-                      {(lesson.progreso || 0) > 0 && (
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-black/20">
-                          <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso}%` }} />
-                        </div>
-                      )}
-                      {lesson.completado && (
-                        <div className="absolute right-2 top-2">
-                          <span className="flex items-center gap-1 rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                            <CheckCircle2 className="h-2.5 w-2.5" /> Visto
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2.5">
-                      <div className="mb-1 flex items-center gap-1.5">
-                        {lesson.categoria && (
-                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-accent-ink dark:bg-blue-500/10 dark:text-blue-400">
-                            {lesson.categoria.nombre}
-                          </span>
-                        )}
-                        <span className="ml-auto shrink-0 text-[10px] text-neutral-500">{formatDuration(lesson.duracion)}</span>
-                      </div>
-                      <p className="line-clamp-2 text-xs font-semibold leading-snug text-neutral-800 transition-colors group-hover:text-[#1C37E0] dark:text-white">
-                        {lesson.titulo}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                <button
+                  onClick={() => navigate('/seguros-education/aula-virtual')}
+                  className="rounded-xl bg-accent px-4 py-2 text-caption font-semibold text-white transition hover:bg-accent-hover"
+                >
+                  Programar una capacitación
+                </button>
               </div>
             )}
-          </section>
+
+            {/* Derecha: últimas de On Demand, dos columnas */}
+            <section className="flex flex-col rounded-2xl border border-soft bg-surface-card p-4 dark:border-white/[0.06] dark:bg-white/[0.03]">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
+                    <Video className="h-4 w-4 text-[#1C37E0]" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Últimas grabadas</h2>
+                    <p className="text-[11px] text-neutral-500">On Demand</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/seguros-education/on-demand')}
+                  className="flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#1C37E0] hover:underline"
+                >
+                  Ver todas <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="grid flex-1 grid-cols-2 gap-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-full min-h-[120px] w-full" />
+                  ))}
+                </div>
+              ) : recentLessons.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
+                  <Video className="mb-2 h-6 w-6 text-neutral-300" />
+                  <p className="text-caption text-neutral-500">Aún no hay grabaciones publicadas.</p>
+                </div>
+              ) : (
+                <div className="grid flex-1 grid-cols-2 gap-3">
+                  {recentLessons.slice(0, 4).map(lesson => (
+                    <button
+                      key={lesson.id}
+                      onClick={() => navigate('/seguros-education/on-demand')}
+                      className="group flex min-h-0 flex-col overflow-hidden rounded-xl border border-soft bg-surface-card text-left transition hover:border-[#1C37E0]/30 hover:shadow-card dark:border-white/[0.05] dark:bg-white/[0.02]"
+                    >
+                      <div className="relative min-h-0 flex-1 overflow-hidden bg-neutral-100 dark:bg-white/5">
+                        {lesson.miniatura_url ? (
+                          <img
+                            src={lesson.miniatura_url}
+                            alt={lesson.titulo}
+                            loading="lazy"
+                            decoding="async"
+                            className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Video className="h-7 w-7 text-neutral-300" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                          <div className="flex h-8 w-8 scale-90 items-center justify-center rounded-full bg-white opacity-0 shadow transition group-hover:scale-100 group-hover:opacity-100">
+                            <Play className="ml-0.5 h-3.5 w-3.5 text-neutral-900" />
+                          </div>
+                        </div>
+                        {(lesson.progreso || 0) > 0 && (
+                          <div className="absolute inset-x-0 bottom-0 h-1 bg-black/20">
+                            <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso}%` }} />
+                          </div>
+                        )}
+                        {lesson.completado && (
+                          <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> Visto
+                          </span>
+                        )}
+                      </div>
+                      <div className="shrink-0 p-2">
+                        <p className="line-clamp-2 text-[11.5px] font-semibold leading-snug text-neutral-800 transition-colors group-hover:text-[#1C37E0] dark:text-white">
+                          {lesson.titulo}
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-neutral-500">{formatDuration(lesson.duracion)}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
 
           {/* ── 3. Entradas principales ─────────────────────────── */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
