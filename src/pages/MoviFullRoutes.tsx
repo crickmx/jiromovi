@@ -50,6 +50,7 @@ const CentroContactoHub = lazy(() => import('./CentroContactoHub'));
 const CentroContactoUnificado = lazy(() => import('./CentroContactoUnificado'));
 const GestorEmails = lazy(() => import('./GestorEmails'));
 const CorreoExterno = lazy(() => import('./CorreoExterno'));
+const CorreoExternoBuzon = lazy(() => import('./CorreoExternoBuzon'));
 const Chat = lazy(() => import('./Chat'));
 const DirectorioJiro = lazy(() => import('./DirectorioJiro'));
 const CentroNotificaciones = lazy(() => import('./CentroNotificaciones'));
@@ -240,7 +241,8 @@ export default function MoviFullRoutes() {
             <Route index element={<CentroContactoHub />} />
             <Route path="whatsapp" element={<CentroContactoUnificado />} />
             <Route path="email" element={<GestorEmails />} />
-            <Route path="correo-externo" element={<CorreoExterno />} />
+            <Route path="correo-externo" element={<CorreoExternoBuzon />} />
+            <Route path="correo-externo/cuentas" element={<CorreoExterno />} />
             <Route path="chat" element={<Chat />} />
             <Route path="notificaciones" element={<ProtectedRoute requireAdmin><CentroNotificaciones /></ProtectedRoute>} />
           </Route>
