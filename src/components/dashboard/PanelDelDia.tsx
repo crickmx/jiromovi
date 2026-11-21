@@ -104,6 +104,7 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
   const [totalTramites, setTotalTramites] = useState(0);
   const [correos, setCorreos] = useState<Correo[]>([]);
   const [totalCorreos, setTotalCorreos] = useState(0);
+  const [correosSincronizados, setCorreosSincronizados] = useState(true);
   const [chats, setChats] = useState<ChatWa[]>([]);
   const [totalChats, setTotalChats] = useState(0);
   const [comunicado, setComunicado] = useState<Comunicado | null>(null);
@@ -126,18 +127,12 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
           .limit(30),
         supabase
           .from('correos_usuario')
-          .select('id, remitente_nombre, remitente_email, asunto, fecha')
+          .select('id, remitente_nombre, remitente_email, asunto, fecha, leido')
           .eq('usuario_id', usuario.id)
-          .eq('leido', false)
           .order('fecha', { ascending: false })
-          .limit(4),
-        supabase
-          .from('whatsapp_conversations')
-          .select('id, remote_name, remote_phone, last_message_text, last_message_at, unread_count')
-          .eq('user_id', usuario.id)
-          .gt('unread_count', 0)
-          .order('last_message_at', { ascending: false })
-          .limit(4),
+          .limit(60),
+        // `unread_count` no se llena: lo real es "el cliente escribió al final".
+        supabase.rpc('wa_sin_responder', { p_user_id: usuario.id, p_dias: 14, p_limite: 12 }),
         supabase
           .from('comunicados_publicaciones')
           .select('id, titulo, imagen_principal, fecha_publicacion')
@@ -171,13 +166,26 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
       setTramites(ordenados.slice(0, 4));
       setTotalTramites(ordenados.length);
 
-      const listaCorreos = (correosRes.data ?? []) as Correo[];
-      setCorreos(listaCorreos.slice(0, 3));
-      setTotalCorreos(listaCorreos.length);
+      const todosCorreos = (correosRes.data ?? []) as (Correo & { leido?: boolean })[];
+      const sinLeer = todosCorreos.filter(c => !c.leido);
+      setCorreos(sinLeer.slice(0, 3));
+      setTotalCorreos(sinLeer.length);
+      // Si no hay ningún correo guardado, la cuenta no está sincronizada.
+      setCorreosSincronizados(todosCorreos.length > 0);
 
-      const listaChats = (chatsRes.data ?? []) as ChatWa[];
-      setChats(listaChats.slice(0, 3));
-      setTotalChats(listaChats.reduce((s, c) => s + (c.unread_count ?? 0), 0));
+      type Pendiente = { conversation_id: string; nombre: string | null; telefono: string | null; ultimo: string | null; cuando: string | null };
+      const pendientes = (chatsRes.data ?? []) as Pendiente[];
+      setChats(
+        pendientes.slice(0, 3).map(p => ({
+          id: p.conversation_id,
+          remote_name: p.nombre,
+          remote_phone: p.telefono,
+          last_message_text: p.ultimo,
+          last_message_at: p.cuando,
+          unread_count: 0,
+        })),
+      );
+      setTotalChats(pendientes.length);
 
       setComunicado(((comunicadoRes.data ?? []) as Comunicado[])[0] ?? null);
       setCapacitacion(((claseRes.data ?? []) as Capacitacion[])[0] ?? null);
@@ -290,7 +298,8 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
             tono="azul"
             total={totalCorreos}
             cargando={cargando}
-            vacio="Bandeja al día"
+            vacio={correosSincronizados ? 'Bandeja al día' : 'Correo sin sincronizar'}
+            pista={correosSincronizados ? undefined : 'Sincroniza tu cuenta para verlos aquí'}
             items={correos.map(c => ({
               id: c.id,
               titulo: c.remitente_nombre || c.remitente_email || 'Remitente',
@@ -306,10 +315,11 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
             tono="verde"
             total={totalChats}
             cargando={cargando}
-            vacio="Sin mensajes pendientes"
+            vacio="Sin conversaciones pendientes"
+            etiquetaTotal={totalChats > 0 ? 'esperando respuesta' : undefined}
             items={chats.map(c => ({
               id: c.id,
-              titulo: c.remote_name || c.remote_phone || 'Chat',
+              titulo: c.remote_name || (c.remote_phone?.includes('@g.us') ? 'Grupo de WhatsApp' : 'Contacto sin nombre'),
               detalle: c.last_message_text || 'Nuevo mensaje',
               cuando: hace(c.last_message_at, ahora),
             }))}
@@ -451,6 +461,8 @@ function BandejaMensajes({
   vacio,
   cargando,
   onVerTodo,
+  pista,
+  etiquetaTotal,
 }: {
   icono: typeof Mail;
   titulo: string;
@@ -460,6 +472,8 @@ function BandejaMensajes({
   vacio: string;
   cargando: boolean;
   onVerTodo: () => void;
+  pista?: string;
+  etiquetaTotal?: string;
 }) {
   const color = tono === 'azul'
     ? { chip: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400', barra: 'bg-blue-500' }
@@ -477,7 +491,11 @@ function BandejaMensajes({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold leading-tight text-neutral-900 dark:text-white">{titulo}</p>
           <p className="text-[11px] text-neutral-500 dark:text-white/50">
-            {cargando ? 'Cargando…' : total > 0 ? `${total} sin leer` : vacio}
+            {cargando
+              ? 'Cargando…'
+              : total > 0
+                ? `${total}${etiquetaTotal ? ` ${etiquetaTotal}` : ' sin leer'}`
+                : pista || vacio}
           </p>
         </div>
         <ChevronRight className="h-3.5 w-3.5 text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-accent-ink" />
