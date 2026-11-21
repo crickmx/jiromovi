@@ -169,7 +169,7 @@ export function SegurosEducation() {
                       alt={proxima.titulo}
                       loading="lazy"
                       decoding="async"
-                      className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+                      className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
@@ -285,7 +285,7 @@ export function SegurosEducation() {
                             alt={lesson.titulo}
                             loading="lazy"
                             decoding="async"
-                            className="absolute inset-0 h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                            className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
                         ) : (
