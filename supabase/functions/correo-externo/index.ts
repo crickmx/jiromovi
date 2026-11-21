@@ -232,6 +232,112 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
     const accion = String(body.accion ?? '');
+
+    const masterKey = Deno.env.get(MASTER_KEY_ENV);
+    if (!masterKey) return respuesta(cors, { error: 'Falta la llave maestra de credenciales en el servidor.' }, 500);
+
+    // `guardar` es el ALTA: va antes de exigir un canal, porque todavía no
+    // tiene id. El orden importa — al revés, el alta no pasaría nunca.
+    // ── Guardar: alta o edición de la cuenta ────────────────────────
+    // La contraseña entra por aquí y se cifra en el servidor: el navegador
+    // nunca escribe en la tabla de credenciales (no tiene permiso, y RLS no
+    // tiene políticas para ella). Borrar la cuenta NO necesita acción: el
+    // usuario borra su fila con RLS y la credencial y los mensajes se van con
+    // ella por llave foránea.
+    if (accion === 'guardar') {
+      const c = (body.canal ?? {}) as Record<string, unknown>;
+      const texto = (v: unknown) => String(v ?? '').trim();
+      const entero = (v: unknown, porDefecto: number) => {
+        const n = Number(v);
+        return Number.isInteger(n) && n > 0 && n < 65536 ? n : porDefecto;
+      };
+      const tls = (v: unknown, porDefecto: string) =>
+        ['ssl', 'starttls', 'ninguno'].includes(texto(v)) ? texto(v) : porDefecto;
+
+      const email = texto(c.email).toLowerCase();
+      const nombre = texto(c.nombre) || email.split('@')[0] || 'Mi correo';
+      const popHost = texto(c.popHost);
+      const smtpHost = texto(c.smtpHost);
+      if (!email.includes('@')) return respuesta(cors, { error: 'Falta el correo de la cuenta.', campo: 'email' }, 400);
+      if (!popHost) return respuesta(cors, { error: 'Falta el servidor de entrada (POP3).', campo: 'popHost' }, 400);
+      if (!smtpHost) return respuesta(cors, { error: 'Falta el servidor de salida (SMTP).', campo: 'smtpHost' }, 400);
+
+      const fila = {
+        usuario_id: user.id,
+        nombre,
+        email,
+        nombre_remitente: texto(c.nombreRemitente) || null,
+        pop_host: popHost,
+        pop_port: entero(c.popPort, 995),
+        pop_tls: tls(c.popTls, 'ssl'),
+        pop_usuario: texto(c.popUsuario) || null,
+        smtp_host: smtpHost,
+        smtp_port: entero(c.smtpPort, 587),
+        smtp_tls: tls(c.smtpTls, 'starttls'),
+        smtp_requiere_auth: c.smtpRequiereAuth !== false,
+        smtp_usuario: texto(c.smtpUsuario) || null,
+        remitente_obligatorio: texto(c.remitenteObligatorio) || null,
+        dejar_copia: c.dejarCopia !== false,
+        activo: true,
+      };
+
+      const id = texto(c.id);
+      let canalId = id;
+
+      if (id) {
+        // Editar: la fila tiene que ser suya (RLS no aplica aquí porque se
+        // entra con la llave de servicio, así que se comprueba a mano).
+        const { data: propia } = await admin.from('correo_externo_canales')
+          .select('id').eq('id', id).eq('usuario_id', user.id).maybeSingle();
+        if (!propia) return respuesta(cors, { error: 'Esa cuenta no es tuya.', code: 'CANAL_AJENO' }, 403);
+
+        const { error: upError } = await admin.from('correo_externo_canales').update(fila).eq('id', id);
+        if (upError) {
+          if (/duplicate key|23505/.test(upError.message)) {
+            return respuesta(cors, { error: 'Ese correo ya está en otra de tus cuentas.', code: 'CORREO_REPETIDO' }, 409);
+          }
+          return respuesta(cors, { error: upError.message }, 500);
+        }
+      } else {
+        const { data: nueva, error: insError } = await admin.from('correo_externo_canales')
+          .insert(fila).select('id').single();
+        if (insError || !nueva) {
+          if (/duplicate key|23505/.test(insError?.message ?? '')) {
+            return respuesta(cors, {
+              error: 'Ese correo ya está configurado en MOVI. Cada buzón puede estar en una sola cuenta.',
+              code: 'CORREO_EN_USO',
+            }, 409);
+          }
+          return respuesta(cors, { error: insError?.message ?? 'no se pudo guardar' }, 500);
+        }
+        canalId = nueva.id;
+      }
+
+      // La contraseña solo se toca si vino: al editar sin volver a capturarla
+      // se conserva la que ya estaba.
+      const password = texto(body.password);
+      if (password) {
+        const { error: credError } = await admin.rpc('correo_externo_cred_set', {
+          p_canal_id: canalId, p_secreto: password, p_key: masterKey,
+        });
+        if (credError) {
+          // Sin credencial la cuenta no sirve de nada: no se deja a medias.
+          if (!id) await admin.from('correo_externo_canales').delete().eq('id', canalId);
+          return respuesta(cors, { error: `No se pudo guardar la contraseña: ${credError.message}` }, 500);
+        }
+      } else {
+        const { data: existente } = await admin.rpc('correo_externo_cred_get', {
+          p_canal_id: canalId, p_key: masterKey,
+        });
+        if (!existente) {
+          return respuesta(cors, { error: 'Falta la contraseña de la cuenta.', campo: 'password' }, 400);
+        }
+      }
+
+      return respuesta(cors, { guardado: true, canalId });
+    }
+
+
     const canalId = String(body.canalId ?? '');
     if (!canalId) return respuesta(cors, { error: 'Falta el canal.', code: 'SIN_CANAL' }, 400);
 
@@ -242,9 +348,6 @@ Deno.serve(async (req: Request) => {
       .eq('usuario_id', user.id)
       .maybeSingle<Canal>();
     if (!canal) return respuesta(cors, { error: 'Ese canal no es tuyo o no existe.', code: 'CANAL_AJENO' }, 404);
-
-    const masterKey = Deno.env.get(MASTER_KEY_ENV);
-    if (!masterKey) return respuesta(cors, { error: 'Falta la llave maestra de credenciales en el servidor.' }, 500);
 
     const { data: secreto } = await admin.rpc('correo_externo_cred_get', {
       p_canal_id: canalId,
