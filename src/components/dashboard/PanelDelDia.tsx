@@ -32,12 +32,19 @@ interface CuentaCorreo {
  * Antes esto se medía contra `correos_usuario`, que está vacía y va a seguir
  * vacía: la tarjeta decía "Correo sin sincronizar" a todo el mundo, para
  * siempre, y mandaba a una pantalla que ya no existe.
+ * Ojo con `estado_conexion`: SOLO se actualiza cuando alguien guarda o prueba la
+ * configuración, no en cada lectura. Hay cuentas que entran perfectamente y
+ * siguen marcadas como 'desconectado' — la del propio reporte, con 20.338 sin
+ * leer. Por eso solo se afirma "Conectado" cuando el último chequeo lo dijo, y
+ * en cualquier otro caso se dice el hecho comprobable: que la cuenta está
+ * configurada. Acusar de "sin conexión" a un buzón que funciona es el mismo
+ * error que este arreglo viene a corregir, nada más al revés.
  */
 function textoCorreo(cuenta: CuentaCorreo | null): string {
   if (!cuenta) return 'Sin cuenta de correo';
   return cuenta.estado_conexion === 'conectado'
     ? `Conectado · ${cuenta.email}`
-    : `Sin conexión · ${cuenta.email}`;
+    : `Cuenta configurada · ${cuenta.email}`;
 }
 
 interface ChatWa {
