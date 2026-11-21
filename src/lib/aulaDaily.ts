@@ -88,6 +88,16 @@ export const aulaDaily = {
       evento_id: eventoId,
     }),
 
+  /**
+   * Encola la invitación (correo + WhatsApp + in-app) para toda la plantilla.
+   * Devuelve cuántos destinatarios quedaron en la cola.
+   */
+  invitar: (eventoId: string) =>
+    invocar<{ ok: boolean; encolados: number }>('aula-daily', {
+      action: 'invitar',
+      evento_id: eventoId,
+    }),
+
   entrar: (eventoId: string) =>
     invocar<EntradaAula>('aula-daily', { action: 'token-entrada', evento_id: eventoId }),
 

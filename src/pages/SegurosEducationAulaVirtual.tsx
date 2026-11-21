@@ -262,7 +262,7 @@ export function SegurosEducationAulaVirtual() {
     }
     const url = `${window.location.origin}/aula/${clase.link_token}`;
     const mensaje = [
-      `Te invito como PONENTE a la clase "${clase.titulo}" de Seguros Education.`,
+      `Te invito como PONENTE a la capacitación "${clase.titulo}" de Seguros Education.`,
       clase.fecha_inicio
         ? `📅 ${new Date(clase.fecha_inicio).toLocaleString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`
         : null,
@@ -293,12 +293,12 @@ export function SegurosEducationAulaVirtual() {
         })
       : null;
     const mensaje = [
-      `Te invito a la clase "${clase.titulo}" de Seguros Education.`,
+      `Te invito a la capacitación "${clase.titulo}" de Seguros Education.`,
       cuando ? `📅 ${cuando}` : null,
       'Entra desde aquí (puedes usar tu cuenta MOVI o registrarte como invitado):',
       url,
       '',
-      'Entras como oyente: puedes seguir la clase y participar en el chat. La sesión se graba y queda en On Demand.',
+      'Entras como oyente: puedes seguir la sesión y participar en el chat. Se graba y queda en On Demand.',
     ]
       .filter((l) => l !== null)
       .join('\n');
@@ -322,12 +322,12 @@ export function SegurosEducationAulaVirtual() {
       if (!clase.daily_room_name) await aulaDaily.crearSala(clase.id);
       const r = await aulaDaily.iniciar(clase.id);
       if (r.grabacion?.error) {
-        avisar(`La clase inició, pero la grabación en la nube no arrancó (${r.grabacion.error}). La grabación local sigue activa.`);
+        avisar(`La sesión inició, pero la grabación en la nube no arrancó (${r.grabacion.error}). La grabación local sigue activa.`);
       }
       analyticsTracker.trackClassJoinClick?.(clase.id);
       navigate(`/seguros-education/aula-virtual/${clase.id}`);
     } catch (e) {
-      avisar(e instanceof Error ? e.message : 'No se pudo iniciar la clase');
+      avisar(e instanceof Error ? e.message : 'No se pudo iniciar la sesión');
     } finally {
       setOcupado(null);
     }
@@ -402,9 +402,20 @@ export function SegurosEducationAulaVirtual() {
     }
 
     const sala = await aulaDaily.crearSala(id);
+
+    // Avisa a la plantilla en cuanto existe la clase (correo + WhatsApp).
+    let invitados = 0;
+    try {
+      const inv = await aulaDaily.invitar(id);
+      invitados = inv.encolados ?? 0;
+    } catch (err) {
+      console.error('No se pudo encolar la invitación:', err);
+    }
+
     await cargar();
     return {
       id,
+      invitados,
       link: sala.link_token_asistente ? `${window.location.origin}/aula/${sala.link_token_asistente}` : null,
     };
   };
@@ -422,7 +433,7 @@ export function SegurosEducationAulaVirtual() {
   return (
     <SegurosEducationLayout
       sectionTitle="Aula Virtual"
-      sectionDescription="Cada clase genera su sala, su grabación y su lección en On Demand"
+      sectionDescription="Cada capacitación genera su sala, su grabación y su lección en On Demand"
     >
       <div className="space-y-5">
         {/* Acciones */}
@@ -438,7 +449,7 @@ export function SegurosEducationAulaVirtual() {
               onClick={() => setShowCrear(true)}
               className="flex items-center gap-2 rounded-xl bg-accent px-3.5 py-2 text-body-sm font-semibold text-white transition hover:bg-accent-hover"
             >
-              <Plus className="h-4 w-4" /> Nueva clase
+              <Plus className="h-4 w-4" /> Nueva capacitación
             </button>
           )}
         </div>
@@ -516,9 +527,9 @@ export function SegurosEducationAulaVirtual() {
           <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
             <div>
-              <p className="text-body-sm font-semibold text-amber-900 dark:text-amber-200">No hay clases en vivo</p>
+              <p className="text-body-sm font-semibold text-amber-900 dark:text-amber-200">No hay sesiones en vivo</p>
               <p className="text-caption text-amber-800 dark:text-amber-300/80">
-                Cuando alguien inicie una clase aparecerá aquí con su sala.
+                Cuando alguien inicie una sesión aparecerá aquí con su sala.
               </p>
             </div>
           </div>
@@ -528,93 +539,133 @@ export function SegurosEducationAulaVirtual() {
         <section className="overflow-hidden rounded-xl border border-soft bg-surface-card shadow-card dark:border-white/10">
           <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-white/10">
             <h2 className="flex items-center gap-2 text-base font-bold text-neutral-800 dark:text-white">
-              <Calendar className="h-4 w-4 text-accent-ink" /> Próximas clases
+              <Calendar className="h-4 w-4 text-accent-ink" /> Próximas capacitaciones
             </h2>
             <span className="text-caption text-neutral-400">{proximas.length}</span>
           </div>
 
           {proximas.length === 0 ? (
             <p className="px-4 py-8 text-center text-body-sm text-neutral-400">
-              No hay clases programadas.
+              No hay capacitaciones programadas.
             </p>
           ) : (
-            <ul className="divide-y divide-neutral-100 dark:divide-white/5">
+            <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
               {proximas.map((clase) => {
                 const inicio = clase.fecha_inicio ? new Date(clase.fecha_inicio) : null;
+                const fin = clase.fecha_fin ? new Date(clase.fecha_fin) : null;
+                const minutos =
+                  inicio && fin && fin > inicio ? Math.round((fin.getTime() - inicio.getTime()) / 60_000) : null;
                 const enUnaHora = inicio ? inicio.getTime() - ahora < 3600_000 : false;
+                const admin = puedeAdministrar(clase.id);
+
                 return (
-                  <li key={clase.id} className="flex flex-wrap items-center gap-3 px-4 py-3 transition hover:bg-surface-50 dark:hover:bg-white/[0.03]">
-                    <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-accent-soft text-accent-ink">
-                      <span className="text-[10px] font-bold uppercase leading-none">
-                        {inicio ? format(inicio, 'MMM', { locale: es }) : '—'}
-                      </span>
-                      <span className="text-body font-bold leading-tight">{inicio ? format(inicio, 'd') : '—'}</span>
+                  <article
+                    key={clase.id}
+                    className="group flex flex-col overflow-hidden rounded-2xl border border-soft bg-surface-card shadow-card transition hover:shadow-card-hover dark:border-white/10"
+                  >
+                    {/* Miniatura */}
+                    <div className="relative aspect-video overflow-hidden bg-neutral-100 dark:bg-white/5">
+                      {clase.portada_url ? (
+                        <img
+                          src={clase.portada_url}
+                          alt={clase.titulo}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Video className="h-9 w-9 text-neutral-300 dark:text-white/20" />
+                        </div>
+                      )}
+
+                      {inicio && (
+                        <div className="absolute left-2 top-2 flex min-w-[42px] flex-col items-center rounded-xl bg-black/65 px-2 py-1 text-white backdrop-blur-sm">
+                          <span className="text-[10px] font-bold uppercase leading-none opacity-90">
+                            {format(inicio, 'MMM', { locale: es })}
+                          </span>
+                          <span className="mt-0.5 text-base font-bold leading-none">{format(inicio, 'd')}</span>
+                        </div>
+                      )}
+
+                      {enUnaHora && (
+                        <span className="absolute right-2 top-2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-950">
+                          Pronto
+                        </span>
+                      )}
                     </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="truncate text-body-sm font-semibold text-neutral-900 dark:text-white">{clase.titulo}</h3>
-                        {enUnaHora && (
-                          <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
-                            Pronto
-                          </span>
-                        )}
-                      </div>
+                    {/* Contenido */}
+                    <div className="flex flex-1 flex-col p-3">
+                      <h3 className="line-clamp-2 text-body-sm font-bold leading-snug text-neutral-900 dark:text-white">
+                        {clase.titulo}
+                      </h3>
+
                       {clase.etiquetas?.length > 0 && (
-                        <div className="mt-1 mb-1">
+                        <div className="mt-1.5">
                           <PildorasEtiquetas etiquetas={clase.etiquetas} max={3} />
                         </div>
                       )}
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-caption text-neutral-500 dark:text-white/50">
+
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-neutral-500 dark:text-white/55">
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
+                          <Clock className="h-3.5 w-3.5" />
                           {inicio ? format(inicio, "d MMM · HH:mm", { locale: es }) : 'Sin fecha'}
+                          {minutos ? ` · ${minutos} min` : ''}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" /> {clase.max_participantes ?? 100}
+                          <Users className="h-3.5 w-3.5" /> {clase.max_participantes ?? 100}
                         </span>
-                        {clase.grabar && <span className="flex items-center gap-1"><Radio className="h-3 w-3" /> Se graba</span>}
+                        {clase.grabar && (
+                          <span className="flex items-center gap-1">
+                            <Radio className="h-3.5 w-3.5" /> Se graba
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Acciones */}
+                      <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-3">
+                        {admin && (
+                          <>
+                            <button
+                              onClick={() => invitarPonente(clase)}
+                              className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-neutral-200 px-2.5 py-1.5 text-caption font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+                              title="Ponente externo: habla y comparte pantalla"
+                            >
+                              <Mic className="h-3.5 w-3.5" /> Ponente
+                            </button>
+                            <button
+                              onClick={() => invitarOyentes(clase)}
+                              className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-accent-soft px-2.5 py-1.5 text-caption font-semibold text-accent-ink transition hover:bg-accent/15"
+                              title="Oyentes: entran como público, con micrófono y cámara apagados"
+                            >
+                              <Users className="h-3.5 w-3.5" /> Oyentes
+                            </button>
+                            <button
+                              onClick={() => void iniciarClase(clase)}
+                              disabled={ocupado === clase.id}
+                              className="ml-auto flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-accent px-3 py-1.5 text-caption font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
+                            >
+                              {ocupado === clase.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Play className="h-3.5 w-3.5" />
+                              )}
+                              Iniciar
+                            </button>
+                          </>
+                        )}
+                        {!admin && (
+                          <span className="rounded-lg bg-surface-100 px-3 py-1.5 text-caption font-semibold text-neutral-500 dark:bg-white/10 dark:text-white/50">
+                            Aún no inicia
+                          </span>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {puedeAdministrar(clase.id) && (
-                        <button
-                          onClick={() => invitarPonente(clase)}
-                          className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-neutral-200 px-2.5 py-1.5 text-caption font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
-                          title="Ponente externo: habla y comparte pantalla"
-                        >
-                          <Mic className="h-3.5 w-3.5" /> Invitar ponente
-                        </button>
-                      )}
-                      {puedeAdministrar(clase.id) && (
-                        <button
-                          onClick={() => invitarOyentes(clase)}
-                          className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-accent-soft px-2.5 py-1.5 text-caption font-semibold text-accent-ink transition hover:bg-accent/15"
-                          title="Oyentes: entran como público, con micrófono y cámara apagados"
-                        >
-                          <Users className="h-3.5 w-3.5" /> Invitar oyentes
-                        </button>
-                      )}
-                      {puedeAdministrar(clase.id) ? (
-                        <button
-                          onClick={() => void iniciarClase(clase)}
-                          disabled={ocupado === clase.id}
-                          className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-caption font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
-                        >
-                          {ocupado === clase.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                          Iniciar
-                        </button>
-                      ) : (
-                        <span className="rounded-lg bg-surface-100 px-3 py-1.5 text-caption font-semibold text-neutral-500 dark:bg-white/10 dark:text-white/50">
-                          Aún no inicia
-                        </span>
-                      )}
-                    </div>
-                  </li>
+                  </article>
                 );
               })}
-            </ul>
+            </div>
           )}
         </section>
 
@@ -623,7 +674,7 @@ export function SegurosEducationAulaVirtual() {
           <section className="overflow-hidden rounded-xl border border-soft bg-surface-card shadow-card dark:border-white/10">
             <div className="border-b border-neutral-200 px-4 py-3 dark:border-white/10">
               <h2 className="flex items-center gap-2 text-base font-bold text-neutral-800 dark:text-white">
-                <FileVideo className="h-4 w-4 text-accent-ink" /> Clases anteriores
+                <FileVideo className="h-4 w-4 text-accent-ink" /> Capacitaciones anteriores
               </h2>
             </div>
             <ul className="divide-y divide-neutral-100 dark:divide-white/5">
@@ -711,9 +762,12 @@ export function SegurosEducationAulaVirtual() {
           equipo={equipo}
           propioId={usuario?.id ?? ''}
           onCrear={crearClase}
-          onCreada={(link) => {
+          onCreada={(link, invitados) => {
             setShowCrear(false);
-            avisar(link ? 'Clase creada. Link del ponente externo copiado al portapapeles.' : 'Clase creada.');
+            const aviso = invitados > 0
+              ? `Clase creada. Invitación en camino a ${invitados} personas por correo y WhatsApp.`
+              : 'Clase creada.';
+            avisar(link ? `${aviso} Link del ponente copiado.` : aviso);
             if (link) void navigator.clipboard.writeText(link).catch(() => null);
           }}
         />
@@ -809,7 +863,7 @@ export function SegurosEducationAulaVirtual() {
               {invitacion.mensaje}
             </pre>
             <p className="text-[11px] text-neutral-400">
-              El link es por evento y deja de funcionar cuando la clase termina.
+              El link es por evento y deja de funcionar cuando la sesión termina.
               {invitacion.tipo === 'ponente'
                 ? ' Los ponentes invitados aparecen con su nombre y empresa en la ficha de On Demand.'
                 : ''}
@@ -859,8 +913,8 @@ function FormularioClase({
     etiquetas: string[];
     cohosts: string[];
     portada: File;
-  }) => Promise<{ id: string; link: string | null }>;
-  onCreada: (link: string | null) => void;
+  }) => Promise<{ id: string; link: string | null; invitados?: number }>;
+  onCreada: (link: string | null, invitados: number) => void;
 }) {
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -887,8 +941,8 @@ function FormularioClase({
   };
 
   const guardar = async () => {
-    if (titulo.trim().length < 3) return setError('Ponle un nombre a la clase');
-    if (!portada) return setError('Carga la imagen miniatura de la clase');
+    if (titulo.trim().length < 3) return setError('Ponle un nombre a la capacitación');
+    if (!portada) return setError('Carga la imagen miniatura de la capacitación');
     if (!portada.type.startsWith('image/')) return setError('La imagen miniatura debe ser un archivo de imagen');
     if (portada.size > 8 * 1024 * 1024) return setError('La imagen miniatura no debe pesar más de 8 MB');
     setGuardando(true);
@@ -908,9 +962,9 @@ function FormularioClase({
         cohosts,
         portada,
       });
-      onCreada(res.link);
+      onCreada(res.link, res.invitados ?? 0);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo crear la clase');
+      setError(e instanceof Error ? e.message : 'No se pudo crear la capacitación');
     } finally {
       setGuardando(false);
     }
@@ -920,7 +974,7 @@ function FormularioClase({
     <BaseModal
       isOpen={abierto}
       onClose={onCerrar}
-      title="Nueva clase"
+      title="Nueva capacitación"
       maxWidth="2xl"
       footer={
         <div className="flex justify-end gap-2">
@@ -933,14 +987,14 @@ function FormularioClase({
             className="flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-body-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
           >
             {guardando && <Loader2 className="h-4 w-4 animate-spin" />}
-            {guardando ? 'Creando sala…' : 'Crear clase'}
+            {guardando ? 'Creando sala…' : 'Crear capacitación'}
           </button>
         </div>
       }
     >
       <div className="space-y-3">
         <div>
-          <label className="mb-1 block text-caption font-semibold text-neutral-700 dark:text-white/70">Nombre de la clase</label>
+          <label className="mb-1 block text-caption font-semibold text-neutral-700 dark:text-white/70">Nombre de la capacitación</label>
           <input
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
@@ -955,7 +1009,7 @@ function FormularioClase({
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             rows={2}
-            placeholder="Qué se va a ver en la clase"
+            placeholder="Qué se va a ver en la capacitación"
             className="w-full resize-none rounded-xl border border-neutral-200 bg-surface-50 px-3 py-2.5 text-body text-neutral-900 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
           />
         </div>

@@ -1252,7 +1252,7 @@ export function SegurosEducationOnDemand() {
         </div>
       </div>
 
-      {/* Reproductor de la clase grabada */}
+      {/* Reproductor de la capacitación grabada */}
       {showVideoModal && selectedLesson && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-end justify-center bg-neutral-950/80 backdrop-blur-sm sm:items-center sm:p-6"

@@ -2,7 +2,7 @@
 // ---------------------------------------------------------------------------
 // Lo llama pg_cron cada minuto (job `aula-recordatorios`).
 //
-// 1) Detecta clases que empiezan en 30 y en 5 minutos y encola a su audiencia.
+// 1) Detecta clases que empiezan en 30 y en 10 minutos y encola a su audiencia.
 // 2) Drena la cola llamando a `enviar-correo-transaccional`, que resuelve
 //    correo + WhatsApp + notificación in-app. El push nativo sale solo: el
 //    trigger trg_push_nativo_notificaciones escucha los INSERT en notificaciones.
@@ -43,7 +43,7 @@ async function encolar(evento: {
   id: string;
   titulo: string;
   fecha_inicio: string;
-}, tipo: '30m' | '5m', minutos: number) {
+}, tipo: '30m' | '10m' | '5m' | 'invitacion', minutos: number) {
   // ¿Ya se encoló esta clase para este aviso?
   const { data: marca } = await admin
     .from('aula_recordatorios')
@@ -89,7 +89,7 @@ async function encolar(evento: {
 async function drenar() {
   const { data: pendientes } = await admin
     .from('aula_recordatorio_envios')
-    .select('id, evento_id, usuario_id, tipo, intentos, aula_eventos(titulo, fecha_inicio)')
+    .select('id, evento_id, usuario_id, tipo, intentos, aula_eventos(titulo, descripcion, portada_url, fecha_inicio, fecha_fin)')
     .eq('estado', 'pendiente')
     .order('creado_en')
     .limit(LOTE);
@@ -100,16 +100,23 @@ async function drenar() {
   let errores = 0;
 
   for (const fila of pendientes) {
-    const evento = (fila as unknown as { aula_eventos?: { titulo: string; fecha_inicio: string | null } }).aula_eventos;
+    const evento = (fila as unknown as { aula_eventos?: { titulo: string; descripcion: string | null; portada_url: string | null; fecha_inicio: string | null; fecha_fin: string | null } }).aula_eventos;
     if (!evento) {
       await admin.from('aula_recordatorio_envios').update({ estado: 'error', error: 'evento ausente' }).eq('id', fila.id);
       errores++;
       continue;
     }
 
-    const minutos = fila.tipo === '5m' ? 5 : 30;
-    const hora = evento.fecha_inicio
-      ? new Date(evento.fecha_inicio).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' })
+    const minutos = fila.tipo === '10m' ? 10 : fila.tipo === '5m' ? 5 : 30;
+    const inicio = evento.fecha_inicio ? new Date(evento.fecha_inicio) : null;
+    const fin = evento.fecha_fin ? new Date(evento.fecha_fin) : null;
+    const duracion =
+      inicio && fin && fin > inicio ? ` · ${Math.round((fin.getTime() - inicio.getTime()) / 60_000)} min` : '';
+    const hora = inicio
+      ? inicio.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' })
+      : '';
+    const fecha = inicio
+      ? inicio.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Mexico_City' })
       : '';
 
     const { data: hosts } = await admin
@@ -119,7 +126,20 @@ async function drenar() {
       .eq('usuario_id', fila.usuario_id)
       .maybeSingle();
 
-    const eventKey = hosts ? 'aula_recordatorio' : 'aula_recordatorio_email';
+    // Invitación y recordatorio de 10 minutos llevan a la clase y salen por
+    // correo y WhatsApp; el aviso de 30 minutos va solo por correo para no
+    // saturar el canal.
+    const eventKey =
+      fila.tipo === 'invitacion'
+        ? 'aula_invitacion_clase'
+        : fila.tipo === '10m'
+          ? 'aula_recordatorio_10'
+          : hosts
+            ? 'aula_recordatorio'
+            : 'aula_recordatorio_email';
+
+    // Enlace directo a la sala de esa clase (no al listado).
+    const urlClase = `${Deno.env.get('APP_URL') ?? 'https://app.movi.digital'}/seguros-education/aula-virtual/${fila.evento_id}`;
 
     try {
       const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/enviar-correo-transaccional`, {
@@ -132,10 +152,17 @@ async function drenar() {
           event_key: eventKey,
           user_id: fila.usuario_id,
           variables: {
+            // `capacitacion` es el nombre nuevo; `clase` se mantiene por las
+            // plantillas viejas que aún lo usen.
+            capacitacion: evento.titulo,
             clase: evento.titulo,
             minutos: String(minutos),
             hora,
-            url: `${Deno.env.get('APP_URL') ?? 'https://app.movi.digital'}/seguros-education/aula-virtual`,
+            fecha,
+            duracion,
+            descripcion: evento.descripcion?.trim() || 'Te esperamos en el Aula Virtual de Seguros Education.',
+            imagen: evento.portada_url || `${Deno.env.get('APP_URL') ?? 'https://app.movi.digital'}/movirecurso_11.png`,
+            url: urlClase,
           },
         }),
       });
@@ -191,7 +218,7 @@ Deno.serve(async (req) => {
     for (const evento of proximos ?? []) {
       const faltan = Math.round((new Date(evento.fecha_inicio!).getTime() - ahora) / 60_000);
       if (faltan <= 31 && faltan >= 29) encolados += await encolar(evento, '30m', 30);
-      else if (faltan <= 6 && faltan >= 4) encolados += await encolar(evento, '5m', 5);
+      else if (faltan <= 11 && faltan >= 9) encolados += await encolar(evento, '10m', 10);
     }
 
     const drenado = cuerpo.dry_run ? { enviados: 0, errores: 0, seco: true } : await drenar();

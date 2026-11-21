@@ -407,6 +407,39 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Encola la invitación a toda la plantilla. El envío real lo hace el cron
+    // `aula-recordatorios`, que ya sabe mandar correo + WhatsApp e in-app.
+    if (accion === 'invitar') {
+      if (!puedeAdministrar) return json({ error: 'No tienes permiso para esta clase' }, 403);
+      if (!evento.fecha_inicio) return json({ error: 'La clase necesita fecha y hora' }, 400);
+
+      const { data: usuarios } = await admin
+        .from('usuarios')
+        .select('id')
+        .in('rol', ['Agente', 'Empleado', 'Gerente', 'Administrador'])
+        .eq('activo', true)
+        .is('deleted_at', null);
+
+      const lista = (usuarios ?? []) as Array<{ id: string }>;
+      if (lista.length === 0) return json({ ok: true, encolados: 0 });
+
+      const filas = lista.map((u) => ({
+        evento_id: eventoId,
+        usuario_id: u.id,
+        tipo: 'invitacion' as const,
+        estado: 'pendiente' as const,
+      }));
+
+      for (let i = 0; i < filas.length; i += 400) {
+        await admin.from('aula_recordatorio_envios').upsert(filas.slice(i, i + 400), {
+          onConflict: 'evento_id,usuario_id,tipo',
+          ignoreDuplicates: true,
+        });
+      }
+
+      return json({ ok: true, encolados: filas.length });
+    }
+
     if (accion === 'grabacion-iniciar') {
       if (!puedeAdministrar) return json({ error: 'Solo quien conduce la clase puede grabarla' }, 403);
       if (!evento.grabar) return json({ ok: true, omitido: 'La clase no se graba' });

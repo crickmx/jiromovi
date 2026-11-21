@@ -149,7 +149,7 @@ export function SegurosEducation() {
       <SegurosEducationLayout>
         <div className="space-y-5">
 
-          {/* ── 1. Próxima clase de Aula Virtual ───────────────── */}
+          {/* ── 1. Próxima capacitación de Aula Virtual ───────────────── */}
           {loading ? (
             <Skeleton className="h-36 w-full rounded-2xl" />
           ) : proxima && proximaFecha ? (
@@ -171,7 +171,7 @@ export function SegurosEducation() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
-                      Próxima clase
+                      Próxima capacitación
                     </span>
                     <span
                       className={cn(
@@ -209,9 +209,9 @@ export function SegurosEducation() {
                 <Calendar className="h-5 w-5 text-emerald-600" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-neutral-900 dark:text-white">No hay clases programadas</p>
+                <p className="text-sm font-bold text-neutral-900 dark:text-white">No hay capacitaciones programadas</p>
                 <p className="text-caption text-neutral-500 dark:text-white/55">
-                  Cuando se agende una clase del Aula Virtual aparecerá aquí, con su fecha y su hora.
+                  Cuando se agende una capacitación del Aula Virtual aparecerá aquí, con su fecha y su hora.
                 </p>
               </div>
               <button
@@ -231,7 +231,7 @@ export function SegurosEducation() {
                   <Video className="h-4 w-4 text-[#1C37E0]" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Últimas clases grabadas</h2>
+                  <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Últimas capacitaciones grabadas</h2>
                   <p className="text-[11px] text-neutral-500">Lo más reciente de On Demand</p>
                 </div>
               </div>
@@ -334,7 +334,7 @@ export function SegurosEducation() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-neutral-900 dark:text-white">Aula Virtual</p>
-                <p className="text-[11px] text-neutral-500 dark:text-white/55">Clases en vivo, invitados y grabaciones</p>
+                <p className="text-[11px] text-neutral-500 dark:text-white/55">Capacitaciones en vivo, invitados y grabaciones</p>
               </div>
               <ArrowRight className="h-4 w-4 shrink-0 text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-emerald-600" />
             </button>
@@ -348,7 +348,7 @@ export function SegurosEducation() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-neutral-900 dark:text-white">On Demand</p>
-                <p className="text-[11px] text-neutral-500 dark:text-white/55">Biblioteca de clases grabadas</p>
+                <p className="text-[11px] text-neutral-500 dark:text-white/55">Biblioteca de capacitaciones grabadas</p>
               </div>
               <ArrowRight className="h-4 w-4 shrink-0 text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-[#1C37E0]" />
             </button>

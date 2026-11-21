@@ -474,7 +474,7 @@ export function SalaAula({
 
   const mensajeInvitacion = esPonente
     ? [
-        `Te invito como PONENTE a la clase "${titulo}".`,
+        `Te invito como PONENTE a la capacitación "${titulo}".`,
         '',
         'Entra desde aquí (no necesitas cuenta, solo tu nombre, tu empresa y una foto):',
         linkInvitado ?? '',
@@ -482,7 +482,7 @@ export function SalaAula({
         'Podrás hablar y compartir tu pantalla cuando te ceda la palabra quien conduce.',
       ].join('\n')
     : [
-        `Te invito a la clase "${titulo}".`,
+        `Te invito a la capacitación "${titulo}".`,
         '',
         'Entra desde aquí como oyente (puedes usar tu cuenta MOVI o registrarte como invitado):',
         linkOyente ?? '',
@@ -503,7 +503,7 @@ export function SalaAula({
 
   const enviarPorCorreo = () => {
     if (!linkActual) return;
-    const asunto = esPonente ? `Invitación como ponente: ${titulo}` : `Invitación a la clase: ${titulo}`;
+    const asunto = esPonente ? `Invitación como ponente: ${titulo}` : `Invitación a la capacitación: ${titulo}`;
     window.open(`mailto:?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(mensajeInvitacion)}`, '_blank');
   };
 
@@ -563,7 +563,7 @@ export function SalaAula({
   };
 
   const terminarClase = async () => {
-    if (!confirm('¿Finalizar la clase? Se desconectará a todos y la grabación se publicará.')) return;
+    if (!confirm('¿Finalizar la sesión? Se desconectará a todos y la grabación se publicará.')) return;
     try {
       if (grabando) await detenerGrabacion();
       await aulaDaily.finalizar(eventoId);
@@ -613,7 +613,7 @@ export function SalaAula({
   if (estado === 'error') {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <p className="text-body font-semibold text-neutral-900 dark:text-white">No se pudo entrar a la clase</p>
+        <p className="text-body font-semibold text-neutral-900 dark:text-white">No se pudo entrar a la sesión</p>
         <p className="max-w-md text-body-sm text-neutral-500 dark:text-white/60">{error}</p>
         <button onClick={onSalir} className="rounded-xl bg-accent px-4 py-2 text-body-sm font-semibold text-white">
           Volver
@@ -837,7 +837,7 @@ export function SalaAula({
               <div ref={chatFondo} className="flex-1 space-y-2.5 overflow-y-auto px-3 py-3">
                 {mensajes.length === 0 && (
                   <p className="py-8 text-center text-caption text-neutral-400">
-                    Aquí aparecerá el chat de la clase.
+                    Aquí aparecerá el chat de la sesión.
                   </p>
                 )}
                 {mensajes.map((m) => {
@@ -988,7 +988,7 @@ export function SalaAula({
                           <MonitorX className="h-3.5 w-3.5" />
                         </button>
                       )}
-                      <button onClick={() => void expulsar(p)} title="Sacar de la clase" className="rounded p-1 text-neutral-400 hover:bg-surface-200 hover:text-red-600 dark:hover:bg-white/10">
+                      <button onClick={() => void expulsar(p)} title="Sacar de la sesión" className="rounded p-1 text-neutral-400 hover:bg-surface-200 hover:text-red-600 dark:hover:bg-white/10">
                         <Shield className="h-3.5 w-3.5" />
                       </button>
                     </div>

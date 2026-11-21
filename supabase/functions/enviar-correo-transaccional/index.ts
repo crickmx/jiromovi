@@ -687,7 +687,7 @@ Deno.serve(async (req: Request) => {
 
     // Also log to correo_historial_envios for email
     if (emailSent || emailError) {
-      await supabase.from("correo_historial_envios").insert({
+      const { error: historialError } = await supabase.from("correo_historial_envios").insert({
         tipo_codigo: event_key,
         canal_envio: "correo",
         destinatario_email: userEmail || null,
@@ -701,12 +701,13 @@ Deno.serve(async (req: Request) => {
         channel_type: emailChannel ? "email_resend" : null,
         error_mensaje: emailError || null,
         fecha_envio: new Date().toISOString(),
-      }).catch(() => {});
+      });
+      if (historialError) console.error('correo_historial_envios', historialError.message);
     }
 
     // Also log to correo_historial_envios for whatsapp
     if (whatsappSent || (whatsappError && whatsappError !== "User has no phone" && whatsappError !== "No WhatsApp channel configured")) {
-      await supabase.from("correo_historial_envios").insert({
+      const { error: historialError } = await supabase.from("correo_historial_envios").insert({
         tipo_codigo: event_key,
         canal_envio: "whatsapp",
         destinatario_email: null,
@@ -722,7 +723,8 @@ Deno.serve(async (req: Request) => {
         provider_message_id: whatsappMessageId,
         error_mensaje: whatsappError || null,
         fecha_envio: new Date().toISOString(),
-      }).catch(() => {});
+      });
+      if (historialError) console.error('correo_historial_envios', historialError.message);
     }
 
     return new Response(

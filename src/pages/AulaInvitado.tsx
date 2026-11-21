@@ -119,7 +119,7 @@ export function AulaInvitado() {
         setSesion(r);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo entrar a la clase');
+      setError(e instanceof Error ? e.message : 'No se pudo entrar a la sesión');
     } finally {
       setEnviando(false);
     }
@@ -208,7 +208,7 @@ export function AulaInvitado() {
           {!cargando && !errorLink && info && (
             <>
               <p className="text-micro font-semibold uppercase tracking-wide text-accent-ink">
-                {esAsistente ? 'Invitación a la clase' : 'Invitación como ponente'}
+                {esAsistente ? 'Invitación a la capacitación' : 'Invitación como ponente'}
               </p>
               <h1 className="mt-1 text-title font-bold leading-snug text-neutral-900 dark:text-white">{info.clase}</h1>
               <p className="mt-1 text-body-sm text-neutral-500 dark:text-white/60">
@@ -357,7 +357,7 @@ export function AulaInvitado() {
                   </>
                 ) : (
                   <>
-                    <Video className="h-4 w-4" /> Entrar a la clase
+                    <Video className="h-4 w-4" /> Entrar a la capacitación
                   </>
                 )}
               </button>
@@ -365,8 +365,8 @@ export function AulaInvitado() {
               <p className="mt-4 flex items-start gap-1.5 text-[11px] leading-relaxed text-neutral-400">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {esAsistente
-                  ? 'La clase se graba para publicarse en On Demand. Tus datos se registran para que el equipo de MOVI complete tu alta.'
-                  : 'La clase se graba para publicarse en On Demand. Tus datos (nombre y empresa) aparecerán en el material de la clase.'}
+                  ? 'La sesión se graba para publicarse en On Demand. Tus datos se registran para que el equipo de MOVI complete tu alta.'
+                  : 'La sesión se graba para publicarse en On Demand. Tus datos (nombre y empresa) aparecerán en el material de la clase.'}
               </p>
             </>
           )}
