@@ -16,6 +16,7 @@ create or replace function public.wa_sin_responder(
 returns table (
   conversation_id uuid,
   nombre text,
+  group_name text,
   telefono text,
   ultimo text,
   cuando timestamptz
@@ -43,6 +44,7 @@ as $$
         then c.remote_name
       else null
     end as nombre,
+    c.group_name,
     c.remote_phone,
     case when u.message_type = 'text' then u.content else '[' || coalesce(u.message_type, 'mensaje') || ']' end,
     u.cuando

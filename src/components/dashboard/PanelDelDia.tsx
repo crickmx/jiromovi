@@ -319,7 +319,13 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
             etiquetaTotal={totalChats > 0 ? 'esperando respuesta' : undefined}
             items={chats.map(c => ({
               id: c.id,
-              titulo: c.remote_name || (c.remote_phone?.includes('@g.us') ? 'Grupo de WhatsApp' : 'Contacto sin nombre'),
+              titulo: (() => {
+                if (c.remote_name) return c.remote_name;
+                // El nombre guardado del grupo suele ser el propio jid.
+                const g = (c as unknown as { group_name?: string | null }).group_name;
+                if (g && !g.includes('@')) return g;
+                return c.remote_phone?.includes('@g.us') ? 'Grupo de WhatsApp' : 'Contacto sin nombre';
+              })(),
               detalle: c.last_message_text || 'Nuevo mensaje',
               cuando: hace(c.last_message_at, ahora),
             }))}
@@ -557,13 +563,13 @@ function TarjetaMedia({
       onClick={onClick}
       className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-soft bg-surface-card text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/[0.07] dark:bg-neutral-900/60"
     >
-      <div className="relative aspect-[16/9] w-full overflow-hidden">
+      <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
         {imagen ? (
           <img
             src={imagen}
             alt=""
             loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+            className="absolute inset-0 h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
           />
         ) : (
           <div className={cn('absolute inset-0 bg-gradient-to-br', fondos[tono])} />
