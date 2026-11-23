@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import type { Usuario } from '@/contexts/MoviAuthContext';
 import { useMiResumen } from '@/lib/useMiResumen';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { filtroTramitesVistaComo } from '@/lib/tramitesVisibilidad';
 
 // ── Tipos ───────────────────────────────────────────────────────────────
 
@@ -115,6 +117,7 @@ function minutos(seg: number | null) {
 export function PanelDelDia({ usuario }: { usuario: Usuario }) {
   const navigate = useNavigate();
   const resumen = useMiResumen();
+  const { isImpersonating, impersonatedUser } = useImpersonation();
 
   const [cargando, setCargando] = useState(true);
   // Se fija al cargar para no leer el reloj durante el render.
@@ -133,15 +136,36 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
 
     const cargar = async () => {
       const t0 = Date.now();
+
+      // Trámites abiertos: primero los de prioridad alta y los más viejos.
+      //
+      // 🔑 Esta consulta NO filtra por persona: se apoya entera en la RLS
+      // (`tickets_select_v10`), que ya deja solo lo que le toca a cada rol.
+      //
+      // Pero la RLS mira la SESIÓN, no a quién dice la pantalla que estás
+      // viendo. En "Vista Admin — Viendo como" el JWT sigue siendo el del
+      // Administrador, así que sin esto el panel le mostraba a cualquier
+      // persona impersonada los trámites de TODA la empresa bajo su nombre —
+      // reportes de bug de hace meses incluidos. Lo reportó Ricardo el 23/11
+      // viendo el tablero de un Gerente.
+      //
+      // `filtroTramitesVistaComo` existe justo para esto y ya lo usaba
+      // `Tramites.tsx`; este panel era el que no lo llamaba.
+      let consultaTramites = supabase
+        .from('tickets')
+        .select('id, folio, tipo_tramite, prioridad, fecha_creacion, estatus:estatus_id(nombre, color)')
+        .is('cerrado_en', null)
+        .is('eliminado_at', null)
+        .order('fecha_creacion', { ascending: true })
+        .limit(30);
+
+      if (isImpersonating && impersonatedUser) {
+        const filtroVistaComo = await filtroTramitesVistaComo(impersonatedUser);
+        if (filtroVistaComo) consultaTramites = consultaTramites.or(filtroVistaComo);
+      }
+
       const [tramitesRes, correosRes, chatsRes, comunicadoRes, claseRes, leccionRes] = await Promise.all([
-        // Trámites abiertos: primero los de prioridad alta y los más viejos.
-        supabase
-          .from('tickets')
-          .select('id, folio, tipo_tramite, prioridad, fecha_creacion, estatus:estatus_id(nombre, color)')
-          .is('cerrado_en', null)
-          .is('eliminado_at', null)
-          .order('fecha_creacion', { ascending: true })
-          .limit(30),
+        consultaTramites,
         supabase
           .from('email_configuraciones')
           .select('email, estado_conexion')
@@ -211,7 +235,9 @@ export function PanelDelDia({ usuario }: { usuario: Usuario }) {
     return () => {
       vivo = false;
     };
-  }, [usuario.id]);
+    // Sin `isImpersonating`/`impersonatedUser` el panel se quedaría con la
+    // lista de la sesión anterior al entrar o salir de "Viendo como".
+  }, [usuario.id, isImpersonating, impersonatedUser]);
 
   const produccion = resumen !== 'loading' && resumen !== 'error' ? resumen.produccion : null;
   const zona = useMemo(() => usuario.oficina?.nombre ?? null, [usuario.oficina?.nombre]);
