@@ -97,20 +97,49 @@ jobs:
       # Y la rama no lleva NADA más: así el despliegue no toca el `.env` del
       # servidor ni ningún otro archivo que viva en esa carpeta.
       #
-      # Se arma en un directorio aparte para no heredar el `.gitignore` del
-      # proyecto (que ignora `dist`). Es un push forzado porque esta rama es un
-      # destino de publicación, no un historial.
+      # ⚠️ El commit CUELGA del commit de `main` que se construyó.
+      #
+      # El primer intento creaba la rama con `git init` dentro de una carpeta
+      # aparte, o sea un historial huérfano sin ningún ancestro en común con
+      # `main`. GitHub lo rechazó así:
+      #
+      #     remote: fatal error in commit_refs_rules
+      #     ! [remote rejected] HEAD -> beta-dist
+      #
+      # No es el ruleset del repo —"Proteger main y produccion" solo cubre la
+      # rama por defecto y `produccion`, con las reglas `deletion` y
+      # `non_fast_forward`—: es que el evaluador de reglas de GitHub se atraganta
+      # con una rama que no comparte historia con nada.
+      #
+      # Con `-p "$GITHUB_SHA"` el commit publicado desciende del commit real,
+      # así que GitHub puede situarlo. De paso queda trazable: cada publicación
+      # dice de qué commit de `main` salió.
+      #
+      # Se usa fontanería de git (índice temporal + write-tree + commit-tree) en
+      # vez de un `git add` normal para no tocar el índice real del checkout, y
+      # `add -f` porque el `.gitignore` del proyecto ignora `dist`.
       - name: Publicar a la rama beta-dist
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          rm -rf .publicar && mkdir .publicar
-          cp -r dist .publicar/dist
-          cd .publicar
-          git init -q
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "build de ${GITHUB_SHA:0:8}"
-          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:beta-dist
-          echo "Publicado. En Plesk: Pull + Deploy sobre la rama beta-dist."
+
+          # Índice aparte: así el árbol lleva SOLO dist/, sin el código fuente
+          # ni el dist_backup que deja el postbuild.
+          export GIT_INDEX_FILE="$(mktemp)"
+          git read-tree --empty
+          git add -f dist
+          arbol="$(git write-tree)"
+
+          # Cinturón: que la raíz del árbol sea exactamente una carpeta `dist`.
+          # Si esto cambiara, los archivos caerían al lado del document root y
+          # el sitio seguiría sirviendo el build anterior sin avisar.
+          if [ "$(git ls-tree --name-only "$arbol")" != "dist" ]; then
+            echo "La raíz del árbol no es solo dist/:"
+            git ls-tree --name-only "$arbol"
+            exit 1
+          fi
+
+          commit="$(git commit-tree "$arbol" -p "$GITHUB_SHA" -m "build de ${GITHUB_SHA:0:8}")"
+          git push -f origin "$commit:refs/heads/beta-dist"
+          echo "Publicado $(git ls-tree -r --name-only "$arbol" | wc -l) archivos."
+          echo "En Plesk: Pull + Deploy sobre la rama beta-dist."
