@@ -1,0 +1,116 @@
+# Construye MOVI aquí (en GitHub) y deja el resultado listo en la rama
+# `beta-dist`, para que el servidor de Plesk NO tenga que compilar.
+#
+# ── Por qué existe ─────────────────────────────────────────────────────────
+#
+# Hasta ahora el Pull + Deploy de Plesk corría `npm ci` + `npm run build` EN EL
+# SERVIDOR. Medido el 09/11: el build pide hasta 4 GB de heap y llega a un pico
+# real de 2,184 MB. En un Plesk con MariaDB y Apache encima, eso invita al OOM
+# killer de Linux, que mata al proceso más grande — casi siempre `mysqld`. De
+# ahí el "se cae el servidor y hay que reiniciarlo" (y el 500 de Plesk del
+# 06/11, con los tres sitios respondiendo pero la base muerta).
+#
+# Y lo más absurdo: `ci.yml` YA construía exactamente lo mismo en cada push a
+# `main` para validar que compila... y tiraba el resultado. Se pagaba el build
+# dos veces y se usaba el caro.
+#
+# ── Qué NO cambia ──────────────────────────────────────────────────────────
+#
+# Publicar a esta rama NO despliega nada. El sitio sigue cambiando solo cuando
+# Ricardo da Pull + Deploy en Plesk, igual que hoy. Esto no revive el job
+# `deploy-beta` que se quitó a propósito el 05/11.
+
+name: Publicar beta
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:        # también a mano, desde la pestaña Actions
+
+permissions:
+  contents: write           # hace falta para empujar la rama `beta-dist`
+
+# Si entran dos pushes seguidos, el segundo cancela al primero: los dos
+# terminarían empujando a la misma rama y ganaría el que acabe al último, que
+# no tiene por qué ser el más nuevo.
+concurrency:
+  group: publicar-beta
+  cancel-in-progress: true
+
+jobs:
+  construir-y-publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Sin esto, un secret vacío produce un bundle que COMPILA pero que no
+      # sabe a qué Supabase hablarle: el sitio carga en blanco y el deploy se
+      # ve exitoso. Mejor fallar aquí, donde se nota.
+      - name: Revisar que estén las variables
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_BONOS_URL: ${{ secrets.VITE_BONOS_URL }}
+        run: |
+          faltan=""
+          [ -n "$VITE_SUPABASE_URL" ]      || faltan="$faltan VITE_SUPABASE_URL"
+          [ -n "$VITE_SUPABASE_ANON_KEY" ] || faltan="$faltan VITE_SUPABASE_ANON_KEY"
+          [ -n "$VITE_BONOS_URL" ]         || faltan="$faltan VITE_BONOS_URL"
+          if [ -n "$faltan" ]; then
+            echo "Faltan estos secrets en el repositorio:$faltan"
+            echo "Se cargan en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      # `.npmrc` del repo ya trae legacy-peer-deps=true, así que `npm ci` basta.
+      - run: npm ci --no-audit --no-fund
+
+      - name: Construir
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_BONOS_URL: ${{ secrets.VITE_BONOS_URL }}
+        run: npm run build
+
+      # La barra naranja de beta lee /version.json. `vite.config.ts` ya toma el
+      # commit de GITHUB_SHA cuando corre aquí, así que esto es solo para poder
+      # verlo en el log si algo no cuadra.
+      - name: Qué quedó construido
+        run: |
+          cat dist/version.json; echo
+          du -sh dist
+
+      # ⚠️ La rama lleva la CARPETA `dist/`, no su contenido pelado.
+      #
+      # Plesk deja los archivos de la rama en el directorio del repositorio
+      # (`/var/www/vhosts/movi.digital/beta.movi.digital/`), y el document root
+      # de beta es la subcarpeta `dist` de ahí. Publicando `dist/` completa, el
+      # checkout la deja justo donde Apache busca. Si se publicara el contenido
+      # suelto, `index.html` caería AL LADO del document root y el sitio
+      # seguiría sirviendo el build anterior, sin que nada avisara.
+      #
+      # Y la rama no lleva NADA más: así el despliegue no toca el `.env` del
+      # servidor ni ningún otro archivo que viva en esa carpeta.
+      #
+      # Se arma en un directorio aparte para no heredar el `.gitignore` del
+      # proyecto (que ignora `dist`). Es un push forzado porque esta rama es un
+      # destino de publicación, no un historial.
+      - name: Publicar a la rama beta-dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -rf .publicar && mkdir .publicar
+          cp -r dist .publicar/dist
+          cd .publicar
+          git init -q
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "build de ${GITHUB_SHA:0:8}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:beta-dist
+          echo "Publicado. En Plesk: Pull + Deploy sobre la rama beta-dist."
