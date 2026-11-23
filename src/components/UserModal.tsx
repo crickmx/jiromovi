@@ -113,7 +113,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   const [sendingAccess, setSendingAccess] = useState(false);
   const [accessSent, setAccessSent] = useState(false);
   const [tramiteTeamIds, setTramiteTeamIds] = useState<string[]>([]);
-  const [tramiteTeamState, setTramiteTeamState] = useState<{ ready: boolean; valid: boolean; missingCategories: string[] }>({
+  const [tramiteTeamState, setTramiteTeamState] = useState<{ ready: boolean; valid: boolean; missingCategories: string[]; hidratado?: boolean }>({
     ready: false,
     valid: false,
     missingCategories: [],
@@ -690,7 +690,20 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
           await saveOficinasAdicionales(user.id);
         }
 
-        if (puedeAsignarEquiposTramite) {
+        // ⚠️ Guardar los equipos con la lista vacía NO es "no guardar nada":
+        // `planearReglasDeEquipo` manda a `desactivar` TODA regla que no venga
+        // en la selección. Si el selector todavía no había leído los equipos
+        // actuales —o su lectura falló— guardar aquí se los BORRA, sin ningún
+        // error y con el modal cerrándose como si todo hubiera salido bien.
+        //
+        // Y nadie lo detiene: la exigencia de cubrir todas las categorías es
+        // solo del Agente (`mustValidateTramiteTeams`), así que a un
+        // Administrador o a un Empleado se le va en silencio. Lo señaló
+        // Ricardo el 23/11.
+        //
+        // Con `hidratado` en false no se toca nada: es el mismo candado que
+        // `perfilCompletoCargado` y `datosBancariosCargados`, y por lo mismo.
+        if (puedeAsignarEquiposTramite && tramiteTeamState.hidratado) {
           await syncUserTramiteTeamAssignments(user.id, tramiteTeamIds, formData.rol);
         }
       } else {
