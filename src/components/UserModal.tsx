@@ -23,7 +23,7 @@ import {
   type SicasVendorOption,
 } from '../lib/sicasVendorLink';
 import { syncUserTramiteTeamAssignments, puedeTenerEquiposTramite } from '../lib/tramiteTeamAssignments';
-import { obtenerDatosPrivados } from '../lib/usuarioColumnas';
+import { obtenerDatosPrivados, USUARIO_COLUMNAS } from '../lib/usuarioColumnas';
 
 type Usuario = Database['public']['Tables']['usuarios']['Row'];
 type Oficina = Database['public']['Tables']['oficinas']['Row'];
@@ -125,6 +125,14 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   // y borraba el banco y la CLABE de cualquiera que se editara desde el Directorio.
   const [datosBancariosCargados, setDatosBancariosCargados] = useState(false);
 
+  // El modal ESCRIBE 16 columnas que la lista que lo abre no le pasa (el
+  // `.select()` del Directorio trae 18 de las 28 que se guardan). Mientras no
+  // se confirme que el perfil completo se pudo leer, esas columnas NO se
+  // mandan: `undefined` se cae del JSON y la edge function lo ignora, mientras
+  // que el `|| null` de un campo vacío SÍ se escribe y borra el dato.
+  // Es el mismo candado que arriba, por la misma razón.
+  const [perfilCompletoCargado, setPerfilCompletoCargado] = useState(false);
+
   // Enlace con "usuario SICAS" (catálogo de vendedores)
   const canLinkSicas = isAdmin || isGerente;
   const [sicasLink, setSicasLink] = useState<SicasVendorOption | null>(null);
@@ -158,6 +166,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
   }, [isGerente, currentUser]);
 
   useEffect(() => {
+    let cancelado = false;
     loadOficinas();
     loadModulosSistema();
     if (editableUser) {
@@ -203,6 +212,50 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
         setDatosBancariosCargados(true);
       });
 
+      // El perfil completo, de la tabla y no de la lista. La lista que abre
+      // este modal manda solo las columnas que ELLA necesita para pintar sus
+      // renglones, y el modal guarda muchas más: sin esto, fecha de nacimiento,
+      // fecha de ingreso, régimen fiscal, días de vacaciones, extensión, equipo
+      // asignado y la ubicación salían vacíos y se iban en NULL al guardar.
+      // Se pide por la lista canónica (`USUARIO_COLUMNAS`) y no con `*`, porque
+      // un `*` sobre `usuarios` truena: los datos bancarios no tienen grant.
+      setPerfilCompletoCargado(false);
+      supabase
+        .from('usuarios')
+        .select(USUARIO_COLUMNAS)
+        .eq('id', editableUser.id)
+        .maybeSingle()
+        .then(({ data: perfil, error: perfilError }) => {
+          // Si el modal ya se cerró o pasó a OTRO usuario, esta respuesta es de
+          // alguien más: aplicarla pondría la fecha de nacimiento de A en el
+          // formulario de B, y el siguiente Guardar la escribiría.
+          if (cancelado || !perfil) {
+            if (perfilError) console.error('[UserModal] No se pudo leer el perfil completo:', perfilError.message);
+            return;
+          }
+          const u = perfil as unknown as UsuarioModal;
+          setFormData(prev => ({
+            ...prev,
+            fecha_nacimiento: u.fecha_nacimiento || '',
+            fecha_ingreso: u.fecha_ingreso || '',
+            extension_telefonica: u.extension_telefonica || '',
+            regimen_fiscal_id: u.regimen_fiscal_id || '',
+            dias_vacaciones_disponibles: u.dias_vacaciones_disponibles || 0,
+            equipo_computo: u.equipo_computo || '',
+            equipo_celular: u.equipo_celular || '',
+            plan_mkt_premium: u.plan_mkt_premium || false,
+            seguros_express_habilitado: u.seguros_express_habilitado || false,
+            es_desarrollador: u.es_desarrollador || false,
+          }));
+          setUbic({
+            lat: u.ubicacion_lat ?? null,
+            lng: u.ubicacion_lng ?? null,
+            direccion_manual: u.ubicacion_direccion_manual ?? null,
+            metodo: u.ubicacion_metodo ?? null,
+          });
+          setPerfilCompletoCargado(true);
+        });
+
       // Prellenar el chip de enlace SICAS si el usuario ya tiene id_sicas.
       const existingIdSicas = editableUser.id_sicas;
       if (existingIdSicas && String(existingIdSicas).trim()) {
@@ -232,6 +285,7 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
       }
       setSicasTouched(false);
     }
+    return () => { cancelado = true; };
   }, [editableUser]);
 
   // Búsqueda de vendedores SICAS (con debounce) mientras el buscador está abierto.
@@ -550,33 +604,38 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
           oficina_id: formData.oficina_id || null,
           web_slug: formData.web_slug || null,
           ...(formData.rol_id ? { rol_id: formData.rol_id } : {}),
-          fecha_nacimiento: formData.fecha_nacimiento || null,
-          fecha_ingreso: formData.fecha_ingreso || null,
           celular_personal: formData.celular_personal,
           email_personal: formData.email_personal,
           celular_laboral: formData.celular_laboral,
           email_laboral: formData.email_laboral,
-          extension_telefonica: formData.extension_telefonica,
-          regimen_fiscal_id: formData.regimen_fiscal_id || null,
           // Solo si se pudieron leer: si no, se mandarían vacíos y se borrarían.
           banco: datosBancariosCargados ? formData.banco : undefined,
           clabe: datosBancariosCargados ? formData.clabe : undefined,
-          dias_vacaciones_disponibles: formData.dias_vacaciones_disponibles,
-          equipo_computo: formData.equipo_computo || null,
-          equipo_celular: formData.equipo_celular || null,
-          plan_mkt_premium: formData.plan_mkt_premium,
           imagen_perfil_url: avatarUrl,
           mi_logotipo_url: logoUrl,
           updated_at: new Date().toISOString(),
         };
 
-        // seguros.express: habilitación (solo admin) + ubicación (editable por admin).
-        updateData.seguros_express_habilitado = formData.seguros_express_habilitado;
-        updateData.es_desarrollador = formData.es_desarrollador;
-        updateData.ubicacion_lat = ubic.lat;
-        updateData.ubicacion_lng = ubic.lng;
-        updateData.ubicacion_direccion_manual = ubic.direccion_manual;
-        updateData.ubicacion_metodo = ubic.metodo;
+        // Todo lo que NO viene en la lista que abre este modal, sino del perfil
+        // completo. Si esa lectura falló, no se manda nada de esto: mandarlo
+        // vacío es borrarlo. `undefined` se cae del JSON y update-user lo
+        // ignora (`if (userData.x !== undefined)`); un `null` sí se escribe.
+        if (perfilCompletoCargado) {
+          updateData.fecha_nacimiento = formData.fecha_nacimiento || null;
+          updateData.fecha_ingreso = formData.fecha_ingreso || null;
+          updateData.extension_telefonica = formData.extension_telefonica;
+          updateData.regimen_fiscal_id = formData.regimen_fiscal_id || null;
+          updateData.dias_vacaciones_disponibles = formData.dias_vacaciones_disponibles;
+          updateData.equipo_computo = formData.equipo_computo || null;
+          updateData.equipo_celular = formData.equipo_celular || null;
+          updateData.plan_mkt_premium = formData.plan_mkt_premium;
+          updateData.seguros_express_habilitado = formData.seguros_express_habilitado;
+          updateData.es_desarrollador = formData.es_desarrollador;
+          updateData.ubicacion_lat = ubic.lat;
+          updateData.ubicacion_lng = ubic.lng;
+          updateData.ubicacion_direccion_manual = ubic.direccion_manual;
+          updateData.ubicacion_metodo = ubic.metodo;
+        }
         const ubicCambio =
           (editableUser?.ubicacion_lat ?? null) !== ubic.lat ||
           (editableUser?.ubicacion_lng ?? null) !== ubic.lng ||
@@ -1480,8 +1539,14 @@ export function UserModal({ user, onClose, onSave, lockRoleToAgente = false }: U
               </div>
             )}
 
-            {/* Perfil Desarrollador — solo Administrador, y no sobre otro Administrador */}
-            {isAdmin && formData.rol !== 'Administrador' && (
+            {/* Perfil Desarrollador — lo activa y lo quita solo un Administrador.
+                ⚠️ Antes esto llevaba además `formData.rol !== 'Administrador'`, y
+                el 06/11 Froilán pasó a Administrador justamente para que el menú
+                le destapara los módulos: la casilla desapareció de su perfil y
+                con ella la ÚNICA forma de quitarle la marca desde la pantalla —
+                una marca encendida, invisible y sin apagador. Un Administrador
+                marcado como desarrollador existe de verdad y hay que poder verlo. */}
+            {isAdmin && (
               <div className="bg-gradient-to-br from-violet-50 to-purple-50 border-2 border-violet-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <input
