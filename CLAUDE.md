@@ -54,43 +54,53 @@ Todo lo de tiendas vive en **`store/`** (empezar por `store/CHECKLIST.md` y `sto
 
 ### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-23
 
-#### ⏳ EN CURSO — que el servidor deje de compilar en cada deploy
+#### ✅ HECHO — el servidor ya no compila en cada deploy (23/11)
 
-Está construido y **verde**, falta el último paso, que es de Plesk.
+**Funcionando y verificado desde fuera.** Beta pasó de `6ebd1ae5` a `c7b916d`
+sin compilar nada en el servidor, y el `.htaccess` sigue aplicando
+(`Cache-Control: no-cache, no-store` en `index.html`), que es la prueba de que
+los archivos aterrizaron **dentro** del document root y no al lado.
 
-| Pieza | Estado |
+| Pieza | |
 |---|---|
-| `.github/workflows/publicar-beta.yml` | ✅ corriendo; publica `dist/` a la rama **`beta-dist`** en cada push a `main` |
-| Los tres secrets en GitHub | ✅ cargados por Ricardo (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_BONOS_URL`) |
-| La rama `beta-dist` | ✅ existe y verificada (raíz = solo `dist/`, 397 archivos) |
-| Cambiar la rama en Plesk + vaciar las acciones | ❌ **falta** — a Ricardo no le aparece `beta-dist` en el selector |
+| `.github/workflows/publicar-beta.yml` | publica `dist/` a la rama **`beta-dist`** en cada push a `main` |
+| Secrets en GitHub | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_BONOS_URL` |
+| Plesk | rama **`beta-dist`**, acciones de despliegue **vacías** |
+| Document root de beta | `/var/www/vhosts/movi.digital/beta.movi.digital/dist` |
 
-**Dónde se atoró:** Plesk no lista la rama. Las dos causas posibles, sin
-confirmar todavía cuál es:
+**El ciclo:** push a `main` → GitHub hornea (2-3 min) → deja el paquete en
+`beta-dist` → Ricardo da Pull + Deploy cuando quiere. **Publicar a la rama NO
+despliega**; el autodespliegue que se quitó el 05/11 sigue sin existir.
 
-1. **Plesk no ha vuelto a hablar con GitHub.** Su lista de ramas es de la última
-   sincronización y `beta-dist` nació después. Se resuelve con un **Pull** (con
-   la rama todavía en `main`) y reabriendo la configuración.
-2. **Plesk clonó con una sola rama.** Entonces ningún Pull la verá nunca:
+- **`beta-dist` no es código.** Se reescribe entera (force-push) en cada
+  publicación. No se mergea, no se edita, no se revisa.
+- **Si el build truena, el paquete no se actualiza** y `beta-dist` conserva el
+  último que sí compiló. Lo que se despliega siempre construyó bien — y ahora
+  truena en GitHub, no junto a la base de datos.
+- Una ✗ roja en la pestaña **Actions** significa *"el paquete no se actualizó"*.
+  La barra naranja sigue siendo la verdad final de qué está vivo.
+
+⚠️ **Esto es SOLO para beta.** `produccion` / `app.movi.digital` **sigue
+compilando en el servidor**: el workflow solo se dispara con `main`. Queda
+pendiente armarle el equivalente — mismo molde apuntando a `produccion`, ya con
+las dos trampas de abajo resueltas.
+
+🔑 **Por qué Plesk no mostraba la rama**, que fue donde se atoró un rato: su
+lista de ramas es de la última vez que habló con GitHub, y `beta-dist` nació
+después. Se resolvió con un **Pull normal** (todavía con la rama en `main`), que
+lo obliga a volver a preguntar. Si algún día no bastara, es que clonó con una
+sola rama:
 
 ```bash
 cd /var/www/vhosts/movi.digital/beta.movi.digital
-git branch -r      # ¿solo sale origin/main? -> es este caso
+git branch -r      # ¿solo sale origin/main? -> es ese caso
 git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
 git fetch origin
 ```
 
-⚠️ **Dato que falta y que importa antes de desplegar:** qué dice **"Ruta de
-despliegue"** en Plesk. El document root de beta es
-`.../beta.movi.digital/dist` (deducido: el `.htaccess` vive en `public/`, Vite
-lo copia a `dist/`, y beta **sí** aplica esas cabeceras — verificado con
-`curl`). Si la ruta de despliegue apuntara a otro lado, el paquete aterrizaría
-fuera del document root y el sitio **seguiría sirviendo el build anterior sin
-avisar**.
-
-🔑 **`beta.movi.digital` es un SUBDOMINIO de la suscripción `movi.digital`** (se
-ve en la ruta). En Plesk su Git cuelga de la tarjeta del subdominio, no de la
-de `movi.digital`, que tiene su propio repositorio distinto.
+🔑 **`beta.movi.digital` es un SUBDOMINIO de la suscripción `movi.digital`.** En
+Plesk su Git cuelga de la tarjeta del subdominio, no de la de `movi.digital`,
+que tiene su propio repositorio distinto.
 
 #### 💾 RESPALDO — las "Acciones de despliegue adicionales" de Plesk
 
@@ -411,6 +421,14 @@ select polname, polcmd, polpermissive
 Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
 
 #### Falta probar en navegador
+- **Los tres arreglos del 23/11, ya desplegados en `c7b916d`:** abrir el propio
+  usuario en el Directorio y confirmar que (a) **fecha de nacimiento y fecha de
+  ingreso salen llenas** —esa es la prueba de que el modal ya lee el perfil
+  completo—, (b) aparece la casilla **"Perfil Desarrollador"** (antes se
+  escondía en cualquier Administrador) y está **apagada**, y (c) asignarse un
+  equipo de Administración o Comercial, guardar, reabrir y ver que **persiste**.
+  Si algo falla, ahora **se ve el error**: el modal solo se cierra cuando de
+  verdad escribió.
 - ~~**Cargos al cliente de Store (09/11)**~~ — ✅ **probado por Ricardo el
   09/11**: *"listo, ya funciona"*. Lo único que no se alcanzó a mirar con él es
   el **aviso del carrito** (que al levantar un pedido salga la ventana de que
