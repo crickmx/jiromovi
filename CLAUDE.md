@@ -1,6 +1,6 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-09)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-23)
 
 ### ✉️ 2026-11-10 — Correo y WhatsApp rediseñados (rama `claude/optimistic-johnson-dfrcq6`, sin merge)
 
@@ -52,7 +52,67 @@ Todo lo de tiendas vive en **`store/`** (empezar por `store/CHECKLIST.md` y `sto
 
 ---
 
-### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-09
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-23
+
+#### ⏳ EN CURSO — que el servidor deje de compilar en cada deploy
+
+Está construido y **verde**, falta el último paso, que es de Plesk.
+
+| Pieza | Estado |
+|---|---|
+| `.github/workflows/publicar-beta.yml` | ✅ corriendo; publica `dist/` a la rama **`beta-dist`** en cada push a `main` |
+| Los tres secrets en GitHub | ✅ cargados por Ricardo (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_BONOS_URL`) |
+| La rama `beta-dist` | ✅ existe y verificada (raíz = solo `dist/`, 397 archivos) |
+| Cambiar la rama en Plesk + vaciar las acciones | ❌ **falta** — a Ricardo no le aparece `beta-dist` en el selector |
+
+**Dónde se atoró:** Plesk no lista la rama. Las dos causas posibles, sin
+confirmar todavía cuál es:
+
+1. **Plesk no ha vuelto a hablar con GitHub.** Su lista de ramas es de la última
+   sincronización y `beta-dist` nació después. Se resuelve con un **Pull** (con
+   la rama todavía en `main`) y reabriendo la configuración.
+2. **Plesk clonó con una sola rama.** Entonces ningún Pull la verá nunca:
+
+```bash
+cd /var/www/vhosts/movi.digital/beta.movi.digital
+git branch -r      # ¿solo sale origin/main? -> es este caso
+git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+git fetch origin
+```
+
+⚠️ **Dato que falta y que importa antes de desplegar:** qué dice **"Ruta de
+despliegue"** en Plesk. El document root de beta es
+`.../beta.movi.digital/dist` (deducido: el `.htaccess` vive en `public/`, Vite
+lo copia a `dist/`, y beta **sí** aplica esas cabeceras — verificado con
+`curl`). Si la ruta de despliegue apuntara a otro lado, el paquete aterrizaría
+fuera del document root y el sitio **seguiría sirviendo el build anterior sin
+avisar**.
+
+🔑 **`beta.movi.digital` es un SUBDOMINIO de la suscripción `movi.digital`** (se
+ve en la ruta). En Plesk su Git cuelga de la tarjeta del subdominio, no de la
+de `movi.digital`, que tiene su propio repositorio distinto.
+
+#### 💾 RESPALDO — las "Acciones de despliegue adicionales" de Plesk
+
+Lo que había en esa caja antes del cambio. **Esto es el botón de reversa**: si
+algo sale mal, se regresa la rama a `main`, se vuelve a pegar esto y Pull +
+Deploy deja todo como estaba.
+
+```bash
+cp -f /var/www/vhosts/movi.digital/beta.movi.digital/.env /tmp/.env_movi_build 2>/dev/null && chmod 644 /tmp/.env_movi_build || true
+CI=1 timeout --signal=TERM --kill-after=30s 10m npm ci --no-audit --no-fund
+CI=1 timeout --signal=TERM --kill-after=30s 10m npm run build
+```
+
+⚠️ **La primera línea está en revisión con Christofer.** Nada del repo la usa —
+`vite.config.ts` no define `envDir` ni llama a `loadEnv`, así que Vite lee el
+`.env` de la raíz del proyecto, no esa copia. **Antes de restaurarla, preguntar
+si algo fuera del repo depende de ella**; si nadie la necesita, se queda fuera.
+
+(Las otras dos son las que hacían que el servidor compilara. Con `beta-dist` la
+caja va **vacía**.)
+
+### 🔜 Lo que venía de antes — abierto desde el 2026-11-09
 
 **Lo de MOVI Store quedó TERMINADO y probado por Ricardo** ("ya funciona", 09/11).
 Todas las migraciones corridas, todo desplegado. Lo que sigue abierto de ese
@@ -449,6 +509,175 @@ Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
 
 #### Hilos viejos
 Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### ✅ 2026-11-23 — editar un usuario le borraba 16 columnas, y el build sale del servidor
+
+Ricardo reportó tres cosas de golpe. **Son tres causas distintas, y ninguna es
+una regresión de los 64 commits que entraron estas dos semanas** — se verificó:
+ninguna migración nueva toca las políticas de `usuarios`, y `UserModal.tsx` y
+`Directorio.tsx` no se tocaron.
+
+#### 🔴 Lo grave: cada edición de usuario borraba 16 columnas
+
+Síntoma que él vio: *"intenté actualizar mi información, fecha de nacimiento y
+fecha de ingreso… y los cambios no se guardan"*.
+
+Medido: el `.select()` del Directorio trae **18 columnas** y el modal **escribe
+28**. Las 16 de en medio llegaban `undefined`, el formulario las pintaba vacías
+y al guardar su `|| null` se escribía **encima del dato bueno**. No era "no
+guarda": era que **cualquier admin, al editar a cualquiera**, borraba fecha de
+nacimiento, fecha de ingreso, régimen fiscal, días de vacaciones (a 0),
+extensión, equipo de cómputo y celular, plan Premium, seguros express y la
+ubicación.
+
+Probado de punta a punta: `update-user` hace `if (userData.x !== undefined)` y
+`JSON.stringify` **tira los undefined** — o sea que un `undefined` no viaja y un
+`null` **sí se escribe**.
+
+🔑 **La prueba de que no era nuevo:** `banco` y `clabe` ya tenían su candado, con
+este comentario al lado — *"antes el formulario los mandaba vacíos y borraba el
+banco y la CLABE de cualquiera que se editara desde el Directorio"*. Alguien ya
+chocó con esto y lo parchó **para dos columnas**, dejando catorce.
+
+**El arreglo va a la raíz, no al Directorio:** el modal es quien ESCRIBE, así que
+es quien tiene que LEER. Al abrir en edición pide el perfil completo con
+`USUARIO_COLUMNAS` —la lista canónica que ya existía para esto— y no con `*`,
+que truena porque los datos bancarios no tienen grant. Eso cubre también a
+`MarketingPremiumAdmin`, el otro que abre ese modal.
+
+- Si la lectura falla, esas columnas **no se mandan** (`perfilCompletoCargado`).
+- La respuesta tardía se descarta si el modal ya pasó a otro usuario: sin eso,
+  la fecha de nacimiento de A aterriza en el formulario de B y el siguiente
+  Guardar la escribe.
+
+🔑 **Lo confirmó Ricardo sin querer:** *"lo de los equipos y slug para página web
+sí persiste, pero la fecha de nacimiento y fecha de ingreso no"*. Exacto:
+`web_slug` **sí** viene en el `.select()` (lo agregaron en un commit llamado
+*"fix(directorio): cargar slug personalizado al editar usuario"* — el mismo bug,
+parchado para esa columna). Los equipos van por su propia consulta.
+
+⚠️ **Y una corrección mía:** le dije *"vuelve a capturar tus fechas, eso sí se
+perdió"*. **Probablemente no.** Si las tecleó antes de guardar, se guardaron; lo
+roto era que el modal nunca las volvía a leer. El borrado ocurre al revés: al
+editar otra cosa dejando esos campos vacíos.
+
+**La comprobación:** `node src/components/UserModal.columnas.test.mjs`. Vigila la
+regla que se rompió — una columna escrita FUERA del candado tiene que venir en el
+`.select()` de la lista; una escrita DENTRO tiene que estar en
+`USUARIO_COLUMNAS`. **TypeScript no puede atrapar esto porque la lista es una
+CADENA**, y por eso el patrón ya mordió cinco veces.
+
+#### 🔴 La casilla "Perfil Desarrollador", una trampa que armamos entre los dos
+
+La condición era `isAdmin && formData.rol !== 'Administrador'`. El **06/11
+Froilán pasó a Administrador** —recomendación mía, para que el menú le destapara
+los módulos, porque `module_visibility` solo puede quitar— y con eso la casilla
+desapareció de su perfil. Y con ella **la única forma de quitarle la marca desde
+la pantalla**: quedó encendida, invisible y sin apagador.
+
+Ahora la condición es solo `isAdmin`: un Administrador marcado como desarrollador
+existe de verdad y hay que poder verlo.
+
+#### 🔴 Guardar podía borrarle los equipos a alguien, en silencio
+
+Lo encontró su pregunta: *"no manda error para usuario admin o empleados, ya que
+no es requisito que tengan asignados los equipos. ¿Puede ser eso parte del
+problema?"*. Sí.
+
+Guardar con la selección vacía **no es "no guardar nada"**:
+`planearReglasDeEquipo` manda a `desactivar` **toda** regla que no venga en la
+selección. Si el selector no había leído los equipos actuales —o su lectura
+falló— el guardado **se los borra**, sin error, con el modal cerrándose normal
+(`onSave()` solo corre por el camino de éxito). Y nadie lo detiene: la exigencia
+de cubrir las categorías es **solo del Agente** (`mustValidateTramiteTeams`).
+
+El hueco fino: el selector marcaba `ready` en cuanto dejaba de cargar, **aunque
+`loadUserTramiteTeamIds` hubiera tronado** — ahí los equipos sí estaban cargados
+(categorías > 0) pero la selección quedaba vacía, que es justo el caso que
+borra. Por eso la señal nueva no es "ya no está cargando" sino **`hidratado`**:
+si de verdad se pudo leer qué equipos tiene hoy ese usuario.
+
+**Verificado con los datos de Ricardo:** su consulta devolvió **una sola fila,
+`activo = true`**. O sea que la vía existía pero **con él nunca se disparó** —
+nada que restaurar. El candado es prevención.
+
+🔑 **La regla que apareció TRES veces el mismo día:** *escribir lo que no se pudo
+leer es borrarlo.* Es el mismo candado en `perfilCompletoCargado`,
+`datosBancariosCargados` y `hidratado`.
+
+#### 🟡 Lo de "solo veo trámites de los usuarios de prueba" NO era un bug
+
+Es el toggle **Reales · Bots · Todo** de Trámites (arriba a la derecha, solo
+Administrador), que estaba en **Bots**. Un clic lo arregla.
+
+**No era el candado del desarrollador**, y la prueba estaba en su propia captura:
+si su cuenta tuviera `es_desarrollador`, el Directorio le mostraría **6
+usuarios**, y le muestra cientos. Las políticas de ese candado están
+condicionadas a `soy_desarrollador()`.
+
+⏳ **Queda ofrecido y sin respuesta:** el selector de equipos marca **"⚠
+Faltante"** aunque al rol no se le exija ningún equipo. Esa advertencia solo
+tiene sentido para un Agente, y es lo que lo llevó a pensar que había un permiso
+roto. Hacerla condicional son minutos.
+
+#### ✅ El build de beta sale del servidor
+
+Pregunta suya: *"¿vuelve a hacer build de todo MOVI desde cero en Plesk? ¿Hay
+otra opción menos costosa en recursos?"*.
+
+**Sí, y el build ya se hacía DOS veces:** `ci.yml` construye lo mismo en cada
+push a `main` para validar que compila, **y tira el resultado**; el servidor lo
+vuelve a construir después. Se pagaba el caro.
+
+`.github/workflows/publicar-beta.yml` construye en GitHub y deja el `dist` en la
+rama `beta-dist`. Plesk pasa a tirar de ahí con las acciones **vacías**: el
+deploy se vuelve copiar archivos. **De minutos y 2.2 GB a segundos y ~0 RAM.**
+
+**NO revive el autodespliegue** que se quitó a propósito el 05/11: publicar a la
+rama no despliega nada; el sitio sigue cambiando solo con el Pull + Deploy manual.
+
+**Lo verificado antes de escribirlo, no supuesto:**
+
+- Las únicas variables que se hornean son `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY` y `VITE_BONOS_URL`. La llave del bundle dice
+  `"role":"anon"` y **ya estaba committeada** en el baseline, así que publicar el
+  `dist` **no expone nada nuevo**. Medido también: cero `service_role`, cero
+  `sb_secret_`, cero mapas de código fuente, cero volcados (`.sql`/`.csv`/`.env`).
+- `vite.config.ts` ya lee `GITHUB_SHA`, así que la barra naranja sigue diciendo
+  la verdad. Dirá **7 caracteres en vez de 8**.
+- El `.npmrc` trae `legacy-peer-deps=true`, así que `npm ci` pelado basta.
+
+⚠️ **DOS trampas que costaron una corrida cada una:**
+
+1. **La rama lleva la CARPETA `dist/`, no su contenido pelado.** Plesk deja los
+   archivos en el directorio del repositorio y el document root es la subcarpeta
+   `dist` de ahí; publicando el contenido suelto, `index.html` caería **al lado**
+   del document root y el sitio seguiría sirviendo el build anterior **sin que
+   nada avisara**. Hay un cinturón en el workflow que aborta si la raíz del
+   árbol deja de ser exactamente `dist`.
+2. 🔑 **Una rama con historial HUÉRFANO la rechaza GitHub.** El primer intento la
+   creaba con `git init` aparte y el push murió con
+   `remote: fatal error in commit_refs_rules`. **No era el ruleset** —medido
+   contra la API: *"Proteger main y produccion"* solo cubre `~DEFAULT_BRANCH` y
+   `refs/heads/produccion`, con `deletion` y `non_fast_forward`— ni el tamaño
+   (397 archivos). Era que el evaluador de reglas se atraganta con una rama que
+   no comparte historia con nada. Ahora el commit cuelga del commit real
+   (`-p "$GITHUB_SHA"`), y de paso queda trazable de qué commit salió.
+
+🔑 **Y el dato que importa para el futuro:** los *rulesets* **no** aparecen en la
+API vieja de protección de ramas. El CLAUDE.md decía *"`main` no tiene protección
+(la API devuelve 404)"* y era verdad para esa API, pero **sí hay un ruleset
+activo**. Para saberlo: `gh api repos/crickmx/jiromovi/rulesets`.
+
+#### Pendientes de Ricardo con terceros
+
+- **Tres PDFs de cotizaciones con nombre de persona** en `public/cotizaciones/`
+  (`Christofer_-_BUPA_PLUS.pdf` y dos más), servidos públicamente desde la web.
+  **Son de Christofer y Ricardo lo ve con él** (23/11). No tocar.
+- `public/test-sicas-rest-real.html` — página de pruebas accesible en producción.
+  Revisada: **no tiene credenciales**, solo apunta a la URL pública de Supabase.
 
 ---
 
