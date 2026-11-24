@@ -1,15 +1,35 @@
 import { useNavigate } from 'react-router-dom';
-import { Car, Compass, ChevronRight, Calculator, Heart, FileText } from 'lucide-react';
+import { Car, Compass, ChevronRight, Calculator, Heart, FileText, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
 import { isItemVisible, WORKSPACES, type UserRole } from '../lib/workspaceConfig';
 import { PageHeader } from '../components/ui/page-header';
 
-const MODULES = [
+interface AseguradoraDelComparador {
+  name: string;
+  logo: string;
+}
+
+interface CotizadorModule {
+  path: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  color: string;
+  bgLight: string;
+  borderHover: string;
+  shadowHover: string;
+  iconColor: string;
+  logo: string | null;
+  /** Aseguradoras que trae cargadas el comparador (los planes incluidos). */
+  aseguradoras?: AseguradoraDelComparador[];
+}
+
+const MODULES: CotizadorModule[] = [
   {
     path: '/cotizar/multicotizador-gmm',
     label: 'Multicotizador GMM',
-    description: 'Compara cotizaciones de Gastos Médicos Mayores entre BX+, Bupa Nacional Vital y Bupa Nacional Plus.',
+    description: 'Compara Gastos Médicos Mayores en las tres aseguradoras cargadas, con las mismas coberturas y edad: cuál sale más barata, cómo queda el pago en cada forma (anual, semestral, trimestral, bimestral y mensual) y PDF con tu marca.',
     icon: Heart,
     color: 'from-teal-500 to-cyan-600',
     bgLight: 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 border border-teal-200/50 dark:border-teal-800/40',
@@ -17,6 +37,11 @@ const MODULES = [
     shadowHover: 'hover:shadow-teal-100/40 dark:hover:shadow-teal-900/20',
     iconColor: 'text-teal-600 dark:text-teal-400',
     logo: '/logo-bupa.png',
+    aseguradoras: [
+      { name: 'Bupa Nacional Vital', logo: '/logo-bupa.png' },
+      { name: 'Bupa Nacional Plus', logo: '/logo-bupa.png' },
+      { name: 'BX+ Unikuz', logo: '/logo-bx.png' },
+    ],
   },
   {
     path: '/cotizar/auna-oncologico',
@@ -109,6 +134,22 @@ export default function CotizarHub() {
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
                   {mod.description}
                 </p>
+
+                {mod.aseguradoras && mod.aseguradoras.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                    {mod.aseguradoras.map((aseg) => (
+                      <span
+                        key={aseg.name}
+                        className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/5 border border-neutral-200/70 dark:border-white/10"
+                      >
+                        <img src={aseg.logo} alt={aseg.name} className="w-4 h-4 object-contain" />
+                        <span className="text-[10px] font-semibold text-neutral-600 dark:text-neutral-300">
+                          {aseg.name}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className={`inline-flex items-center gap-1.5 mt-5 pt-3 border-t border-neutral-100 dark:border-white/5 text-xs font-semibold ${mod.iconColor} transition-all duration-200 group-hover:gap-2.5`}>
