@@ -13,6 +13,7 @@ import { BaseModal } from '../components/BaseModal';
 import { aulaDaily } from '../lib/aulaDaily';
 import { analyticsTracker } from '../lib/analyticsTracker';
 import { subirPortadaClase } from '../lib/aulaDaily';
+import { generarPortadaCapacitacion, logoDeAseguradora } from '../lib/portadaCapacitacion';
 import { SelectorEtiquetas, PildorasEtiquetas } from '../components/segurosEducation/SelectorEtiquetas';
 import {
   cargarEtiquetas,
@@ -357,7 +358,8 @@ export function SegurosEducationAulaVirtual() {
     categoriaId: string | null;
     etiquetas: string[];
     cohosts: string[];
-    portada: File;
+    ponente: string;
+    portada: File | null;
   }) => {
     if (!usuario) throw new Error('Sesión no disponible');
 
@@ -366,9 +368,30 @@ export function SegurosEducationAulaVirtual() {
     const inicio = new Date(`${datos.fecha}T${datos.hora}:00-06:00`);
     const fin = new Date(inicio.getTime() + datos.duracionMin * 60_000);
 
-    // La portada se sube antes de crear el evento: es obligatoria y es la misma
-    // imagen que después viaja como miniatura de la lección en On Demand.
-    const portadaUrl = await subirPortadaClase(datos.portada);
+    // Quién imparte: lo que escribió, o quien crea el evento si lo dejó vacío.
+    const ponenteFinal = datos.ponente.trim() || nombreUsuario(usuario);
+
+    // La aseguradora sale de las etiquetas elegidas; su logotipo, de la base.
+    const idAseguradora = datos.etiquetas.find(
+      (id) => catalogoEtiquetas.find((e) => e.id === id)?.tipo === 'aseguradora',
+    );
+    const nombreAseguradora = idAseguradora
+      ? catalogoEtiquetas.find((e) => e.id === idAseguradora)?.nombre ?? null
+      : null;
+
+    // Con imagen se sube la que eligió; sin imagen, el sistema dibuja la portada
+    // con la identidad de Seguros Education (título, ponente y aseguradora).
+    let archivoPortada = datos.portada;
+    if (!archivoPortada) {
+      const logoAseguradora = nombreAseguradora ? await logoDeAseguradora(nombreAseguradora) : null;
+      archivoPortada = await generarPortadaCapacitacion({
+        titulo: datos.titulo,
+        ponente: datos.ponente.trim() || null,
+        aseguradora: nombreAseguradora,
+        logoAseguradora,
+      });
+    }
+    const portadaUrl = await subirPortadaClase(archivoPortada);
 
     const { data, error } = await supabase
       .from('aula_eventos')
@@ -376,7 +399,7 @@ export function SegurosEducationAulaVirtual() {
         titulo: datos.titulo.trim(),
         descripcion: datos.descripcion.trim() || null,
         // `ponente` es legado del calendario, pero la portada del módulo lo pinta.
-        ponente: nombreUsuario(usuario),
+        ponente: ponenteFinal,
         fecha: datos.fecha,
         hora: `${datos.hora}:00`,
         fecha_inicio: inicio.toISOString(),
@@ -923,7 +946,10 @@ function FormularioClase({
     categoriaId: string | null;
     etiquetas: string[];
     cohosts: string[];
-    portada: File;
+    /** Nombre de quien imparte. Opcional: si falta, firma quien crea el evento. */
+    ponente: string;
+    /** Si no se sube imagen, el sistema dibuja la portada. */
+    portada: File | null;
   }) => Promise<{ id: string; link: string | null; invitados?: number }>;
   onCreada: (link: string | null, invitados: number) => void;
 }) {
@@ -938,6 +964,7 @@ function FormularioClase({
   const [categoriaId, setCategoriaId] = useState<string>('');
   const [etiquetasElegidas, setEtiquetasElegidas] = useState<string[]>([]);
   const [cohosts, setCohosts] = useState<string[]>([]);
+  const [ponente, setPonente] = useState('');
   const [portada, setPortada] = useState<File | null>(null);
   const [portadaPreview, setPortadaPreview] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -953,9 +980,8 @@ function FormularioClase({
 
   const guardar = async () => {
     if (titulo.trim().length < 3) return setError('Ponle un nombre a la capacitación');
-    if (!portada) return setError('Carga la imagen miniatura de la capacitación');
-    if (!portada.type.startsWith('image/')) return setError('La imagen miniatura debe ser un archivo de imagen');
-    if (portada.size > 8 * 1024 * 1024) return setError('La imagen miniatura no debe pesar más de 8 MB');
+    if (portada && !portada.type.startsWith('image/')) return setError('La imagen miniatura debe ser un archivo de imagen');
+    if (portada && portada.size > 8 * 1024 * 1024) return setError('La imagen miniatura no debe pesar más de 8 MB');
     setGuardando(true);
     setError(null);
     try {
@@ -971,6 +997,7 @@ function FormularioClase({
         categoriaId: categoriaId || null,
         etiquetas: etiquetasElegidas,
         cohosts,
+        ponente: ponente.trim(),
         portada,
       });
       onCreada(res.link, res.invitados ?? 0);
@@ -1027,7 +1054,23 @@ function FormularioClase({
 
         <div>
           <label className="mb-1 block text-caption font-semibold text-neutral-700 dark:text-white/70">
-            Imagen miniatura <span className="text-red-500">*</span>
+            Ponente <span className="font-normal text-neutral-400">(opcional)</span>
+          </label>
+          <input
+            type="text"
+            value={ponente}
+            onChange={(e) => setPonente(e.target.value)}
+            placeholder="Quién imparte la capacitación"
+            className="w-full rounded-xl border border-neutral-200 bg-surface-50 px-3 py-2.5 text-body text-neutral-900 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
+          />
+          <p className="mt-1 text-[11px] leading-snug text-neutral-400">
+            Aparece en la portada y en la ficha del evento. Si lo dejas vacío, firma quien crea la capacitación.
+          </p>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-caption font-semibold text-neutral-700 dark:text-white/70">
+            Imagen miniatura <span className="font-normal text-neutral-400">(opcional)</span>
           </label>
           <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-neutral-300 p-3 transition hover:border-accent dark:border-white/15">
             <span className="relative flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-100 dark:bg-white/10">
@@ -1042,8 +1085,9 @@ function FormularioClase({
                 {portada ? portada.name : 'Cargar imagen (JPG o PNG, hasta 8 MB)'}
               </span>
               <span className="mt-0.5 block text-[11px] leading-snug text-neutral-400">
-                Obligatoria. Es la portada del evento y la misma imagen que se publica como miniatura de la lección
-                en On Demand.
+                {portada
+                  ? 'Es la portada del evento y la misma imagen que se publica como miniatura en On Demand.'
+                  : 'Sin imagen, el sistema genera la portada con el título, la aseguradora y el ponente.'}
               </span>
             </span>
             <input
