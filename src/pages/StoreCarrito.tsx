@@ -1,0 +1,378 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, Trash2, Plus, Minus, Package, TriangleAlert as AlertTriangle, Clock } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { supabase } from '../lib/supabase';
+import {
+  obtenerCarrito,
+  actualizarCantidadCarrito,
+  eliminarDelCarrito,
+  crearPedido
+} from '../lib/storeUtils';
+import type { StoreCarritoItem } from '../lib/storeTypes';
+import { BaseModal } from '../components/BaseModal';
+
+export default function StoreCarrito() {
+  const { usuario } = useAuth();
+  const navigate = useNavigate();
+  const [carrito, setCarrito] = useState<StoreCarritoItem[]>([]);
+  const [notasUsuario, setNotasUsuario] = useState('');
+  const [direccionEntrega, setDireccionEntrega] = useState('');
+  const [areaEntrega, setAreaEntrega] = useState('');
+  const [oficinas, setOficinas] = useState<{ id: string; nombre: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [procesando, setProcesando] = useState(false);
+  const [avisoEnvio, setAvisoEnvio] = useState(false);
+
+  useEffect(() => {
+    cargarCarrito();
+    cargarOficinas();
+  }, []);
+
+  const cargarOficinas = async () => {
+    const { data, error } = await supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre');
+    if (error) {
+      console.error('Error cargando oficinas:', error);
+      return;
+    }
+    setOficinas(data || []);
+  };
+
+  const cargarCarrito = async () => {
+    if (!usuario?.id) return;
+
+    try {
+      setLoading(true);
+      const data = await obtenerCarrito(usuario.id);
+      setCarrito(data);
+    } catch (error) {
+      console.error('Error cargando carrito:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleActualizarCantidad = async (id: string, cantidad: number) => {
+    try {
+      await actualizarCantidadCarrito(id, cantidad);
+      await cargarCarrito();
+    } catch (error) {
+      console.error('Error actualizando cantidad:', error);
+    }
+  };
+
+  const handleEliminar = async (id: string) => {
+    if (!confirm('¿Eliminar este producto del carrito?')) return;
+
+    try {
+      await eliminarDelCarrito(id);
+      await cargarCarrito();
+    } catch (error) {
+      console.error('Error eliminando producto:', error);
+    }
+  };
+
+  const handleRealizarPedido = async () => {
+    if (!usuario?.id || itemsValidos.length === 0) return;
+
+    try {
+      setProcesando(true);
+      await crearPedido(usuario.id, itemsValidos, notasUsuario, direccionEntrega, undefined, areaEntrega);
+
+      setCarrito([]);
+      setNotasUsuario('');
+      setDireccionEntrega('');
+      setAreaEntrega('');
+
+      navigate('/store/mis-pedidos');
+    } catch (error) {
+      console.error('Error creando pedido:', error);
+      const detalle = error instanceof Error ? error.message : String(error);
+      alert(`Error al crear el pedido: ${detalle}\n\nPor favor intenta de nuevo o avisa a soporte con este mensaje.`);
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const itemsValidos = carrito.filter(item => item.producto);
+
+  // Backorder: cantidad supera stock disponible (se permite, entrega diferida)
+  const itemsBackorder = itemsValidos.filter(item => {
+    if (item.producto?.disponibilidad === 'por_pedido') return false;
+    if (item.producto?.tipo_item === 'servicio') return false;
+    return item.cantidad > (item.producto?.stock ?? 0);
+  });
+  const hayBackorder = itemsBackorder.length > 0;
+
+  const calcularTotal = () => {
+    return itemsValidos.reduce((sum, item) => sum + ((item.producto?.precio ?? 0) * item.cantidad), 0);
+  };
+
+  if (loading) {
+    return (
+      <>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div>
+        <PageHeader
+          title="Mi Carrito"
+          description="Revisa y confirma los productos de tu pedido"
+          icon={ShoppingCart}
+          backTo="/store"
+          backLabel="Volver al catálogo"
+          className="mb-6 sm:mb-8"
+        />
+
+        {itemsValidos.length === 0 ? (
+          <div className="text-center py-12 bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10">
+            <Package className="w-16 h-16 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
+              Tu carrito está vacío
+            </h3>
+            <p className="text-neutral-500 dark:text-white/50 mb-6">Agrega productos para comenzar tu pedido</p>
+            <button
+              onClick={() => navigate('/store')}
+              className="bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
+            >
+              Explorar productos
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-3 sm:space-y-4">
+              {itemsValidos.map(item => (
+                <div key={item.id} className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-3 sm:p-4">
+                  <div className="flex gap-3 sm:gap-4">
+                    <img
+                      src={item.producto!.imagen_url}
+                      alt={item.producto!.titulo}
+                      className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg flex-shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-white mb-1 truncate">
+                        {item.producto!.titulo}
+                      </h3>
+                      <p className="text-sm text-neutral-600 dark:text-white/60 mb-1">
+                        ${item.producto!.precio.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      </p>
+
+                      {item.producto!.disponibilidad !== 'por_pedido' && item.producto!.tipo_item !== 'servicio' && item.cantidad > item.producto!.stock && (
+                        <p className="text-xs text-amber-700 font-medium flex items-center gap-1 mb-2">
+                          <Clock className="w-3 h-3" />
+                          {item.producto!.stock === 0
+                            ? 'Sin stock · Entrega: 7 días hábiles + envío'
+                            : `En bodega: ${item.producto!.stock} uds · Faltante: 7 días hábiles`}
+                        </p>
+                      )}
+
+                      {item.atributos_seleccionados && Object.keys(item.atributos_seleccionados).length > 0 && (
+                        <div className="mb-2 space-y-1">
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(item.atributos_seleccionados)
+                              .filter(([key]) => !key.startsWith('_'))
+                              .map(([key, value]) => (
+                                <span key={key} className="inline-flex items-center gap-1 bg-primary-50 border border-primary-200 rounded-full px-2 py-0.5 text-xs font-medium text-primary-800">
+                                  {key}: {value}
+                                </span>
+                              ))}
+                          </div>
+                          {item.atributos_seleccionados._personalizacion && (
+                            <p className="text-xs text-neutral-500 italic">
+                              Personalización: {item.atributos_seleccionados._personalizacion}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleActualizarCantidad(item.id, item.cantidad - 1)}
+                            disabled={item.cantidad <= 1}
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
+                          >
+                            <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </button>
+
+                          <span className="text-base sm:text-lg font-medium text-neutral-900 dark:text-white w-7 sm:w-8 text-center">
+                            {item.cantidad}
+                          </span>
+
+                          <button
+                            onClick={() => handleActualizarCantidad(item.id, item.cantidad + 1)}
+                            disabled={item.cantidad >= 999}
+                            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
+                          >
+                            <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => handleEliminar(item.id)}
+                          className="ml-auto text-red-600 hover:text-red-700 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </button>
+                      </div>
+
+                      <div className="mt-2 sm:hidden">
+                        <p className="text-base font-bold text-neutral-900 dark:text-white">
+                          ${(item.producto!.precio * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right hidden sm:block">
+                      <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                        ${(item.producto!.precio * item.cantidad).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="lg:col-span-1">
+              <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-4 sm:p-6 lg:sticky lg:top-4">
+                <h2 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white mb-4 sm:mb-6">Resumen del Pedido</h2>
+
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+                      Notas (opcional)
+                    </label>
+                    <textarea
+                      value={notasUsuario}
+                      onChange={(e) => setNotasUsuario(e.target.value)}
+                      placeholder="Instrucciones especiales..."
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40 bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+                      Área / Zona <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={areaEntrega}
+                      onChange={(e) => setAreaEntrega(e.target.value)}
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40 bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
+                    >
+                      <option value="">Selecciona una oficina...</option>
+                      {oficinas.map((oficina) => (
+                        <option key={oficina.id} value={oficina.nombre}>{oficina.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-white/70 mb-2">
+                      Dirección de entrega (opcional)
+                    </label>
+                    <textarea
+                      value={direccionEntrega}
+                      onChange={(e) => setDireccionEntrega(e.target.value)}
+                      placeholder="Ingresa tu dirección..."
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40 bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-neutral-200 dark:border-white/10 pt-4 mb-6">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-neutral-600 dark:text-white/60">Subtotal:</span>
+                    <span className="font-medium text-neutral-900 dark:text-white">
+                      ${calcularTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xl font-bold">
+                    <span className="text-neutral-900 dark:text-white">Total:</span>
+                    <span className="text-accent-ink">
+                      ${calcularTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                {hayBackorder && (
+                  <div className="mb-4 flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-4 py-3">
+                    <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-800 dark:text-amber-300">
+                      Algunos productos superan el stock disponible. Se surtirán en <strong>7 días hábiles</strong> + tiempo de envío.
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setAvisoEnvio(true)}
+                  disabled={procesando || !areaEntrega.trim()}
+                  className="w-full bg-accent text-accent-foreground px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-accent-hover transition-colors font-semibold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {procesando ? 'Procesando...' : 'Realizar Pedido'}
+                </button>
+
+                <p className="text-xs text-neutral-500 dark:text-white/50 mt-4 text-center">
+                  Los pedidos son procesados internamente
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Lo que el catálogo NO dice, y hay que decirlo ANTES de pedir: el
+          precio mostrado no trae envío. Sale aquí y no como nota al pie
+          porque una nota al pie no se lee. */}
+      <BaseModal
+        isOpen={avisoEnvio}
+        onClose={() => setAvisoEnvio(false)}
+        title="Antes de confirmar tu pedido"
+        maxWidth="md"
+        closeOnEscape
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <button
+              onClick={() => setAvisoEnvio(false)}
+              disabled={procesando}
+              className="px-4 py-2 rounded-lg border border-neutral-300 dark:border-white/20 text-sm font-medium text-neutral-700 dark:text-white/80 hover:bg-neutral-50 dark:hover:bg-white/5 disabled:opacity-50"
+            >
+              Volver al carrito
+            </button>
+            <button
+              onClick={handleRealizarPedido}
+              disabled={procesando}
+              className="px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
+            >
+              {procesando ? 'Procesando...' : 'Entendido, realizar pedido'}
+            </button>
+          </div>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-3 text-sm text-neutral-700 dark:text-white/75">
+            <p>
+              <strong className="text-neutral-900 dark:text-white">Los costos de envío no están incluidos</strong> en
+              los precios que muestra el catálogo.
+            </p>
+            <p>
+              Una persona del equipo de Mercadotecnia se pondrá en contacto contigo para coordinar el
+              <strong> envío o la recolección</strong> de tu pedido, y para confirmarte el costo si aplica.
+            </p>
+          </div>
+        </div>
+      </BaseModal>
+    </>
+  );
+}

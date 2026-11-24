@@ -1,0 +1,732 @@
+import { Fragment, useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  ChevronDown,
+  ChevronRight,
+  LayoutGrid,
+  Pin,
+  PinOff,
+  LogOut,
+  Star,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  isWorkspaceVisible,
+  isTopLevelItemVisible,
+  isItemVisible,
+  type WorkspaceDefinition,
+  type WorkspaceNavItem,
+  type UserRole,
+} from '@/lib/workspaceConfig';
+import { useSidebarConfig } from '@/hooks/useSidebarConfig';
+import { useSidebarItemsConfig } from '@/hooks/useSidebarItemsConfig';
+import { useMenuFavoritos } from '@/hooks/useMenuFavoritos';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { NotificationBell } from '../NotificationBell';
+import { ThemeToggle } from '../ThemeToggle';
+import { ChavaOrbIcon } from '../chava/ChavaOrbIcon';
+import { NavigationPanel } from '../navigation/NavigationPanel';
+
+const BADGE_COLORS: Record<string, string> = {
+  amber: 'bg-amber-500 text-white',
+  green: 'bg-green-500 text-white',
+  blue: 'bg-blue-500 text-white',
+  red: 'bg-red-500 text-white',
+  purple: 'bg-purple-500 text-white',
+};
+
+const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-2.5 py-1.5";
+const MAX_SIDEBAR_ITEMS = 12;
+const PINNED_KEY = 'movi:sidebar_pinned';
+const FAVORITOS_ABIERTO_KEY = 'movi:favoritos_abierto';
+
+const WORKSPACE_HUB_ROUTES: Record<string, string> = {
+  herramientas: '/herramientas',
+  'centro-contacto': '/centro-contacto',
+  cotizar: '/cotizar',
+  produccion: '/produccion',
+  administracion: '/admin',
+  mercadotecnia: '/mercadotecnia/publicidad',
+  'seguros-education': '/seguros-education',
+};
+
+interface DesktopSidebarProps {
+  isPinned: boolean;
+  onTogglePin: () => void;
+  workspace: WorkspaceDefinition | null;
+  activeItem: WorkspaceNavItem | null;
+  userRole: UserRole;
+  usuario: { nombre?: string; apellidos?: string; imagen_perfil_url?: string; rol?: string } | null;
+  onSignOut: () => void;
+  isModuleVisible?: (key: string, role: string, oficina_id?: string | null) => boolean;
+  oficinaId?: string | null;
+  badgeCounts?: Record<string, number>;
+  topLevelBadges?: Record<string, number>;
+}
+
+export function DesktopSidebar({
+  isPinned,
+  onTogglePin,
+  workspace,
+  activeItem: _activeItem,
+  userRole,
+  usuario,
+  onSignOut,
+  isModuleVisible,
+  oficinaId,
+  badgeCounts,
+  topLevelBadges,
+}: DesktopSidebarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { resolved } = useSidebarConfig();
+  const { getResolvedItems } = useSidebarItemsConfig();
+  const { favoritos, esFavorito, alternarFavorito } = useMenuFavoritos();
+
+  // Estado de hover inteligente
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // La barra está expandida si está fijada por el usuario O si tiene el mouse encima
+  const isExpanded = isPinned || isHovered;
+
+  // Acordeones abiertos
+  const [openWorkspaces, setOpenWorkspaces] = useState<Record<string, boolean>>(() => {
+    if (workspace) return { [workspace.id]: true };
+    return {};
+  });
+
+  // Favoritos: abierto siempre por default; si el usuario lo cierra, se respeta hasta que lo reabra.
+  const [favoritosAbierto, setFavoritosAbierto] = useState<boolean>(() => {
+    try { return localStorage.getItem(FAVORITOS_ABIERTO_KEY) !== '0'; } catch { return true; }
+  });
+
+  // Modal flyout para módulos extensos (ej. Admin con 26 items)
+  const [panelWorkspace, setPanelWorkspace] = useState<WorkspaceDefinition | null>(null);
+
+  // Mantener abierto automáticamente el espacio activo
+  useEffect(() => {
+    if (workspace) {
+      setOpenWorkspaces(prev => ({ ...prev, [workspace.id]: true }));
+    }
+  }, [workspace]);
+
+  // Manejadores de hover con debounce suave para evitar parpadeos
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 150);
+  };
+
+  // Navegar y colapsar automáticamente el menú
+  const handleNav = (path: string) => {
+    navigate(path);
+    if (!isPinned) {
+      setIsHovered(false);
+    }
+  };
+
+  const toggleAccordion = (wsId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenWorkspaces(prev => ({ ...prev, [wsId]: !prev[wsId] }));
+  };
+
+  const getInitials = () => {
+    const n = usuario?.nombre?.[0] || '';
+    const a = usuario?.apellidos?.[0] || '';
+    return `${n}${a}`.toUpperCase();
+  };
+
+  const isTopLevelActive = (path: string, matchPrefix?: boolean) => {
+    if (location.pathname === path) return true;
+    if (matchPrefix && location.pathname.startsWith(path)) return true;
+    return false;
+  };
+
+  const isSubItemActive = (item: WorkspaceNavItem) => {
+    if (location.pathname === item.path) return true;
+    if (item.matchPrefix) {
+      if (item.excludePrefixes?.some(ex => location.pathname.startsWith(ex))) return false;
+      return location.pathname.startsWith(item.path);
+    }
+    return false;
+  };
+
+  // Sub-items visibles de un workspace (mismo filtro de rol y Control de Módulos que el acordeón).
+  const itemsVisiblesDe = (ws: WorkspaceDefinition): WorkspaceNavItem[] => {
+    const out: WorkspaceNavItem[] = [];
+    for (const g of getResolvedItems(ws)) {
+      for (const e of g.items) {
+        if (
+          e.kind === 'item' &&
+          isItemVisible(e.item, userRole) &&
+          (isModuleVisible ? isModuleVisible(e.item.path, userRole, oficinaId) : true)
+        ) out.push(e.item);
+      }
+    }
+    return out;
+  };
+
+  // Favoritos que este usuario sí puede ver, en el orden en que los marcó.
+  // Un favorito de un módulo al que ya no tiene acceso simplemente no aparece.
+  const itemsFavoritos: WorkspaceNavItem[] = (() => {
+    if (favoritos.length === 0) return [];
+    const porPath = new Map<string, WorkspaceNavItem>();
+    for (const { entry } of resolved) {
+      if (entry.type !== 'workspace' || !isWorkspaceVisible(entry.workspace, userRole)) continue;
+      for (const item of itemsVisiblesDe(entry.workspace)) {
+        if (!porPath.has(item.path)) porPath.set(item.path, item);
+      }
+    }
+    return favoritos.map(p => porPath.get(p)).filter((x): x is WorkspaceNavItem => !!x);
+  })();
+
+  // La sección va justo después de Dashboard (o arriba de todo si Dashboard no está).
+  const idxDashboard = resolved.findIndex(({ entry }) => entry.type === 'link' && entry.item.path === '/dashboard');
+
+  // Renglón de sub-item con estrella para marcar/desmarcar favorito.
+  // La estrella es un botón hermano (no anidado) del botón de navegación.
+  const renderSubItem = (item: WorkspaceNavItem, keyPrefix = '') => {
+    const active = isSubItemActive(item);
+    const SubIcon = item.icon;
+    const badgeCount = badgeCounts?.[item.path] ?? 0;
+    const fav = esFavorito(item.path);
+
+    return (
+      <div key={keyPrefix + item.path} className="relative group/sub">
+        <button
+          onClick={() => handleNav(item.path)}
+          className={cn(
+            'w-full flex items-center justify-between gap-2 pl-2.5 pr-8 py-1.5 rounded-lg text-[11.5px] font-medium transition-colors text-left group',
+            active
+              ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
+              : fav
+                ? 'text-neutral-800 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
+          )}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <SubIcon className={cn('w-3.5 h-3.5 shrink-0 transition-colors', active ? 'text-accent-ink' : fav ? 'text-amber-500' : 'text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300')} />
+            <span className="truncate">{item.label}</span>
+          </div>
+
+          {badgeCount > 0 && (
+            <span className="px-1.5 py-0.2 bg-red-500 text-white text-[9.5px] font-bold rounded-full shrink-0">
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); alternarFavorito(item.path); }}
+          aria-label={fav ? `Quitar ${item.label} de favoritos` : `Agregar ${item.label} a favoritos`}
+          aria-pressed={fav}
+          title={fav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+          className={cn(
+            'absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center transition-all active:scale-90',
+            fav
+              ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+              : 'text-neutral-300 hover:text-amber-500 hover:bg-surface-muted dark:hover:bg-white/10 opacity-0 group-hover/sub:opacity-100 focus-visible:opacity-100'
+          )}
+        >
+          <Star className={cn('w-3.5 h-3.5', fav && 'fill-amber-400')} />
+        </button>
+      </div>
+    );
+  };
+
+  const toggleFavoritos = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setFavoritosAbierto(prev => {
+      const next = !prev;
+      try { localStorage.setItem(FAVORITOS_ABIERTO_KEY, next ? '1' : '0'); } catch { /* sin almacenamiento */ }
+      return next;
+    });
+  };
+
+  const seccionFavoritos = itemsFavoritos.length === 0 ? null : !isExpanded ? (
+    // Menú angosto: la estrella abre/cierra, y abierto muestra el ícono de cada favorito.
+    <div key="favoritos" className="space-y-1">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => toggleFavoritos()}
+            className="w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+            aria-label={favoritosAbierto ? 'Cerrar favoritos' : 'Abrir favoritos'}
+            aria-expanded={favoritosAbierto}
+          >
+            <Star className="w-4 h-4 fill-amber-400" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
+          Favoritos · {itemsFavoritos.length}
+        </TooltipContent>
+      </Tooltip>
+      {favoritosAbierto && itemsFavoritos.map(item => {
+        const FavIcon = item.icon;
+        const active = isSubItemActive(item);
+        return (
+          <Tooltip key={`fav-rail-${item.path}`}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => handleNav(item.path)}
+                className={cn(
+                  'w-9 h-9 mx-auto rounded-lg flex items-center justify-center transition-all active:scale-95',
+                  active
+                    ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink'
+                    : 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+                )}
+                aria-label={item.label}
+              >
+                <FavIcon className="w-3.5 h-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </div>
+  ) : (
+    <div key="favoritos" className="space-y-0.5">
+      <div
+        onClick={toggleFavoritos}
+        aria-expanded={favoritosAbierto}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group cursor-pointer active:scale-[0.98] text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white"
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <Star className="w-4 h-4 shrink-0 text-amber-500 fill-amber-400" />
+          <span className="truncate">Favoritos</span>
+          <span className="px-1.5 py-[1px] rounded-full text-[9.5px] font-bold leading-none bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 shrink-0">
+            {itemsFavoritos.length}
+          </span>
+        </div>
+        <span className="p-1 rounded-md text-neutral-400 ml-1" aria-hidden="true">
+          {favoritosAbierto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        </span>
+      </div>
+
+      {favoritosAbierto && (
+        <div className="pl-6 pr-1 py-0.5 space-y-0.5 border-l-2 border-amber-200/70 dark:border-amber-500/20 ml-4">
+          {itemsFavoritos.map(item => renderSubItem(item, 'fav-'))}
+        </div>
+      )}
+    </div>
+  );
+
+  // Una entrada del menú principal: link directo (Dashboard, Trámites…) o workspace en acordeón.
+  const renderEntrada = (
+    entry: (typeof resolved)[number]['entry'],
+    separadorAntes: boolean,
+    badge: (typeof resolved)[number]['badge'],
+    idx: number,
+  ) => {
+    const customBadgeEl = badge ? (
+      <span
+        className={cn(
+          'px-1.5 py-[1px] rounded-full text-[9.5px] font-bold leading-none whitespace-nowrap shrink-0',
+          BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber
+        )}
+      >
+        {badge.texto}
+      </span>
+    ) : null;
+
+    // ── Enlace Directo (Dashboard, Trámites, etc.) ──
+    if (entry.type === 'link') {
+      const item = entry.item;
+      if (!isTopLevelItemVisible(item, userRole)) return null;
+      if (isModuleVisible && !isModuleVisible(item.path, userRole, oficinaId)) return null;
+      const Icon = item.icon;
+      const isActive = isTopLevelActive(item.path, item.matchPrefix);
+      const tlBadge = topLevelBadges?.[item.path] ?? 0;
+
+      const badgeEl = tlBadge > 0 ? (
+        <span className="relative flex items-center justify-center shrink-0">
+          <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" />
+          <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+            {tlBadge > 99 ? '99+' : tlBadge}
+          </span>
+        </span>
+      ) : null;
+
+      if (!isExpanded) {
+        return (
+          <Fragment key={`link-${idx}`}>
+            {separadorAntes && <div className="w-8 h-px bg-neutral-200 dark:bg-white/10 mx-auto my-1.5" />}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => handleNav(item.path)}
+                  aria-label={item.label}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cn(
+                    'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
+                    isActive
+                      ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                      : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {badgeEl}
+                  {isActive && (
+                    <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
+                {badge ? `${item.label} · ${badge.texto}` : item.label}
+              </TooltipContent>
+            </Tooltip>
+          </Fragment>
+        );
+      }
+
+      return (
+        <Fragment key={`link-${idx}`}>
+          {separadorAntes && <div className="h-px bg-neutral-100 dark:bg-white/5 my-1.5 mx-2" />}
+          <button
+            onClick={() => handleNav(item.path)}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group active:scale-[0.98]',
+              isActive
+                ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                : 'text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
+            )}
+          >
+            <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-accent-ink' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
+            <span className="truncate flex-1">{item.label}</span>
+            {badgeEl}
+            {customBadgeEl}
+            {isActive && (
+              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-accent" />
+            )}
+          </button>
+        </Fragment>
+      );
+    }
+
+    // ── Workspace Acordeón (Herramientas, Cotizar, Admin, etc.) ──
+    const ws = entry.workspace;
+    if (!isWorkspaceVisible(ws, userRole)) return null;
+    if (isModuleVisible) {
+      const anyVisible = ws.items.some(item =>
+        isTopLevelItemVisible(item as any, userRole) &&
+        isModuleVisible(item.path, userRole, oficinaId)
+      );
+      if (!anyVisible) return null;
+    }
+
+    const Icon = ws.icon;
+    const hubRoute = WORKSPACE_HUB_ROUTES[ws.id] || ws.items[0]?.path || '/dashboard';
+    const isWsActive = ws.id === (workspace?.id ?? null) || location.pathname === hubRoute;
+    const isOpen = openWorkspaces[ws.id] ?? isWsActive;
+
+    // Sub-items del workspace
+    const allWsItems = itemsVisiblesDe(ws);
+
+    const isExtensive = allWsItems.length > MAX_SIDEBAR_ITEMS;
+    const visibleSubItems = isExtensive ? allWsItems.slice(0, MAX_SIDEBAR_ITEMS) : allWsItems;
+
+    if (!isExpanded) {
+      return (
+        <Fragment key={ws.id}>
+          {separadorAntes && <div className="w-8 h-px bg-neutral-200 dark:bg-white/10 mx-auto my-1.5" />}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => handleNav(hubRoute)}
+                aria-label={ws.label}
+                aria-current={isWsActive ? 'page' : undefined}
+                className={cn(
+                  'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
+                  isWsActive
+                    ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                {isWsActive && (
+                  <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={12} className={TOOLTIP_CLS}>
+              {badge ? `${ws.label} · ${badge.texto}` : ws.label}
+            </TooltipContent>
+          </Tooltip>
+        </Fragment>
+      );
+    }
+
+    return (
+      <div key={ws.id} className="space-y-0.5">
+        {separadorAntes && <div className="h-px bg-neutral-100 dark:bg-white/5 my-1.5 mx-2" />}
+
+        {/* Encabezado Acordeón: Clic navega a la página de sección (Hub) */}
+        <div
+          onClick={() => handleNav(hubRoute)}
+          className={cn(
+            'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group cursor-pointer active:scale-[0.98]',
+            isWsActive
+              ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+              : 'text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
+          )}
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <Icon className={cn('w-4 h-4 shrink-0 transition-colors', isWsActive ? 'text-accent-ink' : 'text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200')} />
+            <span className="truncate">{ws.label}</span>
+            {customBadgeEl}
+          </div>
+
+          {allWsItems.length > 0 && (
+            <button
+              onClick={(e) => toggleAccordion(ws.id, e)}
+              className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors ml-1"
+              aria-label={isOpen ? `Colapsar ${ws.label}` : `Expandir ${ws.label}`}
+            >
+              {isOpen ? (
+                <ChevronDown className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
+
+          {isWsActive && (
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-accent" />
+          )}
+        </div>
+
+        {/* Sub-Items Expandidos */}
+        {isOpen && allWsItems.length > 0 && (
+          <div className="pl-6 pr-1 py-0.5 space-y-0.5 border-l-2 border-neutral-100 dark:border-white/5 ml-4">
+            {visibleSubItems.map(item => renderSubItem(item))}
+
+            {isExtensive && (
+              <button
+                onClick={() => setPanelWorkspace(ws)}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-accent-ink hover:bg-accent-softer transition-colors text-left"
+              >
+                <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+                <span>Ver todas ({allWsItems.length}) ▾</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <div
+        className={cn(
+          'hidden md:block shrink-0 relative transition-[width] duration-200 ease-out z-40 select-none',
+          isPinned ? 'w-[264px]' : 'w-[72px]'
+        )}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <aside
+          aria-label="Menú lateral inteligente"
+          className={cn(
+            'relative flex flex-col h-full font-display bg-surface-card dark:bg-[#111114] border-r border-soft shadow-[8px_0_24px_-18px_rgba(28,25,23,0.18)] transition-all duration-200 ease-out',
+            isExpanded
+              ? 'w-[264px] shadow-[6px_0_24px_rgba(0,0,0,0.08)] dark:shadow-[6px_0_28px_rgba(0,0,0,0.45)]'
+              : 'w-[72px] shadow-2xs',
+            !isPinned && isExpanded ? 'absolute top-0 left-0 bottom-0' : 'relative'
+          )}
+        >
+          {/* Velo de marca muy sutil (decorativo) */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(120%_100%_at_0%_0%,rgb(var(--movi-accent-rgb)/0.08),transparent_70%)]" />
+          
+          {/* ── TOP: Logo Oficial + Botón Pin / Fijar ── */}
+          <div className="relative h-[60px] px-3.5 flex items-center justify-between border-b border-soft shrink-0">
+            {isExpanded ? (
+              <>
+                <button
+                  onClick={() => handleNav('/dashboard')}
+                  className="flex items-center gap-2.5 py-1 px-1 rounded-xl hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
+                  title="MOVI Mi Oficina Virtual · Ir al Dashboard"
+                >
+                  <span
+                    className="grid place-items-center w-9 h-9 rounded-xl bg-white border border-soft dark:border-white/10 shadow-2xs group-hover:scale-105 transition-transform"
+                  >
+                    <img
+                      src="/movirecurso_7.png"
+                      alt="MOVI"
+                      className="h-6 w-6 object-contain"
+                    />
+                  </span>
+                  <div className="flex flex-col text-left">
+                    <span className="font-display font-semibold text-[14px] tracking-[-0.01em] text-neutral-900 dark:text-white leading-tight">
+                      MOVI
+                    </span>
+                    <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                      Mi Oficina Virtual
+                    </span>
+                  </div>
+                </button>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={onTogglePin}
+                      className={cn(
+                        'w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90',
+                        isPinned
+                          ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
+                          : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
+                      )}
+                      aria-label={isPinned ? 'Desfijar menú (hover automático)' : 'Fijar menú siempre abierto'}
+                    >
+                      {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className={TOOLTIP_CLS}>
+                    {isPinned ? 'Desfijar menú (se abre al acercar el cursor)' : 'Fijar menú siempre abierto'}
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            ) : (
+              <div className="w-full flex items-center justify-center">
+                <button
+                  onClick={() => handleNav('/dashboard')}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
+                  title="MOVI Mi Oficina Virtual"
+                >
+                  <span
+                    className="grid place-items-center w-9 h-9 rounded-xl bg-white border border-soft dark:border-white/10 shadow-2xs group-hover:scale-105 transition-transform"
+                  >
+                    <img
+                      src="/movirecurso_7.png"
+                      alt="MOVI"
+                      className="h-6 w-6 object-contain"
+                    />
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── CUERPO: Módulos y Acordeones ── */}
+          <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+            {idxDashboard === -1 && seccionFavoritos}
+            {resolved.map(({ entry, separadorAntes, badge }, idx) => (
+              <Fragment key={`entry-${idx}`}>
+                {renderEntrada(entry, separadorAntes, badge, idx)}
+                {idx === idxDashboard && seccionFavoritos}
+              </Fragment>
+            ))}
+          </div>
+
+          {/* ── FOOTER: Perfil + Utilidades ── */}
+          <div className="p-3 border-t border-soft bg-surface-muted/60 dark:bg-white/[0.015] shrink-0 space-y-2">
+            {isExpanded ? (
+              <button
+                onClick={() => handleNav('/perfil')}
+                className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-200/60 dark:hover:bg-white/5 active:scale-95 transition-all text-left group"
+              >
+                <Avatar className="h-8 w-8 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10 shrink-0">
+                  <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
+                  <AvatarFallback className="text-[11px] font-bold rounded-lg bg-accent text-accent-foreground">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate leading-tight group-hover:text-accent">
+                    {usuario?.nombre} {usuario?.apellidos}
+                  </span>
+                  <span className="text-[10px] text-neutral-400 capitalize truncate mt-0.5">
+                    {usuario?.rol || 'Usuario'}
+                  </span>
+                </div>
+              </button>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleNav('/perfil')}
+                    aria-label="Mi Perfil"
+                    className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/5 active:scale-95 transition-all"
+                  >
+                    <Avatar className="h-7 w-7 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10">
+                      <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
+                      <AvatarFallback className="text-[10px] font-bold rounded-lg bg-accent text-accent-foreground">
+                        {getInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className={TOOLTIP_CLS}>
+                  {usuario?.nombre} {usuario?.apellidos} · Mi Perfil
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            <div className={cn(
+              'flex items-center gap-1.5',
+              isExpanded ? 'justify-between px-1' : 'flex-col justify-center'
+            )}>
+              {userRole === 'Administrador' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => handleNav('/chava')}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/10 active:scale-90 transition-transform"
+                    >
+                      <ChavaOrbIcon size="sm" sidebarVariant />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side={isExpanded ? 'top' : 'right'} className={TOOLTIP_CLS}>
+                    Chava IA
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
+              <NotificationBell compact fixedPanel />
+              <ThemeToggle compact />
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onSignOut}
+                    aria-label="Cerrar Sesión"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-90 transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={isExpanded ? 'top' : 'right'} className={TOOLTIP_CLS}>
+                  Cerrar Sesión
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        </aside>
+
+        {panelWorkspace && (
+          <NavigationPanel
+            workspace={panelWorkspace}
+            activeItem={_activeItem}
+            userRole={userRole}
+            isModuleVisible={isModuleVisible}
+            oficinaId={oficinaId}
+            isOpen={!!panelWorkspace}
+            onClose={() => setPanelWorkspace(null)}
+            badgeCounts={badgeCounts}
+          />
+        )}
+      </div>
+    </TooltipProvider>
+  );
+}

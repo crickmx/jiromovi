@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test SICAS Connection</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #2563eb;
+    }
+    .btn-secondary {
+      background: #10b981;
+      color: white;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #059669;
+    }
+    .result-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .status.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .catalog-item {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 10px;
+    }
+    .catalog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .catalog-name {
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .catalog-id {
+      color: #6b7280;
+      font-size: 12px;
+    }
+    .catalog-stats {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    pre {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f4f6;
+      border-radius: 50%;
+      border-top-color: #3b82f6;
+      animation: spin 0.8s linear infinite;
+      margin-left: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔌 Test Conexión SICAS</h1>
+    <p class="subtitle">Prueba de conectividad y consulta de catálogos del webservice SICAS</p>
+
+    <div class="button-group">
+      <button class="btn-primary" onclick="testConnection()" id="btnConnection">
+        Probar Conexión
+      </button>
+      <button class="btn-secondary" onclick="testCatalogs()" id="btnCatalogs">
+        Probar Catálogos Críticos
+      </button>
+      <button class="btn-secondary" onclick="testAllCatalogs()" id="btnAllCatalogs">
+        Escanear Todos (1-61)
+      </button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://xzodqcjyzqzbpnowrrqv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6b2RxY2p5enF6YnBub3dycnF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkxNDM3MDksImV4cCI6MjA0NDcxOTcwOX0.zBRWAXhG1IYdAhPrR7r-ViXyg3WU1eZVYpfBqKFU9Us';
+
+    // Catálogos críticos para probar
+    const CRITICAL_CATALOGS = [
+      { id: 11, name: 'Despachos' },
+      { id: 15, name: 'Agentes' },
+      { id: 32, name: 'Vendedores' },
+      { id: 34, name: 'Oficinas' },
+      { id: 12, name: 'Aseguradoras' },
+    ];
+
+    async function testConnection() {
+      const btn = document.getElementById('btnConnection');
+      btn.disabled = true;
+      btn.innerHTML = 'Probando...<span class="loading"></span>';
+
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<div class="result-box"><p>⏳ Conectando con SICAS...</p></div>';
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/sicas-test-connection`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+
+        let statusHtml = '';
+        if (data.connectionSuccess) {
+          statusHtml = '<span class="status success">✓ CONECTADO</span>';
+        } else {
+          statusHtml = '<span class="status error">✗ ERROR</span>';
+        }
+
+        resultsDiv.innerHTML = `
+          <div class="result-box">
+            <h2>Resultado de Conexión ${statusHtml}</h2>
+            <p><strong>Mensaje:</strong> ${data.message}</p>
+            <p><strong>HTTP Status:</strong> ${data.httpStatus}</p>
+            <p><strong>Response TXT:</strong> ${data.responseTxt || 'N/A'}</p>
+
+            ${data.parsedResponse ? `
+              <details>
+                <summary style="cursor: pointer; margin-top: 15px;"><strong>Ver Respuesta Parseada</strong></summary>
+                <pre>${data.parsedResponse}</pre>
+              </details>
+            ` : ''}
+
+            <details>
+              <summary style="cursor: pointer; margin-top: 15px;"><strong>Ver XML Raw</strong></summary>
+              <pre>${data.responsePreview}</pre>
+            </details>
+          </div>
+        `;
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <div class="result-box">
+            <h2>Error <span class="status error">✗ FALLO</span></h2>
+            <p><strong>Error:</strong> ${error.message}</p>
+            <pre>${error.stack || 'No stack trace'}</pre>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Probar Conexión';
+      }
+    }
+
+    async function testCatalogs() {
+      const btn = document.getElementById('btnCatalogs');
+      btn.disabled = true;
+      btn.innerHTML = 'Probando...<span class="loading"></span>';
+
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<div class="result-box"><p>⏳ Probando catálogos críticos...</p></div>';
+
+      let html = '<div class="result-box"><h2>Resultados de Catálogos Críticos</h2>';
+
+      for (const catalog of CRITICAL_CATALOGS) {
+        html += `<p>📋 Probando Catálogo ${catalog.id} - ${catalog.name}...</p>`;
+        resultsDiv.innerHTML = html + '</div>';
+
+        try {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/sicas-test-catalog`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ catalog_id: catalog.id }),
+          });
+
+          const data = await response.json();
+
+          if (data.available) {
+            html += `
+              <div class="catalog-item">
+                <div class="catalog-header">
+                  <div>
+                    <span class="catalog-name">${catalog.name}</span>
+                    <span class="catalog-id">ID: ${catalog.id}</span>
+                  </div>
+                  <span class="status success">✓ DISPONIBLE</span>
+                </div>
+                <div class="catalog-stats">
+                  📊 ${data.stats.records} registros encontrados
+                </div>
+                ${data.sample_records && data.sample_records.length > 0 ? `
+                  <details style="margin-top: 10px;">
+                    <summary style="cursor: pointer;"><strong>Ver Muestra</strong></summary>
+                    <pre>${JSON.stringify(data.sample_records, null, 2)}</pre>
+                  </details>
+                ` : ''}
+              </div>
+            `;
+          } else if (data.catalog_status === 'not_available') {
+            html += `
+              <div class="catalog-item">
+                <div class="catalog-header">
+                  <div>
+                    <span class="catalog-name">${catalog.name}</span>
+                    <span class="catalog-id">ID: ${catalog.id}</span>
+                  </div>
+                  <span class="status warning">⚠ NO DISPONIBLE</span>
+                </div>
+                <div class="catalog-stats">
+                  ${data.warning || 'Este catálogo no está disponible en tu plan SICAS'}
+                </div>
+              </div>
+            `;
+          } else {
+            html += `
+              <div class="catalog-item">
+                <div class="catalog-header">
+                  <div>
+                    <span class="catalog-name">${catalog.name}</span>
+                    <span class="catalog-id">ID: ${catalog.id}</span>
+                  </div>
+                  <span class="status error">✗ ERROR</span>
+                </div>
+                <div class="catalog-stats">
+                  ${data.error || 'Error desconocido'}
+                </div>
+              </div>
+            `;
+          }
+        } catch (error) {
+          html += `
+            <div class="catalog-item">
+              <div class="catalog-header">
+                <div>
+                  <span class="catalog-name">${catalog.name}</span>
+                  <span class="catalog-id">ID: ${catalog.id}</span>
+                </div>
+                <span class="status error">✗ ERROR</span>
+              </div>
+              <div class="catalog-stats">
+                ${error.message}
+              </div>
+            </div>
+          `;
+        }
+
+        resultsDiv.innerHTML = html + '</div>';
+        await new Promise(resolve => setTimeout(resolve, 500)); // Delay entre requests
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = 'Probar Catálogos Críticos';
+    }
+
+    async function testAllCatalogs() {
+      const btn = document.getElementById('btnAllCatalogs');
+      btn.disabled = true;
+      btn.innerHTML = 'Escaneando...<span class="loading"></span>';
+
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<div class="result-box"><p>⏳ Escaneando todos los catálogos (1-61)...</p></div>';
+
+      const available = [];
+      const notAvailable = [];
+      const errors = [];
+
+      let html = '<div class="result-box"><h2>Escaneando Catálogos SICAS (1-61)</h2><p>⏳ Progreso: 0/61</p>';
+      resultsDiv.innerHTML = html + '</div>';
+
+      for (let i = 1; i <= 61; i++) {
+        try {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/sicas-test-catalog`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ catalog_id: i }),
+          });
+
+          const data = await response.json();
+
+          if (data.available) {
+            available.push({
+              id: i,
+              records: data.stats.records,
+            });
+          } else if (data.catalog_status === 'not_available') {
+            notAvailable.push(i);
+          } else {
+            errors.push(i);
+          }
+        } catch (error) {
+          errors.push(i);
+        }
+
+        html = `
+          <div class="result-box">
+            <h2>Escaneando Catálogos SICAS (1-61)</h2>
+            <p>⏳ Progreso: ${i}/61</p>
+            <p>✅ Disponibles: ${available.length} | ⚠ No disponibles: ${notAvailable.length} | ❌ Errores: ${errors.length}</p>
+          </div>
+        `;
+        resultsDiv.innerHTML = html;
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      html = `
+        <div class="result-box">
+          <h2>Resultados del Escaneo Completo</h2>
+
+          <h3>✅ Catálogos Disponibles (${available.length})</h3>
+          ${available.length > 0 ? `
+            <div style="max-height: 300px; overflow-y: auto;">
+              ${available.map(cat => `
+                <div style="padding: 8px; background: #f0fdf4; border-radius: 4px; margin-bottom: 4px;">
+                  Catálogo ${cat.id} - ${cat.records} registros
+                </div>
+              `).join('')}
+            </div>
+          ` : '<p>No hay catálogos disponibles</p>'}
+
+          <h3 style="margin-top: 20px;">⚠ Catálogos No Disponibles (${notAvailable.length})</h3>
+          ${notAvailable.length > 0 ? `
+            <p style="background: #fffbeb; padding: 10px; border-radius: 4px;">
+              ${notAvailable.join(', ')}
+            </p>
+          ` : '<p>Todos los catálogos están disponibles</p>'}
+
+          ${errors.length > 0 ? `
+            <h3 style="margin-top: 20px;">❌ Catálogos con Error (${errors.length})</h3>
+            <p style="background: #fef2f2; padding: 10px; border-radius: 4px;">
+              ${errors.join(', ')}
+            </p>
+          ` : ''}
+        </div>
+      `;
+      resultsDiv.innerHTML = html;
+
+      btn.disabled = false;
+      btn.innerHTML = 'Escanear Todos (1-61)';
+    }
+  </script>
+</body>
+</html>

@@ -1,1 +1,0 @@
-import{s}from"./index-D85sunqU.js";const i=void 0;function o(t,e,r=""){if(!t)return r;if(/^(https?:\/\/|data:)/.test(t))return t;const{data:n}=s.storage.from(e).getPublicUrl(t);return n.publicUrl||r}function a(t,e,r=""){return t?/^(https?:\/\/|data:|blob:)/.test(t)||t.startsWith("/")?t:e?o(t,e,r):`${i}/storage/v1/object/public/${t}`:r}export{a as r};

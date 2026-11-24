@@ -1,0 +1,252 @@
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import { cargarPermisosAdicionales } from '../lib/permisosUtils';
+import { applyTheme } from '../lib/themeUtils';
+import { useImpersonation } from './ImpersonationContext';
+import { isBetaHost, isEducationHost, skipBetaRedirectActive, crossDomainUrl, consumeIncomingSession, BETA_ORIGIN } from '../lib/betaAccess';
+import type { Database } from '../lib/database.types';
+import { closeRoundcubeSession } from '../lib/roundcubeSso';
+import { USUARIO_COLUMNAS, conDatosPrivados } from '../lib/usuarioColumnas';
+
+type UsuarioRow = Database['public']['Tables']['usuarios']['Row'];
+
+export type Usuario = UsuarioRow & {
+  permisosAdicionales?: string[];
+  oficina?: {
+    id: string;
+    nombre: string;
+    accent_color: string | null;
+    logo_url: string | null;
+    whatsapp: string | null;
+    telefono: string | null;
+    email: string | null;
+    domicilio: string | null;
+  } | null;
+  regimen_fiscal?: { id: string; name: string } | null;
+  nombres?: string | null;
+  apellido_paterno?: string | null;
+  apellido_materno?: string | null;
+  nombre_completo?: string | null;
+  nombre_publico?: string | null;
+  username?: string | null;
+  estado?: string | null;
+  celular?: string | null;
+  celular_laboral?: string | null;
+  email?: string | null;
+  email_laboral?: string | null;
+  email_cuenta?: string | null;
+  email_verificado?: boolean | null;
+  email_ultima_verificacion?: string | null;
+  full_name?: string | null;
+  url_web_jiro?: string | null;
+  imagen_perfil_url?: string | null;
+  agent_user_id?: string | null;
+};
+
+interface MoviAuthCtx {
+  usuario: Usuario | null;
+  realUsuario: Usuario | null;
+  office?: Usuario['oficina'] | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<string | null>;
+  signOut: () => Promise<void>;
+  reloadUsuario: () => Promise<void>;
+  esUsuarioBeta: boolean;
+  redirigiendoABeta: boolean;
+  maskAs: (usuario: Usuario) => Promise<boolean>;
+  unmask: () => Promise<void>;
+  isMasked: boolean;
+  customer: null;
+  agent: null;
+}
+
+const MoviAuthContext = createContext<MoviAuthCtx>({} as MoviAuthCtx);
+
+// Inner provider — must live inside ImpersonationProvider
+function MoviAuthProviderInner({ children }: { children: ReactNode }) {
+  const [realUser, setRealUser] = useState<Usuario | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [esUsuarioBeta, setEsUsuarioBeta] = useState(false);
+  const [redirigiendoABeta, setRedirigiendoABeta] = useState(false);
+  const profileLoadedRef = useRef(false);
+  const { isImpersonating, impersonatedUser, startImpersonation, endImpersonation } = useImpersonation();
+
+  async function loadProfile(userId: string) {
+    console.log('[MoviAuth] loadProfile userId=', userId);
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        // Por columnas, no con *: los datos bancarios ya no se leen directo de la tabla
+        // (ver usuarioColumnas.ts). Los propios se traen aparte, abajo.
+        .select(`
+          ${USUARIO_COLUMNAS},
+          oficina:oficinas!oficina_id(id, nombre, accent_color, logo_url, whatsapp, telefono, email, domicilio),
+          regimen_fiscal:commission_fiscal_regimes(id, name)
+        `)
+        .eq('id', userId)
+        .maybeSingle();
+
+      // QA 2026-10-22 (M10) — un fallo de la CONSULTA no es "este usuario no existe".
+      //
+      // `error` se capturaba y solo se imprimía: un corte de red y una cuenta
+      // borrada terminaban los dos en `setRealUser(null)`, y con el usuario en
+      // null la app pinta la pantalla de login. **La sesión de Supabase sigue
+      // intacta** — se comprobó cortando la red: sale el login, y al recargar
+      // vuelve a entrar sola. O sea que no te sacaba, te lo hacía creer, y de
+      // paso perdías lo que estabas capturando.
+      //
+      // Cualquier parpadeo de red sirve: un elevador, un cambio de wifi, el metro.
+      if (error) {
+        console.warn('[MoviAuth] loadProfile: la consulta falló, se conserva la sesión:', error.message);
+        setLoading(false);
+        return;
+      }
+
+      // Sin error y sin fila: la cuenta de verdad no está. Ahí sí, null.
+      if (!data) {
+        console.log('[MoviAuth] No usuario found for userId=', userId);
+        setRealUser(null);
+        setLoading(false);
+        return;
+      }
+
+      let u: Usuario = (await conDatosPrivados(data as unknown as Usuario)) as Usuario;
+      if (u.rol === 'Gerente') {
+        const permisos = await cargarPermisosAdicionales(u.id);
+        u = { ...u, permisosAdicionales: permisos };
+      }
+
+      if (u.oficina?.accent_color && !isImpersonating) applyTheme(u.oficina.accent_color);
+
+      // Usuarios Beta: en produccion (app.movi.digital) se les manda a beta.movi.digital
+      // conservando su sesion, salvo que ya hayan usado el boton de "Regresar a MOVI"
+      // en esta misma pestana (sessionStorage) - si no, es un ping-pong infinito.
+      // En dev local (npm run dev) nunca redirige, para poder probar en localhost.
+      if (!isBetaHost() && !isEducationHost() && !import.meta.env.DEV) {
+        const { data: betaRow } = await supabase.from('usuarios_beta').select('id').eq('usuario_id', u.id).maybeSingle();
+        if (betaRow) {
+          if (!skipBetaRedirectActive()) {
+            setRedirigiendoABeta(true);
+            const url = await crossDomainUrl(BETA_ORIGIN);
+            window.location.href = url;
+            return;
+          }
+          setEsUsuarioBeta(true);
+        }
+      }
+
+      console.log('[MoviAuth] Usuario loaded:', u.nombre, u.apellidos, 'rol=', u.rol);
+      profileLoadedRef.current = true;
+      setRealUser(u);
+      setLoading(false);
+    } catch (err: any) {
+      // Mismo criterio que arriba: lo que truena aquí son peticiones (datos
+      // privados, permisos de Gerente, la consulta de usuarios_beta), no una
+      // señal de que la sesión se acabó. Se conserva el usuario que ya hubiera.
+      console.warn('[MoviAuth] loadProfile falló, se conserva la sesión:', err?.message);
+      setLoading(false);
+    }
+  }
+
+  async function reloadUsuario() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) await loadProfile(session.user.id);
+  }
+
+  useEffect(() => {
+    console.log('[MoviAuth] init');
+
+    consumeIncomingSession().finally(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          console.log('[MoviAuth] initial session found, userId=', session.user.id);
+          loadProfile(session.user.id);
+        } else {
+          console.log('[MoviAuth] no initial session');
+          setLoading(false);
+        }
+      }).catch((err) => {
+        console.warn('[MoviAuth] getSession failed (network/refresh):', err?.message);
+        setLoading(false);
+      });
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[MoviAuth] onAuthStateChange event=', event, 'hasSession=', !!session);
+      if (event === 'SIGNED_IN' && session) {
+        // Only show loading spinner on a real first-login (profile not yet loaded).
+        // Tab-focus token refreshes can also fire SIGNED_IN — don't unmount the page.
+        if (!profileLoadedRef.current) setLoading(true);
+        loadProfile(session.user.id);
+      } else if (
+        (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') &&
+        session
+      ) {
+        loadProfile(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('[MoviAuth] signed out');
+        profileLoadedRef.current = false;
+        setRealUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function signIn(email: string, password: string): Promise<string | null> {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return error ? error.message : null;
+  }
+
+  async function signOut() {
+    console.log('[MoviAuth] signing out');
+    setRealUser(null);
+    await closeRoundcubeSession();
+    await supabase.auth.signOut();
+  }
+
+  async function maskAs(usuarioTarget: Usuario): Promise<boolean> {
+    return startImpersonation({ platform: 'movi', userId: usuarioTarget.id });
+  }
+
+  async function unmask(): Promise<void> {
+    await endImpersonation();
+  }
+
+  // During impersonation, expose the masked user as `usuario`
+  // but always keep `realUsuario` pointing to the authenticated admin
+  const usuario = (isImpersonating && impersonatedUser)
+    ? impersonatedUser as unknown as Usuario
+    : realUser;
+
+  return (
+    <MoviAuthContext.Provider value={{
+      usuario,
+      realUsuario: realUser,
+      loading,
+      signIn,
+      signOut,
+      reloadUsuario,
+      esUsuarioBeta,
+      redirigiendoABeta,
+      maskAs,
+      unmask,
+      isMasked: isImpersonating,
+      customer: null,
+      agent: null,
+    }}>
+      {children}
+    </MoviAuthContext.Provider>
+  );
+}
+
+export function MoviAuthProvider({ children }: { children: ReactNode }) {
+  return (
+    <MoviAuthProviderInner>
+      {children}
+    </MoviAuthProviderInner>
+  );
+}
+
+export const useMoviAuth = () => useContext(MoviAuthContext);

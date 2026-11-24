@@ -1,0 +1,56 @@
+-- Función que retorna el historial de tickets de un agente para el panel
+-- de Marketing Premium. Usa SECURITY DEFINER para bypasear RLS (el caller
+-- no siempre tiene rol Administrador/Gerente), pero verifica que el caller
+-- tenga acceso al módulo de Marketing antes de devolver datos.
+--
+-- Nota: RETURNS TABLE usa ticket_id (no id) para evitar ambigüedad con
+-- los OUT parameters de PostgreSQL. Frontend mapea r.ticket_id → id.
+
+DROP FUNCTION IF EXISTS public.get_tickets_agente_premium(uuid);
+
+CREATE FUNCTION public.get_tickets_agente_premium(p_agente_id uuid)
+RETURNS TABLE (
+  ticket_id            uuid,
+  folio                text,
+  tipo_tramite         text,
+  fecha_creacion       timestamptz,
+  custom_estatus_label text,
+  creado_por           uuid
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_caller_rol   text;
+  v_tiene_acceso boolean := false;
+BEGIN
+  SELECT rol INTO v_caller_rol
+  FROM usuarios
+  WHERE id = auth.uid();
+
+  IF v_caller_rol IN ('Administrador', 'Gerente') THEN
+    v_tiene_acceso := true;
+  ELSE
+    SELECT EXISTS (
+      SELECT 1
+      FROM tramites_grupos_miembros tgm
+      JOIN mkt_equipos_acceso mea ON mea.grupo_id = tgm.grupo_id
+      WHERE tgm.usuario_id = auth.uid()
+    ) INTO v_tiene_acceso;
+  END IF;
+
+  IF NOT v_tiene_acceso THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT t.id, t.folio, t.tipo_tramite, t.fecha_creacion, t.custom_estatus_label, t.creado_por
+  FROM tickets t
+  WHERE (t.agente_id = p_agente_id OR t.agente_usuario_id = p_agente_id)
+    AND t.eliminado_at IS NULL
+  ORDER BY t.fecha_creacion DESC;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_tickets_agente_premium(uuid) TO authenticated;

@@ -1,0 +1,3603 @@
+import { useState, useEffect, useRef } from 'react';
+import { X, Upload, User, Users, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, ChevronDown, Lock, RotateCcw, Star, Layers } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { TIPOS_CON_PANTALLA_PROPIA } from '../../hooks/useTiposTramite';
+import { puedeVerCampo, puedeEditarCampo } from '../../lib/rolCampos';
+import { crearNotificacion, avisarPorEvento } from '../../lib/notificationHelpers';
+import { mensajeNuevoTramite } from '../../lib/tramiteAviso';
+import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
+import { useAuth } from '../../contexts/AuthContext';
+import { BaseModal } from '../BaseModal';
+import type { TramiteSeccion } from './catalogos/types';
+import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor, campoExigible, campoCumpleSuCondicion, conteoSeccion, seccionesAbiertasPorDefecto, CAMPOS_ANCHOS } from '../../lib/tramiteSecciones';
+import { analizarRFC, analizarCURP, RFC_GENERICO_NACIONAL, ENTIDADES_CURP } from '../../lib/rfcCurp';
+import { parseAseguradoras, etiquetaAseguradoras } from '../../lib/aseguradorasSeleccion';
+import { SelectorVehiculo, type VehiculoSeleccionado } from './SelectorVehiculo';
+import {
+  canAccessRegistroActividades,
+  getUsersByOffice,
+  getResponsableByOffice,
+  createRegistroActividad,
+  formatDateTimeForInput,
+  formatDateTimeFromInput
+} from '../../lib/registroActividadesUtils';
+import {
+  REGISTRO_ACTIVIDAD_ESTATUS,
+  getTipoTramitesByArea,
+  getTipoTramiteArea,
+  isCommercialTicketType,
+  type UsuarioOficina
+} from '../../lib/registroActividadesTypes';
+import { SearchableSelect } from './catalogos/SearchableSelect';
+import { getOficinasDeGerente } from '../../lib/oficinasUtils';
+import { useTiposTramite } from '../../hooks/useTiposTramite';
+import { calcularDeadline } from '../../lib/diasHabiles';
+
+interface TramiteEstatus {
+  id: string;
+  nombre: string;
+}
+
+interface Usuario {
+  id: string;
+  nombre_completo: string;
+  rol: string;
+  oficina_id: string | null;
+}
+
+interface CommissionBatch {
+  id: string;
+  name: string;
+  date_from: string;
+  date_to: string;
+  status: string;
+  documents_count: number;
+}
+
+interface CommissionDocument {
+  id: string;
+  poliza: string;
+  nombre_asegurado: string | null;
+  aseguradora: string | null;
+  importe_base: number;
+  prima_neta: number;
+  date_fpago: string | null;
+  concepto: string | null;
+}
+
+interface Aseguradora {
+  nombre: string;
+}
+
+interface PolizaFile {
+  id: string;
+  file: File | null;
+  aseguradora: string;
+  claveAgente: string;
+}
+
+interface ComisionPendiente {
+  id: string;
+  numeroPoliza: string;
+  aseguradora: string;
+  fechaPago: string;
+  archivo: File | null;
+}
+
+interface NuevoTramiteModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  onSuccessWithId?: (ticketId: string) => void;
+  estatusList: TramiteEstatus[];
+  preloadedData?: {
+    tipoTramite?: string;
+    comisionesLoteId?: string;
+    comisionesLoteLabel?: string;
+    instrucciones?: string;
+    descripcion?: string;
+    prioridad?: string;
+    agenteId?: string;
+    /** Respuestas del formulario a precargar, por id de campo (duplicar trámite). */
+    respuestas?: Record<string, unknown>;
+  };
+}
+
+export function NuevoTramiteModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  onSuccessWithId,
+  estatusList,
+  preloadedData
+}: NuevoTramiteModalProps) {
+  const { usuario } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const [tipoTramite, setTipoTramite] = useState<string>('');
+  const [areaSeleccionada, setAreaSeleccionada] = useState<string>('');
+  const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
+  const [asignado, setAsignado] = useState<string>('');
+  // RFCs sin homoclave que el usuario confirmó a mano, por id de campo.
+  const [rfcConfirmado, setRfcConfirmado] = useState<Record<string, boolean>>({});
+  const [prioridad, setPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Baja');
+  const [descripcion, setDescripcion] = useState('');
+  const [archivos, setArchivos] = useState<File[]>([]);
+  const [adjuntosTemporales, setAdjuntosTemporales] = useState<Record<string, File[]>>({});
+  const [adjuntoCategoriasIds, setAdjuntoCategoriasIds] = useState<Record<string, string>>({});
+  // Categoría de CADA archivo, en el mismo orden que `adjuntosTemporales`.
+  // El detalle siempre la pidió por archivo; el alta pedía una sola para todo
+  // el campo y encima como "(opcional)", así que lo que se adjuntaba al crear
+  // quedaba sin categoría — y la validación del cambio de estatus, que busca
+  // justo esa categoría, no lo contaba y exigía volver a subirlo.
+  const [adjuntoCatsArchivo, setAdjuntoCatsArchivo] = useState<Record<string, string[]>>({});
+
+  /** Los tipos que el admin configuró para un campo adjunto, si configuró alguno. */
+  const tiposDelCampoAdjunto = (campo: CampoDinamico): { categoria_id: string; requerido?: boolean }[] =>
+    ((campo.config?.tipos_config as { categoria_id: string; requerido?: boolean }[] | undefined) ?? [])
+      .filter(tc => tc.categoria_id);
+  const [adjuntoCategorias, setAdjuntoCategorias] = useState<{id: string; nombre: string}[]>([]);
+  const [archivoCategoriaId, setArchivoCategoriaId] = useState('');
+
+  const [polizaNumero, setPolizaNumero] = useState('');
+
+  const [loteSeleccionado, setLoteSeleccionado] = useState('');
+  const [documentoSeleccionado, setDocumentoSeleccionado] = useState('');
+  const [lotesDisponibles, setLotesDisponibles] = useState<CommissionBatch[]>([]);
+  const [documentosLote, setDocumentosLote] = useState<CommissionDocument[]>([]);
+  const [loadingDocumentos, setLoadingDocumentos] = useState(false);
+
+  const [aseguradoras, setAseguradoras] = useState<Aseguradora[]>([]);
+  const [catalogoRamos,     setCatalogoRamos]     = useState<{id: string; nombre: string}[]>([]);
+  const [catalogoCompanias, setCatalogoCompanias] = useState<{id: string; nombre: string; convenio: boolean}[]>([]);
+  const [combinaciones,     setCombinaciones]     = useState<{compania_id: string; ramo_id: string; convenio: boolean}[]>([]);
+  const [asegUiState, setAsegUiState] = useState<Record<string, { open: boolean; search: string; verMas: boolean }>>({});
+  const [cpSearchState, setCpSearchState] = useState<Record<string, {
+    colonias: {colonia: string; municipio: string; estado: string}[];
+    loading: boolean;
+  }>>({});
+  const [polizaFiles, setPolizaFiles] = useState<PolizaFile[]>([
+    { id: '1', file: null, aseguradora: '', claveAgente: '' }
+  ]);
+
+  const [comisionesPendientes, setComisionesPendientes] = useState<ComisionPendiente[]>([
+    { id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }
+  ]);
+
+  // --- Estado para Cotización / Emisión ---
+  const [ceRamoId, setCeRamoId] = useState('');            // UUID de maestro_ramos
+  const [ceSelectedInsurers, setCeSelectedInsurers] = useState<string[]>([]); // nombres de maestro_companias
+  const [ceRequestDatetime, setCeRequestDatetime] = useState(formatDateTimeForInput(new Date()));
+  const [ceShowInsurerDropdown, setCeShowInsurerDropdown] = useState(false);
+  const [ceInsurerSearchTerm, setCeInsurerSearchTerm] = useState('');
+
+  // --- Estado para trámites comerciales (Renovaciones/Cobranza/Otros) ---
+  const [comAgenteUserId, setComAgenteUserId] = useState('');
+  const [comCliente, setComCliente] = useState('');
+  const [comPoliza, setComPoliza] = useState('');
+  const [comAseguradora, setComAseguradora] = useState('');
+  const [comFechaVencimiento, setComFechaVencimiento] = useState('');
+  const [comMonto, setComMonto] = useState('');
+  const [comAsunto, setComAsunto] = useState('');
+
+  const [ceAgenteUsers, setCeAgenteUsers] = useState<UsuarioOficina[]>([]);
+
+  const DRAFT_KEY = 'tramite_nuevo_draft';
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Ref para rastrear si estamos inicializando con datos precargados
+  const isInitializingWithPreloadedData = useRef(false);
+  const insurerDropdownRef = useRef<HTMLDivElement>(null);
+  const asegRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const [tiposDb, setTiposDb] = useState<Array<{ id: string; value: string; label: string; area: string; is_custom: boolean; es_interno: boolean }>>([]);
+
+  // Campos dinámicos del catálogo para el tipo de trámite seleccionado
+  interface CampoDinamicoOption { label: string; slug: string; clasificacion?: string | null }
+  interface CampoDinamico {
+    id: string; key: string; label: string; tipo: string;
+    requerido: boolean; ayuda: string | null; display_order: number;
+    is_sistema: boolean; sistema_key: string | null;
+    config: { opciones?: CampoDinamicoOption[]; max_length?: number; [k: string]: any };
+    visible_para_rol?: string;
+    editable_para_rol?: string;
+    seccion_id: string | null;
+  }
+
+  // El criterio vive en src/lib/rolCampos.ts, compartido con el detalle y con su
+  // autocomprobación; aquí estaba duplicado y el detalle ni siquiera lo aplicaba.
+  const canSeeCampo = (campo: CampoDinamico) => puedeVerCampo(campo, usuario?.rol);
+  const canEditCampo = (campo: CampoDinamico) => puedeEditarCampo(campo, usuario?.rol);
+  const [camposDinamicos, setCamposDinamicos] = useState<CampoDinamico[]>([]);
+  const [respuestasDinamicas, setRespuestasDinamicas] = useState<Record<string, any>>({});
+  // Secciones del FormBuilder — agrupan visualmente camposDinamicos, opcionalmente
+  // condicionadas a que otra sección se complete antes. Ver src/lib/tramiteSecciones.ts.
+  const [secciones, setSecciones] = useState<TramiteSeccion[]>([]);
+  const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
+  const [mostroBadgeExtra, setMostroBadgeExtra] = useState(false);
+  const [showBadgeExtra, setShowBadgeExtra] = useState(false);
+  const [agentesVendedor, setAgentesVendedor] = useState<{
+    id: string; nombre: string; despacho_id: string;
+    usuario_id?: string; usuario_nombre?: string;
+  }[]>([]);
+  const [oficinas, setOficinas] = useState<{id: string; nombre: string}[]>([]);
+  // Vendedor SICAS que se elige a mano cuando el solicitante no tiene uno ligado.
+  const [agenteSicasManual, setAgenteSicasManual] = useState('');
+  // IDs de ticket_tipos que el usuario NO puede crear (calculado al cargar)
+  const [tiposBlockedIds, setTiposBlockedIds] = useState<Set<string>>(new Set());
+  // IDs de ticket_tipos donde el usuario puede crear pero NO editar
+  const [tiposReadOnlyAfterCreate, setTiposReadOnlyAfterCreate] = useState<Set<string>>(new Set());
+  const [fechaPromesaEntrega, setFechaPromesaEntrega] = useState('');
+
+  const { tiposMap } = useTiposTramite();
+  const isAgent = usuario?.rol === 'Agente';
+  const esInterno = tiposDb.find(t => t.value === tipoTramite)?.es_interno ?? false;
+  const isEmpleadoOAgente = isAgent || usuario?.rol === 'Empleado';
+  const canAssignOthers = !isAgent;
+  // Solo Administrador puede escribir en maestro_usuario_agente (lo impone su RLS).
+  // El resto propone el vínculo y un Admin lo confirma.
+  const esRolSistemaAdmin = usuario?.rol === 'Administrador';
+  const [canAccessRegistroAct, setCanAccessRegistroAct] = useState(false);
+  const [autoResponsableId, setAutoResponsableId] = useState<string | null>(null);
+  // Vista previa de a quién va a caer el trámite según las reglas de asignación.
+  // Solo informativa: el responsable real lo decide el motor al guardar.
+  const [previewAsignacion, setPreviewAsignacion] = useState<
+    | { estado: 'cargando' }
+    | { estado: 'listo'; equipo: string | null; responsable: string | null }
+    | null
+  >(null);
+
+  useEffect(() => {
+    if (!ceShowInsurerDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (insurerDropdownRef.current && !insurerDropdownRef.current.contains(e.target as Node)) {
+        setCeShowInsurerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [ceShowInsurerDropdown]);
+
+  useEffect(() => {
+    const abiertos = Object.entries(asegUiState).filter(([, s]) => s.open).map(([id]) => id);
+    if (abiertos.length === 0) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      setAsegUiState(prev => {
+        const next = { ...prev };
+        for (const id of abiertos) {
+          const el = asegRefs.current[id];
+          if (el && !el.contains(e.target as Node)) {
+            next[id] = { ...next[id], open: false };
+          }
+        }
+        return next;
+      });
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [asegUiState]);
+
+  useEffect(() => {
+    if (isOpen && usuario) {
+      // Marcar si estamos inicializando con datos precargados
+      isInitializingWithPreloadedData.current = !!preloadedData?.comisionesLoteId;
+
+      if (preloadedData) {
+        // Preloaded data (e.g. from commission batch) takes priority
+        resetForm();
+        setDraftRestored(false);
+      } else {
+        const draft = loadDraft<Record<string, unknown>>(DRAFT_KEY);
+        if (draft) {
+          restoreFromDraft(draft);
+          setDraftRestored(true);
+        } else {
+          resetForm();
+          setDraftRestored(false);
+        }
+      }
+
+      loadUsuarios();
+      loadLotesDisponibles();
+      checkRegistroAccess();
+      loadTiposDb();
+      supabase.from('maestro_adjunto_categorias').select('id, nombre').eq('activo', true).order('orden')
+        .then(({ data }) => setAdjuntoCategorias((data || []) as {id: string; nombre: string}[]));
+
+      // Auto-find responsable from agent's office
+      if (isAgent && usuario.oficina_id) {
+        getResponsableByOffice(usuario.oficina_id).then((resp) => {
+          setAutoResponsableId(resp?.id ?? null);
+        });
+      } else {
+        setAutoResponsableId(null);
+      }
+
+      // Resetear la bandera después de un breve delay para permitir que los efectos se ejecuten
+      setTimeout(() => {
+        isInitializingWithPreloadedData.current = false;
+      }, 100);
+    }
+  }, [isOpen, preloadedData]);
+
+  const checkRegistroAccess = async () => {
+    const access = await canAccessRegistroActividades();
+    setCanAccessRegistroAct(access);
+  };
+
+  const loadTiposDb = async () => {
+    const { data } = await supabase
+      .from('ticket_tipos')
+      .select('id, value, label, area, is_custom, es_interno')
+      .eq('activo', true)
+      .order('orden');
+    if (!data) return;
+
+    // QA 2026-11-04 (A6) — los tipos que tienen su propia pantalla no se
+    // ofrecen aquí; el porqué está en `TIPOS_CON_PANTALLA_PROPIA`.
+    const visibles = data.filter(t => !TIPOS_CON_PANTALLA_PROPIA.includes(t.value));
+    setTiposDb(visibles as Array<{ id: string; value: string; label: string; area: string; is_custom: boolean; es_interno: boolean }>);
+
+    // Admin y Gerente no tienen restricciones
+    if (!usuario || ['Administrador', 'Gerente'].includes(usuario.rol)) return;
+
+    const tipoIds = visibles.map(t => t.id);
+
+    // Permisos por rol
+    const { data: rolData } = await supabase
+      .from('tramite_tipo_rol_permisos')
+      .select('tramite_tipo_id, puede_crear, puede_editar')
+      .eq('rol', usuario.rol)
+      .in('tramite_tipo_id', tipoIds);
+
+    // Override por usuario
+    const { data: overData } = await supabase
+      .from('tramite_tipo_usuario_override')
+      .select('tramite_tipo_id, puede_crear, puede_editar')
+      .eq('user_id', usuario.id)
+      .in('tramite_tipo_id', tipoIds);
+
+    const blocked = new Set<string>();
+    const readOnlyAfterCreate = new Set<string>();
+    for (const tipo of data) {
+      const override = overData?.find(o => o.tramite_tipo_id === tipo.id);
+      const rolPerm = rolData?.find(r => r.tramite_tipo_id === tipo.id);
+
+      // Bloquear creación
+      if (override !== undefined) {
+        if (override.puede_crear === false) blocked.add(tipo.id);
+      } else {
+        if (rolPerm?.puede_crear === false) blocked.add(tipo.id);
+      }
+
+      // Marcar como solo-lectura después de crear (puede crear pero no editar)
+      if (!blocked.has(tipo.id)) {
+        const puedeEditar = override?.puede_editar ?? rolPerm?.puede_editar ?? true;
+        if (puedeEditar === false) readOnlyAfterCreate.add(tipo.id);
+      }
+    }
+    setTiposBlockedIds(blocked);
+    setTiposReadOnlyAfterCreate(readOnlyAfterCreate);
+  };
+
+  const COTIZACION_EMISION_SUBTYPE_ID = '2ef883f9-96fc-452e-92eb-ff6826be412d';
+
+
+  useEffect(() => {
+    if (tipoTramite === 'correccion_comisiones' && usuario) {
+      loadLotesDisponibles();
+    }
+  }, [tipoTramite, usuario]);
+
+  // Cargar campos dinámicos del catálogo cuando cambia el tipo de trámite
+  useEffect(() => {
+    const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
+    if (!tipoInfo?.id) { setCamposDinamicos([]); setRespuestasDinamicas({}); return; }
+    supabase
+      .from('tramite_tipo_campos')
+      .select('id, key, label, tipo, requerido, ayuda, display_order, config, is_sistema, sistema_key, visible_para_rol, editable_para_rol, seccion_id')
+      .eq('tramite_tipo_id', tipoInfo.id)
+      .eq('activo', true)
+      .order('display_order')
+      .then(({ data }) => {
+        const campos = (data as CampoDinamico[]) || [];
+        setCamposDinamicos(campos);
+        // El estatus ya no se elige al crear: todo trámite nace en su estatus inicial y
+        // se avanza después desde el encabezado del detalle. Se fija aquí para que la
+        // respuesta y `custom_estatus_label` se guarden igual que antes.
+        // El respaldo a la primera opción importa: sin él, un tipo sin ninguna opción
+        // marcada como 'inicio' crearía trámites sin estatus visible.
+        const estatusCampo = campos.find(c => c.tipo === 'estatus');
+        const opcionInicial = estatusCampo?.config.opciones?.find(o => o.clasificacion === 'inicio')
+          ?? estatusCampo?.config.opciones?.[0];
+        if (estatusCampo && opcionInicial) {
+          setRespuestasDinamicas({ [estatusCampo.id]: opcionInicial.slug });
+        } else {
+          setRespuestasDinamicas({});
+        }
+
+        // Agente/vendedor precargado desde CP — se aplica después del reset de respuestas
+        // para que el setRespuestasDinamicas({}) de arriba no lo borre.
+        const agCampo = campos.find(c => c.sistema_key === 'agente_vendedor');
+        if (agCampo && preloadedData?.agenteId) {
+          setRespuestasDinamicas(prev => ({ ...prev, [agCampo.id]: preloadedData.agenteId! }));
+          setAsignado(preloadedData.agenteId!);
+        }
+
+        // Datos del formulario al duplicar un trámite. Va después del reset de
+        // arriba por lo mismo que el agente, y solo se aceptan los campos que
+        // este tipo tiene HOY: si al tipo le quitaron un campo, su id ya no
+        // corresponde a nada y arrastrarlo dejaría basura en el insert.
+        if (preloadedData?.respuestas) {
+          const idsDelTipo = new Set(campos.map(c => c.id));
+          const validas = Object.entries(preloadedData.respuestas).filter(([id]) => idsDelTipo.has(id));
+          if (validas.length > 0) {
+            setRespuestasDinamicas(prev => ({ ...prev, ...Object.fromEntries(validas) }));
+          }
+        }
+
+        // La prioridad inicial se configura por tipo desde el FormBuilder; antes
+        // era 'Baja' fija en el código para todos. Un borrador restaurado o un
+        // valor precargado mandan sobre esto, por eso se aplica solo si no hay.
+        if (!preloadedData?.prioridad && !draftRestored) {
+          const porDefecto = campos.find(c => c.sistema_key === 'prioridad')?.config?.default;
+          if (porDefecto === 'Alta' || porDefecto === 'Media' || porDefecto === 'Baja') {
+            setPrioridad(porDefecto);
+          }
+        }
+      });
+    supabase
+      .from('tramite_tipo_secciones')
+      // Las 3 columnas de condición son indispensables: sin ellas llegan undefined y
+      // `seccionDesbloqueada` cae al camino viejo, así que una sección condicionada a un
+      // valor de campo se mostraba SIEMPRE. El tipo TramiteSeccion sí las declara, por eso
+      // nadie lo notó — la cadena del .select() no la valida TypeScript.
+      .select('id, tramite_tipo_id, nombre, descripcion, orden, opcional, depende_de_seccion_id, condicion_campo_id, condicion_operador, condicion_valor, activo, sistema_key, config')
+      .eq('tramite_tipo_id', tipoInfo.id)
+      .eq('activo', true)
+      .order('orden')
+      .then(({ data }) => {
+        const cargadas = (data as TramiteSeccion[]) || [];
+        setSecciones(cargadas);
+        // Mismo criterio que el detalle: todo abierto, menos las opcionales.
+        setSeccionesExpandidas(seccionesAbiertasPorDefecto(cargadas));
+        setMostroBadgeExtra(false);
+      });
+  }, [tipoTramite, tiposDb]);
+
+  // Auto-selecciona el área cuando tiposDb carga y ya hay un tipo pre-seleccionado
+  useEffect(() => {
+    if (tipoTramite && tiposDb.length > 0 && !areaSeleccionada) {
+      const found = tiposDb.find(t => t.value === tipoTramite);
+      if (found?.area) setAreaSeleccionada(found.area);
+    }
+  }, [tipoTramite, tiposDb]);
+
+  // Badge de "información adicional": se dispara una sola vez por trámite, la primera
+  // vez que un campo NO requerido recibe respuesta (o se expande una sección opcional).
+  const dispararBadgeExtra = () => {
+    if (mostroBadgeExtra) return;
+    setMostroBadgeExtra(true);
+    setShowBadgeExtra(true);
+    setTimeout(() => setShowBadgeExtra(false), 4000);
+  };
+
+  useEffect(() => {
+    if (mostroBadgeExtra || camposDinamicos.length === 0) return;
+    const hayOpcionalRespondido = camposDinamicos.some(c => !c.requerido && isCampoRespondido(c));
+    if (hayOpcionalRespondido) dispararBadgeExtra();
+  }, [respuestasDinamicas, asignado, prioridad, descripcion, fechaPromesaEntrega, archivos, adjuntosTemporales]);
+
+  // Cargar catálogos para campos sistema agente_vendedor / oficina_jiro
+  useEffect(() => {
+    if (!camposDinamicos.some(c => c.sistema_key === 'agente_vendedor')) return;
+    supabase.from('maestro_agentes')
+      .select('id, nombre, despacho_id, maestro_usuario_agente(user_id, activo, usuarios(nombre_completo))')
+      .eq('activo', true).eq('es_primario', true).order('nombre')
+      .then(({ data }) => {
+        const mapped = (data || []).map((a: any) => {
+          const mapeo = (a.maestro_usuario_agente || []).find((m: any) => m.activo);
+          return {
+            id: a.id, nombre: a.nombre, despacho_id: a.despacho_id,
+            usuario_id: mapeo?.user_id ?? undefined,
+            usuario_nombre: mapeo?.usuarios?.nombre_completo ?? undefined,
+          };
+        });
+        setAgentesVendedor(mapped);
+      });
+    // La oficina del solicitante ahora sale de `usuarios.oficina_id`, que es la misma
+    // que usa el motor de reglas (get_grupo_para_ticket la lee de ahí). Antes venía del
+    // despacho del agente SICAS, que es otra tabla y podía no coincidir.
+    supabase.from('oficinas').select('id, nombre').eq('activa', true).order('nombre')
+      .then(({ data }) => setOficinas((data || []) as { id: string; nombre: string }[]));
+  }, [camposDinamicos]);
+
+  // Cargar catálogos maestro para campos tipo aseguradora / ramo
+  // También se activa para cotizacion_emision y tipos comerciales (reemplazan campos legacy)
+  useEffect(() => {
+    const tieneAseg = camposDinamicos.some(c => c.tipo === 'aseguradora');
+    const tieneRamo = camposDinamicos.some(c => c.tipo === 'ramo');
+    const esCeOComercial = tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite);
+    if (!tieneAseg && !tieneRamo && !esCeOComercial) return;
+
+    supabase.from('maestro_companias').select('id, nombre, convenio').eq('activo', true).order('nombre')
+      .then(({ data }) => setCatalogoCompanias((data || []) as {id: string; nombre: string; convenio: boolean}[]));
+    supabase.from('maestro_ramos').select('id, nombre').order('nombre')
+      .then(({ data }) => setCatalogoRamos((data || []) as {id: string; nombre: string}[]));
+    supabase.from('maestro_combinaciones').select('compania_id, ramo_id, convenio').eq('activo', true)
+      .then(({ data }) => setCombinaciones((data || []) as {compania_id: string; ramo_id: string; convenio: boolean}[]));
+  }, [camposDinamicos, tipoTramite]);
+
+  useEffect(() => {
+    if (tipoTramite === 'correccion_comisiones' && asignado) {
+      // Reset lote selection when assigned user changes, unless we're initializing with preloaded data
+      if (!isInitializingWithPreloadedData.current) {
+        setLoteSeleccionado('');
+      }
+      loadLotesDisponibles(asignado);
+    }
+  }, [asignado]);
+
+  useEffect(() => {
+    if (loteSeleccionado) {
+      loadDocumentosLote();
+    } else {
+      setDocumentosLote([]);
+      setDocumentoSeleccionado('');
+    }
+  }, [loteSeleccionado]);
+
+  useEffect(() => {
+    if (tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes' || isCommercialTicketType(tipoTramite)) {
+      loadAseguradoras();
+    }
+    if (tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite)) {
+      loadCeCatalogs();
+    }
+  }, [tipoTramite]);
+
+
+  const loadCeCatalogs = async () => {
+    if (!usuario) return;
+    try {
+      const agentes = usuario.oficina_id
+        ? await getUsersByOffice(usuario.oficina_id)
+        : [];
+      setCeAgenteUsers(agentes);
+    } catch (err) {
+      console.error('Error loading CE catalogs:', err);
+    }
+  };
+
+  // Un tipo dado de baja no debe poder crearse desde aquí. `tiposDb` ya trae solo
+  // los activos, pero el tipo puede venir de un valor por defecto o de un borrador
+  // viejo: entonces el select se ve vacío mientras el estado conserva el tipo
+  // inactivo, y al guardar se crea igual. Se limpia en cuanto llega el catálogo.
+  useEffect(() => {
+    if (tiposDb.length === 0 || !tipoTramite) return;
+    if (tiposDb.some(t => t.value === tipoTramite)) return; // ya es value string válido
+    const byId = tiposDb.find(t => t.id === tipoTramite);   // podría ser UUID
+    if (byId) {
+      setTipoTramite(byId.value);                           // resuelve UUID → value
+    } else {
+      setTipoTramite('');
+      setAreaSeleccionada('');
+    }
+  }, [tiposDb, tipoTramite]);
+
+  const resetForm = () => {
+    if (preloadedData?.tipoTramite) {
+      setTipoTramite(preloadedData.tipoTramite);
+    } else if (isAgent) {
+      setTipoTramite('cotizacion_emision');
+    } else {
+      setTipoTramite('');
+      setAreaSeleccionada('');
+    }
+
+    if (isAgent && usuario) {
+      setAsignado(usuario.id);
+    } else if (preloadedData?.agenteId) {
+      setAsignado(preloadedData.agenteId);
+    } else {
+      setAsignado('');
+    }
+
+    setPrioridad((preloadedData?.prioridad as 'Alta' | 'Media' | 'Baja') || 'Baja');
+    setDescripcion(preloadedData?.descripcion || preloadedData?.instrucciones || '');
+    setArchivos([]);
+    setArchivoCategoriaId('');
+    setPolizaNumero('');
+
+    // Respetar lote precargado si existe
+    if (preloadedData?.comisionesLoteId) {
+      setLoteSeleccionado(preloadedData.comisionesLoteId);
+    } else {
+      setLoteSeleccionado('');
+    }
+
+    setDocumentoSeleccionado('');
+    setPolizaFiles([{ id: '1', file: null, aseguradora: '', claveAgente: '' }]);
+    setComisionesPendientes([{ id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }]);
+    setError('');
+
+    // Reset CE fields
+    setCeRamoId('');
+    setCeSelectedInsurers([]);
+    setCeRequestDatetime(formatDateTimeForInput(new Date()));
+    setCeShowInsurerDropdown(false);
+    setCeInsurerSearchTerm('');
+
+    // Reset commercial fields
+    setComAgenteUserId('');
+    setComCliente('');
+    setComPoliza('');
+    setComAseguradora('');
+    setComFechaVencimiento('');
+    setComMonto('');
+    setComAsunto('');
+    setFechaPromesaEntrega('');
+  };
+
+  const restoreFromDraft = (draft: Record<string, unknown>) => {
+    setTipoTramite((draft.tipoTramite as string) || (isAgent ? 'cotizacion_emision' : ''));
+    setAsignado((draft.asignado as string) || (isAgent ? (usuario?.id || '') : ''));
+    setPrioridad(((draft.prioridad as string) || 'Baja') as 'Alta' | 'Media' | 'Baja');
+    setDescripcion((draft.descripcion as string) || '');
+    setPolizaNumero((draft.polizaNumero as string) || '');
+    setCeRamoId((draft.ceRamoId as string) || '');
+    setCeSelectedInsurers((draft.ceSelectedInsurers as string[]) || []);
+    setComAgenteUserId((draft.comAgenteUserId as string) || '');
+    setComCliente((draft.comCliente as string) || '');
+    setComPoliza((draft.comPoliza as string) || '');
+    setComAseguradora((draft.comAseguradora as string) || '');
+    setComFechaVencimiento((draft.comFechaVencimiento as string) || '');
+    setComMonto((draft.comMonto as string) || '');
+    setComAsunto((draft.comAsunto as string) || '');
+    // Always reset non-serializable/time-sensitive fields
+    setArchivos([]);
+    setPolizaFiles([{ id: '1', file: null, aseguradora: '', claveAgente: '' }]);
+    setComisionesPendientes([{ id: '1', numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }]);
+    setLoteSeleccionado('');
+    setDocumentoSeleccionado('');
+    setCeRequestDatetime(formatDateTimeForInput(new Date()));
+    setCeShowInsurerDropdown(false);
+    setCeInsurerSearchTerm('');
+    setFechaPromesaEntrega((draft.fechaPromesaEntrega as string) || '');
+    setError('');
+  };
+
+  // Auto-save draft to sessionStorage while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    saveDraft(DRAFT_KEY, {
+      tipoTramite, asignado, prioridad, descripcion, polizaNumero,
+      ceRamoId, ceSelectedInsurers,
+      comAgenteUserId, comCliente, comPoliza, comAseguradora,
+      comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega,
+    });
+  }, [isOpen, tipoTramite, asignado, prioridad, descripcion, polizaNumero,
+      ceRamoId, ceSelectedInsurers,
+      comAgenteUserId, comCliente, comPoliza, comAseguradora,
+      comFechaVencimiento, comMonto, comAsunto, fechaPromesaEntrega]);
+
+  const loadUsuarios = async () => {
+    // Alimenta el selector de Solicitante: cualquier usuario activo puede serlo
+    // (un empleado también tiene producción propia). La cuenta Sistema queda fuera
+    // sola porque se creó con activo=false.
+    // NO filtrar por `username`: esa columna se eliminó y se recreó como nullable
+    // (20251028185230 / 20251029201356), y un `neq` contra NULL no es verdadero en
+    // SQL — excluiría a casi todos los usuarios.
+    let query = supabase
+      .from('usuarios')
+      .select('id, nombre_completo, rol, oficina_id')
+      .eq('activo', true)
+      .is('deleted_at', null)
+      .order('nombre_completo');
+
+    // Un Gerente solo debe ver solicitantes de su(s) propia(s) oficina(s), no
+    // de todo JIRO.
+    if (usuario) {
+      const oficinas = await getOficinasDeGerente(usuario);
+      if (oficinas.length > 0) query = query.in('oficina_id', oficinas);
+    }
+
+    const { data } = await query;
+
+    if (data) setUsuariosDisponibles(data as Usuario[]);
+  };
+
+  const resolveGrupoParaTicket = async (agente_id: string | null, tipo_tramite?: string): Promise<{ grupo_id: string; ejecutivo_id: string | null } | null> => {
+    if (!agente_id) return null;
+    const { data, error } = await supabase.rpc('get_grupo_para_ticket', {
+      p_agente_id: agente_id,
+      ...(tipo_tramite ? { p_tipo_tramite: tipo_tramite } : {}),
+    });
+    if (error) {
+      // Si esto falla en silencio, el trámite se crea sin equipo/responsable sin dejar
+      // rastro (ver bug TK37540) — mejor que quede en consola para diagnosticar en el momento.
+      console.error('[resolveGrupoParaTicket] Error al resolver equipo/ejecutivo:', error);
+      return null;
+    }
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+    const row = data[0] as { grupo_id: string; ejecutivo_id: string | null };
+    return row.grupo_id ? row : null;
+  };
+
+  // Un agente siempre es el solicitante de su propio trámite. Antes esto solo se
+  // reflejaba en `asignado`, nunca en la respuesta del formulario, así que el trámite
+  // se guardaba con el Solicitante vacío y salía "Sin registrar" en el detalle.
+  useEffect(() => {
+    if (!isAgent || !usuario?.id) return;
+    const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
+    if (!agCampo) return;
+
+    // UX 2026-11-04 (U-01) — y su OFICINA, por la misma razón.
+    //
+    // La oficina solo se llenaba dentro del `onChange` del selector de
+    // Solicitante. Pero cuando quien levanta el trámite es el propio Agente
+    // **ese selector ni siquiera se dibuja**: él es el solicitante y punto. O
+    // sea que el campo se quedaba esperando un evento que nunca iba a ocurrir,
+    // mostraba "Auto-completa al seleccionar agente" y el trámite nacía con la
+    // oficina en blanco ("Sin registrar" en el detalle).
+    //
+    // El dato siempre estuvo ahí: es la oficina del perfil de quien crea.
+    const ofCampo = camposDinamicos.find(c => c.sistema_key === 'oficina_jiro');
+    const ofNombre = usuario.oficina_id
+      ? (oficinas.find(o => o.id === usuario.oficina_id)?.nombre ?? '')
+      : '';
+
+    setRespuestasDinamicas(prev => {
+      const faltaAgente = prev[agCampo.id] !== usuario.id;
+      const faltaOficina = !!ofCampo && !!ofNombre && prev[ofCampo.id] !== ofNombre;
+      if (!faltaAgente && !faltaOficina) return prev;
+      return {
+        ...prev,
+        ...(faltaAgente ? { [agCampo.id]: usuario.id } : {}),
+        ...(faltaOficina && ofCampo ? { [ofCampo.id]: ofNombre } : {}),
+      };
+    });
+  }, [camposDinamicos, isAgent, usuario?.id, usuario?.oficina_id, oficinas]);
+
+  // Resuelve la asignación mientras se llena el formulario, para poder mostrarla
+  // antes de guardar. El submit vuelve a resolverla por su cuenta — esto es solo
+  // la vista previa, nunca la fuente de verdad.
+  useEffect(() => {
+    const agenteUserId = esInterno ? (usuario?.id ?? null) : (asignado || null);
+    if (!tipoTramite || !agenteUserId) {
+      setPreviewAsignacion(null);
+      return;
+    }
+    let cancelado = false;
+    setPreviewAsignacion({ estado: 'cargando' });
+    (async () => {
+      const res = await resolveGrupoParaTicket(agenteUserId, tipoTramite);
+      if (cancelado) return;
+      if (!res) {
+        // Sin regla, cada flujo tiene su propio respaldo y la vista previa tiene que
+        // decir la verdad: un agente cae en el responsable de su oficina, y los tipos
+        // comerciales y Cotización/Emisión quedan a cargo de quien los crea.
+        const respaldoId = isAgent
+          ? autoResponsableId
+          : (isCommercialTicketType(tipoTramite) || tipoTramite === 'cotizacion_emision')
+            ? (usuario?.id ?? null)
+            : null;
+        if (!respaldoId) {
+          setPreviewAsignacion({ estado: 'listo', equipo: null, responsable: null });
+          return;
+        }
+        const { data: resp } = await supabase.from('usuarios')
+          .select('nombre_completo').eq('id', respaldoId).maybeSingle();
+        if (cancelado) return;
+        setPreviewAsignacion({
+          estado: 'listo',
+          equipo: null,
+          responsable: (resp as { nombre_completo?: string } | null)?.nombre_completo ?? null,
+        });
+        return;
+      }
+      const [grupoRes, ejecRes] = await Promise.all([
+        supabase.from('tramites_grupos_visualizacion').select('nombre').eq('id', res.grupo_id).maybeSingle(),
+        res.ejecutivo_id
+          ? supabase.from('usuarios').select('nombre_completo').eq('id', res.ejecutivo_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      if (cancelado) return;
+      setPreviewAsignacion({
+        estado: 'listo',
+        equipo: (grupoRes.data as { nombre?: string } | null)?.nombre ?? null,
+        responsable: (ejecRes.data as { nombre_completo?: string } | null)?.nombre_completo ?? null,
+      });
+    })();
+    return () => { cancelado = true; };
+  }, [asignado, tipoTramite, esInterno, usuario?.id, isAgent, autoResponsableId]);
+
+  const loadLotesDisponibles = async (forUserId?: string) => {
+    if (!usuario) return;
+
+    try {
+      const targetUserId = forUserId || asignado;
+
+      if (targetUserId) {
+        // Get user email to find agent
+        const { data: userData } = await supabase
+          .from('usuarios')
+          .select('email_laboral')
+          .eq('id', targetUserId)
+          .single();
+
+        if (userData?.email_laboral) {
+          // Get batches that have commission details for this user
+          const { data } = await supabase
+            .from('commission_batches')
+            .select(`
+              *,
+              details:commission_details!inner(id)
+            `)
+            .eq('details.usuario_id', targetUserId)
+            .in('status', ['draft', 'confirmed', 'closed'])
+            .order('date_from', { ascending: false })
+            .limit(20);
+
+          if (data) {
+            // Remove the details field from the response
+            const batches = data.map(({ details, ...batch }) => batch);
+            setLotesDisponibles(batches);
+            return;
+          }
+        }
+      }
+
+      // Fallback: load all batches if no agent specified or not found
+      const { data } = await supabase
+        .from('commission_batches')
+        .select('*')
+        .in('status', ['draft', 'confirmed', 'closed'])
+        .order('date_from', { ascending: false })
+        .limit(20);
+
+      if (data) setLotesDisponibles(data);
+    } catch (error) {
+      console.error('Error loading commission batches:', error);
+      setLotesDisponibles([]);
+    }
+  };
+
+  const loadDocumentosLote = async () => {
+    if (!loteSeleccionado) return;
+
+    setLoadingDocumentos(true);
+    try {
+      const { data } = await supabase
+        .from('commission_details')
+        .select('id, poliza, nombre_asegurado, aseguradora, importe_base, prima_neta, date_fpago, concepto')
+        .eq('batch_id', loteSeleccionado)
+        .order('poliza');
+
+      if (data) setDocumentosLote(data);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    } finally {
+      setLoadingDocumentos(false);
+    }
+  };
+
+  const loadAseguradoras = async () => {
+    // Preferir maestro_companias (importadas por admin vía /admin/base-datos).
+    // Fallback a cat_aseguradoras mientras no haya datos importados.
+    const { data: maestro } = await supabase
+      .from('maestro_companias')
+      .select('nombre')
+      .eq('activo', true)
+      .order('nombre');
+
+    if (maestro?.length) {
+      setAseguradoras(maestro);
+    } else {
+      const { data } = await supabase
+        .from('cat_aseguradoras')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre');
+      if (data) setAseguradoras(data);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const maxFiles = 20;
+
+    if (archivos.length + files.length > maxFiles) {
+      setError('Este trámite permite un máximo de 20 documentos adjuntos. Elimina algún archivo o reduce la cantidad para continuar.');
+      return;
+    }
+
+    setArchivos(prev => [...prev, ...files]);
+    setError('');
+  };
+
+  const removeFile = (index: number) => {
+    setArchivos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addPolizaFile = () => {
+    if (polizaFiles.length >= 10) {
+      setError('Máximo 10 archivos permitidos');
+      return;
+    }
+
+    setPolizaFiles(prev => [
+      ...prev,
+      { id: Date.now().toString(), file: null, aseguradora: '', claveAgente: '' }
+    ]);
+    setError('');
+  };
+
+  const removePolizaFile = (id: string) => {
+    if (polizaFiles.length === 1) {
+      setError('Debe haber al menos un archivo');
+      return;
+    }
+    setPolizaFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const updatePolizaFile = (id: string, field: keyof PolizaFile, value: any) => {
+    setPolizaFiles(prev => prev.map(f =>
+      f.id === id ? { ...f, [field]: value } : f
+    ));
+  };
+
+  const addComisionPendiente = () => {
+    if (comisionesPendientes.length >= 10) {
+      setError('Máximo 10 comisiones pendientes permitidas');
+      return;
+    }
+
+    setComisionesPendientes(prev => [
+      ...prev,
+      { id: Date.now().toString(), numeroPoliza: '', aseguradora: '', fechaPago: '', archivo: null }
+    ]);
+    setError('');
+  };
+
+  const removeComisionPendiente = (id: string) => {
+    if (comisionesPendientes.length === 1) {
+      setError('Debe haber al menos una comisión pendiente');
+      return;
+    }
+    setComisionesPendientes(prev => prev.filter(c => c.id !== id));
+  };
+
+  const updateComisionPendiente = (id: string, field: keyof ComisionPendiente, value: any) => {
+    setComisionesPendientes(prev => prev.map(c =>
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
+  // Sistema auto-fill: nunca se piden en el formulario, no cuentan para requerido/progreso.
+  // `asignado_a` entra aquí desde que el Responsable lo decide el motor de reglas:
+  // ya no hay nada que el usuario tenga que capturar, y exigirlo dejaba los trámites
+  // internos (que no eligen agente) sin forma de satisfacer la validación.
+  // `estatus` entra aquí desde que dejó de elegirse al crear: viene sembrado con
+  // `requerido=true` por create_all_sistema_campos(), así que sin esto validateForm
+  // bloquearía el alta exigiendo un campo que ya no se muestra.
+  /**
+   * Llena los campos mapeados con lo que se puede deducir de un RFC o un CURP.
+   * El mapeo lo define el admin en el FormBuilder (`config.mapeo_extraccion`);
+   * aquí no se adivina nada por tipo de campo.
+   *
+   * Solo escribe en campos vacíos: si alguien ya capturó algo a mano, se respeta.
+   */
+  const aplicarExtraccion = (campo: CampoDinamico, valor: string | Record<string, any>) => {
+    const mapeo = (campo.config?.mapeo_extraccion ?? {}) as Record<string, string>;
+    if (Object.keys(mapeo).length === 0) return;
+
+    const datos: Record<string, string | undefined> = {};
+    if (campo.tipo === 'rfc') {
+      const a = analizarRFC(String(valor));
+      if (!a.valido) return;
+      datos.fecha = a.fecha;
+      datos.tipo_persona = a.tipoPersona === 'fisica' ? 'Física' : a.tipoPersona === 'moral' ? 'Moral' : undefined;
+    } else if (campo.tipo === 'curp') {
+      const a = analizarCURP(String(valor));
+      if (!a.valido) return;
+      datos.fecha = a.fecha;
+      datos.sexo = a.sexo === 'H' ? 'Hombre' : a.sexo === 'M' ? 'Mujer' : undefined;
+      datos.entidad = a.entidadNombre;
+    } else if (campo.tipo === 'codigo_postal') {
+      // Aquí el valor ya viene resuelto por el catálogo (o escrito a mano), así
+      // que no hay nada que deducir: solo se reparte a los campos mapeados.
+      const cp = (typeof valor === 'object' ? valor : {}) as Record<string, string>;
+      datos.colonia = cp.colonia || undefined;
+      datos.municipio = cp.municipio || undefined;
+      datos.estado = cp.estado || undefined;
+    }
+
+    setRespuestasDinamicas(prev => {
+      const siguiente = { ...prev };
+      let cambio = false;
+      for (const [clave, destinoId] of Object.entries(mapeo)) {
+        const texto = datos[clave];
+        if (!texto || !destinoId) continue;
+        const actual = siguiente[destinoId];
+        if (actual !== undefined && actual !== null && actual !== '') continue;
+
+        // En un dropdown hay que guardar el slug de la opción, no la etiqueta.
+        const destino = camposDinamicos.find(c => c.id === destinoId);
+        let aEscribir: string = texto;
+        if (destino && (destino.tipo === 'dropdown' || destino.tipo === 'seleccion_multiple')) {
+          const normaliza = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const opcion = (destino.config?.opciones ?? []).find(
+            (op: { label: string; slug: string }) => normaliza(op.label) === normaliza(texto) || normaliza(op.slug) === normaliza(texto)
+          );
+          if (!opcion) continue; // sin opción equivalente, mejor no inventar
+          aEscribir = opcion.slug;
+        }
+        siguiente[destinoId] = aEscribir;
+        cambio = true;
+      }
+      return cambio ? siguiente : prev;
+    });
+  };
+
+  const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por', 'asignado_a', 'estatus'];
+
+  // QA 2026-10-22 (M8) — dos campos de sistema NO se dibujan en ciertos contextos
+  // (ver `renderCampoSistema`), pero la validación no lo sabía: con la Fecha
+  // Promesa marcada requerida, un Agente no podía crear el trámite NUNCA — el
+  // error nombraba un campo que su pantalla no muestra, y la barra de progreso
+  // se quedaba atorada contándolo. Un requerido que no se puede llenar no es un
+  // requerido. Esta es la única definición; el render también la usa, para que
+  // lo que se ve y lo que se exige no puedan volver a separarse.
+  const campoSistemaOculto = (campo: CampoDinamico): boolean => {
+    if (!campo.is_sistema) return false;
+    if (campo.sistema_key === 'fecha_promesa_entrega') return isAgent;
+    if (campo.sistema_key === 'archivos_adjuntos') {
+      return tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes';
+    }
+    return false;
+  };
+
+  // Único punto de verdad de "¿este campo ya tiene respuesta?" — usado por validateForm()
+  // y por la barra de progreso (que necesita el mismo criterio sin lanzar errores).
+  const isCampoRespondido = (campo: CampoDinamico): boolean => {
+    // El Responsable ya no se captura: lo resuelve el motor de reglas al guardar.
+    // (Además está en AUTO_FILL_KEYS, así que ni validateForm ni la barra lo miran.)
+    if (campo.is_sistema && campo.sistema_key === 'asignado_a') return true;
+    if (campo.is_sistema && campo.sistema_key === 'prioridad') return !!prioridad;
+    if (campo.is_sistema && campo.sistema_key === 'descripcion') return !!descripcion?.trim();
+    if (campo.is_sistema && campo.sistema_key === 'fecha_promesa_entrega') return !!fechaPromesaEntrega;
+    if (campo.is_sistema && campo.sistema_key === 'archivos_adjuntos') return archivos.length > 0;
+    if (campo.tipo === 'adjunto') return (adjuntosTemporales[campo.id]?.length ?? 0) > 0;
+    const val = respuestasDinamicas[campo.id];
+    return !(val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0));
+  };
+
+  const validateForm = (): boolean => {
+    if (!tipoTramite) {
+      setError('Selecciona un tipo de trámite');
+      return false;
+    }
+    if (isCommercialTicketType(tipoTramite)) {
+      if (!comAgenteUserId) {
+        setError('Debe seleccionar un agente relacionado para trámites comerciales');
+        return false;
+      }
+      return true;
+    }
+
+    if (tipoTramite === 'correccion_comisiones') {
+      if (!loteSeleccionado) {
+        setError('Debe seleccionar un lote de comisiones');
+        return false;
+      }
+      if (!documentoSeleccionado) {
+        setError('Debe seleccionar un documento del lote');
+        return false;
+      }
+    }
+
+    if (tipoTramite === 'registro_poliza') {
+      const filesWithData = polizaFiles.filter(f => f.file !== null);
+
+      if (filesWithData.length === 0) {
+        setError('Debe adjuntar al menos 1 archivo');
+        return false;
+      }
+
+      for (const pf of filesWithData) {
+        if (!pf.aseguradora) {
+          setError('Todos los archivos deben tener una aseguradora seleccionada');
+          return false;
+        }
+        if (!pf.claveAgente || !/^[a-zA-Z0-9]+$/.test(pf.claveAgente)) {
+          setError('Todos los archivos deben tener una clave de agente válida (alfanumérica)');
+          return false;
+        }
+      }
+    }
+
+    if (tipoTramite === 'solicitud_comisiones_pendientes') {
+      if (comisionesPendientes.length === 0) {
+        setError('Debe agregar al menos 1 comisión pendiente');
+        return false;
+      }
+    }
+
+    // RFC y CURP: no dejar guardar con un valor mal formado, y exigir la
+    // confirmación explícita cuando falta la homoclave.
+    for (const campo of camposDinamicos) {
+      if (!canSeeCampo(campo)) continue;
+      const valor = String(respuestasDinamicas[campo.id] ?? '');
+      if (!valor) continue;
+      if (campo.tipo === 'rfc') {
+        const a = analizarRFC(valor);
+        if (!a.valido) {
+          setError(`El RFC de "${campo.label}" no es válido: ${a.error ?? 'revisa el formato'}`);
+          return false;
+        }
+        if (!a.tieneHomoclave && !rfcConfirmado[campo.id]) {
+          setError(`El RFC de "${campo.label}" no trae homoclave. Confirma que es correcto para continuar.`);
+          return false;
+        }
+      }
+      if (campo.tipo === 'curp') {
+        const a = analizarCURP(valor);
+        if (!a.valido) {
+          setError(`El CURP de "${campo.label}" no es válido: ${a.error ?? 'revisa el formato'}`);
+          return false;
+        }
+      }
+    }
+
+    // Validar campos dinámicos requeridos (omitir campos sistema auto-fill).
+    // `campoExigible` descarta los que viven en una sección que no aplica y los
+    // ocultos por su propia condición: pedirlos dejaba el formulario atorado en
+    // un campo que ni siquiera se muestra.
+    for (const campo of camposDinamicos) {
+      if (!campoExigible(campo, secciones, camposDinamicos, respuestasDinamicas)) continue;
+      if (!canSeeCampo(campo)) continue;
+      if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
+      if (campoSistemaOculto(campo)) continue;
+      if (!isCampoRespondido(campo)) {
+        setError(`El campo "${campo.label}" es obligatorio`);
+        return false;
+      }
+    }
+
+    // Cada archivo tiene que decir qué documento es. Crear el trámite no exige
+    // adjuntar nada, pero lo que se adjunte sin categoría después no cuenta
+    // para la validación del cambio de estatus, y el sistema lo vuelve a pedir
+    // teniéndolo enfrente.
+    for (const campo of camposDinamicos.filter(c => c.tipo === 'adjunto')) {
+      if (campo.config?.categoria_id) continue;
+      // Solo se exige si el FormBuilder marcó algún tipo como requerido.
+      if (!tiposDelCampoAdjunto(campo).some(tc => tc.requerido)) continue;
+      const archivosDelCampo = adjuntosTemporales[campo.id] || [];
+      const cats = adjuntoCatsArchivo[campo.id] || [];
+      if (archivosDelCampo.some((_, i) => !cats[i])) {
+        setError(`En "${campo.label}" falta indicar qué documento es cada archivo`);
+        return false;
+      }
+    }
+
+    // Validar categoría de adjuntos si hay archivos adjuntados
+    const tieneAdjuntoLegacy = tipoTramite !== 'registro_poliza' && tipoTramite !== 'solicitud_comisiones_pendientes';
+    if (tieneAdjuntoLegacy && archivos.length > 0 && !archivoCategoriaId) {
+      setError('Selecciona una categoría para los archivos adjuntos');
+      return false;
+    }
+
+    return true;
+  };
+
+  const renderCampoDinamico = (campo: CampoDinamico) => {
+    const val = respuestasDinamicas[campo.id];
+    const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
+
+    return (
+      <div key={campo.id}>
+        <label className="block text-[13px] font-semibold text-neutral-600 mb-0.5">
+          {campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        {campo.ayuda && <p className="text-[11px] leading-4 text-neutral-500 mb-0.5">{campo.ayuda}</p>}
+
+        {campo.tipo === 'texto_corto' && (
+          <input
+            type="text"
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            maxLength={campo.config.max_length}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+        )}
+
+        {campo.tipo === 'texto_largo' && (
+          <textarea
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            maxLength={campo.config.max_length}
+            rows={3}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+          />
+        )}
+
+        {campo.tipo === 'numerico' && (
+          <input
+            type="number"
+            value={val ?? ''}
+            onChange={e => set(e.target.value === '' ? null : Number(e.target.value))}
+            step={campo.config.es_entero ? '1' : 'any'}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+        )}
+
+        {campo.tipo === 'fecha' && (
+          <input
+            type="date"
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            min={campo.config.min_fecha}
+            max={campo.config.max_fecha}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+        )}
+
+        {campo.tipo === 'booleano' && (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!val}
+              onChange={e => set(e.target.checked)}
+              className="w-4 h-4 text-accent-ink rounded"
+            />
+            <span className="text-sm text-neutral-700">Sí</span>
+          </label>
+        )}
+
+        {(campo.tipo === 'estatus' || campo.tipo === 'dropdown') && (
+          <SearchableSelect
+            value={val || ''}
+            onChange={set}
+            options={(campo.config.opciones || []).map((opt: CampoDinamicoOption) => ({ label: opt.label, value: opt.slug }))}
+            placeholder="Seleccionar..."
+          />
+        )}
+
+        {campo.tipo === 'ramo' && (
+          <select
+            value={val || ''}
+            onChange={e => {
+              const nuevoRamoNombre = e.target.value;
+              set(nuevoRamoNombre);
+              // Cascada: el ramo manda sobre la aseguradora — si el nuevo ramo no
+              // cubre alguna aseguradora ya elegida, se quita de la selección.
+              const asegCampo = camposDinamicos.find(c => c.tipo === 'aseguradora');
+              if (asegCampo) {
+                const asegVal = respuestasDinamicas[asegCampo.id];
+                const seleccionadas = asegVal ? String(asegVal).split(',').map(s => s.trim()).filter(Boolean) : [];
+                if (seleccionadas.length > 0) {
+                  const ramo = catalogoRamos.find(r => r.nombre === nuevoRamoNombre);
+                  const validIds = ramo ? new Set(combinaciones.filter(cb => cb.ramo_id === ramo.id).map(cb => cb.compania_id)) : new Set<string>();
+                  const validNombres = new Set(catalogoCompanias.filter(c => validIds.has(c.id)).map(c => c.nombre));
+                  const filtradas = nuevoRamoNombre ? seleccionadas.filter(n => validNombres.has(n)) : seleccionadas;
+                  if (filtradas.length !== seleccionadas.length) {
+                    setRespuestasDinamicas(prev => ({ ...prev, [asegCampo.id]: filtradas.join(', ') }));
+                  }
+                }
+              }
+            }}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-surface-card"
+          >
+            <option value="">Selecciona ramo...</option>
+            {catalogoRamos.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
+          </select>
+        )}
+
+        {campo.tipo === 'aseguradora' && (() => {
+          const ramoCampo = camposDinamicos.find(c => c.tipo === 'ramo');
+          const ramoVal = ramoCampo ? respuestasDinamicas[ramoCampo.id] : null;
+          const ramo = ramoVal ? catalogoRamos.find(r => r.nombre === ramoVal) : null;
+          const companiasDisponibles = ramo
+            ? catalogoCompanias.filter(c => {
+                const ids = new Set(combinaciones.filter(cb => cb.ramo_id === ramo.id).map(cb => cb.compania_id));
+                return ids.has(c.id);
+              })
+            : catalogoCompanias;
+
+          // Contra el catálogo COMPLETO, no contra `companiasDisponibles`: filtrar
+          // por ramo no debe borrar de la lectura una aseguradora ya elegida.
+          const seleccionadas = parseAseguradoras(val as string, catalogoCompanias.map(c => c.nombre));
+          const ui = asegUiState[campo.id] || { open: false, search: '', verMas: false };
+          const setUi = (patch: Partial<typeof ui>) => setAsegUiState(prev => ({ ...prev, [campo.id]: { ...ui, ...patch } }));
+
+          const toggleCompania = (nombre: string, esPreferente: boolean) => {
+            const yaSeleccionada = seleccionadas.includes(nombre);
+            if (!yaSeleccionada && !esPreferente) {
+              const continuar = window.confirm(`"${nombre}" no es una aseguradora preferente. ¿Deseas continuar de todas formas?`);
+              if (!continuar) return;
+            }
+            const nuevas = yaSeleccionada ? seleccionadas.filter(n => n !== nombre) : [...seleccionadas, nombre];
+            set(nuevas.join(', '));
+          };
+
+          // Convenio/preferente vive por combinación (compañía+ramo+subramo), no
+          // por compañía completa — una misma aseguradora puede ser preferente en
+          // un ramo y no en otro. Este selector no tiene subramo, así que se
+          // considera preferente si CUALQUIER subramo de ese ramo lo es (con
+          // ramo elegido) o si lo es en cualquier ramo (sin ramo elegido todavía).
+          const esConvenio = (companiaId: string) => combinaciones.some(cb =>
+            cb.compania_id === companiaId && cb.convenio && (!ramo || cb.ramo_id === ramo.id)
+          );
+
+          const term = ui.search.toLowerCase();
+          const preferentes = companiasDisponibles.filter(c => esConvenio(c.id) && c.nombre.toLowerCase().includes(term));
+          const resto = companiasDisponibles.filter(c => !esConvenio(c.id) && c.nombre.toLowerCase().includes(term));
+
+          return (
+            <div
+              className="relative"
+              ref={el => { asegRefs.current[campo.id] = el; }}
+            >
+              <div
+                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[42px] flex items-center justify-between gap-2 bg-surface-card hover:border-neutral-400 focus-within:ring-2 focus-within:ring-accent"
+                onClick={() => setUi({ open: !ui.open })}
+              >
+                {seleccionadas.length === 0
+                  ? <span className="text-neutral-500">{ramoCampo && !ramoVal ? 'Selecciona primero un ramo (opcional)...' : 'Selecciona aseguradoras...'}</span>
+                  : <span className="text-neutral-900" title={seleccionadas.join(', ')}>{etiquetaAseguradoras(seleccionadas)}</span>
+                }
+                <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${ui.open ? 'rotate-180' : ''}`} />
+              </div>
+              {ui.open && (
+                <div className="absolute z-10 w-full mt-1 bg-surface-card border border-neutral-300 rounded-xl shadow-lg max-h-64 overflow-auto">
+                  <div className="p-2 border-b border-neutral-200 sticky top-0 bg-white">
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      value={ui.search}
+                      onChange={e => setUi({ search: e.target.value })}
+                      onClick={e => e.stopPropagation()}
+                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                  </div>
+                  <div className="p-1">
+                    {preferentes.length > 0 && (
+                      <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wider px-1.5 pt-1">Preferentes</p>
+                    )}
+                    {preferentes.map(c => (
+                      <label key={c.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={seleccionadas.includes(c.nombre)}
+                          onChange={() => toggleCompania(c.nombre, true)}
+                          className="w-3.5 h-3.5 rounded border-neutral-300"
+                        />
+                        <span className="text-xs text-neutral-700">{c.nombre}</span>
+                      </label>
+                    ))}
+                    {resto.length > 0 && !ui.verMas && (
+                      <button
+                        type="button"
+                        onClick={() => setUi({ verMas: true })}
+                        className="w-full text-left px-1.5 py-1.5 text-xs text-accent-ink hover:underline"
+                      >
+                        + Mostrar {resto.length} más
+                      </button>
+                    )}
+                    {resto.length > 0 && ui.verMas && resto.map(c => (
+                      <label key={c.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={seleccionadas.includes(c.nombre)}
+                          onChange={() => toggleCompania(c.nombre, false)}
+                          className="w-3.5 h-3.5 rounded border-neutral-300"
+                        />
+                        <span className="text-xs text-neutral-700">{c.nombre}</span>
+                      </label>
+                    ))}
+                    {companiasDisponibles.length === 0 && (
+                      <p className="text-xs text-neutral-500 p-2">Sin aseguradoras para el ramo seleccionado</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {campo.tipo === 'vehiculo' && (
+          <SelectorVehiculo
+            value={val as VehiculoSeleccionado | undefined}
+            onChange={v => set(v)}
+          />
+        )}
+
+        {campo.tipo === 'codigo_postal' && (() => {
+          const cpState = cpSearchState[campo.id] || { colonias: [], loading: false };
+          const stored = val as { codigo?: string; colonia?: string; municipio?: string; estado?: string } | undefined;
+          return (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={stored?.codigo || ''}
+                onChange={async e => {
+                  const cp = e.target.value.replace(/\D/g, '').slice(0, 5);
+                  set({ codigo: cp, colonia: '', municipio: '', estado: '' });
+                  if (cp.length === 5) {
+                    setCpSearchState(prev => ({ ...prev, [campo.id]: { colonias: [], loading: true } }));
+                    const { data } = await supabase
+                      .from('codigos_postales')
+                      .select('colonia, municipio, estado')
+                      .eq('codigo', cp)
+                      .order('colonia');
+                    setCpSearchState(prev => ({ ...prev, [campo.id]: { colonias: data || [], loading: false } }));
+                  } else {
+                    setCpSearchState(prev => ({ ...prev, [campo.id]: { colonias: [], loading: false } }));
+                  }
+                }}
+                placeholder="Ej: 76000"
+                maxLength={5}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              {cpState.loading && <p className="text-xs text-neutral-500">Buscando colonias...</p>}
+
+              {/* El catálogo no siempre está completo: colonias nuevas o CPs que aún
+                  no aparecen. En vez de dejar al usuario atorado, se permite
+                  describir la colonia a mano — y queda marcado como tal. */}
+              {cpState.colonias.length > 0 && (
+                <select
+                  value={(stored as any)?.colonia_descrita ? '__otra__' : (stored?.colonia || '')}
+                  onChange={e => {
+                    if (e.target.value === '__otra__') {
+                      // Municipio y estado son iguales para todas las colonias de un CP,
+                      // así que se conservan del catálogo aunque la colonia sea manual.
+                      const ref = cpState.colonias[0];
+                      const nuevoVal = { codigo: stored?.codigo, colonia: '', municipio: ref?.municipio ?? '', estado: ref?.estado ?? '', colonia_descrita: true };
+                      set(nuevoVal);
+                      aplicarExtraccion(campo, nuevoVal);
+                      return;
+                    }
+                    const col = cpState.colonias.find(c => c.colonia === e.target.value);
+                    if (col) {
+                      const nuevoVal = { codigo: stored?.codigo, ...col };
+                      set(nuevoVal);
+                      aplicarExtraccion(campo, nuevoVal);
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-surface-card"
+                >
+                  <option value="">Selecciona colonia...</option>
+                  {cpState.colonias.map(c => <option key={c.colonia} value={c.colonia}>{c.colonia}</option>)}
+                  <option value="__otra__">Otra — escribir la colonia</option>
+                </select>
+              )}
+
+              {/* CP de 5 dígitos que el catálogo no conoce: se captura todo a mano. */}
+              {!cpState.loading && cpState.colonias.length === 0 && (stored?.codigo?.length === 5) && (
+                <p className="text-xs text-amber-600 flex items-start gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  Este código postal no está en el catálogo. Escribe los datos a mano.
+                </p>
+              )}
+
+              {((stored as any)?.colonia_descrita || (!cpState.loading && cpState.colonias.length === 0 && stored?.codigo?.length === 5)) && (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={stored?.colonia || ''}
+                    onChange={e => {
+                      const nuevoVal = { ...(stored ?? {}), codigo: stored?.codigo, colonia: e.target.value, colonia_descrita: true };
+                      set(nuevoVal);
+                      aplicarExtraccion(campo, nuevoVal);
+                    }}
+                    placeholder="Colonia (escríbela)"
+                    className="w-full px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-surface-card"
+                  />
+                  {cpState.colonias.length === 0 && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={stored?.municipio || ''}
+                        onChange={e => {
+                          const nuevoVal = { ...(stored ?? {}), municipio: e.target.value, colonia_descrita: true };
+                          set(nuevoVal);
+                          aplicarExtraccion(campo, nuevoVal);
+                        }}
+                        placeholder="Municipio"
+                        className="px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-surface-card"
+                      />
+                      <input
+                        type="text"
+                        value={stored?.estado || ''}
+                        onChange={e => {
+                          const nuevoVal = { ...(stored ?? {}), estado: e.target.value, colonia_descrita: true };
+                          set(nuevoVal);
+                          aplicarExtraccion(campo, nuevoVal);
+                        }}
+                        placeholder="Estado"
+                        className="px-4 py-2.5 border border-amber-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-surface-card"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {stored?.municipio && !(stored as any)?.colonia_descrita && (
+                <p className="text-xs text-neutral-500">{stored.municipio}, {stored.estado}</p>
+              )}
+              {(stored as any)?.colonia_descrita && stored?.municipio && cpState.colonias.length > 0 && (
+                <p className="text-xs text-neutral-500">{stored.municipio}, {stored.estado} · colonia escrita a mano</p>
+              )}
+            </div>
+          );
+        })()}
+
+        {campo.tipo === 'seleccion_multiple' && (
+          <div className="flex flex-wrap gap-2">
+            {(campo.config.opciones || []).map((opt: CampoDinamicoOption) => {
+              const selected: string[] = Array.isArray(val) ? val : [];
+              const isChecked = selected.includes(opt.slug);
+              return (
+                <button
+                  key={opt.slug}
+                  type="button"
+                  onClick={() => set(isChecked ? selected.filter(s => s !== opt.slug) : [...selected, opt.slug])}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${isChecked ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-neutral-600 border-neutral-300 hover:border-blue-400'}`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {campo.tipo === 'email' && (
+          <input
+            type="email"
+            value={val || ''}
+            onChange={e => set(e.target.value)}
+            placeholder="correo@ejemplo.com"
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+        )}
+
+        {campo.tipo === 'telefono' && (
+          <input
+            type="tel"
+            value={val || ''}
+            onChange={e => set(e.target.value.replace(/\D/g, '').slice(0, 10))}
+            placeholder="10 dígitos"
+            maxLength={10}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+        )}
+
+        {campo.tipo === 'rfc' && (() => {
+          const a = analizarRFC(String(val || ''));
+          const escrito = String(val || '').length > 0;
+          const faltaConfirmar = a.valido && !a.tieneHomoclave && !rfcConfirmado[campo.id];
+          return (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={val || ''}
+                  onChange={e => {
+                    const nuevo = e.target.value.toUpperCase().slice(0, 13);
+                    set(nuevo);
+                    aplicarExtraccion(campo, nuevo);
+                    // Si cambia el RFC, la confirmación anterior deja de valer.
+                    setRfcConfirmado(prev => ({ ...prev, [campo.id]: false }));
+                  }}
+                  placeholder="RFC (12 ó 13 caracteres)"
+                  maxLength={13}
+                  className={`flex-1 px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 font-mono uppercase ${
+                    escrito && !a.valido ? 'border-red-300 focus:ring-red-400' : 'border-neutral-300 focus:ring-accent'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => { set(RFC_GENERICO_NACIONAL); aplicarExtraccion(campo, RFC_GENERICO_NACIONAL); }}
+                  className="px-2.5 py-2 text-[11px] rounded-xl border border-neutral-300 text-neutral-500 hover:bg-neutral-50 shrink-0"
+                  title="Para cuando no se cuenta con el RFC del cliente"
+                >
+                  Genérico
+                </button>
+              </div>
+
+              {escrito && !a.valido && a.error && (
+                <p className="text-xs text-red-600 flex items-start gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {a.error}
+                </p>
+              )}
+
+              {a.valido && a.advertencia && (
+                <p className="text-xs text-amber-600 flex items-start gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {a.advertencia}
+                </p>
+              )}
+
+              {faltaConfirmar && (
+                <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg space-y-1.5">
+                  <p className="text-xs text-amber-700 flex items-start gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    Este RFC no trae homoclave. Verifica que sea correcto antes de continuar.
+                  </p>
+                  <label className="flex items-center gap-2 text-xs text-amber-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!rfcConfirmado[campo.id]}
+                      onChange={e => setRfcConfirmado(prev => ({ ...prev, [campo.id]: e.target.checked }))}
+                      className="rounded border-amber-300"
+                    />
+                    Confirmo que el RFC es correcto
+                  </label>
+                </div>
+              )}
+
+              {a.valido && !a.esGenerico && a.fecha && (
+                <p className="text-[11px] text-neutral-500">
+                  Persona {a.tipoPersona === 'fisica' ? 'física' : 'moral'} ·{' '}
+                  {a.tipoPersona === 'fisica' ? 'Nacimiento' : 'Constitución'}: {a.fecha.split('-').reverse().join('/')}
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
+        {campo.tipo === 'curp' && (() => {
+          const a = analizarCURP(String(val || ''));
+          const escrito = String(val || '').length > 0;
+          return (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={val || ''}
+                onChange={e => {
+                  const nuevo = e.target.value.toUpperCase().slice(0, 18);
+                  set(nuevo);
+                  aplicarExtraccion(campo, nuevo);
+                }}
+                placeholder="CURP (18 caracteres)"
+                maxLength={18}
+                className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 font-mono uppercase ${
+                  escrito && !a.valido ? 'border-red-300 focus:ring-red-400' : 'border-neutral-300 focus:ring-accent'
+                }`}
+              />
+              {escrito && !a.valido && a.error && (
+                <p className="text-xs text-red-600 flex items-start gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {a.error}
+                </p>
+              )}
+              {a.valido && (
+                <p className="text-[11px] text-neutral-500">
+                  {a.sexo === 'H' ? 'Hombre' : 'Mujer'} · Nacimiento: {a.fecha?.split('-').reverse().join('/')} · {a.entidadNombre}
+                </p>
+              )}
+            </div>
+          );
+        })()}
+        {campo.tipo === 'porcentaje' && (
+          <div className="relative">
+            <input
+              type="number"
+              value={val ?? ''}
+              onChange={e => set(e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value))))}
+              min={0}
+              max={100}
+              step="0.01"
+              className="w-full px-4 py-2.5 pr-8 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">%</span>
+          </div>
+        )}
+
+        {campo.tipo === 'reporte_protegido' && (
+          <div className="rounded-xl border border-neutral-200 px-4 py-3 bg-neutral-50 text-sm text-neutral-500">
+            Se completará al trabajar la tarea
+          </div>
+        )}
+
+        {campo.tipo === 'adjunto' && (() => {
+          const files = adjuntosTemporales[campo.id] || [];
+          const maxFiles = campo.config.max_archivos || 1;
+          const maxMb = campo.config.max_mb || 10;
+          const accept = (campo.config.tipos_mime || []).join(',') || undefined;
+          const categoriaFija = campo.config.categoria_id as string | undefined;
+          const tiposCampo = tiposDelCampoAdjunto(campo);
+          const catsDeArchivo = adjuntoCatsArchivo[campo.id] || [];
+          // Con un solo tipo configurado no hay nada que preguntar.
+          const tipoUnico = tiposCampo.length === 1 ? tiposCampo[0].categoria_id : '';
+          // Decir qué documento es cada archivo solo se EXIGE cuando el
+          // FormBuilder marcó algún tipo como requerido — sin eso, la validación
+          // del cambio de estatus no tendría cómo saber si ya está. En los demás
+          // campos se puede clasificar, pero no estorba a quien solo quiere subir.
+          const exigeCategoria = tiposCampo.some(tc => tc.requerido);
+          return (
+            <div className="space-y-2">
+              {/* Selector de categoría cuando el admin no pre-configuró una */}
+              {!categoriaFija && tiposCampo.length === 0 && adjuntoCategorias.length > 0 && (
+                <select
+                  value={adjuntoCategoriasIds[campo.id] || ''}
+                  onChange={e => setAdjuntoCategoriasIds(prev => ({ ...prev, [campo.id]: e.target.value }))}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent bg-surface-card"
+                >
+                  <option value="">Categoría del archivo (opcional)</option>
+                  {adjuntoCategorias.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                  ))}
+                </select>
+              )}
+              {files.length < maxFiles && (
+                <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-neutral-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-colors">
+                  <Upload className="w-4 h-4 text-neutral-500" />
+                  <span className="text-sm text-neutral-500">
+                    {files.length > 0 ? 'Agregar otro archivo' : 'Haz clic para adjuntar'}
+                  </span>
+                  <input
+                    type="file"
+                    accept={accept}
+                    multiple={maxFiles > 1}
+                    className="hidden"
+                    onChange={e => {
+                      const selected = Array.from(e.target.files || []);
+                      const tooBig = selected.filter(f => f.size > maxMb * 1024 * 1024);
+                      if (tooBig.length) { setError(`El archivo excede el límite de ${maxMb} MB.`); return; }
+                      const merged = [...files, ...selected].slice(0, maxFiles);
+                      setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: merged }));
+                      setAdjuntoCatsArchivo(prev => {
+                        const previas = prev[campo.id] || [];
+                        const porDefecto = categoriaFija || tipoUnico || '';
+                        return {
+                          ...prev,
+                          [campo.id]: merged.map((_, i) => previas[i] ?? porDefecto),
+                        };
+                      });
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+              {files.map((f, i) => (
+                <div key={i} className="px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-neutral-500 shrink-0" />
+                    <span className="text-sm flex-1 truncate">{f.name}</span>
+                    <span className="text-xs text-neutral-500 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                    <button type="button"
+                      onClick={() => {
+                        setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: files.filter((_, j) => j !== i) }));
+                        setAdjuntoCatsArchivo(prev => ({ ...prev, [campo.id]: catsDeArchivo.filter((_, j) => j !== i) }));
+                      }}
+                      aria-label={`Quitar ${f.name}`}
+                      title={`Quitar ${f.name}`}
+                      className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {/* De qué tipo es ESTE archivo. Sin esto el documento se sube
+                      sin categoría y después el sistema lo vuelve a pedir. */}
+                  {!categoriaFija && tiposCampo.length > 0 && (
+                    <select
+                      value={catsDeArchivo[i] ?? ''}
+                      onChange={e => setAdjuntoCatsArchivo(prev => {
+                        const copia = [...(prev[campo.id] || [])];
+                        copia[i] = e.target.value;
+                        return { ...prev, [campo.id]: copia };
+                      })}
+                      className={`w-full px-3 py-2 text-sm rounded-lg border bg-surface-card focus:outline-none focus:ring-2 focus:ring-accent ${
+                        catsDeArchivo[i] || !exigeCategoria ? 'border-neutral-300' : 'border-amber-400'
+                      }`}
+                    >
+                      <option value="">
+                        {exigeCategoria ? '¿Qué documento es? — requerido' : '¿Qué documento es? (opcional)'}
+                      </option>
+                      {tiposCampo.map(tc => {
+                        const cat = adjuntoCategorias.find(c => c.id === tc.categoria_id);
+                        return cat ? <option key={tc.categoria_id} value={tc.categoria_id}>{cat.nombre}</option> : null;
+                      })}
+                    </select>
+                  )}
+                </div>
+              ))}
+              {maxFiles > 1 && (
+                <p className="text-xs text-neutral-500">{files.length}/{maxFiles} archivos · máx {maxMb} MB c/u</p>
+              )}
+            </div>
+          );
+        })()}
+
+      </div>
+    );
+  };
+
+  const renderCampoSistema = (campo: CampoDinamico) => {
+    const tipoInfo = tiposDb.find(t => t.value === tipoTramite);
+    const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700 flex items-center gap-2';
+    const lock = <span className="text-[11px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">AUTO</span>;
+
+    const lockLabel = (texto: string) => (
+      <label className="flex items-center gap-1 text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
+        <Lock className="w-3 h-3" />{texto}
+      </label>
+    );
+
+    if (campo.sistema_key === 'area') return (
+      <div key={campo.id}>
+        {lockLabel(campo.label)}
+        <div className={violet}>{lock}{tipoInfo?.area || 'Sin área'}</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'equipo') return (
+      <div key={campo.id}>
+        {lockLabel(campo.label)}
+        <div className={violet}>{lock}Auto-asignado al crear</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'fecha_creacion') return (
+      <div key={campo.id}>
+        {lockLabel(campo.label)}
+        <div className={violet}>{lock}{new Date().toLocaleString('es-MX')}</div>
+      </div>
+    );
+
+    if (campo.sistema_key === 'creado_por') return (
+      <div key={campo.id}>
+        {lockLabel(campo.label)}
+        <div className={violet}>{lock}{usuario?.nombre_completo || usuario?.nombre || 'Usuario actual'}</div>
+        <p className="text-[11px] text-neutral-500 mt-1">Quién está registrando este trámite en el sistema.</p>
+      </div>
+    );
+
+    // No aporta nada al crear -- siempre va a decir "se registrará al cerrar",
+    // porque el trámite todavía no se cierra. Se omite del todo en este formulario
+    // (ya está en AUTO_FILL_KEYS, así que no afecta la barra de requeridos).
+    if (campo.sistema_key === 'fecha_finalizacion') return null;
+
+    if (campo.sistema_key === 'agente_vendedor') {
+      if (esInterno) return null;
+      // Un agente solo levanta trámites a su nombre: el solicitante es él y no se elige.
+      // Se muestra igual que "Creado por" en vez de un selector deshabilitado y vacío.
+      if (isAgent) {
+        return (
+          <div key={campo.id}>
+            <label className="flex items-center gap-1 text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
+              <Lock className="w-3 h-3" />{campo.label}
+            </label>
+            <div className={violet}>{lock}{usuario?.nombre_completo || usuario?.nombre || 'Tu cuenta'}</div>
+            <p className="text-[11px] text-neutral-500 mt-1">Solicitante — este trámite va a tu nombre.</p>
+          </div>
+        );
+      }
+      // El solicitante es un usuario MOVI, no un vendedor del catálogo SICAS. Es el
+      // dato que de verdad necesita el trámite (alimenta las reglas de asignación,
+      // las notificaciones y agente_id); el vendedor SICAS es metadato secundario.
+      const val = respuestasDinamicas[campo.id] || '';
+      const usuarioOpts = usuariosDisponibles.map(u => ({
+        label: `${u.nombre_completo} (${u.rol})`,
+        value: u.id,
+      }));
+      const vendedorLigado = val ? agentesVendedor.find(a => a.usuario_id === val) : undefined;
+      const vendedoresSinLigar = agentesVendedor.filter(a => !a.usuario_id);
+      return (
+        <div key={campo.id}>
+          <label className="flex items-center gap-1 text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
+            <Lock className="w-3 h-3" />{campo.label}{campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <p className="text-[11px] text-neutral-500 mb-1.5">Solicitante — para quién es este trámite.</p>
+          <SearchableSelect
+            value={val}
+            onChange={userId => {
+              const u = usuariosDisponibles.find(x => x.id === userId);
+              const oficinaCampo = camposDinamicos.find(c => c.sistema_key === 'oficina_jiro');
+              const oficina = u?.oficina_id ? oficinas.find(o => o.id === u.oficina_id) : null;
+              setRespuestasDinamicas(prev => ({
+                ...prev,
+                [campo.id]: userId,
+                ...(oficinaCampo ? { [oficinaCampo.id]: oficina?.nombre || '' } : {}),
+              }));
+              setAsignado(userId);
+              setAgenteSicasManual('');
+            }}
+            options={usuarioOpts}
+            placeholder="Selecciona el solicitante..."
+          />
+          {val && vendedorLigado && (
+            <p className="text-[11px] text-neutral-500 mt-1.5">
+              Vendedor SICAS: {vendedorLigado.nombre}
+            </p>
+          )}
+          {val && !vendedorLigado && (
+            <div className="mt-2 space-y-2">
+              <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  Este usuario no tiene vendedor SICAS ligado. Puedes elegirlo aquí
+                  {esRolSistemaAdmin ? ' y queda ligado al guardar.' : '; un Administrador confirmará el vínculo.'}
+                </p>
+              </div>
+              <SearchableSelect
+                value={agenteSicasManual}
+                onChange={setAgenteSicasManual}
+                options={vendedoresSinLigar.map(a => ({ label: a.nombre, value: a.id }))}
+                placeholder="Busca el vendedor SICAS…"
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'oficina_jiro') {
+      if (esInterno) return null;
+      const val = respuestasDinamicas[campo.id];
+      return (
+        <div key={campo.id}>
+          {lockLabel(campo.label)}
+          <div className={violet}>
+            {val
+              ? <><span className="text-[11px] font-bold bg-violet-100 text-violet-500 px-1.5 py-0.5 rounded">CAT</span>{val}</>
+              : <span className="text-neutral-500 italic text-sm">Auto-completa al seleccionar agente</span>
+            }
+          </div>
+        </div>
+      );
+    }
+
+    // El estatus no se elige al crear. Nace en su opción inicial (fijada al cargar el
+    // tipo) y se cambia después desde el encabezado del trámite, que es donde vive el
+    // flujo completo con su comentario obligatorio y sus triggers.
+    if (campo.sistema_key === 'estatus') return null;
+
+    if (campo.sistema_key === 'asignado_a') {
+      // Solo informativo: el Responsable lo deciden las reglas de asignación. Desde que
+      // el solicitante es un usuario MOVI, su cuenta siempre se conoce y no hay nada
+      // que capturar aquí.
+      return (
+        <div key={campo.id} className="space-y-3">
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">
+              <User className="w-4 h-4 inline mr-2" />
+              Responsable
+            </label>
+            {previewAsignacion === null && (
+              <p className="text-sm text-neutral-500">Se define al elegir el solicitante y el tipo de trámite.</p>
+            )}
+            {previewAsignacion?.estado === 'cargando' && (
+              <p className="text-sm text-neutral-500">Calculando asignación…</p>
+            )}
+            {previewAsignacion?.estado === 'listo' && previewAsignacion.responsable && (
+              <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800">
+                Se asignará a <strong>{previewAsignacion.responsable}</strong>
+                {previewAsignacion.equipo && <> — equipo {previewAsignacion.equipo}</>}
+              </div>
+            )}
+            {previewAsignacion?.estado === 'listo' && !previewAsignacion.responsable && previewAsignacion.equipo && (
+              <div className="px-4 py-3 bg-sky-50 border border-sky-200 rounded-xl text-sm text-sky-800">
+                Entra a la cola del equipo <strong>{previewAsignacion.equipo}</strong>. Su líder definirá quién lo atiende.
+              </div>
+            )}
+            {previewAsignacion?.estado === 'listo' && !previewAsignacion.equipo && (
+              <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-sm text-amber-800">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
+                <span>No hay regla de asignación para este solicitante y tipo de trámite. Se avisará a un Administrador para que lo asigne.</span>
+              </div>
+            )}
+            <p className="text-[11px] text-neutral-500 mt-2">Lo definen las reglas de asignación. Se puede reasignar después desde el trámite.</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'prioridad') {
+      if (isAgent || tipoTramite === 'cotizacion_emision' || isCommercialTicketType(tipoTramite)) return null;
+      return (
+        <div key={campo.id}>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            {campo.label || 'Prioridad'}
+            {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <select
+            value={prioridad}
+            onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            <option value="Baja">Baja</option>
+            <option value="Media">Media</option>
+            <option value="Alta">Alta</option>
+          </select>
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'descripcion') return (
+      <div key={campo.id}>
+        <label className="block text-sm font-semibold text-neutral-900 mb-2">
+          {campo.label || 'Descripción / Notas'}
+          {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        <textarea
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          rows={4}
+          placeholder="Describe el motivo del trámite con el mayor detalle posible... (Opcional)"
+          className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+        />
+      </div>
+    );
+
+    if (campo.sistema_key === 'fecha_promesa_entrega') {
+      if (campoSistemaOculto(campo)) return null;
+      return (
+        <div key={campo.id}>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            <Calendar className="w-4 h-4 inline mr-1.5" />
+            {campo.label || 'Fecha Promesa de Entrega'}
+            {campo.requerido
+              ? <span className="text-red-500 ml-0.5">*</span>
+              : <span className="text-xs font-normal text-neutral-500 ml-2">Opcional</span>
+            }
+          </label>
+          <input
+            type="date"
+            value={fechaPromesaEntrega}
+            onChange={(e) => setFechaPromesaEntrega(e.target.value)}
+            className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+          />
+        </div>
+      );
+    }
+
+    if (campo.sistema_key === 'archivos_adjuntos') {
+      if (campoSistemaOculto(campo)) return null;
+      return (
+        <div key={campo.id}>
+          <label className="block text-sm font-semibold text-neutral-900 mb-2">
+            <Upload className="w-4 h-4 inline mr-2" />
+            {campo.label || 'Archivos Adjuntos'}
+            {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+            <span className="text-xs font-normal text-neutral-500 ml-2">Documentos adjuntos: {archivos.length} / 20</span>
+          </label>
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-neutral-600 mb-1">
+              Categoría del adjunto {archivos.length > 0 && <span className="text-red-500">*</span>}
+            </label>
+            <select
+              value={archivoCategoriaId}
+              onChange={e => setArchivoCategoriaId(e.target.value)}
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="">Selecciona una categoría...</option>
+              {adjuntoCategorias.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center hover:border-accent transition-all">
+            <input type="file" multiple onChange={handleFileChange} className="hidden" id="file-upload" />
+            <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center justify-center">
+              <Upload className="w-10 h-10 text-neutral-500 mb-2" />
+              <p className="text-sm text-neutral-600 mb-1">Haz clic para seleccionar archivos</p>
+              <p className="text-xs text-neutral-500">PDF, imágenes, documentos (máx. 20 archivos)</p>
+            </label>
+          </div>
+          {archivos.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {archivos.map((archivo, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileText className="w-4 h-4 text-neutral-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-neutral-900 truncate">{archivo.name}</p>
+                      <p className="text-xs text-neutral-500">{(archivo.size / 1024).toFixed(2)} KB</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => removeFile(index)} className="text-red-600 hover:text-red-700 ml-2 flex-shrink-0">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const buildCommercialDescription = (): string => {
+    const parts: string[] = [];
+    if (comAsunto) parts.push(`Asunto: ${comAsunto}`);
+    if (comCliente) parts.push(`Cliente: ${comCliente}`);
+    if (comPoliza) parts.push(`Póliza: ${comPoliza}`);
+    if (comAseguradora) parts.push(`Aseguradora: ${comAseguradora}`);
+    if (comFechaVencimiento) parts.push(`Fecha: ${new Date(comFechaVencimiento).toLocaleDateString('es-MX')}`);
+    if (comMonto) parts.push(`Monto: $${comMonto}`);
+    if (descripcion.trim()) parts.push(descripcion.trim());
+    return parts.join('\n') || 'Sin descripción';
+  };
+
+  const handleSubmitCotizacionEmision = async () => {
+    if (!usuario) return;
+
+    // El solicitante sale del campo compartido `agente_vendedor` (que escribe en
+    // `asignado`), no de un campo propio de este tipo.
+    const effectiveAgenteId = isAgent ? usuario.id : (asignado || (preloadedData?.instrucciones ? usuario.id : ''));
+
+    // Resolve team assignment rules (same logic as handleSubmit for other tramite types)
+    const grupoResult = await resolveGrupoParaTicket(effectiveAgenteId || null, 'cotizacion_emision');
+    const grupoAsignadoId = grupoResult?.grupo_id ?? null;
+    // Rule with ejecutivo → direct assign; rule without ejecutivo → pool (empty); no rule → office fallback
+    const effectiveAttendingId = grupoResult !== null
+      ? (grupoResult.ejecutivo_id ?? '')
+      : (isAgent ? (autoResponsableId || '') : usuario.id);
+
+    const formData = {
+      tipo_tramite: 'cotizacion_emision',
+      activity_subtype_id: COTIZACION_EMISION_SUBTYPE_ID,
+      agente_usuario_id: effectiveAgenteId,
+      insurance_type_id: null,       // deprecated; se usa maestro_ramo_id ahora
+      insurers: ceSelectedInsurers,  // array de nombres de maestro_companias
+      attending_user_id: effectiveAttendingId,
+      request_datetime: new Date().toISOString(),
+      estatus_nombre: 'Iniciado',
+      prioridad: isAgent ? 'Media' : prioridad,
+      instrucciones: descripcion
+    };
+
+    if (!effectiveAgenteId && !preloadedData?.instrucciones) { setError('El agente es obligatorio'); return; }
+    if (!ceRamoId && !preloadedData?.instrucciones) { setError('El ramo es obligatorio'); return; }
+    if (ceSelectedInsurers.length === 0 && !preloadedData?.instrucciones) { setError('Debe seleccionar al menos una aseguradora'); return; }
+    if (archivos.length > 0 && !archivoCategoriaId) { setError('Selecciona una categoría para los archivos adjuntos'); return; }
+
+    setLoading(true);
+    setError('');
+    try {
+      const ticket = await createRegistroActividad({ ...formData, creado_por: usuario.id });
+      if (ticket?.id) {
+        const postUpdates: Record<string, any> = {};
+        if (grupoAsignadoId) postUpdates.grupo_asignado_id = grupoAsignadoId;
+        if (fechaPromesaEntrega) postUpdates.fecha_promesa_entrega = fechaPromesaEntrega;
+        if (ceRamoId) postUpdates.maestro_ramo_id = ceRamoId;
+        if (Object.keys(postUpdates).length > 0) {
+          await supabase.from('tickets').update(postUpdates).eq('id', ticket.id);
+        }
+
+        if (!grupoAsignadoId && !effectiveAttendingId) {
+          const { data: adminsSinEquipo } = await supabase.from('usuarios').select('id')
+            .eq('rol', 'Administrador').eq('activo', true);
+          for (const adm of (adminsSinEquipo ?? [])) {
+            await crearNotificacion({
+              user_id: adm.id,
+              titulo: 'Trámite sin equipo asignado',
+              mensaje: `El trámite ${ticket.folio} (Cotización / Emisión) no se pudo asignar automáticamente a ningún equipo. Requiere asignación manual.`,
+              modulo: 'Tramites',
+              icono: 'alert-triangle',
+              accion_url: `/tramites/${ticket.id}`,
+              accion_texto: 'Ver trámite',
+            });
+          }
+        }
+      }
+      if (ticket?.id && archivos.length > 0) {
+        for (const archivo of archivos) {
+          const fileExt = archivo.name.split('.').pop();
+          const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from('ticket-archivos')
+            .upload(fileName, archivo);
+          if (uploadError) throw uploadError;
+          const { data: { publicUrl } } = supabase.storage
+            .from('ticket-archivos')
+            .getPublicUrl(fileName);
+          const { error: archivoError } = await supabase
+            .from('ticket_archivos')
+            .insert({
+              ticket_id: ticket.id,
+              usuario_id: usuario.id,
+              nombre: archivo.name,
+              url: publicUrl,
+              tipo: archivo.type,
+              tamano: archivo.size,
+              categoria_id: archivoCategoriaId || null,
+            });
+          if (archivoError) throw archivoError;
+        }
+      }
+      clearDraft(DRAFT_KEY);
+      if (ticket?.id) onSuccessWithId?.(ticket.id);
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Error al crear el trámite');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (tipoTramite === 'cotizacion_emision') {
+      await handleSubmitCotizacionEmision();
+      return;
+    }
+
+    if (!validateForm() || !usuario) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const estatusNuevo = estatusList.find(e => e.nombre === 'Iniciado');
+      if (!estatusNuevo) {
+        throw new Error('No se encontró el estatus "Iniciado"');
+      }
+
+      const isCommercial = isCommercialTicketType(tipoTramite);
+      // Resolve team + optional auto-ejecutivo based on the agent user (applies to all tramite types)
+      const agentUserId = isAgent || esInterno
+        ? usuario.id
+        : (isCommercial ? comAgenteUserId : asignado) ?? null;
+      const grupoResult = await resolveGrupoParaTicket(agentUserId, tipoTramite);
+      const grupoAsignadoId = grupoResult?.grupo_id ?? null;
+      // grupoResult found + ejecutivo_id null → pool assignment (no individual responsible)
+      // grupoResult found + ejecutivo_id set  → auto-assign to that ejecutivo
+      // grupoResult null                       → fall back to manual/auto logic
+      const autoEjecutivoId = grupoResult?.ejecutivo_id ?? null;
+      // Sin regla no hay responsable: el trámite queda sin asignar y se avisa a Admin
+      // (más abajo). Antes caía en `asignado`, que es la cuenta MOVI del solicitante
+      // — eso dejaba al solicitante como su propio responsable.
+      const responsableId = grupoResult !== null
+        ? autoEjecutivoId
+        : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : null));
+      const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
+
+      // Los estados de los selectores arrancan en cadena vacía, no en null, y
+      // Postgres rechaza `''` como uuid: el alta tronaba con «invalid input
+      // syntax for type uuid: ""» cuando el tipo no exige Solicitante y nadie
+      // lo eligió. Vacío significa "no hay", y eso en la base es null.
+      const uuidONull = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v : null);
+
+      const ticketData: any = {
+        tipo_tramite: tipoTramite,
+        estatus_id: estatusNuevo.id,
+        prioridad,
+        instrucciones: isCommercial ? buildCommercialDescription() : (descripcion.trim() || 'Sin descripción'),
+        creado_por: usuario.id,
+        modificado_por: usuario.id,
+        agente_id: esInterno ? null : uuidONull(isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo)),
+        agente_usuario_id: isCommercial ? (uuidONull(comAgenteUserId) ?? undefined) : undefined,
+        assigned_to_user_id: uuidONull(responsableId),
+        grupo_asignado_id: grupoAsignadoId ?? undefined,
+      };
+
+      if (tipoTramite === 'correccion_poliza_registrada') {
+        ticketData.poliza = polizaNumero.trim() || null;
+      }
+
+      if (tipoTramite === 'correccion_poliza_endoso') {
+        ticketData.poliza = comPoliza.trim() || null;
+      }
+
+      if (tipoTramite === 'correccion_comisiones') {
+        const lote = lotesDisponibles.find(l => l.id === loteSeleccionado);
+        const documento = documentosLote.find(d => d.id === documentoSeleccionado);
+
+        ticketData.comisiones_lote_id = loteSeleccionado;
+        ticketData.comisiones_lote_label = lote?.name || '';
+        ticketData.comisiones_documento_id = documentoSeleccionado;
+        ticketData.comisiones_poliza_ref = documento?.poliza || '';
+        ticketData.comisiones_context_snapshot = {
+          lote: lote,
+          documento: documento
+        };
+      }
+
+      const { data: ticket, error: ticketError } = await supabase
+        .from('tickets')
+        .insert(ticketData)
+        .select()
+        .single();
+
+      if (ticketError) throw ticketError;
+
+      // Guardar el texto de creación como primer comentario, para que quede en el
+      // historial de la conversación (antes solo se guardaba en tickets.instrucciones
+      // y la pestaña Comentarios arrancaba vacía).
+      const comentarioInicial = (ticketData.instrucciones as string)?.trim();
+      if (comentarioInicial && comentarioInicial !== 'Sin descripción') {
+        await supabase.from('ticket_comentarios').insert({
+          ticket_id: ticket.id,
+          usuario_id: usuario.id,
+          mensaje: comentarioInicial,
+        });
+      }
+
+      // Guardar respuestas de campos dinámicos (sistema + custom)
+      if (camposDinamicos.length > 0) {
+        // Auto-poblar campos sistema antes de guardar
+        const tipoInfoGuardado = tiposDb.find(t => t.value === tipoTramite);
+        const autoSistema: Record<string, string> = {};
+        const areaCampo = camposDinamicos.find(c => c.sistema_key === 'area');
+        if (areaCampo && tipoInfoGuardado?.area) autoSistema[areaCampo.id] = tipoInfoGuardado.area;
+        const fechaCreCampo = camposDinamicos.find(c => c.sistema_key === 'fecha_creacion');
+        if (fechaCreCampo) autoSistema[fechaCreCampo.id] = new Date().toISOString();
+        const creadoPorCampo = camposDinamicos.find(c => c.sistema_key === 'creado_por');
+        if (creadoPorCampo) autoSistema[creadoPorCampo.id] = usuario.nombre_completo || usuario.nombre || '';
+        const equipoCampo = camposDinamicos.find(c => c.sistema_key === 'equipo');
+        if (equipoCampo && grupoAsignadoId) {
+          const { data: grupoData } = await supabase
+            .from('tramites_grupos_visualizacion').select('nombre').eq('id', grupoAsignadoId).single();
+          if (grupoData) autoSistema[equipoCampo.id] = grupoData.nombre;
+        }
+        const respuestasMerged = { ...autoSistema, ...respuestasDinamicas };
+
+        const TEXTO_TIPOS = ['texto_corto', 'texto_largo', 'area', 'equipo',
+          'agente_vendedor', 'oficina_jiro', 'fecha_creacion', 'fecha_finalizacion', 'creado_por',
+          'aseguradora', 'ramo', 'email', 'telefono', 'rfc', 'curp'];
+
+        const respuestas = camposDinamicos
+          .filter(c => c.tipo !== 'adjunto' && respuestasMerged[c.id] !== undefined && respuestasMerged[c.id] !== null && respuestasMerged[c.id] !== '')
+          .map(c => {
+            const val = respuestasMerged[c.id];
+            return {
+              tramite_id: ticket.id,
+              campo_id: c.id,
+              valor_texto:    TEXTO_TIPOS.includes(c.tipo) ? String(val) : null,
+              valor_numerico: ['numerico', 'porcentaje'].includes(c.tipo) ? Number(val) : null,
+              valor_fecha:    c.tipo === 'fecha' ? String(val) : null,
+              valor_booleano: c.tipo === 'booleano' ? Boolean(val) : null,
+              valor_json:     ['estatus', 'dropdown', 'seleccion_multiple', 'codigo_postal', 'reporte_protegido', 'vehiculo'].includes(c.tipo) ? val : null,
+            };
+          });
+        if (respuestas.length > 0) {
+          await supabase.from('tramite_respuestas').insert(respuestas);
+        }
+
+        // Subir archivos de campos adjunto dinámicos
+        for (const campo of camposDinamicos.filter(c => c.tipo === 'adjunto')) {
+          const files = adjuntosTemporales[campo.id] || [];
+          if (files.length === 0) continue;
+          // Categoría: fija del config (admin la preconfiguró) o elegida por el usuario en el selector
+          // Fija del config, la que se eligió POR ARCHIVO, o la del selector
+          // único del campo (el camino viejo, cuando no hay tipos configurados).
+          const categoriaFijaCampo = campo.config.categoria_id as string | undefined;
+          const catsPorArchivo = adjuntoCatsArchivo[campo.id] || [];
+          const fileData: { id: string; nombre: string; url: string; tipo: string; tamano: number }[] = [];
+          for (const [indiceArchivo, file] of files.entries()) {
+            const categoriaIdAdjunto =
+              categoriaFijaCampo || catsPorArchivo[indiceArchivo] || adjuntoCategoriasIds[campo.id] || null;
+            const ext = file.name.split('.').pop();
+            const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+            const { error: upErr } = await supabase.storage.from('ticket-archivos').upload(fileName, file);
+            if (upErr) throw upErr;
+            const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(fileName);
+            const { data: archivoData, error: archivoErr } = await supabase.from('ticket_archivos').insert({
+              ticket_id: ticket.id, usuario_id: usuario.id,
+              nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size,
+              categoria_id: categoriaIdAdjunto,
+            }).select('id').single();
+            if (archivoErr) throw archivoErr;
+            fileData.push({ id: archivoData!.id, nombre: file.name, url: publicUrl, tipo: file.type, tamano: file.size });
+          }
+          await supabase.from('tramite_respuestas').insert({
+            tramite_id: ticket.id, campo_id: campo.id, valor_json: fileData,
+          });
+        }
+
+        // Guardar custom_estatus_label y custom_estatus_color en el ticket
+        const estatusCampo = camposDinamicos.find(c => c.tipo === 'estatus');
+        if (estatusCampo) {
+          const slug = respuestasDinamicas[estatusCampo.id];
+          const opcion = (estatusCampo.config.opciones || []).find(o => o.slug === slug);
+          if (opcion) {
+            const color = opcion.clasificacion === 'inicio' ? '#3B82F6' : opcion.clasificacion === 'terminacion' ? '#059669' : '#6B7280';
+            await supabase.from('tickets').update({ custom_estatus_label: opcion.label, custom_estatus_color: color }).eq('id', ticket.id);
+          }
+        }
+
+        // Auto-cierre: si algún campo estatus tiene clasificacion 'terminacion'.
+        // Ya no se alcanza eligiendo a mano (el campo dejó de mostrarse), pero sigue vivo
+        // para el tipo mal configurado que no tiene ninguna opción 'inicio' y cae al
+        // respaldo `opciones[0]` siendo esa de terminación.
+        const hayTerminacion = camposDinamicos.some(c => {
+          if (c.tipo !== 'estatus') return false;
+          const slug = respuestasDinamicas[c.id];
+          if (!slug) return false;
+          const opcion = (c.config.opciones || []).find(o => o.slug === slug);
+          return opcion?.clasificacion === 'terminacion';
+        });
+        if (hayTerminacion) {
+          await supabase.from('tickets').update({
+            cerrado_en: new Date().toISOString(),
+            cerrado_por: usuario.id,
+          }).eq('id', ticket.id);
+        }
+      }
+
+      // Crear asignación en ticket_asignaciones
+      if (responsableId) {
+        const { error: assignError } = await supabase
+          .from('ticket_asignaciones')
+          .insert({
+            ticket_id: ticket.id,
+            ejecutivo_id: responsableId,
+            asignado_por: usuario.id
+          });
+
+        if (assignError) console.error('Error creating assignment:', assignError);
+      }
+
+      // Ligar el solicitante con su vendedor SICAS cuando se eligió uno a mano.
+      // Admin liga directo; el resto propone y un Admin confirma — es lo que ya
+      // impone la RLS de maestro_usuario_agente, aquí solo se refleja en la UX.
+      if (agenteSicasManual && asignado) {
+        const vendedor = agentesVendedor.find(a => a.id === agenteSicasManual);
+        let ligadoDirecto = false;
+
+        if (esRolSistemaAdmin) {
+          const { error: errLink } = await supabase.from('maestro_usuario_agente')
+            .insert({ user_id: asignado, agente_id: agenteSicasManual, activo: true });
+          ligadoDirecto = !errLink;
+          if (errLink) console.error('[mapeo] No se pudo ligar directo, se propondrá:', errLink);
+        }
+
+        if (!ligadoDirecto) {
+          await supabase.from('maestro_mapeo_pendiente').upsert(
+            { agente_id: agenteSicasManual, user_id_propuesto: asignado, propuesto_por: usuario.id, ticket_id: ticket.id },
+            { onConflict: 'agente_id,user_id_propuesto', ignoreDuplicates: true }
+          );
+          const { data: adminsNotif } = await supabase.from('usuarios').select('id')
+            .eq('rol', 'Administrador').eq('activo', true);
+          for (const adm of (adminsNotif ?? [])) {
+            await crearNotificacion({
+              user_id: adm.id,
+              titulo: 'Propuesta de vínculo con vendedor SICAS',
+              mensaje: `${usuario.nombre_completo} propuso ligar al vendedor SICAS "${vendedor?.nombre ?? agenteSicasManual}" con un usuario MOVI en el trámite ${ticket.folio}.`,
+              modulo: 'BaseDatosMaestros',
+              icono: 'link',
+              accion_url: '/admin/base-datos',
+              accion_texto: 'Ir a Mapeo',
+            });
+          }
+        }
+      }
+
+      // El aviso llega por WhatsApp tal cual se escribe aquí, así que lleva con
+      // qué decidir: de quién es, de dónde y qué pide. Antes era solo el folio
+      // y el tipo, y había que entrar a MOVI para enterarse de algo.
+      const solicitanteId = ticketData.agente_id as string | null;
+      const solicitante = usuariosDisponibles.find(u => u.id === solicitanteId);
+      const avisoTramite = mensajeNuevoTramite({
+        folio: ticket.folio,
+        tipoLabel: tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite,
+        solicitante: solicitante?.nombre_completo,
+        oficina: oficinas.find(o => o.id === solicitante?.oficina_id)?.nombre,
+        prioridad,
+        instrucciones: ticketData.instrucciones as string | null,
+      });
+
+      // Notificar al responsable asignado o al líder del equipo
+      // Las variables que puede usar la plantilla de Admin › Transaccionales.
+      // El respaldo de cada aviso es el texto de siempre: si no hay plantilla o
+      // el motor falla, el aviso sale igual.
+      // Un guion y no cadena vacía: la plantilla no tiene condicionales, así que
+      // un dato ausente dejaría su renglón en blanco y el correo se vería roto.
+      const oDash = (v: string | null | undefined) => (v && v.trim() ? v.trim() : '—');
+      const varsAviso = {
+        folio: ticket.folio ?? '',
+        solicitante: oDash(solicitante?.nombre_completo),
+        oficina: oDash(oficinas.find(o => o.id === solicitante?.oficina_id)?.nombre),
+        prioridad: oDash(prioridad),
+        instrucciones: oDash(String(ticketData.instrucciones ?? '')),
+        tipo_tramite: tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite,
+      };
+
+      // A quién se le avisa lo decide la BASE, no esta pantalla.
+      //
+      // Las reglas vivían aquí Y en SQL —los avisos que salen por trigger usan
+      // las mismas— y eran dos copias que nadie iba a mantener sincronizadas.
+      // Ahora hay una sola: `resolver_destinatarios_aviso`. Si falla, se cae al
+      // camino de siempre (abajo), nunca a "no avisarle a nadie".
+      let destinatarios: string[] = [];
+      const { data: resueltos, error: errDest } = await supabase
+        .rpc('resolver_destinatarios_aviso', { p_ticket_id: ticket.id, p_codigo_tipo: 'nuevo_tramite' });
+      if (errDest) console.error('[aviso] No se pudieron resolver los destinatarios:', errDest.message);
+      else destinatarios = (resueltos as string[] | null) ?? [];
+
+      // El líder solo se necesita para el respaldo de abajo.
+      let liderEquipoId: string | null = null;
+      if (grupoAsignadoId && !responsableId) {
+        const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
+        liderEquipoId = (miembros as Array<{ id: string }>)?.[0]?.id ?? null;
+      }
+
+      const tituloPara = (id: string) =>
+        id === responsableId ? 'Nuevo trámite asignado'
+        : id === solicitanteId ? 'Tu trámite fue registrado'
+        : 'Nuevo trámite en tu equipo';
+
+      if (destinatarios.length > 0) {
+        for (const destinatarioId of destinatarios) {
+          await avisarPorEvento({
+            eventKey: 'nuevo_tramite',
+            ticketId: ticket.id,
+            destinatarioId,
+            disparadoPor: usuario!.id,
+            variables: varsAviso,
+            respaldo: {
+              user_id: destinatarioId,
+              titulo: tituloPara(destinatarioId),
+              mensaje: avisoTramite,
+              modulo: 'Tramites',
+              icono: 'clipboard-list',
+              accion_url: `/tramites/${ticket.id}`,
+              accion_texto: 'Ver trámite',
+            },
+          });
+        }
+      } else if (responsableId || liderEquipoId) {
+        // Sin configuración: el camino de siempre. Una config en blanco no debe
+        // significar "no avisarle a nadie".
+        const destinatarioId = responsableId || liderEquipoId!;
+        await avisarPorEvento({
+          eventKey: 'nuevo_tramite',
+          ticketId: ticket.id,
+          destinatarioId,
+          disparadoPor: usuario!.id,
+          variables: varsAviso,
+          respaldo: {
+            user_id: destinatarioId,
+            titulo: tituloPara(destinatarioId),
+            mensaje: avisoTramite,
+            modulo: 'Tramites',
+            icono: 'clipboard-list',
+            accion_url: `/tramites/${ticket.id}`,
+            accion_texto: 'Ver trámite',
+          },
+        });
+      }
+
+      // Ni responsable ni equipo: la auto-asignación (override, oficina, o regla
+      // de área) no resolvió nada. Esto NO se configura desde la pantalla: es una
+      // alarma de configuración rota, no un aviso de negocio, y poder apagarla
+      // sería poder quedarse sin enterarse de que algo quedó en el limbo.
+      if (!responsableId && !grupoAsignadoId) {
+        const { data: adminsSinEquipo } = await supabase.from('usuarios').select('id')
+          .eq('rol', 'Administrador').eq('activo', true);
+        for (const adm of (adminsSinEquipo ?? [])) {
+          await crearNotificacion({
+            user_id: adm.id,
+            titulo: 'Trámite sin equipo asignado',
+            mensaje: `${avisoTramite}
+
+No cayó en ninguna regla de asignación. Requiere asignarlo a mano.`,
+            modulo: 'Tramites',
+            icono: 'alert-triangle',
+            accion_url: `/tramites/${ticket.id}`,
+            accion_texto: 'Ver trámite',
+          });
+        }
+      }
+
+      // Procesar archivos según el tipo de trámite
+      if (tipoTramite === 'solicitud_comisiones_pendientes') {
+        // Guardar comisiones pendientes
+        for (let i = 0; i < comisionesPendientes.length; i++) {
+          const comision = comisionesPendientes[i];
+
+          // Insertar comisión pendiente
+          const { error: comisionError } = await supabase
+            .from('ticket_comisiones_pendientes')
+            .insert({
+              ticket_id: ticket.id,
+              numero_poliza: comision.numeroPoliza.trim() || null,
+              aseguradora: comision.aseguradora || null,
+              fecha_pago: comision.fechaPago || null,
+              orden: i + 1
+            });
+
+          if (comisionError) throw comisionError;
+
+          // Si hay archivo adjunto, subirlo
+          if (comision.archivo) {
+            const fileExt = comision.archivo.name.split('.').pop();
+            const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('ticket-archivos')
+              .upload(fileName, comision.archivo);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('ticket-archivos')
+              .getPublicUrl(fileName);
+
+            // Guardar registro del archivo
+            const { error: archivoError } = await supabase
+              .from('ticket_archivos')
+              .insert({
+                ticket_id: ticket.id,
+                usuario_id: usuario.id,
+                nombre: comision.archivo.name,
+                url: publicUrl,
+                tipo: comision.archivo.type,
+                tamano: comision.archivo.size
+              });
+
+            if (archivoError) throw archivoError;
+          }
+
+          // Crear comentario con información de la comisión
+          let comentarioTexto = `💰 Comisión pendiente #${i + 1}:`;
+          if (comision.numeroPoliza) {
+            comentarioTexto += `\n• Póliza: ${comision.numeroPoliza}`;
+          }
+          if (comision.aseguradora) {
+            comentarioTexto += `\n• Aseguradora: ${comision.aseguradora}`;
+          }
+          if (comision.fechaPago) {
+            comentarioTexto += `\n• Fecha de pago: ${new Date(comision.fechaPago).toLocaleDateString('es-MX')}`;
+          }
+          if (comision.archivo) {
+            comentarioTexto += `\n• Archivo: ${comision.archivo.name}`;
+          }
+
+          const { error: comentarioError } = await supabase
+            .from('ticket_comentarios')
+            .insert({
+              ticket_id: ticket.id,
+              usuario_id: usuario.id,
+              mensaje: comentarioTexto
+            });
+
+          if (comentarioError) throw comentarioError;
+        }
+      } else if (tipoTramite === 'registro_poliza') {
+        const filesWithData = polizaFiles.filter(f => f.file !== null);
+
+        for (const pf of filesWithData) {
+          if (!pf.file) continue;
+
+          // Subir archivo
+          const fileExt = pf.file.name.split('.').pop();
+          const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('ticket-archivos')
+            .upload(fileName, pf.file);
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('ticket-archivos')
+            .getPublicUrl(fileName);
+
+          // Guardar registro del archivo
+          const { error: archivoError } = await supabase
+            .from('ticket_archivos')
+            .insert({
+              ticket_id: ticket.id,
+              usuario_id: usuario.id,
+              nombre: pf.file.name,
+              url: publicUrl,
+              tipo: pf.file.type,
+              tamano: pf.file.size
+            });
+
+          if (archivoError) throw archivoError;
+
+          // Crear comentario con la información del archivo
+          const comentarioTexto = `📎 Documento adjunto:\n• Nombre: ${pf.file.name}\n• Aseguradora: ${pf.aseguradora}\n• Clave de agente: ${pf.claveAgente}`;
+
+          const { error: comentarioError } = await supabase
+            .from('ticket_comentarios')
+            .insert({
+              ticket_id: ticket.id,
+              usuario_id: usuario.id,
+              mensaje: comentarioTexto
+            });
+
+          if (comentarioError) throw comentarioError;
+        }
+      } else {
+        // Para otros tipos de trámite, subir archivos normalmente
+        if (archivos.length > 0) {
+          for (const archivo of archivos) {
+            const fileExt = archivo.name.split('.').pop();
+            const fileName = `${ticket.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('ticket-archivos')
+              .upload(fileName, archivo);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('ticket-archivos')
+              .getPublicUrl(fileName);
+
+            const { error: archivoError } = await supabase
+              .from('ticket_archivos')
+              .insert({
+                ticket_id: ticket.id,
+                usuario_id: usuario.id,
+                nombre: archivo.name,
+                url: publicUrl,
+                tipo: archivo.type,
+                tamano: archivo.size,
+                categoria_id: archivoCategoriaId || null,
+              });
+
+            if (archivoError) throw archivoError;
+          }
+        }
+      }
+
+      // Post-update: fecha_promesa_entrega — manual o auto-calculada por SLA del tipo
+      if (ticket?.id && !isAgent) {
+        let promesa = fechaPromesaEntrega;
+        if (!promesa) {
+          const tipoDb = tiposMap.get(tipoTramite);
+          if (tipoDb?.sla_horas) {
+            try {
+              const deadline = await calcularDeadline(new Date(), tipoDb.sla_horas);
+              promesa = deadline.toISOString().split('T')[0];
+            } catch { /* ignorar si falla cálculo */ }
+          }
+        }
+        if (promesa) {
+          try {
+            await supabase.from('tickets').update({ fecha_promesa_entrega: promesa }).eq('id', ticket.id);
+          } catch { /* ignorar si columna no existe aún */ }
+        }
+      }
+
+      clearDraft(DRAFT_KEY);
+      if (ticket?.id) onSuccessWithId?.(ticket.id);
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      console.error('Error creando tramite:', err);
+      setError(err.message || 'Error al crear el trámite');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getTipoLabel = (tipo: string) => {
+    switch (tipo) {
+      case 'cotizacion_emision':
+        return 'Cotización / Emisión - Proceso completo de cotización y emisión de pólizas';
+      case 'correccion_poliza_registrada':
+        return 'Corrección de Registro de Póliza - Corrección en datos registrados en Operaciones';
+      case 'correccion_poliza_endoso':
+        return 'Corrección de Póliza / Endoso - Corrección o endoso de póliza (Comercial)';
+      case 'correccion_comisiones':
+        return 'Corrección de comisiones';
+      case 'registro_poliza':
+        return 'Registro de póliza';
+      case 'solicitud_comisiones_pendientes':
+        return 'Solicitud de comisiones pendientes';
+      case 'renovaciones':
+        return 'Renovaciones - Seguimiento de renovación de pólizas';
+      case 'cobranza':
+        return 'Cobranza - Seguimiento de pagos y cobranza';
+      case 'otros_comercial':
+        return 'Otros - Trámite comercial general';
+      default:
+        return tipo;
+    }
+  };
+
+  // No renderizar nada si el modal está cerrado
+  if (!isOpen) {
+    return null;
+  }
+
+  // ── Cascada aseguradora ↔ ramo (solo para form CE) ──────────────────────────
+  // Cascada directa: aseguradoras seleccionadas → filtra ramos disponibles
+  const ceSelectedCompaniaIds = catalogoCompanias
+    .filter(c => ceSelectedInsurers.includes(c.nombre))
+    .map(c => c.id);
+  const ceRamosDisponibles = ceSelectedInsurers.length === 0
+    ? catalogoRamos
+    : catalogoRamos.filter(r => {
+        const ids = new Set(combinaciones.filter(cb => ceSelectedCompaniaIds.includes(cb.compania_id)).map(cb => cb.ramo_id));
+        return ids.has(r.id);
+      });
+
+  // Cascada inversa: ramo seleccionado → filtra aseguradoras disponibles
+  const ceCompaniasDisponibles = ceRamoId
+    ? catalogoCompanias.filter(c => {
+        const ids = new Set(combinaciones.filter(cb => cb.ramo_id === ceRamoId).map(cb => cb.compania_id));
+        return ids.has(c.id);
+      })
+    : catalogoCompanias;
+
+  const ceRamoNombre = catalogoRamos.find(r => r.id === ceRamoId)?.nombre ?? '';
+
+  // Barra de progreso — solo campos requeridos del FormBuilder (no incluye validaciones
+  // aparte como agente/lote de comisiones, que no vienen de camposDinamicos).
+  const camposRequeridosVisibles = camposDinamicos.filter(c =>
+    campoExigible(c, secciones, camposDinamicos, respuestasDinamicas) &&
+    canSeeCampo(c) && !campoSistemaOculto(c) &&
+    !(c.is_sistema && AUTO_FILL_KEYS.includes(c.sistema_key || ''))
+  );
+  const camposRequeridosCompletos = camposRequeridosVisibles.filter(isCampoRespondido).length;
+  const progresoPct = camposRequeridosVisibles.length > 0
+    ? Math.round((camposRequeridosCompletos / camposRequeridosVisibles.length) * 100)
+    : 0;
+
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={tipoTramite ? `Nuevo: ${tiposDb.find(t => t.value === tipoTramite)?.label ?? tipoTramite}` : 'Nuevo Trámite'}
+      maxWidth="4xl"
+      subHeader={
+        camposRequeridosVisibles.length > 0 ? (
+          <div>
+            <div className="flex items-center justify-between text-[11px] font-medium text-neutral-500 mb-1">
+              <span>Campos requeridos</span>
+              <span>{camposRequeridosCompletos}/{camposRequeridosVisibles.length}</span>
+            </div>
+            <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all duration-300"
+                style={{ width: `${progresoPct}%` }}
+              />
+            </div>
+            {showBadgeExtra && (
+              <div className="mt-1.5 flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-sm animate-fade-in w-fit">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                ¡Gracias por ayudarnos a brindarte la mejor atención posible!
+              </div>
+            )}
+          </div>
+        ) : undefined
+      }
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={() => { clearDraft(DRAFT_KEY); setDraftRestored(false); onClose(); }}
+            disabled={loading}
+            className="px-6 py-2.5 text-neutral-700 bg-surface-card border border-neutral-300 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="px-6 py-2.5 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                Creando...
+              </>
+            ) : (
+              'Crear Trámite'
+            )}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-6">
+        {draftRestored && (
+          <div className="px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <p className="text-sm text-amber-800 font-medium">Borrador restaurado</p>
+              <p className="text-xs text-amber-600 hidden sm:block">— Tu progreso anterior fue recuperado</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { clearDraft(DRAFT_KEY); resetForm(); setDraftRestored(false); }}
+              className="text-xs text-amber-700 hover:text-amber-900 underline shrink-0"
+            >
+              Descartar
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
+
+        <div className="space-y-3 p-4 bg-accent/5 border-2 border-accent/20 rounded-2xl">
+          {/* Área */}
+          <div>
+            <label className="block text-sm font-bold text-neutral-900 mb-2">Área</label>
+            <select
+              value={areaSeleccionada}
+              onChange={e => { setAreaSeleccionada(e.target.value); setTipoTramite(''); }}
+              disabled={!!preloadedData?.tipoTramite}
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
+            >
+              <option value="">Selecciona un área...</option>
+              {[...new Set(
+                tiposDb
+                  .filter(t => {
+                    if (t.value === 'formulario_cotizacion' || t.value === 'cambio_bancario') return false;
+                    if (t.value === 'cotizacion_emision') return !!canAccessRegistroAct;
+                    if (isAgent && isCommercialTicketType(t.value)) return false;
+                    if (tiposBlockedIds.has(t.id)) return false;
+                    return true;
+                  })
+                  .map(t => t.area)
+                  .filter(Boolean)
+              )].map(area => (
+                <option key={area} value={area}>{area}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Tipo de Trámite — solo visible al seleccionar área */}
+          {areaSeleccionada && (
+            <div>
+              <label className="block text-sm font-bold text-neutral-900 mb-2">Tipo de Trámite</label>
+              <select
+                value={tipoTramite}
+                onChange={e => setTipoTramite(e.target.value)}
+                disabled={!!preloadedData?.tipoTramite}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Selecciona un tipo...</option>
+                {tiposDb
+                  .filter(t => t.area === areaSeleccionada)
+                  .filter(t => {
+                    if (t.value === 'formulario_cotizacion' || t.value === 'cambio_bancario') return false;
+                    if (t.value === 'cotizacion_emision') return !!canAccessRegistroAct;
+                    if (isAgent && isCommercialTicketType(t.value)) return false;
+                    if (tiposBlockedIds.has(t.id)) return false;
+                    return true;
+                  })
+                  .map(t => <option key={t.value} value={t.value}>{t.label}</option>)
+                }
+              </select>
+              {tiposReadOnlyAfterCreate.has(tiposDb.find(t => t.value === tipoTramite)?.id ?? '') && (
+                <div className="mt-2 flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                  <span className="mt-0.5 flex-shrink-0">ℹ️</span>
+                  <span>Podrás crear este trámite, pero no podrás modificar sus campos una vez enviado.</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ===== SECCIÓN COTIZACIÓN / EMISIÓN ===== */}
+        {tipoTramite === 'cotizacion_emision' && (
+          <div className="space-y-4">
+            {/* El pipeline de estatus clickeable se eliminó: igual que el resto de los
+                tipos, un trámite nace en "Iniciado" y se avanza desde el encabezado del
+                detalle, que es donde vive el flujo completo con su comentario obligatorio
+                y sus triggers. `ceEstatusNombre` se queda fijo en 'Iniciado'. */}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* El Agente de este tipo se eliminó: duplicaba al campo sistema
+                  `agente_vendedor` ("Solicitante"), que ahora es el único lugar
+                  donde se elige y el que alimenta las reglas de asignación. */}
+
+              {/* Ramo (maestro_ramos, cascada inversa desde aseguradoras) */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <Shield className="w-4 h-4 inline mr-1.5" />
+                  Ramo *
+                </label>
+                <select
+                  value={ceRamoId}
+                  onChange={(e) => {
+                    setCeRamoId(e.target.value);
+                    // Cascada inversa: si el ramo cambia, quitar aseguradoras incompatibles
+                    if (e.target.value && ceSelectedInsurers.length > 0) {
+                      const validIds = new Set(combinaciones.filter(cb => cb.ramo_id === e.target.value).map(cb => cb.compania_id));
+                      const validNombres = new Set(catalogoCompanias.filter(c => validIds.has(c.id)).map(c => c.nombre));
+                      setCeSelectedInsurers(prev => prev.filter(n => validNombres.has(n)));
+                    }
+                  }}
+                  disabled={ceRamosDisponibles.length === 0}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm disabled:opacity-50"
+                >
+                  <option value="">
+                    {ceRamosDisponibles.length === 0 ? 'Sin ramos para las aseguradoras seleccionadas' : 'Seleccione ramo...'}
+                  </option>
+                  {ceRamosDisponibles.map(r => (
+                    <option key={r.id} value={r.id}>{r.nombre}</option>
+                  ))}
+                </select>
+                {ceRamoNombre && (
+                  <p className="text-xs text-accent-ink mt-1">Ramo: {ceRamoNombre}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Aseguradoras multiselect — lee de maestro_companias (cascada desde ramo) */}
+            <div className="relative" ref={insurerDropdownRef}>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                <Building2 className="w-4 h-4 inline mr-1.5" />
+                Aseguradoras * (seleccione una o más)
+              </label>
+              <div
+                className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl cursor-pointer min-h-[42px] flex items-center justify-between gap-2 bg-surface-card hover:border-neutral-400 focus-within:ring-2 focus-within:ring-accent"
+                onClick={() => setCeShowInsurerDropdown(!ceShowInsurerDropdown)}
+              >
+                {ceSelectedInsurers.length === 0
+                  ? <span className="text-neutral-500">Seleccione aseguradoras...</span>
+                  : <span className="text-neutral-900">{ceSelectedInsurers.join(', ')}</span>
+                }
+                <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${ceShowInsurerDropdown ? 'rotate-180' : ''}`} />
+              </div>
+              {ceShowInsurerDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-surface-card border border-neutral-300 rounded-xl shadow-lg max-h-48 overflow-auto">
+                  <div className="p-2 border-b border-neutral-200">
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      value={ceInsurerSearchTerm}
+                      onChange={(e) => setCeInsurerSearchTerm(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full px-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                  </div>
+                  <div className="p-1">
+                    {ceCompaniasDisponibles
+                      .filter(c => c.nombre.toLowerCase().includes(ceInsurerSearchTerm.toLowerCase()))
+                      .map(c => (
+                        <label key={c.id} className="flex items-center gap-2 p-1.5 hover:bg-neutral-100 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={ceSelectedInsurers.includes(c.nombre)}
+                            onChange={() => {
+                              setCeSelectedInsurers(prev =>
+                                prev.includes(c.nombre) ? prev.filter(x => x !== c.nombre) : [...prev, c.nombre]
+                              );
+                              // Cascada directa: si cambia aseguradoras y hay un ramo incompatible, limpiar ramo
+                              if (ceRamoId) {
+                                const newSelected = ceSelectedInsurers.includes(c.nombre)
+                                  ? ceSelectedInsurers.filter(x => x !== c.nombre)
+                                  : [...ceSelectedInsurers, c.nombre];
+                                const newIds = catalogoCompanias.filter(cp => newSelected.includes(cp.nombre)).map(cp => cp.id);
+                                const validRamoIds = new Set(combinaciones.filter(cb => newIds.includes(cb.compania_id)).map(cb => cb.ramo_id));
+                                if (newSelected.length > 0 && !validRamoIds.has(ceRamoId)) {
+                                  setCeRamoId('');
+                                }
+                              }
+                            }}
+                            className="w-3.5 h-3.5 rounded border-neutral-300"
+                          />
+                          <span className="text-xs text-neutral-700">{c.nombre}</span>
+                        </label>
+                      ))}
+                    {ceCompaniasDisponibles.length === 0 && (
+                      <p className="text-xs text-neutral-500 p-2">
+                        {ceRamoId ? 'No hay aseguradoras para el ramo seleccionado' : 'Sin datos en catálogo'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              {/* Fecha de Inicio — auto, solo lectura */}
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <Calendar className="w-4 h-4 inline mr-1.5" />
+                  Fecha de Creación
+                </label>
+                <div className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-600">
+                  {new Date().toLocaleString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  <span className="ml-2 text-xs text-neutral-500">(se registra al guardar)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Prioridad dentro del bloque CE - solo para no-agentes */}
+            {!isAgent && (
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  Prioridad
+                </label>
+                <select
+                  value={prioridad}
+                  onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                  <option value="Baja">Baja</option>
+                  <option value="Media">Media</option>
+                  <option value="Alta">Alta</option>
+                </select>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===== SECCIÓN TRÁMITES COMERCIALES (Renovaciones/Cobranza/Otros) ===== */}
+        {isCommercialTicketType(tipoTramite) && (
+          <div className="space-y-4">
+            <div className="bg-sky-50 border border-sky-200 rounded-xl p-3">
+              <p className="text-xs text-sky-700 font-medium">
+                Este trámite se asignará automáticamente a ti ({usuario?.nombre_completo}).
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                <User className="w-4 h-4 inline mr-1.5" />
+                Agente Relacionado *
+              </label>
+              <select
+                value={comAgenteUserId}
+                onChange={(e) => setComAgenteUserId(e.target.value)}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+              >
+                <option value="">Seleccione un agente...</option>
+                {ceAgenteUsers.map(user => (
+                  <option key={user.id} value={user.id}>{user.nombre_completo}</option>
+                ))}
+              </select>
+            </div>
+
+
+            {tipoTramite === 'otros_comercial' && (
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  Asunto
+                </label>
+                <input
+                  type="text"
+                  value={comAsunto}
+                  onChange={(e) => setComAsunto(e.target.value)}
+                  placeholder="Describe brevemente el asunto del trámite"
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                />
+              </div>
+            )}
+
+            {tipoTramite === 'correccion_poliza_endoso' && (
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <FileText className="w-4 h-4 inline mr-2" />
+                  Número de Póliza
+                </label>
+                <input
+                  type="text"
+                  value={comPoliza}
+                  onChange={(e) => setComPoliza(e.target.value)}
+                  placeholder="Ingresa el número de póliza"
+                  className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                Prioridad
+              </label>
+              <select
+                value={prioridad}
+                onChange={(e) => setPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="Baja">Baja</option>
+                <option value="Media">Media</option>
+                <option value="Alta">Alta</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {tipoTramite === 'correccion_poliza_registrada' && (
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">
+              <FileText className="w-4 h-4 inline mr-2" />
+              Número de Póliza
+            </label>
+            <input
+              type="text"
+              value={polizaNumero}
+              onChange={(e) => setPolizaNumero(e.target.value)}
+              placeholder="Ingresa el número de póliza"
+              className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+        )}
+
+        {tipoTramite === 'correccion_comisiones' && (
+          <>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                <Package className="w-4 h-4 inline mr-2" />
+                Lote de Comisiones *
+              </label>
+              <select
+                value={loteSeleccionado}
+                onChange={(e) => setLoteSeleccionado(e.target.value)}
+                disabled={!!preloadedData?.comisionesLoteId}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-neutral-100"
+              >
+                <option value="">Selecciona un lote</option>
+                {lotesDisponibles.map(lote => (
+                  <option key={lote.id} value={lote.id}>
+                    {lote.name} ({lote.documents_count} documentos)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {loteSeleccionado && (
+              <div>
+                <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                  <DollarSign className="w-4 h-4 inline mr-2" />
+                  Documento del Lote *
+                </label>
+                {loadingDocumentos ? (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent mx-auto"></div>
+                    <p className="text-sm text-neutral-600 mt-2">Cargando documentos...</p>
+                  </div>
+                ) : (
+                  <select
+                    value={documentoSeleccionado}
+                    onChange={(e) => setDocumentoSeleccionado(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+                  >
+                    <option value="">Selecciona un documento</option>
+                    {documentosLote.map(doc => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.poliza} - {doc.nombre_asegurado || 'Sin asegurado'} - {doc.aseguradora || 'Sin aseguradora'} - ${doc.importe_base?.toFixed(2) || '0.00'}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {tipoTramite === 'registro_poliza' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-semibold text-neutral-900">
+                Documentos a Registrar *
+              </label>
+              <span className="text-xs text-neutral-500">
+                {polizaFiles.filter(f => f.file !== null).length} de 10 archivos
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {polizaFiles.map((pf, index) => (
+                <div key={pf.id} className="border border-neutral-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-neutral-700">
+                      Documento {index + 1}
+                    </span>
+                    {polizaFiles.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removePolizaFile(pf.id)}
+                        className="text-red-600 hover:text-red-700 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Archivo *
+                    </label>
+                    <input
+                      type="file"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        updatePolizaFile(pf.id, 'file', file);
+                      }}
+                      className="w-full text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                    />
+                    {pf.file && (
+                      <p className="text-xs text-green-600 mt-1">
+                        ✓ {pf.file.name}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        <Building2 className="w-4 h-4 inline mr-1" />
+                        Aseguradora *
+                      </label>
+                      <select
+                        value={pf.aseguradora}
+                        onChange={(e) => updatePolizaFile(pf.id, 'aseguradora', e.target.value)}
+                        className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+                      >
+                        <option value="">Selecciona...</option>
+                        {aseguradoras.map(aseg => (
+                          <option key={aseg.nombre} value={aseg.nombre}>
+                            {aseg.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Clave de Agente *
+                      </label>
+                      <input
+                        type="text"
+                        value={pf.claveAgente}
+                        onChange={(e) => updatePolizaFile(pf.id, 'claveAgente', e.target.value)}
+                        placeholder="Ej: ABC123"
+                        className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {polizaFiles.length < 10 && (
+              <button
+                type="button"
+                onClick={addPolizaFile}
+                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-accent hover:text-accent-ink transition-all flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Añadir otro documento
+              </button>
+            )}
+          </div>
+        )}
+
+        {tipoTramite === 'solicitud_comisiones_pendientes' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-semibold text-neutral-900">
+                Comisiones Pendientes
+              </label>
+              <span className="text-xs text-neutral-500">
+                {comisionesPendientes.length} de 10 comisiones
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {comisionesPendientes.map((comision, index) => (
+                <div key={comision.id} className="border border-neutral-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-neutral-700">
+                      Comisión #{index + 1}
+                    </span>
+                    {comisionesPendientes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeComisionPendiente(comision.id)}
+                        className="text-red-600 hover:text-red-700 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        <FileText className="w-4 h-4 inline mr-1" />
+                        Número de Póliza
+                      </label>
+                      <input
+                        type="text"
+                        value={comision.numeroPoliza}
+                        onChange={(e) => updateComisionPendiente(comision.id, 'numeroPoliza', e.target.value)}
+                        placeholder="Ej: 12345678"
+                        className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        <Building2 className="w-4 h-4 inline mr-1" />
+                        Aseguradora
+                      </label>
+                      <select
+                        value={comision.aseguradora}
+                        onChange={(e) => updateComisionPendiente(comision.id, 'aseguradora', e.target.value)}
+                        className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+                      >
+                        <option value="">Selecciona...</option>
+                        {aseguradoras.map(aseg => (
+                          <option key={aseg.nombre} value={aseg.nombre}>
+                            {aseg.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        <Calendar className="w-4 h-4 inline mr-1" />
+                        Fecha de Pago
+                      </label>
+                      <input
+                        type="date"
+                        value={comision.fechaPago}
+                        onChange={(e) => updateComisionPendiente(comision.id, 'fechaPago', e.target.value)}
+                        className="w-full px-4 py-2.5 text-sm border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Archivo Adjunto
+                      </label>
+                      <input
+                        type="file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          updateComisionPendiente(comision.id, 'archivo', file);
+                        }}
+                        className="w-full text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                      />
+                      {comision.archivo && (
+                        <p className="text-xs text-green-600 mt-1">
+                          ✓ {comision.archivo.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {comisionesPendientes.length < 10 && (
+              <button
+                type="button"
+                onClick={addComisionPendiente}
+                className="w-full py-2.5 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-600 hover:border-accent hover:text-accent-ink transition-all flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Añadir otra comisión pendiente
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Campos del formulario — ordenados por display_order, agrupados por sección si el tipo las tiene configuradas */}
+        {(() => {
+          const camposVisibles = [...camposDinamicos]
+            .sort((a, b) => a.display_order - b.display_order)
+            .filter(campo => {
+              if (!canSeeCampo(campo)) return false;
+              // Ocultar área y equipo para Empleado/Agente — se asignan automáticamente
+              if (campo.is_sistema && ['area', 'equipo'].includes(campo.sistema_key ?? '') && isEmpleadoOAgente) return false;
+              return true;
+            });
+
+          const renderCampoConLock = (campo: CampoDinamico) => {
+            // El detalle ya ocultaba los campos cuya condición no se cumple; aquí
+            // no se evaluaba, así que un campo condicionado salía siempre al crear.
+            if (!campoCumpleSuCondicion(campo, camposDinamicos, respuestasDinamicas)) return null;
+            const rendered = campo.is_sistema ? renderCampoSistema(campo) : renderCampoDinamico(campo);
+            // Los campos que no caben en media columna ocupan la fila entera.
+            const ancho = CAMPOS_ANCHOS.includes(campo.tipo);
+            // Se envuelve en vez de tocar los ~20 render de campo: el envoltorio
+            // pasa a ser la celda de la rejilla y ocupa la fila entera.
+            const envolver = (nodo: React.ReactNode) =>
+              ancho ? <div key={campo.id + '-ancho'} className="md:col-span-2">{nodo}</div> : nodo;
+            if (canEditCampo(campo)) return envolver(rendered);
+            return envolver(
+              <div key={campo.id + '-ro'} className="relative pointer-events-none select-none opacity-60">
+                {rendered}
+                <div className="absolute top-1 right-1 flex items-center gap-1 text-[11px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md border border-neutral-200">
+                  <Lock className="w-2.5 h-2.5" />
+                  Solo lectura
+                </div>
+              </div>
+            );
+          };
+
+          // "Personas involucradas" era un agrupamiento pintado a mano aquí, y solo
+          // funcionaba mientras esos campos no tuvieran sección: si un admin les asignaba
+          // una, el grupo se deshacía. Ahora es una sección de sistema real
+          // (20260925000001_seccion_sistema_personas.sql), así que la agrupación sale del
+          // dato y es la misma en el alta y en el detalle.
+          return agruparCamposPorSeccion(camposVisibles, secciones).map(grupo => {
+            if (!grupo.seccion) {
+              return (
+                <div key="sin-seccion" className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                  {grupo.campos.map(renderCampoConLock)}
+                </div>
+              );
+            }
+            const seccion = grupo.seccion;
+            const desbloqueada = seccionDesbloqueada(seccion, secciones, camposDinamicos, respuestasDinamicas);
+            const expandida = seccionesExpandidas.has(seccion.id);
+            const mostrarCampos = desbloqueada && expandida;
+            const colorSeccion = desbloqueada ? estiloSeccionColor(seccion.config?.color) : undefined;
+            const conteo = conteoSeccion(seccion.id, secciones, camposDinamicos, respuestasDinamicas);
+
+            return (
+              <div
+                key={seccion.id}
+                className={`border rounded-xl overflow-hidden ${desbloqueada ? 'border-neutral-200' : 'border-neutral-100 bg-neutral-50/60'}`}
+                style={colorSeccion}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!desbloqueada) return;
+                    setSeccionesExpandidas(prev => {
+                      const next = new Set(prev);
+                      if (next.has(seccion.id)) { next.delete(seccion.id); }
+                      // El badge de agradecimiento es solo por aportar una
+                      // sección opcional; cerrar y abrir una normal no lo merece.
+                      else { next.add(seccion.id); if (seccion.opcional) dispararBadgeExtra(); }
+                      return next;
+                    });
+                  }}
+                  disabled={!desbloqueada}
+                  className={`w-full flex items-center gap-2 px-4 py-2 text-left ${desbloqueada ? 'cursor-pointer hover:bg-neutral-50' : 'cursor-default'}`}
+                >
+                  {!desbloqueada ? <Lock className="w-4 h-4 text-neutral-300 shrink-0" /> : <Layers className="w-4 h-4 text-accent-ink shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[15px] font-bold ${desbloqueada ? 'text-neutral-900' : 'text-neutral-400'}`}>
+                      {seccion.opcional && !expandida && desbloqueada ? '+ ' : ''}{seccion.nombre}{seccion.opcional ? ' (opcional)' : ''}
+                      {desbloqueada && !expandida && conteo.exigibles > 0 && (
+                        <span className={`ml-2 text-[11px] font-semibold ${conteo.respondidos === conteo.exigibles ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {conteo.respondidos}/{conteo.exigibles}
+                        </span>
+                      )}
+                    </p>
+                    {desbloqueada ? (
+                      seccion.descripcion && (!seccion.opcional || expandida) && (
+                        <p className="text-xs text-neutral-500 mt-0.5">{seccion.descripcion}</p>
+                      )
+                    ) : (
+                      <p className="text-xs text-neutral-500 mt-0.5">{motivoSeccionBloqueada(seccion, secciones, camposDinamicos)}</p>
+                    )}
+                  </div>
+                  {desbloqueada && (
+                    <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform shrink-0 ${expandida ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+                {mostrarCampos && (
+                  <div className="px-4 pb-3 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 border-t border-neutral-100 pt-3">
+                    {grupo.campos.map(renderCampoConLock)}
+                  </div>
+                )}
+              </div>
+            );
+          });
+        })()}
+
+        {/* UX 2026-11-04 (U-07) — decía "El área y equipo se asignan
+            automáticamente según tu perfil", y lo PRIMERO que pide el
+            formulario es elegir el Área. El texto hablaba de los campos de
+            sistema que se esconden aquí, no del selector de arriba, pero quien
+            lo lee entiende que no debería tener que elegir nada. */}
+        {isEmpleadoOAgente && (
+          <p className="text-xs text-neutral-500 text-center pt-2">El equipo que lo atenderá se asigna solo, según el área y tu perfil.</p>
+        )}
+      </div>
+    </BaseModal>
+  );
+}

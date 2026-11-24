@@ -1,0 +1,898 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import html2canvas from 'html2canvas';
+import { supabase } from '../lib/supabase';
+import { BookOpen, Plus, Pencil, Trash2, Eye, EyeOff, Save, X, ArrowLeft, List, GripVertical, Upload, FileText, Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { PageHeader } from '../components/ui/page-header';
+
+/** Renderiza el HTML (contenido crudo, no una URL) en un iframe oculto y lo
+ * captura como imagen. Usa srcdoc (no src) para que el iframe herede el
+ * origen de la app y html2canvas pueda leer su contentDocument sin chocar
+ * con Same-Origin Policy (el archivo aun no vive en una URL de Storage). */
+// Ancho de referencia para el render y alto del recorte para la miniatura
+// (≈2.2:1, la proporcion real de la tarjeta en Manuales.tsx). El iframe se
+// deja mas alto que el recorte para que el documento tenga espacio real
+// donde acomodarse (layouts con % o vh no se ven raros por falta de alto).
+// El manual esta diseñado para tamaño Carta (8.5x11in ~850px a 100dpi) —
+// si el iframe es mas ancho que eso, el contenido queda centrado con
+// margenes blancos a los lados en vez de llenar la miniatura.
+const MINIATURA_ANCHO = 850;
+// Una pagina Carta completa (8.5x11in) a este ancho — captura la portada
+// entera (título, subtítulo, pie) en vez de solo una franja corta. La
+// tarjeta la recorta visualmente despues con object-cover.
+const MINIATURA_ALTO_RECORTE = 1100;
+const IFRAME_ALTO_RENDER = 1400;
+
+async function generarMiniaturaDesdeHtml(htmlContent: string): Promise<Blob | null> {
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-9999px';
+  iframe.style.top = '0';
+  iframe.style.width = `${MINIATURA_ANCHO}px`;
+  iframe.style.height = `${IFRAME_ALTO_RENDER}px`;
+  iframe.style.border = 'none';
+  iframe.sandbox.add('allow-same-origin', 'allow-scripts');
+  document.body.appendChild(iframe);
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      iframe.onload = () => resolve();
+      iframe.onerror = () => reject(new Error('No se pudo cargar el HTML'));
+      iframe.srcdoc = htmlContent;
+      setTimeout(() => reject(new Error('Tiempo de espera agotado renderizando el HTML')), 10000);
+    });
+
+    const doc = iframe.contentDocument;
+    if (!doc?.body) return null;
+
+    // document.fonts.ready solo detecta fuentes que el navegador ya
+    // encolo para descargar, y eso solo pasa despues de un layout real —
+    // si lo consultamos demasiado pronto puede resolver vacio (0 fuentes
+    // pendientes) sin haber cargado nada todavia. Forzamos un reflow real
+    // antes de preguntar, y otro despues por si el texto se recorre al
+    // aplicar la fuente definitiva (afecta cajas/resaltados posicionados
+    // a mano que dependen de las metricas exactas de Gotham).
+    void doc.body.offsetHeight;
+    await new Promise(resolve => setTimeout(resolve, 50));
+    try { await (doc as any).fonts?.ready; } catch { /* no soportado, seguimos */ }
+    void doc.body.offsetHeight;
+
+    await Promise.all(
+      Array.from(doc.images).map(img =>
+        img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+      )
+    );
+    await new Promise(resolve => setTimeout(resolve, 700));
+
+    // html2canvas no soporta backdrop-filter (efecto "vidrio esmerilado") —
+    // lo ignora y deja el fondo solido de por debajo, que muchas veces es
+    // casi opaco a proposito (para que el blur haga el resto). Forzamos un
+    // fondo blanco semi-transparente para que al menos se vea translucido
+    // en vez de un bloque solido tapando el contenido.
+    const win = doc.defaultView;
+    if (win) {
+      doc.querySelectorAll<HTMLElement>('*').forEach(el => {
+        const backdrop = win.getComputedStyle(el).backdropFilter;
+        if (backdrop && backdrop !== 'none') {
+          el.style.backgroundColor = 'rgba(255,255,255,0.35)';
+          el.style.backdropFilter = 'none';
+        }
+      });
+    }
+
+    const canvas = await html2canvas(doc.body, {
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      scale: 1,
+      width: MINIATURA_ANCHO,
+      height: MINIATURA_ALTO_RECORTE,
+      windowWidth: MINIATURA_ANCHO,
+      windowHeight: IFRAME_ALTO_RENDER,
+    });
+
+    return await new Promise<Blob | null>(resolve => canvas.toBlob(b => resolve(b), 'image/jpeg', 0.85));
+  } catch (err) {
+    console.error('Error generando miniatura del manual:', err);
+    return null;
+  } finally {
+    document.body.removeChild(iframe);
+  }
+}
+
+interface Manual {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  category: string;
+  html_path: string | null;
+  pdf_path: string | null;
+  cover_image: string | null;
+  status: string;
+  visibility: string;
+  sort_order: number;
+  total_pages: number;
+  created_at: string;
+}
+
+interface Chapter {
+  id: string;
+  manual_id: string;
+  title: string;
+  page_number: number;
+  anchor: string | null;
+  sort_order: number;
+}
+
+interface ManualForm {
+  title: string;
+  slug: string;
+  description: string;
+  category: string;
+  html_path: string;
+  pdf_path: string;
+  cover_image: string;
+  status: string;
+  visibility: string;
+  sort_order: number;
+  total_pages: number;
+}
+
+const EMPTY_FORM: ManualForm = {
+  title: '',
+  slug: '',
+  description: '',
+  category: 'General',
+  html_path: '',
+  pdf_path: '',
+  cover_image: '',
+  status: 'draft',
+  visibility: 'all',
+  sort_order: 0,
+  total_pages: 0,
+};
+
+export default function ManualesAdmin() {
+  const navigate = useNavigate();
+  const [manuals, setManuals] = useState<Manual[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingManual, setEditingManual] = useState<Manual | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+
+  // File upload states
+  const [uploadingHtml, setUploadingHtml] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [generandoMiniatura, setGenerandoMiniatura] = useState(false);
+  const htmlInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Chapters management
+  const [managingChaptersFor, setManagingChaptersFor] = useState<Manual | null>(null);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [newChapterTitle, setNewChapterTitle] = useState('');
+  const [newChapterPage, setNewChapterPage] = useState(1);
+
+  useEffect(() => {
+    fetchManuals();
+  }, []);
+
+  async function fetchManuals() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('manuals')
+      .select('*')
+      .order('sort_order', { ascending: true });
+
+    if (!error && data) {
+      setManuals(data);
+    }
+    setLoading(false);
+  }
+
+  function startEdit(manual: Manual) {
+    setEditingManual(manual);
+    setIsCreating(false);
+    setManagingChaptersFor(null);
+    setForm({
+      title: manual.title,
+      slug: manual.slug,
+      description: manual.description,
+      category: manual.category,
+      html_path: manual.html_path || '',
+      pdf_path: manual.pdf_path || '',
+      cover_image: manual.cover_image || '',
+      status: manual.status,
+      visibility: manual.visibility,
+      sort_order: manual.sort_order,
+      total_pages: manual.total_pages || 0,
+    });
+  }
+
+  function startCreate() {
+    setEditingManual(null);
+    setIsCreating(true);
+    setManagingChaptersFor(null);
+    setForm({ ...EMPTY_FORM, sort_order: manuals.length + 1 });
+  }
+
+  function cancelEdit() {
+    setEditingManual(null);
+    setIsCreating(false);
+    setForm(EMPTY_FORM);
+  }
+
+  function generateSlug(title: string) {
+    return title
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
+
+  async function uploadHtmlFile(file: File) {
+    setUploadingHtml(true);
+    const slug = form.slug || generateSlug(form.title) || `manual-${Date.now()}`;
+    const generarPortada = !form.cover_image;
+    try {
+      const path = `${slug}/${file.name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('manuals')
+        .upload(path, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('manuals')
+        .getPublicUrl(path);
+
+      setForm(f => ({ ...f, html_path: urlData.publicUrl }));
+    } catch (err: any) {
+      alert(`Error al subir archivo HTML: ${err.message}`);
+      setUploadingHtml(false);
+      return;
+    }
+    setUploadingHtml(false);
+
+    if (generarPortada) {
+      setGenerandoMiniatura(true);
+      try {
+        const htmlContent = await file.text();
+        const blob = await generarMiniaturaDesdeHtml(htmlContent);
+        if (blob) {
+          const coverPath = `${slug}/cover-auto.jpg`;
+          const { error: coverError } = await supabase.storage
+            .from('manuals')
+            .upload(coverPath, blob, { cacheControl: '3600', upsert: true, contentType: 'image/jpeg' });
+          if (!coverError) {
+            const { data: coverUrlData } = supabase.storage.from('manuals').getPublicUrl(coverPath);
+            // Cache-bust: la ruta es siempre la misma (cover-auto.jpg) y el
+            // upload se guarda con cache de 1h — sin esto, se sigue viendo
+            // la version anterior aunque ya se haya regenerado.
+            const urlConCacheBust = `${coverUrlData.publicUrl}?v=${Date.now()}`;
+            setForm(f => (f.cover_image ? f : { ...f, cover_image: urlConCacheBust }));
+          }
+        }
+      } catch (err) {
+        console.error('Error generando miniatura automática:', err);
+      } finally {
+        setGenerandoMiniatura(false);
+      }
+    }
+  }
+
+  async function uploadCoverImage(file: File) {
+    setUploadingImage(true);
+    try {
+      const slug = form.slug || generateSlug(form.title) || `manual-${Date.now()}`;
+      const ext = file.name.split('.').pop();
+      const path = `${slug}/cover.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('manuals')
+        .upload(path, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('manuals')
+        .getPublicUrl(path);
+
+      setForm(f => ({ ...f, cover_image: urlData.publicUrl }));
+    } catch (err: any) {
+      alert(`Error al subir imagen: ${err.message}`);
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  /** Genera la miniatura para un manual que ya tiene HTML subido de antes
+   * (creado antes de que existiera la generacion automatica), sin tener
+   * que volver a subir el archivo. */
+  async function generarMiniaturaParaManualExistente() {
+    if (!form.html_path) return;
+    setGenerandoMiniatura(true);
+    try {
+      const slug = form.slug || generateSlug(form.title) || `manual-${Date.now()}`;
+      const res = await fetch(form.html_path);
+      if (!res.ok) throw new Error(`No se pudo leer el HTML (${res.status})`);
+      const htmlContent = await res.text();
+
+      const blob = await generarMiniaturaDesdeHtml(htmlContent);
+      if (!blob) throw new Error('No se pudo generar la imagen');
+
+      const coverPath = `${slug}/cover-auto.jpg`;
+      const { error: coverError } = await supabase.storage
+        .from('manuals')
+        .upload(coverPath, blob, { cacheControl: '3600', upsert: true, contentType: 'image/jpeg' });
+      if (coverError) throw coverError;
+
+      const { data: coverUrlData } = supabase.storage.from('manuals').getPublicUrl(coverPath);
+      setForm(f => ({ ...f, cover_image: `${coverUrlData.publicUrl}?v=${Date.now()}` }));
+    } catch (err: any) {
+      alert(`Error al generar la miniatura: ${err.message}`);
+    } finally {
+      setGenerandoMiniatura(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!form.title || !form.slug) return;
+    setSaving(true);
+
+    const payload = {
+      title: form.title,
+      slug: form.slug,
+      description: form.description,
+      category: form.category,
+      html_path: form.html_path || null,
+      pdf_path: form.pdf_path || null,
+      cover_image: form.cover_image || null,
+      status: form.status,
+      visibility: form.visibility,
+      sort_order: form.sort_order,
+      total_pages: form.total_pages,
+    };
+
+    if (isCreating) {
+      const { error } = await supabase.from('manuals').insert(payload);
+      if (!error) {
+        await fetchManuals();
+        cancelEdit();
+      }
+    } else if (editingManual) {
+      const { error } = await supabase
+        .from('manuals')
+        .update(payload)
+        .eq('id', editingManual.id);
+      if (!error) {
+        await fetchManuals();
+        cancelEdit();
+      }
+    }
+    setSaving(false);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Estas seguro de eliminar este manual?')) return;
+    const { error } = await supabase.from('manuals').delete().eq('id', id);
+    if (!error) {
+      setManuals(prev => prev.filter(m => m.id !== id));
+    }
+  }
+
+  async function toggleStatus(manual: Manual) {
+    const newStatus = manual.status === 'active' ? 'draft' : 'active';
+    const { error } = await supabase
+      .from('manuals')
+      .update({ status: newStatus })
+      .eq('id', manual.id);
+    if (!error) {
+      setManuals(prev => prev.map(m => m.id === manual.id ? { ...m, status: newStatus } : m));
+    }
+  }
+
+  // Chapters management
+  async function openChaptersManager(manual: Manual) {
+    setManagingChaptersFor(manual);
+    setEditingManual(null);
+    setIsCreating(false);
+    const { data } = await supabase
+      .from('manual_chapters')
+      .select('*')
+      .eq('manual_id', manual.id)
+      .order('sort_order', { ascending: true });
+    setChapters(data || []);
+  }
+
+  async function addChapter() {
+    if (!newChapterTitle || !managingChaptersFor) return;
+    const { data, error } = await supabase
+      .from('manual_chapters')
+      .insert({
+        manual_id: managingChaptersFor.id,
+        title: newChapterTitle,
+        page_number: newChapterPage,
+        sort_order: chapters.length + 1,
+      })
+      .select()
+      .maybeSingle();
+
+    if (!error && data) {
+      setChapters(prev => [...prev, data]);
+      setNewChapterTitle('');
+      setNewChapterPage(prev => prev + 1);
+    }
+  }
+
+  async function deleteChapter(id: string) {
+    const { error } = await supabase.from('manual_chapters').delete().eq('id', id);
+    if (!error) {
+      setChapters(prev => prev.filter(c => c.id !== id));
+    }
+  }
+
+  function getFileName(url: string): string {
+    if (!url) return '';
+    try {
+      const parts = url.split('/');
+      return decodeURIComponent(parts[parts.length - 1]);
+    } catch {
+      return url.slice(-30);
+    }
+  }
+
+  const showForm = isCreating || editingManual;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Administrar Manuales"
+        description="Gestiona los manuales y su contenido de navegacion"
+        icon={BookOpen}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/manuales')}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-600 dark:text-white/70 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-xl transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Catalogo
+            </button>
+            <button
+              onClick={startCreate}
+              className="flex items-center gap-2 px-4 py-2.5 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo Manual
+            </button>
+          </div>
+        }
+      />
+
+      {/* Manual Form */}
+      {showForm && (
+        <div className="bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-neutral-800 dark:text-white">
+              {isCreating ? 'Nuevo Manual' : `Editando: ${editingManual?.title}`}
+            </h3>
+            <button onClick={cancelEdit} className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Titulo *</label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={e => {
+                  const title = e.target.value;
+                  setForm(f => ({ ...f, title, slug: isCreating ? generateSlug(title) : f.slug }));
+                }}
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Slug (URL) *</label>
+              <input
+                type="text"
+                value={form.slug}
+                onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Descripcion</label>
+              <textarea
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                rows={2}
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Categoria</label>
+              <input
+                type="text"
+                value={form.category}
+                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Estado</label>
+              <select
+                value={form.status}
+                onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+              >
+                <option value="draft">Borrador</option>
+                <option value="active">Activo</option>
+                <option value="archived">Archivado</option>
+              </select>
+            </div>
+          </div>
+
+          {/* File Upload Section */}
+          <div className="border-t border-neutral-100 dark:border-white/5 pt-4 space-y-4">
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-white/70">Archivos del Manual</h4>
+
+            {/* HTML File Upload */}
+            <div className="p-4 border border-dashed border-neutral-300 dark:border-white/20 rounded-xl bg-neutral-50/50 dark:bg-white/3">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${form.html_path ? 'bg-green-100 dark:bg-green-900/30' : 'bg-neutral-100 dark:bg-white/10'}`}>
+                  {form.html_path ? <CheckCircle className="w-5 h-5 text-green-600" /> : <FileText className="w-5 h-5 text-neutral-500" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-700 dark:text-white/70">Documento HTML</p>
+                  {form.html_path ? (
+                    <p className="text-xs text-green-600 dark:text-green-400 truncate">{getFileName(form.html_path)}</p>
+                  ) : (
+                    <p className="text-xs text-neutral-500 dark:text-white/55">Sube el archivo HTML del manual</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {form.html_path && (
+                    <button
+                      onClick={() => setForm(f => ({ ...f, html_path: '' }))}
+                      className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                    >
+                      Quitar
+                    </button>
+                  )}
+                  <button
+                    onClick={() => htmlInputRef.current?.click()}
+                    disabled={uploadingHtml}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {uploadingHtml ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    {uploadingHtml ? 'Subiendo...' : form.html_path ? 'Reemplazar' : 'Subir HTML'}
+                  </button>
+                </div>
+              </div>
+              <input
+                ref={htmlInputRef}
+                type="file"
+                accept=".html,.htm"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadHtmlFile(file);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+
+            {/* Cover Image Upload */}
+            <div className="p-4 border border-dashed border-neutral-300 dark:border-white/20 rounded-xl bg-neutral-50/50 dark:bg-white/3">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden ${form.cover_image ? '' : 'bg-neutral-100 dark:bg-white/10'}`}>
+                  {form.cover_image ? (
+                    <img src={form.cover_image} alt="Cover" className="w-10 h-10 object-cover rounded-lg" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-neutral-500" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-700 dark:text-white/70">Imagen de Portada</p>
+                  {generandoMiniatura ? (
+                    <p className="text-xs text-accent-ink">Generando miniatura automática del HTML…</p>
+                  ) : form.cover_image ? (
+                    <p className="text-xs text-green-600 dark:text-green-400 truncate">{getFileName(form.cover_image)}</p>
+                  ) : (
+                    <p className="text-xs text-neutral-500 dark:text-white/55">Se genera sola al subir el HTML, o sube la tuya</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {form.cover_image && (
+                    <button
+                      onClick={() => setForm(f => ({ ...f, cover_image: '' }))}
+                      className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                    >
+                      Quitar
+                    </button>
+                  )}
+                  {form.html_path && (
+                    <button
+                      onClick={generarMiniaturaParaManualExistente}
+                      disabled={generandoMiniatura}
+                      title="Genera la miniatura a partir del HTML ya subido"
+                      className="px-2 py-1.5 text-xs font-medium text-accent-ink hover:bg-accent/10 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      {generandoMiniatura ? '...' : 'Generar miniatura'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {uploadingImage ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    {uploadingImage ? 'Subiendo...' : form.cover_image ? 'Reemplazar' : 'Subir Imagen'}
+                  </button>
+                </div>
+              </div>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadCoverImage(file);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Additional fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Total paginas</label>
+              <input
+                type="number"
+                value={form.total_pages}
+                onChange={e => setForm(f => ({ ...f, total_pages: parseInt(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Orden</label>
+              <input
+                type="number"
+                value={form.sort_order}
+                onChange={e => setForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-white/50 mb-1">Visibilidad</label>
+              <select
+                value={form.visibility}
+                onChange={e => setForm(f => ({ ...f, visibility: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+              >
+                <option value="all">Todos</option>
+                <option value="admin">Solo Admin</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={cancelEdit} className="px-4 py-2 text-sm text-neutral-600 dark:text-white/60 hover:bg-neutral-100 dark:hover:bg-white/10 rounded-xl transition-colors">
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !form.title || !form.slug}
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Chapters Manager */}
+      {managingChaptersFor && (
+        <div className="bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-neutral-800 dark:text-white flex items-center gap-2">
+                <List className="w-4 h-4" />
+                Indice de: {managingChaptersFor.title}
+              </h3>
+              <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">
+                Define los capitulos que apareceran en la barra lateral de navegacion
+              </p>
+            </div>
+            <button onClick={() => setManagingChaptersFor(null)} className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Add chapter form */}
+          <div className="flex items-end gap-3 p-3 bg-neutral-50 dark:bg-white/3 rounded-xl">
+            <div className="flex-1">
+              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/50 mb-1">Titulo del capitulo</label>
+              <input
+                type="text"
+                value={newChapterTitle}
+                onChange={e => setNewChapterTitle(e.target.value)}
+                placeholder="Ej: Cap 01 - Introduccion"
+                onKeyDown={e => e.key === 'Enter' && addChapter()}
+                className="w-full px-3 py-2 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <div className="w-24">
+              <label className="block text-[11px] font-medium text-neutral-500 dark:text-white/50 mb-1">Pagina</label>
+              <input
+                type="number"
+                value={newChapterPage}
+                onChange={e => setNewChapterPage(parseInt(e.target.value) || 1)}
+                min={1}
+                className="w-full px-3 py-2 rounded-lg border border-soft dark:border-white/10 bg-surface-card dark:bg-white/5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <button
+              onClick={addChapter}
+              disabled={!newChapterTitle}
+              className="flex items-center gap-1.5 px-4 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Agregar
+            </button>
+          </div>
+
+          {/* Chapters list */}
+          {chapters.length === 0 ? (
+            <p className="text-sm text-neutral-500 dark:text-white/55 text-center py-6">
+              No hay capitulos definidos. Agrega el primer capitulo arriba.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {chapters.map((chapter, index) => (
+                <li
+                  key={chapter.id}
+                  className="flex items-center gap-3 px-3 py-2.5 bg-neutral-50 dark:bg-white/3 rounded-xl group"
+                >
+                  <GripVertical className="w-4 h-4 text-neutral-300 dark:text-white/20 flex-shrink-0" />
+                  <span className="w-6 h-6 rounded-md bg-neutral-200 dark:bg-white/10 flex items-center justify-center text-[11px] font-bold text-neutral-500 dark:text-white/55 flex-shrink-0">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="text-sm text-neutral-700 dark:text-white/70 flex-1">{chapter.title}</span>
+                  <span className="text-[11px] text-neutral-500 dark:text-white/45 mr-2">Pag. {chapter.page_number}</span>
+                  <button
+                    onClick={() => deleteChapter(chapter.id)}
+                    className="p-1 rounded-md text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Manuals Table */}
+      <div className="bg-surface-card dark:bg-white/5 border border-soft dark:border-white/10 rounded-2xl overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-neutral-500">Cargando...</div>
+        ) : manuals.length === 0 ? (
+          <div className="p-8 text-center text-neutral-500">No hay manuales registrados</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-neutral-100 dark:border-white/5">
+                  <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-white/50">#</th>
+                  <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-white/50">Titulo</th>
+                  <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-white/50 hidden md:table-cell">Categoria</th>
+                  <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-white/50 hidden lg:table-cell">Archivos</th>
+                  <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-white/50 hidden lg:table-cell">Pags</th>
+                  <th className="text-left px-4 py-3 font-medium text-neutral-500 dark:text-white/50">Estado</th>
+                  <th className="text-right px-4 py-3 font-medium text-neutral-500 dark:text-white/50">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {manuals.map(manual => (
+                  <tr key={manual.id} className="border-b border-neutral-50 dark:border-white/5 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-white/3 transition-colors">
+                    <td className="px-4 py-3 text-neutral-500">{manual.sort_order}</td>
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="font-medium text-neutral-800 dark:text-white">{manual.title}</p>
+                        <p className="text-xs text-neutral-500 dark:text-white/55">/{manual.slug}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-neutral-600 dark:text-white/60 hidden md:table-cell">{manual.category}</td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      <div className="flex items-center gap-1.5">
+                        {manual.html_path && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-accent-ink dark:text-blue-300 rounded text-[11px] font-medium">
+                            <FileText className="w-3 h-3" />
+                            HTML
+                          </span>
+                        )}
+                        {manual.cover_image && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 rounded text-[11px] font-medium">
+                            <ImageIcon className="w-3 h-3" />
+                            IMG
+                          </span>
+                        )}
+                        {!manual.html_path && !manual.cover_image && (
+                          <span className="text-xs text-neutral-300">-</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-neutral-500 hidden lg:table-cell">{manual.total_pages || '-'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        manual.status === 'active'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                          : manual.status === 'archived'
+                          ? 'bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-white/55'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                      }`}>
+                        {manual.status === 'active' ? 'Activo' : manual.status === 'archived' ? 'Archivado' : 'Borrador'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openChaptersManager(manual)}
+                          title="Gestionar indice"
+                          className="p-1.5 rounded-lg text-neutral-500 hover:text-accent-ink hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                        >
+                          <List className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => toggleStatus(manual)}
+                          title={manual.status === 'active' ? 'Desactivar' : 'Activar'}
+                          className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+                        >
+                          {manual.status === 'active' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => startEdit(manual)}
+                          title="Editar"
+                          className="p-1.5 rounded-lg text-neutral-500 hover:text-accent-ink hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(manual.id)}
+                          title="Eliminar"
+                          className="p-1.5 rounded-lg text-neutral-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

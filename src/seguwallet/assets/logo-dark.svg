@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 215" fill="none">
+  <!-- Envelope body -->
+  <rect x="10" y="80" width="200" height="150" rx="18" fill="#3B58F0"/>
+  <!-- Envelope dark inner triangle -->
+  <path d="M10 130 L110 195 L210 130 L210 230 Q210 230 110 230 Q10 230 10 230 Z" fill="#1C37E0"/>
+  <!-- Envelope V flap open -->
+  <path d="M10 80 L110 160 L210 80 Z" fill="#5B78FF"/>
+  <!-- WiFi arcs -->
+  <circle cx="110" cy="52" r="4" fill="#1C37E0"/>
+  <path d="M91 66 Q110 50 129 66" stroke="#1C37E0" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <path d="M74 52 Q110 26 146 52" stroke="#1C37E0" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <!-- Text: seguwallet -->
+  <text x="110" y="258" font-family="'Inter', 'Segoe UI', Arial, sans-serif" font-weight="800" font-size="32" fill="#FFFFFF" text-anchor="middle" letter-spacing="-0.5">seguwallet</text>
+</svg>

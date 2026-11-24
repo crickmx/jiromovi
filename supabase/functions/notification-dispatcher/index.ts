@@ -1,0 +1,770 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { getWhatsappApiKey } from "../_shared/emailCredentials.ts";
+import { readWazzupResponse } from "../_shared/wazzupDelivery.ts";
+// ===== Guardia de autenticación MOVI (2026-11-17) =====
+// Uso, al inicio del handler (después de OPTIONS):
+//   const __denied = await __moviGuard(req, { roles: [...], allowService: true });
+//   if (__denied) return __denied;
+// roles: valores de usuarios.rol permitidos para llamadas con sesión ([] = ninguna).
+// allowService: acepta llamadas internas (cron/SQL/otras funciones) con la service key
+//   legacy (== SUPABASE_SERVICE_ROLE_KEY) o con una llave sb_secret_ válida
+//   (se valida contra /auth/v1/admin y se cachea en memoria).
+const __moviOkSecrets = new Set<string>();
+async function __moviGuard(req: Request, opts: { roles: string[]; allowService: boolean }): Promise<Response | null> {
+  const h = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Content-Type": "application/json" };
+  const deny = (status: number, msg: string) => new Response(JSON.stringify({ success: false, error: msg }), { status, headers: h });
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const legacyService = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const apikeyHdr = (req.headers.get("apikey") ?? "").trim();
+  if (opts.allowService) {
+    for (const k of [bearer, apikeyHdr]) {
+      if (!k) continue;
+      if (legacyService && k === legacyService) return null;
+      if (k.startsWith("sb_secret_")) {
+        if (__moviOkSecrets.has(k)) return null;
+        const r = await fetch(`${url}/auth/v1/admin/users?per_page=1`, { headers: { apikey: k } });
+        await r.body?.cancel();
+        if (r.ok) { __moviOkSecrets.add(k); return null; }
+      }
+    }
+    // El gateway convierte las llaves sb_secret_ en un JWT temporal con role=service_role.
+    // Se valida la firma pidiéndole a Auth un endpoint de admin con ese JWT.
+    if (bearer.startsWith("eyJ")) {
+      let role = "";
+      try {
+        const b64 = bearer.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        role = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)))?.role ?? "";
+      } catch { /* no es JWT */ }
+      if (role === "service_role") {
+        if (__moviOkSecrets.has(bearer)) return null;
+        const r = await fetch(`${url}/auth/v1/admin/users?per_page=1`, { headers: { Authorization: `Bearer ${bearer}`, apikey: Deno.env.get("SUPABASE_ANON_KEY") ?? bearer } });
+        await r.body?.cancel();
+        if (r.ok) { __moviOkSecrets.add(bearer); return null; }
+      }
+    }
+  }
+  if (!bearer || !bearer.startsWith("eyJ")) return deny(401, "No autenticado");
+  if (opts.roles.length === 0) return deny(403, "No autorizado");
+  const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? legacyService;
+  const ur = await fetch(`${url}/auth/v1/user`, { headers: { Authorization: `Bearer ${bearer}`, apikey: anon } });
+  if (!ur.ok) { await ur.body?.cancel(); return deny(401, "No autenticado"); }
+  const user = await ur.json();
+  if (!user?.id) return deny(401, "No autenticado");
+  const q = await fetch(`${url}/rest/v1/usuarios?id=eq.${encodeURIComponent(user.id)}&select=rol,activo,is_deleted`, { headers: { Authorization: `Bearer ${legacyService}`, apikey: legacyService } });
+  const rows = q.ok ? await q.json() : [];
+  const me = Array.isArray(rows) ? rows[0] : null;
+  if (!me || me.activo === false || me.is_deleted === true || !opts.roles.includes(me.rol)) return deny(403, "No autorizado");
+  return null;
+}
+// ===== fin guardia =====
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, X-Client-Info, Apikey",
+};
+
+const MAX_SUBJECT_LENGTH = 140;
+const BASE_URL = "https://app.movi.digital";
+const TIPO_TRAMITE_LABELS: Record<string, string> = {
+  cotizacion_emision: "Cotización / Emisión",
+  correccion_comisiones: "Corrección de comisiones",
+  correccion_polizas: "Corrección de pólizas",
+  renovacion: "Renovación",
+  cobranza: "Cobranza",
+  solicitud_comisiones_pendientes: "Solicitud comisiones pendientes",
+  otro: "Otro",
+  siniestro: "Siniestro",
+  cancelacion: "Cancelación",
+  endoso: "Endoso",
+};
+
+// ============================================================
+// Channel resolution helpers
+// ============================================================
+
+interface ResolvedEmailChannel {
+  api_key: string;
+  from_name: string;
+  from_email: string;
+  channel_id: string | null;
+  channel_name: string | null;
+}
+
+interface ResolvedWhatsAppChannel {
+  api_key: string;
+  channel_id_uuid: string;
+  channel_id: string | null;
+  channel_name: string | null;
+}
+
+async function resolveEmailChannel(
+  supabase: ReturnType<typeof createClient>
+): Promise<ResolvedEmailChannel | null> {
+  // 1. Try default notification_channels entry
+  const { data: def } = await supabase
+    .from("notification_channels")
+    .select("id, name, config, branding, is_active")
+    .eq("type", "email_resend")
+    .eq("is_default", true)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (def?.config?.api_key) {
+    return {
+      api_key: def.config.api_key,
+      from_name: def.config.from_name || def.branding?.sender_name || "MOVI Digital",
+      from_email: def.config.from_email || "notificaciones@movi.digital",
+      channel_id: def.id,
+      channel_name: def.name,
+    };
+  }
+
+  // 2. Fallback to env var
+  const envKey = Deno.env.get("RESEND_API_KEY");
+  if (envKey) {
+    return {
+      api_key: envKey,
+      from_name: "MOVI Digital",
+      from_email: "notificaciones@movi.digital",
+      channel_id: null,
+      channel_name: null,
+    };
+  }
+
+  return null;
+}
+
+async function resolveWhatsAppChannel(
+  supabase: ReturnType<typeof createClient>
+): Promise<ResolvedWhatsAppChannel | null> {
+  // 1. Try default notification_channels entry
+  const { data: def } = await supabase
+    .from("notification_channels")
+    .select("id, name, config, is_active")
+    .eq("type", "whatsapp_wazzup24")
+    .eq("is_default", true)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (def?.config?.api_key && def?.config?.channel_id) {
+    return {
+      api_key: def.config.api_key,
+      channel_id_uuid: def.config.channel_id,
+      channel_id: def.id,
+      channel_name: def.name,
+    };
+  }
+
+  // 2. Fallback to legacy whatsapp_configuracion
+  const { data: legacy } = await supabase
+    .from("whatsapp_configuracion")
+    .select("id, channel_id_uuid, activo")
+    .eq("activo", true)
+    .maybeSingle();
+  const legacyApiKey = legacy ? await getWhatsappApiKey(supabase, legacy.id) : null;
+  if (legacyApiKey) {
+    return {
+      api_key: legacyApiKey,
+      channel_id_uuid: legacy.channel_id_uuid || "",
+      channel_id: null,
+      channel_name: null,
+    };
+  }
+
+  return null;
+}
+
+// ============================================================
+// Ticket enrichment helpers
+// ============================================================
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const t = text.substring(0, max);
+  const sp = t.lastIndexOf(" ");
+  return (sp > max * 0.7 ? t.substring(0, sp) : t) + "...";
+}
+
+function getShortDescription(ticket: Record<string, unknown>, maxLen = 70): string {
+  if (ticket.activity_subtype_name && typeof ticket.activity_subtype_name === "string") {
+    return truncate(ticket.activity_subtype_name, maxLen);
+  }
+  const tipo = ticket.tipo_tramite as string;
+  if (tipo && TIPO_TRAMITE_LABELS[tipo]) return TIPO_TRAMITE_LABELS[tipo];
+  const instr = ticket.instrucciones as string;
+  if (instr) {
+    const first = instr.split("\n")[0].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+    if (first) return truncate(first, maxLen);
+  }
+  if (tipo) return tipo.replace(/_/g, " ");
+  return "Actualización";
+}
+
+function buildEnhancedSubject(
+  folio: string,
+  eventLabel: string,
+  clientName?: string,
+  policyNumber?: string,
+  insurerName?: string
+): string {
+  const parts = [`Trámite #${folio}`, eventLabel];
+  if (clientName) parts.push(clientName);
+  if (policyNumber) parts.push(`Póliza ${policyNumber}`);
+  if (insurerName) parts.push(insurerName);
+  let subject = parts.join(" - ");
+  if (subject.length > MAX_SUBJECT_LENGTH) {
+    subject = subject.substring(0, MAX_SUBJECT_LENGTH - 3) + "...";
+  }
+  return subject;
+}
+
+async function enrichTicketContext(
+  supabase: ReturnType<typeof createClient>,
+  ticketId: string,
+  payload: Record<string, unknown>
+): Promise<{ enrichedPayload: Record<string, string>; enhancedSubject: string }> {
+  const { data: ticket } = await supabase
+    .from("tickets")
+    .select(`
+      id, folio, tipo_tramite, instrucciones, poliza, prioridad,
+      registro_aseguradora, registro_cliente, registro_numero_poliza,
+      insurers,
+      ticket_estatus:estatus_id(nombre),
+      activity_subtype:activity_subtype_id(nombre),
+      insurance_type:insurance_type_id(nombre)
+    `)
+    .eq("id", ticketId)
+    .maybeSingle();
+
+  if (!ticket) {
+    return { enrichedPayload: payload as Record<string, string>, enhancedSubject: "" };
+  }
+
+  let insurerName = ticket.registro_aseguradora || undefined;
+  if (!insurerName && ticket.insurers && Array.isArray(ticket.insurers) && ticket.insurers.length > 0) {
+    const { data: ins } = await supabase
+      .from("aseguradoras")
+      .select("nombre")
+      .eq("id", ticket.insurers[0])
+      .maybeSingle();
+    if (ins?.nombre) insurerName = ins.nombre;
+  }
+
+  const clientName = ticket.registro_cliente || undefined;
+  const policyNumber = ticket.registro_numero_poliza || ticket.poliza || undefined;
+  const actSubtypeName = (ticket.activity_subtype as any)?.nombre || undefined;
+  const desc = getShortDescription({ ...ticket, activity_subtype_name: actSubtypeName });
+  const folio = ticket.folio || (payload.folio as string) || ticketId.substring(0, 8);
+
+  const enriched: Record<string, string> = {};
+  for (const [k, v] of Object.entries(payload)) {
+    enriched[k] = typeof v === "string" ? v : JSON.stringify(v);
+  }
+
+  enriched.cliente_segmento = clientName ? ` - ${clientName}` : "";
+  enriched.poliza_segmento = policyNumber ? ` - Póliza ${policyNumber}` : "";
+  enriched.aseguradora_segmento = insurerName ? ` - ${insurerName}` : "";
+  enriched.descripcion_breve = desc;
+
+  const htmlRows: string[] = [];
+  const textLines: string[] = [];
+  if (clientName) {
+    htmlRows.push(`<tr><td style="padding:4px 8px; color:#666;">Cliente:</td><td style="padding:4px 8px;">${clientName}</td></tr>`);
+    textLines.push(`Cliente: ${clientName}`);
+  }
+  if (policyNumber) {
+    htmlRows.push(`<tr><td style="padding:4px 8px; color:#666;">Póliza:</td><td style="padding:4px 8px;">${policyNumber}</td></tr>`);
+    textLines.push(`Póliza: ${policyNumber}`);
+  }
+  if (insurerName) {
+    htmlRows.push(`<tr><td style="padding:4px 8px; color:#666;">Aseguradora:</td><td style="padding:4px 8px;">${insurerName}</td></tr>`);
+    textLines.push(`Aseguradora: ${insurerName}`);
+  }
+  enriched.datos_identificacion_html = htmlRows.join("\n");
+  enriched.datos_identificacion_texto = textLines.length > 0 ? "\n" + textLines.join("\n") + "\n" : "";
+  enriched.adjuntos_advertencia_html = "";
+
+  const eventLabel = (payload.estatus_nuevo as string) || desc;
+  const enhancedSubject = buildEnhancedSubject(folio, eventLabel, clientName, policyNumber, insurerName);
+
+  return { enrichedPayload: enriched, enhancedSubject };
+}
+
+// ============================================================
+// Template rendering
+// ============================================================
+
+function renderTemplate(template: string, vars: Record<string, string>): string {
+  let out = template;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), v || "");
+  }
+  out = out.replace(/\{\{[^}]+\}\}/g, "");
+  return out;
+}
+
+// ============================================================
+// Attachment helpers
+// ============================================================
+
+async function getSignedUrl(supabase: ReturnType<typeof createClient>, filePath: string): Promise<string | null> {
+  if (filePath.startsWith("http://") || filePath.startsWith("https://")) return filePath;
+  const { data } = await supabase.storage.from("ticket-archivos").createSignedUrl(filePath, 3600);
+  return data?.signedUrl || null;
+}
+
+async function getTicketAttachments(
+  supabase: ReturnType<typeof createClient>,
+  ticketId: string,
+  attachmentData?: Array<{ fileName: string; filePath: string; mimeType?: string; size?: number }>
+): Promise<Array<{ fileName: string; filePath: string; mimeType?: string; size?: number }>> {
+  if (attachmentData && attachmentData.length > 0) return attachmentData;
+
+  const { data: files } = await supabase
+    .from("ticket_archivos")
+    .select("nombre, url, tipo, tamano")
+    .eq("ticket_id", ticketId)
+    .order("fecha_subida", { ascending: false })
+    .limit(10);
+
+  if (!files) return [];
+  return files.map((f) => ({
+    fileName: f.nombre || "documento",
+    filePath: f.url || "",
+    mimeType: f.tipo || "application/octet-stream",
+    size: f.tamano || 0,
+  }));
+}
+
+// ============================================================
+// Main handler
+// ============================================================
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 200, headers: corsHeaders });
+  }
+  const __denied = await __moviGuard(req, { roles: ["Administrador","Gerente","Ejecutivo","Empleado"], allowService: true });
+  if (__denied) return __denied;
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const body = await req.json();
+
+    // Support two modes:
+    // Mode 1: Process pending jobs from notification_jobs table
+    // Mode 2: Direct dispatch with event_code, user_id, payload
+
+    if (body.process_pending_jobs) {
+      // Fetch pending jobs. Only email/whatsapp: "in_app" jobs are owned by the
+      // process_in_app_notifications() Postgres function (also on a 1-minute
+      // pg_cron job) — having both claim the same rows was a silent race where
+      // whichever ran first "won" and the loser's channel silently did nothing.
+      const { data: pendingJobs } = await supabase
+        .from("notification_jobs")
+        .select("*")
+        .eq("status", "pending")
+        .in("channel", ["email", "whatsapp"])
+        .order("created_at", { ascending: true })
+        .limit(50);
+
+      if (!pendingJobs || pendingJobs.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, processed: 0 }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Resolve channels once for all jobs
+      const emailChannel = await resolveEmailChannel(supabase);
+      const waChannel = await resolveWhatsAppChannel(supabase);
+
+      let processed = 0;
+      let failed = 0;
+
+      for (const job of pendingJobs) {
+        try {
+          await supabase
+            .from("notification_jobs")
+            .update({ status: "processing", updated_at: new Date().toISOString() })
+            .eq("id", job.id);
+
+          // Resolve user contact info if not in payload
+          if (job.user_id && (!job.payload?.email || !job.payload?.phone)) {
+            const { data: jobUser } = await supabase
+              .from("usuarios")
+              .select("email_laboral, email_personal, celular_laboral, celular_personal, nombre, apellidos, nombre_completo, nombre_publico")
+              .eq("id", job.user_id)
+              .maybeSingle();
+            if (jobUser) {
+              if (!job.payload) job.payload = {};
+              if (!job.payload.email) {
+                job.payload.email = jobUser.email_laboral || jobUser.email_personal || null;
+              }
+              if (!job.payload.phone) {
+                job.payload.phone = jobUser.celular_laboral || jobUser.celular_personal || null;
+              }
+              if (!job.payload.nombre_usuario) {
+                job.payload.nombre_usuario = jobUser.nombre_publico?.trim() || jobUser.nombre_completo || `${jobUser.nombre || ""} ${jobUser.apellidos || ""}`.trim() || "Usuario";
+              }
+              if (!job.payload.nombre_marca) {
+                job.payload.nombre_marca = jobUser.nombre_publico?.trim() || jobUser.nombre_completo || `${jobUser.nombre || ""} ${jobUser.apellidos || ""}`.trim() || "Usuario";
+              }
+            }
+          }
+
+          const isTicketEvent = (job.event_code || "").startsWith("tramite_");
+          let ticketId: string | null = null;
+
+          if (isTicketEvent && job.payload?.url) {
+            const match = (job.payload.url as string).match(/\/tramites\/([a-f0-9-]+)/);
+            if (match) ticketId = match[1];
+          }
+
+          let enrichedPayload = job.payload || {};
+          let enhancedSubject = "";
+          if (isTicketEvent && ticketId) {
+            const enrichment = await enrichTicketContext(supabase, ticketId, enrichedPayload);
+            enrichedPayload = enrichment.enrichedPayload;
+            enhancedSubject = enrichment.enhancedSubject;
+          }
+
+          const { data: template } = await supabase
+            .from("transactional_notification_templates")
+            .select("*")
+            .eq("event_key", job.event_code)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          const { data: eventConfig } = await supabase
+            .from("notification_events_catalog")
+            .select("enable_email, enable_whatsapp, enable_in_app")
+            .eq("event_code", job.event_code)
+            .eq("active", true)
+            .maybeSingle();
+
+          if (!template) {
+            await supabase
+              .from("notification_jobs")
+              .update({ status: "failed", last_error: "Template not found", updated_at: new Date().toISOString() })
+              .eq("id", job.id);
+            failed++;
+            continue;
+          }
+
+          const vars = enrichedPayload as Record<string, string>;
+
+          if (job.channel === "email" && eventConfig?.enable_email !== false) {
+            if (emailChannel && job.payload?.email) {
+              const subject = enhancedSubject || renderTemplate(template.email_subject_template || "", vars);
+              let htmlBody = renderTemplate(template.email_body_template || "", vars);
+              htmlBody = htmlBody.replace("{{adjuntos_advertencia_html}}", "");
+
+              let emailAttachments: Array<{ filename: string; content: string }> = [];
+              if (isTicketEvent && ticketId) {
+                const atts = await getTicketAttachments(supabase, ticketId, job.attachments as any);
+                let totalSize = 0;
+                for (const att of atts) {
+                  if (totalSize >= 25 * 1024 * 1024) break;
+                  if ((att.size || 0) > 20 * 1024 * 1024) continue;
+                  try {
+                    const url = await getSignedUrl(supabase, att.filePath);
+                    if (!url) continue;
+                    const res = await fetch(url);
+                    if (!res.ok) continue;
+                    const buf = await res.arrayBuffer();
+                    if (totalSize + buf.byteLength > 25 * 1024 * 1024) continue;
+                    totalSize += buf.byteLength;
+                    emailAttachments.push({
+                      filename: att.fileName,
+                      content: btoa(String.fromCharCode(...new Uint8Array(buf))),
+                    });
+                  } catch { /* skip */ }
+                }
+              }
+
+              const emailPayload: Record<string, unknown> = {
+                from: `${emailChannel.from_name} <${emailChannel.from_email}>`,
+                to: [job.payload.email],
+                subject,
+                html: htmlBody,
+              };
+              if (emailAttachments.length > 0) emailPayload.attachments = emailAttachments;
+
+              const res = await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${emailChannel.api_key}`, "Content-Type": "application/json" },
+                body: JSON.stringify(emailPayload),
+              });
+
+              if (res.ok) {
+                const resendBody = await res.json();
+                await supabase
+                  .from("notification_jobs")
+                  .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+                  .eq("id", job.id);
+                await supabase.from("correo_historial_envios").insert({
+                  tipo_codigo: job.event_code || null,
+                  canal_envio: "correo",
+                  destinatario_email: job.payload?.email || null,
+                  destinatario_nombre: job.payload?.nombre_usuario || null,
+                  usuario_id: job.user_id || null,
+                  asunto: subject,
+                  estado: "enviado",
+                  proveedor: "resend",
+                  provider_message_id: resendBody?.id || null,
+                  channel_id: emailChannel.channel_id || null,
+                  channel_name: emailChannel.channel_name || null,
+                  channel_type: "email_resend",
+                  fecha_envio: new Date().toISOString(),
+                });
+                processed++;
+              } else {
+                const errText = await res.text();
+                await supabase
+                  .from("notification_jobs")
+                  .update({
+                    status: job.attempt_count >= (job.max_attempts || 3) ? "failed" : "pending",
+                    last_error: `Resend ${res.status}: ${errText}`,
+                    attempt_count: (job.attempt_count || 0) + 1,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", job.id);
+                await supabase.from("correo_historial_envios").insert({
+                  tipo_codigo: job.event_code || null,
+                  canal_envio: "correo",
+                  destinatario_email: job.payload?.email || null,
+                  destinatario_nombre: job.payload?.nombre_usuario || null,
+                  usuario_id: job.user_id || null,
+                  asunto: subject,
+                  estado: "fallido",
+                  proveedor: "resend",
+                  channel_id: emailChannel.channel_id || null,
+                  channel_name: emailChannel.channel_name || null,
+                  channel_type: "email_resend",
+                  error_mensaje: `Resend ${res.status}: ${errText}`,
+                  fecha_envio: new Date().toISOString(),
+                });
+                failed++;
+              }
+            } else {
+              await supabase
+                .from("notification_jobs")
+                .update({ status: "failed", last_error: "No email channel configured or no email", updated_at: new Date().toISOString() })
+                .eq("id", job.id);
+              failed++;
+            }
+          } else if (job.channel === "whatsapp" && eventConfig?.enable_whatsapp !== false) {
+            if (waChannel && job.payload?.phone) {
+              const message = renderTemplate(template.whatsapp_body_template || "", vars);
+              let normalizedPhone = (job.payload.phone as string).replace(/[^0-9]/g, "");
+              if (normalizedPhone.length === 10) {
+                normalizedPhone = "521" + normalizedPhone;
+              } else if (normalizedPhone.length === 12 && normalizedPhone.startsWith("52")) {
+                normalizedPhone = "521" + normalizedPhone.substring(2);
+              } else if (normalizedPhone.length === 13 && !normalizedPhone.startsWith("521")) {
+                normalizedPhone = "521" + normalizedPhone.substring(3);
+              }
+              const chatId = normalizedPhone;
+
+              const msgRes = await fetch("https://api.wazzup24.com/v3/message", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${waChannel.api_key}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ channelId: waChannel.channel_id_uuid, chatType: "whatsapp", chatId, text: message }),
+              });
+              const waResp = await readWazzupResponse(msgRes);
+
+              if (msgRes.ok) {
+                if (isTicketEvent && ticketId) {
+                  const atts = await getTicketAttachments(supabase, ticketId, job.attachments as any);
+                  for (const att of atts) {
+                    try {
+                      let url = att.filePath;
+                      if (!url.startsWith("http")) {
+                        const signed = await getSignedUrl(supabase, url);
+                        if (!signed) continue;
+                        url = signed;
+                      }
+                      await fetch("https://api.wazzup24.com/v3/message", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${waChannel.api_key}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({ channelId: waChannel.channel_id_uuid, chatType: "whatsapp", chatId, contentUri: url, fileName: att.fileName }),
+                      });
+                    } catch { /* continue */ }
+                  }
+                }
+
+                await supabase
+                  .from("notification_jobs")
+                  .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+                  .eq("id", job.id);
+                await supabase.from("correo_historial_envios").insert({
+                  tipo_codigo: job.event_code || null,
+                  canal_envio: "whatsapp",
+                  destinatario_email: null,
+                  destinatario_nombre: job.payload?.nombre_usuario || null,
+                  numero_destino: chatId,
+                  usuario_id: job.user_id || null,
+                  asunto: null,
+                  estado: "enviado",
+                  proveedor: "wazzup24",
+                  channel_id: waChannel.channel_id || null,
+                  channel_name: waChannel.channel_name || null,
+                  channel_type: "whatsapp_wazzup24",
+                  provider_message_id: waResp.messageId,
+                  fecha_envio: new Date().toISOString(),
+                });
+                processed++;
+              } else {
+                const errText = waResp.text;
+                await supabase
+                  .from("notification_jobs")
+                  .update({
+                    status: job.attempt_count >= (job.max_attempts || 3) ? "failed" : "pending",
+                    last_error: `Wazzup ${msgRes.status}: ${errText}`,
+                    attempt_count: (job.attempt_count || 0) + 1,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", job.id);
+                await supabase.from("correo_historial_envios").insert({
+                  tipo_codigo: job.event_code || null,
+                  canal_envio: "whatsapp",
+                  destinatario_email: null,
+                  destinatario_nombre: job.payload?.nombre_usuario || null,
+                  numero_destino: chatId,
+                  usuario_id: job.user_id || null,
+                  asunto: null,
+                  estado: "fallido",
+                  proveedor: "wazzup24",
+                  channel_id: waChannel.channel_id || null,
+                  channel_name: waChannel.channel_name || null,
+                  channel_type: "whatsapp_wazzup24",
+                  error_mensaje: `Wazzup ${msgRes.status}: ${errText}`,
+                  fecha_envio: new Date().toISOString(),
+                });
+                failed++;
+              }
+            } else {
+              await supabase
+                .from("notification_jobs")
+                .update({ status: "failed", last_error: "No WhatsApp channel configured or no phone", updated_at: new Date().toISOString() })
+                .eq("id", job.id);
+              failed++;
+            }
+          } else {
+            // Disabled channel for this event
+            await supabase
+              .from("notification_jobs")
+              .update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+              .eq("id", job.id);
+            processed++;
+          }
+        } catch (err) {
+          await supabase
+            .from("notification_jobs")
+            .update({
+              status: "failed",
+              last_error: err instanceof Error ? err.message : "Unknown error",
+              attempt_count: (job.attempt_count || 0) + 1,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", job.id);
+          failed++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, processed, failed, total: pendingJobs.length }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Mode 2: Direct dispatch (create jobs)
+    const { event_code, user_id, payload, channels } = body;
+
+    if (!event_code || !user_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: "event_code and user_id required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: eventConfig } = await supabase
+      .from("notification_events_catalog")
+      .select("enable_email, enable_whatsapp, enable_in_app")
+      .eq("event_code", event_code)
+      .eq("active", true)
+      .maybeSingle();
+
+    const { data: userInfo } = await supabase
+      .from("usuarios")
+      .select("email_laboral, celular_laboral, celular_personal")
+      .eq("id", user_id)
+      .maybeSingle();
+
+    const email = userInfo?.email_laboral || payload?.email;
+    const phone = userInfo?.celular_laboral || userInfo?.celular_personal || payload?.phone;
+
+    const jobsToCreate = [];
+    const idempBase = `${event_code}_${user_id}_${Date.now()}`;
+
+    if (eventConfig?.enable_email !== false && email) {
+      jobsToCreate.push({
+        event_code,
+        user_id,
+        channel: "email",
+        status: "pending",
+        payload: { ...payload, email },
+        idempotency_key: `${idempBase}_email`,
+        attempt_count: 0,
+        max_attempts: 3,
+      });
+    }
+
+    if (eventConfig?.enable_whatsapp !== false && phone) {
+      jobsToCreate.push({
+        event_code,
+        user_id,
+        channel: "whatsapp",
+        status: "pending",
+        payload: { ...payload, phone },
+        idempotency_key: `${idempBase}_whatsapp`,
+        attempt_count: 0,
+        max_attempts: 3,
+      });
+    }
+
+    if (jobsToCreate.length > 0) {
+      await supabase.from("notification_jobs").insert(jobsToCreate);
+    }
+
+    if (jobsToCreate.length > 0) {
+      const selfUrl = `${supabaseUrl}/functions/v1/notification-dispatcher`;
+      fetch(selfUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${supabaseServiceKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ process_pending_jobs: true }),
+      }).catch(() => {});
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, jobs_created: jobsToCreate.length }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error interno";
+    console.error("notification-dispatcher error:", error);
+    return new Response(
+      JSON.stringify({ success: false, error: message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});

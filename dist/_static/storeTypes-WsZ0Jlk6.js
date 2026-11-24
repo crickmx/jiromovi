@@ -1,1 +1,0 @@
-const e=["Transferencia","Efectivo","Tarjeta","Cheque","Descuento de Comisiones","Cargo a Nomina","Otro"],a=[{value:"proveedor",label:"Proveedor"},{value:"envio",label:"Envio"},{value:"empaque",label:"Empaque"},{value:"comision",label:"Comision"},{value:"logistica",label:"Logistica"},{value:"otro",label:"Otro"}];export{e as M,a as T};

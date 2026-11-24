@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Mensaje de Bienvenida</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 800px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-bottom: 25px;
+    }
+
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+      font-size: 16px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .result {
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .result.success {
+      background: #e8f5e9;
+      border: 2px solid #4caf50;
+      color: #2e7d32;
+    }
+
+    .result.error {
+      background: #ffebee;
+      border: 2px solid #f44336;
+      color: #c62828;
+    }
+
+    .result.loading {
+      background: #e3f2fd;
+      border: 2px solid #2196f3;
+      color: #1565c0;
+    }
+
+    .log {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .message-box {
+      background: linear-gradient(to right, #f0f4ff, #e8f0fe);
+      border: 2px solid #667eea;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .message-text {
+      font-size: 16px;
+      line-height: 1.6;
+      color: #333;
+    }
+
+    .icon {
+      display: inline-block;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Test: Mensaje de Bienvenida</h1>
+    <p class="subtitle">Herramienta de diagnóstico para verificar la generación de mensajes personalizados</p>
+
+    <div class="section">
+      <div class="section-title">Configuración de Supabase</div>
+      <input type="text" id="supabaseUrl" placeholder="URL de Supabase (ej: https://xxx.supabase.co)">
+    </div>
+
+    <div class="section">
+      <div class="section-title">Credenciales de Usuario</div>
+      <input type="email" id="email" placeholder="Email del usuario">
+      <input type="password" id="password" placeholder="Contraseña" style="margin-top: 10px;">
+    </div>
+
+    <button onclick="testWelcomeMessage()" id="testBtn">
+      <span class="icon">🚀</span> Probar Generación de Mensaje
+    </button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const { createClient } = supabase;
+    let supabaseClient = null;
+
+    async function testWelcomeMessage() {
+      const resultDiv = document.getElementById('result');
+      const testBtn = document.getElementById('testBtn');
+
+      const supabaseUrl = document.getElementById('supabaseUrl').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      // Validaciones
+      if (!supabaseUrl || !email || !password) {
+        resultDiv.innerHTML = `<div class="result error">
+          <strong>❌ Error:</strong> Por favor completa todos los campos
+        </div>`;
+        return;
+      }
+
+      try {
+        testBtn.disabled = true;
+        resultDiv.innerHTML = `<div class="result loading">
+          <strong>⏳ Procesando...</strong> Iniciando prueba...
+        </div>`;
+
+        const logs = [];
+        function addLog(message, type = 'info') {
+          const timestamp = new Date().toLocaleTimeString();
+          const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : '📍';
+          logs.push(`[${timestamp}] ${icon} ${message}`);
+          updateResult();
+        }
+
+        function updateResult() {
+          resultDiv.innerHTML = `<div class="result loading">
+            <strong>⏳ Procesando...</strong> Generando mensaje personalizado...
+            <div class="log">${logs.join('\n')}</div>
+          </div>`;
+        }
+
+        // Paso 1: Crear cliente Supabase
+        addLog('Creando cliente Supabase...');
+        const anonKey = supabaseUrl.includes('localhost')
+          ? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+          : prompt('Ingresa el ANON KEY de Supabase:');
+
+        if (!anonKey) {
+          throw new Error('Se requiere el ANON KEY');
+        }
+
+        supabaseClient = createClient(supabaseUrl, anonKey);
+        addLog('Cliente Supabase creado correctamente', 'success');
+
+        // Paso 2: Iniciar sesión
+        addLog('Iniciando sesión...');
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (authError) {
+          throw new Error(`Error de autenticación: ${authError.message}`);
+        }
+
+        addLog(`Usuario autenticado: ${authData.user.id}`, 'success');
+
+        // Paso 3: Obtener contexto del usuario
+        addLog('Obteniendo información del usuario...');
+        const { data: usuario, error: userError } = await supabaseClient
+          .from('usuarios')
+          .select('nombre, rol, oficinas(nombre)')
+          .eq('id', authData.user.id)
+          .maybeSingle();
+
+        if (userError) {
+          throw new Error(`Error al obtener usuario: ${userError.message}`);
+        }
+
+        addLog(`Usuario: ${usuario.nombre} - ${usuario.rol}`, 'success');
+
+        // Preparar contexto
+        const context = {
+          nombre: usuario.nombre,
+          rol: usuario.rol,
+          oficina: usuario.oficinas?.nombre,
+        };
+
+        addLog(`Contexto preparado con ${Object.keys(context).length} campos`);
+
+        // Paso 4: Llamar a la Edge Function
+        addLog('Llamando a Edge Function...');
+        const apiUrl = `${supabaseUrl}/functions/v1/generate-welcome-message`;
+        const startTime = Date.now();
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authData.session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ context }),
+        });
+
+        const duration = Date.now() - startTime;
+        addLog(`Response recibido: ${response.status} (${duration}ms)`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        addLog('Response parseado correctamente');
+
+        if (!data.success) {
+          throw new Error(data.error || 'Error desconocido');
+        }
+
+        addLog('Mensaje generado exitosamente', 'success');
+
+        // Mostrar resultado
+        resultDiv.innerHTML = `
+          <div class="result success">
+            <strong>✅ Éxito:</strong> El mensaje se generó correctamente
+          </div>
+          <div class="message-box">
+            <div style="color: #667eea; font-weight: 600; margin-bottom: 8px;">
+              ✨ Mensaje Generado:
+            </div>
+            <div class="message-text">${data.message}</div>
+          </div>
+          <div class="log">${logs.join('\n')}</div>
+        `;
+
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="result error">
+            <strong>❌ Error:</strong> ${error.message}
+            <div class="log">${logs.join('\n')}\n\n❌ ERROR FINAL: ${error.message}\n${error.stack || ''}</div>
+          </div>
+        `;
+      } finally {
+        testBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

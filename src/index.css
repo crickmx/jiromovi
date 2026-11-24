@@ -1,0 +1,688 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Gotham ya NO es la tipografía de la interfaz (ahora Sora + Manrope), pero se
+   conserva cargada: la usan las firmas de e-mail (SIGNATURE_FONT_STACK), las
+   plecas en canvas (plecaUtils) y el editor de logos de la tienda. */
+@font-face {
+  font-family: 'Gotham';
+  src: url('/fonts/gotham/gotham-book.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham';
+  src: url('/fonts/gotham/gotham-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham';
+  src: url('/fonts/gotham/gotham-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gotham';
+  src: url('/fonts/gotham/gotham-black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* ────────────────────────────────────────────────────────────
+   DESIGN TOKEN DEFAULTS — light mode
+   These are overridden per-office via themeUtils.applyTheme()
+───────────────────────────────────────────────────────────── */
+:root {
+  /* App backgrounds */
+  --bg-base:   var(--surface-canvas);
+  --text-base: #0f172a;
+
+  /* Dynamic accent (MOVI blue default) — updated by applyTheme() */
+  --movi-accent-rgb:            22 66 129;   /* #164281 */
+  --movi-accent-foreground-rgb: 255 255 255; /* white on dark background */
+  --movi-accent-hover-rgb:      42 86 149;
+  --movi-accent-dark-rgb:        8 46 109;
+
+  /* Semantic color tokens */
+  --color-text-primary:   #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted:     #64748b;
+  --color-text-placeholder: #94a3b8;
+
+  --color-border:         #e2e8f0;
+  --color-border-subtle:  rgba(0, 0, 0, 0.08);
+
+  --color-surface:        #ffffff;
+  --color-surface-raised: #f8fafc;
+  --color-surface-overlay: rgba(255, 255, 255, 0.95);
+
+  --color-input-bg:       #ffffff;
+  --color-input-border:   #d1d5db;
+  --color-input-text:     #111827;
+  --color-input-placeholder: #9ca3af;
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px rgba(var(--movi-accent-rgb) / 0.25);
+
+  /* ── Derivados del acento (los recalcula themeUtils.computeThemeVars) ── */
+  --movi-accent-text-rgb:         22 66 129;   /* acento con contraste AA sobre blanco */
+  --movi-accent-text-on-dark-rgb: 104 132 173; /* acento con contraste AA sobre superficie oscura */
+  --movi-accent-soft-rgb:         232 236 242; /* tinte 10% */
+  --movi-accent-softer-rgb:       243 246 249; /* tinte 5% */
+  --movi-accent-deep-rgb:         12 36 71;    /* acento profundo (fondos de marca) */
+  --movi-accent-2-rgb:            31 132 160;  /* tono análogo para gradientes */
+
+  /* Acento "de lectura" activo según tema — usar en texto/íconos de marca */
+  --accent-ink-rgb: var(--movi-accent-text-rgb);
+
+  /* ── Tipografía ── */
+  --font-display: 'Sora Variable', 'Sora', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Manrope Variable', 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* ── Superficies (marfil cálido) ── */
+  /* Canales RGB (permiten opacidad en Tailwind: bg-surface-card/95) */
+  --surface-canvas-rgb: 246 245 242;
+  --surface-card-rgb:   255 255 255;
+  --surface-muted-rgb:  241 239 235;
+  --surface-sunken-rgb: 235 233 228;
+  --surface-canvas:  rgb(var(--surface-canvas-rgb));   /* fondo de la app */
+  --surface-card:    rgb(var(--surface-card-rgb));
+  --surface-muted:   rgb(var(--surface-muted-rgb));
+  --surface-sunken:  rgb(var(--surface-sunken-rgb));
+  --border-soft:     rgba(28, 25, 23, 0.07);
+  --border-strong:   rgba(28, 25, 23, 0.13);
+
+  /* ── Radios ── */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* ── Elevación (sombras suaves y cálidas en capas) ── */
+  --shadow-1: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 1px rgba(28, 25, 23, 0.02);
+  --shadow-2: 0 1px 2px rgba(28, 25, 23, 0.04), 0 6px 16px -6px rgba(28, 25, 23, 0.08);
+  --shadow-3: 0 2px 4px rgba(28, 25, 23, 0.04), 0 16px 36px -12px rgba(28, 25, 23, 0.14);
+  --shadow-4: 0 4px 8px rgba(28, 25, 23, 0.05), 0 28px 64px -20px rgba(28, 25, 23, 0.22);
+  --shadow-accent: 0 8px 24px -10px rgb(var(--movi-accent-rgb) / 0.55);
+
+  /* ── Movimiento ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --dur-fast: 180ms;
+  --dur-base: 240ms;
+  --dur-slow: 350ms;
+}
+
+/* ────────────────────────────────────────────────────────────
+   DARK MODE OVERRIDES
+───────────────────────────────────────────────────────────── */
+:root.dark {
+  --bg-base:   var(--surface-canvas);
+  --text-base: #f8fafc;
+
+  --color-text-primary:   #f1f5f9;
+  --color-text-secondary: rgba(255, 255, 255, 0.65);
+  --color-text-muted:     rgba(255, 255, 255, 0.45);
+  --color-text-placeholder: rgba(255, 255, 255, 0.35);
+
+  --color-border:         rgba(255, 255, 255, 0.10);
+  --color-border-subtle:  rgba(255, 255, 255, 0.06);
+
+  --color-surface:        #111827;
+  --color-surface-raised: rgba(255, 255, 255, 0.04);
+  --color-surface-overlay: rgba(17, 24, 39, 0.97);
+
+  --color-input-bg:       rgba(255, 255, 255, 0.05);
+  --color-input-border:   rgba(255, 255, 255, 0.12);
+  --color-input-text:     #f1f5f9;
+  --color-input-placeholder: rgba(255, 255, 255, 0.38);
+
+  --accent-ink-rgb: var(--movi-accent-text-on-dark-rgb);
+
+  --surface-canvas-rgb: 14 14 16;
+  --surface-card-rgb:   22 22 26;
+  --surface-muted-rgb:  28 28 33;
+  --surface-sunken-rgb: 10 10 12;
+  --border-soft:     rgba(255, 255, 255, 0.07);
+  --border-strong:   rgba(255, 255, 255, 0.13);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -8px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 2px 4px rgba(0, 0, 0, 0.3), 0 18px 40px -14px rgba(0, 0, 0, 0.6);
+  --shadow-4: 0 4px 8px rgba(0, 0, 0, 0.35), 0 30px 70px -20px rgba(0, 0, 0, 0.7);
+}
+
+/* ────────────────────────────────────────────────────────────
+   BASE STYLES
+───────────────────────────────────────────────────────────── */
+body {
+  margin: 0;
+  background: var(--bg-base);
+  color: var(--text-base);
+  font-family: var(--font-body);
+  font-feature-settings: 'cv11', 'ss01';
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  /* En móvil, 100vh incluye el área tras la barra del navegador → el shell queda
+     más alto que lo visible y, al ser overflow:hidden, la parte inferior (barra de
+     navegación / pie del menú) se corta y no hay forma de scrollear. 100dvh usa la
+     altura del viewport realmente visible. */
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Public pages (advisor page, public quote form) need normal document scroll */
+#root.public-page {
+  height: auto;
+  overflow: visible;
+}
+
+/* Shell principal de la app: llena el viewport VISIBLE.
+   Usa 100dvh (excluye la barra del navegador en móvil) con fallback a 100vh
+   para navegadores viejos sin soporte de unidades dinámicas. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ────────────────────────────────────────────────────────────
+   SHIMMER ANIMATION (used by Skeleton component)
+───────────────────────────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.7) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+:root.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* ────────────────────────────────────────────────────────────
+   NATIVE SELECT — dark mode color scheme fix
+   Without this, native <select> and <option> stay white-on-white in dark mode
+───────────────────────────────────────────────────────────── */
+:root.dark select,
+:root.dark select option {
+  color-scheme: dark;
+  color: #f1f5f9;
+  background-color: #1e293b;
+}
+
+/* ────────────────────────────────────────────────────────────
+   SCROLLBAR STYLING
+───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: rgba(0,0,0,0.15); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover  { background: rgba(0,0,0,0.25); }
+
+:root.dark ::-webkit-scrollbar-thumb       { background: rgba(255,255,255,0.12); }
+:root.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ────────────────────────────────────────────────────────────
+   FOCUS-VISIBLE GLOBAL RING — accessible keyboard navigation
+───────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgb(var(--movi-accent-rgb) / 0.6);
+  outline-offset: 2px;
+}
+
+/* Reset for elements that manage focus themselves */
+[data-radix-collection-item]:focus-visible,
+[role="option"]:focus-visible,
+[role="menuitem"]:focus-visible {
+  outline: none;
+}
+
+/* ────────────────────────────────────────────────────────────
+   SIDEBAR RAIL — barra angosta principal (PrimarySidebar)
+   Fondo de marca: gradiente profundo generado del acento de la oficina,
+   con un arco orgánico translúcido abajo. Activo = cápsula clara.
+───────────────────────────────────────────────────────────── */
+.sidebar-rail {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 60% at 0% 100%, rgb(var(--movi-accent-2-rgb) / 0.35) 0%, transparent 60%),
+    /* --movi-accent-text-rgb = acento ajustado a contraste AA contra blanco, así las
+       etiquetas blancas siguen siendo legibles aunque la oficina elija un color claro */
+    linear-gradient(180deg, rgb(var(--movi-accent-text-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%);
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+/* Forma orgánica decorativa (no interactiva) */
+.sidebar-rail::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: -60%;
+  bottom: -14%;
+  width: 220%;
+  height: 46%;
+  border-radius: 46% 54% 0 0 / 38% 42% 0 0;
+  background: rgba(255,255,255,0.045);
+  pointer-events: none;
+}
+.sidebar-rail::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -70%;
+  top: 18%;
+  width: 140%;
+  height: 26%;
+  border-radius: 58% 42% 55% 45% / 50% 46% 54% 50%;
+  background: rgba(255,255,255,0.03);
+  pointer-events: none;
+}
+
+:root.dark .sidebar-rail {
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Nav icon buttons */
+.sidebar-rail-btn {
+  color: rgba(255,255,255,0.86);
+  font-family: var(--font-display);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform 120ms var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.sidebar-rail-btn:hover {
+  background: rgba(255,255,255,0.10);
+  color: #ffffff;
+}
+.sidebar-rail-btn.active {
+  background: rgba(255,255,255,0.96);
+  color: rgb(var(--movi-accent-text-rgb));
+  box-shadow: 0 6px 18px -8px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.6);
+}
+.sidebar-rail-btn:focus-visible,
+.sidebar-rail-chava-btn:focus-visible,
+.sidebar-rail-logo-btn:focus-visible,
+.sidebar-rail-signout:focus-visible,
+.sidebar-rail-avatar-ring:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Chava AI dedicated button */
+.sidebar-rail-chava-btn {
+  color: rgba(255,255,255,0.8);
+  transition: background var(--dur-fast), color var(--dur-fast), transform 120ms, box-shadow var(--dur-fast);
+  position: relative;
+}
+.sidebar-rail-chava-btn:hover {
+  background: rgba(255,255,255,0.10);
+  color: #ffffff;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.18) inset;
+}
+
+/* Logo button */
+.sidebar-rail-logo-btn {
+  background: rgba(255,255,255,0.14);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+  transition: background var(--dur-fast), transform 120ms;
+}
+.sidebar-rail-logo-btn:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+/* Separator line */
+.sidebar-rail-sep {
+  background: rgba(255,255,255,0.14);
+}
+
+/* Avatar ring */
+.sidebar-rail-avatar-ring {
+  padding: 2px;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.24);
+}
+.sidebar-rail-avatar-ring:hover {
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
+}
+
+/* Avatar fallback text */
+.sidebar-rail-avatar-fallback {
+  background: rgba(255,255,255,0.16);
+  color: #ffffff;
+}
+
+/* Sign out button */
+.sidebar-rail-signout {
+  color: rgba(255,255,255,0.55);
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.sidebar-rail-signout:hover {
+  background: rgba(255,80,80,0.2);
+  color: #ffd2d2;
+}
+
+/* Mobile content area — add bottom padding for the fixed nav bar */
+@media (max-width: 767px) {
+  .mobile-page-content {
+    /* 4.5rem: la barra inferior mide 70px y antes quedaba contenido debajo. */
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Imprimir un archivo desde FilePreviewModal: aísla solo el contenido previsualizado
+   (imagen/pdf/etc.), oculta el resto de la app (sidebar, barra beta, el propio modal). */
+@media print {
+  body.printing-file-preview > *:not(#file-preview-print-root) {
+    display: none !important;
+  }
+  #file-preview-print-root {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   SISTEMA VISUAL MOVI (rediseño 2026-10)
+   Sora → encabezados, métricas, navegación, botones/CTA
+   Manrope → todo el texto de interfaz y contenido
+════════════════════════════════════════════════════════════ */
+@layer base {
+  h1, h2, h3, h4,
+  [role="heading"] {
+    font-family: var(--font-display);
+    letter-spacing: -0.018em;
+  }
+  h5, h6 { font-family: var(--font-display); }
+
+  /* Métricas/números grandes: cualquier texto ≥ xl usa la display.
+     :where() = especificidad 0, así que cualquier font-* explícito gana. */
+  :where(.text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl, .text-6xl, .text-7xl) {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  /* Tablas: cifras alineadas y legibles */
+  table { font-variant-numeric: tabular-nums; }
+  th { font-family: var(--font-body); }
+
+  ::selection { background: rgb(var(--movi-accent-rgb) / 0.18); }
+
+  /* Controles nativos heredan la tipografía de interfaz */
+  input, select, textarea { font-family: inherit; }
+}
+
+@layer components {
+  /* Superficie de tarjeta reutilizable para páginas que no usan <Card> */
+  .movi-surface {
+    background: var(--surface-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+  }
+
+  /* Fondo ambiental orgánico (detrás del contenido; nunca interactivo) */
+  .movi-ambient {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+  .movi-ambient__blob {
+    position: absolute;
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+    filter: blur(2px);
+  }
+  .movi-ambient__blob--a {
+    width: 46rem; height: 30rem;
+    top: -18rem; right: -12rem;
+    background: radial-gradient(closest-side, rgb(var(--movi-accent-rgb) / 0.10), transparent 72%);
+  }
+  .movi-ambient__blob--b {
+    width: 38rem; height: 26rem;
+    top: -10rem; left: 18%;
+    border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
+    background: radial-gradient(closest-side, rgb(var(--movi-accent-2-rgb) / 0.08), transparent 70%);
+  }
+  .movi-ambient__wave {
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    width: 100%;
+    height: 220px;
+    color: rgb(var(--movi-accent-rgb));
+    opacity: 0.05;
+  }
+  :root.dark .movi-ambient__blob--a { background: radial-gradient(closest-side, rgb(var(--movi-accent-rgb) / 0.16), transparent 72%); }
+  :root.dark .movi-ambient__blob--b { background: radial-gradient(closest-side, rgb(var(--movi-accent-2-rgb) / 0.10), transparent 70%); }
+  :root.dark .movi-ambient__wave { opacity: 0.08; }
+
+  /* Hero de marca: gradiente generado del acento + formas orgánicas */
+  .movi-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    color: rgb(var(--movi-accent-foreground-rgb));
+    background:
+      radial-gradient(80% 120% at 100% 0%, rgb(var(--movi-accent-2-rgb) / 0.55) 0%, transparent 55%),
+      linear-gradient(135deg, rgb(var(--movi-accent-rgb)) 0%, rgb(var(--movi-accent-deep-rgb)) 100%);
+    box-shadow: var(--shadow-3);
+  }
+  .movi-hero::before,
+  .movi-hero::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    background: rgba(255,255,255,0.08);
+  }
+  .movi-hero::before {
+    width: 60%; height: 140%;
+    right: -18%; top: -50%;
+    border-radius: 58% 42% 46% 54% / 47% 52% 48% 53%;
+  }
+  .movi-hero::after {
+    width: 42%; height: 90%;
+    right: 8%; bottom: -62%;
+    border-radius: 50% 50% 38% 62% / 60% 44% 56% 40%;
+    background: rgba(255,255,255,0.06);
+  }
+
+  /* Eyebrow / overline */
+  .movi-eyebrow {
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* Entrada escalonada moderada para cuadrículas de tarjetas (opt-in) */
+  .movi-stagger > * {
+    animation: movi-rise var(--dur-slow) var(--ease-out) both;
+  }
+  .movi-stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .movi-stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .movi-stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .movi-stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .movi-stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .movi-stagger > *:nth-child(n+7) { animation-delay: 240ms; }
+}
+
+/* Entrada de modales/overlays (usa `scale` independiente para no pisar el
+   transform de centrado de Radix) */
+.movi-dialog-in[data-state="open"]  { animation: movi-dialog-in var(--dur-base) var(--ease-out) both; }
+.movi-overlay-in[data-state="open"] { animation: movi-fade var(--dur-fast) ease-out both; }
+@keyframes movi-dialog-in {
+  from { opacity: 0; scale: 0.97; }
+  to   { opacity: 1; scale: 1; }
+}
+@keyframes movi-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes movi-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes movi-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   MODO OSCURO — RED DE SEGURIDAD GLOBAL
+   Muchas pantallas usan colores claros (bg-white, pasteles -50/-100, texto
+   neutral-900…) sin variante `dark:`. Estas reglas SOLO aplican en modo oscuro
+   y SOLO a elementos que NO declaran su propia variante dark: (esas mandan).
+════════════════════════════════════════════════════════════ */
+:root.dark .bg-white:not([class*="dark:bg-"]):not(.rounded-full) { background-color: rgb(var(--surface-card-rgb)); }
+:root.dark :is(.bg-neutral-50, .bg-neutral-50\/50, .bg-neutral-50\/80):not([class*="dark:bg-"]) { background-color: rgb(255 255 255 / 0.04); }
+:root.dark :is(.bg-neutral-100, .bg-neutral-100\/80):not([class*="dark:bg-"]) { background-color: rgb(255 255 255 / 0.07); }
+:root.dark .bg-neutral-200:not([class*="dark:bg-"]) { background-color: rgb(255 255 255 / 0.1); }
+:root.dark :is(.text-neutral-900, .text-neutral-950, .text-black):not([class*="dark:text-"]) { color: rgb(255 255 255 / 0.94); }
+:root.dark .text-neutral-800:not([class*="dark:text-"]) { color: rgb(255 255 255 / 0.86); }
+:root.dark .text-neutral-700:not([class*="dark:text-"]) { color: rgb(255 255 255 / 0.78); }
+:root.dark .text-neutral-600:not([class*="dark:text-"]) { color: rgb(255 255 255 / 0.68); }
+:root.dark .text-neutral-500:not([class*="dark:text-"]) { color: rgb(255 255 255 / 0.58); }
+:root.dark :is(.border-neutral-100, .border-neutral-200, .border-neutral-300):not([class*="dark:border-"]) { border-color: rgb(255 255 255 / 0.1); }
+:root.dark :is(.divide-neutral-100, .divide-neutral-200) > :not([hidden]) ~ :not([hidden]) { border-color: rgb(255 255 255 / 0.08); }
+:root.dark :is(.bg-blue-50, .bg-blue-100):not([class*="dark:bg-"]) { background-color: rgb(59 130 246 / 0.12); }
+:root.dark :is(.border-blue-100, .border-blue-200, .border-blue-300):not([class*="dark:border-"]) { border-color: rgb(59 130 246 / 0.28); }
+:root.dark :is(.text-blue-700, .text-blue-800, .text-blue-900):not([class*="dark:text-"]) { color: rgb(147 197 253); }
+:root.dark :is(.bg-sky-50, .bg-sky-100):not([class*="dark:bg-"]) { background-color: rgb(14 165 233 / 0.12); }
+:root.dark :is(.border-sky-100, .border-sky-200, .border-sky-300):not([class*="dark:border-"]) { border-color: rgb(14 165 233 / 0.28); }
+:root.dark :is(.text-sky-700, .text-sky-800, .text-sky-900):not([class*="dark:text-"]) { color: rgb(125 211 252); }
+:root.dark :is(.bg-cyan-50, .bg-cyan-100):not([class*="dark:bg-"]) { background-color: rgb(6 182 212 / 0.12); }
+:root.dark :is(.border-cyan-100, .border-cyan-200, .border-cyan-300):not([class*="dark:border-"]) { border-color: rgb(6 182 212 / 0.28); }
+:root.dark :is(.text-cyan-700, .text-cyan-800, .text-cyan-900):not([class*="dark:text-"]) { color: rgb(103 232 249); }
+:root.dark :is(.bg-teal-50, .bg-teal-100):not([class*="dark:bg-"]) { background-color: rgb(20 184 166 / 0.12); }
+:root.dark :is(.border-teal-100, .border-teal-200, .border-teal-300):not([class*="dark:border-"]) { border-color: rgb(20 184 166 / 0.28); }
+:root.dark :is(.text-teal-700, .text-teal-800, .text-teal-900):not([class*="dark:text-"]) { color: rgb(94 234 212); }
+:root.dark :is(.bg-emerald-50, .bg-emerald-100):not([class*="dark:bg-"]) { background-color: rgb(16 185 129 / 0.12); }
+:root.dark :is(.border-emerald-100, .border-emerald-200, .border-emerald-300):not([class*="dark:border-"]) { border-color: rgb(16 185 129 / 0.28); }
+:root.dark :is(.text-emerald-700, .text-emerald-800, .text-emerald-900):not([class*="dark:text-"]) { color: rgb(110 231 183); }
+:root.dark :is(.bg-green-50, .bg-green-100):not([class*="dark:bg-"]) { background-color: rgb(34 197 94 / 0.12); }
+:root.dark :is(.border-green-100, .border-green-200, .border-green-300):not([class*="dark:border-"]) { border-color: rgb(34 197 94 / 0.28); }
+:root.dark :is(.text-green-700, .text-green-800, .text-green-900):not([class*="dark:text-"]) { color: rgb(134 239 172); }
+:root.dark :is(.bg-lime-50, .bg-lime-100):not([class*="dark:bg-"]) { background-color: rgb(132 204 22 / 0.12); }
+:root.dark :is(.border-lime-100, .border-lime-200, .border-lime-300):not([class*="dark:border-"]) { border-color: rgb(132 204 22 / 0.28); }
+:root.dark :is(.text-lime-700, .text-lime-800, .text-lime-900):not([class*="dark:text-"]) { color: rgb(190 242 100); }
+:root.dark :is(.bg-yellow-50, .bg-yellow-100):not([class*="dark:bg-"]) { background-color: rgb(234 179 8 / 0.12); }
+:root.dark :is(.border-yellow-100, .border-yellow-200, .border-yellow-300):not([class*="dark:border-"]) { border-color: rgb(234 179 8 / 0.28); }
+:root.dark :is(.text-yellow-700, .text-yellow-800, .text-yellow-900):not([class*="dark:text-"]) { color: rgb(253 224 71); }
+:root.dark :is(.bg-amber-50, .bg-amber-100):not([class*="dark:bg-"]) { background-color: rgb(245 158 11 / 0.12); }
+:root.dark :is(.border-amber-100, .border-amber-200, .border-amber-300):not([class*="dark:border-"]) { border-color: rgb(245 158 11 / 0.28); }
+:root.dark :is(.text-amber-700, .text-amber-800, .text-amber-900):not([class*="dark:text-"]) { color: rgb(252 211 77); }
+:root.dark :is(.bg-orange-50, .bg-orange-100):not([class*="dark:bg-"]) { background-color: rgb(249 115 22 / 0.12); }
+:root.dark :is(.border-orange-100, .border-orange-200, .border-orange-300):not([class*="dark:border-"]) { border-color: rgb(249 115 22 / 0.28); }
+:root.dark :is(.text-orange-700, .text-orange-800, .text-orange-900):not([class*="dark:text-"]) { color: rgb(253 186 116); }
+:root.dark :is(.bg-red-50, .bg-red-100):not([class*="dark:bg-"]) { background-color: rgb(239 68 68 / 0.12); }
+:root.dark :is(.border-red-100, .border-red-200, .border-red-300):not([class*="dark:border-"]) { border-color: rgb(239 68 68 / 0.28); }
+:root.dark :is(.text-red-700, .text-red-800, .text-red-900):not([class*="dark:text-"]) { color: rgb(252 165 165); }
+:root.dark :is(.bg-rose-50, .bg-rose-100):not([class*="dark:bg-"]) { background-color: rgb(244 63 94 / 0.12); }
+:root.dark :is(.border-rose-100, .border-rose-200, .border-rose-300):not([class*="dark:border-"]) { border-color: rgb(244 63 94 / 0.28); }
+:root.dark :is(.text-rose-700, .text-rose-800, .text-rose-900):not([class*="dark:text-"]) { color: rgb(253 164 175); }
+:root.dark :is(.bg-pink-50, .bg-pink-100):not([class*="dark:bg-"]) { background-color: rgb(236 72 153 / 0.12); }
+:root.dark :is(.border-pink-100, .border-pink-200, .border-pink-300):not([class*="dark:border-"]) { border-color: rgb(236 72 153 / 0.28); }
+:root.dark :is(.text-pink-700, .text-pink-800, .text-pink-900):not([class*="dark:text-"]) { color: rgb(249 168 212); }
+:root.dark :is(.bg-fuchsia-50, .bg-fuchsia-100):not([class*="dark:bg-"]) { background-color: rgb(217 70 239 / 0.12); }
+:root.dark :is(.border-fuchsia-100, .border-fuchsia-200, .border-fuchsia-300):not([class*="dark:border-"]) { border-color: rgb(217 70 239 / 0.28); }
+:root.dark :is(.text-fuchsia-700, .text-fuchsia-800, .text-fuchsia-900):not([class*="dark:text-"]) { color: rgb(240 171 252); }
+:root.dark :is(.bg-purple-50, .bg-purple-100):not([class*="dark:bg-"]) { background-color: rgb(168 85 247 / 0.12); }
+:root.dark :is(.border-purple-100, .border-purple-200, .border-purple-300):not([class*="dark:border-"]) { border-color: rgb(168 85 247 / 0.28); }
+:root.dark :is(.text-purple-700, .text-purple-800, .text-purple-900):not([class*="dark:text-"]) { color: rgb(216 180 254); }
+:root.dark :is(.bg-violet-50, .bg-violet-100):not([class*="dark:bg-"]) { background-color: rgb(139 92 246 / 0.12); }
+:root.dark :is(.border-violet-100, .border-violet-200, .border-violet-300):not([class*="dark:border-"]) { border-color: rgb(139 92 246 / 0.28); }
+:root.dark :is(.text-violet-700, .text-violet-800, .text-violet-900):not([class*="dark:text-"]) { color: rgb(196 181 253); }
+:root.dark :is(.bg-indigo-50, .bg-indigo-100):not([class*="dark:bg-"]) { background-color: rgb(99 102 241 / 0.12); }
+:root.dark :is(.border-indigo-100, .border-indigo-200, .border-indigo-300):not([class*="dark:border-"]) { border-color: rgb(99 102 241 / 0.28); }
+:root.dark :is(.text-indigo-700, .text-indigo-800, .text-indigo-900):not([class*="dark:text-"]) { color: rgb(165 180 252); }
+
+/* ────────────────────────────────────────────────────────────
+   REDUCED MOTION — respeta la preferencia del sistema
+───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── App nativa (Capacitor) ─────────────────────────────────────────────
+   initNative() marca <html> con .native-app y .native-ios / .native-android.
+   En iOS la vista ocupa toda la pantalla (contentInset: never), así que el
+   contenido se aparta del notch y de la barra de inicio con las áreas seguras.
+   En la web estas reglas no aplican: env() vale 0 y las clases no existen. */
+html.native-app,
+html.native-app body {
+  background-color: #ffffff;
+  overscroll-behavior-y: none;
+}
+html.native-ios #root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  box-sizing: border-box;
+  min-height: 100vh;
+}
+html.native-app {
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+/* Bienvenida del dashboard: capa de color que gira muy despacio */
+@keyframes movi-aurora {
+  from { transform: rotate(0deg) scale(1.6); }
+  to   { transform: rotate(360deg) scale(1.6); }
+}
+.movi-aurora {
+  background: conic-gradient(
+    from 0deg at 35% 45%,
+    rgba(28, 55, 224, 0.55),
+    rgba(255, 255, 255, 0),
+    rgba(118, 87, 255, 0.45),
+    rgba(255, 255, 255, 0),
+    rgba(28, 55, 224, 0.55)
+  );
+  filter: blur(46px);
+  opacity: 0.75;
+  animation: movi-aurora 34s linear infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .movi-aurora { animation: none; }
+}

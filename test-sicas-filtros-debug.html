@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SICAS H03400 - Debug Incremental de Filtros</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .warning-box {
+      background: #ff9800;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .test-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+
+    .test-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+    }
+
+    .test-card.loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .test-number {
+      display: inline-block;
+      background: #2196F3;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 40px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .test-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .test-description {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .result-box {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-top: 20px;
+      display: none;
+    }
+
+    .result-box.show {
+      display: block;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .result-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .status-badge {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-success {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .status-warning {
+      background: #ff9800;
+      color: white;
+    }
+
+    .status-error {
+      background: #f44336;
+      color: white;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .info-item {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .info-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .code-block {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 15px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .conclusion-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 SICAS H03400 - Debug Filtros</h1>
+    <p class="subtitle">Diagnóstico incremental para identificar qué filtro causa "Reporte sin datos"</p>
+
+    <div class="warning-box">
+      ⚠️ IMPORTANTE: Prueba los tests en orden (1→5) para identificar exactamente dónde falla
+    </div>
+
+    <div class="test-grid">
+      <div class="test-card" onclick="runTest(1)">
+        <div class="test-number">1</div>
+        <div class="test-title">Sin Filtros (Baseline)</div>
+        <div class="test-description">
+          Sin ConditionsAdd. Si aquí da 0 registros, el problema es de permisos o el reporte no está habilitado.
+        </div>
+      </div>
+
+      <div class="test-card" onclick="runTest(2)">
+        <div class="test-number">2</div>
+        <div class="test-title">Solo TipoDocto</div>
+        <div class="test-description">
+          Filtro: Solo Pólizas (TipoDocto=1). Valida que el filtro de tipo funciona correctamente.
+        </div>
+      </div>
+
+      <div class="test-card" onclick="runTest(3)">
+        <div class="test-number">3</div>
+        <div class="test-title">Estatus + TipoDocto</div>
+        <div class="test-description">
+          Filtros: Vigentes + Pólizas. Si falla aquí, problema es la combinación de filtros.
+        </div>
+      </div>
+
+      <div class="test-card" onclick="runTest(4)">
+        <div class="test-number">4A</div>
+        <div class="test-title">Todo + FCaptura (Ejemplo Oficial)</div>
+        <div class="test-description">
+          Estatus + TipoDocto + Rango por <strong>FCaptura</strong> con horas (como el ejemplo del PDF oficial).
+        </div>
+      </div>
+
+      <div class="test-card" onclick="runTest(5)">
+        <div class="test-number">4B</div>
+        <div class="test-title">Todo + FDesde (Vigencia)</div>
+        <div class="test-description">
+          Estatus + TipoDocto + Rango por <strong>FDesde</strong> con horas. Compara con Test 4A.
+        </div>
+      </div>
+    </div>
+
+    <div id="resultBox" class="result-box">
+      <div class="result-header">
+        <div class="result-title" id="resultTitle">Resultados</div>
+        <div class="status-badge" id="statusBadge">Procesando...</div>
+      </div>
+
+      <div class="section-title">🎯 PROCESSDATA - Respuesta del Servidor</div>
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">RESPONSETXT</div>
+          <div class="info-value" id="responseTxt">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">RESPONSENBR</div>
+          <div class="info-value" id="responseNbr">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">MESSAGE</div>
+          <div class="info-value" id="message">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">TOTALRECORDS</div>
+          <div class="info-value" id="totalRecords">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">PROCESSTIME</div>
+          <div class="info-value" id="processTime">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">HTTP Tiempo</div>
+          <div class="info-value" id="responseTime">-</div>
+        </div>
+      </div>
+
+      <div class="section-title">📊 Dataset Info</div>
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Tabla</div>
+          <div class="info-value" id="tableName">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Registros Parseados</div>
+          <div class="info-value" id="recordCount">-</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Tamaño XML</div>
+          <div class="info-value" id="xmlLength">-</div>
+        </div>
+      </div>
+
+      <div class="section-title">🔍 Primer Registro (Muestra)</div>
+      <div class="code-block" id="firstRecord">-</div>
+
+      <div class="section-title">📋 Descripción del Test</div>
+      <div class="info-item">
+        <div class="info-value" id="testDesc" style="font-size: 14px; font-weight: normal;"></div>
+      </div>
+
+      <div class="section-title">🌐 Endpoint</div>
+      <div class="info-item">
+        <div class="info-value" id="endpoint" style="font-size: 12px; font-weight: normal; color: #666;"></div>
+      </div>
+
+      <div class="section-title">🔧 ConditionsAdd Enviado</div>
+      <div class="code-block" id="conditionsAdd">-</div>
+
+      <div class="section-title">📨 SOAP Request</div>
+      <div class="code-block" id="soapRequest">-</div>
+
+      <div class="section-title">📬 SOAP Response (primeros 2000 caracteres)</div>
+      <div class="code-block" id="rawResponse">-</div>
+
+      <div class="conclusion-box" id="conclusion">-</div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://qhwvuuyjhcennqccgvse.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFod3Z1dXlqaGNlbm5xY2NndnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MjA5OTAsImV4cCI6MjA3NzI5Njk5MH0.bIlGsgeAC6oxGUalODg0C5-l6KaJip0wWa9IbQ7MjTQ';
+    const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/sicas-test-filtros-incrementales`;
+
+    async function runTest(testNumber) {
+      const resultBox = document.getElementById('resultBox');
+      const cards = document.querySelectorAll('.test-card');
+
+      // Mark card as loading
+      cards.forEach(card => card.classList.add('loading'));
+
+      resultBox.classList.add('show');
+      document.getElementById('statusBadge').textContent = 'Procesando...';
+      document.getElementById('statusBadge').className = 'status-badge status-warning';
+
+      // Reset values
+      document.getElementById('responseTxt').textContent = 'Cargando...';
+      document.getElementById('responseNbr').textContent = 'Cargando...';
+      document.getElementById('message').textContent = 'Cargando...';
+      document.getElementById('totalRecords').textContent = 'Cargando...';
+      document.getElementById('processTime').textContent = 'Cargando...';
+      document.getElementById('responseTime').textContent = 'Cargando...';
+      document.getElementById('tableName').textContent = 'Cargando...';
+      document.getElementById('recordCount').textContent = 'Cargando...';
+      document.getElementById('xmlLength').textContent = 'Cargando...';
+      document.getElementById('firstRecord').textContent = 'Cargando...';
+      document.getElementById('testDesc').textContent = 'Cargando...';
+      document.getElementById('endpoint').textContent = 'Cargando...';
+      document.getElementById('conditionsAdd').textContent = 'Cargando...';
+      document.getElementById('soapRequest').textContent = 'Cargando...';
+      document.getElementById('rawResponse').textContent = 'Cargando...';
+      document.getElementById('conclusion').textContent = 'Procesando...';
+
+      try {
+        const response = await fetch(EDGE_FUNCTION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ testNumber }),
+        });
+
+        // Check content type
+        const contentType = response.headers.get('content-type') || '';
+        let result;
+
+        if (contentType.includes('application/json')) {
+          result = await response.json();
+        } else {
+          const text = await response.text();
+          throw new Error(`Respuesta no JSON (${response.status}): ${text.substring(0, 200)}`);
+        }
+
+        // Check HTTP status
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${result.error || result.message || 'Error desconocido'}`);
+        }
+
+        // Validate result structure
+        if (!result || !result.analysis) {
+          throw new Error('Estructura de respuesta inválida');
+        }
+
+        // Log completo para diagnóstico
+        console.log('PROCESSDATA', result.processData);
+        console.log('DATASET INFO', result.datasetInfo);
+        console.log('FIRST RECORD', result.firstRecord);
+        console.log('RESULTADO COMPLETO', result);
+
+        // Update UI - PROCESSDATA
+        document.getElementById('resultTitle').textContent = `Test ${testNumber} - Resultados`;
+        document.getElementById('responseTxt').textContent = result.processData?.RESPONSETXT || 'N/A';
+        document.getElementById('responseNbr').textContent = result.processData?.RESPONSENBR || 'N/A';
+        document.getElementById('message').textContent = result.processData?.MESSAGE || 'N/A';
+        document.getElementById('totalRecords').textContent = result.processData?.TOTALRECORDS || 'N/A';
+        document.getElementById('processTime').textContent = result.processData?.PROCESSTIME || 'N/A';
+
+        // Dataset Info
+        document.getElementById('tableName').textContent = result.datasetInfo?.tableName || 'N/A';
+        document.getElementById('recordCount').textContent = result.datasetInfo?.recordCount || 0;
+        document.getElementById('xmlLength').textContent = result.datasetInfo?.rawXmlLength
+          ? `${(result.datasetInfo.rawXmlLength / 1024).toFixed(2)} KB`
+          : 'N/A';
+
+        // Primer registro (formateado bonito)
+        if (result.firstRecord && Object.keys(result.firstRecord).length > 0) {
+          document.getElementById('firstRecord').textContent = JSON.stringify(result.firstRecord, null, 2);
+        } else {
+          document.getElementById('firstRecord').textContent = 'Sin datos (0 registros)';
+        }
+
+        // HTTP Metadata
+        document.getElementById('responseTime').textContent = result.httpMetadata?.responseTime || 'N/A';
+
+        // Test info
+        document.getElementById('testDesc').textContent = result.testDescription || 'N/A';
+        document.getElementById('endpoint').textContent = result.endpoint || 'N/A';
+        document.getElementById('conditionsAdd').textContent = result.conditionsAdd || '(sin filtros)';
+
+        // Debug
+        document.getElementById('soapRequest').textContent = result.debug?.soapRequest || 'N/A';
+        document.getElementById('rawResponse').textContent = result.debug?.rawResponsePreview || 'N/A';
+        document.getElementById('conclusion').textContent = result.analysis.conclusion || 'N/A';
+
+        // Set status badge
+        const badge = document.getElementById('statusBadge');
+        if (result.analysis.isAuthError) {
+          badge.textContent = '🔐 Auth Error';
+          badge.className = 'status-badge status-error';
+        } else if (result.analysis.hasData) {
+          badge.textContent = '✅ Con Datos';
+          badge.className = 'status-badge status-success';
+        } else if (result.analysis.isEmpty) {
+          badge.textContent = '⚠️ Sin Datos';
+          badge.className = 'status-badge status-warning';
+        } else if (result.analysis.isDenied) {
+          badge.textContent = '❌ Denegado';
+          badge.className = 'status-badge status-error';
+        } else {
+          badge.textContent = '❌ Error';
+          badge.className = 'status-badge status-error';
+        }
+
+        console.log('Resultado completo:', result);
+
+        // Mostrar alerta si es error de autenticación
+        if (result.analysis.isAuthError) {
+          alert('⚠️ ERROR DE AUTENTICACIÓN DETECTADO\n\n' +
+                'SICAS rechazó las credenciales.\n\n' +
+                'Usa test-sicas-auth-simple.html para probar:\n' +
+                '• Endpoint correcto (.com vs .com.mx)\n' +
+                '• Password con/sin URL encoding (%20 vs espacio)\n\n' +
+                'No tiene sentido seguir probando filtros hasta resolver la autenticación.');
+        }
+
+      } catch (error) {
+        console.error('Error completo:', error);
+        const errorMsg = error.message || 'Error desconocido';
+
+        document.getElementById('conclusion').textContent = `❌ ${errorMsg}`;
+        document.getElementById('responseTxt').textContent = errorMsg;
+        document.getElementById('responseNbr').textContent = 'ERROR';
+        document.getElementById('recordCount').textContent = '0';
+        document.getElementById('responseTime').textContent = 'N/A';
+        document.getElementById('testDesc').textContent = `Test ${testNumber} - Error en ejecución`;
+
+        document.getElementById('statusBadge').textContent = '❌ Error';
+        document.getElementById('statusBadge').className = 'status-badge status-error';
+      } finally {
+        cards.forEach(card => card.classList.remove('loading'));
+      }
+    }
+  </script>
+</body>
+</html>

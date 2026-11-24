@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google Sheets Fetch</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .loading {
+            color: #3b82f6;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .error {
+            color: #ef4444;
+            background: #fee2e2;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .success {
+            color: #10b981;
+            background: #d1fae5;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 8px;
+            text-align: left;
+            font-size: 12px;
+        }
+        th {
+            background: #f3f4f6;
+            font-weight: 600;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #111827;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test Google Sheets Fetch</h1>
+
+    <div class="container">
+        <h2>Configuración</h2>
+        <div>
+            <strong>Supabase URL:</strong> <span id="supabaseUrl"></span><br>
+            <strong>Sheet ID Configurado:</strong> <span id="sheetId">Cargando...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Pruebas</h2>
+        <button onclick="testConfig()">1. Verificar Configuración</button>
+        <button onclick="testFetch()">2. Obtener Datos de Google Sheets</button>
+        <button onclick="testFetchConvenio()">3. Obtener Solo Convenios</button>
+        <button onclick="testDirectCSV()">4. Probar CSV Directo</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
+        const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
+
+        document.getElementById('supabaseUrl').textContent = supabaseUrl;
+
+        window.supabase = createClient(supabaseUrl, supabaseKey);
+
+        async function loadSheetId() {
+            const { data } = await window.supabase
+                .from('production_google_sheets_config')
+                .select('*')
+                .eq('activo', true)
+                .maybeSingle();
+
+            if (data) {
+                document.getElementById('sheetId').textContent = data.sheet_id;
+                window.currentSheetId = data.sheet_id;
+            } else {
+                document.getElementById('sheetId').textContent = 'No configurado';
+            }
+        }
+
+        loadSheetId();
+
+        window.testConfig = async function() {
+            showLoading();
+            try {
+                const { data, error } = await window.supabase
+                    .from('production_google_sheets_config')
+                    .select('*')
+                    .eq('activo', true)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                if (!data) {
+                    showError('No hay configuración activa de Google Sheets');
+                    return;
+                }
+
+                showSuccess('Configuración encontrada', data);
+            } catch (error) {
+                showError('Error al obtener configuración: ' + error.message);
+            }
+        };
+
+        window.testFetch = async function() {
+            showLoading();
+            try {
+                const { data: { session } } = await window.supabase.auth.getSession();
+                const apiUrl = `${supabaseUrl}/functions/v1/fetch-production-sheets`;
+
+                const headers = {
+                    'Authorization': `Bearer ${session?.access_token || supabaseKey}`,
+                    'Content-Type': 'application/json',
+                };
+
+                console.log('Llamando a:', apiUrl);
+                console.log('Headers:', headers);
+
+                const response = await fetch(apiUrl, { headers });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    showError('Error al parsear respuesta JSON: ' + responseText);
+                    return;
+                }
+
+                if (!response.ok) {
+                    showError('Error HTTP ' + response.status + ': ' + (result.error || responseText));
+                    return;
+                }
+
+                if (!result.success) {
+                    showError('Error en Edge Function: ' + (result.error || 'Error desconocido'));
+                    return;
+                }
+
+                showSuccess(`Datos obtenidos exitosamente: ${result.total} registros`, result);
+
+                if (result.records && result.records.length > 0) {
+                    showRecordsTable(result.records.slice(0, 10));
+                    showStats(result.records);
+                }
+            } catch (error) {
+                showError('Error en la petición: ' + error.message);
+                console.error('Error completo:', error);
+            }
+        };
+
+        window.testFetchConvenio = async function() {
+            showLoading();
+            try {
+                const { data: { session } } = await window.supabase.auth.getSession();
+                const apiUrl = `${supabaseUrl}/functions/v1/fetch-production-sheets?convenio_only=true`;
+
+                const headers = {
+                    'Authorization': `Bearer ${session?.access_token || supabaseKey}`,
+                    'Content-Type': 'application/json',
+                };
+
+                const response = await fetch(apiUrl, { headers });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    showError('Error HTTP ' + response.status + ': ' + (result.error || 'Error desconocido'));
+                    return;
+                }
+
+                if (!result.success) {
+                    showError('Error: ' + (result.error || 'Error desconocido'));
+                    return;
+                }
+
+                showSuccess(`Convenios obtenidos: ${result.total} registros`, result);
+
+                if (result.records && result.records.length > 0) {
+                    showRecordsTable(result.records.slice(0, 10));
+                    showStats(result.records);
+                }
+            } catch (error) {
+                showError('Error en la petición: ' + error.message);
+                console.error('Error completo:', error);
+            }
+        };
+
+        window.testDirectCSV = async function() {
+            showLoading();
+            try {
+                if (!window.currentSheetId) {
+                    showError('No hay Sheet ID configurado');
+                    return;
+                }
+
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${window.currentSheetId}/export?format=csv&gid=0`;
+
+                console.log('Intentando obtener CSV desde:', csvUrl);
+
+                const response = await fetch(csvUrl);
+
+                console.log('CSV Response status:', response.status);
+
+                if (!response.ok) {
+                    showError(`Error al obtener CSV: ${response.status} ${response.statusText}. Verifica que el Google Sheet sea público.`);
+                    return;
+                }
+
+                const csvText = await response.text();
+
+                console.log('CSV obtenido, tamaño:', csvText.length, 'bytes');
+                console.log('Primeros 500 caracteres:', csvText.substring(0, 500));
+
+                showSuccess(`CSV obtenido exitosamente: ${csvText.length} bytes`, {
+                    size: csvText.length,
+                    preview: csvText.substring(0, 1000)
+                });
+            } catch (error) {
+                showError('Error al obtener CSV: ' + error.message);
+                console.error('Error completo:', error);
+            }
+        };
+
+        function showLoading() {
+            document.getElementById('results').innerHTML = '<div class="loading">⏳ Cargando...</div>';
+        }
+
+        function showError(message) {
+            document.getElementById('results').innerHTML = `
+                <div class="error">
+                    <strong>❌ Error:</strong> ${message}
+                </div>
+            `;
+        }
+
+        function showSuccess(message, data) {
+            document.getElementById('results').innerHTML = `
+                <div class="success">
+                    <strong>✅ ${message}</strong>
+                </div>
+                <div class="container">
+                    <h3>Respuesta Completa:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        }
+
+        function showRecordsTable(records) {
+            const keys = Object.keys(records[0] || {});
+            const tableHTML = `
+                <div class="container">
+                    <h3>Primeros 10 Registros:</h3>
+                    <table>
+                        <thead>
+                            <tr>${keys.map(k => `<th>${k}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${records.map(r =>
+                                `<tr>${keys.map(k => `<td>${r[k]}</td>`).join('')}</tr>`
+                            ).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            document.getElementById('results').innerHTML += tableHTML;
+        }
+
+        function showStats(records) {
+            const totalImporte = records.reduce((sum, r) => sum + (r.importe_pesos || 0), 0);
+            const totalConvenio = records.reduce((sum, r) => sum + (r.prima_convenio || 0), 0);
+            const totalBono = records.reduce((sum, r) => sum + (r.bono || 0), 0);
+            const convenios = records.filter(r => r.convenio_flag).length;
+
+            const statsHTML = `
+                <div class="container">
+                    <h3>Estadísticas:</h3>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Registros</div>
+                            <div class="stat-value">${records.length.toLocaleString()}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Importe Total</div>
+                            <div class="stat-value">$${totalImporte.toLocaleString()}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Prima Convenio</div>
+                            <div class="stat-value">$${totalConvenio.toLocaleString()}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Bono Total</div>
+                            <div class="stat-value">$${totalBono.toLocaleString()}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Con Convenio</div>
+                            <div class="stat-value">${convenios}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('results').innerHTML += statsHTML;
+        }
+    </script>
+</body>
+</html>

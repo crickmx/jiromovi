@@ -1,1 +1,0 @@
-import"./vendor-wNc7A80n.js";function n(t){const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(t);return r?{r:parseInt(r[1],16),g:parseInt(r[2],16),b:parseInt(r[3],16)}:{r:37,g:99,b:235}}function o(t,r){const e=n(t);return`rgba(${e.r}, ${e.g}, ${e.b}, ${r})`}export{o as c};

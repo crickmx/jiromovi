@@ -1,1 +1,0 @@
-import{s as e}from"./index-D85sunqU.js";const a="Tu sesión expiró. Recarga la página o vuelve a iniciar sesión.";async function o(){const{data:{session:s}}=await e.auth.getSession();if(!s?.access_token)throw new Error(a);return s.access_token}export{a as S,o as t};

@@ -1,0 +1,163 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Package, Eye, Trash2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { obtenerPedidosUsuario, eliminarPedido } from '../lib/storeUtils';
+import type { StorePedido } from '../lib/storeTypes';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+export default function StoreMisPedidos() {
+  const { usuario } = useAuth();
+  const navigate = useNavigate();
+  const [pedidos, setPedidos] = useState<StorePedido[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [eliminando, setEliminando] = useState<string | null>(null);
+
+  useEffect(() => {
+    cargarPedidos();
+  }, []);
+
+  const handleEliminar = async (pedido: StorePedido) => {
+    if (!confirm(`¿Cancelar el pedido ${pedido.folio_oc ?? pedido.id.slice(0, 8)}? Esta acción no se puede deshacer.`)) return;
+    setEliminando(pedido.id);
+    try {
+      await eliminarPedido(pedido.id);
+      setPedidos(prev => prev.filter(p => p.id !== pedido.id));
+    } catch {
+      alert('No se pudo cancelar el pedido. Intenta de nuevo.');
+    } finally {
+      setEliminando(null);
+    }
+  };
+
+  const cargarPedidos = async () => {
+    if (!usuario?.id) return;
+
+    try {
+      setLoading(true);
+      console.log(`🔍 Usuario ${usuario.nombre} cargando sus propios pedidos...`);
+      const data = await obtenerPedidosUsuario(usuario.id);
+      console.log(`✅ Mis pedidos: ${data.length} pedidos encontrados`);
+      setPedidos(data);
+    } catch (error) {
+      console.error('❌ Error cargando mis pedidos:', error);
+      alert('Error al cargar tus pedidos. Verifica la consola para más detalles.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div>
+        <PageHeader
+          title="Mis Pedidos"
+          description="Consulta el historial y estatus de tus pedidos"
+          icon={Package}
+          backTo="/store"
+          backLabel="Volver a MOVI Store"
+          className="mb-8"
+        />
+
+        {pedidos.length === 0 ? (
+          <div className="text-center py-12 bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10">
+            <Package className="w-16 h-16 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
+              No tienes pedidos aún
+            </h3>
+            <p className="text-neutral-500 dark:text-white/50 mb-6">Realiza tu primer pedido en MOVI Store</p>
+            <button
+              onClick={() => navigate('/store')}
+              className="bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent-hover transition-colors font-medium"
+            >
+              Explorar productos
+            </button>
+          </div>
+        ) : (
+          <div className="bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
+                <thead className="bg-neutral-50 dark:bg-white/5">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
+                      ID Pedido
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
+                      Fecha
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
+                      Estatus
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-neutral-200 dark:divide-white/10">
+                  {pedidos.map(pedido => (
+                    <tr key={pedido.id} className="hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {pedido.folio_oc ? (
+                          <span className="text-sm font-semibold text-accent-ink bg-primary-50 px-2 py-1 rounded">
+                            {pedido.folio_oc}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-neutral-500 dark:text-white/55 italic">
+                            Pendiente
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-neutral-900 dark:text-white">
+                          {format(new Date(pedido.created_at), "d 'de' MMMM, yyyy", { locale: es })}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-800">
+                          {pedido.estatus?.nombre || 'Pendiente'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="inline-flex items-center gap-3">
+                          <button
+                            onClick={() => navigate(`/store/pedido/${pedido.id}`)}
+                            className="inline-flex items-center gap-2 text-accent-ink hover:text-primary-800 font-medium"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Ver Detalle
+                          </button>
+                          {!pedido.folio_oc && (
+                            <button
+                              onClick={() => handleEliminar(pedido)}
+                              disabled={eliminando === pedido.id}
+                              className="inline-flex items-center gap-1.5 text-red-500 hover:text-red-700 font-medium text-sm disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

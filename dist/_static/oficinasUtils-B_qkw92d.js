@@ -1,1 +1,0 @@
-import{s as c}from"./index-D85sunqU.js";async function r(i){if(i.rol!=="Gerente")return[];const a=i.oficina_id?[i.oficina_id]:[],{data:n}=await c.from("usuario_oficinas_adicionales").select("oficina_id").eq("usuario_id",i.id),e=(n||[]).map(o=>o.oficina_id);return Array.from(new Set([...a,...e]))}export{r as g};

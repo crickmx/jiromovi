@@ -1,0 +1,606 @@
+import { useState, useEffect, useRef } from 'react';
+import { Info, Send, Paperclip, Download, FileText, Image as ImageIcon, Video, Music, ArrowLeft } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+interface ChatMessagesProps {
+  chat: any;
+  getChatName: (chat: any) => string;
+  onShowInfo: () => void;
+  onBack?: () => void;
+}
+
+export function ChatMessages({ chat, getChatName, onShowInfo, onBack }: ChatMessagesProps) {
+  const { usuario } = useAuth();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (chat) {
+      console.log('[ChatMessages] Cargando chat:', chat.id);
+      loadMessages();
+
+      // Suscribirse a nuevos mensajes
+      console.log('[ChatMessages] Configurando suscripción realtime...');
+      const subscription = supabase
+        .channel(`chat-${chat.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_mensajes',
+          filter: `chat_id=eq.${chat.id}`
+        }, (payload) => {
+          console.log('[ChatMessages] Nuevo mensaje recibido:', payload.new);
+          setMessages(prev => [...prev, payload.new]);
+          setTimeout(scrollToBottom, 100);
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_mensajes',
+          filter: `chat_id=eq.${chat.id}`
+        }, (payload) => {
+          console.log('[ChatMessages] Mensaje actualizado:', payload.new);
+          setMessages(prev => prev.map(msg => msg.id === payload.new.id ? payload.new : msg));
+        })
+        .subscribe((status) => {
+          console.log('[ChatMessages] Estado de suscripción:', status);
+        });
+
+      return () => {
+        console.log('[ChatMessages] Desuscribiendo del chat:', chat.id);
+        subscription.unsubscribe();
+      };
+    }
+  }, [chat]);
+
+  const loadMessages = async () => {
+    setLoading(true);
+    console.log('[ChatMessages] Cargando mensajes del chat:', chat.id);
+
+    const { data, error } = await supabase
+      .from('chat_mensajes')
+      .select(`
+        *,
+        usuarios:remitente_id (
+          id,
+          nombre,
+          apellidos,
+          imagen_perfil_url
+        )
+      `)
+      .eq('chat_id', chat.id)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('[ChatMessages] Error cargando mensajes:', error);
+    } else {
+      console.log('[ChatMessages] Mensajes cargados:', data?.length || 0);
+      setMessages(data || []);
+      setTimeout(scrollToBottom, 100);
+    }
+    setLoading(false);
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleSend = async () => {
+    if (!newMessage.trim() || !usuario) {
+      console.log('[ChatMessages] No se puede enviar: mensaje vacío o sin usuario');
+      return;
+    }
+
+    const messageText = newMessage.trim();
+    setNewMessage('');
+
+    console.log('[ChatMessages] Enviando mensaje...', {
+      chat_id: chat.id,
+      remitente_id: usuario.id,
+      mensaje: messageText
+    });
+
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      chat_id: chat.id,
+      remitente_id: usuario.id,
+      mensaje: messageText,
+      tipo: 'texto',
+      created_at: new Date().toISOString(),
+      editado: false,
+      archivo_url: null,
+      archivo_nombre: null,
+      archivo_tipo: null,
+      archivo_tamano: null,
+      usuarios: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        apellidos: usuario.apellidos,
+        imagen_perfil_url: usuario.imagen_perfil_url
+      }
+    };
+
+    setMessages(prev => [...prev, tempMessage]);
+    scrollToBottom();
+
+    const { data, error } = await supabase
+      .from('chat_mensajes')
+      .insert({
+        chat_id: chat.id,
+        remitente_id: usuario.id,
+        mensaje: messageText,
+        tipo: 'texto'
+      })
+      .select(`
+        *,
+        usuarios:remitente_id (
+          id,
+          nombre,
+          apellidos,
+          imagen_perfil_url
+        )
+      `)
+      .single();
+
+    if (error) {
+      console.error('[ChatMessages] Error enviando mensaje:', error);
+      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+      setNewMessage(messageText);
+      alert(`Error al enviar mensaje: ${error.message}`);
+    } else {
+      console.log('[ChatMessages] Mensaje enviado exitosamente:', data);
+      setMessages(prev => prev.map(m => m.id === tempMessage.id ? data : m));
+
+      await supabase
+        .from('chats')
+        .update({ ultimo_mensaje_at: new Date().toISOString() })
+        .eq('id', chat.id);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (selectedFile) {
+        handleSendWithFile();
+      } else {
+        handleSend();
+      }
+    }
+  };
+
+  const handleDownloadFile = async (fileUrl: string, fileName: string) => {
+    try {
+      console.log('[ChatMessages] Descargando archivo:', fileName);
+
+      // Si es una URL de Supabase Storage
+      if (fileUrl.includes('supabase')) {
+        const response = await fetch(fileUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        // Para URLs externas, abrir en nueva pestaña
+        window.open(fileUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('[ChatMessages] Error descargando archivo:', error);
+      alert('Error al descargar el archivo');
+    }
+  };
+
+  const getFileIcon = (fileType: string) => {
+    if (fileType.startsWith('image/')) return <ImageIcon className="w-5 h-5" />;
+    if (fileType.startsWith('video/')) return <Video className="w-5 h-5" />;
+    if (fileType.startsWith('audio/')) return <Music className="w-5 h-5" />;
+    return <FileText className="w-5 h-5" />;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      console.log('[ChatMessages] Archivo seleccionado:', file.name, file.type, file.size);
+
+      // Validar tamaño (10MB)
+      if (file.size > 10485760) {
+        alert('El archivo es demasiado grande. Máximo 10MB permitido.');
+        return;
+      }
+
+      setSelectedFile(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const uploadFile = async (file: File): Promise<{ url: string; path: string } | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${usuario!.id}/${fileName}`;
+
+      console.log('[ChatMessages] Subiendo archivo:', filePath);
+
+      const { error: uploadError, data } = await supabase.storage
+        .from('chat-attachments')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('[ChatMessages] Error subiendo archivo:', uploadError);
+        console.error('[ChatMessages] Detalles del error:', {
+          message: uploadError.message,
+          statusCode: uploadError.statusCode,
+          error: uploadError
+        });
+
+        if (uploadError.message?.includes('policy') || uploadError.statusCode === '403') {
+          throw new Error('No tienes permisos para subir archivos. Verifica la configuración de políticas RLS en Storage.');
+        }
+
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-attachments')
+        .getPublicUrl(filePath);
+
+      console.log('[ChatMessages] Archivo subido exitosamente:', publicUrl);
+
+      return { url: publicUrl, path: filePath };
+    } catch (error) {
+      console.error('[ChatMessages] Error en uploadFile:', error);
+      return null;
+    }
+  };
+
+  const getMessageType = (mimeType: string): string => {
+    if (mimeType.startsWith('image/')) return 'imagen';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('audio/')) return 'audio';
+    return 'archivo';
+  };
+
+  const handleSendWithFile = async () => {
+    if ((!newMessage.trim() && !selectedFile) || !usuario) {
+      console.log('[ChatMessages] No hay mensaje ni archivo para enviar');
+      return;
+    }
+
+    const messageText = newMessage.trim();
+    const fileToSend = selectedFile;
+
+    setNewMessage('');
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    setUploading(true);
+
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage = {
+      id: tempId,
+      chat_id: chat.id,
+      remitente_id: usuario.id,
+      mensaje: messageText || (fileToSend ? `Archivo: ${fileToSend.name}` : ''),
+      tipo: fileToSend ? getMessageType(fileToSend.type) : 'texto',
+      created_at: new Date().toISOString(),
+      editado: false,
+      archivo_url: fileToSend ? URL.createObjectURL(fileToSend) : null,
+      archivo_nombre: fileToSend?.name || null,
+      archivo_tipo: fileToSend?.type || null,
+      archivo_tamano: fileToSend?.size || null,
+      usuarios: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        apellidos: usuario.apellidos,
+        imagen_perfil_url: usuario.imagen_perfil_url
+      }
+    };
+
+    setMessages(prev => [...prev, tempMessage]);
+    scrollToBottom();
+
+    try {
+      let fileData: { archivo_url: string; archivo_nombre: string; archivo_tipo: string; archivo_tamano: number; tipo: string } | null = null;
+
+      if (fileToSend) {
+        console.log('[ChatMessages] Subiendo archivo adjunto...');
+        const uploadResult = await uploadFile(fileToSend);
+
+        if (!uploadResult) {
+          throw new Error('Error al subir el archivo');
+        }
+
+        fileData = {
+          archivo_url: uploadResult.url,
+          archivo_nombre: fileToSend.name,
+          archivo_tipo: fileToSend.type,
+          archivo_tamano: fileToSend.size,
+          tipo: getMessageType(fileToSend.type)
+        };
+      }
+
+      const messageData: any = {
+        chat_id: chat.id,
+        remitente_id: usuario.id,
+        mensaje: messageText || (fileToSend ? `Archivo: ${fileToSend.name}` : ''),
+        tipo: fileData ? fileData.tipo : 'texto'
+      };
+
+      if (fileData) {
+        messageData.archivo_url = fileData.archivo_url;
+        messageData.archivo_nombre = fileData.archivo_nombre;
+        messageData.archivo_tipo = fileData.archivo_tipo;
+        messageData.archivo_tamano = fileData.archivo_tamano;
+      }
+
+      console.log('[ChatMessages] Enviando mensaje con datos:', messageData);
+
+      const { data, error } = await supabase
+        .from('chat_mensajes')
+        .insert(messageData)
+        .select(`
+          *,
+          usuarios:remitente_id (
+            id,
+            nombre,
+            apellidos,
+            imagen_perfil_url
+          )
+        `)
+        .single();
+
+      if (error) {
+        console.error('[ChatMessages] Error enviando mensaje:', error);
+        throw error;
+      }
+
+      console.log('[ChatMessages] Mensaje enviado exitosamente:', data);
+      setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+
+      await supabase
+        .from('chats')
+        .update({ ultimo_mensaje_at: new Date().toISOString() })
+        .eq('id', chat.id);
+
+    } catch (error: any) {
+      console.error('[ChatMessages] Error:', error);
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setNewMessage(messageText);
+      setSelectedFile(fileToSend);
+      alert(`Error al enviar mensaje: ${error.message || 'Error desconocido'}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 flex flex-col h-full">
+      {/* Header */}
+      <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 px-4 py-3 flex items-center gap-3">
+        {onBack && (
+          <button onClick={onBack} className="sm:hidden p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+            <ArrowLeft className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+          </button>
+        )}
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{getChatName(chat)}</h2>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            {chat.miembros?.length || 0} participantes
+          </p>
+        </div>
+        <button
+          onClick={onShowInfo}
+          className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors flex-shrink-0"
+        >
+          <Info className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-neutral-50">
+        {loading ? (
+          <div className="text-center text-neutral-600">Cargando mensajes...</div>
+        ) : messages.length === 0 ? (
+          <div className="text-center text-neutral-500 py-12">
+            <p>No hay mensajes aún</p>
+            <p className="text-sm mt-2">Sé el primero en escribir</p>
+          </div>
+        ) : (
+          messages.map((message) => {
+            const isMine = message.remitente_id === usuario?.id;
+            const sender = message.usuarios;
+
+            return (
+              <div
+                key={message.id}
+                className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-lg ${isMine ? 'order-2' : 'order-1'}`}>
+                  {!isMine && sender && (
+                    <p className="text-xs text-neutral-600 mb-1 px-3">
+                      {sender.nombre} {sender.apellidos}
+                    </p>
+                  )}
+                  <div
+                    className={`rounded-2xl px-4 py-2 ${
+                      isMine
+                        ? 'bg-accent text-accent-foreground [&_*]:text-white'
+                        : 'bg-white text-neutral-900 border border-neutral-200'
+                    }`}
+                  >
+                    {message.eliminado ? (
+                      <p className={`italic text-sm opacity-70 ${isMine ? 'text-white' : ''}`}>
+                        Este mensaje fue eliminado
+                      </p>
+                    ) : (
+                      <>
+                        {message.mensaje && (
+                          <p className={`whitespace-pre-wrap break-words ${isMine ? 'text-white' : ''}`}>{message.mensaje}</p>
+                        )}
+
+                        {/* Archivo adjunto */}
+                        {message.archivo_url && (
+                          <div className={`mt-2 ${message.mensaje ? 'pt-2 border-t' : ''} ${
+                            isMine ? 'border-primary-400' : 'border-neutral-200'
+                          }`}>
+                            {message.tipo === 'imagen' && message.archivo_tipo?.startsWith('image/') ? (
+                              <div className="space-y-2">
+                                <img
+                                  src={message.archivo_url}
+                                  alt={message.archivo_nombre}
+                                  className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => window.open(message.archivo_url, '_blank')}
+                                />
+                                <button
+                                  onClick={() => handleDownloadFile(message.archivo_url, message.archivo_nombre)}
+                                  className={`flex items-center space-x-2 text-sm ${
+                                    isMine ? 'text-white hover:text-primary-100' : 'text-neutral-600 hover:text-neutral-900'
+                                  }`}
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span className="text-white">{message.archivo_nombre}</span>
+                                  {message.archivo_tamano && (
+                                    <span className="text-xs opacity-70 text-white">
+                                      ({formatFileSize(message.archivo_tamano)})
+                                    </span>
+                                  )}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleDownloadFile(message.archivo_url, message.archivo_nombre)}
+                                className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${
+                                  isMine
+                                    ? 'bg-accent hover:bg-primary-400 text-accent-foreground'
+                                    : 'bg-neutral-100 hover:bg-neutral-200'
+                                }`}
+                              >
+                                <div className={isMine ? 'text-white' : 'text-neutral-700'}>
+                                  {getFileIcon(message.archivo_tipo || '')}
+                                </div>
+                                <div className="flex-1 text-left">
+                                  <p className={`text-sm font-medium ${isMine ? 'text-white' : ''}`}>{message.archivo_nombre}</p>
+                                  {message.archivo_tamano && (
+                                    <p className={`text-xs opacity-70 ${isMine ? 'text-white' : ''}`}>
+                                      {formatFileSize(message.archivo_tamano)}
+                                    </p>
+                                  )}
+                                </div>
+                                <Download className={`w-4 h-4 ${isMine ? 'text-white' : ''}`} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {message.editado && (
+                          <p className={`text-xs opacity-70 mt-1 ${isMine ? 'text-white' : ''}`}>(editado)</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <p
+                    className={`text-xs text-neutral-500 mt-1 px-3 ${
+                      isMine ? 'text-right' : 'text-left'
+                    }`}
+                  >
+                    {format(new Date(message.created_at), 'HH:mm', { locale: es })}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="bg-white border-t border-neutral-200 p-4">
+        {/* Archivo seleccionado */}
+        {selectedFile && (
+          <div className="mb-3 p-3 bg-primary-50 border border-primary-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="text-accent-ink">
+                {getFileIcon(selectedFile.type)}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-neutral-900">{selectedFile.name}</p>
+                <p className="text-xs text-neutral-600">{formatFileSize(selectedFile.size)}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleRemoveFile}
+              className="p-1 hover:bg-primary-100 rounded transition-colors"
+              title="Remover archivo"
+            >
+              <span className="text-accent-ink text-xl leading-none">&times;</span>
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-end space-x-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors disabled:opacity-50"
+            title="Adjuntar archivo"
+          >
+            <Paperclip className="w-5 h-5 text-neutral-600" />
+          </button>
+          <textarea
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Escribe un mensaje..."
+            rows={1}
+            disabled={uploading}
+            className="flex-1 px-4 py-2 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none disabled:opacity-50"
+          />
+          <button
+            onClick={selectedFile ? handleSendWithFile : handleSend}
+            disabled={(!newMessage.trim() && !selectedFile) || uploading}
+            className="p-2 bg-accent text-accent-foreground rounded-xl hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

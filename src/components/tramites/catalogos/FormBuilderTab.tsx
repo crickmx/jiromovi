@@ -1,0 +1,1516 @@
+import { useEffect, useState } from 'react';
+import { Plus, Save, Trash2, Settings, GripVertical, X, Eye, Lock, Zap, Layers, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { useFormBuilder, LOCKED_SISTEMA_KEYS, CONFIGURABLE_SISTEMA_KEYS, SISTEMA_CAMPO_DEFAULTS } from './useFormBuilder';
+import { FormPreview } from './FormPreview';
+import { CAMPO_TIPOS, SISTEMA_TIPO_META, MIME_OPTIONS, ROL_VISIBILIDAD_OPCIONES, slugify, type CampoTipo, type RolVisibilidad } from './types';
+import { supabase } from '../../../lib/supabase';
+import { estiloHeader, CLASE_VELO, type FondoHeader } from '../../../lib/tramiteHeader';
+import { DATOS_EXTRAIBLES } from '../../../lib/rfcCurp';
+import { estiloSeccionColor } from '../../../lib/tramiteSecciones';
+import { MEDIDA_SUGERIDA } from '../../../lib/imagenHeader';
+import { RecorteHeaderModal } from './RecorteHeaderModal';
+
+interface Props {
+  tipoId: string;
+  showToast: (msg: string, type?: 'success' | 'error') => void;
+  onGoToTriggers?: () => void;
+}
+
+export function FormBuilderTab({ tipoId, showToast, onGoToTriggers }: Props) {
+  const [adjuntoCategorias, setAdjuntoCategorias] = useState<{ id: string; nombre: string }[]>([]);
+
+  useEffect(() => {
+    supabase.from('maestro_adjunto_categorias').select('id, nombre').eq('activo', true).order('orden')
+      .then(({ data }) => { if (data) setAdjuntoCategorias(data); });
+  }, []);
+
+  const {
+    campos, loadingCampos, loadCampos,
+    showAddField, setShowAddField,
+    showPreview, setShowPreview,
+    editingCampo, setEditingCampo, startEditCampo, closeCampoEditor,
+    editCampoLabel, setEditCampoLabel,
+    editCampoReq, setEditCampoReq,
+    editCampoConfig, setEditCampoConfig,
+    editCampoAyuda, setEditCampoAyuda,
+    editCampoVisiblePara, setEditCampoVisiblePara,
+    editCampoEditablePara, setEditCampoEditablePara,
+    editCampoSeccionId, setEditCampoSeccionId,
+    savingCampo, dragging,
+    handleAddCampo, handleAddSistemaCampo, handleDeleteCampo,
+    handleDragStart, handleDragOver, handleDropEnPosicion,
+    secciones, loadingSecciones, loadSecciones,
+    editingSeccion, setEditingSeccion,
+    showAddSeccion, setShowAddSeccion,
+    handleSaveSeccion, handleDeleteSeccion, handleMoveSeccion,
+  } = useFormBuilder(tipoId, showToast);
+
+  const [seccionForm, setSeccionForm] = useState({
+    nombre: '', descripcion: '', opcional: false,
+    depende_de_seccion_id: null as string | null,
+    condicion_campo_id: null as string | null,
+    condicion_operador: 'igual_a' as 'igual_a' | 'distinto_a' | 'tiene_valor',
+    condicion_valor: '' as string,
+    fondo: {} as FondoHeader,
+    color: null as string | null,
+  });
+  // Modo de desbloqueo: mutuamente excluyentes en la UI (aunque coexistan en BD)
+  const [seccionModo, setSeccionModo] = useState<'ninguno' | 'seccion' | 'campo'>('ninguno');
+  // Dónde va a caer el campo que se está arrastrando: (sección destino, posición).
+  const [dropZone, setDropZone] = useState<{ seccionId: string | null; index: number } | null>(null);
+  // En qué sección se va a crear el campo que se elija en el panel de tipos.
+  const [addTargetSeccion, setAddTargetSeccion] = useState<string | null>(null);
+  // Imagen elegida para el encabezado, esperando encuadre antes de subirse.
+  const [imagenPorRecortar, setImagenPorRecortar] = useState<File | null>(null);
+
+  /** Mueve una opción de estatus una posición. El arreglo ES el orden. */
+  const moverOpcionEstatus = (i: number, delta: number) => {
+    const opts = [...(editCampoConfig.opciones || [])];
+    const j = i + delta;
+    if (j < 0 || j >= opts.length) return;
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+    setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+  };
+  const [colapsadas, setColapsadas] = useState<Set<string>>(new Set());
+  const toggleColapsada = (id: string) => setColapsadas(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  // Ramos y aseguradoras sacan sus opciones del catálogo en tiempo real, así que el
+  // editor de condiciones no las conocía y caía a un texto libre. Escribir un nombre
+  // que no coincidiera carácter por carácter dejaba la sección bloqueada para siempre,
+  // sin ninguna pista de por qué. Se cargan aquí para poder ofrecerlas como lista.
+  const [catalogoCondicion, setCatalogoCondicion] = useState<{ ramos: string[]; companias: string[] }>({ ramos: [], companias: [] });
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('maestro_ramos').select('nombre').order('nombre'),
+      supabase.from('maestro_companias').select('nombre').eq('activo', true).order('nombre'),
+    ]).then(([ramosRes, ciasRes]) => {
+      setCatalogoCondicion({
+        ramos: (ramosRes.data ?? []).map((r: { nombre: string }) => r.nombre),
+        companias: (ciasRes.data ?? []).map((c: { nombre: string }) => c.nombre),
+      });
+    });
+  }, []);
+
+  useEffect(() => { loadCampos(); loadSecciones(); }, [tipoId]);
+
+  useEffect(() => {
+    if (editingSeccion) {
+      setSeccionForm({
+        nombre: editingSeccion.nombre,
+        descripcion: editingSeccion.descripcion || '',
+        opcional: editingSeccion.opcional,
+        depende_de_seccion_id: editingSeccion.depende_de_seccion_id,
+        condicion_campo_id: editingSeccion.condicion_campo_id,
+        condicion_operador: editingSeccion.condicion_operador ?? 'igual_a',
+        condicion_valor: editingSeccion.condicion_valor ?? '',
+        fondo: (editingSeccion.config?.fondo ?? {}) as FondoHeader,
+        color: (editingSeccion.config?.color ?? null) as string | null,
+      });
+      setSeccionModo(editingSeccion.condicion_campo_id ? 'campo' : editingSeccion.depende_de_seccion_id ? 'seccion' : 'ninguno');
+    } else if (showAddSeccion) {
+      setSeccionForm({
+        nombre: '', descripcion: '', opcional: false,
+        depende_de_seccion_id: null, condicion_campo_id: null,
+        condicion_operador: 'igual_a', condicion_valor: '',
+        fondo: {}, color: null,
+      });
+      setSeccionModo('ninguno');
+    }
+  }, [editingSeccion, showAddSeccion]);
+
+  /**
+   * Opciones que se pueden elegir como "valor esperado" de una condición.
+   * Un ramo o una aseguradora no tienen `config.opciones` — su catálogo se carga en
+   * tiempo real — así que sin esto el editor caía a un texto libre y se podía escribir
+   * un nombre que nunca iba a coincidir, dejando la sección bloqueada sin explicación.
+   * El formulario guarda el NOMBRE en ambos casos, por eso label y valor son el mismo.
+   */
+  /**
+   * Las secciones, pero con el color que se está eligiendo ahora mismo en el panel
+   * ya aplicado. Las secciones se guardan con un botón (no hay autoguardado como
+   * en los campos), así que sin esto el canvas no cambiaría hasta darle Guardar y
+   * el color se elegiría a ciegas.
+   */
+  const seccionesVistaPrevia = secciones.map(sec =>
+    editingSeccion && sec.id === editingSeccion.id
+      ? { ...sec, config: { ...(sec.config ?? {}), color: seccionForm.color ?? undefined } }
+      : sec
+  );
+
+  const opcionesDeCondicion = (campo: { tipo?: string; config?: any } | undefined) => {
+    if (campo?.tipo === 'ramo') return catalogoCondicion.ramos.map(n => ({ label: n, slug: n }));
+    if (campo?.tipo === 'aseguradora') return catalogoCondicion.companias.map(n => ({ label: n, slug: n }));
+    return (campo?.config?.opciones || []) as { label: string; slug: string }[];
+  };
+
+  // Campos fijos (area, equipo, fecha_creacion, fecha_finalizacion) — nunca movibles
+  const lockedCampos   = campos.filter(c => c.is_sistema && LOCKED_SISTEMA_KEYS.includes(c.sistema_key ?? '')).sort((a, b) => a.display_order - b.display_order);
+  // Pool draggable unificado: sistema configurables + custom, ordenados por display_order
+  const draggableCampos = campos.filter(c => !(c.is_sistema && LOCKED_SISTEMA_KEYS.includes(c.sistema_key ?? ''))).sort((a, b) => a.display_order - b.display_order);
+  // Sistema configurables que aún no están en el formulario (para el panel de agregar)
+  const addedSistemaKeys = campos.filter(c => c.is_sistema).map(c => c.sistema_key ?? '');
+  const availableSistemaKeys = CONFIGURABLE_SISTEMA_KEYS.filter(sk => !addedSistemaKeys.includes(sk));
+
+  return (
+    // Altura acotada a propósito: el contenedor padre solo define minHeight, así que
+    // sin esto crece con el contenido, el overflow interno queda inerte y el panel de
+    // configuración se va hacia arriba fuera de la vista en formularios largos. Con un
+    // tope, cada columna scrollea por su lado y el panel siempre queda visible.
+    <div className="flex overflow-hidden min-h-0 h-[calc(100vh-20rem)] min-h-[480px]">
+      {/* Canvas */}
+      <div className="flex-1 p-4 overflow-auto">
+        {loadingCampos ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-12 bg-neutral-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-neutral-500 uppercase tracking-wider">
+                {draggableCampos.length} campo{draggableCampos.length !== 1 ? 's' : ''} en el formulario
+                {!showPreview && draggableCampos.length > 0 && ' · arrastra para reordenar'}
+              </p>
+              {campos.length > 0 && (
+                <button
+                  onClick={() => { setShowPreview(!showPreview); closeCampoEditor(); setShowAddField(false); }}
+                  className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg transition-colors ${
+                    showPreview ? 'bg-blue-100 text-accent-ink' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+                  }`}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  {showPreview ? 'Editar' : 'Vista previa'}
+                </button>
+              )}
+            </div>
+
+            {showPreview ? (
+              <>
+                <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs font-medium text-blue-700 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5" />
+                  Vista previa — así lo ve quien llena el formulario, no es editable aquí.
+                </div>
+                <FormPreview campos={campos} secciones={seccionesVistaPrevia} />
+              </>
+            ) : (
+              <>
+                {/* ── Canvas: los campos viven dentro de su sección ── */}
+                {(() => {
+                  const renderFila = (campo: typeof campos[number]) => {
+                    const idx = campos.findIndex(c => c.id === campo.id);
+                    const isSistema = campo.is_sistema;
+                    const meta = isSistema ? SISTEMA_TIPO_META[campo.tipo as CampoTipo] : null;
+                    return (
+                          <div
+                            key={campo.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, idx)}
+                            className={`flex items-center gap-2 border rounded-xl p-2.5 bg-white transition-opacity ${
+                              dragging === idx ? 'opacity-30' : 'opacity-100'
+                            } ${editingCampo?.id === campo.id
+                              ? isSistema ? 'border-violet-400 ring-1 ring-violet-200' : 'border-blue-400 ring-1 ring-blue-200'
+                              : 'border-neutral-200 hover:border-neutral-300'
+                            }`}
+                          >
+                            <div className="cursor-grab p-1 text-neutral-300 hover:text-neutral-500">
+                              <GripVertical className="w-4 h-4" />
+                            </div>
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-mono ${
+                              isSistema ? 'bg-violet-50 text-violet-600' : 'bg-blue-50 text-accent-ink'
+                            }`}>
+                              {isSistema ? (meta?.icon ?? 'S') : (CAMPO_TIPOS.find(t => t.tipo === campo.tipo)?.icon ?? '?')}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-neutral-800 truncate">{campo.label}</p>
+                              <p className="text-[11px] text-neutral-500 font-mono">{isSistema ? (campo.sistema_key ?? campo.tipo) : campo.key}</p>
+                            </div>
+                            {campo.requerido && (
+                              <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 shrink-0" title="Campo requerido">
+                                req
+                              </span>
+                            )}
+                            {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
+                              <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
+                                <Lock className="w-2.5 h-2.5" />
+                                {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
+                              </span>
+                            )}
+                            {isSistema && (
+                              <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
+                                {meta?.badge ?? 'Sistema'}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => editingCampo?.id === campo.id ? closeCampoEditor() : startEditCampo(campo)}
+                              className="p-1.5 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500 hover:text-neutral-700"
+                              title="Configurar campo"
+                              aria-label="Configurar campo"
+                            >
+                              <Settings className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCampo(campo)}
+                              className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-neutral-300 hover:text-red-500"
+                              title={isSistema ? 'Ocultar del formulario' : 'Eliminar campo'}
+                              aria-label={isSistema ? 'Ocultar del formulario' : 'Eliminar campo'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                    );
+                  };
+
+                  // Franja fina entre campos: recibe el drop y marca dónde va a caer.
+                  const zonaDrop = (seccionId: string | null, index: number, key: string) => {
+                    const activa = dropZone?.seccionId === seccionId && dropZone?.index === index;
+                    return (
+                      <div
+                        key={key}
+                        onDragOver={(e) => { handleDragOver(e); setDropZone({ seccionId, index }); }}
+                        onDragLeave={() => setDropZone(prev => (prev?.seccionId === seccionId && prev?.index === index ? null : prev))}
+                        onDrop={(e) => { setDropZone(null); handleDropEnPosicion(e, seccionId, index); }}
+                        className={`h-2 -my-0.5 rounded transition-all ${activa ? 'h-7 bg-blue-100 border-2 border-dashed border-blue-400' : ''}`}
+                      />
+                    );
+                  };
+
+                  const contenedor = (seccionId: string | null, lista: typeof campos) => (
+                    <div className="space-y-1.5">
+                      {zonaDrop(seccionId, 0, `dz-${seccionId ?? 'sin'}-0`)}
+                      {lista.map((campo, i) => (
+                        <div key={campo.id}>
+                          {renderFila(campo)}
+                          {zonaDrop(seccionId, i + 1, `dz-${seccionId ?? 'sin'}-${i + 1}`)}
+                        </div>
+                      ))}
+                      {lista.length === 0 && (
+                        <p className="text-[11px] text-neutral-500 italic py-1">Sin campos — arrastra uno aquí</p>
+                      )}
+                    </div>
+                  );
+
+                  const sinSeccion = draggableCampos.filter(c => !c.seccion_id);
+
+                  const renderSeccion = (seccion: (typeof seccionesVistaPrevia)[number], i: number) => {
+                        const dependeDe = secciones.find(s => s.id === seccion.depende_de_seccion_id);
+                        const esSistema = !!seccion.sistema_key;
+                        const suyos = draggableCampos.filter(c => c.seccion_id === seccion.id);
+                        const colapsada = colapsadas.has(seccion.id);
+                        const colorSeccion = estiloSeccionColor(seccion.config?.color);
+                        const esHeader = seccion.sistema_key === 'header';
+                        const vistaFondo = esHeader ? estiloHeader(seccion.config?.fondo, null) : null;
+                        return (
+                          <div
+                            key={seccion.id}
+                            // El color elegido se refleja aquí mismo: si no, se elige a
+                            // ciegas y solo se ve al abrir un trámite.
+                            className={`border rounded-xl p-2.5 ${colorSeccion ? '' : esSistema ? 'border-violet-200 bg-violet-50/30' : 'border-teal-200 bg-teal-50/20'}`}
+                            style={colorSeccion}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="flex flex-col shrink-0">
+                                <button onClick={() => handleMoveSeccion(seccion, 'arriba')} disabled={i === 0 || esHeader} className="p-0.5 text-neutral-500 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Subir">
+                                  <ChevronUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => handleMoveSeccion(seccion, 'abajo')} disabled={i === secciones.length - 1 || esHeader} className="p-0.5 text-neutral-500 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed" title="Bajar">
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => toggleColapsada(seccion.id)}
+                                className="p-0.5 text-neutral-500 hover:text-neutral-700 shrink-0"
+                                title={colapsada ? 'Expandir sección' : 'Colapsar sección'}
+                                aria-label={colapsada ? 'Expandir sección' : 'Colapsar sección'}
+                              >
+                                {colapsada ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                              <Layers className={`w-3.5 h-3.5 shrink-0 ${esSistema ? 'text-violet-500' : 'text-teal-600'}`} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-neutral-800 truncate flex items-center gap-1.5">
+                                  {seccion.nombre}
+                                  {esSistema && <Lock className="w-3 h-3 text-violet-400 shrink-0" />}
+                                </p>
+                                <p className="text-[11px] text-neutral-500">
+                                  {suyos.length} campo{suyos.length !== 1 ? 's' : ''}
+                                  {seccion.opcional && ' · Opcional'}
+                                  {dependeDe && ` · Depende de "${dependeDe.nombre}"`}
+                                  {seccion.condicion_campo_id && ` · Condicionada a "${campos.find(c => c.id === seccion.condicion_campo_id)?.label ?? '—'}"`}
+                                </p>
+                              </div>
+                              <button onClick={() => { setEditingSeccion(secciones.find(s2 => s2.id === seccion.id) ?? seccion); setShowAddSeccion(false); }} className="p-1.5 hover:bg-white rounded-lg text-neutral-500 hover:text-neutral-700" title="Configurar sección" aria-label="Configurar sección">
+                                <Settings className="w-3.5 h-3.5" />
+                              </button>
+                              {!esSistema && (
+                                <button onClick={() => handleDeleteSeccion(seccion)} className="p-1.5 hover:bg-red-50 rounded-lg text-neutral-300 hover:text-red-500" title="Eliminar sección" aria-label="Eliminar sección">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            {!colapsada && (
+                              <>
+                                {vistaFondo && (
+                                  <div style={vistaFondo.style} className="relative h-12 rounded-lg overflow-hidden border border-neutral-200 mb-2">
+                                    {vistaFondo.conVelo && <div className={CLASE_VELO} />}
+                                    <div className="relative h-full flex items-center px-3 gap-2">
+                                      <span className="text-[11px] font-bold" style={{ color: vistaFondo.textColor }}>Área · Nombre del trámite · Folio</span>
+                                    </div>
+                                  </div>
+                                )}
+                                {contenedor(seccion.id, suyos)}
+                                {!esSistema && (
+                                  <button
+                                    onClick={() => { setAddTargetSeccion(seccion.id); setShowAddField(true); closeCampoEditor(); setShowAddSeccion(false); setEditingSeccion(null); }}
+                                    className="mt-1.5 w-full flex items-center justify-center gap-1.5 border border-dashed border-teal-300 rounded-lg py-1.5 text-[11px] text-teal-600 hover:bg-teal-50 hover:border-teal-400 transition-colors"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    Agregar campo a esta sección
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                  };
+
+                  // Orden pedido por Ricardo: el Encabezado primero —es lo primero
+                  // que se ve en el trámite real—, luego los campos fijos del
+                  // sistema, y al final el resto de las secciones.
+                  const seccionHeader = seccionesVistaPrevia.filter(x => x.sistema_key === 'header');
+                  const seccionesResto = seccionesVistaPrevia.filter(x => x.sistema_key !== 'header');
+
+                  return (
+                    <div className="space-y-3">
+                      {draggableCampos.length === 0 && (
+                        <div className="text-center py-8 text-neutral-500 border-2 border-dashed border-neutral-200 rounded-xl">
+                          <p className="text-sm text-neutral-500">Sin campos en el formulario</p>
+                          <p className="text-xs mt-1">Agrega campos desde el panel derecho</p>
+                        </div>
+                      )}
+
+                      {seccionHeader.map((sec, i) => renderSeccion(sec, i))}
+
+                      {/* ── Campos fijos del sistema (no movibles) ── */}
+                      {lockedCampos.length > 0 && (
+                        <div className="mb-4">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Lock className="w-3 h-3 text-neutral-500" />
+                            <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+                              Campos del sistema — siempre presentes, no configurables
+                            </p>
+                          </div>
+                          <div className="space-y-1 border border-neutral-200 rounded-xl p-2 bg-neutral-50/60">
+                            {lockedCampos.map(campo => {
+                              const meta = SISTEMA_TIPO_META[campo.tipo as CampoTipo];
+                              const isEditing = editingCampo?.id === campo.id;
+                              return (
+                                <div key={campo.id} className={`flex items-center gap-2 border rounded-lg p-2 bg-surface-card transition-colors ${isEditing ? 'border-violet-400 ring-1 ring-violet-200' : 'border-neutral-200'}`}>
+                                  <div className="p-1 text-neutral-200"><Lock className="w-3.5 h-3.5" /></div>
+                                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-violet-50 text-violet-600 font-mono">
+                                    {meta?.icon ?? '?'}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-neutral-700 truncate">{campo.label}</p>
+                                    <p className="text-[11px] text-neutral-500">{meta?.desc ?? campo.tipo}</p>
+                                  </div>
+                                  {(campo.visible_para_rol && campo.visible_para_rol !== 'todos') && (
+                                    <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shrink-0 flex items-center gap-0.5">
+                                      <Lock className="w-2.5 h-2.5" />
+                                      {campo.visible_para_rol === 'Administrador' ? 'Admin' : campo.visible_para_rol}+
+                                    </span>
+                                  )}
+                                  <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500 border border-violet-200 shrink-0">
+                                    {meta?.badge ?? 'AUTO'}
+                                  </span>
+                                  <button
+                                    onClick={() => isEditing ? closeCampoEditor() : startEditCampo(campo)}
+                                    className={`p-1.5 hover:bg-neutral-100 rounded-lg transition-colors ${isEditing ? 'text-violet-600' : 'text-neutral-400 hover:text-neutral-700'}`}
+                                    title="Configurar visibilidad"
+                                    aria-label="Configurar visibilidad"
+                                  >
+                                    <Settings className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {(sinSeccion.length > 0 || secciones.length === 0) && (
+                        <div className="border border-neutral-200 rounded-xl p-2.5">
+                          <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-2">Sin sección</p>
+                          {contenedor(null, sinSeccion)}
+                        </div>
+                      )}
+
+                      {seccionesResto.map((sec, i) => renderSeccion(sec, i + seccionHeader.length))}
+
+                      <button
+                        onClick={() => { setShowAddSeccion(true); setEditingSeccion(null); closeCampoEditor(); setShowAddField(false); }}
+                        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-xl py-2 text-xs text-neutral-500 hover:border-teal-400 hover:text-teal-600 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Nueva sección
+                      </button>
+                    </div>
+                  );
+                })()}
+
+                <button
+                  onClick={() => { setAddTargetSeccion(null); setShowAddField(!showAddField); closeCampoEditor(); }}
+                  className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-xl py-2.5 text-sm text-neutral-500 hover:border-blue-400 hover:text-accent-ink transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Agregar campo
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Right panel */}
+      {(showAddField || editingCampo || showAddSeccion || editingSeccion) && (
+        <div className="w-80 border-l border-neutral-200 bg-neutral-50 p-4 shrink-0 animate-fade-in overflow-y-auto">
+          {(showAddSeccion || editingSeccion) && (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                  {editingSeccion ? 'Editar sección' : 'Nueva sección'}
+                </p>
+                <button onClick={() => { setShowAddSeccion(false); setEditingSeccion(null); }} className="p-1 hover:bg-neutral-200 rounded">
+                  <X className="w-3.5 h-3.5 text-neutral-500" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Nombre *</label>
+                  <input
+                    type="text"
+                    value={seccionForm.nombre}
+                    onChange={(e) => setSeccionForm({ ...seccionForm, nombre: e.target.value })}
+                    placeholder="Ej: Datos de la póliza"
+                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none"
+                  />
+                </div>
+                {editingSeccion?.sistema_key !== 'header' && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Color de la sección</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={seccionForm.color ?? '#94A3B8'}
+                        onChange={(e) => setSeccionForm({ ...seccionForm, color: e.target.value })}
+                        className="h-7 w-10 rounded border border-neutral-300 cursor-pointer"
+                        title="Color del borde y fondo de la sección"
+                      />
+                      {seccionForm.color && (
+                        <button
+                          type="button"
+                          onClick={() => setSeccionForm({ ...seccionForm, color: null })}
+                          className="text-[11px] text-neutral-500 hover:text-neutral-600 underline"
+                        >
+                          Quitar color
+                        </button>
+                      )}
+                      <span className="text-[11px] text-neutral-500">Tiñe el borde y le da un fondo sutil</span>
+                    </div>
+                  </div>
+                )}
+                {editingSeccion?.sistema_key === 'header' && (() => {
+                  const fondo = seccionForm.fondo ?? {};
+                  const tipo = fondo.tipo ?? 'color';
+                  const setFondo = (patch: Partial<FondoHeader>) =>
+                    setSeccionForm({ ...seccionForm, fondo: { ...fondo, ...patch } });
+                  const vista = estiloHeader(fondo, null);
+                  return (
+                    <div className="space-y-2 border border-soft rounded-lg p-2.5 bg-surface-card">
+                      <label className="block text-xs font-medium text-neutral-600">Fondo del encabezado</label>
+
+                      {/* Vista previa con el mismo helper que usa el trámite real,
+                          para que lo que se ve aquí sea lo que se va a ver allá. */}
+                      <div style={vista.style} className="relative h-16 rounded-lg overflow-hidden border border-neutral-200">
+                        {vista.conVelo && <div className={CLASE_VELO} />}
+                        <div className="relative h-full flex items-center px-3">
+                          <span className="text-xs font-bold" style={{ color: vista.textColor }}>Folio TK0000</span>
+                        </div>
+                      </div>
+
+                      <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[11px] font-medium">
+                        {(['color', 'degradado', 'imagen'] as const).map((t, i) => (
+                          <button
+                            key={t}
+                            onClick={() => setFondo({ tipo: t })}
+                            className={`flex-1 py-1 capitalize transition-colors ${i > 0 ? 'border-l border-neutral-200' : ''} ${tipo === t ? 'bg-blue-500 text-white' : 'bg-white text-neutral-500 hover:bg-blue-50'}`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+
+                      {tipo !== 'imagen' && (
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={fondo.color ?? '#6B7280'} onChange={(e) => setFondo({ color: e.target.value })} className="h-7 w-10 rounded border border-neutral-300 cursor-pointer" title="Color inicial" />
+                          {tipo === 'degradado' && (
+                            <>
+                              <input type="color" value={fondo.color2 ?? '#111827'} onChange={(e) => setFondo({ color2: e.target.value })} className="h-7 w-10 rounded border border-neutral-300 cursor-pointer" title="Color final" />
+                              <input type="range" min={0} max={360} step={15} value={fondo.angulo ?? 135} onChange={(e) => setFondo({ angulo: Number(e.target.value) })} className="flex-1" title="Ángulo" />
+                              <span className="text-[11px] text-neutral-500 w-8 text-right">{fondo.angulo ?? 135}°</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {tipo === 'imagen' && (
+                        <div className="space-y-1.5">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              // Se limpia el input para que volver a elegir el
+                              // mismo archivo vuelva a abrir el encuadre.
+                              e.target.value = '';
+                              if (file) setImagenPorRecortar(file);
+                            }}
+                            className="w-full text-[11px] file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-blue-50 file:text-blue-600 file:text-[11px]"
+                          />
+                          <p className="text-[11px] text-neutral-500">
+                            Medida recomendada: <strong>{MEDIDA_SUGERIDA}</strong> (franja ancha, 4:1). Si la imagen
+                            es más grande o tiene otra proporción, se encuadra y se comprime sola al subirla.
+                          </p>
+                          <p className="text-[11px] text-neutral-500">
+                            Se aplica un velo oscuro encima para que el título y el folio siempre se lean.
+                          </p>
+                          {imagenPorRecortar && (
+                            <RecorteHeaderModal
+                              file={imagenPorRecortar}
+                              onCancel={() => setImagenPorRecortar(null)}
+                              onListo={async (blob) => {
+                                setImagenPorRecortar(null);
+                                const ruta = `${tipoId}/${Date.now()}-header.jpg`;
+                                const { error } = await supabase.storage.from('tramite-headers')
+                                  .upload(ruta, blob, { upsert: true, contentType: 'image/jpeg' });
+                                if (error) { showToast('No se pudo subir la imagen: ' + error.message, 'error'); return; }
+                                const { data } = supabase.storage.from('tramite-headers').getPublicUrl(ruta);
+                                setFondo({ imagen_url: data.publicUrl });
+                              }}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Descripción</label>
+                  <textarea
+                    value={seccionForm.descripcion}
+                    onChange={(e) => setSeccionForm({ ...seccionForm, descripcion: e.target.value })}
+                    rows={2}
+                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none resize-none"
+                  />
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={seccionForm.opcional}
+                    onChange={(e) => setSeccionForm({ ...seccionForm, opcional: e.target.checked })}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-neutral-700">Sección opcional (aparece colapsada)</span>
+                </label>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Se desbloquea cuando…</label>
+                  <select
+                    value={seccionModo}
+                    onChange={(e) => {
+                      const modo = e.target.value as typeof seccionModo;
+                      setSeccionModo(modo);
+                      setSeccionForm({
+                        ...seccionForm,
+                        depende_de_seccion_id: modo === 'seccion' ? seccionForm.depende_de_seccion_id : null,
+                        condicion_campo_id: modo === 'campo' ? seccionForm.condicion_campo_id : null,
+                      });
+                    }}
+                    className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                  >
+                    <option value="ninguno">Siempre visible</option>
+                    <option value="seccion">Otra sección se completa</option>
+                    <option value="campo">Un campo tiene cierto valor (estilo Google Forms)</option>
+                  </select>
+                </div>
+
+                {seccionModo === 'seccion' && (
+                  <div>
+                    <select
+                      value={seccionForm.depende_de_seccion_id ?? ''}
+                      onChange={(e) => setSeccionForm({ ...seccionForm, depende_de_seccion_id: e.target.value || null })}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                    >
+                      <option value="">Seleccionar sección…</option>
+                      {secciones
+                        .filter(s => s.id !== editingSeccion?.id && s.depende_de_seccion_id !== editingSeccion?.id)
+                        .map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                    </select>
+                    <p className="text-[11px] text-neutral-500 mt-1">Se atenúa hasta que se completen los campos requeridos de la sección elegida.</p>
+                  </div>
+                )}
+
+                {seccionModo === 'campo' && (() => {
+                  const camposConOpciones = campos.filter(c => c.id !== undefined);
+                  const fuenteCampo = campos.find(c => c.id === seccionForm.condicion_campo_id);
+                  const fuenteOpciones: { label: string; slug: string }[] = opcionesDeCondicion(fuenteCampo);
+                  return (
+                    <div className="space-y-2 pl-3 border-l-2 border-amber-300">
+                      <div>
+                        <label className="block text-[11px] text-neutral-500 mb-0.5">Si el campo…</label>
+                        <select
+                          value={seccionForm.condicion_campo_id ?? ''}
+                          onChange={(e) => setSeccionForm({ ...seccionForm, condicion_campo_id: e.target.value || null })}
+                          className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                        >
+                          <option value="">Selecciona campo…</option>
+                          {camposConOpciones.map(c => (
+                            <option key={c.id} value={c.id}>{c.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <select
+                        value={seccionForm.condicion_operador}
+                        onChange={(e) => setSeccionForm({ ...seccionForm, condicion_operador: e.target.value as typeof seccionForm.condicion_operador })}
+                        className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                      >
+                        <option value="igual_a">es igual a</option>
+                        <option value="distinto_a">es distinto de</option>
+                        <option value="tiene_valor">tiene algún valor</option>
+                      </select>
+                      {seccionForm.condicion_operador !== 'tiene_valor' && (
+                        fuenteOpciones.length > 0 ? (
+                          <select
+                            value={seccionForm.condicion_valor}
+                            onChange={(e) => setSeccionForm({ ...seccionForm, condicion_valor: e.target.value })}
+                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg bg-surface-card"
+                          >
+                            <option value="">Selecciona opción…</option>
+                            {fuenteOpciones.map(opt => (
+                              <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={seccionForm.condicion_valor}
+                            onChange={(e) => setSeccionForm({ ...seccionForm, condicion_valor: e.target.value })}
+                            placeholder="valor esperado…"
+                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                          />
+                        )
+                      )}
+                      <p className="text-[11px] text-neutral-500">La sección se atenúa hasta que la respuesta cumpla esta condición.</p>
+                    </div>
+                  );
+                })()}
+
+                <button
+                  onClick={() => handleSaveSeccion(seccionForm)}
+                  disabled={!seccionForm.nombre.trim()}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-accent text-accent-foreground rounded-lg text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Guardar sección
+                </button>
+              </div>
+            </>
+          )}
+
+          {showAddField && !editingCampo && (
+            <>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Tipo de campo</p>
+                <button onClick={() => { setShowAddField(false); setAddTargetSeccion(null); }} className="p-1 hover:bg-neutral-200 rounded">
+                  <X className="w-3.5 h-3.5 text-neutral-500" />
+                </button>
+              </div>
+              {/* Dónde va a caer el campo nuevo — el menú se puede abrir desde el botón
+                  general o desde el pie de una sección, y no se distinguirían. */}
+              <p className="text-[11px] text-neutral-500 mb-3 flex items-center gap-1">
+                <Layers className="w-3 h-3 shrink-0" />
+                {addTargetSeccion
+                  ? `Se agregará a "${secciones.find(s => s.id === addTargetSeccion)?.nombre ?? '—'}"`
+                  : 'Se agregará sin sección'}
+              </p>
+              <div className="space-y-3">
+                {/* Campos sistema configurables disponibles (no agregados aún) */}
+                {availableSistemaKeys.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-bold text-violet-400 uppercase tracking-wider mb-1 px-0.5">Sistema</p>
+                    <div className="space-y-1">
+                      {availableSistemaKeys.map(sk => {
+                        const meta = SISTEMA_TIPO_META[sk as CampoTipo];
+                        const defaults = SISTEMA_CAMPO_DEFAULTS[sk];
+                        return (
+                          <button
+                            key={sk}
+                            onClick={() => handleAddSistemaCampo(sk)}
+                            className="w-full flex items-center gap-2.5 p-2 bg-violet-50 border border-violet-200 rounded-xl hover:border-violet-400 hover:bg-violet-100 transition-colors text-left"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center text-xs font-bold text-violet-600 shrink-0 font-mono">
+                              {meta?.icon ?? 'S'}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-violet-800">{defaults?.label ?? sk}</p>
+                              <p className="text-[11px] text-violet-500 leading-tight">{meta?.desc}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Campos personalizados */}
+                {Object.entries(
+                  CAMPO_TIPOS.reduce<Record<string, typeof CAMPO_TIPOS>>((acc, ct) => {
+                    (acc[ct.grupo] = acc[ct.grupo] || []).push(ct);
+                    return acc;
+                  }, {})
+                ).map(([grupo, tipos]) => (
+                  <div key={grupo}>
+                    <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-1 px-0.5">{grupo}</p>
+                    <div className="space-y-1">
+                      {tipos.map(({ tipo, label, icon, desc }) => (
+                        <button
+                          key={tipo}
+                          onClick={() => handleAddCampo(tipo, addTargetSeccion)}
+                          className="w-full flex items-center gap-2.5 p-2 bg-surface-card border border-soft rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-xs font-bold text-accent-ink shrink-0 font-mono">
+                            {icon}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-neutral-800">{label}</p>
+                            <p className="text-[11px] text-neutral-500 leading-tight">{desc}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {editingCampo && (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                  {editingCampo.is_sistema ? 'Campo sistema' : 'Configurar campo'}
+                </p>
+                <button onClick={() => closeCampoEditor()} className="p-1 hover:bg-neutral-200 rounded">
+                  <X className="w-3.5 h-3.5 text-neutral-500" />
+                </button>
+              </div>
+
+              {editingCampo.is_sistema && LOCKED_SISTEMA_KEYS.includes(editingCampo.sistema_key ?? '') && (
+                <div className="mb-3 text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 leading-relaxed">
+                  {SISTEMA_TIPO_META[editingCampo.tipo as CampoTipo]?.desc ?? 'Campo del sistema fijo, no configurable.'}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {/* Sección — aplica a cualquier tipo de campo, incluidos sistema/estatus */}
+                {secciones.length > 0 && (() => {
+                  // Un campo que pertenece a una sección de sistema no sale de ahí.
+                  // Se muestra cuál es, pero sin dejar cambiarla.
+                  const seccionDelCampo = secciones.find(s => s.id === editCampoSeccionId);
+                  const fijaPorSistema = !!seccionDelCampo?.sistema_key;
+                  return (
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1 flex items-center gap-1">
+                        <Layers className="w-3 h-3" /> Sección
+                      </label>
+                      {fijaPorSistema ? (
+                        <>
+                          <div className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg bg-neutral-50 text-neutral-500 flex items-center gap-1.5">
+                            <Lock className="w-3 h-3 shrink-0" />
+                            {seccionDelCampo!.nombre}
+                          </div>
+                          <p className="text-[11px] text-neutral-500 mt-1">
+                            Este campo pertenece a una sección del sistema. Puedes reordenarlo dentro de ella, pero no sacarlo.
+                          </p>
+                        </>
+                      ) : (
+                        <select
+                          value={editCampoSeccionId ?? ''}
+                          onChange={(e) => setEditCampoSeccionId(e.target.value || null)}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          <option value="">Sin sección</option>
+                          {/* Las de sistema no se ofrecen: sus campos son fijos */}
+                          {secciones.filter(s => !s.sistema_key).map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Etiqueta + ayuda + requerido — solo para no-locked y no-estatus */}
+                {(!editingCampo.is_sistema || !LOCKED_SISTEMA_KEYS.includes(editingCampo.sistema_key ?? '')) && editingCampo.tipo !== 'estatus' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Etiqueta *</label>
+                      <input
+                        type="text"
+                        value={editCampoLabel}
+                        onChange={(e) => setEditCampoLabel(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none"
+                      />
+                    </div>
+
+                    {!editingCampo.is_sistema && (
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Texto de ayuda</label>
+                        <input
+                          type="text"
+                          value={editCampoAyuda}
+                          onChange={(e) => setEditCampoAyuda(e.target.value)}
+                          placeholder="Ej: incluye prefijo 52"
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none"
+                        />
+                      </div>
+                    )}
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editCampoReq}
+                        onChange={(e) => setEditCampoReq(e.target.checked)}
+                        className="rounded"
+                      />
+                      <span className="text-sm text-neutral-700">Campo requerido</span>
+                    </label>
+
+                    {/* Con qué prioridad nace el trámite. Antes era 'Baja' fija en
+                        el código, igual para todos los tipos. */}
+                    {editingCampo.sistema_key === 'prioridad' && (
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Valor por defecto</label>
+                        <select
+                          value={editCampoConfig.default ?? 'Baja'}
+                          onChange={(e) => setEditCampoConfig({ ...editCampoConfig, default: e.target.value })}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          <option value="Baja">Baja</option>
+                          <option value="Media">Media</option>
+                          <option value="Alta">Alta</option>
+                        </select>
+                        <p className="text-[11px] text-neutral-500 mt-1">Con esta prioridad se abre el formulario; quien lo llena puede cambiarla.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Acceso por rol — visible para TODOS los tipos (incluyendo locked y estatus) */}
+                {editingCampo.tipo !== 'estatus' && (
+                  <div className="pt-2 border-t border-neutral-100 space-y-2">
+                    <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Acceso por rol
+                    </p>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Visible para</label>
+                      <select
+                        value={editCampoVisiblePara}
+                        onChange={(e) => setEditCampoVisiblePara(e.target.value as RolVisibilidad)}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                      >
+                        {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Editable para</label>
+                      <select
+                        value={editCampoEditablePara}
+                        onChange={(e) => setEditCampoEditablePara(e.target.value as RolVisibilidad)}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                      >
+                        {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {(editingCampo.tipo === 'texto_corto' || editingCampo.tipo === 'texto_largo') && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Longitud máxima</label>
+                    <input
+                      type="number"
+                      value={editCampoConfig.max_length ?? (editingCampo.tipo === 'texto_corto' ? 255 : 2000)}
+                      onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max_length: Number(e.target.value) })}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                    />
+                  </div>
+                )}
+
+                {editingCampo.tipo === 'numerico' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Formato</label>
+                      <select
+                        value={editCampoConfig.formato || (editCampoConfig.es_entero ? 'entero' : 'decimal')}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, formato: e.target.value, es_entero: e.target.value === 'entero' })}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                      >
+                        <option value="decimal">Decimal</option>
+                        <option value="entero">Entero</option>
+                        <option value="moneda">Moneda (MXN $)</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Mínimo</label>
+                        <input type="number"
+                          value={editCampoConfig.min ?? ''}
+                          onChange={(e) => setEditCampoConfig({ ...editCampoConfig, min: e.target.value !== '' ? Number(e.target.value) : undefined })}
+                          className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Máximo</label>
+                        <input type="number"
+                          value={editCampoConfig.max ?? ''}
+                          onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max: e.target.value !== '' ? Number(e.target.value) : undefined })}
+                          className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {editingCampo.tipo === 'adjunto' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1.5">Tipos de archivo</label>
+                      <div className="space-y-1">
+                        {MIME_OPTIONS.map(opt => (
+                          <label key={opt.value} className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={(editCampoConfig.tipos_mime || []).includes(opt.value)}
+                              onChange={(e) => {
+                                const current: string[] = editCampoConfig.tipos_mime || [];
+                                setEditCampoConfig({
+                                  ...editCampoConfig,
+                                  tipos_mime: e.target.checked ? [...current, opt.value] : current.filter(m => m !== opt.value),
+                                });
+                              }}
+                              className="rounded"
+                            />
+                            <span className="text-sm text-neutral-700">{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Máx. archivos</label>
+                        <input type="number" min="1"
+                          value={editCampoConfig.max_archivos || 1}
+                          onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max_archivos: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Máx. MB</label>
+                        <input type="number" min="1"
+                          value={editCampoConfig.max_mb || 10}
+                          onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max_mb: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1.5">Categorías de archivo</label>
+                      {((editCampoConfig.tipos_config || []) as { categoria_id: string; requerido: boolean; dispara_extraccion: boolean }[]).map((tc, i) => (
+                        <div key={i} className="flex items-center gap-1.5 mb-2 p-2 bg-neutral-50 rounded-lg border border-neutral-200">
+                          <select
+                            value={tc.categoria_id}
+                            onChange={(e) => {
+                              const list = [...(editCampoConfig.tipos_config || [])];
+                              list[i] = { ...list[i], categoria_id: e.target.value };
+                              setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                            }}
+                            className="flex-1 min-w-0 px-2 py-1 text-xs border border-neutral-300 rounded bg-surface-card"
+                          >
+                            <option value="">— Elegir —</option>
+                            {adjuntoCategorias.map(cat => <option key={cat.id} value={cat.id}>{cat.nombre}</option>)}
+                          </select>
+                          <label className="flex items-center gap-1 text-[11px] text-neutral-600 cursor-pointer shrink-0" title="Obligatorio antes de avanzar estatus">
+                            <input
+                              type="checkbox"
+                              checked={tc.requerido}
+                              onChange={(e) => {
+                                const list = [...(editCampoConfig.tipos_config || [])];
+                                list[i] = { ...list[i], requerido: e.target.checked };
+                                setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                              }}
+                              className="rounded"
+                            />
+                            Req.
+                          </label>
+                          <label className="flex items-center gap-1 text-[11px] text-neutral-600 cursor-pointer shrink-0" title="Dispara extracción de datos del PDF">
+                            <input
+                              type="checkbox"
+                              checked={tc.dispara_extraccion}
+                              onChange={(e) => {
+                                const list = [...(editCampoConfig.tipos_config || [])];
+                                list[i] = { ...list[i], dispara_extraccion: e.target.checked };
+                                setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                              }}
+                              className="rounded"
+                            />
+                            PDF
+                          </label>
+                          <button
+                            onClick={() => {
+                              const list = (editCampoConfig.tipos_config || []).filter((_: any, j: number) => j !== i);
+                              setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                            }}
+                            className="p-0.5 hover:bg-red-50 rounded text-neutral-500 hover:text-red-500 shrink-0"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          const list = [...(editCampoConfig.tipos_config || []), { categoria_id: '', requerido: false, dispara_extraccion: false }];
+                          setEditCampoConfig({ ...editCampoConfig, tipos_config: list });
+                        }}
+                        className="flex items-center gap-1 text-xs text-accent-ink hover:text-accent-ink mt-0.5"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Agregar tipo
+                      </button>
+                      <p className="text-[11px] text-neutral-500 mt-1.5">
+                        <span className="font-medium">Req.</span> = obligatorio antes de avanzar estatus ·{' '}
+                        <span className="font-medium">PDF</span> = dispara extracción de datos
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {editingCampo.tipo === 'estatus' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Nombre del campo</label>
+                      <input
+                        type="text"
+                        value={editCampoLabel}
+                        onChange={(e) => setEditCampoLabel(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-accent/40 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1.5">Opciones de estatus</label>
+                    {(editCampoConfig.opciones || []).map((opt: { label: string; slug: string; clasificacion?: string | null }, i: number) => (
+                      <div key={i} className="mb-2">
+                        <div className="flex gap-1 items-center mb-0.5">
+                          {/* El orden de aquí es el que se ve al elegir estatus en
+                              el trámite: la lista se guarda como arreglo y nadie
+                              la reordena después. */}
+                          <div className="flex flex-col shrink-0">
+                            <button
+                              onClick={() => moverOpcionEstatus(i, -1)}
+                              disabled={i === 0}
+                              className="p-0.5 text-neutral-500 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                              title="Subir" aria-label="Subir opción"
+                            >
+                              <ChevronUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => moverOpcionEstatus(i, 1)}
+                              disabled={i === (editCampoConfig.opciones || []).length - 1}
+                              className="p-0.5 text-neutral-500 hover:text-neutral-700 disabled:opacity-25 disabled:cursor-not-allowed"
+                              title="Bajar" aria-label="Bajar opción"
+                            >
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            value={opt.label}
+                            onChange={(e) => {
+                              const opts = [...(editCampoConfig.opciones || [])];
+                              opts[i] = { ...opts[i], label: e.target.value, slug: slugify(e.target.value) || opts[i].slug };
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-accent/40 focus:outline-none"
+                          />
+                          <button
+                            onClick={() => {
+                              const opts = (editCampoConfig.opciones || []).filter((_: any, j: number) => j !== i);
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className="p-1 hover:bg-red-50 rounded text-neutral-500 hover:text-red-500 shrink-0"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <div className="flex rounded-lg overflow-hidden border border-neutral-200 text-[11px] font-medium">
+                          <button
+                            onClick={() => {
+                              const opts = [...(editCampoConfig.opciones || [])];
+                              opts[i] = { ...opts[i], clasificacion: opt.clasificacion === 'inicio' ? null : 'inicio' };
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className={`flex-1 py-1 transition-colors ${opt.clasificacion === 'inicio' ? 'bg-green-500 text-white' : 'bg-white text-neutral-400 hover:bg-green-50 hover:text-green-600'}`}
+                          >Inicio</button>
+                          <button
+                            onClick={() => {
+                              const opts = [...(editCampoConfig.opciones || [])];
+                              opts[i] = { ...opts[i], clasificacion: opt.clasificacion === 'terminacion' ? null : 'terminacion' };
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className={`flex-1 py-1 border-l border-neutral-200 transition-colors ${opt.clasificacion === 'terminacion' ? 'bg-red-500 text-white' : 'bg-white text-neutral-400 hover:bg-red-50 hover:text-red-600'}`}
+                          >Fin</button>
+                          <button
+                            onClick={() => {
+                              const opts = [...(editCampoConfig.opciones || [])];
+                              opts[i] = { ...opts[i], clasificacion: opt.clasificacion === 'en_espera' ? null : 'en_espera' };
+                              setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                            }}
+                            className={`flex-1 py-1 border-l border-neutral-200 transition-colors ${opt.clasificacion === 'en_espera' ? 'bg-amber-500 text-white' : 'bg-white text-neutral-400 hover:bg-amber-50 hover:text-amber-600'}`}
+                          >En espera</button>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const opts = [...(editCampoConfig.opciones || []), { label: 'Nueva opción', slug: 'nueva_opcion', clasificacion: null }];
+                        setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                      }}
+                      className="mt-1 w-full text-xs py-1 border border-dashed border-neutral-300 rounded-lg hover:border-blue-400 hover:text-accent-ink text-neutral-500 transition-colors"
+                    >+ Agregar opción</button>
+                    </div>
+                    {onGoToTriggers && (
+                      <button
+                        onClick={onGoToTriggers}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-accent-ink border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        Configurar triggers de estatus
+                      </button>
+                    )}
+                    {/* Acceso por rol para el campo estatus */}
+                    <div className="pt-2 border-t border-neutral-100 space-y-2">
+                      <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Acceso por rol
+                      </p>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Visible para</label>
+                        <select
+                          value={editCampoVisiblePara}
+                          onChange={(e) => setEditCampoVisiblePara(e.target.value as RolVisibilidad)}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Editable para</label>
+                        <select
+                          value={editCampoEditablePara}
+                          onChange={(e) => setEditCampoEditablePara(e.target.value as RolVisibilidad)}
+                          className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                        >
+                          {ROL_VISIBILIDAD_OPCIONES.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {(editingCampo.tipo === 'dropdown' || editingCampo.tipo === 'seleccion_multiple') && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1.5">Opciones</label>
+                    {(editCampoConfig.opciones || []).map((opt: { label: string; slug: string }, i: number) => (
+                      <div key={i} className="flex gap-1 mb-1">
+                        <input
+                          type="text"
+                          value={opt.label}
+                          onChange={(e) => {
+                            const opts = [...(editCampoConfig.opciones || [])];
+                            opts[i] = { label: e.target.value, slug: slugify(e.target.value) || opts[i].slug };
+                            setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                          }}
+                          className="flex-1 px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-1 focus:ring-accent/40 focus:outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            const opts = (editCampoConfig.opciones || []).filter((_: any, j: number) => j !== i);
+                            setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                          }}
+                          className="p-1 hover:bg-red-50 rounded text-neutral-500 hover:text-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const opts = [...(editCampoConfig.opciones || []), { label: 'Nueva opción', slug: 'nueva_opcion' }];
+                        setEditCampoConfig({ ...editCampoConfig, opciones: opts });
+                      }}
+                      className="mt-1 w-full text-xs py-1 border border-dashed border-neutral-300 rounded-lg hover:border-blue-400 hover:text-accent-ink text-neutral-500 transition-colors"
+                    >+ Agregar opción</button>
+                  </div>
+                )}
+
+                {editingCampo.tipo === 'fecha' && (
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Fecha mínima</label>
+                      <input type="date"
+                        value={editCampoConfig.min_fecha || ''}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, min_fecha: e.target.value })}
+                        className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Fecha máxima</label>
+                      <input type="date"
+                        value={editCampoConfig.max_fecha || ''}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max_fecha: e.target.value })}
+                        className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg" />
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Configuración de tipos nuevos ── */}
+
+                {editingCampo.tipo === 'rfc' && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Tipo de persona</label>
+                    <select
+                      value={editCampoConfig.tipo_persona || 'ambos'}
+                      onChange={(e) => setEditCampoConfig({ ...editCampoConfig, tipo_persona: e.target.value })}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                    >
+                      <option value="ambos">Física y Moral</option>
+                      <option value="fisica">Solo Persona Física (13 chars)</option>
+                      <option value="moral">Solo Persona Moral (12 chars)</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* A qué campos del mismo formulario van los datos que se sacan del
+                    RFC o del CURP. Se elige aquí en vez de adivinarlo por tipo: si hay
+                    dos campos de fecha, adivinar llenaría el equivocado sin avisar. */}
+                {(editingCampo.tipo === 'rfc' || editingCampo.tipo === 'curp' || editingCampo.tipo === 'codigo_postal') && (() => {
+                  const extraibles = DATOS_EXTRAIBLES[editingCampo.tipo as keyof typeof DATOS_EXTRAIBLES];
+                  const mapeo = (editCampoConfig.mapeo_extraccion ?? {}) as Record<string, string>;
+                  const destinos = campos.filter(c => c.id !== editingCampo.id && !c.is_sistema);
+                  return (
+                    <div className="border border-soft rounded-lg p-2.5 bg-surface-card space-y-2">
+                      <label className="block text-xs font-medium text-neutral-600">
+                        Al capturar el {editingCampo.tipo === 'rfc' ? 'RFC' : editingCampo.tipo === 'curp' ? 'CURP' : 'código postal'}, llenar
+                      </label>
+                      {destinos.length === 0 ? (
+                        <p className="text-[11px] text-neutral-500 italic">
+                          Agrega otros campos al formulario para poder mapearlos.
+                        </p>
+                      ) : (
+                        extraibles.map(d => (
+                          <div key={d.clave} className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-neutral-500 w-28 shrink-0 leading-tight">{d.label}</span>
+                            <span className="text-neutral-300 text-[11px]">→</span>
+                            <select
+                              value={mapeo[d.clave] ?? ''}
+                              onChange={(e) => {
+                                const siguiente = { ...mapeo };
+                                if (e.target.value) siguiente[d.clave] = e.target.value;
+                                else delete siguiente[d.clave];
+                                setEditCampoConfig({ ...editCampoConfig, mapeo_extraccion: siguiente });
+                              }}
+                              className="flex-1 min-w-0 px-2 py-1 text-[11px] border border-neutral-300 rounded-lg bg-surface-card"
+                            >
+                              <option value="">— No llenar nada</option>
+                              {destinos.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                            </select>
+                          </div>
+                        ))
+                      )}
+                      <p className="text-[11px] text-neutral-500">
+                        Se llenan solos al escribir, y solo si el campo destino está vacío.
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                {editingCampo.tipo === 'telefono' && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Formato</label>
+                    <select
+                      value={editCampoConfig.formato || 'mx'}
+                      onChange={(e) => setEditCampoConfig({ ...editCampoConfig, formato: e.target.value })}
+                      className="w-full px-2.5 py-1.5 text-sm border border-neutral-300 rounded-lg"
+                    >
+                      <option value="mx">México — 10 dígitos</option>
+                      <option value="internacional">Internacional (+52...)</option>
+                    </select>
+                  </div>
+                )}
+
+                {editingCampo.tipo === 'porcentaje' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Mínimo</label>
+                      <input type="number"
+                        value={editCampoConfig.min ?? 0}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, min: Number(e.target.value) })}
+                        className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Máximo</label>
+                      <input type="number"
+                        value={editCampoConfig.max ?? 100}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, max: Number(e.target.value) })}
+                        className="w-full px-2 py-1.5 text-sm border border-neutral-300 rounded-lg" />
+                    </div>
+                  </div>
+                )}
+
+                {editingCampo.tipo === 'reporte_protegido' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Instrucciones para el usuario</label>
+                      <textarea
+                        value={editCampoConfig.instrucciones || ''}
+                        onChange={e => setEditCampoConfig({ ...editCampoConfig, instrucciones: e.target.value })}
+                        rows={3}
+                        placeholder="Describe qué debe escribir el usuario..."
+                        className="w-full px-2 py-1.5 text-xs border border-neutral-300 rounded-lg resize-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Palabras mínimas</label>
+                        <input type="number" min={10} max={5000}
+                          value={editCampoConfig.min_palabras ?? 100}
+                          onChange={e => setEditCampoConfig({ ...editCampoConfig, min_palabras: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 text-xs border border-neutral-300 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-600 mb-1">Tiempo mínimo (seg)</label>
+                        <input type="number" min={30} max={7200}
+                          value={editCampoConfig.tiempo_minimo_segundos ?? 120}
+                          onChange={e => setEditCampoConfig({ ...editCampoConfig, tiempo_minimo_segundos: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 text-xs border border-neutral-300 rounded-lg" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Score mínimo (0–1)</label>
+                      <input type="number" min={0} max={1} step={0.05}
+                        value={editCampoConfig.score_minimo ?? 0.7}
+                        onChange={e => setEditCampoConfig({ ...editCampoConfig, score_minimo: Number(e.target.value) })}
+                        className="w-full px-2 py-1.5 text-xs border border-neutral-300 rounded-lg" />
+                      <p className="text-xs text-neutral-500 mt-0.5">Score de originalidad. 0.7 = 70% original requerido.</p>
+                    </div>
+                  </div>
+                )}
+
+                {(['aseguradora', 'codigo_postal', 'email', 'curp'] as const).some(t => t === editingCampo.tipo) && (
+                  <div className="text-xs text-neutral-500 bg-neutral-100 rounded-lg px-3 py-2 leading-relaxed">
+                    {editingCampo.tipo === 'aseguradora' && 'Lee el catálogo de aseguradoras activas automáticamente.'}
+                    {editingCampo.tipo === 'codigo_postal' && 'Valida contra el catálogo de CP en Base de Datos Maestros.'}
+                    {editingCampo.tipo === 'email' && 'Valida formato de correo electrónico mientras el usuario escribe.'}
+                    {editingCampo.tipo === 'curp' && 'Valida formato CURP (18 caracteres, patrón oficial).'}
+                  </div>
+                )}
+
+                {/* ── Visibilidad condicional ── */}
+                {!editingCampo.is_sistema && editingCampo.tipo !== 'estatus' && (
+                  <div className="pt-3 border-t border-neutral-200">
+                    <label className="flex items-center gap-2 cursor-pointer select-none mb-2">
+                      <input
+                        type="checkbox"
+                        checked={editCampoConfig.condicion_activa || false}
+                        onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_activa: e.target.checked })}
+                        className="rounded"
+                      />
+                      <span className="text-xs font-medium text-neutral-600">Mostrar condicionalmente</span>
+                    </label>
+                    {editCampoConfig.condicion_activa && (
+                      <div className="space-y-2 pl-3 border-l-2 border-amber-300">
+                        <div>
+                          <label className="block text-[11px] text-neutral-500 mb-0.5">Si el campo...</label>
+                          <select
+                            value={editCampoConfig.campo_fuente || ''}
+                            onChange={(e) => setEditCampoConfig({ ...editCampoConfig, campo_fuente: e.target.value })}
+                            className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                          >
+                            <option value="">Selecciona campo...</option>
+                            {campos.filter(c => c.id !== editingCampo.id).map(c => (
+                              <option key={c.id} value={c.key}>{c.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <select
+                          value={editCampoConfig.condicion_operador || 'igual_a'}
+                          onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_operador: e.target.value })}
+                          className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                        >
+                          <option value="igual_a">es igual a</option>
+                          <option value="distinto_a">es distinto de</option>
+                          <option value="tiene_valor">tiene algún valor</option>
+                        </select>
+                        {(editCampoConfig.condicion_operador || 'igual_a') !== 'tiene_valor' && (() => {
+                          const fuenteCampo = campos.find(c => c.key === editCampoConfig.campo_fuente);
+                          const fuenteOpciones: { label: string; slug: string }[] = opcionesDeCondicion(fuenteCampo);
+                          return fuenteOpciones.length > 0 ? (
+                            <select
+                              value={editCampoConfig.condicion_valor || ''}
+                              onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_valor: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg bg-surface-card"
+                            >
+                              <option value="">Selecciona opción...</option>
+                              {fuenteOpciones.map(opt => (
+                                <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={editCampoConfig.condicion_valor || ''}
+                              onChange={(e) => setEditCampoConfig({ ...editCampoConfig, condicion_valor: e.target.value })}
+                              placeholder="valor esperado..."
+                              className="w-full px-2 py-1 text-xs border border-neutral-300 rounded-lg"
+                            />
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <p className="flex items-center justify-center gap-1.5 text-[11px] text-neutral-500 pt-1">
+                  <Save className="w-3 h-3" />
+                  {savingCampo ? 'Guardando...' : 'Los cambios se guardan automáticamente'}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

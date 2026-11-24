@@ -1,0 +1,581 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Package, Eye, ListFilter as Filter, Download, Search, Calendar, Trash2, ChartBar as BarChart3, ClipboardList } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { obtenerTodosPedidos, eliminarPedido, tieneAccesoEquipoStore, esLiderDeEquipoConAccesoStore } from '../lib/storeUtils';
+import type { StorePedido } from '../lib/storeTypes';
+import { importeCargos } from '../lib/storePedidoTotal';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
+import { tienePermisoAdminEnModulo, MODULOS } from '../lib/permisosUtils';
+
+export default function StorePedidos() {
+  const { usuario } = useAuth();
+  const navigate = useNavigate();
+  const [pedidos, setPedidos] = useState<StorePedido[]>([]);
+  const [pedidosFiltrados, setPedidosFiltrados] = useState<StorePedido[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filtroEstatus, setFiltroEstatus] = useState<string>('');
+  const [busqueda, setBusqueda] = useState('');
+  const [soloPublicosSinAsociar, setSoloPublicosSinAsociar] = useState(false);
+  const [pedidoAEliminar, setPedidoAEliminar] = useState<StorePedido | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [puedeVerReporte, setPuedeVerReporte] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      if (!usuario) return;
+      const esAdminOModulo = tienePermisoAdminEnModulo(usuario, MODULOS.STORE);
+      const tieneAcceso = esAdminOModulo || await tieneAccesoEquipoStore(usuario.id);
+      if (!tieneAcceso) { navigate('/store'); return; }
+      setPuedeVerReporte(esAdminOModulo || await esLiderDeEquipoConAccesoStore(usuario.id));
+      cargarPedidos();
+    })();
+  }, [usuario]);
+
+  useEffect(() => {
+    aplicarFiltros();
+  }, [pedidos, filtroEstatus, busqueda, soloPublicosSinAsociar]);
+
+  const cargarPedidos = async () => {
+    try {
+      setLoading(true);
+      console.log('🔍 Administrador cargando TODOS los pedidos del sistema...');
+      const data = await obtenerTodosPedidos();
+      console.log(`✅ Pedidos cargados: ${data.length} pedidos de ${new Set(data.map(p => p.usuario_id)).size} usuarios diferentes`);
+      setPedidos(data);
+    } catch (error) {
+      console.error('❌ Error cargando pedidos:', error);
+      alert('Error al cargar pedidos. Verifica la consola para más detalles.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const aplicarFiltros = () => {
+    let resultado = [...pedidos];
+
+    if (filtroEstatus) {
+      resultado = resultado.filter(p => p.estatus_id === filtroEstatus);
+    }
+
+    if (soloPublicosSinAsociar) {
+      resultado = resultado.filter(p => p.es_publico && !p.usuario_id);
+    }
+
+    if (busqueda) {
+      const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const q = norm(busqueda);
+      resultado = resultado.filter(p =>
+        norm(p.id).includes(q) ||
+        norm(p.folio_oc ?? '').includes(q) ||
+        norm(p.usuario?.nombre ?? '').includes(q) ||
+        norm(p.invitado_email ?? '').includes(q)
+      );
+    }
+
+    setPedidosFiltrados(resultado);
+  };
+
+  const handleEliminarPedido = async () => {
+    if (!pedidoAEliminar) return;
+
+    try {
+      setEliminando(true);
+      await eliminarPedido(pedidoAEliminar.id);
+      await cargarPedidos();
+      setPedidoAEliminar(null);
+    } catch (error) {
+      console.error('Error al eliminar pedido:', error);
+      alert('Error al eliminar el pedido. Por favor intenta de nuevo.');
+    } finally {
+      setEliminando(false);
+    }
+  };
+
+  const getEstatusColor = (estatusNombre: string) => {
+    const colors: Record<string, string> = {
+      'Pendiente': 'bg-yellow-100 text-yellow-800',
+      'Procesando': 'bg-primary-100 text-primary-800',
+      'Enviado': 'bg-purple-100 text-purple-800',
+      'Entregado': 'bg-green-100 text-green-800',
+      'Cancelado': 'bg-red-100 text-red-800'
+    };
+    return colors[estatusNombre] || 'bg-neutral-100 dark:bg-white/10 text-neutral-800 dark:text-white/80';
+  };
+
+  const estatusUnicos = Array.from(new Set(pedidos.map(p => p.estatus?.nombre).filter(Boolean)));
+
+  const calcularEstadisticas = () => {
+    const total = pedidosFiltrados.length;
+    const pendientes = pedidosFiltrados.filter(p => p.estatus?.nombre === 'Pendiente').length;
+    const procesando = pedidosFiltrados.filter(p => p.estatus?.nombre === 'Procesando').length;
+    const entregados = pedidosFiltrados.filter(p => p.estatus?.nombre === 'Entregado').length;
+
+    return { total, pendientes, procesando, entregados };
+  };
+
+  const stats = calcularEstadisticas();
+
+  const exportarAExcel = () => {
+    // Crear una fila por cada producto en cada pedido
+    const datosExportar: any[] = [];
+
+    pedidosFiltrados.forEach(pedido => {
+      const detalles = pedido.detalles || [];
+
+      if (detalles.length === 0) {
+        // Si no hay detalles, crear una fila con la información del pedido
+        datosExportar.push({
+          'Folio OC': pedido.folio_oc || 'Pendiente',
+          'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy', { locale: es }),
+          'Hora Pedido': format(new Date(pedido.created_at), 'HH:mm', { locale: es }),
+          'Estado': pedido.estatus?.nombre || 'Pendiente',
+
+          'Nombre Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
+          'Usuario SICAS': pedido.usuario?.nombre_sicas || 'Sin usuario SICAS',
+          'Clave Agente': pedido.usuario?.clave_agente || 'N/A',
+          'Oficina': pedido.usuario?.oficina || 'N/A',
+          'Email': pedido.usuario?.email_laboral || pedido.usuario?.email || 'N/A',
+          'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
+
+          'Nombre Producto': 'Sin productos',
+          'Categoría': 'N/A',
+          'Descripción': 'N/A',
+          'Cantidad': 0,
+          'Precio Unitario': '$0.00',
+          'Subtotal': '$0.00',
+
+          'Responsable de Pago': pedido.responsable_pago
+            ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
+            : 'N/A',
+          'Forma de Pago': pedido.forma_pago || 'N/A',
+          'Método de Pago': pedido.metodo_pago === 'Otro'
+            ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
+            : (pedido.metodo_pago || 'N/A'),
+
+          // Van antes del total porque el total YA los incluye: sin esta
+          // columna nadie puede cuadrar los subtotales contra el total.
+          'Cargos al Cliente': `$${importeCargos(pedido.cargos).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          'Conceptos de los Cargos': (pedido.cargos || []).map(c => c.concepto).join(' · '),
+          'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+
+          'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
+          'Notas del Cliente': pedido.notas_usuario || '',
+          'Observaciones OC': pedido.observaciones_oc || '',
+
+          'OC Generada Por': pedido.oc_generada_por_usuario?.nombre_completo || 'N/A',
+          'Fecha Generación OC': pedido.oc_generada_en
+            ? format(new Date(pedido.oc_generada_en), 'dd/MM/yyyy HH:mm', { locale: es })
+            : 'N/A'
+        });
+      } else {
+        // Crear una fila por cada producto
+        detalles.forEach(detalle => {
+          const subtotal = detalle.cantidad * detalle.precio_unitario;
+
+          datosExportar.push({
+            'Folio OC': pedido.folio_oc || 'Pendiente',
+            'Fecha Pedido': format(new Date(pedido.created_at), 'dd/MM/yyyy', { locale: es }),
+            'Hora Pedido': format(new Date(pedido.created_at), 'HH:mm', { locale: es }),
+            'Estado': pedido.estatus?.nombre || 'Pendiente',
+
+            'Nombre Cliente': pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A',
+            'Usuario SICAS': pedido.usuario?.nombre_sicas || 'Sin usuario SICAS',
+            'Clave Agente': pedido.usuario?.clave_agente || 'N/A',
+            'Oficina': pedido.usuario?.oficina || 'N/A',
+            'Email': pedido.usuario?.email_laboral || pedido.usuario?.email || 'N/A',
+            'Teléfono': pedido.usuario?.celular_laboral || pedido.usuario?.celular_personal || 'N/A',
+
+            'Nombre Producto': detalle.producto?.titulo || 'N/A',
+            'Categoría': detalle.producto?.categoria?.nombre || 'N/A',
+            'Descripción': detalle.producto?.descripcion || 'N/A',
+            'Cantidad': detalle.cantidad,
+            'Precio Unitario': `$${detalle.precio_unitario.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            'Subtotal': `$${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+
+            'Responsable de Pago': pedido.responsable_pago
+              ? (pedido.responsable_pago.nombre_completo || pedido.responsable_pago.nombre || 'N/A')
+              : 'N/A',
+            'Forma de Pago': pedido.forma_pago || 'N/A',
+            'Método de Pago': pedido.metodo_pago === 'Otro'
+              ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
+              : (pedido.metodo_pago || 'N/A'),
+
+            // Van antes del total porque el total YA los incluye: sin esta
+            // columna nadie puede cuadrar los subtotales contra el total.
+            'Cargos al Cliente': `$${importeCargos(pedido.cargos).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            'Conceptos de los Cargos': (pedido.cargos || []).map(c => c.concepto).join(' · '),
+            'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+
+            'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
+            'Notas del Cliente': pedido.notas_usuario || '',
+            'Observaciones OC': pedido.observaciones_oc || '',
+
+            'OC Generada Por': pedido.oc_generada_por_usuario?.nombre_completo || 'N/A',
+            'Fecha Generación OC': pedido.oc_generada_en
+              ? format(new Date(pedido.oc_generada_en), 'dd/MM/yyyy HH:mm', { locale: es })
+              : 'N/A'
+          });
+        });
+      }
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(datosExportar);
+
+    const columnWidths = [
+      { wch: 15 }, // Folio OC
+      { wch: 12 }, // Fecha Pedido
+      { wch: 8 },  // Hora Pedido
+      { wch: 12 }, // Estado
+
+      { wch: 30 }, // Nombre Cliente
+      { wch: 35 }, // Usuario SICAS
+      { wch: 15 }, // Clave Agente
+      { wch: 25 }, // Oficina
+      { wch: 30 }, // Email
+      { wch: 15 }, // Teléfono
+
+      { wch: 40 }, // Nombre Producto
+      { wch: 20 }, // Categoría
+      { wch: 50 }, // Descripción
+      { wch: 10 }, // Cantidad
+      { wch: 15 }, // Precio Unitario
+      { wch: 15 }, // Subtotal
+
+      { wch: 30 }, // Responsable de Pago
+      { wch: 20 }, // Forma de Pago
+      { wch: 25 }, // Método de Pago
+
+      { wch: 15 }, // Total Pedido
+
+      { wch: 45 }, // Dirección Entrega
+      { wch: 45 }, // Notas del Cliente
+      { wch: 45 }, // Observaciones OC
+
+      { wch: 25 }, // OC Generada Por
+      { wch: 18 }  // Fecha Generación OC
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pedidos Detallados');
+
+    const fechaExportacion = format(new Date(), 'dd-MM-yyyy_HHmm', { locale: es });
+    const nombreArchivo = `MOVI_Store_Pedidos_${fechaExportacion}.xlsx`;
+
+    XLSX.writeFile(workbook, nombreArchivo);
+  };
+
+  if (loading) {
+    return (
+      <>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div>
+        <PageHeader
+          title="Gestión de Pedidos"
+          description={`Administra todos los pedidos de MOVI Store${pedidos.length > 0 ? ` — ${pedidos.length} pedidos de ${new Set(pedidos.map(p => p.usuario_id)).size} usuarios` : ''}`}
+          icon={ClipboardList}
+          backTo="/store"
+          backLabel="Volver a MOVI Store"
+          actions={
+            puedeVerReporte ? (
+              <button
+                onClick={() => navigate('/store/reporte')}
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-sm"
+              >
+                <BarChart3 className="w-4 h-4" />
+                Reporte Ganancias
+              </button>
+            ) : undefined
+          }
+          className="mb-6 sm:mb-8"
+        />
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Total Pedidos</p>
+                <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white mt-1">{stats.total}</p>
+              </div>
+              <Package className="w-8 h-8 text-accent-ink" />
+            </div>
+          </div>
+
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Pendientes</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600 mt-1">{stats.pendientes}</p>
+              </div>
+              <Calendar className="w-8 h-8 text-yellow-600" />
+            </div>
+          </div>
+
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Procesando</p>
+                <p className="text-xl sm:text-2xl font-bold text-accent-ink mt-1">{stats.procesando}</p>
+              </div>
+              <Package className="w-8 h-8 text-accent-ink" />
+            </div>
+          </div>
+
+          <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-neutral-600 dark:text-white/60">Entregados</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{stats.entregados}</p>
+              </div>
+              <Package className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 dark:text-white/55 w-5 h-5" />
+              <input
+                type="text"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por folio, ID o cliente..."
+                className="w-full pl-10 pr-4 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-neutral-500 dark:text-white/55" />
+              <select
+                value={filtroEstatus}
+                onChange={(e) => setFiltroEstatus(e.target.value)}
+                className="px-4 py-2 border border-neutral-300 dark:border-white/20 rounded-lg focus:ring-2 focus:ring-accent/40"
+              >
+                <option value="">Todos los estatus</option>
+                {estatusUnicos.map(estatus => (
+                  <option key={estatus} value={pedidos.find(p => p.estatus?.nombre === estatus)?.estatus_id}>
+                    {estatus}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              aria-pressed={soloPublicosSinAsociar}
+              onClick={() => setSoloPublicosSinAsociar(v => !v)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                soloPublicosSinAsociar
+                  ? 'bg-amber-400 border-amber-400 text-[#040c1f]'
+                  : 'border-amber-300 text-amber-800 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+              }`}
+            >
+              Públicos sin asociar
+              {pedidos.some(p => p.es_publico && !p.usuario_id) && (
+                <span className="min-w-[20px] h-5 px-1 rounded-full bg-[#040c1f] text-white text-[11px] flex items-center justify-center">
+                  {pedidos.filter(p => p.es_publico && !p.usuario_id).length}
+                </span>
+              )}
+            </button>
+
+            {pedidosFiltrados.length > 0 && (
+              <button
+                onClick={exportarAExcel}
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+                title="Exportar pedidos a Excel"
+              >
+                <Download className="w-5 h-5" />
+                Exportar Excel
+              </button>
+            )}
+          </div>
+        </div>
+
+        {pedidosFiltrados.length === 0 ? (
+          <div className="text-center py-12 bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10">
+            <Package className="w-16 h-16 text-neutral-500 dark:text-white/55 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-neutral-700 dark:text-white/70 mb-2">
+              {busqueda || filtroEstatus || soloPublicosSinAsociar ? 'No se encontraron pedidos' : 'No hay pedidos aún'}
+            </h3>
+            <p className="text-neutral-500 dark:text-white/50">
+              {busqueda || filtroEstatus ? 'Intenta con otros filtros' : 'Los pedidos aparecerán aquí'}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-surface-card dark:bg-white/5 rounded-xl border border-soft dark:border-white/10 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-neutral-200 dark:divide-white/10">
+                <thead className="bg-neutral-50 dark:bg-white/5">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
+                      ID Pedido
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
+                      Cliente
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
+                      Fecha
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
+                      Estatus
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-neutral-500 dark:text-white/50 uppercase">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-neutral-200 dark:divide-white/10">
+                  {pedidosFiltrados.map(pedido => (
+                    <tr key={pedido.id} className="hover:bg-neutral-50 dark:bg-white/5">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {pedido.folio_oc ? (
+                          <span className="text-sm font-semibold text-accent-ink bg-primary-50 px-2 py-1 rounded">
+                            {pedido.folio_oc}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-neutral-500 dark:text-white/55 italic">
+                            Pendiente
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-neutral-900 dark:text-white">
+                            {pedido.usuario?.nombre_completo || pedido.usuario?.nombre || 'N/A'}
+                          </span>
+                          {pedido.es_publico && !pedido.usuario_id ? (
+                            <span className="mt-0.5 inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900">
+                              Público · sin asociar
+                            </span>
+                          ) : (
+                            <span className="text-xs text-neutral-500 dark:text-white/50">
+                              SICAS: {pedido.usuario?.nombre_sicas || 'Sin usuario SICAS relacionado'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-neutral-900 dark:text-white">
+                          {format(new Date(pedido.created_at), "d MMM yyyy", { locale: es })}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getEstatusColor(pedido.estatus?.nombre || 'Pendiente')}`}>
+                          {pedido.estatus?.nombre || 'Pendiente'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => navigate(`/store/pedido/${pedido.id}`)}
+                            className="inline-flex items-center gap-1.5 text-accent-ink hover:text-primary-800 font-medium transition-colors"
+                            title="Ver detalle del pedido"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Ver
+                          </button>
+                          <button
+                            onClick={() => setPedidoAEliminar(pedido)}
+                            className="inline-flex items-center gap-1.5 text-red-600 hover:text-red-800 font-medium transition-colors"
+                            title="Eliminar pedido"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-neutral-50 dark:bg-white/5 px-6 py-4 border-t border-neutral-200 dark:border-white/10">
+              <p className="text-sm text-neutral-600 dark:text-white/60">
+                Mostrando {pedidosFiltrados.length} de {pedidos.length} pedidos
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {pedidoAEliminar && (
+        <div className="fixed inset-0 bg-neutral-950/45 backdrop-blur-[3px] animate-overlay flex items-center justify-center p-4 z-50">
+          <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-md w-full p-6 animate-scale-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">Eliminar Pedido</h3>
+                <p className="text-sm text-neutral-500 dark:text-white/50">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-neutral-700 dark:text-white/70 mb-2">
+                Estás a punto de eliminar el siguiente pedido:
+              </p>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-neutral-900 dark:text-white">
+                  Folio: {pedidoAEliminar.folio_oc || 'Pendiente'}
+                </p>
+                <p className="text-sm text-neutral-700 dark:text-white/70">
+                  Cliente: {pedidoAEliminar.usuario?.nombre || 'N/A'}
+                </p>
+                <p className="text-sm text-neutral-700 dark:text-white/70">
+                  Total: ${pedidoAEliminar.total?.toLocaleString('es-MX', { minimumFractionDigits: 2 }) || '0.00'}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-neutral-600 dark:text-white/60 mb-6">
+              Se eliminarán todos los datos relacionados con este pedido, incluyendo detalles,
+              notas administrativas e historial de cambios.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPedidoAEliminar(null)}
+                disabled={eliminando}
+                className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-white/70 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/15 font-medium transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEliminarPedido}
+                disabled={eliminando}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {eliminando ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar Pedido
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

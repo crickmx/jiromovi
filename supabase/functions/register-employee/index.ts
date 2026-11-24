@@ -1,0 +1,325 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { esPasswordValida, errorDePasswordInvalida, mensajeDeRechazo } from '../_shared/passwordPolicy.ts';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+};
+
+interface RegisterEmployeeRequest {
+  password: string;
+  userData: {
+    nombre: string;
+    apellidos: string;
+    rol: string;
+    email_laboral?: string;
+    email_personal?: string;
+    puesto?: string;
+    oficina_id: string;
+    fecha_nacimiento: string;
+    fecha_ingreso?: string;
+    celular_laboral?: string;
+    celular_personal?: string;
+    cedula_cnsf?: string;
+    extension_telefonica?: string;
+    imagen_perfil_url?: string;
+    equipo_computo?: string;
+    equipo_celular?: string;
+    web_slug?: string;
+    banco?: string;
+    clabe?: string;
+  };
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    let currentUserId: string | null = null;
+
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user: currentUser } } = await supabaseAdmin.auth.getUser(token);
+      if (currentUser) {
+        currentUserId = currentUser.id;
+      }
+    }
+
+    const body = await req.json();
+
+    const { password, userData }: RegisterEmployeeRequest = body;
+
+    if (!userData) {
+      return new Response(
+        JSON.stringify({ error: 'userData is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const rol = userData.rol === 'Agente' ? 'Agente' : 'Empleado';
+    const emailAcceso = (userData.email_laboral || userData.email_personal)?.trim().toLowerCase();
+
+    // La contraseña llega del formulario de alta: se valida aquí porque la
+    // política la impone el servidor de auth y su error viene en inglés.
+    if (password && !esPasswordValida(String(password))) {
+      return new Response(
+        JSON.stringify({ error: errorDePasswordInvalida(String(password)) }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    if (!emailAcceso || !password) {
+      return new Response(
+        JSON.stringify({
+          error: 'El correo electrónico y la contraseña son requeridos',
+          details: {
+            email: emailAcceso ? 'provided' : 'missing',
+            password: password ? 'provided' : 'missing'
+          }
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!userData.nombre || !userData.apellidos) {
+      return new Response(
+        JSON.stringify({
+          error: 'Nombre y apellidos son requeridos',
+          details: {
+            nombre: userData.nombre ? 'provided' : 'missing',
+            apellidos: userData.apellidos ? 'provided' : 'missing'
+          }
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Para Agentes o Empleados: teléfono de contacto (laboral o personal) requerido
+    const telefonoContacto = userData.celular_laboral || userData.celular_personal;
+    if (!telefonoContacto || telefonoContacto.trim() === '') {
+      return new Response(
+        JSON.stringify({ error: 'El celular de contacto es requerido' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verificar quién ocupa ese correo (cubre public.usuarios Y auth.users, sin
+    // límite de paginación -- antes se usaba listUsers(), que solo trae los
+    // primeros 50 usuarios y no encontraba cuentas viejas).
+    const { data: ocupanteRows, error: ocupanteError } = await supabaseAdmin
+      .rpc('quien_ocupa_correo', { p_email: emailAcceso });
+
+    if (ocupanteError) {
+      console.error('[register-employee] Error consultando quien_ocupa_correo:', ocupanteError);
+    }
+
+    const ocupante = Array.isArray(ocupanteRows) ? ocupanteRows[0] : ocupanteRows;
+
+    if (ocupante) {
+      if (ocupante.visible) {
+        return new Response(
+          JSON.stringify({ error: 'Ya existe un usuario activo con ese correo electrónico' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Cuenta invisible (eliminada o huérfana en auth.users): el correo se puede
+      // liberar sin riesgo, nadie activo se queda sin acceso por esto.
+      console.log(`[register-employee] Correo retenido por cuenta invisible (motivo: ${ocupante.motivo}), liberando...`);
+
+      const { data: correoNuevo } = await supabaseAdmin
+        .rpc('correo_liberado', { p_user_id: ocupante.user_id });
+
+      const { error: freeAuthError } = await supabaseAdmin.auth.admin.updateUserById(ocupante.user_id, {
+        email: correoNuevo as string,
+        email_confirm: true,
+      });
+
+      if (freeAuthError) {
+        console.error('[register-employee] No se pudo liberar el correo retenido:', freeAuthError);
+        return new Response(
+          JSON.stringify({ error: 'No se pudo liberar el correo de una cuenta anterior: ' + freeAuthError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      await supabaseAdmin
+        .from('usuarios')
+        .update({ email_laboral: correoNuevo, email_personal: null })
+        .eq('id', ocupante.user_id);
+
+      console.log('[register-employee] Correo liberado, continuando con el alta.');
+    }
+
+    console.log('[register-employee] Creating auth user...');
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: emailAcceso,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        nombre: userData.nombre,
+        apellidos: userData.apellidos,
+        rol
+      }
+    });
+
+    if (authError) {
+      console.error('[register-employee] Auth error:', authError);
+      const rechazo = mensajeDeRechazo(authError, String(password));
+      if (rechazo) {
+        return new Response(
+          JSON.stringify({ error: rechazo }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ error: 'Error en autenticación: ' + authError.message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!authData.user) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to create auth user' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[register-employee] Auth user created:', authData.user.id);
+
+    // email_laboral es SIEMPRE la columna principal de acceso para todos los roles (Empleado y Agente)
+    const insertData = {
+      id: authData.user.id,
+      nombre: userData.nombre.toUpperCase(),
+      apellidos: userData.apellidos.toUpperCase(),
+      rol,
+      email_laboral: emailAcceso.toLowerCase(),
+      email_personal: null,
+      puesto: rol === 'Empleado' ? userData.puesto || '' : 'Agente de Seguros',
+      oficina_id: userData.oficina_id,
+      fecha_nacimiento: userData.fecha_nacimiento,
+      fecha_ingreso: userData.fecha_ingreso || null,
+      celular_personal: userData.celular_personal || '',
+      celular_laboral: userData.celular_laboral || userData.celular_personal || '',
+      cedula_cnsf: userData.cedula_cnsf || null,
+      extension_telefonica: userData.extension_telefonica || '',
+      equipo_computo: userData.equipo_computo || '',
+      equipo_celular: userData.equipo_celular || '',
+      web_slug: userData.web_slug ? userData.web_slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') : null,
+      banco: userData.banco || '',
+      clabe: userData.clabe || '',
+      imagen_perfil_url: userData.imagen_perfil_url || '/display-avatar.png',
+      created_by: currentUserId,
+      password_generated_at: new Date().toISOString(),
+      status: 'pendiente_activacion',
+      activo: false,
+    };
+
+    console.log('[register-employee] Inserting into usuarios table...');
+
+    const { error: insertError, data: insertedData } = await supabaseAdmin
+      .from('usuarios')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('[register-employee] Database insert error:', insertError);
+
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+
+      return new Response(
+        JSON.stringify({
+          error: 'Error al insertar usuario en BD: ' + insertError.message,
+          details: insertError.details || insertError.message,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[register-employee] User inserted successfully:', insertedData);
+
+    if (currentUserId) {
+      try {
+        const { error: auditError } = await supabaseAdmin
+          .from('auditoria_usuarios')
+          .insert({
+            usuario_id: authData.user.id,
+            accion: 'crear',
+            realizado_por: currentUserId,
+            detalles: {
+              nombre: userData.nombre,
+              apellidos: userData.apellidos,
+              email: emailAcceso,
+              rol,
+              puesto: userData.puesto,
+              status: 'pendiente_activacion',
+              oficina_id: userData.oficina_id,
+              origen: 'registro_publico'
+            }
+          });
+
+        if (auditError) {
+          console.error('[register-employee] Error al guardar auditoría:', auditError);
+        }
+      } catch (auditError) {
+        console.error('[register-employee] Error al guardar auditoría:', auditError);
+      }
+    }
+
+    console.log('[register-employee] Notificando a administradores...');
+    try {
+      const { error: notifError } = await supabaseAdmin.rpc('enviar_notificacion_completa', {
+        p_tipo_codigo: 'nuevo_usuario_creado',
+        p_user_id: authData.user.id,
+        p_titulo: `Nuevo ${rol.toLowerCase()} registrado`,
+        p_mensaje: `Se ha registrado un nuevo ${rol.toLowerCase()}: ${userData.nombre} ${userData.apellidos}`,
+        p_modulo: 'usuarios',
+        p_datos_adicionales: {
+          email: emailAcceso,
+          rol,
+          puesto: userData.puesto,
+        },
+        p_accion_url: `/usuario/${authData.user.id}`
+      });
+
+      if (notifError) {
+        console.error('[register-employee] Error al enviar notificación:', notifError);
+      }
+    } catch (notifError) {
+      console.error('[register-employee] Error al enviar notificación:', notifError);
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        userId: authData.user.id,
+        message: `${rol} registrado correctamente. El usuario quedó pendiente de activación.`
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('[register-employee] Unexpected error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Server error: ' + error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

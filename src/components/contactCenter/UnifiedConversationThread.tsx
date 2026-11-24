@@ -1,0 +1,1733 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Send, ArrowLeft, Loader as Loader2, MoveVertical as MoreVertical, SquareCheck as CheckSquare, Square, Sparkles, Bot, FileText, FolderInput as FormInput, ListTodo, Plus, Smile, X, ClipboardList, ExternalLink, Image as ImageIcon, File, MapPin, Check, CheckCheck, CircleAlert as AlertCircle, Clock, Paperclip, User, Star, Zap, RefreshCw, WifiOff, ChevronDown, Info } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import { cnSistema as cn } from '@/lib/utils';
+import {
+  type UnifiedConversation, type UnifiedMessage,
+  getConversationDisplayName, CHANNEL_LABELS, formatMoviPhone,
+} from '@/lib/unifiedContactCenter';
+import { ChannelBadge } from './ChannelBadge';
+import { NuevoTramiteModal } from '../tramites/NuevoTramiteModal';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+async function callEdgeFn(slug: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(`${supabaseUrl}/functions/v1/${slug}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session?.access_token}`,
+      'Apikey': supabaseAnonKey,
+    },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+// ── Emoji categories ──────────────────────────────────────────────────────────
+const EMOJIS = [
+  '👍','👋','🙏','😊','❤️','✅','👏','💪','🎉','😍','🤝','💯','⭐',
+  '📋','📞','💬','✨','😀','😅','😂','🙂','😇','🥰','🤩','😘','😋',
+  '😛','🤑','🤗','🤔','🤐','😏','😒','😌','😔','😴','😷','🤒','😵',
+  '🤠','🥳','😎','🤓','😕','😮','😲','😳','🥺','😦','😨','😰','😢',
+  '😭','😱','😡','🤬','📱','💻','📄','📊','📈','🔒','🗓️','💼','🎯',
+];
+
+interface Template {
+  id: string;
+  name: string;
+  category: string;
+  content: string;
+  channel: string;
+  variables: Array<{ name: string; label: string }>;
+}
+
+interface QuoteForm {
+  id: string;
+  title: string;
+  category: string;
+  slug: string | null;
+  form_type: string;
+}
+
+interface OpenTicket {
+  id: string;
+  folio: string;
+  instrucciones: string;
+  tipo_tramite: string;
+  estatus_nombre: string;
+  agente: { id: string; nombre_completo: string } | null;
+  responsable: { id: string; nombre_completo: string } | null;
+}
+
+interface CcAssistant {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  source: string;
+  is_active: boolean;
+}
+
+interface SessionState {
+  status: string;
+  current_stage: string;
+  assistant_name: string;
+  captured_count: number;
+  total_fields: number;
+}
+
+interface UserTemplate {
+  id: string;
+  name: string;
+  category: string;
+  body: string;
+  is_favorite: boolean;
+}
+
+interface PendingAttachment {
+  file: File;
+  preview: string | null;
+  base64: string;
+  uploading: boolean;
+  error: string | null;
+}
+
+interface Props {
+  conversation: UnifiedConversation;
+  onBack?: () => void;
+  currentUserId: string;
+  participantNames: Record<string, string>;
+  /** Abre o cierra el panel de información del contacto. */
+  onShowInfo?: () => void;
+  infoOpen?: boolean;
+}
+
+// ── Status icon ───────────────────────────────────────────────────────────────
+function StatusIcon({ status, outbound }: { status: string; outbound?: boolean }) {
+  if (status === 'read') return <CheckCheck className={cn('w-3.5 h-3.5', outbound ? 'text-blue-300' : 'text-blue-500')} />;
+  if (status === 'delivered') return <CheckCheck className="w-3.5 h-3.5 text-neutral-500" />;
+  if (status === 'sent') return <Check className="w-3.5 h-3.5 text-neutral-500" />;
+  if (status === 'failed') return <AlertCircle className="w-3.5 h-3.5 text-red-400" />;
+  return <Clock className="w-3.5 h-3.5 text-neutral-300" />;
+}
+
+// ── Rich message bubble ───────────────────────────────────────────────────────
+function RichMessageBubble({
+  msg, isOut, onImageClick, onRetry,
+}: {
+  msg: UnifiedMessage;
+  isOut: boolean;
+  onImageClick?: (url: string) => void;
+  onRetry?: () => void;
+}) {
+  const type = msg.messageType;
+  const raw = msg.raw as Record<string, any> | undefined;
+  // For wa_personal messages the raw record has all the original columns
+  const mediaDownloadStatus = raw?.media_download_status as string | null | undefined;
+  const mediaCaption = raw?.media_caption as string | null | undefined;
+  const metadata = (raw?.metadata as Record<string, any>) || {};
+
+  const textColor = isOut ? 'text-white' : 'text-neutral-800 dark:text-white/80';
+  const dimColor = isOut ? 'text-white/60' : 'text-neutral-500';
+  const innerBg = isOut ? 'bg-emerald-700/50' : 'bg-neutral-50 dark:bg-neutral-700/50';
+
+  return (
+    <div>
+      {/* Image */}
+      {type === 'image' && (
+        <div className="mb-1">
+          {msg.mediaUrl ? (
+            <img
+              src={msg.mediaThumbnail || msg.mediaUrl}
+              alt=""
+              className="rounded-xl max-w-full max-h-52 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => onImageClick?.(msg.mediaUrl!)}
+            />
+          ) : mediaDownloadStatus === 'pending' || mediaDownloadStatus === 'downloading' ? (
+            <div className="w-48 h-32 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
+              <ImageIcon className="w-6 h-6 text-neutral-500 animate-pulse" />
+              <span className="text-[11px] text-neutral-500">Descargando...</span>
+            </div>
+          ) : (
+            <div className="w-48 h-24 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
+              <ImageIcon className="w-5 h-5 text-neutral-500" />
+              <span className="text-[11px] text-neutral-500">Imagen no disponible</span>
+            </div>
+          )}
+          {(msg.body || mediaCaption) && <p className={cn('text-sm mt-1', textColor)}>{msg.body || mediaCaption}</p>}
+        </div>
+      )}
+
+      {/* Sticker */}
+      {type === 'sticker' && (
+        <div className="mb-1">
+          {msg.mediaUrl ? (
+            <img src={msg.mediaUrl} alt="Sticker" className="w-28 h-28 object-contain" />
+          ) : (
+            <div className="w-28 h-28 rounded-xl bg-neutral-50 dark:bg-neutral-700/50 flex flex-col items-center justify-center">
+              <span className="text-3xl">🏷</span>
+              <span className="text-[11px] text-neutral-500 mt-1">Sticker</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Video */}
+      {type === 'video' && (
+        <div className="mb-1">
+          {msg.mediaUrl ? (
+            <video src={msg.mediaUrl} controls className="rounded-xl max-w-full max-h-52" poster={msg.mediaThumbnail || undefined} />
+          ) : (
+            <div className="w-48 h-32 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex flex-col items-center justify-center gap-1">
+              <FileText className="w-6 h-6 text-neutral-500" />
+              <span className="text-[11px] text-neutral-500">{mediaDownloadStatus === 'failed' ? 'Video no disponible' : 'Descargando...'}</span>
+            </div>
+          )}
+          {(msg.body || mediaCaption) && <p className={cn('text-sm mt-1', textColor)}>{msg.body || mediaCaption}</p>}
+        </div>
+      )}
+
+      {/* Audio / Voice note */}
+      {(type === 'audio' || type === 'voice_note') && (
+        <div className="mb-1">
+          {msg.mediaUrl ? (
+            <audio src={msg.mediaUrl} controls className="max-w-[220px] h-10" />
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-700/50">
+              <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-600 flex items-center justify-center">
+                <Paperclip className="w-4 h-4 text-neutral-500" />
+              </div>
+              <span className="text-[11px] text-neutral-500">
+                {type === 'voice_note' ? 'Nota de voz' : 'Audio'}
+                {metadata.duration ? ` (${Math.round(metadata.duration as number)}s)` : ''}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Document */}
+      {type === 'document' && (
+        <div className="mb-1">
+          <div className={cn('flex items-center gap-2.5 p-2.5 rounded-xl', innerBg)}>
+            <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <FileText className="w-4 h-4 text-accent-ink dark:text-blue-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={cn('text-xs font-medium truncate', textColor)}>{msg.mediaFilename || 'Documento'}</p>
+              <p className={cn('text-[11px]', dimColor)}>
+                {msg.raw && (msg.raw as any).media_file_size
+                  ? `${((msg.raw as any).media_file_size / 1024).toFixed(0)} KB`
+                  : msg.mediaMime || 'Archivo'}
+              </p>
+            </div>
+            {msg.mediaUrl && (
+              <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className={cn('p-1.5 rounded-lg transition-colors', isOut ? 'hover:bg-white/10' : 'hover:bg-neutral-200 dark:hover:bg-neutral-600')}>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+          {(msg.body || mediaCaption) && <p className={cn('text-sm mt-1', textColor)}>{msg.body || mediaCaption}</p>}
+        </div>
+      )}
+
+      {/* Location */}
+      {type === 'location' && (
+        <div className="mb-1">
+          <div className={cn('p-2.5 rounded-xl', innerBg)}>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-4 h-4 text-red-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn('text-xs font-medium', textColor)}>{String(metadata.name ?? msg.locationLabel ?? 'Ubicacion')}</p>
+                {metadata.address != null && <p className={cn('text-[11px] truncate', dimColor)}>{String(metadata.address)}</p>}
+              </div>
+            </div>
+            {(msg.locationLat || metadata.latitude) && (
+              <a
+                href={`https://maps.google.com/?q=${msg.locationLat || metadata.latitude},${msg.locationLng || metadata.longitude}`}
+                target="_blank" rel="noopener noreferrer"
+                className={cn('mt-2 block text-center text-[11px] font-medium py-1.5 rounded-md transition-colors', isOut ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-neutral-200 dark:bg-neutral-600 text-neutral-700 dark:text-white/70 hover:bg-neutral-300')}
+              >
+                Abrir en Maps
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Contact card */}
+      {type === 'contact' && (
+        <div className="mb-1">
+          <div className={cn('flex items-center gap-2.5 p-2.5 rounded-xl', innerBg)}>
+            <div className="w-9 h-9 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
+              <User className="w-4 h-4 text-teal-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={cn('text-xs font-medium', textColor)}>{(metadata.displayName as string) || msg.body || 'Contacto'}</p>
+              {metadata.phone && <p className={cn('text-[11px]', dimColor)}>{metadata.phone as string}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plain text */}
+      {type === 'text' && msg.body && (
+        <p className={cn('text-sm leading-relaxed whitespace-pre-wrap break-words', textColor)}>{msg.body}</p>
+      )}
+
+      {/* Fallback for unknown types */}
+      {type !== 'text' && type !== 'image' && type !== 'sticker' && type !== 'video' && type !== 'audio' && type !== 'voice_note' && type !== 'document' && type !== 'location' && type !== 'contact' && type !== 'system' && msg.body && (
+        <p className={cn('text-sm leading-relaxed whitespace-pre-wrap break-words', textColor)}>{msg.body}</p>
+      )}
+
+      {/* Footer: time + status + retry */}
+      <div className={cn('flex items-center gap-1.5 mt-1', isOut ? 'justify-end' : 'justify-start')}>
+        <span className={cn('text-[11px]', isOut ? 'text-white/60' : 'text-neutral-500 dark:text-white/45')}>
+          {new Date(msg.sentAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+        </span>
+        {isOut && <StatusIcon status={msg.status} outbound />}
+        {isOut && msg.status === 'failed' && onRetry && (
+          <button onClick={onRetry} className="text-[11px] font-medium text-red-300 hover:text-white bg-red-500/30 hover:bg-red-500/50 px-1.5 py-0.5 rounded transition-colors ml-1">
+            Reintentar
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export function UnifiedConversationThread({ conversation, onBack, currentUserId, participantNames, onShowInfo, infoOpen }: Props) {
+  const { usuario } = useAuth();
+  const isAdmin = usuario?.rol === 'Administrador';
+  const isEmpleado = ['Empleado', 'Ejecutivo', 'Gerente'].includes(usuario?.rol || '');
+  const [messages, setMessages] = useState<UnifiedMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [text, setText] = useState('');
+  const endRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const isAtBottomRef = useRef(true);
+
+  // Selection mode
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Panels / modals
+  const [showMenu, setShowMenu] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [showPlantillas, setShowPlantillas] = useState(false);
+  const [showForms, setShowForms] = useState(false);
+  const [showAddTicket, setShowAddTicket] = useState(false);
+  const [showAssistants, setShowAssistants] = useState(false);
+
+  // Templates
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [tmplSearch, setTmplSearch] = useState('');
+  const [tmplLoading, setTmplLoading] = useState(false);
+
+  // Forms
+  const [forms, setForms] = useState<QuoteForm[]>([]);
+  const [formSearch, setFormSearch] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
+
+  // Ticket creation
+  const [openTickets, setOpenTickets] = useState<OpenTicket[]>([]);
+  const [ticketSearch, setTicketSearch] = useState('');
+  const [ticketLoading, setTicketLoading] = useState(false);
+  const [addTicketError, setAddTicketError] = useState('');
+  const [addTicketSuccess, setAddTicketSuccess] = useState('');
+  const [showNuevoTramiteModal, setShowNuevoTramiteModal] = useState(false);
+  const [prefilledInstrucciones, setPrefilledInstrucciones] = useState('');
+  const [estatusList, setEstatusList] = useState<Array<{id: string; nombre: string}>>([]);
+  const [addingToTicket, setAddingToTicket] = useState<string | null>(null);
+  const [filterAgente, setFilterAgente] = useState('');
+  const [filterResponsable, setFilterResponsable] = useState('');
+  const [filterTipo, setFilterTipo] = useState('');
+  const [agentesList, setAgentesList] = useState<Array<{id: string; nombre_completo: string}>>([]);
+  const [responsablesList, setResponsablesList] = useState<Array<{id: string; nombre_completo: string}>>([]);
+  // Create tramite success notification
+
+  // Automatic/AI mode
+  const [assistants, setAssistants] = useState<CcAssistant[]>([]);
+  const [autoSession, setAutoSession] = useState<SessionState | null>(null);
+  const [autoMode, setAutoMode] = useState(false);
+  const [autoLoading, setAutoLoading] = useState(false);
+
+  // WA Personal: sync-history state
+  const [syncingHistory, setSyncingHistory] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ synced: number; total: number } | null>(null);
+
+  // WA Personal: media preview + file attachment + private templates
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
+  const [userWaTemplates, setUserWaTemplates] = useState<UserTemplate[]>([]);
+  const [showWaTemplates, setShowWaTemplates] = useState(false);
+  const [waTemplateSearch, setWaTemplateSearch] = useState('');
+  const [waTemplateLoading, setWaTemplateLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const menuRef = useRef<HTMLDivElement>(null);
+  const isMoviChannel = conversation.channel === 'wa_movi';
+  const isWaPersonal = conversation.channel === 'wa_personal';
+  const name = getConversationDisplayName(conversation, participantNames);
+
+  // ── Load messages ───────────────────────────────────────────────────────────
+  const loadMessages = useCallback(async () => {
+    const { channel, sourceId } = conversation;
+    try {
+      if (channel === 'wa_movi') {
+        const isPhone = !sourceId.startsWith('agent:');
+        let q = supabase
+          .from('contact_center_messages')
+          .select('id, direction, body, created_at, status, metadata, attachment_urls, sender_type, sender_user_id, contact_name, contact_phone, read_at')
+          .eq('channel', 'whatsapp')
+          .eq('agent_user_id', currentUserId)
+          .order('created_at', { ascending: true });
+
+        if (isPhone) q = q.or(`contact_phone.eq.${sourceId},metadata->>chat_id.eq.${sourceId}`);
+        else q = q.eq('agent_user_id', sourceId.replace('agent:', ''));
+
+        const { data } = await q.limit(300);
+
+        // Resolve sender names for outbound
+        const senderIds = [...new Set((data || []).filter(m => m.direction === 'outbound' && m.sender_user_id).map(m => m.sender_user_id))];
+        const senderMap: Record<string, string> = {};
+        if (senderIds.length > 0) {
+          const { data: users } = await supabase.from('usuarios').select('id, nombre, apellidos').in('id', senderIds);
+          for (const u of users || []) senderMap[u.id] = `${u.nombre} ${u.apellidos}`.trim();
+        }
+
+        setMessages((data || []).map((m: any): UnifiedMessage => {
+          const meta = (m.metadata as Record<string, unknown>) || {};
+          const mediaUri = (meta.content_uri as string) || null;
+          const msgType = (meta.message_type as string) || 'text';
+          const atts = m.attachment_urls && Array.isArray(m.attachment_urls) ? m.attachment_urls : [];
+          const firstAtt = atts[0];
+
+          return {
+            id: m.id,
+            direction: m.direction === 'inbound' ? 'inbound' : 'outbound',
+            messageType: msgType,
+            body: m.body || null,
+            mediaUrl: mediaUri || (firstAtt?.url) || null,
+            mediaMime: null,
+            mediaFilename: firstAtt?.name || null,
+            mediaThumbnail: null,
+            locationLat: null,
+            locationLng: null,
+            locationLabel: null,
+            senderName: m.direction === 'inbound'
+              ? (m.contact_name || (meta.contact_name as string) || m.contact_phone || 'Cliente')
+              : (m.sender_type === 'system' ? 'Sistema' : senderMap[m.sender_user_id] || 'Asesor'),
+            sentAt: m.created_at,
+            status: m.status || 'sent',
+            raw: m,
+          };
+        }));
+
+        // Mark as read
+        if (conversation.agentUserId === currentUserId) {
+          try {
+            await supabase.rpc('mark_contact_messages_read', {
+              p_agent_user_id: conversation.agentUserId,
+              p_user_id: currentUserId,
+            });
+          } catch {}
+        }
+
+      } else if (channel === 'wa_personal') {
+        // Use the edge function so it falls back to the whatsapp-server
+        // when the DB has no messages yet (first open / no history sync)
+        const result = await callEdgeFn('whatsapp-session', {
+          action: 'get-messages',
+          conversationId: sourceId,
+          limit: 100,
+        });
+
+        const data: any[] = result?.messages || [];
+
+        setMessages(data.map((m: any): UnifiedMessage => ({
+          id: m.id || m.wa_message_id || String(Math.random()),
+          direction: m.direction || (m.fromMe ? 'outbound' : 'inbound'),
+          messageType: m.message_type || m.type || 'text',
+          body: m.content || m.body || m.media_caption || null,
+          mediaUrl: m.media_url || m.mediaUrl || null,
+          mediaMime: m.media_mime_type || m.mimetype || null,
+          mediaFilename: m.media_filename || m.filename || null,
+          mediaThumbnail: m.media_thumbnail_url || m.thumbnailUrl || null,
+          locationLat: null,
+          locationLng: null,
+          locationLabel: null,
+          senderName: null,
+          sentAt: m.message_timestamp || m.created_at || new Date().toISOString(),
+          status: m.status || 'sent',
+          raw: m,
+        })));
+
+      } else if (channel === 'chat') {
+        const { data } = await supabase
+          .from('chat_mensajes')
+          .select('id, remitente_id, mensaje, created_at')
+          .eq('chat_id', sourceId)
+          .eq('eliminado', false)
+          .order('created_at', { ascending: true })
+          .limit(300);
+
+        setMessages((data || []).map((m: any): UnifiedMessage => ({
+          id: m.id,
+          direction: m.remitente_id === currentUserId ? 'outbound' : 'inbound',
+          messageType: 'text',
+          body: m.mensaje || null,
+          mediaUrl: null, mediaMime: null, mediaFilename: null, mediaThumbnail: null,
+          locationLat: null, locationLng: null, locationLabel: null,
+          senderName: m.remitente_id !== currentUserId ? (participantNames[m.remitente_id] || null) : null,
+          sentAt: m.created_at,
+          status: 'sent',
+          raw: m,
+        })));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [conversation.id, conversation.channel, conversation.sourceId, currentUserId, participantNames, conversation.agentUserId]);
+
+  useEffect(() => { setLoading(true); loadMessages(); setText(''); setSelectionMode(false); setSelectedIds(new Set()); }, [loadMessages]);
+
+  // Scroll to bottom — instant on first load, smooth on new messages if already near bottom
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    // Use requestAnimationFrame so the DOM has fully painted before measuring
+    requestAnimationFrame(() => {
+      scrollToBottom(isAtBottomRef.current ? 'instant' : 'smooth');
+      setShowScrollBtn(false);
+    });
+  }, [messages, loading, scrollToBottom]);
+
+  // Track whether the user has scrolled away from the bottom
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < 80;
+    isAtBottomRef.current = atBottom;
+    setShowScrollBtn(!atBottom);
+  }, []);
+
+  // Realtime
+  useEffect(() => {
+    const { channel, sourceId } = conversation;
+    if (channel === 'wa_personal') {
+      const ch = supabase.channel(`wa_th_${sourceId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages', filter: `conversation_id=eq.${sourceId}` }, loadMessages).subscribe();
+      return () => { supabase.removeChannel(ch); };
+    }
+    if (channel === 'chat') {
+      const ch = supabase.channel(`chat_th_${sourceId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_mensajes', filter: `chat_id=eq.${sourceId}` }, loadMessages).subscribe();
+      return () => { supabase.removeChannel(ch); };
+    }
+    if (channel === 'wa_movi') {
+      const ch = supabase.channel(`movi_th_${sourceId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'contact_center_messages' }, loadMessages).subscribe();
+      return () => { supabase.removeChannel(ch); };
+    }
+  }, [conversation.id, loadMessages]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  useEffect(() => {
+    supabase.from('ticket_estatus').select('id, nombre').order('nombre').then(({ data }) => {
+      if (data) setEstatusList(data);
+    });
+  }, []);
+
+  // ── Load auto mode state for WA MOVI ───────────────────────────────────────
+  useEffect(() => {
+    if (!isMoviChannel || !conversation.agentUserId) return;
+    callEdgeFn('contact-center-assistant-process', {
+      action: 'get_session_state',
+      agent_user_id: conversation.agentUserId,
+    }).then(d => {
+      setAutoMode(false);
+      setAutoSession(null);
+    }).catch(() => {});
+  }, [conversation.id, isMoviChannel, conversation.agentUserId]);
+
+  // ── Send message ────────────────────────────────────────────────────────────
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  const sendMessage = async () => {
+    if (!text.trim() || sending) return;
+    const body = text.trim();
+    const savedText = body;
+    setText('');
+    setSending(true);
+    setSendError(null);
+    try {
+      const { channel, sourceId } = conversation;
+      if (channel === 'wa_movi') {
+        const nameAsPhone = conversation.contactName && /^\d{10,15}$/.test(conversation.contactName.replace(/\D/g, '')) ? conversation.contactName.replace(/\D/g, '') : null;
+        const phone = conversation.contactPhone || (sourceId && !sourceId.startsWith('agent:') ? sourceId : null) || nameAsPhone;
+        if (!phone) throw new Error('No se encontro el telefono del contacto');
+        const result = await callEdgeFn('send-contact-whatsapp', {
+          contactPhone: phone,
+          message: body,
+          agentUserId: conversation.agentUserId || currentUserId,
+        });
+        if (result?.error || result?.success === false) {
+          throw new Error(result?.error || result?.message || 'Error al enviar por WA MOVI');
+        }
+      } else if (channel === 'wa_personal') {
+        const { data: conv } = await supabase.from('whatsapp_conversations').select('remote_phone').eq('id', sourceId).maybeSingle();
+        if (!conv?.remote_phone) throw new Error('No se encontro el telefono del contacto');
+        const result = await callEdgeFn('whatsapp-session', { action: 'send-message', to: conv.remote_phone, message: body });
+        if (result?.error) throw new Error(result.error);
+      } else if (channel === 'chat') {
+        await supabase.from('chat_mensajes').insert({ chat_id: sourceId, remitente_id: currentUserId, mensaje: body });
+      }
+      await loadMessages();
+    } catch (err: any) {
+      setText(savedText);
+      setSendError(err.message || 'No se pudo enviar el mensaje');
+    } finally {
+      setSending(false);
+      textRef.current?.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  };
+
+  // ── Load templates ──────────────────────────────────────────────────────────
+  const openPlantillas = async () => {
+    setShowPlantillas(true);
+    if (templates.length > 0) return;
+    setTmplLoading(true);
+    const { data } = await supabase.from('message_templates').select('id, name, category, content, channel, variables').eq('is_active', true).order('category');
+    setTemplates((data || []).filter(t => t.channel === 'whatsapp' || t.channel === 'both'));
+    setTmplLoading(false);
+  };
+
+  const applyTemplate = (t: Template) => {
+    const agentName = usuario ? (usuario.nombre_completo || `${usuario.nombres} ${usuario.apellido_paterno}`.trim()) : 'Asesor';
+    const oficinaNombre = usuario?.oficina?.nombre || '';
+    const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+    let content = t.content
+      .replace(/\{\{nombre_agente\}\}/g, agentName)
+      .replace(/\{\{nombre_usuario\}\}/g, agentName)
+      .replace(/\{\{nombre_contacto\}\}/g, name)
+      .replace(/\{\{nombre_oficina\}\}/g, oficinaNombre)
+      .replace(/\{\{fecha\}\}/g, today);
+    setText(content);
+    setShowPlantillas(false);
+  };
+
+  // ── Load forms ──────────────────────────────────────────────────────────────
+  const openForms = async () => {
+    setShowForms(true);
+    if (forms.length > 0) return;
+    setFormLoading(true);
+    const { data } = await supabase.from('quote_form_templates').select('id, title, category, slug, form_type').eq('is_active', true).order('category');
+    setForms(data || []);
+    setFormLoading(false);
+  };
+
+  const sendFormLink = (form: QuoteForm) => {
+    const base = import.meta.env.VITE_APP_URL || 'https://app.movi.digital';
+    const url = `${base}/tramites/formularios/nuevo/${form.slug || form.form_type}`;
+    setText(`Te comparto el formulario de cotizacion:\n*${form.title}*\n${url}`);
+    setShowForms(false);
+  };
+
+  // ── Create ticket ───────────────────────────────────────────────────────────
+  // Downloads a WhatsApp media URL, re-uploads to Supabase Storage, stores permanent URL
+  const attachMediaToTicket = async (msgsToLink: UnifiedMessage[], ticketId: string) => {
+    const mediaFiles = msgsToLink.flatMap(m => extractMediaFiles(m));
+    if (mediaFiles.length === 0) return;
+
+    const archivos: Array<{ ticket_id: string; usuario_id: string; nombre: string; url: string; tipo: string; tamano: number | null }> = [];
+
+    for (const f of mediaFiles) {
+      let finalUrl = f.url;
+      let tamano: number | null = null;
+
+      try {
+        const resp = await fetch(f.url);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const ext = f.nombre.includes('.') ? (f.nombre.split('.').pop() || 'bin') : 'bin';
+          const path = `${ticketId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('ticket-archivos')
+            .upload(path, blob, { contentType: f.tipo });
+          if (!uploadErr) {
+            const { data: { publicUrl } } = supabase.storage.from('ticket-archivos').getPublicUrl(path);
+            finalUrl = publicUrl;
+            tamano = blob.size;
+          }
+        }
+      } catch {
+        // CORS or network error — fall back to original URL
+      }
+
+      archivos.push({ ticket_id: ticketId, usuario_id: currentUserId, nombre: f.nombre, url: finalUrl, tipo: f.tipo, tamano });
+    }
+
+    if (archivos.length > 0) {
+      const { error } = await supabase.from('ticket_archivos').insert(archivos);
+      if (error) console.error('Error attaching WhatsApp media to tramite:', error);
+    }
+  };
+
+  // Extracts all media files from a message for auto-attaching to a tramite
+  const extractMediaFiles = (msg: UnifiedMessage): Array<{ url: string; nombre: string; tipo: string }> => {
+    const files: Array<{ url: string; nombre: string; tipo: string }> = [];
+    const mimeFromType: Record<string, string> = {
+      image: 'image/jpeg', video: 'video/mp4', audio: 'audio/ogg',
+      voice_note: 'audio/ogg', document: 'application/octet-stream', sticker: 'image/webp',
+    };
+    const extFromMime: Record<string, string> = {
+      'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+      'video/mp4': '.mp4', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3',
+      'application/pdf': '.pdf',
+    };
+    const typeLabel: Record<string, string> = {
+      image: 'imagen', video: 'video', audio: 'audio',
+      voice_note: 'nota_voz', document: 'documento', sticker: 'sticker',
+    };
+
+    if (msg.mediaUrl) {
+      const mime = msg.mediaMime || mimeFromType[msg.messageType] || 'application/octet-stream';
+      const ext = extFromMime[mime] || '';
+      const nombre = msg.mediaFilename || `${typeLabel[msg.messageType] || 'archivo'}_whatsapp${ext}`;
+      files.push({ url: msg.mediaUrl, nombre, tipo: mime });
+    }
+    // WA MOVI: attachment_urls can have multiple files — add any beyond the first (already in mediaUrl)
+    if (msg.raw) {
+      const atts = (msg.raw as Record<string, unknown>).attachment_urls;
+      if (Array.isArray(atts)) {
+        for (const att of (atts as Array<{ url?: string; name?: string; content_type?: string }>).slice(1)) {
+          if (!att.url) continue;
+          files.push({ url: att.url, nombre: att.name || 'archivo_whatsapp.bin', tipo: att.content_type || 'application/octet-stream' });
+        }
+      }
+    }
+    return files;
+  };
+
+  const openCreateTicket = () => {
+    const selected = messages.filter(m => selectedIds.has(m.id));
+    const ctx = selected.length > 0 ? selected.map(m => m.body).filter(Boolean).join('\n') : messages.slice(-3).map(m => m.body).filter(Boolean).join('\n');
+    setPrefilledInstrucciones(ctx.slice(0, 500));
+    setShowNuevoTramiteModal(true);
+  };
+
+  const handleNewTicketCreated = async (ticketId: string) => {
+    const selected = messages.filter(m => selectedIds.has(m.id));
+    const msgsToLink = selected.length > 0 ? selected : messages.slice(-5);
+    const agentUserId = conversation.agentUserId || currentUserId;
+
+    // Link messages to ticket
+    const rows = msgsToLink.map(m => ({
+      ticket_id: ticketId,
+      contact_center_message_id: m.id,
+      agent_user_id: agentUserId,
+      added_by_user_id: currentUserId,
+      action_type: 'created_task',
+    }));
+    if (rows.length > 0) {
+      await supabase.from('task_contact_center_items').insert(rows);
+    }
+
+    // Auto-attach media files: download from WhatsApp CDN → re-upload to Supabase Storage
+    await attachMediaToTicket(msgsToLink, ticketId);
+
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  // ── Add to existing ticket ──────────────────────────────────────────────────
+  const openAddTicket = async () => {
+    setShowAddTicket(true);
+    setTicketLoading(true);
+    setAddTicketError('');
+    setAddTicketSuccess('');
+    setTicketSearch('');
+    setFilterAgente('');
+    setFilterResponsable('');
+    setFilterTipo('');
+
+    try {
+      let query = supabase
+        .from('tickets')
+        .select(`id, folio, instrucciones, tipo_tramite,
+          agente:agente_id(id, nombre_completo),
+          responsable:assigned_to_user_id(id, nombre_completo),
+          estatus:estatus_id(nombre)`)
+        .is('cerrado_en', null)
+        .is('eliminado_at', null)
+        .order('fecha_creacion', { ascending: false })
+        .limit(200);
+
+      if (!isAdmin && !isEmpleado) {
+        const agentId = conversation.agentUserId || currentUserId;
+        query = (query as any).or(`agente_id.eq.${agentId},assigned_to_user_id.eq.${currentUserId}`);
+      }
+
+      const { data } = await query;
+      const mapped = ((data || []) as any[]).map(t => ({
+        id: t.id,
+        folio: t.folio || '',
+        instrucciones: t.instrucciones || '',
+        tipo_tramite: t.tipo_tramite || '',
+        estatus_nombre: (t.estatus as any)?.nombre || '',
+        agente: t.agente || null,
+        responsable: t.responsable || null,
+      }));
+      setOpenTickets(mapped);
+
+      if (isAdmin || isEmpleado) {
+        const { data: agentes } = await supabase
+          .from('usuarios').select('id, nombre_completo').eq('rol', 'Agente').order('nombre_completo');
+        setAgentesList((agentes || []) as Array<{id: string; nombre_completo: string}>);
+      }
+      if (isAdmin) {
+        const { data: resps } = await supabase
+          .from('usuarios').select('id, nombre_completo').neq('rol', 'Agente').order('nombre_completo');
+        setResponsablesList((resps || []) as Array<{id: string; nombre_completo: string}>);
+      }
+    } catch {
+      setAddTicketError('Error al cargar trámites');
+    }
+    setTicketLoading(false);
+  };
+
+  const addToTicket = async (ticketId: string) => {
+    setAddingToTicket(ticketId);
+    setAddTicketError('');
+    setAddTicketSuccess('');
+    const selected = messages.filter(m => selectedIds.has(m.id));
+    const msgsToLink = selected.length > 0 ? selected : messages.slice(-3);
+    const messageIds = msgsToLink.map(m => m.id);
+    const result = await callEdgeFn('add-contact-messages-to-task', {
+      agentUserId: conversation.agentUserId || currentUserId,
+      ticketId,
+      messageIds,
+    }).catch(() => ({ success: false, error: 'Error de conexion' }));
+    setAddingToTicket(null);
+    if (result?.success === false) {
+      setAddTicketError(result.error || 'Error al agregar mensajes al tramite');
+      return;
+    }
+    const added = typeof result?.added === 'number' ? result.added : messageIds.length;
+    if (added === 0) {
+      setAddTicketError(result?.message || 'Estos mensajes ya estaban vinculados a este trámite. Selecciona otros mensajes o elige un trámite diferente.');
+      return;
+    }
+
+    // Media → ticket_archivos
+    await attachMediaToTicket(msgsToLink, ticketId);
+
+    // Text messages → ticket_comentarios
+    const textMsgs = msgsToLink.filter(m => m.body?.trim() && !m.mediaUrl);
+    if (textMsgs.length > 0) {
+      const commentText = textMsgs.map(m => {
+        const time = new Date(m.sentAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        const who = m.direction === 'outbound' ? 'Agente' : (conversation.contactName || 'Cliente');
+        return `[${who} ${time}]: ${m.body!.trim()}`;
+      }).join('\n');
+      await supabase.from('ticket_comentarios').insert({
+        ticket_id: ticketId,
+        usuario_id: currentUserId,
+        mensaje: commentText,
+      });
+    }
+
+    setAddTicketSuccess(`✓ ${added} mensaje(s) vinculado(s) al trámite`);
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setTimeout(() => {
+      setShowAddTicket(false);
+      setAddTicketSuccess('');
+    }, 1800);
+  };
+
+  // ── Assistants / Auto mode ──────────────────────────────────────────────────
+  const openAssistants = async () => {
+    setShowAssistants(true);
+    setAutoLoading(true);
+    const { data } = await supabase.from('contact_center_assistants').select('id, nombre, descripcion, source, is_active').eq('is_active', true).order('nombre');
+    setAssistants((data as CcAssistant[]) || []);
+    setAutoLoading(false);
+  };
+
+  const startAutoMode = async (assistantId: string) => {
+    if (!conversation.agentUserId) return;
+    setShowAssistants(false);
+    setAutoLoading(true);
+    const result = await callEdgeFn('contact-center-assistant-process', {
+      action: 'start_session',
+      agent_user_id: conversation.agentUserId,
+      assistant_id: assistantId,
+    }).catch(() => null);
+    if (result?.session_id) {
+      setAutoMode(true);
+      setAutoSession({ status: 'active', current_stage: result.stage, assistant_name: result.assistant_name, captured_count: 0, total_fields: result.total_fields });
+    }
+    setAutoLoading(false);
+  };
+
+  const stopAutoMode = async () => {
+    if (!conversation.agentUserId) return;
+    await callEdgeFn('contact-center-assistant-process', { action: 'cancel_session', agent_user_id: conversation.agentUserId }).catch(() => {});
+    // Disable smart assistant in DB so the webhook stops auto-creating new sessions
+    try {
+      await supabase
+        .from('contact_center_smart_assistant_config')
+        .update({ smart_assistant_enabled: false, smart_assistant_status: 'inactive' })
+        .eq('agent_user_id', conversation.agentUserId);
+    } catch {
+      // ignore
+    }
+    setAutoMode(false);
+    setAutoSession(null);
+  };
+
+  // ── WA Personal: file attachment ───────────────────────────────────────────
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      const preview = file.type.startsWith('image/') ? (reader.result as string) : null;
+      setPendingAttachment({ file, preview, base64, uploading: false, error: null });
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  };
+
+  const sendAttachment = async () => {
+    if (!pendingAttachment || pendingAttachment.uploading) return;
+    const { file, base64 } = pendingAttachment;
+    setPendingAttachment(prev => prev ? { ...prev, uploading: true, error: null } : null);
+    setSending(true);
+    try {
+      const { data: conv } = await supabase
+        .from('whatsapp_conversations')
+        .select('remote_phone')
+        .eq('id', conversation.sourceId)
+        .maybeSingle();
+
+      if (!conv?.remote_phone) throw new Error('No se pudo obtener el numero de destino');
+
+      const caption = text.trim() || undefined;
+      const result = await callEdgeFn('whatsapp-session', {
+        action: 'send-media',
+        to: conv.remote_phone,
+        mediaBase64: base64,
+        mimeType: file.type,
+        filename: file.name,
+        caption,
+        conversationId: conversation.sourceId,
+      });
+
+      if (result?.error) throw new Error(result.error);
+
+      // Optimistic insert
+      await supabase.from('whatsapp_messages').insert({
+        conversation_id: conversation.sourceId,
+        user_id: currentUserId,
+        direction: 'outbound',
+        message_type: file.type.startsWith('image/') ? 'image'
+          : file.type.startsWith('video/') ? 'video'
+          : file.type.startsWith('audio/') ? 'audio'
+          : 'document',
+        content: caption || null,
+        media_filename: file.name,
+        media_mime_type: file.type,
+        status: 'pending',
+      });
+
+      setPendingAttachment(null);
+      setText('');
+      await loadMessages();
+    } catch (err: any) {
+      setPendingAttachment(prev => prev ? { ...prev, uploading: false, error: err.message || 'Error al enviar' } : null);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // ── WA Personal: private templates ─────────────────────────────────────────
+  const openWaTemplates = async () => {
+    setShowWaTemplates(true);
+    if (userWaTemplates.length > 0) return;
+    setWaTemplateLoading(true);
+    const { data } = await supabase
+      .from('whatsapp_user_templates')
+      .select('id, name, category, body, is_favorite')
+      .eq('user_id', currentUserId)
+      .order('is_favorite', { ascending: false })
+      .order('name');
+    setUserWaTemplates(data || []);
+    setWaTemplateLoading(false);
+  };
+
+  const applyWaTemplate = (t: UserTemplate) => {
+    const agentName = usuario ? (usuario.nombre_completo || `${usuario.nombres} ${usuario.apellido_paterno}`.trim()) : 'Asesor';
+    const oficinaNombre = usuario?.oficina?.nombre || '';
+    const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+    const content = t.body
+      .replace(/\{\{nombre_agente\}\}/g, agentName)
+      .replace(/\{\{nombre_usuario\}\}/g, agentName)
+      .replace(/\{\{nombre_contacto\}\}/g, name)
+      .replace(/\{\{nombre_oficina\}\}/g, oficinaNombre)
+      .replace(/\{\{fecha\}\}/g, today);
+    setText(content);
+    setShowWaTemplates(false);
+  };
+
+  // ── WA Personal: sync history from server ────────────────────────────────
+  const syncHistory = async () => {
+    if (syncingHistory) return;
+    setSyncingHistory(true);
+    setSyncResult(null);
+    try {
+      const result = await callEdgeFn('whatsapp-session', { action: 'sync-history' });
+      if (result?.success) {
+        setSyncResult({ synced: result.synced || 0, total: result.total || 0 });
+        await loadMessages();
+      }
+    } catch { /* ignore */ } finally {
+      setSyncingHistory(false);
+    }
+  };
+
+  const filteredTemplates = templates.filter(t => !tmplSearch || t.name.toLowerCase().includes(tmplSearch.toLowerCase()) || t.content.toLowerCase().includes(tmplSearch.toLowerCase()));
+  const filteredForms = forms.filter(f => !formSearch || f.title.toLowerCase().includes(formSearch.toLowerCase()));
+  const filteredTickets = openTickets.filter(t => {
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const q = norm(ticketSearch);
+    const matchSearch = !ticketSearch || norm(t.folio).includes(q) || norm(t.instrucciones || '').includes(q);
+    const matchAgente = !filterAgente || t.agente?.id === filterAgente;
+    const matchResponsable = !filterResponsable || t.responsable?.id === filterResponsable;
+    const matchTipo = !filterTipo || t.tipo_tramite === filterTipo;
+    return matchSearch && matchAgente && matchResponsable && matchTipo;
+  });
+
+  return (
+    <div className="flex flex-col h-full bg-surface-canvas relative">
+
+      {/* ── Header ──────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 px-2 sm:px-3 py-2 bg-surface-card border-b border-soft flex-shrink-0 min-h-[60px]">
+        {onBack && (
+          <button type="button" onClick={onBack} aria-label="Volver a la lista" className="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
+
+        {selectionMode ? (
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-body-sm font-semibold text-neutral-800 dark:text-neutral-100 whitespace-nowrap" aria-live="polite">
+              {selectedIds.size} <span className="hidden sm:inline">seleccionados</span>
+            </span>
+            <button type="button" onClick={openCreateTicket} className="min-h-[40px] flex items-center gap-1.5 px-3 text-caption font-semibold bg-accent text-accent-foreground rounded-[var(--radius-sm)] hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
+              <Plus className="w-4 h-4" aria-hidden /> <span>Crear<span className="hidden sm:inline"> trámite</span></span>
+            </button>
+            <button type="button" onClick={openAddTicket} className="min-h-[40px] flex items-center gap-1.5 px-3 text-caption font-semibold bg-surface-card border border-strong text-neutral-700 dark:text-neutral-200 rounded-[var(--radius-sm)] hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              <ListTodo className="w-4 h-4" aria-hidden /> <span>Agregar<span className="hidden sm:inline"> a trámite</span></span>
+            </button>
+            <button type="button" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} aria-label="Salir de la selección" className="ml-auto w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div aria-hidden className="w-10 h-10 rounded-full bg-accent-soft dark:bg-accent/20 flex items-center justify-center text-sm font-bold text-accent-ink flex-shrink-0">
+              {name.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <p className="text-body font-semibold text-neutral-900 dark:text-white truncate">{name}</p>
+                <ChannelBadge channel={conversation.channel} size="sm" className="flex-shrink-0" />
+                {autoMode && (
+                  <span className="flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800">
+                    <Bot className="w-2.5 h-2.5" /> Auto activo
+                  </span>
+                )}
+              </div>
+              {conversation.contactPhone && (
+                <p className="text-caption text-neutral-500 dark:text-neutral-400 truncate tabular-nums">{formatMoviPhone(conversation.contactPhone)}</p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Acción principal: ligar mensajes a un trámite */}
+              <button
+                type="button"
+                onClick={() => setSelectionMode(true)}
+                aria-label="Seleccionar mensajes para trámite"
+                title="Seleccionar mensajes para crear o agregar a un trámite"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-[var(--radius-sm)] bg-accent text-accent-foreground font-semibold text-caption hover:bg-accent-hover shadow-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              >
+                <ClipboardList className="w-4 h-4" aria-hidden />
+                <span className="hidden lg:inline">Trámite</span>
+              </button>
+              {onShowInfo && (
+                <button
+                  type="button"
+                  onClick={onShowInfo}
+                  aria-label={infoOpen ? 'Ocultar información del contacto' : 'Ver información del contacto'}
+                  aria-pressed={!!infoOpen}
+                  className={cn('w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0', infoOpen && 'bg-accent-soft dark:bg-accent/20 text-accent-ink')}
+                >
+                  <Info className="w-5 h-5" />
+                </button>
+              )}
+              {/* Menu */}
+              <div className="relative" ref={menuRef}>
+                <button type="button" onClick={() => setShowMenu(v => !v)} aria-label="Más acciones" aria-haspopup="menu" aria-expanded={showMenu} className="w-10 h-10 flex items-center justify-center rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-surface-muted hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0">
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+                {showMenu && (
+                  <div role="menu" className="absolute right-0 top-full mt-1 w-52 bg-surface-card rounded-[var(--radius-md)] border border-soft shadow-e3 z-20 py-1 text-body-sm animate-scale-in">
+                    <button onClick={() => { setSelectionMode(true); setShowMenu(false); }} role="menuitem" className="w-full min-h-[44px] flex items-center gap-2.5 px-3 hover:bg-surface-muted text-neutral-700 dark:text-neutral-200 text-left">
+                      <CheckSquare className="w-3.5 h-3.5 text-neutral-500" /> Seleccionar mensajes
+                    </button>
+                    <button onClick={() => { openCreateTicket(); setShowMenu(false); }} role="menuitem" className="w-full min-h-[44px] flex items-center gap-2.5 px-3 hover:bg-surface-muted text-neutral-700 dark:text-neutral-200 text-left">
+                      <Plus className="w-3.5 h-3.5 text-accent-ink" /> Crear tramite
+                    </button>
+                    <button onClick={() => { openAddTicket(); setShowMenu(false); }} role="menuitem" className="w-full min-h-[44px] flex items-center gap-2.5 px-3 hover:bg-surface-muted text-neutral-700 dark:text-neutral-200 text-left">
+                      <ListTodo className="w-3.5 h-3.5 text-neutral-500" /> Agregar a tramite
+                    </button>
+                    {isWaPersonal && (
+                      <button onClick={() => { syncHistory(); setShowMenu(false); }} disabled={syncingHistory} role="menuitem" className="w-full min-h-[44px] flex items-center gap-2.5 px-3 hover:bg-surface-muted text-neutral-700 dark:text-neutral-200 text-left disabled:opacity-50">
+                        <RefreshCw className={cn('w-3.5 h-3.5 text-neutral-500', syncingHistory && 'animate-spin')} /> Sincronizar historial
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Auto mode banner ─────────────────────────────────────── */}
+      {autoMode && autoSession && (
+        <div className="flex-shrink-0 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/15 border-b border-emerald-100 dark:border-emerald-800/30">
+          <div className="flex items-center gap-2">
+            <Bot className="w-4 h-4 text-emerald-600 flex-shrink-0 animate-pulse" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">{autoSession.assistant_name}</p>
+                <span className="text-[11px] px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-800/40 text-emerald-600 dark:text-emerald-400 rounded-full font-medium">Auto activo</span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex-1 h-1 bg-emerald-100 dark:bg-emerald-800/30 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all"
+                    style={{ width: `${autoSession.total_fields > 0 ? (autoSession.captured_count / autoSession.total_fields) * 100 : 0}%` }}
+                  />
+                </div>
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex-shrink-0 tabular-nums">
+                  {autoSession.captured_count}/{autoSession.total_fields} campos
+                </span>
+              </div>
+            </div>
+            <button onClick={stopAutoMode} className="text-[11px] text-emerald-600 hover:text-emerald-800 font-medium flex-shrink-0 px-2 py-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
+              Detener
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Messages ─────────────────────────────────────────────── */}
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-4 py-3 space-y-0"
+        onClick={() => { setShowEmoji(false); }}
+      >
+        {loading ? (
+          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-neutral-300 animate-spin" /></div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center py-12 gap-3">
+            {isWaPersonal && (conversation.raw as any)?.last_message_text ? (
+              <>
+                <WifiOff className="w-8 h-8 text-neutral-300" />
+                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">Esta conversacion tiene actividad pero el historial aun no se ha sincronizado.</p>
+                <p className="text-xs text-neutral-500 max-w-xs">
+                  Los mensajes se sincronizan automaticamente al conectar WhatsApp. Puedes forzar la sincronizacion ahora.
+                </p>
+                {syncResult && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    {syncResult.synced > 0 ? `${syncResult.synced} mensajes sincronizados` : 'Sin mensajes nuevos en el servidor'}
+                  </p>
+                )}
+                <button
+                  onClick={syncHistory}
+                  disabled={syncingHistory}
+                  className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-xl text-sm font-medium hover:bg-accent/90 disabled:opacity-60 transition-colors"
+                >
+                  {syncingHistory ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  {syncingHistory ? 'Sincronizando...' : 'Sincronizar historial'}
+                </button>
+              </>
+            ) : (
+              <p className="text-sm text-neutral-500">Sin mensajes todavia</p>
+            )}
+          </div>
+        ) : messages.map((msg, i) => {
+          const prev = messages[i - 1];
+          const next = messages[i + 1];
+          const showDate = !prev || new Date(msg.sentAt).toDateString() !== new Date(prev.sentAt).toDateString();
+          const isOut = msg.direction === 'outbound';
+          const isSystem = msg.messageType === 'system';
+          const isSelected = selectedIds.has(msg.id);
+
+          // Time gap separator: show when > 5 min gap between consecutive messages
+          const prevTime = prev ? new Date(prev.sentAt).getTime() : null;
+          const thisTime = new Date(msg.sentAt).getTime();
+          const showTimeSep = !showDate && prevTime && (thisTime - prevTime > 5 * 60 * 1000);
+
+          // Grouping: detect same sender in consecutive messages (ignore system)
+          const prevNonSys = messages.slice(0, i).reverse().find(m => m.messageType !== 'system');
+          const nextNonSys = messages.slice(i + 1).find(m => m.messageType !== 'system');
+          const sameAsPrev = !showDate && !showTimeSep && prevNonSys && prevNonSys.direction === msg.direction && !isSystem;
+          const sameAsNext = nextNonSys && nextNonSys.direction === msg.direction && !isSystem;
+
+          // Determine corner rounding based on group position
+          // Outbound: tails on right; inbound: tails on left
+          const bubbleCorners = isOut
+            ? cn(
+                'rounded-2xl',
+                sameAsPrev && 'rounded-tr-md',
+                sameAsNext && 'rounded-br-md'
+              )
+            : cn(
+                'rounded-2xl',
+                sameAsPrev && 'rounded-tl-md',
+                sameAsNext && 'rounded-bl-md'
+              );
+
+          if (isSystem) {
+            return (
+              <div key={msg.id} className="flex justify-center my-2">
+                <span className="px-3 py-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 text-[11px] rounded-full">{msg.body}</span>
+              </div>
+            );
+          }
+
+          return (
+            <div key={msg.id}>
+              {/* Date separator */}
+              {showDate && (
+                <div className="flex justify-center my-3">
+                  <span className="px-3 py-1 bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-500 dark:text-neutral-400 text-[11px] rounded-full">
+                    {new Date(msg.sentAt).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </span>
+                </div>
+              )}
+              {/* Time gap separator */}
+              {showTimeSep && !showDate && (
+                <div className="flex justify-center my-2">
+                  <span className="text-[11px] text-neutral-300 dark:text-neutral-600">
+                    {new Date(msg.sentAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              )}
+              <div
+                className={cn(
+                  'flex group',
+                  isOut ? 'justify-end' : 'justify-start',
+                  selectionMode && 'cursor-pointer',
+                  sameAsNext ? 'mb-0.5' : 'mb-1.5'
+                )}
+                onClick={selectionMode ? () => toggleSelect(msg.id) : undefined}
+                role={selectionMode ? 'checkbox' : undefined}
+                aria-checked={selectionMode ? isSelected : undefined}
+                tabIndex={selectionMode ? 0 : undefined}
+                onKeyDown={selectionMode ? (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleSelect(msg.id); } } : undefined}
+              >
+                {selectionMode && (
+                  <div className="flex items-end pb-1 mr-2">
+                    {isSelected
+                      ? <CheckSquare className="w-4 h-4 text-accent-ink" />
+                      : <Square className="w-4 h-4 text-neutral-400 dark:text-neutral-500" />}
+                  </div>
+                )}
+                {/* Inbound avatar placeholder — only show on last in group */}
+                {!isOut && (
+                  <div className={cn('w-6 mr-1.5 flex items-end flex-shrink-0', sameAsNext ? 'invisible' : 'visible')}>
+                    <div className="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-[10.5px] font-bold text-neutral-500 dark:text-neutral-400">
+                      {(msg.senderName || '?').charAt(0).toUpperCase()}
+                    </div>
+                  </div>
+                )}
+                <div className={cn('max-w-[72%]', isSelected && 'ring-2 ring-accent/40 rounded-2xl')}>
+                  {/* Sender name — only on first message in group for inbound */}
+                  {msg.senderName && !isOut && !sameAsPrev && (
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-500 ml-1 mb-0.5">{msg.senderName}</p>
+                  )}
+                  <div className={cn(
+                    'px-3 py-2 shadow-sm text-sm',
+                    bubbleCorners,
+                    isOut
+                      ? 'bg-accent text-accent-foreground'
+                      : 'bg-surface-card text-neutral-800 dark:text-neutral-100 border border-soft'
+                  )}>
+                    <RichMessageBubble
+                      msg={msg}
+                      isOut={isOut}
+                      onImageClick={(url) => setMediaPreview(url)}
+                      onRetry={() => loadMessages()}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={endRef} />
+      </div>
+
+      {/* ── Scroll to bottom button ───────────────────────────────── */}
+      {showScrollBtn && (
+        <button
+          type="button"
+          onClick={() => { scrollToBottom('smooth'); }}
+          aria-label="Ir al último mensaje"
+          className="absolute bottom-[96px] right-4 z-10 w-10 h-10 rounded-full bg-surface-card border border-soft shadow-e2 flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
+          title="Ir al ultimo mensaje"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* ── Composer ─────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 bg-surface-card border-t border-soft px-3 pt-2 pb-[max(0.625rem,env(safe-area-inset-bottom))] relative">
+        {/* Hidden file input for wa_personal */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+          onChange={handleFileSelect}
+        />
+
+        {/* Pending attachment preview */}
+        {pendingAttachment && (
+          <div className="mb-2 flex items-center gap-2 p-2 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+            {pendingAttachment.preview ? (
+              <img src={pendingAttachment.preview} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                <File className="w-5 h-5 text-blue-500" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-neutral-700 dark:text-neutral-200 truncate">{pendingAttachment.file.name}</p>
+              <p className="text-[11px] text-neutral-500">{(pendingAttachment.file.size / 1024).toFixed(0)} KB</p>
+              {pendingAttachment.error && <p className="text-[11px] text-red-500">{pendingAttachment.error}</p>}
+            </div>
+            <button type="button" onClick={() => setPendingAttachment(null)} aria-label="Quitar archivo" className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-sunken text-neutral-500 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Toolbar */}
+        <div className="flex items-center gap-1 mb-2">
+          <button type="button" onClick={() => setShowEmoji(v => !v)} aria-label="Emojis" aria-expanded={showEmoji} className="min-h-[36px] flex items-center gap-1.5 px-2 rounded-[var(--radius-xs)] hover:bg-surface-muted text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors text-caption font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" title="Emojis">
+            <Smile className="w-4 h-4" />
+          </button>
+          <button type="button" onClick={openWaTemplates} className="min-h-[36px] flex items-center gap-1.5 px-2 rounded-[var(--radius-xs)] hover:bg-surface-muted text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors text-caption font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" title="Mis plantillas">
+            <FileText className="w-4 h-4" aria-hidden /> <span>Plantillas</span>
+          </button>
+          {/* WA Personal: file attachment button */}
+          {isWaPersonal && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="min-h-[36px] flex items-center gap-1.5 px-2 rounded-[var(--radius-xs)] hover:bg-surface-muted text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors text-caption font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              title="Adjuntar archivo"
+              aria-label="Adjuntar archivo"
+            >
+              <Paperclip className="w-4 h-4" /> <span className="hidden sm:inline">Archivo</span>
+            </button>
+          )}
+        </div>
+
+        {/* Emoji picker */}
+        {showEmoji && (
+          <div className="absolute bottom-full left-3 mb-1 w-72 bg-surface-card dark:bg-neutral-900 border border-soft dark:border-neutral-700 rounded-xl shadow-xl z-30 p-2">
+            <div className="grid grid-cols-10 gap-0.5 max-h-28 overflow-y-auto">
+              {EMOJIS.map(e => (
+                <button key={e} onClick={() => { setText(prev => prev + e); setShowEmoji(false); }} className="text-lg p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 leading-none">
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Input row */}
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={textRef}
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Escribe un mensaje"
+            aria-label="Mensaje (Enter envía, Shift+Enter salto de línea)"
+            rows={1}
+            className="flex-1 min-w-0 resize-none rounded-[var(--radius-md)] border border-soft bg-surface-muted text-body text-neutral-800 dark:text-neutral-100 px-3.5 py-2.5 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 max-h-32 overflow-y-auto"
+            style={{ minHeight: '44px' }}
+          />
+          <button
+            type="button"
+            onClick={pendingAttachment ? sendAttachment : sendMessage}
+            disabled={(!text.trim() && !pendingAttachment) || sending}
+            aria-label="Enviar mensaje"
+            className="w-11 h-11 flex items-center justify-center bg-accent text-accent-foreground rounded-full hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          >
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+        {sendError && (
+          <div className="flex items-center gap-2 mt-1.5 px-2.5 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg">
+            <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />
+            <p className="text-[11px] text-red-600 dark:text-red-400 flex-1">{sendError}</p>
+            <button type="button" onClick={() => setSendError(null)} aria-label="Cerrar aviso" className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex-shrink-0 p-1">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+        <p className="text-[11px] text-neutral-500 mt-1 text-center">
+          {CHANNEL_LABELS[conversation.channel]}
+          {text.length > 450 && <span className="ml-2 text-amber-500">{text.length}/550</span>}
+        </p>
+      </div>
+
+      {/* ── Plantillas modal ─────────────────────────────────────── */}
+      {showPlantillas && (
+        <Modal title="Plantillas de mensaje" onClose={() => setShowPlantillas(false)}>
+          <input value={tmplSearch} onChange={e => setTmplSearch(e.target.value)} placeholder="Buscar plantilla..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 mb-3 focus:outline-none focus:ring-1 focus:ring-accent/40" />
+          {tmplLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
+            : filteredTemplates.length === 0 ? <p className="text-xs text-neutral-500 text-center py-6">Sin plantillas disponibles</p>
+            : <div className="space-y-2 max-h-80 overflow-y-auto">
+                {filteredTemplates.map(t => (
+                  <button key={t.id} onClick={() => applyTemplate(t)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{t.name}</span>
+                      <span className="text-[11px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.category}</span>
+                    </div>
+                    <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">{t.content}</p>
+                  </button>
+                ))}
+              </div>
+          }
+        </Modal>
+      )}
+
+      {/* ── Formularios modal ────────────────────────────────────── */}
+      {showForms && (
+        <Modal title="Formularios de cotizacion" onClose={() => setShowForms(false)}>
+          <input value={formSearch} onChange={e => setFormSearch(e.target.value)} placeholder="Buscar formulario..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 mb-3 focus:outline-none focus:ring-1 focus:ring-accent/40" />
+          {formLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
+            : filteredForms.length === 0 ? <p className="text-xs text-neutral-500 text-center py-6">Sin formularios</p>
+            : <div className="space-y-2 max-h-80 overflow-y-auto">
+                {filteredForms.map(f => (
+                  <button key={f.id} onClick={() => sendFormLink(f)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{f.title}</span>
+                      <span className="text-[11px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{f.category}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+          }
+        </Modal>
+      )}
+
+      {/* ── Crear tramite modal ──────────────────────────────────── */}
+      <NuevoTramiteModal
+        isOpen={showNuevoTramiteModal}
+        onClose={() => setShowNuevoTramiteModal(false)}
+        onSuccess={() => setShowNuevoTramiteModal(false)}
+        onSuccessWithId={(ticketId) => { handleNewTicketCreated(ticketId); setShowNuevoTramiteModal(false); }}
+        estatusList={estatusList}
+        preloadedData={{ instrucciones: prefilledInstrucciones }}
+      />
+
+      {/* ── Agregar a tramite modal ──────────────────────────────── */}
+      {showAddTicket && (
+        <Modal title="Agregar a trámite existente" onClose={() => { setShowAddTicket(false); setAddTicketSuccess(''); }}>
+          {/* Success state */}
+          {addTicketSuccess ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <p className="text-sm font-semibold text-green-700 dark:text-green-400 text-center">{addTicketSuccess}</p>
+              <p className="text-xs text-neutral-500">Cerrando...</p>
+            </div>
+          ) : (
+            <>
+              {/* Search */}
+              <div className="relative mb-3">
+                <ClipboardList className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
+                <input
+                  value={ticketSearch}
+                  onChange={e => setTicketSearch(e.target.value)}
+                  placeholder="Buscar por folio o descripción..."
+                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 focus:outline-none focus:ring-1 focus:ring-accent/40 text-neutral-800 dark:text-white placeholder:text-neutral-500"
+                />
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {(isAdmin || isEmpleado) && agentesList.length > 0 && (
+                  <select
+                    value={filterAgente}
+                    onChange={e => setFilterAgente(e.target.value)}
+                    className="flex-1 min-w-[130px] px-2.5 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-white/80 focus:outline-none focus:ring-1 focus:ring-accent/40"
+                  >
+                    <option value="">Todos los agentes</option>
+                    {agentesList.map(a => (
+                      <option key={a.id} value={a.id}>{a.nombre_completo}</option>
+                    ))}
+                  </select>
+                )}
+                {isAdmin && responsablesList.length > 0 && (
+                  <select
+                    value={filterResponsable}
+                    onChange={e => setFilterResponsable(e.target.value)}
+                    className="flex-1 min-w-[130px] px-2.5 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-white/80 focus:outline-none focus:ring-1 focus:ring-accent/40"
+                  >
+                    <option value="">Todos los responsables</option>
+                    {responsablesList.map(r => (
+                      <option key={r.id} value={r.id}>{r.nombre_completo}</option>
+                    ))}
+                  </select>
+                )}
+                <select
+                  value={filterTipo}
+                  onChange={e => setFilterTipo(e.target.value)}
+                  className="flex-1 min-w-[130px] px-2.5 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-white/80 focus:outline-none focus:ring-1 focus:ring-accent/40"
+                >
+                  <option value="">Todos los tipos</option>
+                  {[...new Set(openTickets.map(t => t.tipo_tramite))].filter(Boolean).map(tipo => (
+                    <option key={tipo} value={tipo}>{tipo.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Results count */}
+              {!ticketLoading && (
+                <p className="text-[11px] text-neutral-500 dark:text-white/45 mb-2 px-0.5">
+                  {filteredTickets.length} trámite{filteredTickets.length !== 1 ? 's' : ''} encontrado{filteredTickets.length !== 1 ? 's' : ''}
+                </p>
+              )}
+
+              {/* Error */}
+              {addTicketError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 mb-3">
+                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-600 dark:text-red-400">{addTicketError}</p>
+                </div>
+              )}
+
+              {/* List */}
+              {ticketLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-neutral-300" />
+                </div>
+              ) : filteredTickets.length === 0 ? (
+                <div className="text-center py-8">
+                  <ClipboardList className="w-8 h-8 text-neutral-200 dark:text-neutral-700 mx-auto mb-2" />
+                  <p className="text-xs text-neutral-500">Sin trámites que coincidan</p>
+                </div>
+              ) : (
+                <div className="space-y-2 overflow-y-auto" style={{ maxHeight: '21rem' }}>
+                  {filteredTickets.map(t => (
+                    <div
+                      key={t.id}
+                      className="rounded-xl border border-neutral-100 dark:border-neutral-700 overflow-hidden hover:border-accent/40 hover:shadow-sm transition-all"
+                    >
+                      {/* Card header */}
+                      <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 bg-neutral-50 dark:bg-neutral-800/60">
+                        <span className="text-xs font-bold text-neutral-800 dark:text-white tracking-wide">{t.folio}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-surface-card dark:bg-neutral-700 border border-soft dark:border-neutral-600 text-neutral-500 dark:text-white/60 font-medium">{t.estatus_nombre}</span>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-accent/10 text-accent-ink font-semibold">{t.tipo_tramite.replace(/_/g, ' ')}</span>
+                        </div>
+                      </div>
+                      {/* Card body */}
+                      <div className="px-3 pb-2 pt-1">
+                        {(t.agente || t.responsable) && (
+                          <div className="flex items-center gap-3 mb-1.5">
+                            {t.agente && (
+                              <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/55">
+                                <User className="w-3 h-3" />
+                                {t.agente.nombre_completo}
+                              </span>
+                            )}
+                            {t.responsable && (
+                              <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/45">
+                                <CheckSquare className="w-3 h-3" />
+                                {t.responsable.nombre_completo}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <p className="text-xs text-neutral-500 dark:text-white/50 line-clamp-2 leading-relaxed mb-2">{t.instrucciones}</p>
+                        <button
+                          onClick={() => addToTicket(t.id)}
+                          disabled={!!addingToTicket}
+                          className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-semibold transition-all disabled:opacity-60"
+                        >
+                          {addingToTicket === t.id
+                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Agregando...</>
+                            : <><Plus className="w-3.5 h-3.5" /> Agregar a este trámite</>
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Modal>
+      )}
+
+      {/* ── WA Personal: Mis plantillas modal ───────────────────── */}
+      {showWaTemplates && (
+        <Modal title="Mis plantillas de WhatsApp" onClose={() => setShowWaTemplates(false)}>
+          <input value={waTemplateSearch} onChange={e => setWaTemplateSearch(e.target.value)} placeholder="Buscar plantilla..." className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 mb-3 focus:outline-none focus:ring-1 focus:ring-accent/40" />
+          {waTemplateLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
+            : userWaTemplates.filter(t => !waTemplateSearch || t.name.toLowerCase().includes(waTemplateSearch.toLowerCase()) || t.body.toLowerCase().includes(waTemplateSearch.toLowerCase())).length === 0
+            ? (
+              <div className="text-center py-6">
+                <p className="text-xs text-neutral-500">Sin plantillas personales</p>
+                <p className="text-[11px] text-neutral-300 mt-1">Crea plantillas en Mi WhatsApp</p>
+              </div>
+            )
+            : <div className="space-y-2 max-h-80 overflow-y-auto">
+                {userWaTemplates
+                  .filter(t => !waTemplateSearch || t.name.toLowerCase().includes(waTemplateSearch.toLowerCase()) || t.body.toLowerCase().includes(waTemplateSearch.toLowerCase()))
+                  .map(t => (
+                  <button key={t.id} onClick={() => applyWaTemplate(t)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-accent/30 hover:bg-accent/5 transition-all">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        {t.is_favorite && <Star className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
+                        <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{t.name}</span>
+                      </div>
+                      {t.category && <span className="text-[11px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 rounded-full">{t.category}</span>}
+                    </div>
+                    <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">{t.body}</p>
+                  </button>
+                ))}
+              </div>
+          }
+        </Modal>
+      )}
+
+      {/* ── Image preview overlay ────────────────────────────────── */}
+      {mediaPreview && (
+        <div
+          className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setMediaPreview(null)}
+        >
+          <button
+            onClick={() => setMediaPreview(null)}
+            className="absolute top-3 right-3 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={mediaPreview}
+            alt=""
+            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {/* ── Asistentes / Modo IA modal ───────────────────────────── */}
+      {showAssistants && (
+        <Modal title="Asistentes IA" onClose={() => setShowAssistants(false)}>
+          <p className="text-xs text-neutral-500 mb-3">Selecciona un asistente para activar el modo automatico en esta conversacion.</p>
+          {autoLoading ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-neutral-300" /></div>
+            : assistants.length === 0 ? <p className="text-xs text-neutral-500 text-center py-6">Sin asistentes configurados</p>
+            : <div className="space-y-2 max-h-72 overflow-y-auto">
+                {assistants.map(a => (
+                  <button key={a.id} onClick={() => startAutoMode(a.id)} className="w-full text-left p-3 rounded-xl border border-neutral-100 dark:border-neutral-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all">
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{a.nombre}</p>
+                        {a.descripcion && <p className="text-[11px] text-neutral-500 mt-0.5">{a.descripcion}</p>}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+          }
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── Reusable modal wrapper ────────────────────────────────────────────────────
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-neutral-950/45 backdrop-blur-sm animate-overlay" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={title} className="w-full sm:max-w-md sm:mx-4 bg-surface-card rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] shadow-e4 border border-soft overflow-hidden animate-scale-in pb-[env(safe-area-inset-bottom)]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-soft">
+          <h3 className="font-display text-body font-semibold text-neutral-900 dark:text-white">{title}</h3>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-muted text-neutral-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-5 max-h-[70vh] overflow-y-auto">{children}</div>
+      </div>
+    </div>
+  );
+}
