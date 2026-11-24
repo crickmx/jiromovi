@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
+const MAX_SALA = 200;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -153,7 +154,9 @@ async function asegurarSala(evento: Evento, creador: string) {
     await daily(`/rooms/${encodeURIComponent(evento.daily_room_name)}`, {
       method: 'POST',
       body: JSON.stringify({
-        properties: { exp, eject_at_room_exp: true },
+        // Las salas creadas antes del cambio llevaban tope: se sube al máximo
+        // que permite la plataforma para que no rechace oyentes.
+        properties: { exp, eject_at_room_exp: true, max_participants: MAX_SALA },
       }),
     }).catch(() => null);
     return { room_name: evento.daily_room_name, room_url: evento.daily_room_url };
@@ -165,7 +168,9 @@ async function asegurarSala(evento: Evento, creador: string) {
   const propiedades = {
     exp,
     eject_at_room_exp: true,
-    max_participants: evento.max_participantes ?? 100,
+    // Sin tope propio: los eventos son siempre abiertos. Daily aplica su
+    // máximo de plataforma (200 por sala); más que eso se contrata allá.
+    max_participants: MAX_SALA,
     enable_screenshare: true,
     enable_chat: false,
     enable_people_ui: false,

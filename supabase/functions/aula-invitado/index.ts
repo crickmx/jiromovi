@@ -344,13 +344,6 @@ Deno.serve(async (req) => {
       return json({ error: 'La sala todavía no está lista. Intenta en un momento.' }, 409);
     }
 
-    // Cupo: cuántos están dentro ahora mismo (los invitados que reingresan no suman).
-    const { count } = await admin
-      .from('aula_participantes')
-      .select('id', { count: 'exact', head: true })
-      .eq('evento_id', evento.id)
-      .is('salido_at', null);
-
     const { data: previo } = await admin
       .from('aula_invitados')
       .select('id, entradas, usuario_id')
@@ -359,17 +352,7 @@ Deno.serve(async (req) => {
       .ilike(tipo === 'asistente' ? 'email' : 'nombre', tipo === 'asistente' ? email : nombre)
       .maybeSingle();
 
-    const tope = evento.max_participantes ?? 100;
-    const { count: abiertos } = await admin
-      .from('aula_participantes')
-      .select('id', { count: 'exact', head: true })
-      .eq('evento_id', evento.id)
-      .is('salido_at', null)
-      .eq('invitado_id', previo?.id ?? '00000000-0000-0000-0000-000000000000');
-
-    if ((count ?? 0) >= tope && (abiertos ?? 0) === 0) {
-      return json({ error: 'La clase alcanzó su cupo máximo' }, 409);
-    }
+    // Las capacitaciones son sin cupo: nadie se queda fuera por aforo.
 
     // Avatar opcional (data URL ya reducida en el navegador).
     let avatarUrl: string | null = null;

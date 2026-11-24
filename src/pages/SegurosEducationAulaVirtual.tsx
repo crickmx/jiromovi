@@ -352,7 +352,6 @@ export function SegurosEducationAulaVirtual() {
     fecha: string;
     hora: string;
     duracionMin: number;
-    cupo: number;
     grabar: boolean;
     transcribir: boolean;
     categoriaId: string | null;
@@ -405,7 +404,8 @@ export function SegurosEducationAulaVirtual() {
         fecha_inicio: inicio.toISOString(),
         fecha_fin: fin.toISOString(),
         estado: 'programado',
-        max_participantes: datos.cupo,
+        // Sin tope: la sala no limita aforo (Daily aplica su propio máximo de plataforma).
+        max_participantes: null,
         grabar: datos.grabar,
         transcribir: datos.transcribir,
         categoria_id: datos.categoriaId,
@@ -646,9 +646,6 @@ export function SegurosEducationAulaVirtual() {
                             ? `${fmtMX(inicio, { day: 'numeric', month: 'short' }).replace('.', '')} · ${fmtMX(inicio, { hour: '2-digit', minute: '2-digit', hour12: false })}`
                             : 'Sin fecha'}
                           {minutos ? ` · ${minutos} min` : ''}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" /> {clase.max_participantes ?? 100}
                         </span>
                         {clase.grabar && (
                           <span className="flex items-center gap-1">
@@ -940,7 +937,6 @@ function FormularioClase({
     fecha: string;
     hora: string;
     duracionMin: number;
-    cupo: number;
     grabar: boolean;
     transcribir: boolean;
     categoriaId: string | null;
@@ -958,7 +954,6 @@ function FormularioClase({
   const [fecha, setFecha] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [hora, setHora] = useState(() => format(new Date(Date.now() + 3600_000), 'HH:mm'));
   const [duracionMin, setDuracionMin] = useState(60);
-  const [cupo, setCupo] = useState(100);
   const [grabar, setGrabar] = useState(true);
   const [transcribir, setTranscribir] = useState(true);
   const [categoriaId, setCategoriaId] = useState<string>('');
@@ -991,7 +986,6 @@ function FormularioClase({
         fecha,
         hora,
         duracionMin,
-        cupo,
         grabar,
         transcribir,
         categoriaId: categoriaId || null,
@@ -1116,11 +1110,6 @@ function FormularioClase({
           <div>
             <label className="mb-1 block text-caption font-semibold text-neutral-700 dark:text-white/70">Minutos</label>
             <input type="number" min={15} max={90} step={15} value={duracionMin} onChange={(e) => setDuracionMin(Number(e.target.value))}
-              className="w-full rounded-xl border border-neutral-200 bg-surface-50 px-2.5 py-2 text-body-sm text-neutral-900 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white" />
-          </div>
-          <div>
-            <label className="mb-1 block text-caption font-semibold text-neutral-700 dark:text-white/70">Cupo</label>
-            <input type="number" min={2} max={1000} value={cupo} onChange={(e) => setCupo(Number(e.target.value))}
               className="w-full rounded-xl border border-neutral-200 bg-surface-50 px-2.5 py-2 text-body-sm text-neutral-900 focus:border-accent focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white" />
           </div>
         </div>
