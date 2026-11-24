@@ -86,6 +86,8 @@ export interface BnvCalculationResult {
   totals: Record<FormaPago, BnvPaymentBreakdown>;
   tariff_package_id: string;
   error?: string;
+  /** Avisos no bloqueantes (p. ej. una edad sin tarifa en el plan elegido). */
+  warnings?: string[];
 }
 
 // ========================
@@ -117,6 +119,8 @@ export interface BnpQuoteInput {
   deducible: number;
   coaseguro: number;
   client_type: string;
+  /** Estado de residencia: en el Excel de BNP la zona (1/2) se deriva de aquí. */
+  estado?: string;
   maternidad_titular: boolean;
   maternidad_conyuge: boolean;
   asistencia_extranjero: boolean;
@@ -155,6 +159,7 @@ export interface BnpCalculationResult {
   totals: Record<FormaPago, BnpPaymentBreakdown>;
   tariff_package_id: string;
   error?: string;
+  warnings?: string[];
 }
 
 // ========================
@@ -249,6 +254,9 @@ export interface BxplusCalculationResult {
     gender: GenderType;
     prima_base: number;
     prima_total: number;
+    /** Prima de cada cobertura adicional seleccionada (como las columnas del Excel). */
+    adicionales_detalle?: Record<string, number>;
+    prima_xtensuz?: number;
   }>;
   prima_anual_total: number;
   totals: Record<FormaPago, BxplusPaymentBreakdown>;
@@ -313,6 +321,29 @@ export const PAYMENT_FACTORS: Record<FormaPago, { factor: number; num_recibos: n
   Trimestral: { factor: 1.05, num_recibos: 4 },
   Mensual: { factor: 1.07, num_recibos: 12 },
 };
+
+// NOTA: los recargos reales NO viven aquí — cada cotizador trae los suyos en su Excel
+// (Bupa: 1.045 / 1.075 / 1.09; BX+: tabla BL31:BN35 de la hoja Tarifa). Los motores los
+// aplican; este objeto solo se usa para etiquetas de la UI (número de recibos).
+
+/** Opciones que ofrece cada cotizador, tal como vienen del Excel cargado. */
+export interface OpcionesProducto {
+  sumas_aseguradas: number[] | string[];
+  deducibles: number[] | string[];
+  coaseguros: number[] | string[];
+  topes_coaseguro?: number[];
+  /** BNP: estados de residencia con su zona (el Excel deriva la zona del estado). */
+  estados?: Array<{ estado: string; zona: string }>;
+  zonas?: Array<{ label: string; region: string }>;
+  client_types?: Array<{ label: string; suffix: string }>;
+  derecho_poliza?: number;
+  // --- BX+ (Unikuz): las listas salen de las tablas de la hoja Tarifa ---
+  estados_bx?: string[];
+  niveles?: string[];
+  tabuladores?: string[];
+}
+
+export type OpcionesGmm = Partial<Record<ProductId, OpcionesProducto>>;
 
 export const IVA_RATE = 0.16;
 

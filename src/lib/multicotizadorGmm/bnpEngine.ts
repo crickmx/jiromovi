@@ -1,132 +1,105 @@
+/**
+ * Motor de Bupa Nacional Plus (BNP) — replica el cotizador Excel
+ * "Cotizador-BNP-2026-V3-Nuevos-Negocios".
+ *
+ * Logica (hoja "Datos Asegurado" + "MasterBase"):
+ *   E4  = "NPS" & (SA/1e6) & "D" & (Deducible/1e3) & "C" & (Coaseguro*100) & SufijoTipoCliente
+ *   A7  = IF(Zona="Zona 1", "Mexico Region 1", "Mexico Region 2")
+ *   Prima = VLOOKUP(E4 & A7 & Edad & Sexo, MasterBase, Rate)   <- la tarifa ya es por sexo
+ *   Total Prima = SUM(primas) + IF(Asistencia="Si",1632,0) + Catastrofica
+ *   Catastrofica = IF(Aplica, 5800 * Integrantes, "N/A")
+ *        Aplica si E33="Si" Y la suma asegurada esta en {20,50} MDP
+ *        Y el deducible esta en {35,000, 55,000, 75,000, 115,000, 200,000}
+ *   Recargo = x1.045 / x1.075 / x1.09 ; IVA = 16%
+ *   Primer pago = (Total Prima/n + Derecho) * 1.16
+ */
+
 import type {
   BnpQuoteInput, BnpCalculationResult, BnpPersonResult, BnpPaymentBreakdown,
   QuotePerson, FormaPago, GenderType,
 } from './types';
-import { PAYMENT_FACTORS, IVA_RATE } from './types';
+import {
+  FACTORES_PAGO_DEFAULT, FORMAS_PAGO, buildRateIndex, lookupRate, calcularPagos,
+  regionDeZona, numKey, round2, sexoExcel,
+  type BupaRateRecord, type FactoresPago,
+} from './bupaShared.ts';
 
-export interface BnpRateRecord {
-  plan_name: string;
-  region: string;
-  age: number;
-  rate: number;
-  rate_type: string;
-}
+export type BnpRateRecord = BupaRateRecord;
 
 export interface BnpPackageConfig {
   id: string;
   derecho_poliza: number;
   asistencia_extranjero: number;
   costo_catastrofica_extranjero: number;
+  plan_prefix?: string;
+  zonas?: Array<{ label: string; region: string; factor: number }>;
+  /** BNP elige la zona por estado de residencia (hoja Master, B3:D35). */
+  estados?: Array<{ estado: string; zona: string }>;
+  client_types?: Array<{ label: string; suffix: string; factor: number }>;
+  catastrofica?: {
+    costo_por_integrante: number;
+    sumas_elegibles: number[];
+    deducibles_elegibles: number[];
+  };
+  factores_pago?: FactoresPago;
+  max_integrantes?: number;
 }
 
 export interface BnpAvailableOptions {
-  sumasAseguradas: number[];  // MDP values e.g. [5, 10, 20, 50]
-  deducibles: number[];       // K values e.g. [17, 35, 55, 75, 115]
-  coaseguros: number[];       // percent values e.g. [0, 10, 20]
+  sumasAseguradas: number[];
+  deducibles: number[];
+  coaseguros: number[];
 }
 
-interface BnpFactorTables {
-  baseRates: Map<number, number>;   // age → base annual rate
-  saFactors: Map<number, number>;   // sa_pesos → FD_SA multiplier
-  dedFactors: Map<number, number>;  // ded_pesos → FD_Ded multiplier
-  coasFactors: Map<number, number>; // coas_decimal → FD_Coas multiplier
-  fdZona2: number;                  // zone 2 factor (typically 0.8)
-  factorDescuento: number;          // plan discount (0.89 for new business)
-  factorMujer: number;              // annual additive surcharge for females
-}
-
-function nearestKey(map: Map<number, number>, value: number): number {
-  if (map.has(value)) return value;
-  let nearest = NaN;
-  let minDist = Infinity;
-  for (const k of map.keys()) {
-    const d = Math.abs(k - value);
-    if (d < minDist) { minDist = d; nearest = k; }
+/** Sufijo que el Excel agrega al codigo de plan segun el tipo de cliente. */
+export function sufijoCliente(
+  clientType: string | undefined,
+  clientTypes: Array<{ label: string; suffix: string }> | undefined
+): string {
+  const c = String(clientType ?? '').trim();
+  if (clientTypes && clientTypes.length > 0) {
+    const exacto = clientTypes.find(ct => ct.label.toLowerCase() === c.toLowerCase());
+    if (exacto) return exacto.suffix ?? '';
   }
-  return nearest;
+  const l = c.toLowerCase();
+  if (l.includes('transfer')) return 'T';
+  if (l.includes('periodos de espera')) return 'PE';
+  return '';
 }
 
-function groupByPlan(rates: BnpRateRecord[]): Map<string, Array<{ age: number; rate: number }>> {
-  const map = new Map<string, Array<{ age: number; rate: number }>>();
+export function getBnpAvailableOptions(rates: BnpRateRecord[], prefix = 'NPS'): BnpAvailableOptions {
+  const sumas = new Set<number>();
+  const deds = new Set<number>();
+  const coass = new Set<number>();
+  const re = new RegExp(`^${prefix}(\\d+(?:\\.\\d+)?)D(\\d+(?:\\.\\d+)?)C(\\d+)(?:T|PE)?$`);
+
   for (const r of rates) {
-    const rate = Number(r.rate);
-    if (isNaN(rate)) continue;
-    const age = Number(r.age);
-    if (!map.has(r.plan_name)) map.set(r.plan_name, []);
-    map.get(r.plan_name)!.push({ age, rate });
-  }
-  for (const arr of map.values()) arr.sort((a, b) => a.age - b.age);
-  return map;
-}
-
-function extractFactorTables(rates: BnpRateRecord[]): BnpFactorTables {
-  const byPlan = groupByPlan(rates);
-
-  // Base rates from "40000" column — actual annual rates indexed by insured age
-  const baseRates = new Map<number, number>();
-  for (const { age, rate } of (byPlan.get('40000') || [])) {
-    baseRates.set(age, rate);
+    const m = re.exec(String(r.plan_name ?? ''));
+    if (!m) continue;
+    sumas.add(Number(m[1]));
+    deds.add(Number(m[2]));
+    coass.add(Number(m[3]));
   }
 
-  // SA factor table: pair "Sumas aseguradas" values with "FD Suma asegurada" values by row index
-  const saValues = byPlan.get('Sumas aseguradas') || [];
-  const saFDs = byPlan.get('FD Suma asegurada') || [];
-  const saFactors = new Map<number, number>();
-  for (let i = 0; i < Math.min(saValues.length, saFDs.length); i++) {
-    saFactors.set(saValues[i].rate, saFDs[i].rate);
-  }
-
-  // Deductible factor table: pair "Deducibles" values with "FD Deducible" by row index
-  const dedValues = byPlan.get('Deducibles') || [];
-  const dedFDs = byPlan.get('FD Deducible') || [];
-  const dedFactors = new Map<number, number>();
-  for (let i = 0; i < Math.min(dedValues.length, dedFDs.length); i++) {
-    dedFactors.set(dedValues[i].rate, dedFDs[i].rate);
-  }
-
-  // Coaseguro factor table:
-  // "FD Coasegurado"[0] = FD for coaseguro=0% (implicit, no entry in "Coasegurado")
-  // "FD Coasegurado"[i+1] = FD for "Coasegurado"[i] value
-  const coasValues = byPlan.get('Coasegurado') || [];
-  const coasFDs = byPlan.get('FD Coasegurado') || [];
-  const coasFactors = new Map<number, number>();
-  if (coasFDs.length > 0) coasFactors.set(0, coasFDs[0].rate);
-  else coasFactors.set(0, 1.0);
-  for (let i = 0; i < coasValues.length && i + 1 < coasFDs.length; i++) {
-    coasFactors.set(coasValues[i].rate, coasFDs[i + 1].rate);
-  }
-
-  // Zone 2 factor = first FD_Zona entry with value < 1.0
-  const fdZonaEntries = byPlan.get('FD Zona') || [];
-  const fdZona2 = fdZonaEntries.find(e => e.rate < 1.0)?.rate ?? 0.8;
-
-  // Factor descuento: first entry = new business rate (typically 0.89)
-  const factorDescuentoEntries = byPlan.get('Factor descuento') || [];
-  const factorDescuento = factorDescuentoEntries[0]?.rate ?? 0.89;
-
-  // Female annual surcharge (additive, not multiplicative)
-  const factorMujerEntries = byPlan.get('Factor es mujer') || [];
-  const factorMujer = factorMujerEntries[0]?.rate ?? 2600;
-
-  return { baseRates, saFactors, dedFactors, coasFactors, fdZona2, factorDescuento, factorMujer };
-}
-
-export function getBnpAvailableOptions(rates: BnpRateRecord[]): BnpAvailableOptions {
-  const byPlan = groupByPlan(rates);
-
-  const saValues = (byPlan.get('Sumas aseguradas') || []).map(e => e.rate / 1_000_000);
-  const dedFDs = byPlan.get('FD Deducible') || [];
-  const dedValues = (byPlan.get('Deducibles') || [])
-    .slice(0, dedFDs.length)
-    .map(e => e.rate / 1_000);
-  const rawCoas = byPlan.get('Coasegurado') || [];
-  const coasValues = [0, ...rawCoas.filter(e => e.rate <= 1).map(e => Math.round(e.rate * 100))];
-
+  const asc = (a: number, b: number) => a - b;
   return {
-    sumasAseguradas: saValues.length > 0 ? saValues : [5, 10, 20, 50],
-    deducibles: dedValues.length > 0 ? dedValues : [17, 35, 55, 75, 115],
-    coaseguros: coasValues.length > 0 ? [...new Set(coasValues)].sort((a, b) => a - b) : [0, 10, 20],
+    sumasAseguradas: [...sumas].sort(asc),
+    deducibles: [...deds].sort(asc),
+    coaseguros: [...coass].sort(asc),
   };
+}
+
+/** Zona (Zona 1 / Zona 2) a partir del estado de residencia. */
+export function zonaDeEstado(
+  estado: string | undefined,
+  estados: Array<{ estado: string; zona: string }> | undefined
+): string | null {
+  const e = String(estado ?? '').trim().toLowerCase();
+  if (!e || !estados) return null;
+  const exacto = estados.find(x => x.estado.toLowerCase() === e);
+  if (exacto) return exacto.zona;
+  const parcial = estados.find(x => x.estado.toLowerCase().startsWith(e) || e.startsWith(x.estado.toLowerCase()));
+  return parcial ? parcial.zona : null;
 }
 
 export function calculateBnp(
@@ -135,105 +108,124 @@ export function calculateBnp(
   rates: BnpRateRecord[],
   packageConfig: BnpPackageConfig
 ): BnpCalculationResult {
+  const vacio = (error: string): BnpCalculationResult => ({
+    product: 'BNP',
+    people_results: [],
+    prima_anual_total: 0,
+    totals: {} as Record<FormaPago, BnpPaymentBreakdown>,
+    tariff_package_id: packageConfig.id,
+    error,
+  });
+
   try {
     if (!rates || rates.length === 0) {
-      return {
-        product: 'BNP', people_results: [], prima_anual_total: 0, totals: {} as any,
-        tariff_package_id: packageConfig.id,
-        error: 'No hay tarifas cargadas para BNP. Sube un archivo de cotizador en Tarifas.',
-      };
+      return vacio('No hay tarifas cargadas para BNP. Sube un archivo de cotizador en Tarifas.');
+    }
+    if (!people || people.length === 0) {
+      return vacio('Agrega al menos un asegurado.');
     }
 
-    const tables = extractFactorTables(rates);
+    const prefix = packageConfig.plan_prefix || 'NPS';
+    const index = buildRateIndex(rates, prefix, 'BNP');
 
-    if (tables.baseRates.size === 0) {
-      return {
-        product: 'BNP', people_results: [], prima_anual_total: 0, totals: {} as any,
-        tariff_package_id: packageConfig.id,
-        error: 'El archivo de tarifas BNP no contiene una tabla de tasas base valida.',
-      };
+    // La tarifa BNP que está activa se cargó con el lector anterior (guardaba las columnas
+    // de la hoja Master, no la tabla de tarifas). Sin las llaves del producto no se puede
+    // cotizar: se avisa en vez de devolver ceros.
+    if (index.size === 0) {
+      return vacio(
+        `La tarifa BNP activa no contiene la tabla de tarifas del cotizador (no hay planes "${prefix}..."). ` +
+        'Vuelve a subir el Excel en la pestaña Tarifas y actívala.'
+      );
     }
 
-    // Convert UI inputs to raw units
-    const saPesos = input.suma_asegurada * 1_000_000;
-    const dedPesos = input.deducible * 1_000;
-    const coasDecimal = input.coaseguro / 100;
+    // La zona sale del estado de residencia cuando lo hay (como en el Excel);
+    // si no, se usa la zona elegida directamente.
+    const zonaDeEstadoCalc = zonaDeEstado(input.estado, packageConfig.estados);
+    const zona = zonaDeEstadoCalc ?? input.region_zone;
+    const region = regionDeZona(zona, packageConfig.zonas, 'BNP');
 
-    // Zone multiplier
-    const fdZona = input.region_zone === 'Zona 2' ? tables.fdZona2 : 1.0;
+    const saMdp = Number(input.suma_asegurada);
+    const dedK = Number(input.deducible);
+    const coasPct = Number(input.coaseguro);
+    const suffix = sufijoCliente(input.client_type, packageConfig.client_types);
+    const planCodeBase = `${prefix}${numKey(saMdp)}D${numKey(dedK)}C${numKey(coasPct)}`;
 
-    // Factor lookups — use nearest available key when exact match not found
-    const fdSA = tables.saFactors.size > 0
-      ? (tables.saFactors.get(nearestKey(tables.saFactors, saPesos)) ?? 1.0) : 1.0;
-    const fdDed = tables.dedFactors.size > 0
-      ? (tables.dedFactors.get(nearestKey(tables.dedFactors, dedPesos)) ?? 1.0) : 1.0;
-    const fdCoas = tables.coasFactors.size > 0
-      ? (tables.coasFactors.get(nearestKey(tables.coasFactors, coasDecimal)) ?? 1.0) : 1.0;
-
-    const allAges = [...tables.baseRates.keys()].sort((a, b) => a - b);
-
+    const warnings: string[] = [];
     const peopleResults: BnpPersonResult[] = people.map(p => {
-      const nearestAge = allAges.reduce((prev, curr) =>
-        Math.abs(curr - p.age) < Math.abs(prev - p.age) ? curr : prev, allAges[0]);
-      const baseRate = tables.baseRates.get(nearestAge) ?? 0;
-      const isFemale = (p.gender as GenderType) === 'Femenino';
-
-      // Formula: base × FD_SA × FD_Ded × FD_Coas × FD_Zona × Factor_descuento + (female surcharge)
-      const annualPremium =
-        baseRate * fdSA * fdDed * fdCoas * fdZona * tables.factorDescuento
-        + (isFemale ? tables.factorMujer : 0);
-
+      const age = Number(p.age);
+      const sexo = sexoExcel(p);
+      // El Excel marca el tipo de cliente en el codigo; si esa variante no existe en la
+      // tabla se usa la generica (las tres traen la misma tarifa en el archivo actual).
+      let rate = lookupRate(index, `${planCodeBase}${suffix}`, region, age, sexo);
+      let code = `${planCodeBase}${suffix}`;
+      if (rate === null && suffix) {
+        rate = lookupRate(index, planCodeBase, region, age, sexo);
+        code = planCodeBase;
+      }
+      if (rate === null) {
+        warnings.push(`Sin tarifa para ${p.name || 'asegurado'} (${age} años, ${sexo}) en el plan ${code} / ${region}`);
+      }
       return {
         person_id: p.id,
         person_name: p.name,
         relation: p.relation,
-        age: p.age,
+        age,
         gender: p.gender as GenderType,
-        lookup_key: `${input.region_zone}|SA${input.suma_asegurada}M|D${input.deducible}K|C${input.coaseguro}%`,
-        annual_premium: annualPremium,
+        lookup_key: `${code}${region}${age}${sexo}`,
+        annual_premium: rate ?? 0,
       };
     });
 
-    const primaAnualTotal = peopleResults.reduce((sum, p) => sum + p.annual_premium, 0);
+    const primaPersonas = peopleResults.reduce((s, p) => s + p.annual_premium, 0);
+    const asistencia = input.asistencia_extranjero ? Number(packageConfig.asistencia_extranjero || 0) : 0;
 
-    const totals: Record<FormaPago, BnpPaymentBreakdown> = {} as any;
-    const formasPago: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
+    // Cobertura de enfermedades catastroficas en el extranjero (celdas H33/I33/C46).
+    const cat = packageConfig.catastrofica ?? {
+      costo_por_integrante: Number(packageConfig.costo_catastrofica_extranjero || 0),
+      sumas_elegibles: [20_000_000, 50_000_000],
+      deducibles_elegibles: [35_000, 55_000, 75_000, 115_000, 200_000],
+    };
+    const saPesos = saMdp * 1_000_000;
+    const dedPesos = dedK * 1000;
+    const titular = people.find(p => p.relation === 'Titular') ?? people[0];
+    const titularMayor = Number(titular?.age ?? 0) >= 18;
+    const aplicaCatastrofica =
+      Boolean(input.cobertura_catastrofica_extranjero) &&
+      titularMayor &&
+      cat.sumas_elegibles.includes(saPesos) &&
+      cat.deducibles_elegibles.includes(dedPesos);
+    const importeCatastrofica = aplicaCatastrofica ? cat.costo_por_integrante * people.length : 0;
 
-    for (const fp of formasPago) {
-      const { factor, num_recibos } = PAYMENT_FACTORS[fp];
-      const primaNeta = primaAnualTotal * factor;
-      const asistencia = input.asistencia_extranjero ? packageConfig.asistencia_extranjero : 0;
-      const catastrofica = input.cobertura_catastrofica_extranjero ? packageConfig.costo_catastrofica_extranjero : 0;
-      const subtotal = primaNeta + asistencia + catastrofica + packageConfig.derecho_poliza;
-      const iva = subtotal * IVA_RATE;
-      const total = subtotal + iva;
-      const primerPago = total / num_recibos;
+    const primaAnual = round2(primaPersonas + asistencia + importeCatastrofica);
 
-      totals[fp] = {
-        forma_pago: fp,
-        prima_neta: primaNeta,
-        asistencia_extranjero: asistencia,
-        catastrofica_extranjero: catastrofica,
-        derecho_poliza: packageConfig.derecho_poliza,
-        subtotal, iva, total,
-        primer_pago: primerPago,
-        pagos_subsecuentes: num_recibos > 1 ? primerPago : 0,
-        num_recibos,
-      };
-    }
+    const factores = packageConfig.factores_pago ?? FACTORES_PAGO_DEFAULT;
+    const totals = calcularPagos(
+      {
+        primaPeriodo: primaPersonas + asistencia + importeCatastrofica,
+        derechoPoliza: Number(packageConfig.derecho_poliza || 0),
+        asistenciaExtranjero: asistencia,
+        catastroficaExtranjero: importeCatastrofica,
+        // El Excel suma la catastrófica dos veces en la línea "Costo total"
+        // (C51 = ...+C46+C47, y C47 = SUM(C41:C46) ya la incluye). Se replica tal cual
+        // para que el número coincida con el Excel; si la aseguradora corrige la
+        // fórmula, este término debe quedar en 0.
+        extraEnCostoTotal: importeCatastrofica,
+      },
+      factores
+    ) as unknown as Record<FormaPago, BnpPaymentBreakdown>;
 
     return {
       product: 'BNP',
       people_results: peopleResults,
-      prima_anual_total: primaAnualTotal,
+      prima_anual_total: primaAnual,
       totals,
       tariff_package_id: packageConfig.id,
+      warnings: warnings.length ? warnings : undefined,
     };
-  } catch (err: any) {
-    return {
-      product: 'BNP', people_results: [], prima_anual_total: 0, totals: {} as any,
-      tariff_package_id: packageConfig.id,
-      error: err.message || 'Error al calcular BNP',
-    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return vacio(msg || 'Error al calcular BNP');
   }
 }
+
+export { FORMAS_PAGO };

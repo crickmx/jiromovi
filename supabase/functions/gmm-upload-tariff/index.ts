@@ -11,7 +11,7 @@ const corsHeaders = {
 interface ExcelRangeDefinition {
   sheet: string;
   range: string;
-  type: 'table' | 'value' | 'array';
+  type: 'table' | 'value' | 'array' | 'formula_rate';
 }
 
 const EXCEL_RANGES: Record<string, ExcelRangeDefinition> = {
@@ -44,8 +44,25 @@ const EXCEL_RANGES: Record<string, ExcelRangeDefinition> = {
   indemnizacion_eg_monto: { sheet: 'Tarifa', range: 'DK2', type: 'value' },
   xtensuz_factor: { sheet: 'Tarifa', range: 'AJ15:AK18', type: 'table' },
   gastos_expedicion: { sheet: 'Cotizacion', range: 'O67', type: 'value' },
-  iva: { sheet: 'Cotizacion', range: 'O69', type: 'value' },
+  // OJO: en O69 el Excel tiene el IMPORTE del IVA (=0.16*O68), no la tasa. La tasa se lee
+  // de la propia fórmula; si no se puede, queda 0.16 (ver parseTasaIva).
+  iva: { sheet: 'Cotizacion', range: 'O69', type: 'formula_rate' },
 };
+
+/**
+ * La tasa de IVA vive dentro de la fórmula de la celda (p. ej. "0.16*O68"), no en su valor:
+ * el valor cacheado es el importe del IVA de la última cotización y usarlo como tasa
+ * multiplicaría el subtotal por miles.
+ */
+function parseTasaIva(workbook: XLSX.WorkBook, rangeStr: string): number {
+  const sheet = workbook.Sheets['Cotizacion'];
+  const celda = sheet?.[rangeStr];
+  const formula = celda && typeof celda.f === 'string' ? celda.f : '';
+  const m = /(\d+(?:\.\d+)?)\s*\*/.exec(formula);
+  const tasa = m ? Number(m[1]) : NaN;
+  if (Number.isFinite(tasa) && tasa > 0 && tasa < 1) return tasa;
+  return 0.16;
+}
 
 function resolveSheetName(workbook: XLSX.WorkBook, targetName: string): string | null {
   if (workbook.Sheets[targetName]) return targetName;
@@ -201,7 +218,9 @@ Deno.serve(async (req: Request) => {
 
     for (const [tableKey, definition] of Object.entries(EXCEL_RANGES)) {
       try {
-        const rawData = parseRange(workbook, definition.sheet, definition.range, definition.type);
+        const rawData = definition.type === 'formula_rate'
+          ? parseTasaIva(workbook, definition.range)
+          : parseRange(workbook, definition.sheet, definition.range, definition.type);
         const data = rawData ?? (definition.type === 'value' ? null : []);
         const data_json = data === null ? { value: null } : data;
         tables.push({

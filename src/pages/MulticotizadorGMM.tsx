@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Heart, Calculator, Settings, Plus, Trash2, Users, FileDown, Loader, CircleAlert as AlertCircle, Check, FileText, FilePlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
-import { supabase } from '../lib/supabase';
 import { calculateBnv, calculateBxplus, calculateBnp } from '../lib/multicotizadorGmm';
+import type { BnvRateRecord } from '../lib/multicotizadorGmm/bnvEngine';
+import type { BnpRateRecord } from '../lib/multicotizadorGmm/bnpEngine';
 import type {
-  ProductId, QuotePerson, FormaPago, MultiGmmOption, OptionResult,
+  ProductId, QuotePerson, MultiGmmOption, OptionResult,
   BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput,
 } from '../lib/multicotizadorGmm/types';
-import { DEFAULT_BXPLUS_COVERAGES } from '../lib/multicotizadorGmm/types';
+import { DEFAULT_BXPLUS_COVERAGES, PRODUCT_LABELS } from '../lib/multicotizadorGmm/types';
+import { cargarTarifasActivas, opcionesDeTarifas, type TarifasActivas } from '../lib/multicotizadorGmm/tarifas';
 import { TarifasAdminPanel } from '../components/multicotizadorGmm/TarifasAdminPanel';
 import { ComparisonResults } from '../components/multicotizadorGmm/ComparisonResults';
 import { OptionConfigurator } from '../components/multicotizadorGmm/OptionConfigurator';
@@ -80,6 +82,11 @@ export default function MulticotizadorGMM() {
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const savedResultsRef = useRef<string | null>(null);
 
+  // Tarifas activas (paquetes vigentes). De aquí salen tanto las listas de opciones
+  // que ve el asesor como los datos con los que se calcula.
+  const [tarifas, setTarifas] = useState<TarifasActivas | null>(null);
+  const [cargandoTarifas, setCargandoTarifas] = useState(true);
+
   // Abrir una cotización guardada desde Cotizar › Cotizaciones (?cotizacion=<id>).
   useEffect(() => {
     const id = idCotizacionEnUrl();
@@ -97,6 +104,29 @@ export default function MulticotizadorGMM() {
         setExpandedOptions(new Set([opts[0].id]));
       })
       .catch(e => setError('No se pudo abrir la cotización: ' + (e?.message ?? e)));
+  }, []);
+
+  // Cargar las tarifas activas una sola vez al abrir la pantalla.
+  useEffect(() => {
+    let vivo = true;
+    cargarTarifasActivas()
+      .then(t => {
+        if (!vivo) return;
+        setTarifas(t);
+        // Si una opción de BNP todavía no tiene lugar de residencia, se elige el primero
+        // que corresponda a su zona: el Excel deriva la zona del estado, no al revés.
+        setOptions(prev => prev.map(o => {
+          if (o.product_id !== 'BNP') return o;
+          const inp = o.input as BnpQuoteInput;
+          if (inp.estado) return o;
+          const estados = t.BNP?.meta.estados ?? [];
+          const elegido = estados.find(e => e.zona === inp.region_zone) ?? estados[0];
+          return elegido ? { ...o, input: { ...inp, estado: elegido.estado } } : o;
+        }));
+      })
+      .catch(() => { if (vivo) setTarifas({ errores: {} }); })
+      .finally(() => { if (vivo) setCargandoTarifas(false); });
+    return () => { vivo = false; };
   }, []);
 
   const nuevaCotizacion = () => {
@@ -208,114 +238,63 @@ export default function MulticotizadorGMM() {
     savedResultsRef.current = null;
 
     try {
+      if (!tarifas) {
+        setError('Las tarifas todavía se están cargando. Vuelve a intentar en un momento.');
+        return;
+      }
+
       const optionResults: OptionResult[] = [];
 
-      const productTariffs: Record<string, any> = {};
-
-      const needsBnv = options.some(o => o.product_id === 'BNV');
-      const needsBnp = options.some(o => o.product_id === 'BNP');
-      const needsBxplus = options.some(o => o.product_id === 'BXPLUS');
-
-      if (needsBnv) {
-        const { data: pkg } = await supabase
-          .from('multicotizador_gmm_packages')
-          .select('id, derecho_poliza, asistencia_extranjero')
-          .eq('product', 'BNV')
-          .eq('status', 'active')
-          .single();
-        if (pkg) {
-          const { data: rates } = await supabase
-            .from('multicotizador_gmm_rates')
-            .select('plan_name, region, age, rate, rate_type')
-            .eq('package_id', pkg.id);
-          if (rates && rates.length > 0) {
-            productTariffs.BNV = { pkg, rates };
-          } else {
-            productTariffs.BNV = { error: 'La tarifa BNV activa no tiene datos. Sube un nuevo archivo de cotizador en la pestana Tarifas.' };
-          }
-        } else {
-          productTariffs.BNV = { error: 'No hay tarifa BNV activa. Sube una tarifa en la pestana Tarifas.' };
-        }
-      }
-
-      if (needsBnp) {
-        const { data: pkg } = await supabase
-          .from('multicotizador_gmm_packages')
-          .select('id, derecho_poliza, asistencia_extranjero, costo_catastrofica_extranjero')
-          .eq('product', 'BNP')
-          .eq('status', 'active')
-          .single();
-        if (pkg) {
-          const { data: rates } = await supabase
-            .from('multicotizador_gmm_rates')
-            .select('plan_name, region, age, rate, rate_type')
-            .eq('package_id', pkg.id);
-          if (rates && rates.length > 0) {
-            productTariffs.BNP = { pkg, rates };
-          } else {
-            productTariffs.BNP = { error: 'La tarifa BNP activa no tiene datos. Sube un nuevo archivo de cotizador en la pestana Tarifas.' };
-          }
-        } else {
-          productTariffs.BNP = { error: 'No hay tarifa BNP activa. Sube una tarifa en la pestana Tarifas.' };
-        }
-      }
-
-      if (needsBxplus) {
-        const { data: pkg } = await supabase
-          .from('tariff_packages')
-          .select('id')
-          .eq('status', 'active')
-          .single();
-        if (pkg) {
-          const { data: tables } = await supabase
-            .from('tariff_tables')
-            .select('table_key, data_json')
-            .eq('tariff_package_id', pkg.id);
-          productTariffs.BXPLUS = { pkg, tables };
-        } else {
-          productTariffs.BXPLUS = { error: 'No hay tarifa BX+ Unikuz activa.' };
-        }
-      }
+      // Resultado de error con la forma de CarrierResult (sin tarifa disponible).
+      const resultadoVacio = (product_id: ProductId, error: string): OptionResult['result'] => ({
+        product: product_id,
+        people_results: [],
+        prima_anual_total: 0,
+        totals: {},
+        tariff_package_id: '',
+        error,
+      } as unknown as OptionResult['result']);
 
       for (const opt of options) {
-        const tariff = productTariffs[opt.product_id];
-
-        if (!tariff || tariff.error) {
+        const falta = tarifas.errores[opt.product_id];
+        if (falta) {
           optionResults.push({
             option_id: opt.id,
             option_label: opt.label,
             product_id: opt.product_id,
-            result: {
-              product: opt.product_id,
-              people_results: [],
-              prima_anual_total: 0,
-              totals: {} as any,
-              tariff_package_id: '',
-              error: tariff?.error || 'Tarifa no disponible',
-            } as any,
+            result: resultadoVacio(opt.product_id, falta),
           });
           continue;
         }
 
-        if (opt.product_id === 'BNV') {
-          const { pkg, rates } = tariff;
-          const result = calculateBnv(opt.input as BnvQuoteInput, people, rates, {
+        if (opt.product_id === 'BNV' && tarifas.BNV) {
+          const { pkg, rates, meta } = tarifas.BNV;
+          const result = calculateBnv(opt.input as BnvQuoteInput, people, rates as BnvRateRecord[], {
             id: pkg.id,
-            derecho_poliza: pkg.derecho_poliza || 0,
-            asistencia_extranjero: pkg.asistencia_extranjero || 0,
+            derecho_poliza: Number(meta.derecho_poliza ?? pkg.derecho_poliza ?? 0),
+            asistencia_extranjero: Number(meta.asistencia_extranjero ?? pkg.asistencia_extranjero ?? 0),
+            plan_prefix: meta.plan_prefix,
+            zonas: meta.zonas,
+            factores_pago: meta.factores_pago,
           });
           optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BNV', result });
-        } else if (opt.product_id === 'BNP') {
-          const { pkg, rates } = tariff;
-          const result = calculateBnp(opt.input as BnpQuoteInput, people, rates, {
+        } else if (opt.product_id === 'BNP' && tarifas.BNP) {
+          const { pkg, rates, meta } = tarifas.BNP;
+          const result = calculateBnp(opt.input as BnpQuoteInput, people, rates as BnpRateRecord[], {
             id: pkg.id,
-            derecho_poliza: pkg.derecho_poliza || 0,
-            asistencia_extranjero: pkg.asistencia_extranjero || 0,
-            costo_catastrofica_extranjero: pkg.costo_catastrofica_extranjero || 0,
+            derecho_poliza: Number(meta.derecho_poliza ?? pkg.derecho_poliza ?? 0),
+            asistencia_extranjero: Number(meta.asistencia_extranjero ?? pkg.asistencia_extranjero ?? 0),
+            costo_catastrofica_extranjero: Number(meta.catastrofica?.costo_por_integrante ?? pkg.costo_catastrofica_extranjero ?? 0),
+            plan_prefix: meta.plan_prefix,
+            zonas: meta.zonas,
+            estados: meta.estados,
+            client_types: meta.client_types,
+            catastrofica: meta.catastrofica,
+            factores_pago: meta.factores_pago,
           });
           optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BNP', result });
-        } else if (opt.product_id === 'BXPLUS') {
-          const { pkg, tables } = tariff;
+        } else if (opt.product_id === 'BXPLUS' && tarifas.BXPLUS) {
+          const { pkg, tables } = tarifas.BXPLUS;
           const result = calculateBxplus(opt.input as BxplusQuoteInput, people, tables, pkg.id);
           optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BXPLUS', result });
         }
@@ -506,10 +485,25 @@ export default function MulticotizadorGMM() {
                   canRemove={options.length > 1}
                   isExpanded={expandedOptions.has(opt.id)}
                   onToggleExpand={() => toggleExpand(opt.id)}
+                  opciones={tarifas ? opcionesDeTarifas(tarifas) : undefined}
                 />
               ))}
             </div>
           </div>
+
+          {/* Estado de las tarifas activas */}
+          {cargandoTarifas && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-neutral-50 dark:bg-white/[0.03] border border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-300 text-sm">
+              <Loader className="w-4 h-4 animate-spin flex-shrink-0" />
+              Cargando las tarifas vigentes…
+            </div>
+          )}
+          {tarifas && Object.entries(tarifas.errores).map(([prod, msg]) => (
+            <div key={prod} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 text-amber-800 dark:text-amber-200 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span><span className="font-medium">{PRODUCT_LABELS[prod as ProductId]}</span>: {msg}</span>
+            </div>
+          ))}
 
           {/* Error */}
           {error && (
@@ -523,7 +517,7 @@ export default function MulticotizadorGMM() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleCalculate}
-              disabled={calculating}
+              disabled={calculating || cargandoTarifas}
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm transition-colors disabled:opacity-50"
             >
               {calculating ? <Loader className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
