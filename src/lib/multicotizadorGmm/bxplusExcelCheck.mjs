@@ -2,18 +2,22 @@
 //
 //   node src/lib/multicotizadorGmm/bxplusExcelCheck.mjs "/ruta/Cotizador_Únikuz_Bx+_....xlsm"
 //
-// Toma las tablas del propio archivo (mismos rangos que usa la función gmm-upload-tariff),
-// lee los parámetros del plan que el archivo tiene capturados en la hoja "Cotizador" y
-// compara, EDAD POR EDAD, lo que calcula el motor contra lo que el Excel ya calculó en su
-// generador de tarifa (columnas CH/CI para la prima básica y BV/BW para las coberturas
-// adicionales). Si además el archivo trae asegurados capturados, compara también esos.
+// Usa el MISMO lector que la función gmm-upload-tariff (supabase/functions/_shared/
+// bxplusTariffParser.ts), así que lo que aquí se valida es exactamente lo que se cargará
+// en la base. El lector detecta el layout: el archivo 2024 tiene las primas en C:E y el de
+// junio 2026 en F:G con los factores +2 columnas, y ambos se leen igual.
 //
-// Sirve para validar la tarifa que está VIVA en beta, sin depender de valores fijos.
+// Lee los parámetros del plan capturados en la hoja "Cotizador" y compara, EDAD POR EDAD,
+// lo que calcula el motor contra lo que el Excel ya calculó en su generador de tarifa
+// (columnas detectadas: CG/CH/CI y BV/BW en 2024, CI/CJ/CK y BX/BY en 2026). Si el archivo
+// viene vacío (plantilla sin plan capturado), el generador no tiene números y se hacen
+// comprobaciones estructurales en su lugar.
 
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import * as XLSX from 'xlsx';
 import { calculateBxplus, calcularAseguradoBxplus, cargarTablasBxplus, opcionesBxplus } from './bxplusEngine.ts';
+import { extraerTablasBxplus } from '../../../supabase/functions/_shared/bxplusTariffParser.ts';
 
 const xlsm = process.argv[2] || process.env.BXPLUS_XLSM;
 if (!xlsm || !existsSync(xlsm)) {
@@ -21,101 +25,79 @@ if (!xlsm || !existsSync(xlsm)) {
   process.exit(0);
 }
 
-const EXCEL_RANGES = {
-  factor_estado: ['Tarifa', 'W4:Z38', 'table'],
-  factor_nivel_hospitalario: ['Tarifa', 'AA4:AB6', 'table'],
-  factor_tabulador: ['Tarifa', 'AA11:AB16', 'table'],
-  factor_suma_asegurada: ['Tarifa', 'N4:O9', 'table'],
-  factor_deducible: ['Tarifa', 'Q4:R14', 'table'],
-  factor_coaseguro: ['Tarifa', 'T4:U8', 'table'],
-  tope_coaseguro: ['Tarifa', 'T13:U17', 'table'],
-  forma_pago: ['Tarifa', 'BL31:BN35', 'table'],
-  base_intermedia_edad_sexo: ['Tarifa', 'C3:E110', 'table'],
-  coef_medicamentos: ['Tarifa', 'AJ3', 'value'],
-  coef_preexistentes: ['Tarifa', 'AJ7', 'value'],
-  coef_complicaciones: ['Tarifa', 'AJ11', 'value'],
-  coef_vip: ['Tarifa', 'BI3', 'value'],
-  coef_antiguedad: ['Tarifa', 'BI7', 'value'],
-  coef_emergencia_ext: ['Tarifa', 'AW3', 'value'],
-  coef_enf_graves_ext: ['Tarifa', 'AW7', 'value'],
-  coef_ayuda_diaria: ['Tarifa', 'BC3', 'value'],
-  coef_ampliacion_servicios: ['Tarifa', 'BC7', 'value'],
-  denominador_cargas: ['Tarifa', 'L4:L6', 'array'],
-  deducible_accidente_keys: ['Tarifa', 'AU15:AU23', 'array'],
-  deducible_accidente_factors: ['Tarifa', 'AW15:AW23', 'array'],
-  multiregion_carga_sistema: ['Tarifa', 'AQ42:AS74', 'table'],
-  cobertura_internacional_carga_sistema: ['Tarifa', 'AY42:BA76', 'table'],
-  gastos_expedicion: ['Cotizacion', 'O67', 'value'],
-  iva: ['Cotizacion', 'O69', 'formula_rate'],
-};
-
-function extraerTablas(wb) {
-  const out = [];
-  for (const [key, [sheetName, rango, tipo]] of Object.entries(EXCEL_RANGES)) {
-    const sheet = wb.Sheets[sheetName];
-    if (!sheet) continue;
-    if (tipo === 'value') { out.push({ table_key: key, data_json: sheet[rango]?.v ?? null }); continue; }
-    if (tipo === 'formula_rate') {
-      const f = sheet[rango]?.f ?? '';
-      const m = /(\d+(?:\.\d+)?)\s*\*/.exec(f);
-      const tasa = m ? Number(m[1]) : NaN;
-      out.push({ table_key: key, data_json: Number.isFinite(tasa) && tasa > 0 && tasa < 1 ? tasa : 0.16 });
-      continue;
-    }
-    const range = XLSX.utils.decode_range(rango);
-    if (tipo === 'array') {
-      const arr = [];
-      for (let R = range.s.r; R <= range.e.r; R++) arr.push(sheet[XLSX.utils.encode_cell({ r: R, c: range.s.c })]?.v ?? null);
-      out.push({ table_key: key, data_json: arr });
-      continue;
-    }
-    const rows = [];
-    for (let R = range.s.r; R <= range.e.r; R++) {
-      const row = {};
-      for (let C = range.s.c; C <= range.e.c; C++) row[`col_${C - range.s.c}`] = sheet[XLSX.utils.encode_cell({ r: R, c: C })]?.v ?? null;
-      rows.push(row);
-    }
-    out.push({ table_key: key, data_json: rows });
-  }
-  return out;
-}
-
 const wb = XLSX.read(readFileSync(xlsm), { type: 'buffer' });
+const { layout, tablas, errores } = extraerTablasBxplus(wb);
 const cot = wb.Sheets['Cotizador'];
 const tar = wb.Sheets['Tarifa'];
-const v = (addr) => cot[addr]?.v;
-const vt = (addr) => tar[addr]?.v;
-const tablas = extraerTablas(wb);
-
-const input = {
-  estado: v('E13'),
-  nivel_hospitalario: v('E37'),
-  tabulador: v('E38'),
-  suma_asegurada: String(v('E39')),
-  deducible: String(v('E40')),
-  coaseguro: String(v('E41')),
-  forma_pago: 'Anual',
-  coverages: {
-    reconocimiento_antiguedad: v('J45') === true,
-    medicamentos_fuera: v('J46') === true,
-    complicaciones_no_amparadas: v('J47') === true,
-    padecimientos_preexistentes: v('J48') === true,
-    eliminacion_deducible_accidente: v('J49') === true,
-    maternidad: v('J50') === true,
-    multiregion: v('J51') === true,
-    vip: v('J52') === true,
-    emergencia_medica_extranjero: v('J53') === true,
-    enfermedades_graves_extranjero: v('J54') === true,
-    cobertura_internacional: v('J55') === true,
-    ampliacion_servicios: v('J56') === true,
-    ayuda_diaria: v('J57') === true,
-    indemnizacion_eg: v('J58') === true,
-    xtensuz: v('J59') === true,
-  },
-};
+const v = addr => cot?.[addr]?.v;
+const vt = addr => tar?.[addr]?.v;
 
 console.log(`Archivo: ${xlsm.split('/').pop()}`);
-console.log(`Plan capturado: ${input.estado} · ${input.nivel_hospitalario} · ${input.tabulador} · SA ${input.suma_asegurada} · D ${input.deducible} · C ${input.coaseguro}`);
+console.log(`Layout: ${layout.etiqueta} · base en ${layout.base.colPrima} (desde ${layout.base.filaInicio})`);
+if (errores.length) console.log('Errores del lector:', errores);
+
+// Plan capturado en el archivo; si la plantilla viene vacía se usa el plan de referencia.
+const planCapturado = v('E13') || v('E37');
+const input = planCapturado
+  ? {
+      estado: v('E13'),
+      nivel_hospitalario: v('E37'),
+      tabulador: v('E38'),
+      suma_asegurada: String(v('E39')),
+      deducible: String(v('E40')),
+      coaseguro: String(v('E41')),
+      forma_pago: 'Anual',
+      coverages: {
+        reconocimiento_antiguedad: v('J45') === true,
+        medicamentos_fuera: v('J46') === true,
+        complicaciones_no_amparadas: v('J47') === true,
+        padecimientos_preexistentes: v('J48') === true,
+        eliminacion_deducible_accidente: v('J49') === true,
+        maternidad: v('J50') === true,
+        multiregion: v('J51') === true,
+        vip: v('J52') === true,
+        emergencia_medica_extranjero: v('J53') === true,
+        enfermedades_graves_extranjero: v('J54') === true,
+        cobertura_internacional: v('J55') === true,
+        ampliacion_servicios: v('J56') === true,
+        ayuda_diaria: v('J57') === true,
+        indemnizacion_eg: v('J58') === true,
+        xtensuz: v('J59') === true,
+      },
+    }
+  : {
+      // Plan de referencia: el mismo que trae capturado el archivo 2024.
+      estado: 'JALISCO 1(GUADALAJARA Y ALEDAÑOS)',
+      nivel_hospitalario: 'PLUS',
+      tabulador: 'ORO-110,000',
+      suma_asegurada: '50000000',
+      deducible: '17000',
+      coaseguro: '0.1',
+      forma_pago: 'Anual',
+      coverages: {
+        reconocimiento_antiguedad: false,
+        medicamentos_fuera: true,
+        complicaciones_no_amparadas: false,
+        padecimientos_preexistentes: false,
+        eliminacion_deducible_accidente: true,
+        maternidad: false,
+        multiregion: true,
+        vip: true,
+        emergencia_medica_extranjero: true,
+        enfermedades_graves_extranjero: false,
+        cobertura_internacional: false,
+        ampliacion_servicios: false,
+        ayuda_diaria: false,
+        indemnizacion_eg: false,
+        xtensuz: false,
+      },
+    };
+
+if (planCapturado) {
+  console.log(`Plan capturado: ${input.estado} · ${input.nivel_hospitalario} · ${input.tabulador} · SA ${input.suma_asegurada} · D ${input.deducible} · C ${input.coaseguro}`);
+} else {
+  console.log('La hoja "Cotizador" viene vacía: se usa el plan de referencia del archivo 2024.');
+}
 console.log(`Coberturas: ${Object.entries(input.coverages).filter(([, on]) => on).map(([k]) => k).join(', ') || '(ninguna)'}`);
 
 const tablasCargadas = cargarTablasBxplus(tablas);
@@ -128,14 +110,18 @@ let edadesComparadas = 0;
 let peorBasica = 0;
 let peorAdicionales = 0;
 
-// La columna CG de la hoja Tarifa trae la edad de cada renglón del generador.
-for (let fila = 6; fila <= 110; fila++) {
-  const edad = vt(`CG${fila}`);
-  if (edad === null || edad === undefined || typeof edad !== 'number') continue;
-  for (const [sexo, colBasica, colAdic] of [['Hombre', 'CH', 'BV'], ['Mujer', 'CI', 'BW']]) {
+const g = layout.generador;
+const colsSexo = [['Hombre', g.colHombre, g.colAdicHombre], ['Mujer', g.colMujer, g.colAdicMujer]];
+
+// El generador de tarifa arranca en la fila 6 en ambos layouts. Se exige una prima
+// plausible (> 1000) para no confundir restos de la plantilla con resultados reales.
+for (let fila = 6; fila <= 130; fila++) {
+  const edad = vt(`${g.colEdad}${fila}`);
+  if (typeof edad !== 'number') continue;
+  for (const [sexo, colBasica, colAdic] of colsSexo) {
     const basicaExcel = vt(`${colBasica}${fila}`);
+    if (typeof basicaExcel !== 'number' || basicaExcel < 1000) continue;
     const adicExcel = vt(`${colAdic}${fila}`);
-    if (typeof basicaExcel !== 'number') continue;
     const det = calcularAseguradoBxplus(edad, sexo, input, tablasCargadas);
     pruebas += 2;
     const difB = Math.abs(det.basica - basicaExcel);
@@ -147,9 +133,22 @@ for (let fila = 6; fila <= 110; fila++) {
     edadesComparadas++;
   }
 }
-console.log(`Curva completa: ${edadesComparadas} combinaciones edad/sexo · peor diferencia básica ${peorBasica.toFixed(4)} · adicionales ${peorAdicionales.toFixed(4)}`);
 
-// Si el archivo trae asegurados capturados, se compara también el total por asegurado.
+if (edadesComparadas > 0) {
+  console.log(`Curva completa: ${edadesComparadas} combinaciones edad/sexo · peor diferencia básica ${peorBasica.toFixed(4)} · adicionales ${peorAdicionales.toFixed(4)}`);
+} else {
+  // Plantilla sin generador calculado: se valida que el motor cotice con esta tarifa.
+  console.log('El generador de tarifa del archivo no tiene números (plantilla sin plan capturado).');
+  for (const [sexo, edad] of [['Hombre', 30], ['Mujer', 30], ['Hombre', 45], ['Mujer', 45], ['Hombre', 60], ['Mujer', 60]]) {
+    const det = calcularAseguradoBxplus(edad, sexo, input, tablasCargadas);
+    pruebas++;
+    assert.ok(Number.isFinite(det.basica) && det.basica > 0, `${sexo} ${edad}: prima básica inválida (${det.basica})`);
+    assert.ok(Number.isFinite(det.adicionales_total) && det.adicionales_total >= 0, `${sexo} ${edad}: adicionales inválidos (${det.adicionales_total})`);
+    console.log(`  ${sexo.padEnd(7)} ${String(edad).padStart(2)} años · básica ${det.basica.toFixed(2).padStart(12)} · adicionales ${det.adicionales_total.toFixed(2).padStart(10)}`);
+  }
+}
+
+// Asegurados capturados en el archivo (si los hay).
 const personas = [];
 const esperado = [];
 for (const r of [18, 20, 22, 24, 26, 28, 30, 32]) {
@@ -185,7 +184,7 @@ if (personas.length > 0) {
     console.log(`  Prima neta total ${res.prima_anual_total.toFixed(2)} (Excel O64 ${o64.toFixed(2)})`);
   }
 } else {
-  console.log('  (el archivo no trae asegurados capturados: se valida la curva completa de tarifas)');
+  console.log('  (el archivo no trae asegurados capturados)');
 }
 
 console.log(`BX+ check OK — ${pruebas} comprobaciones contra el propio Excel`);

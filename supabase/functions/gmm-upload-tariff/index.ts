@@ -1,122 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import * as XLSX from 'npm:xlsx@0.18.5';
+import { extraerTablasBxplus, resolveSheetName } from '../_shared/bxplusTariffParser.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
-
-interface ExcelRangeDefinition {
-  sheet: string;
-  range: string;
-  type: 'table' | 'value' | 'array' | 'formula_rate';
-}
-
-const EXCEL_RANGES: Record<string, ExcelRangeDefinition> = {
-  factor_estado: { sheet: 'Tarifa', range: 'W4:Z38', type: 'table' },
-  factor_nivel_hospitalario: { sheet: 'Tarifa', range: 'AA4:AB6', type: 'table' },
-  factor_tabulador: { sheet: 'Tarifa', range: 'AA11:AB16', type: 'table' },
-  factor_suma_asegurada: { sheet: 'Tarifa', range: 'N4:O9', type: 'table' },
-  factor_deducible: { sheet: 'Tarifa', range: 'Q4:R14', type: 'table' },
-  factor_coaseguro: { sheet: 'Tarifa', range: 'T4:U8', type: 'table' },
-  tope_coaseguro: { sheet: 'Tarifa', range: 'T13:U17', type: 'table' },
-  forma_pago: { sheet: 'Tarifa', range: 'BL31:BN35', type: 'table' },
-  base_intermedia_edad_sexo: { sheet: 'Tarifa', range: 'C3:E110', type: 'table' },
-  coef_medicamentos: { sheet: 'Tarifa', range: 'AJ3', type: 'value' },
-  coef_preexistentes: { sheet: 'Tarifa', range: 'AJ7', type: 'value' },
-  coef_complicaciones: { sheet: 'Tarifa', range: 'AJ11', type: 'value' },
-  coef_vip: { sheet: 'Tarifa', range: 'BI3', type: 'value' },
-  coef_antiguedad: { sheet: 'Tarifa', range: 'BI7', type: 'value' },
-  coef_emergencia_ext: { sheet: 'Tarifa', range: 'AW3', type: 'value' },
-  coef_enf_graves_ext: { sheet: 'Tarifa', range: 'AW7', type: 'value' },
-  coef_ayuda_diaria: { sheet: 'Tarifa', range: 'BC3', type: 'value' },
-  coef_ampliacion_servicios: { sheet: 'Tarifa', range: 'BC7', type: 'value' },
-  denominador_cargas: { sheet: 'Tarifa', range: 'L4:L6', type: 'array' },
-  deducible_accidente_keys: { sheet: 'Tarifa', range: 'AU15:AU23', type: 'array' },
-  deducible_accidente_factors: { sheet: 'Tarifa', range: 'AW15:AW23', type: 'array' },
-  multiregion_carga_sistema: { sheet: 'Tarifa', range: 'AQ42:AS74', type: 'table' },
-  cobertura_internacional_carga_sistema: { sheet: 'Tarifa', range: 'AY42:BA76', type: 'table' },
-  maternidad_tasa_por_edad: { sheet: 'Tarifa', range: 'AN18:AO68', type: 'table' },
-  maternidad_threshold: { sheet: 'Tarifa', range: 'CU2', type: 'value' },
-  indemnizacion_eg_tabla: { sheet: 'Tarifa', range: 'BE3:BG50', type: 'table' },
-  indemnizacion_eg_monto: { sheet: 'Tarifa', range: 'DK2', type: 'value' },
-  xtensuz_factor: { sheet: 'Tarifa', range: 'AJ15:AK18', type: 'table' },
-  gastos_expedicion: { sheet: 'Cotizacion', range: 'O67', type: 'value' },
-  // OJO: en O69 el Excel tiene el IMPORTE del IVA (=0.16*O68), no la tasa. La tasa se lee
-  // de la propia fórmula; si no se puede, queda 0.16 (ver parseTasaIva).
-  iva: { sheet: 'Cotizacion', range: 'O69', type: 'formula_rate' },
-};
-
-/**
- * La tasa de IVA vive dentro de la fórmula de la celda (p. ej. "0.16*O68"), no en su valor:
- * el valor cacheado es el importe del IVA de la última cotización y usarlo como tasa
- * multiplicaría el subtotal por miles.
- */
-function parseTasaIva(workbook: XLSX.WorkBook, rangeStr: string): number {
-  const sheet = workbook.Sheets['Cotizacion'];
-  const celda = sheet?.[rangeStr];
-  const formula = celda && typeof celda.f === 'string' ? celda.f : '';
-  const m = /(\d+(?:\.\d+)?)\s*\*/.exec(formula);
-  const tasa = m ? Number(m[1]) : NaN;
-  if (Number.isFinite(tasa) && tasa > 0 && tasa < 1) return tasa;
-  return 0.16;
-}
-
-function resolveSheetName(workbook: XLSX.WorkBook, targetName: string): string | null {
-  if (workbook.Sheets[targetName]) return targetName;
-  const targetLower = targetName.toLowerCase().trim();
-  for (const name of workbook.SheetNames) {
-    if (name.toLowerCase().trim() === targetLower) return name;
-  }
-  for (const name of workbook.SheetNames) {
-    if (name.toLowerCase().trim().startsWith(targetLower)) return name;
-  }
-  return null;
-}
-
-function parseRange(workbook: XLSX.WorkBook, sheetName: string, rangeStr: string, type: string) {
-  const resolvedName = resolveSheetName(workbook, sheetName);
-  const sheet = resolvedName ? workbook.Sheets[resolvedName] : null;
-  if (!sheet) {
-    throw new Error(`Sheet "${sheetName}" not found`);
-  }
-
-  if (type === 'value') {
-    const cell = sheet[rangeStr];
-    return cell ? cell.v : null;
-  }
-
-  if (type === 'array') {
-    const range = XLSX.utils.decode_range(rangeStr);
-    const result: any[] = [];
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-      const cellAddress = XLSX.utils.encode_cell({ r: R, c: range.s.c });
-      const cell = sheet[cellAddress];
-      result.push(cell ? cell.v : null);
-    }
-    return result;
-  }
-
-  if (type === 'table') {
-    const range = XLSX.utils.decode_range(rangeStr);
-    const result: any[] = [];
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-      const row: any = {};
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-        const cell = sheet[cellAddress];
-        const colName = `col_${C - range.s.c}`;
-        row[colName] = cell ? cell.v : null;
-      }
-      result.push(row);
-    }
-    return result;
-  }
-
-  return null;
-}
 
 function sanitizeFilename(filename: string): string {
   return filename
@@ -213,33 +104,14 @@ Deno.serve(async (req: Request) => {
 
     if (pkgError) throw pkgError;
 
-    const tables: any[] = [];
-    const errors: string[] = [];
+    const { layout, tablas, errores } = extraerTablasBxplus(workbook);
 
-    for (const [tableKey, definition] of Object.entries(EXCEL_RANGES)) {
-      try {
-        const rawData = definition.type === 'formula_rate'
-          ? parseTasaIva(workbook, definition.range)
-          : parseRange(workbook, definition.sheet, definition.range, definition.type);
-        const data = rawData ?? (definition.type === 'value' ? null : []);
-        const data_json = data === null ? { value: null } : data;
-        tables.push({
-          tariff_package_id: pkg.id,
-          table_key: tableKey,
-          data_json,
-          row_count: Array.isArray(data) ? data.length : null,
-        });
-      } catch (error) {
-        errors.push(`${tableKey}: ${error.message}`);
-      }
-    }
-
-    if (errors.length > 0) {
+    if (errores.length > 0) {
       await supabase
         .from('tariff_packages')
         .update({
           status: 'failed',
-          validation_errors: { parsing_errors: errors },
+          validation_errors: { parsing_errors: errores, layout },
         })
         .eq('id', pkg.id);
 
@@ -247,7 +119,8 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           success: false,
           package_id: pkg.id,
-          errors,
+          errors: errores,
+          layout,
         }),
         {
           status: 400,
@@ -258,7 +131,7 @@ Deno.serve(async (req: Request) => {
 
     const { error: tablesError } = await supabase
       .from('tariff_tables')
-      .insert(tables);
+      .insert(tablas.map(t => ({ ...t, tariff_package_id: pkg.id })));
 
     if (tablesError) throw tablesError;
 
@@ -266,7 +139,8 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         package: pkg,
-        tables_loaded: tables.length,
+        tables_loaded: tablas.length,
+        layout,
       }),
       {
         status: 200,
@@ -275,8 +149,15 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error) {
     console.error('Error uploading tariff:', error);
+    // Los errores de Supabase (storage, PostgREST) son objetos planos, no instancias de
+    // Error: sin esto la respuesta salía como "[object Object]" y ocultaba la causa.
+    const mensaje = error instanceof Error
+      ? error.message
+      : (typeof error === 'object' && error !== null
+        ? ((error as any).message || JSON.stringify(error))
+        : String(error));
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: mensaje }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
