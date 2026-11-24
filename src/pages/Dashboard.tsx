@@ -29,6 +29,27 @@ import { VendedorSections } from '../components/dashboard/VendedorSections';
 import { GerenteSections } from '../components/dashboard/GerenteSections';
 import { DireccionSections } from '../components/dashboard/DireccionSections';
 import { EjecutivoSections } from '../components/dashboard/EjecutivoSections';
+import { isBetaHost } from '../lib/betaAccess';
+
+// ── Tarjetas que sólo viven en beta ─────────────────────────────────────
+// La base es la misma para beta y producción, así que estas tarjetas no son
+// filas de dashboard_vcards (producción las vería): van en código y se filtran
+// por entorno con isBetaHost(). Para publicarlas, muévelas a la tabla.
+const VCARDS_SOLO_BETA: DashboardVcard[] = [
+  {
+    id: 'solo-beta-saludtoday',
+    card_key: 'saludtoday',
+    label: 'salud.today',
+    descripcion: 'Telemedicina 24/7, asistencias y beneficios',
+    route: '/saludtoday',
+    emoji: '🩺',
+    gradient_from: '#0f3d38',
+    gradient_to: '#10b981',
+    orden: 4,
+    activa: true,
+    icon_key: 'HeartHandshake',
+  },
+];
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -497,7 +518,11 @@ export default function Dashboard() {
   const visibleFor = (moduleKey: string) =>
     isVisible(moduleKey, usuario.rol, usuario.oficina_id, usuario.id);
 
-  const enabledVcards = vcards
+  const vcardsEntorno = isBetaHost()
+    ? [...vcards, ...VCARDS_SOLO_BETA].sort((a, b) => a.orden - b.orden)
+    : vcards;
+
+  const enabledVcards = vcardsEntorno
     .filter(v => v.activa)
     .filter(v => visibleFor(`dashboard:vcard:${v.card_key}`))
     .filter(v => visibleFor(v.route));

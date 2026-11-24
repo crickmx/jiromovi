@@ -9,6 +9,24 @@ export function isBetaHost(): boolean {
   return window.location.hostname === 'beta.movi.digital';
 }
 
+/**
+ * Rutas que por ahora sólo viven en beta. El mismo código sirve a los dos
+ * entornos sobre la MISMA base (module_visibility es compartida), así que la
+ * única forma de que algo se vea sólo en pruebas es preguntar por el entorno:
+ * el menú, los hubs y el dashboard esconden estas rutas fuera de beta.
+ * Al publicarlas en producción, basta con quitarlas de esta lista.
+ */
+export const RUTAS_SOLO_BETA = ['/saludtoday'];
+
+export function esRutaSoloBeta(path: string): boolean {
+  return RUTAS_SOLO_BETA.some(p => path === p || path.startsWith(`${p}/`));
+}
+
+/** `false` cuando la ruta es de beta y la app no corre en beta.movi.digital. */
+export function rutaDisponibleAqui(path: string): boolean {
+  return !esRutaSoloBeta(path) || isBetaHost();
+}
+
 /** Landing pública de seguros.education (no es la app; no debe redirigir a beta). */
 export function isEducationHost(): boolean {
   const h = window.location.hostname;
