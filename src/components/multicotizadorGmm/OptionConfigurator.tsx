@@ -5,6 +5,7 @@ import type {
   BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput, BxplusCoverages,
 } from '../../lib/multicotizadorGmm/types';
 import { PRODUCT_LABELS, PRODUCT_COLORS, PRODUCT_LOGOS, BXPLUS_COVERAGE_LABELS, DEFAULT_BXPLUS_COVERAGES } from '../../lib/multicotizadorGmm/types';
+import { getDefaultInput } from '../../lib/multicotizadorGmm/defaults';
 import { COVERAGE_HELP_TEXTS } from '../../lib/gmmCoverageHelp';
 
 interface OptionConfiguratorProps {
@@ -17,30 +18,6 @@ interface OptionConfiguratorProps {
   onToggleExpand: () => void;
   /** Listas reales del Excel cargado (sumas, deducibles, coaseguros, topes, estados). */
   opciones?: OpcionesGmm;
-}
-
-const DEFAULT_BNV_INPUT: BnvQuoteInput = {
-  region_zone: 'Zona 1', suma_asegurada: 10, deducible: 15, coaseguro: 10,
-  tope_coaseguro: 30000, client_type: 'Normal', asistencia_extranjero: false, forma_pago: 'Anual',
-};
-
-const DEFAULT_BNP_INPUT: BnpQuoteInput = {
-  region_zone: 'Zona 1', suma_asegurada: 50, deducible: 35, coaseguro: 20,
-  client_type: 'Nuevo negocio', maternidad_titular: false, maternidad_conyuge: false,
-  asistencia_extranjero: false, cobertura_catastrofica_extranjero: false, forma_pago: 'Anual',
-};
-
-const DEFAULT_BXPLUS_INPUT: BxplusQuoteInput = {
-  // Valores por omisión del propio cotizador Excel (hoja Cotizador, E37:E41).
-  estado: 'CIUDAD DE MEXICO', nivel_hospitalario: 'PLUS', tabulador: 'PALADIO-60,000',
-  suma_asegurada: '5000000', deducible: '17000', coaseguro: '0.1', forma_pago: 'Anual',
-  coverages: { ...DEFAULT_BXPLUS_COVERAGES },
-};
-
-function getDefaultInput(product: ProductId): BnvQuoteInput | BnpQuoteInput | BxplusQuoteInput {
-  if (product === 'BNV') return { ...DEFAULT_BNV_INPUT };
-  if (product === 'BNP') return { ...DEFAULT_BNP_INPUT };
-  return { ...DEFAULT_BXPLUS_INPUT, coverages: { ...DEFAULT_BXPLUS_COVERAGES } };
 }
 
 export function OptionConfigurator({ option, onUpdate, onRemove, onDuplicate, canRemove, isExpanded, onToggleExpand, opciones }: OptionConfiguratorProps) {

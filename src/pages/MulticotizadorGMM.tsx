@@ -11,6 +11,7 @@ import type {
 } from '../lib/multicotizadorGmm/types';
 import { DEFAULT_BXPLUS_COVERAGES, PRODUCT_LABELS } from '../lib/multicotizadorGmm/types';
 import { cargarTarifasActivas, opcionesDeTarifas, type TarifasActivas } from '../lib/multicotizadorGmm/tarifas';
+import { getDefaultInput, PRODUCT_ORDER, nextFreeProduct } from '../lib/multicotizadorGmm/defaults';
 import { TarifasAdminPanel } from '../components/multicotizadorGmm/TarifasAdminPanel';
 import { ComparisonResults } from '../components/multicotizadorGmm/ComparisonResults';
 import { OptionConfigurator } from '../components/multicotizadorGmm/OptionConfigurator';
@@ -41,21 +42,12 @@ const DEFAULT_PERSON: () => QuotePerson = () => ({
   age: 30,
 });
 
-function createDefaultOption(index: number): MultiGmmOption {
+function createDefaultOption(index: number, productId: ProductId = PRODUCT_ORDER[0]): MultiGmmOption {
   return {
     id: crypto.randomUUID(),
     label: `Opcion ${index}`,
-    product_id: 'BXPLUS',
-    input: {
-      estado: 'CIUDAD DE MEXICO',
-      nivel_hospitalario: 'Alto',
-      tabulador: 'PALADIO-60,000',
-      suma_asegurada: '5000000',
-      deducible: '17000',
-      coaseguro: '0.1',
-      forma_pago: 'Anual',
-      coverages: { ...DEFAULT_BXPLUS_COVERAGES },
-    } as BxplusQuoteInput,
+    product_id: productId,
+    input: getDefaultInput(productId),
   };
 }
 
@@ -67,11 +59,10 @@ export default function MulticotizadorGMM() {
 
   const [clientName, setClientName] = useState('');
   const [people, setPeople] = useState<QuotePerson[]>([DEFAULT_PERSON()]);
-  const [options, setOptions] = useState<MultiGmmOption[]>([
-    createDefaultOption(1),
-    createDefaultOption(2),
-    createDefaultOption(3),
-  ]);
+  // Una opción sugerida por aseguradora: cada una arranca con un producto distinto.
+  const [options, setOptions] = useState<MultiGmmOption[]>(
+    PRODUCT_ORDER.map((pid, i) => createDefaultOption(i + 1, pid)),
+  );
   const [expandedOptions, setExpandedOptions] = useState<Set<string>>(new Set([options[0].id]));
 
   const [calculating, setCalculating] = useState(false);
@@ -184,7 +175,9 @@ export default function MulticotizadorGMM() {
   };
 
   const addOption = () => {
-    const newOpt = createDefaultOption(options.length + 1);
+    // La opción nueva arranca con un producto que todavía no tenga ninguna otra.
+    const producto = nextFreeProduct(options.map(o => o.product_id), options.length);
+    const newOpt = createDefaultOption(options.length + 1, producto);
     setOptions(prev => [...prev, newOpt]);
     setExpandedOptions(prev => new Set([...prev, newOpt.id]));
   };
