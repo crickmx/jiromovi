@@ -404,8 +404,9 @@ export function SegurosEducationAulaVirtual() {
         fecha_inicio: inicio.toISOString(),
         fecha_fin: fin.toISOString(),
         estado: 'programado',
-        // Sin tope: la sala no limita aforo (Daily aplica su propio máximo de plataforma).
-        max_participantes: null,
+        // Aforo fijo del sistema: 200, el máximo que permite Daily por sala.
+        // No se captura ni se muestra; lo pone siempre la aplicación.
+        max_participantes: AFORO_SALA,
         grabar: datos.grabar,
         transcribir: datos.transcribir,
         categoria_id: datos.categoriaId,
@@ -911,6 +912,9 @@ export function SegurosEducationAulaVirtual() {
     </SegurosEducationLayout>
   );
 }
+
+/** Aforo por sala: el máximo que acepta Daily sin contratarlo aparte. */
+const AFORO_SALA = 200;
 
 // ── Formulario de creación ───────────────────────────────────────────────────
 function FormularioClase({
