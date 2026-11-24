@@ -356,7 +356,7 @@ export default function GamificacionAdmin() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent" />
       </div>
     );
@@ -364,7 +364,7 @@ export default function GamificacionAdmin() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div>
         <PageHeader
           title="Administración de Gamificación"
           description="Gestiona el sistema de XP, Jiro Coins y misiones"
@@ -382,7 +382,7 @@ export default function GamificacionAdmin() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div>
       <PageHeader
         title="Administración de Gamificación"
         description="Gestiona el sistema de XP, Jiro Coins y misiones"

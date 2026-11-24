@@ -77,6 +77,8 @@ interface TramiteDetallesProps {
   setSelectedEstatus: (value: string) => void;
   canEdit?: boolean;
   canManageAssignment?: boolean;
+  /** Mover el trámite a OTRO equipo — solo Admin, Gerente o líder (ver U-18). */
+  canMoverDeEquipo?: boolean;
   canSelfAssignOnly?: boolean;
   grupoAsignadoId?: string | null;
   onResponsableChange?: (userId: string) => void;
@@ -92,6 +94,7 @@ export function TramiteDetalles({
   setSelectedEstatus,
   canEdit = false,
   canManageAssignment = false,
+  canMoverDeEquipo = false,
   canSelfAssignOnly = false,
   grupoAsignadoId,
   onResponsableChange,
@@ -196,11 +199,15 @@ export function TramiteDetalles({
           .in('grupo_id', grupos.map((g: Grupo) => g.id))
           .in('rol_en_equipo', ['lider', 'ejecutivo']);
         if (miembros) {
-          type Row = { usuario_id: string; usuarios: { id: string; nombre_completo: string }[] };
+          // El usuario embebido llega como OBJETO: la relación miembro → usuario
+          // es de uno. Leerlo con `[0]` daba `undefined` y la lista de miembros
+          // del equipo salía vacía. Mismo despiste que tenía PanelLider.
+          type UsuarioEmbebido = { id: string; nombre_completo: string };
+          type Row = { usuario_id: string; usuarios: UsuarioEmbebido | UsuarioEmbebido[] };
           const seen = new Set<string>();
           const members: TeamMember[] = [];
-          for (const m of miembros as Row[]) {
-            const u = m.usuarios?.[0];
+          for (const m of miembros as unknown as Row[]) {
+            const u = Array.isArray(m.usuarios) ? m.usuarios[0] : m.usuarios;
             if (!seen.has(m.usuario_id) && u) {
               seen.add(m.usuario_id);
               members.push({ id: u.id, nombre_completo: u.nombre_completo });
@@ -282,7 +289,7 @@ export function TramiteDetalles({
               <Wrench className="w-4 h-4 inline mr-2" />
               Equipo
             </label>
-            {canManageAssignment && onEquipoChange ? (
+            {canMoverDeEquipo && onEquipoChange ? (
               <select
                 value={selectedGrupoId}
                 onChange={e => {
@@ -300,7 +307,15 @@ export function TramiteDetalles({
               </select>
             ) : (
               <div className={`px-3 py-2 rounded-xl border ${selectedGrupoId ? 'bg-amber-50 border-amber-200 text-amber-900 font-medium' : 'bg-neutral-50 border-neutral-200 text-neutral-500'}`}>
-                {grupos.find(g => g.id === selectedGrupoId)?.nombre || 'Sin equipo asignado'}
+                {/* QA 2026-10-30 (H-007) — el `||` decía "Sin equipo asignado"
+                    siempre que no se pudiera NOMBRAR el equipo: mientras la
+                    lista carga, o cuando el equipo del trámite no está entre
+                    los que este usuario alcanza a ver. Se vio en vivo: la
+                    etiqueta decía "sin equipo" con el selector de al lado
+                    trayendo el UUID y la tabla de abajo el nombre completo.
+                    Tener equipo y poder nombrarlo son dos preguntas distintas. */}
+                {grupos.find(g => g.id === selectedGrupoId)?.nombre
+                  || (selectedGrupoId ? 'Equipo asignado' : 'Sin equipo asignado')}
               </div>
             )}
           </div>
@@ -313,7 +328,7 @@ export function TramiteDetalles({
               Responsable
               {canManageAssignment && selectedGrupoId && (
                 <span className="ml-2 text-xs font-normal text-neutral-500">
-                  — miembros de {grupos.find(g => g.id === selectedGrupoId)?.nombre}
+                  — miembros de {grupos.find(g => g.id === selectedGrupoId)?.nombre || 'su equipo'}
                 </span>
               )}
             </label>

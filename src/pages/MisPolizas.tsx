@@ -242,8 +242,8 @@ export default function MisPolizas() {
 
   if (loading && polizas.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800 p-6 space-y-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="space-y-6">
+        <div className="space-y-6">
           <PageHeader
             title="Mis Pólizas"
             description="Consulta tus pólizas vigentes y accede al Centro Digital"
@@ -266,8 +266,8 @@ export default function MisPolizas() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div>
+      <div className="space-y-6">
         <PageHeader
           title="Mis Polizas"
           description="Consulta tus polizas vigentes y accede al Centro Digital"

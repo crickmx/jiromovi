@@ -13,6 +13,7 @@ import {
   syncUserTramiteTeamAssignments, puedeTenerEquiposTramite, normalizeCategory,
 } from '../lib/tramiteTeamAssignments';
 import AgentTramiteTeamsSection from '../components/tramites/AgentTramiteTeamsSection';
+import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown';
 import { normalizarTexto } from '../lib/utils';
 import { SolicitudesAltaPanel } from '../components/admin/SolicitudesAltaPanel';
 import { getOficinasDeGerente } from '../lib/oficinasUtils';
@@ -43,8 +44,8 @@ export function Directorio() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRol, setFilterRol] = useState<string>('');
-  const [filterOficina, setFilterOficina] = useState<string>('');
+  const [filterRol, setFilterRol] = useState<string[]>([]);
+  const [filterOficina, setFilterOficina] = useState<string[]>([]);
   // La columna Estado pinta `activo`, no `estado`: el filtro usa el mismo campo
   // para que lo que se ve y lo que se filtra no puedan contradecirse.
   const [filterEstado, setFilterEstado] = useState<'' | 'activo' | 'inactivo'>('');
@@ -169,7 +170,7 @@ export function Directorio() {
       // Direct query - works with both authenticated and anon roles
       const usersQuery = supabase
         .from('usuarios')
-        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, imagen_perfil_url, web_slug, is_deleted')
+        .select('id, nombre, apellidos, email_laboral, email_personal, celular_personal, celular_laboral, username, rol, estado, activo, oficina_id, puesto, imagen_perfil_url, web_slug, is_deleted, es_desarrollador, rol_id')
         .eq('is_deleted', false)
         .order('nombre')
         .limit(2000);
@@ -371,27 +372,30 @@ export function Directorio() {
     }
   };
 
-  const normalize = (text: string) =>
-    text
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-
   const filteredUsuarios = usuarios.filter((usuario) => {
-    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const q = norm(searchTerm);
-    const matchesSearch =
-      searchTerm === '' ||
-      norm(usuario.nombre || '').includes(q) ||
-      norm(usuario.apellidos || '').includes(q) ||
-      norm(usuario.email_personal || '').includes(q) ||
-      norm(usuario.email_laboral || '').includes(q) ||
-      (usuario.celular_personal || '').includes(searchTerm) ||
-      (usuario.celular_laboral || '').includes(searchTerm) ||
-      norm(usuario.username || '').includes(q);
+    // Todo en un solo texto: nombre y apellidos se comparaban por separado, así
+    // que "ricardo jim" no encontraba a RICARDO JIMÉNEZ — en cuanto se escribía
+    // el espacio, ninguno de los dos campos contenía la frase completa.
+    // Cada palabra de la búsqueda tiene que aparecer, en cualquier orden, así
+    // que "jimenez ricardo" también lo encuentra. `normalizarTexto` quita
+    // acentos y mayúsculas de los dos lados.
+    const haystack = normalizarTexto([
+      usuario.nombre,
+      usuario.apellidos,
+      usuario.email_personal,
+      usuario.email_laboral,
+      usuario.celular_personal,
+      usuario.celular_laboral,
+      (usuario as { username?: string | null }).username,
+    ].filter(Boolean).join(' '));
+    // Solo espacios = no hay nada que filtrar (se quedan los 176 usuarios).
+    const matchesSearch = normalizarTexto(searchTerm)
+      .split(' ')
+      .filter(Boolean)
+      .every((palabra) => haystack.includes(palabra));
 
-    const matchesRol = filterRol === '' || usuario.rol === filterRol;
-    const matchesOficina = filterOficina === '' || usuario.oficina_id === filterOficina;
+    const matchesRol = filterRol.length === 0 || filterRol.includes(usuario.rol ?? '');
+    const matchesOficina = filterOficina.length === 0 || filterOficina.includes(usuario.oficina_id ?? '');
     const matchesEstado = filterEstado === '' || (filterEstado === 'activo' ? !!usuario.activo : !usuario.activo);
 
     return matchesSearch && matchesRol && matchesOficina && matchesEstado;
@@ -486,7 +490,7 @@ export function Directorio() {
           const existingKept = allTeams
             .filter((t) => existingIds.includes(t.id) && !bulkCategories.has(normalizeCategory(t.area_categoria)))
             .map((t) => t.id);
-          await syncUserTramiteTeamAssignments(user.id, [...existingKept, ...bulkEquiposTeamIds]);
+          await syncUserTramiteTeamAssignments(user.id, [...existingKept, ...bulkEquiposTeamIds], user.rol);
           ok++;
         } catch (err) {
           console.error(`Error asignando equipos a ${user.nombre} ${user.apellidos}:`, err);
@@ -838,31 +842,29 @@ export function Directorio() {
               />
             </div>
 
-            <select
-              value={filterRol}
-              onChange={(e) => setFilterRol(e.target.value)}
-              className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
-            >
-              <option value="">Todos los roles</option>
-              <option value="Administrador">Administrador</option>
-              <option value="Gerente">Gerente</option>
-              <option value="Empleado">Empleado</option>
-              <option value="Agente">Agente</option>
-            </select>
+            <div className="flex items-center">
+              <MultiSelectDropdown
+                label="Rol"
+                options={[
+                  { value: 'Administrador', label: 'Administrador' },
+                  { value: 'Gerente', label: 'Gerente' },
+                  { value: 'Empleado', label: 'Empleado' },
+                  { value: 'Agente', label: 'Agente' },
+                ]}
+                selected={filterRol}
+                onChange={setFilterRol}
+              />
+            </div>
 
             {currentUser?.rol !== 'Gerente' && (
-              <select
-                value={filterOficina}
-                onChange={(e) => setFilterOficina(e.target.value)}
-                className="px-3 py-2 text-sm bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-neutral-700 dark:text-white/80"
-              >
-                <option value="">Todas las oficinas</option>
-                {oficinas.map((oficina) => (
-                  <option key={oficina.id} value={oficina.id}>
-                    {oficina.nombre}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center">
+                <MultiSelectDropdown
+                  label="Oficina"
+                  options={oficinas.map((o) => ({ value: o.id, label: o.nombre }))}
+                  selected={filterOficina}
+                  onChange={setFilterOficina}
+                />
+              </div>
             )}
 
             <select
@@ -995,7 +997,7 @@ export function Directorio() {
           <div className="bg-surface-card rounded-[var(--radius-xl)] shadow-e4 max-w-lg w-full p-6 animate-scale-in max-h-[85vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-neutral-900 mb-1">Editar equipos en bulk</h3>
             <p className="text-sm text-neutral-600 mb-4">
-              Se aplicará a {selectedConEquipos.length} de los {selectedIds.size} usuarios seleccionados (solo Agente/Administrador pueden tener equipos de trámite). Las categorías que NO toques aquí se dejan como ya las tenía cada usuario.
+              Se aplicará a {selectedConEquipos.length} de los {selectedIds.size} usuarios seleccionados. Las categorías que NO toques aquí se dejan como ya las tenía cada usuario.
             </p>
 
             {selectedConEquipos.length === 0 ? (

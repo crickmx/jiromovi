@@ -52,6 +52,7 @@ export interface UsuarioConPermisos {
   id: string;
   rol: 'Administrador' | 'Gerente' | 'Empleado' | 'Agente';
   permisosAdicionales?: string[]; // Lista de códigos de módulos con permisos admin
+  es_desarrollador?: boolean; // Ve y prueba todos los módulos, sin ver datos de usuarios reales (RLS)
 }
 
 /**
@@ -79,6 +80,14 @@ export function tienePermisoAdminEnModulo(
   // Si es Administrador, siempre tiene permisos
   if (usuario.rol === 'Administrador') {
     console.log('[tienePermisoAdminEnModulo] Es Administrador - TIENE PERMISO');
+    return true;
+  }
+
+  // Desarrollador: puede probar cualquier módulo como si administrara, pero
+  // la RLS (soy_desarrollador()) le sigue ocultando los datos de usuarios
+  // reales -- esto solo destapa la capacidad de administrar, no los datos.
+  if (usuario.es_desarrollador) {
+    console.log('[tienePermisoAdminEnModulo] Es Desarrollador - TIENE PERMISO');
     return true;
   }
 

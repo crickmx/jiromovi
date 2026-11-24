@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Mail, Power, MessageCircle, CircleAlert as AlertCircle, Pencil as Edit, Bell, ChevronDown, ChevronUp, Users, Check, X, Search, ShieldCheck, Briefcase, BookOpen, FileText, ShoppingBag, Building2, UserCheck, RefreshCw, Info, Layers, Wallet, Smartphone, Monitor, PhoneMissed } from 'lucide-react';
 import { EditarPlantillaModal } from './EditarPlantillaModal';
+import { CanalesPorTipoTramite } from './CanalesPorTipoTramite';
+import { ROLES_DESTINATARIO } from '../../lib/destinatariosAviso';
 
 interface TipoNotificacion {
   id: string;
@@ -17,6 +19,7 @@ interface TipoNotificacion {
   platform: 'movi' | 'seguwallet';
   reminder_offsets_minutes?: number[];
   es_obsoleto?: boolean;
+  destinatarios_roles?: string[];
 }
 
 interface Usuario {
@@ -72,11 +75,27 @@ const CODIGOS_MOTOR_INTERNO = [
   'notificacion_personalizada',
 ];
 
+/** Hace cuánto, en palabras. Un "hace 7 meses" dice más que una fecha suelta. */
+function haceCuanto(iso: string): string {
+  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (dias <= 0) return 'hoy';
+  if (dias === 1) return 'ayer';
+  if (dias < 30) return `hace ${dias} días`;
+  const meses = Math.round(dias / 30);
+  if (meses < 12) return `hace ${meses} ${meses === 1 ? 'mes' : 'meses'}`;
+  const anios = Math.round(meses / 12);
+  return `hace ${anios} ${anios === 1 ? 'año' : 'años'}`;
+}
+
 export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
   const [tipos, setTipos] = useState<TipoNotificacion[]>([]);
+  // Uso REAL por código: una notificación puede estar activa, con sus canales y
+  // su plantilla, y que nadie la dispare nunca. Pasaba con 5 de las 6 de
+  // Trámites. Sin esto, la pantalla no tiene cómo distinguirlas.
+  const [uso, setUso] = useState<Record<string, { ultimo: string | null; envios: number }>>({});
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [editingTipo, setEditingTipo] = useState<{ id: string; nombre: string; platform?: 'movi' | 'seguwallet' } | null>(null);
+  const [editingTipo, setEditingTipo] = useState<{ id: string; nombre: string; codigo: string; modulo: string; platform?: 'movi' | 'seguwallet' } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [destinatarios, setDestinatarios] = useState<Record<string, Destinatario[]>>({});
   const [usuariosDisponibles, setUsuariosDisponibles] = useState<Usuario[]>([]);
@@ -92,6 +111,25 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
     fetchUsuariosDisponibles();
   }, []);
 
+  /** Por papel en el trámite, no por persona: así sirve para todos los trámites. */
+  const alternarRolDestinatario = async (tipo: TipoNotificacion, rol: string) => {
+    const actuales = tipo.destinatarios_roles ?? [];
+    const nuevos = actuales.includes(rol) ? actuales.filter(r => r !== rol) : [...actuales, rol];
+
+    const { error } = await supabase
+      .from('correo_tipos_notificacion')
+      .update({ destinatarios_roles: nuevos })
+      .eq('id', tipo.id);
+
+    // Sin revisar el resultado, la pantalla mostraría el cambio y la base no lo
+    // tendría — ya pasó con otros toggles de este proyecto.
+    if (error) {
+      alert(`No se pudo guardar: ${error.message}`);
+      return;
+    }
+    setTipos(prev => prev.map(t => (t.id === tipo.id ? { ...t, destinatarios_roles: nuevos } : t)));
+  };
+
   const fetchTipos = async () => {
     try {
       setLoading(true);
@@ -105,6 +143,24 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         (t: TipoNotificacion) => !t.es_obsoleto && !t.descripcion?.includes('NO USAR')
       );
       setTipos(validos);
+
+      const { data: usoData, error: usoErr } = await supabase
+        .from('notificaciones_uso_view')
+        .select('codigo, ultimo_envio, envios');
+      // Sin el dato se prefiere no decir nada a decir algo falso: una etiqueta
+      // de "nunca se ha disparado" equivocada haría que alguien apague algo que
+      // sí sirve.
+      if (usoErr) console.error('No se pudo leer el uso de las notificaciones:', usoErr.message);
+      else {
+        const mapa: Record<string, { ultimo: string | null; envios: number }> = {};
+        for (const fila of usoData ?? []) {
+          mapa[fila.codigo as string] = {
+            ultimo: (fila.ultimo_envio as string) ?? null,
+            envios: Number(fila.envios ?? 0),
+          };
+        }
+        setUso(mapa);
+      }
     } catch (err) {
       console.error('Error cargando tipos:', err);
     } finally {
@@ -463,7 +519,31 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                   Automatica
                                 </span>
                               )}
-                              {esDepartamental && destTipo.length === 0 && tipo.activo && (
+                              {/* Lo que la pantalla callaba: si esto se dispara o no. */}
+                              {Object.keys(uso).length > 0 && (
+                                uso[tipo.codigo]?.ultimo ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-xs rounded border border-emerald-200"
+                                    title={`${uso[tipo.codigo].envios} envío(s). Último: ${new Date(uso[tipo.codigo].ultimo as string).toLocaleString('es-MX')}`}
+                                  >
+                                    <Check className="w-2.5 h-2.5" />
+                                    Se envió {haceCuanto(uso[tipo.codigo].ultimo as string)}
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-700 text-xs rounded border border-red-200"
+                                    title="No hay un solo envío registrado con este código. Está configurada, pero nada la dispara: cambiar su plantilla o sus canales no tiene efecto."
+                                  >
+                                    <AlertCircle className="w-2.5 h-2.5" />
+                                    Nunca se ha disparado
+                                  </span>
+                                )
+                              )}
+                              {/* Solo molesta si de verdad no hay a quién avisarle:
+                                  con papeles configurados (solicitante, responsable…)
+                                  la lista fija puede estar vacía a propósito. */}
+                              {esDepartamental && destTipo.length === 0 && tipo.activo
+                                && (tipo.destinatarios_roles ?? []).length === 0 && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-600 text-xs rounded border border-amber-200">
                                   <AlertCircle className="w-2.5 h-2.5" />
                                   Sin destinatarios
@@ -523,6 +603,69 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                                 ))}
                               </div>
                             </div>
+
+                            {/* A quién se le avisa — por su papel en el trámite. Antes
+                                estaba escrito en el código de cada pantalla. */}
+                            {tipo.modulo === 'TRAMITES' && (
+                              <div>
+                                <p className="text-xs font-semibold text-neutral-600 mb-1">¿A quién se le avisa?</p>
+                                <p className="text-[11px] text-neutral-500 mb-2">
+                                  Por su papel en cada trámite, no por nombre.
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {ROLES_DESTINATARIO.map(rol => {
+                                    const puesto = (tipo.destinatarios_roles ?? []).includes(rol.valor);
+                                    return (
+                                      <button
+                                        key={rol.valor}
+                                        onClick={() => alternarRolDestinatario(tipo, rol.valor)}
+                                        title={rol.ayuda}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                          puesto
+                                            ? 'bg-violet-100 text-violet-700 border-violet-300 border-2'
+                                            : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300'
+                                        }`}
+                                      >
+                                        <Users className="w-3.5 h-3.5" />
+                                        {rol.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                {(tipo.destinatarios_roles ?? []).length === 0 && (
+                                  <p className="text-[11px] text-amber-600 mt-1.5">
+                                    Sin elegir ninguno se usa el comportamiento de siempre: al responsable, o al líder de su equipo.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Por tipo de trámite: la lista sale de ticket_tipos activos,
+                                no de una lista escrita a mano, así que un tipo nuevo
+                                aparece aquí solo. */}
+                            {tipo.modulo === 'TRAMITES' && (
+                              <details className="border border-neutral-200 rounded-lg">
+                                <summary className="px-3 py-2 text-xs font-semibold text-neutral-700 cursor-pointer select-none hover:bg-neutral-50">
+                                  Por tipo de trámite
+                                  <span className="ml-2 font-normal text-neutral-500">
+                                    — excepciones a los canales de arriba
+                                  </span>
+                                </summary>
+                                <div className="px-3 pb-3 pt-1">
+                                  <CanalesPorTipoTramite
+                                    codigo={tipo.codigo}
+                                    heredaCorreo={tipo.enviar_correo}
+                                    heredaWhatsapp={tipo.enviar_whatsapp}
+                                    onToast={(msg, t) => {
+                                      // La pantalla no tiene toast propio; el aviso del
+                                      // navegador es feo pero no deja pasar un error en
+                                      // silencio, que es lo que importa aquí.
+                                      if (t === 'error') alert(msg);
+                                    }}
+                                  />
+                                </div>
+                              </details>
+                            )}
 
                             {tipo.codigo.startsWith('agenda_recordatorio_') && (
                               <div>
@@ -622,7 +765,7 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
                             )}
 
                             <button
-                              onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre, platform: tipo.platform })}
+                              onClick={() => setEditingTipo({ id: tipo.id, nombre: tipo.nombre, platform: tipo.platform, codigo: tipo.codigo, modulo: tipo.modulo })}
                               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium"
                             >
                               <Edit className="w-4 h-4" />
@@ -644,6 +787,8 @@ export function TiposNotificaciones({ onUpdate }: TiposNotificacionesProps) {
         <EditarPlantillaModal
           tipoId={editingTipo.id}
           tipoNombre={editingTipo.nombre}
+          codigo={editingTipo.codigo}
+          modulo={editingTipo.modulo}
           platform={editingTipo.platform}
           onClose={() => setEditingTipo(null)}
           onSave={() => { fetchTipos(); onUpdate(); }}

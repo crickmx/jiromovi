@@ -86,6 +86,10 @@ Deno.serve(async (req: Request) => {
                   phone_number: statusData.phone || statusData.phone_number || session.phone_number,
                   connected_at: session.connected_at || new Date().toISOString(),
                   last_activity_at: new Date().toISOString(),
+                  // Vinculada = el cron la revive sola si el servidor se cae.
+                  auto_reconnect: true,
+                  intentos_reconexion: 0,
+                  error_message: null,
                   updated_at: new Date().toISOString(),
                 })
                 .eq("id", session.id);
@@ -424,6 +428,10 @@ Deno.serve(async (req: Request) => {
             status: "disconnected",
             disconnected_at: new Date().toISOString(),
             session_data: null,
+            // Desvinculación explícita: el cron no debe revivirla.
+            auto_reconnect: false,
+            intentos_reconexion: 0,
+            error_message: null,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -457,9 +465,47 @@ Deno.serve(async (req: Request) => {
 
         const hasMore = (totalCount || 0) > convOffset + PAGE_SIZE;
 
-        // If DB has conversations, return them
+        // If DB has conversations, return them — enriquecidas con el último
+        // mensaje real y un nombre legible.
         if (convs && convs.length > 0) {
-          return json({ conversations: convs, hasMore, total: totalCount });
+          const ids = convs.map((c: { id: string }) => c.id);
+          const { data: ultimos } = await supabase.rpc("wa_ultimos_mensajes", { p_ids: ids });
+
+          const mapa = new Map(
+            ((ultimos ?? []) as { conversation_id: string; contenido: string | null; nombre_sugerido: string | null }[])
+              .map((u) => [u.conversation_id, u]),
+          );
+
+          const enriquecidas = convs.map((c: Record<string, unknown>) => {
+            const ultimo = mapa.get(String(c.id));
+            const crudo = typeof c.last_message_text === "string" ? c.last_message_text : null;
+            const texto =
+              crudo && crudo !== "[unknown]"
+                ? crudo
+                : ultimo?.contenido && ultimo.contenido !== "[unknown]"
+                  ? ultimo.contenido
+                  : null;
+
+            // Si el "nombre" es el mismo número, no aporta nada.
+            const nombreCrudo =
+              typeof c.remote_name === "string" && c.remote_name && c.remote_name !== c.remote_phone
+                ? c.remote_name
+                : null;
+
+            return {
+              ...c,
+              last_message_text: texto,
+              remote_name: nombreCrudo || ultimo?.nombre_sugerido || null,
+              tiene_mensajes: !!ultimo,
+            };
+          });
+
+          // Fuera los chats fantasma: sin un solo mensaje y sin nombre.
+          const visibles = enriquecidas.filter(
+            (c) => (c as { tiene_mensajes: boolean }).tiene_mensajes || (c as { remote_name: string | null }).remote_name,
+          );
+
+          return json({ conversations: visibles, hasMore, total: visibles.length });
         }
 
         // If DB is empty and first page, try to fetch live conversations from server

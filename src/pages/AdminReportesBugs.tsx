@@ -263,11 +263,11 @@ ${construirSeccionReporte(r)}`;
   };
 
   if (loading) {
-    return <div className="p-6 sm:p-8 max-w-5xl mx-auto text-sm text-neutral-500">Cargando…</div>;
+    return <div className="text-sm text-neutral-500">Cargando…</div>;
   }
 
   return (
-    <div className="p-6 sm:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <PageHeader
         icon={Bug}
         title="Admin › Reportes de Bugs"

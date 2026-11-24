@@ -112,34 +112,51 @@ export function PanelLider({ onClose }: Props) {
   const loadEquipos = useCallback(async () => {
     if (!usuario?.id) return;
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tramites_grupos_miembros')
       .select('grupo_id, tramites_grupos_visualizacion!inner(id, nombre, color, area_categoria, activo, member_count:tramites_grupos_miembros(count))')
       .eq('usuario_id', usuario.id)
       .in('rol_en_equipo', ROLES_LIDERAZGO);
 
-    if (data) {
-      type Row = {
-        grupo_id: string;
-        tramites_grupos_visualizacion: {
-          id: string; nombre: string; color: string;
-          area_categoria: string | null; activo: boolean;
-          member_count: { count: number }[];
-        }[];
-      };
-      const grupos: LiderEquipo[] = (data as unknown as Row[])
-        .map(r => r.tramites_grupos_visualizacion?.[0])
-        .filter((g): g is NonNullable<typeof g> => Boolean(g && g.activo))
-        .map(g => ({
+    if (error) {
+      // Antes el error se ignoraba y la pantalla decía "No tienes equipos
+      // asignados como líder", que es una respuesta distinta a "no se pudo
+      // consultar" y manda a buscar el problema al lugar equivocado.
+      console.error('[PanelLider] No se pudieron cargar los equipos:', error);
+      showToast('No se pudieron cargar tus equipos: ' + error.message, 'err');
+      setLoading(false);
+      return;
+    }
+
+    type Grupo = {
+      id: string; nombre: string; color: string;
+      area_categoria: string | null; activo: boolean;
+      member_count?: { count: number }[] | { count: number } | null;
+    };
+
+    // PostgREST devuelve el grupo como OBJETO, no como arreglo: la relación
+    // miembro → grupo es de uno. El código leía `[0]`, que daba `undefined`, y
+    // el filtro siguiente lo descartaba: un líder con equipos veía la lista
+    // vacía. El `as unknown as` tapaba el error de tipo.
+    const grupos: LiderEquipo[] = (data ?? [])
+      .map(r => {
+        const g = (r as { tramites_grupos_visualizacion: Grupo | Grupo[] }).tramites_grupos_visualizacion;
+        return Array.isArray(g) ? g[0] : g;
+      })
+      .filter((g): g is Grupo => Boolean(g && g.activo))
+      .map(g => {
+        const mc = g.member_count;
+        return {
           id: g.id,
           nombre: g.nombre,
           color: g.color,
           area_categoria: g.area_categoria,
-          member_count: g.member_count?.[0]?.count ?? 0,
-        }));
-      setEquipos(grupos);
-      if (grupos.length > 0) setSelectedId(grupos[0].id);
-    }
+          member_count: (Array.isArray(mc) ? mc[0]?.count : mc?.count) ?? 0,
+        };
+      });
+
+    setEquipos(grupos);
+    if (grupos.length > 0) setSelectedId(grupos[0].id);
     setLoading(false);
   }, [usuario?.id]);
 

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Building2, Loader2, Pencil, Plus, Search, Share2, Trash2, UserRound, Users, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Building2, Loader2, Pencil, Plus, Search, Share2, Trash2, Upload, UserRound, Users, X } from 'lucide-react';
+import { parsearContactos } from '../../lib/correo/importarContactos';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -63,6 +64,43 @@ export function ContactosMovi({
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
+  const [importando, setImportando] = useState(false);
+  const [aviso, setAviso] = useState('');
+  const archivoRef = useRef<HTMLInputElement>(null);
+
+  // Importar CSV o vCard: solo agrega como contactos personales los correos
+  // que el usuario aún no tiene; nunca modifica ni borra los existentes.
+  const importar = async (file: File | undefined) => {
+    if (archivoRef.current) archivoRef.current.value = '';
+    if (!file || !usuario) return;
+    setImportando(true);
+    setError('');
+    setAviso('');
+    try {
+      const filas = parsearContactos(file.name, await file.text());
+      if (filas.length === 0) { setError('No se encontraron contactos con correo en el archivo.'); return; }
+      const { data: existentes, error: e1 } = await supabase.from('contactos').select('email').eq('usuario_id', usuario.id).eq('eliminado', false);
+      if (e1) throw e1;
+      const ya = new Set((existentes || []).map((c: { email: string }) => (c.email || '').toLowerCase()));
+      const nuevas = filas.filter(f => !ya.has(f.email)).map(f => ({
+        usuario_id: usuario.id, asignado_a: usuario.id,
+        nombre: f.nombre, apellido: f.apellido, email: f.email, telefono: f.telefono, empresa: f.empresa,
+        visibilidad: 'personal', compartir_oficina_id: null, compartir_grupo_id: null, compartido_at: null,
+        origen: 'importacion', eliminado: false,
+      }));
+      for (let i = 0; i < nuevas.length; i += 200) {
+        const { error: e2 } = await (supabase.from('contactos') as any).insert(nuevas.slice(i, i + 200));
+        if (e2) throw e2;
+      }
+      const omitidos = filas.length - nuevas.length;
+      setAviso(`${nuevas.length} contacto${nuevas.length !== 1 ? 's' : ''} importado${nuevas.length !== 1 ? 's' : ''}${omitidos ? ` · ${omitidos} ya existía${omitidos !== 1 ? 'n' : ''}` : ''}.`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo importar el archivo.');
+    } finally {
+      setImportando(false);
+    }
+  };
 
   const load = async () => {
     if (!usuario) return;
@@ -181,17 +219,21 @@ export function ContactosMovi({
   }[scope]);
 
   return (
-    <div className="h-full flex flex-col bg-neutral-50 dark:bg-neutral-900">
-      <div className="bg-white dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 px-4 py-3 flex items-center gap-3">
-        <button onClick={onClose} className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700" title="Cerrar contactos">
-          <X className="w-4 h-4" />
+    <div className="h-full flex flex-col bg-surface-canvas">
+      <div className="bg-surface-card border-b border-soft px-2 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3">
+        <button onClick={onClose} aria-label="Cerrar contactos" title="Cerrar contactos" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-muted text-neutral-600 dark:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+          <X className="w-5 h-5" />
         </button>
-        <div className="flex-1">
-          <h2 className="text-sm font-bold text-neutral-900 dark:text-white">Contactos MOVI</h2>
-          <p className="text-[11px] text-neutral-500">Directorio permitido y contactos compartidos</p>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-display text-title-sm font-semibold text-neutral-900 dark:text-white truncate">Contactos</h2>
+          <p className="text-micro text-neutral-500 dark:text-neutral-400 truncate">Directorio permitido y contactos compartidos</p>
         </div>
-        <button onClick={() => { setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-accent text-accent-foreground px-3 py-2 rounded-lg text-xs font-semibold">
-          <Plus className="w-4 h-4" /> Nuevo contacto
+        <input ref={archivoRef} type="file" accept=".csv,.vcf,text/csv,text/vcard,text/x-vcard" className="hidden" onChange={e => importar(e.target.files?.[0])} />
+        <button onClick={() => archivoRef.current?.click()} disabled={importando} aria-label="Importar contactos desde CSV o vCard" title="Importar CSV o vCard" className="min-h-[40px] flex items-center gap-2 border border-strong text-neutral-700 dark:text-neutral-200 px-3 rounded-[var(--radius-sm)] text-caption font-semibold hover:bg-surface-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+          {importando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} <span className="max-sm:hidden">Importar</span>
+        </button>
+        <button onClick={() => { setForm(emptyForm); setShowForm(true); }} aria-label="Nuevo contacto" className="min-h-[40px] flex items-center gap-2 bg-accent text-accent-foreground px-3 rounded-[var(--radius-sm)] text-caption font-semibold hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
+          <Plus className="w-4 h-4" /> <span className="max-sm:hidden">Nuevo contacto</span>
         </button>
       </div>
 
@@ -202,7 +244,8 @@ export function ContactosMovi({
         </div>
       </div>
 
-      {error && <div className="mx-4 mt-3 rounded-lg bg-red-50 text-red-700 px-3 py-2 text-xs">{error}</div>}
+      {error && <div role="alert" className="mx-4 mt-3 rounded-lg bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 text-xs">{error}</div>}
+      {aviso && <div role="status" className="mx-4 mt-3 rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200 px-3 py-2 text-xs">{aviso}</div>}
 
       <div className="flex-1 overflow-auto p-4 space-y-6">
         {loading ? (

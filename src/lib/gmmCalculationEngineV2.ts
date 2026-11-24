@@ -209,8 +209,10 @@ function getTopeCoaseguro(
   const normalizedTable = normalizeTopsCoaseguroTable(table);
 
   for (const row of normalizedTable) {
-    if (coasegurosMatch(row.coaseguro_key, coaseguroNormalizado)) {
-      return row[tipo];
+    // normalizeTopsCoaseguroTable guarda el coaseguro normalizado en col_0
+    // (antes se leía row.coaseguro_key, que no existe: el tope siempre salía 0).
+    if (coasegurosMatch(row.col_0, coaseguroNormalizado)) {
+      return Number(row[tipo === 'contratado_inferior' ? 'col_1' : 'col_2'] ?? row.col_1) || 0;
     }
   }
 

@@ -101,7 +101,7 @@ ana.martinez@ejemplo.com,Temporal321,Ana Patricia,Martínez Fernández,Agente,Gu
   };
 
   return (
-    <div className="container-custom py-6">
+    <div>
       <PageHeader
         title="Carga Masiva de Usuarios"
         description="Importa múltiples usuarios desde un archivo CSV"

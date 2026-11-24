@@ -1,5 +1,5 @@
 import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { twMerge, extendTailwindMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -32,4 +32,21 @@ export function normalizarTexto(s: string | null | undefined): string {
     .replace(/[̀-ͯ]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Igual que `cn`, pero conoce la escala tipográfica del sistema visual
+ * (`text-micro`, `text-body-sm`, `text-title`…). Con `cn`, tailwind-merge toma
+ * esas clases por colores y, si van junto a un `text-<color>`, borra una de
+ * las dos sin avisar. Se agregó aparte para no cambiar `cn` en toda la app.
+ */
+const twMergeSistema = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [{ text: ['micro', 'caption', 'body-sm', 'body', 'body-lg', 'title-sm', 'title', 'title-lg', 'display', 'metric'] }],
+    },
+  },
+});
+export function cnSistema(...inputs: ClassValue[]) {
+  return twMergeSistema(clsx(inputs));
 }

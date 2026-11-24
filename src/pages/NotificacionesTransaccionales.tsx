@@ -60,7 +60,7 @@ export function NotificacionesTransaccionales() {
 
   if (usuario?.rol !== 'Administrador') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-accent-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-neutral-800 mb-2">Acceso Restringido</h2>
@@ -78,7 +78,7 @@ export function NotificacionesTransaccionales() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <PageHeader
           title="Notificaciones Transaccionales"
           description="Administra canales de envío, plantillas y configuración de notificaciones"

@@ -46,7 +46,7 @@ export default function ConfiguracionHub() {
   return (
     <div className="h-full flex flex-col">
       {/* Tab Navigation */}
-      <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 px-4 sm:px-6">
+      <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
         <nav className="flex gap-1 overflow-x-auto scrollbar-hide -mb-px" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;

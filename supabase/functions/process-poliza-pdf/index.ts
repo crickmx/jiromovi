@@ -172,6 +172,26 @@ Deno.serve(async (req: Request) => {
     { onConflict: "archivo_id" }
   );
 
+  // Encolar para entrenamiento es lo último que se puede perder: si el PDF no se
+  // pudo leer, el equipo del lector necesita verlo justamente por eso. Vive aquí
+  // arriba —y no dentro del try— para que el `catch` final también pueda llamarlo:
+  // cuando la función reventaba (PDF que no se pudo descargar, URL firmada que
+  // falló, guardado que tronó) el archivo se marcaba en rojo y NO se encolaba.
+  // Ese es el caso del trámite TKFA89F-A: salió "Error al extraer datos" y nunca
+  // llegó al lector.
+  let archivoUrl: string | null = null;
+  const encolarParaEntrenamiento = async (aseguradora: string | null) => {
+    if (!archivoUrl) return; // sin el archivo no hay nada que mandar
+    // El bucket ticket-archivos es privado; se guarda el path para que lector
+    // genere sus propias signed URLs.
+    const archivoPath = archivoUrl.split("/storage/v1/object/public/ticket-archivos/")[1] ?? null;
+    const { error: colaErr } = await sb.from("lector_cola_entrenamiento").upsert(
+      { ticket_id, archivo_id, archivo_url: archivoUrl, archivo_path: archivoPath, aseguradora, estado: "pendiente" },
+      { onConflict: "archivo_id", ignoreDuplicates: true }
+    );
+    if (colaErr) console.error("Error encolando a lector_cola_entrenamiento:", colaErr.message);
+  };
+
   try {
     // 4. Obtener info del archivo
     const { data: archivo, error: archivoErr } = await sb
@@ -180,6 +200,7 @@ Deno.serve(async (req: Request) => {
       .eq("id", archivo_id)
       .single();
     if (archivoErr || !archivo) throw new Error("Archivo no encontrado");
+    archivoUrl = archivo.url;
 
     // 5. Extraer path del storage y generar signed URL
     const match = archivo.url.match(/ticket-archivos\/(.+)$/);
@@ -280,23 +301,7 @@ Deno.serve(async (req: Request) => {
     // 8a. Todo PDF que no se extrajo bien va a la cola de entrenamiento, incluido
     // cuando el extractor mismo falló — antes ese caso se perdía sin encolar.
     const enviarEntrenamiento = !extraccionOk;
-    if (enviarEntrenamiento) {
-      // El bucket ticket-archivos es privado; guardamos el path para que lector
-      // pueda generar signed URLs con su propio cliente autenticado de Supabase.
-      const archivoPath = archivo.url.split("/storage/v1/object/public/ticket-archivos/")[1] ?? null;
-      const { error: colaErr } = await sb.from("lector_cola_entrenamiento").upsert(
-        {
-          ticket_id,
-          archivo_id,
-          archivo_url: archivo.url,
-          archivo_path: archivoPath,
-          aseguradora: extracted.aseguradora ?? null,
-          estado: "pendiente",
-        },
-        { onConflict: "archivo_id", ignoreDuplicates: true }
-      );
-      if (colaErr) console.error("Error encolando a lector_cola_entrenamiento:", colaErr.message);
-    }
+    if (enviarEntrenamiento) await encolarParaEntrenamiento(extracted.aseguradora ?? null);
 
     // 8b. Generar y adjuntar XLSX para SICAS — una fila por cada archivo del ticket
     let xlsxError: string | null = null;
@@ -312,7 +317,7 @@ Deno.serve(async (req: Request) => {
       // el archivo, el vendedor, el despacho y "Vigente" puestos. Nada de eso lo
       // extrajo el lector, así que esa fila está vacía y el Excel tiene que
       // decirlo en vez de dejar que parezca buena.
-      const filas = (todosExtraidos ?? []).map((d: any) =>
+      const aFila = (d: any) =>
         marcarSiNoSeExtrajo(
           SICAS_HEADERS,
           buildSicasRow(
@@ -321,12 +326,27 @@ Deno.serve(async (req: Request) => {
             d.archivo?.nombre ?? ""
           ),
           d.estado === "ok",
-        )
-      );
+        );
+
+      // Dos hojas, y el orden importa: la carga masiva de SICAS lee la PRIMERA,
+      // así que ahí va solo lo que de verdad se extrajo. Lo que no se pudo leer
+      // va en la segunda, con su aviso, para capturarlo a mano sin que ensucie
+      // la carga. La segunda hoja se crea siempre, aunque venga vacía: que el
+      // archivo tenga siempre la misma forma evita sustos al abrirlo.
+      const extraidas = (todosExtraidos ?? []).filter((d: any) => d.estado === "ok");
+      const noExtraidas = (todosExtraidos ?? []).filter((d: any) => d.estado !== "ok");
 
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet([SICAS_HEADERS, ...filas]);
-      XLSX.utils.book_append_sheet(wb, ws, "SICAS");
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.aoa_to_sheet([SICAS_HEADERS, ...extraidas.map(aFila)]),
+        "SICAS",
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.aoa_to_sheet([SICAS_HEADERS, ...noExtraidas.map(aFila)]),
+        "No extraidas",
+      );
       const xlsxArr: number[] = XLSX.write(wb, { type: "array", bookType: "xlsx" });
       const xlsxBytes = new Uint8Array(xlsxArr);
       const xlsxName = `${ticket.folio ?? ticket_id}-SICAS.xlsx`;
@@ -377,13 +397,20 @@ Deno.serve(async (req: Request) => {
             .replace("{placas}", campos.placas ?? "")
         : `El PDF de tu póliza fue recibido en el trámite ${ticket.folio ?? ticket_id}.\n\nDatos extraídos:\n${mensaje}`;
 
-      await sb.rpc("crear_notificacion", {
-        p_usuario_id: ticket.agente_id,
-        p_tipo: "tramite_documento_cargado",
+      // `enviar_notificacion_individual`, no `crear_notificacion`: esta última
+      // NO EXISTE en la base. Llevaba fallando en silencio desde que se
+      // escribió, así que los avisos de la pestaña "Extracción PDF" nunca
+      // habían salido. El `.rpc()` devuelve el error en vez de lanzarlo, y
+      // nadie lo revisaba — por eso no había ni un síntoma.
+      const { error: errAviso } = await sb.rpc("enviar_notificacion_individual", {
+        p_user_id: ticket.agente_id,
         p_titulo: "Datos de póliza extraídos",
         p_mensaje: texto,
-        p_url: ticketUrl,
+        p_modulo: "Tramites",
+        p_accion_url: ticketUrl,
+        p_enviar_whatsapp: true,
       });
+      if (errAviso) console.error("No se pudo avisar al agente:", errAviso.message);
     }
 
     // 10. Notificar equipos configurados
@@ -410,13 +437,15 @@ Deno.serve(async (req: Request) => {
           .eq("activo", true);
 
         for (const m of miembros ?? []) {
-          await sb.rpc("crear_notificacion", {
-            p_usuario_id: m.usuario_id,
-            p_tipo: "tramite_documento_cargado",
+          const { error: errEquipo } = await sb.rpc("enviar_notificacion_individual", {
+            p_user_id: m.usuario_id,
             p_titulo: "Póliza lista para captura en SICAS",
             p_mensaje: textoEquipo,
-            p_url: ticketUrl,
+            p_modulo: "Tramites",
+            p_accion_url: ticketUrl,
+            p_enviar_whatsapp: true,
           });
+          if (errEquipo) console.error("No se pudo avisar al equipo:", errEquipo.message);
         }
       }
     }
@@ -446,6 +475,8 @@ Deno.serve(async (req: Request) => {
       { ticket_id, archivo_id, estado: "error", error_detalle: message },
       { onConflict: "archivo_id" }
     );
+    // Reventar es la razón MÁS fuerte para mandarlo a entrenamiento, no la menos.
+    await encolarParaEntrenamiento(null);
     return json({ ok: false, error: message }, 500);
   }
 });

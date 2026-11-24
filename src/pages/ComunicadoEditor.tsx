@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Container } from '../components/ui/container';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
@@ -543,7 +542,7 @@ export default function ComunicadoEditor() {
   if (gerenteSinOficina) {
     return (
       <>
-        <Container size="lg">
+        <div>
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 sm:p-8 md:p-12 text-center shadow-ios">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
               <AlertCircle className="w-8 h-8 text-red-600" />
@@ -558,7 +557,7 @@ export default function ComunicadoEditor() {
               Volver a Comunicados
             </Button>
           </div>
-        </Container>
+        </div>
       </>
     );
   }
@@ -566,18 +565,18 @@ export default function ComunicadoEditor() {
   if (loading) {
     return (
       <>
-        <Container size="lg">
+        <div>
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-3 border-accent border-t-transparent"></div>
           </div>
-        </Container>
+        </div>
       </>
     );
   }
 
   return (
     <>
-      <Container size="lg">
+      <div>
         {/* Navegación */}
         <div className="mb-4 sm:mb-6">
           <Button
@@ -1171,7 +1170,7 @@ export default function ComunicadoEditor() {
             </Button>
           </div>
         </div>
-      </Container>
+      </div>
     </>
   );
 }

@@ -152,15 +152,24 @@ Deno.serve(async (req: Request) => {
         else if (digits.length === 13 && digits.startsWith('521')) phone10 = digits.slice(3);
         else if (digits.length > 10) phone10 = digits.slice(-10);
 
-        const { data } = await supabase
+        const { data: matches } = await supabase
           .from('usuarios')
           .select('id, nombre, email_laboral, celular_laboral')
           .or(`celular_laboral.ilike.%${phone10}%,celular_personal.ilike.%${phone10}%`)
           .eq('estado', 'activo')
           .is('deleted_at', null)
-          .limit(1)
-          .maybeSingle();
-        usuario = data;
+          .limit(2);
+
+        // Un celular puede estar en varias cuentas (el de soporte está en siete).
+        // Mandar el código "a la primera" lo entrega a la cuenta equivocada, así
+        // que ante la duda se pide el correo.
+        if (matches && matches.length > 1) {
+          return new Response(
+            JSON.stringify({ error: 'Ese número está registrado en más de una cuenta. Ingresa con tu correo electrónico.' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+        usuario = matches?.[0] ?? null;
       }
 
       if (!usuario) {

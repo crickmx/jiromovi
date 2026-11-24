@@ -21,12 +21,24 @@ const SIGNED_URL_DURATION_SECONDS = 3600; // 1 hour
 
 interface TicketNotificationPayload {
   event_key: string;
+  /** Botón de reenviar del detalle del trámite: salta la config y el candado. */
+  forzar_reenvio?: boolean;
   ticket_id: string;
   triggered_by_user_id: string;
   extra_variables?: Record<string, string>;
   attachment_file_ids?: string[];
   skip_email?: boolean;
   skip_whatsapp?: boolean;
+  /**
+   * A quién avisar, cuando NO es el agente del trámite.
+   *
+   * El despachador nació para avisarle al agente, así que siempre resolvía al
+   * destinatario desde el ticket. Pero hay avisos que van a otra persona —el
+   * responsable que recibe un trámite nuevo, el líder de su equipo, un
+   * administrador— y sin esto no había cómo mandarlos por aquí: se quedaban
+   * escritos a mano en el código.
+   */
+  destinatario_user_id?: string;
 }
 
 interface TicketNotificationContext {
@@ -47,6 +59,8 @@ interface AttachmentInfo {
   fileUrl?: string;
   mimeType?: string;
   size?: number;
+  /** Categoría del adjunto: con ella se decide si sale solo (ver filtrarAdjuntos). */
+  categoriaId?: string | null;
   source: "ticket" | "comment" | "policy_delivery" | "contact_center";
 }
 
@@ -339,11 +353,15 @@ async function getTicketNotificationAttachments(
 ): Promise<AttachmentInfo[]> {
   let query = supabase
     .from("ticket_archivos")
-    .select("id, nombre, url, tipo, tamano")
+    .select("id, nombre, url, tipo, tamano, categoria_id")
     .eq("ticket_id", ticketId)
     .order("fecha_subida", { ascending: false });
 
-  if (specificFileIds && specificFileIds.length > 0) {
+  // Una lista EXPLÍCITA vacía significa "ningún adjunto" — es lo que manda la
+  // ventana de confirmación cuando el usuario decide no enviar nada. Sin esto
+  // caía al comportamiento de "sin lista", que adjunta todo el trámite.
+  if (specificFileIds) {
+    if (specificFileIds.length === 0) return [];
     query = query.in("id", specificFileIds);
   }
 
@@ -377,11 +395,170 @@ async function getTicketNotificationAttachments(
       fileUrl: f.url || undefined,
       mimeType: f.tipo || "application/octet-stream",
       size: f.tamano || 0,
+      categoriaId: (f as { categoria_id?: string | null }).categoria_id ?? null,
       source: "ticket" as const,
     });
   }
 
   return deduped;
+}
+
+// ============================================================
+// Helper: por qué canales sale este aviso
+// ============================================================
+//
+// Hasta el 16/10/26 esta función **nunca leyó** la configuración de canales:
+// mandaba correo y WhatsApp siempre que el agente los tuviera. Los botones de
+// Admin › Transaccionales no apagaban nada, y nadie podía notarlo.
+//
+// Ahora manda la configuración, en dos capas:
+//   1. `correo_tipos_notificacion` por código de evento (lo general)
+//   2. `tramite_tipo_notificacion_canales` por tipo de trámite (la excepción)
+//
+// Sin renglón en ninguna de las dos se envía por todo, que es el comportamiento
+// de siempre: una configuración ausente nunca debe apagar un aviso en silencio.
+
+async function canalesDelAviso(
+  supabase: ReturnType<typeof createClient>,
+  eventKey: string,
+  tipoTramite: string,
+): Promise<{ correo: boolean; whatsapp: boolean; campanita: boolean; origen: string }> {
+  let correo = true;
+  let whatsapp = true;
+  // La campanita se configura por evento, no por tipo de trámite: un aviso que
+  // aparece dentro de MOVI no molesta a nadie fuera de su pantalla, así que
+  // afinarlo tipo por tipo sería configuración sin beneficio.
+  let campanita = true;
+  let origen = "sin configurar (se envía por todo)";
+
+  const { data: general, error: errGeneral } = await supabase
+    .from("correo_tipos_notificacion")
+    .select("enviar_correo, enviar_whatsapp, enviar_notificacion")
+    .eq("codigo", eventKey)
+    .maybeSingle();
+  if (errGeneral) console.error("[Canales] No se pudo leer la config general:", errGeneral.message);
+  if (general) {
+    correo = general.enviar_correo !== false;
+    whatsapp = general.enviar_whatsapp !== false;
+    campanita = general.enviar_notificacion !== false;
+    origen = "config del evento";
+  }
+
+  if (tipoTramite) {
+    const { data: tipo } = await supabase
+      .from("ticket_tipos")
+      .select("id")
+      .eq("value", tipoTramite)
+      .maybeSingle();
+    if (tipo?.id) {
+      const { data: porTipo } = await supabase
+        .from("tramite_tipo_notificacion_canales")
+        .select("enviar_correo, enviar_whatsapp")
+        .eq("ticket_tipo_id", tipo.id)
+        .eq("codigo", eventKey)
+        .maybeSingle();
+      if (porTipo) {
+        correo = porTipo.enviar_correo !== false;
+        whatsapp = porTipo.enviar_whatsapp !== false;
+        origen = `config del tipo "${tipoTramite}"`;
+      }
+    }
+  }
+
+  console.log(`[Canales] ${eventKey}: correo=${correo}, whatsapp=${whatsapp}, campanita=${campanita} (${origen})`);
+  return { correo, whatsapp, campanita, origen };
+}
+
+// ============================================================
+// Helper: qué adjuntos salen, por qué canal, y cuáles ya salieron
+// ============================================================
+//
+// Antes, una notificación con adjuntos mandaba TODOS los archivos del trámite:
+// con cada cambio de estatus el agente recibía lo mismo otra vez, y recibía
+// también lo interno. Ahora cada tipo de trámite decide qué categorías salen
+// solas y por qué canal, y un archivo que ya salió no se repite.
+//
+// `forzar_reenvio` salta las dos reglas: es el botón del detalle del trámite,
+// y si alguien lo presiona es porque quiere mandar ese archivo otra vez.
+
+interface ConfigEnvioAdjuntos {
+  canales: string[];
+  categorias: string[];
+}
+
+async function getConfigEnvioAdjuntos(
+  supabase: ReturnType<typeof createClient>,
+  tipoTramite: string,
+): Promise<ConfigEnvioAdjuntos> {
+  if (!tipoTramite) return { canales: [], categorias: [] };
+  const { data, error } = await supabase
+    .from("ticket_tipos")
+    .select("envio_adjuntos_canales, envio_adjuntos_categorias_ids")
+    .eq("value", tipoTramite)
+    .maybeSingle();
+  if (error) {
+    // Sin configuración legible no se adivina: no se manda nada solo.
+    console.error("[Adjuntos] No se pudo leer la config del tipo:", error.message);
+    return { canales: [], categorias: [] };
+  }
+  return {
+    canales: (data?.envio_adjuntos_canales as string[] | null) ?? [],
+    categorias: (data?.envio_adjuntos_categorias_ids as string[] | null) ?? [],
+  };
+}
+
+/** El candado es global: si el archivo salió por cualquier canal, no se repite. */
+async function getArchivosYaEnviados(
+  supabase: ReturnType<typeof createClient>,
+  ticketId: string,
+): Promise<{ ids: Set<string>; nombres: Set<string> }> {
+  const { data, error } = await supabase
+    .from("notification_attachments_log")
+    .select("archivo_id, file_name")
+    .eq("ticket_id", ticketId)
+    .eq("sent_successfully", true);
+  if (error) {
+    // Si no se puede leer el log, NO se manda: repetir un envío molesta al
+    // agente, y el botón de reenviar sigue disponible para el caso real.
+    console.error("[Adjuntos] No se pudo leer el log de enviados:", error.message);
+    return { ids: new Set(["*"]), nombres: new Set(["*"]) };
+  }
+  return {
+    ids: new Set((data ?? []).map((r) => r.archivo_id as string).filter(Boolean)),
+    // Las filas anteriores al 15/10/26 no tienen archivo_id; el nombre dentro
+    // del mismo trámite es el mejor respaldo que hay.
+    nombres: new Set((data ?? []).map((r) => r.file_name as string).filter(Boolean)),
+  };
+}
+
+async function filtrarAdjuntosParaEnvio(
+  supabase: ReturnType<typeof createClient>,
+  tipoTramite: string,
+  ticketId: string,
+  attachments: AttachmentInfo[],
+  forzarReenvio: boolean,
+): Promise<{ correo: AttachmentInfo[]; whatsapp: AttachmentInfo[] }> {
+  if (attachments.length === 0) return { correo: [], whatsapp: [] };
+  if (forzarReenvio) return { correo: attachments, whatsapp: attachments };
+
+  const cfg = await getConfigEnvioAdjuntos(supabase, tipoTramite);
+  if (cfg.canales.length === 0 || cfg.categorias.length === 0) {
+    console.log(`[Adjuntos] El tipo "${tipoTramite}" no manda adjuntos automáticamente`);
+    return { correo: [], whatsapp: [] };
+  }
+
+  const ya = await getArchivosYaEnviados(supabase, ticketId);
+  const elegibles = attachments.filter((a) => {
+    if (!a.categoriaId || !cfg.categorias.includes(a.categoriaId)) return false;
+    if (ya.ids.has("*")) return false;
+    return !ya.ids.has(a.id) && !ya.nombres.has(a.fileName);
+  });
+
+  console.log(`[Adjuntos] ${elegibles.length} de ${attachments.length} salen (canales: ${cfg.canales.join(", ") || "ninguno"})`);
+  return {
+    correo: cfg.canales.includes("correo") ? elegibles : [],
+    whatsapp: cfg.canales.includes("whatsapp") ? elegibles : [],
+  };
 }
 
 // ============================================================
@@ -906,7 +1083,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload: TicketNotificationPayload = rawPayload;
-    const { event_key, ticket_id, triggered_by_user_id, extra_variables, attachment_file_ids, skip_email, skip_whatsapp } = payload;
+    const { event_key, ticket_id, triggered_by_user_id, extra_variables, attachment_file_ids, skip_email, skip_whatsapp, forzar_reenvio, destinatario_user_id } = payload;
 
     console.log(`[Dispatcher] ========== START ==========`);
     console.log(`[Dispatcher] eventType: ${event_key}`);
@@ -941,9 +1118,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 3. Get recipient (agent) info
+    // 3. Get recipient info — quien se haya pedido, o el agente del trámite.
     const ticket = context.rawTicket;
-    const agentUserId = (ticket as any).agente_usuario_id || (ticket as any).agente_id;
+    const agentUserId = destinatario_user_id
+      || (ticket as any).agente_usuario_id
+      || (ticket as any).agente_id;
 
     if (!agentUserId) {
       return new Response(
@@ -1002,6 +1181,43 @@ Deno.serve(async (req: Request) => {
       ...(extra_variables || {}),
     };
 
+    // Los campos del formulario de ESE trámite, como {{campo_<clave>}}.
+    //
+    // Van con prefijo a propósito: un tipo de trámite puede tener un campo con
+    // clave `folio` o `estatus`, y sin prefijo pisaría al del trámite. Se
+    // agregan al final pero sin sobrescribir nada de arriba, por la misma razón.
+    try {
+      const { data: respuestas } = await supabase
+        .from("tramite_respuestas")
+        .select("valor_texto, valor_numerico, valor_fecha, valor_booleano, valor_json, campo:tramite_tipo_campos!campo_id(key)")
+        .eq("tramite_id", ticket_id);
+
+      for (const r of respuestas ?? []) {
+        const campo = Array.isArray(r.campo) ? r.campo[0] : r.campo;
+        const key = (campo as { key?: string } | null)?.key;
+        if (!key) continue;
+
+        // El valor vive en una columna distinta según el tipo de campo; se toma
+        // el primero que traiga algo en vez de repetir aquí ese mapa, que ya
+        // vive en tres lugares del frontend y se desincroniza solo.
+        let valor = "";
+        if (r.valor_texto != null && r.valor_texto !== "") valor = String(r.valor_texto);
+        else if (r.valor_numerico != null) valor = String(r.valor_numerico);
+        else if (r.valor_fecha != null) valor = String(r.valor_fecha);
+        else if (r.valor_booleano != null) valor = r.valor_booleano ? "Sí" : "No";
+        else if (r.valor_json != null) {
+          valor = Array.isArray(r.valor_json) ? r.valor_json.join(", ") : String(r.valor_json);
+        }
+
+        const nombre = `campo_${key}`;
+        if (!(nombre in allVariables)) allVariables[nombre] = valor;
+      }
+    } catch (err) {
+      // Sin los campos la plantilla queda con huecos, pero el aviso sale igual:
+      // perder el aviso completo por esto sería peor.
+      console.error("[Variables] No se pudieron leer los campos del trámite:", err);
+    }
+
     // 6. Build subject
     const eventLabels: Record<string, string> = {
       tramite_creado: "Nuevo trámite",
@@ -1014,7 +1230,12 @@ Deno.serve(async (req: Request) => {
       tramite_asignado: "Asignado a ti",
     };
 
-    const finalSubject = buildTicketEmailSubject(context, eventLabels[event_key]);
+    // El asunto de la plantilla manda. Antes SIEMPRE se armaba aquí, así que el
+    // campo "Asunto" de Admin › Transaccionales no servía para nada — se podía
+    // editar y el correo salía igual. Sin asunto en la plantilla se sigue
+    // armando como siempre.
+    const asuntoDePlantilla = renderTemplate(template.email_subject_template || "", allVariables).trim();
+    const finalSubject = asuntoDePlantilla || buildTicketEmailSubject(context, eventLabels[event_key]);
 
     // 7. Render body templates
     const renderedEmailBody = renderTemplate(
@@ -1033,6 +1254,16 @@ Deno.serve(async (req: Request) => {
       attachment_file_ids
     );
 
+    // Qué sale de verdad: la config del tipo decide las categorías y los canales,
+    // y el candado quita lo que ya se mandó. El botón de reenviar salta ambos.
+    const adjuntos = await filtrarAdjuntosParaEnvio(
+      supabase,
+      String(ticket.tipo_tramite ?? ""),
+      ticket_id,
+      attachments,
+      forzar_reenvio === true,
+    );
+
     console.log(`[Dispatcher] resolved attachments count: ${attachments.length}`);
     if (attachments.length > 0) {
       console.log(`[Dispatcher] attachment files: ${attachments.map(a => `"${a.fileName}" (${a.filePath?.substring(0, 60)}...)`).join(", ")}`);
@@ -1049,18 +1280,22 @@ Deno.serve(async (req: Request) => {
       failedAttachments: [] as string[],
       attachmentDetails: [] as AttachmentResult[],
     };
-    if (!skip_email && agentEmail) {
+    const canales = await canalesDelAviso(supabase, event_key, String(ticket.tipo_tramite ?? ""));
+
+    if (!skip_email && agentEmail && canales.correo) {
       emailResult = await sendEmailWithAttachments(
         agentEmail,
         finalSubject,
         renderedEmailBody,
-        attachments,
+        adjuntos.correo,
         supabase
       );
     } else if (!agentEmail) {
       emailResult.error = "El usuario no tiene correo registrado";
     } else if (skip_email) {
       emailResult.error = "Email skipped by request";
+    } else if (!canales.correo) {
+      emailResult.error = `Correo apagado para este aviso (${canales.origen})`;
     }
 
     // 10. Send WhatsApp
@@ -1071,17 +1306,51 @@ Deno.serve(async (req: Request) => {
       failedDocuments: [] as string[],
       attachmentDetails: [] as AttachmentResult[],
     };
-    if (!skip_whatsapp && agentPhone) {
+    if (!skip_whatsapp && agentPhone && canales.whatsapp) {
       whatsappResult = await sendWhatsAppWithDocuments(
         supabase,
         agentPhone,
         renderedWhatsApp,
-        attachments
+        adjuntos.whatsapp
       );
     } else if (!agentPhone) {
       whatsappResult.error = "El usuario no tiene teléfono registrado";
     } else if (skip_whatsapp) {
       whatsappResult.error = "WhatsApp skipped by request";
+    } else if (!canales.whatsapp) {
+      whatsappResult.error = `WhatsApp apagado para este aviso (${canales.origen})`;
+    }
+
+    // 10b. Campanita dentro de MOVI.
+    //
+    // Hasta hoy el despachador solo mandaba correo y WhatsApp, así que el aviso
+    // de dentro de la app tenía que crearlo cada pantalla por su cuenta, con el
+    // texto escrito a mano. Por eso una plantilla podía decir una cosa y la
+    // campanita otra. La plantilla ya traía los campos `inapp_*` desde que se
+    // creó la tabla; solo faltaba usarlos.
+    let inappEnviada = false;
+    if (canales.campanita && (template.inapp_title_template || template.inapp_body_template)) {
+      const titulo = renderTemplate(template.inapp_title_template || "", allVariables).trim()
+        || `${context.folio} — ${eventLabels[event_key] ?? "Trámite"}`;
+      const cuerpo = renderTemplate(template.inapp_body_template || "", allVariables).trim();
+      // `enviar_notificacion_individual`, no `crear_notificacion`: esa segunda
+      // NO EXISTE en la base (la llama también `escalar-tramite`, donde lleva
+      // fallando igual de callado). Fallaba siempre, así que quien llamaba creía
+      // que el aviso no había salido y mandaba su respaldo — de ahí los dos
+      // WhatsApp del 16/10.
+      //
+      // `p_enviar_whatsapp: false` porque el WhatsApp ya lo manda esta misma
+      // función, con la plantilla; dejarlo en true lo duplicaría otra vez.
+      const { error: errInapp } = await supabase.rpc("enviar_notificacion_individual", {
+        p_user_id: agentUserId,
+        p_titulo: titulo.slice(0, 120),
+        p_mensaje: cuerpo.slice(0, 500),
+        p_modulo: "Tramites",
+        p_accion_url: context.ticketUrl,
+        p_enviar_whatsapp: false,
+      });
+      if (errInapp) console.error("[Campanita] No se pudo crear la notificación:", errInapp.message);
+      else inappEnviada = true;
     }
 
     // 11. Log to history
@@ -1124,6 +1393,7 @@ Deno.serve(async (req: Request) => {
           return {
             notification_history_id: historyRecord.id,
             ticket_id,
+            archivo_id: att?.id ?? null,
             file_name: detail.fileName,
             file_path: att?.filePath || null,
             file_url: att?.fileUrl || null,
@@ -1159,12 +1429,20 @@ Deno.serve(async (req: Request) => {
         error: whatsappResult.error,
       },
       attachments: {
-        total: attachments.length,
+        // `total` era cuántos archivos se resolvieron, no cuántos se
+        // intentaron mandar — con el filtro por tipo y el candado esos dos
+        // números ya no son el mismo, y quien lee la respuesta necesita el
+        // segundo para saber si llegaron todos.
+        total: Math.max(adjuntos.correo.length, adjuntos.whatsapp.length),
+        resueltos: attachments.length,
+        intentadosCorreo: adjuntos.correo.length,
+        intentadosWhatsapp: adjuntos.whatsapp.length,
         emailSent: emailResult.attachmentsSent,
         emailFailed: emailResult.failedAttachments,
         whatsappSent: whatsappResult.documentsSent,
         whatsappFailed: whatsappResult.failedDocuments,
       },
+      inapp: { sent: inappEnviada },
       historyId: historyRecord?.id,
     };
 

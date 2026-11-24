@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Circle as XCircle, RefreshCw, Save, ChevronDown, CircleAlert as AlertCircle, ClipboardList, Upload, Trash2, GitBranch, ArrowUpRight, Paperclip, MessageSquare, Lock, Layers, Pencil, Check } from 'lucide-react';
 import { TramiteDetalles } from '../components/tramites/TramiteDetalles';
-import { TramiteFechasBar } from '../components/tramites/TramiteFechasBar';
+import { TramiteFechasBar, fechaYHora } from '../components/tramites/TramiteFechasBar';
 import { TramiteComentarios } from '../components/tramites/TramiteComentarios';
 import { TramiteArchivos } from '../components/tramites/TramiteArchivos';
 import { DiagnosticoBugReport } from '../components/tramites/DiagnosticoBugReport';
@@ -208,9 +208,25 @@ export function TramiteDetalle() {
   const isCommercialViewerOnly = userArea === 'Comercial' && isOperationalTicket && !isAdmin && !isOwner && !isAssigned;
 
   const canEdit = (isAdmin || isGerente || canEditForType) && !isCommercialViewerOnly;
-  const canEditFechaPromesa = isAdmin || isGerente || myTeamRole === 'lider';
+  // QA 2026-10-30 — regla de Ricardo: la Fecha Promesa la ponen Empleados,
+  // Gerentes y Administradores. El Agente NUNCA la edita; solo la ve cuando
+  // alguien más ya le puso un valor, y de eso se encarga la franja de fechas
+  // de arriba, que solo la pinta si el trámite la trae.
+  const isAgente = usuario?.rol === 'Agente';
+  const canEditFechaPromesa =
+    !isAgente && (isAdmin || isGerente || usuario?.rol === 'Empleado' || myTeamRole === 'lider');
   const isPoolTramite = !tramite?.assigned_to_user_id && !!tramite?.grupo_asignado_id;
   const canManageAssignment = isAdmin || myTeamRole === 'lider' || (myTeamRole === 'ejecutivo' && isPoolTramite);
+  // UX 2026-11-06 — MOVER el trámite de equipo no es lo mismo que asignarlo.
+  //
+  // El selector de Equipo se habilitaba con `canManageAssignment`, que incluye
+  // al **ejecutivo** cuando el trámite está en el pool. Pero la RLS solo deja
+  // mover de equipo a Admin/Gerente/líder (decisión del 29/10), así que a un
+  // ejecutivo se le ofrecía un control que SIEMPRE le iba a fallar: probado con
+  // SOFÍA, la base contestó 403.
+  //
+  // Un ejecutivo puede TOMAR el trámite; repartirlo a otro equipo, no.
+  const canMoverDeEquipo = isAdmin || isGerente || myTeamRole === 'lider';
   const canSelfAssignOnly = myTeamRole === 'ejecutivo' && !isAdmin && !isGerente;
   const claimedRef = useRef(false);
   const isCerrado = tramite?.cerrado_en !== null;
@@ -257,15 +273,49 @@ export function TramiteDetalle() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showCerrarMenu]);
 
+  // El encabezado rebotaba al hacer scroll: saltaba entre compacto y normal
+  // varias veces por segundo y terminaba estirado otra vez (medido en el video
+  // del 15/10: 76 ↔ 154 px de alto, cuatro rebotes seguidos).
+  //
+  // La causa es un lazo: el centinela de 1px decidía con UN solo umbral, así que
+  // al compactarse la página se acortaba ~78px, el navegador recortaba el scroll
+  // para que no sobrara espacio, el centinela volvía a entrar en pantalla y el
+  // encabezado se estiraba — lo que devolvía los 78px y empezaba de nuevo. Se ve
+  // en trámites con poco contenido, donde el scroll disponible es menor que lo
+  // que el encabezado encoge: ahí encogerse se come justo el scroll que lo
+  // provocó.
+  //
+  // Arreglo: dos umbrales con una franja muerta (96px) más grande que el rebote,
+  // medidos contra el contenedor que de verdad scrollea. Si en esa pantalla no
+  // hay ni 120px que recorrer, el encabezado simplemente no se compacta — que es
+  // lo correcto, no había nada que ganar.
   useEffect(() => {
     const nodo = centinelaRef.current;
-    if (!nodo || typeof IntersectionObserver === 'undefined') return;
-    const obs = new IntersectionObserver(
-      ([entrada]) => setEncabezadoCompacto(!entrada.isIntersecting),
-      { threshold: 0 },
-    );
-    obs.observe(nodo);
-    return () => obs.disconnect();
+    if (!nodo) return;
+
+    // El scroll no es el de la ventana, es el <main> del Layout.
+    let cont: HTMLElement | null = nodo.parentElement;
+    while (cont) {
+      const overflow = getComputedStyle(cont).overflowY;
+      if (overflow === 'auto' || overflow === 'scroll') break;
+      cont = cont.parentElement;
+    }
+
+    const COMPACTAR = 120;
+    const EXPANDIR = 24;
+    const medir = () => {
+      const y = cont ? cont.scrollTop : window.scrollY;
+      setEncabezadoCompacto((prev) => (prev ? y > EXPANDIR : y > COMPACTAR));
+    };
+
+    medir();
+    const objetivo: EventTarget = cont ?? window;
+    objetivo.addEventListener('scroll', medir, { passive: true });
+    window.addEventListener('resize', medir);
+    return () => {
+      objetivo.removeEventListener('scroll', medir);
+      window.removeEventListener('resize', medir);
+    };
   }, [loading]);
 
   useEffect(() => {
@@ -875,23 +925,38 @@ export function TramiteDetalle() {
           .eq('activo', true);
 
         const activeTriggers = (trigData || []) as PendingTrigger[];
-        const confirmable    = activeTriggers.filter(t => t.requiere_confirmacion);
         silent               = activeTriggers.filter(t => !t.requiere_confirmacion);
 
-        if (confirmable.length > 0) {
-          const childChecks = await Promise.all(
-            confirmable.map(t =>
-              supabase.from('tickets').select('id, folio')
-                .eq('parent_ticket_id', tramite.id)
-                .eq('trigger_origen_id', t.id)
-                .maybeSingle()
-            )
-          );
-          const existingMap: Record<string, ExistingChild> = {};
-          confirmable.forEach((t, i) => {
-            if (childChecks[i].data) existingMap[t.id] = childChecks[i].data as ExistingChild;
-          });
-          setPendingTriggers(confirmable);
+        // Se revisa si YA hay un hijo de cada regla, incluidas las silenciosas:
+        // antes solo se miraba para las que piden confirmación, así que una regla
+        // silenciosa creaba otro hijo cada vez que se volvía a aplicar el estatus
+        // (así nacieron TKCB783-A y TKCB783-B el mismo día).
+        //
+        // `.limit(1)` y no `.maybeSingle()`: maybeSingle FALLA cuando encuentra
+        // más de una fila, y ese error se ignoraba — con dos hijos ya creados el
+        // sistema concluía "no hay ninguno" y dejaba de avisar para siempre.
+        const hijosExistentes = await Promise.all(
+          activeTriggers.map(t =>
+            supabase.from('tickets').select('id, folio')
+              .eq('parent_ticket_id', tramite.id)
+              .eq('trigger_origen_id', t.id)
+              .order('fecha_creacion', { ascending: true })
+              .limit(1)
+          )
+        );
+        const existingMap: Record<string, ExistingChild> = {};
+        activeTriggers.forEach((t, i) => {
+          const fila = hijosExistentes[i].data?.[0];
+          if (fila) existingMap[t.id] = fila as ExistingChild;
+        });
+
+        // Una regla silenciosa deja de serlo si ya tiene un hijo: hay que decirlo
+        // y dejar elegir. Si se crea otro, el folio toma la letra siguiente.
+        const necesitanConfirmar = activeTriggers.filter(t => t.requiere_confirmacion || existingMap[t.id]);
+        silent = activeTriggers.filter(t => !t.requiere_confirmacion && !existingMap[t.id]);
+
+        if (necesitanConfirmar.length > 0) {
+          setPendingTriggers(necesitanConfirmar);
           setSilentTriggers(silent);
           setExistingChildren(existingMap);
           setTriggerModalOpen(true);
@@ -1397,11 +1462,17 @@ export function TramiteDetalle() {
   const confirmarCambioConComentario = async () => {
     if (!pendingEstatusComentario || !tramite || !usuario) return;
     if (!comentarioCambioEstatus.trim()) return;
-    await supabase.from('ticket_comentarios').insert({
+    // Marcada como nota de estatus: se guarda y se ve en la conversación igual
+    // que cualquier comentario, pero no genera su propio aviso. Sin esto llegan
+    // DOS notificaciones por una sola acción, y la primera dice "Nuevo
+    // comentario" sobre algo que nadie comentó (ver 20261029000003).
+    const { error: errNota } = await supabase.from('ticket_comentarios').insert({
       ticket_id: tramite.id,
       usuario_id: usuario.id,
       mensaje: comentarioCambioEstatus.trim(),
+      es_nota_de_estatus: true,
     });
+    if (errNota) { showToast(`No se pudo guardar la nota: ${errNota.message}`, 'error'); return; }
     const { slug, id } = pendingEstatusComentario;
     setPendingEstatusComentario(null);
     setComentarioCambioEstatus('');
@@ -1413,11 +1484,15 @@ export function TramiteDetalle() {
     if (!escalacionComentario.trim()) { showToast('El comentario es obligatorio', 'error'); return; }
 
     // Insert mandatory comment
-    await supabase.from('ticket_comentarios').insert({
+    // `contenido` NO existe en ticket_comentarios: la columna es `mensaje`. El
+    // insert fallaba, nadie miraba el error, y el comentario obligatorio de cada
+    // escalación se perdía desde julio sin dejar rastro.
+    const { error: errEsc } = await supabase.from('ticket_comentarios').insert({
       ticket_id: tramite.id,
       usuario_id: usuario!.id,
-      contenido: escalacionComentario.trim(),
+      mensaje: escalacionComentario.trim(),
     });
+    if (errEsc) { showToast(`No se pudo guardar el comentario: ${errEsc.message}`, 'error'); return; }
 
     // Mark as requires attention
     await supabase.from('tickets').update({ requiere_atencion_manual: true }).eq('id', tramite.id);
@@ -1519,14 +1594,16 @@ export function TramiteDetalle() {
 
   const handleResponsableChange = async (userId: string) => {
     if (!tramite || !usuario) return;
-    await supabase.from('tickets').update({
+    const { error: errAsignar } = await supabase.from('tickets').update({
       assigned_to_user_id: userId || null,
       modificado_por: usuario.id,
     }).eq('id', tramite.id);
+    if (errAsignar) { showToast(`No se pudo cambiar el responsable: ${errAsignar.message}`, 'error'); return; }
     if (userId) {
-      await supabase.from('ticket_asignaciones').insert({
+      const { error: errAsig } = await supabase.from('ticket_asignaciones').insert({
         ticket_id: tramite.id, ejecutivo_id: userId, asignado_por: usuario.id,
       });
+      if (errAsig) showToast(`Se asignó, pero no se registró la asignación: ${errAsig.message}`, 'error');
       await crearNotificacion({
         user_id: userId,
         titulo: 'Trámite asignado',
@@ -1543,11 +1620,28 @@ export function TramiteDetalle() {
 
   const handleEquipoChange = async (grupoId: string | null) => {
     if (!tramite || !usuario) return;
-    await supabase.from('tickets').update({
+    // UX 2026-11-06 — este guardado MENTÍA, y de tres formas a la vez.
+    //
+    // No miraba el error del update; avisaba al líder del equipo nuevo de que
+    // le habían asignado un trámite; y remataba con "Cambios guardados
+    // automáticamente". Probado con SOFÍA (Empleado): la RLS contestó **403**,
+    // la pantalla siguió mostrando el equipo nuevo, salió el toast de éxito y
+    // solo al recargar volvía el equipo real.
+    //
+    // Es el patrón #1 del proyecto en la tabla más importante. Su hermano
+    // `handleResponsableChange` ya lo hacía bien desde el 29/10; este se quedó
+    // fuera de aquella pasada. Mismo molde: revisar, decirlo, y SALIR antes de
+    // notificarle a nadie.
+    const { error: errEquipo } = await supabase.from('tickets').update({
       grupo_asignado_id: grupoId,
       assigned_to_user_id: null,
       modificado_por: usuario.id,
     }).eq('id', tramite.id);
+    if (errEquipo) {
+      showToast(`No se pudo cambiar el equipo: ${errEquipo.message}`, 'error');
+      await loadTramite();   // deshace lo que el selector ya pintó
+      return;
+    }
     if (grupoId) {
       const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoId });
       const lider = (miembros as Array<{ id: string; nombre_completo: string }>)?.[0];
@@ -1986,7 +2080,11 @@ export function TramiteDetalle() {
       <div className="bg-surface-card dark:bg-neutral-800 rounded-2xl shadow-card border border-soft dark:border-neutral-700 p-6">
         {activeTab === 'detalles' && (
           <>
-            {comentarioInicial && (
+            {/* UX 2026-11-04 (U-04) — el alta copia la descripción como primer
+                comentario, así que esta caja repetía, palabra por palabra, el
+                texto que ya está en "Instrucciones / Descripción" aquí abajo.
+                Solo se muestra cuando aporta algo distinto. */}
+            {comentarioInicial && comentarioInicial.mensaje?.trim() !== (tramite.instrucciones ?? '').trim() && (
               <div className="mb-6 p-4 rounded-2xl border border-blue-200 bg-blue-50">
                 <p className="text-xs font-semibold text-accent-ink uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -1998,7 +2096,11 @@ export function TramiteDetalle() {
                   onClick={() => setActiveTab('comentarios')}
                   className="mt-2 text-xs font-semibold text-accent-ink hover:underline"
                 >
-                  Ver todos los comentarios →
+                  {/* QA 2026-10-30 (H-004) — decía "Ver todos los comentarios".
+                      Un usuario reportó que no encontraba dónde comentar: esta
+                      caja enseña un comentario y no dice que ahí mismo se
+                      responde. Nombrar la acción quita la duda. */}
+                  Ver y responder comentarios →
                 </button>
               </div>
             )}
@@ -2009,6 +2111,7 @@ export function TramiteDetalle() {
               setSelectedEstatus={setSelectedEstatus}
               canEdit={canEdit && !isCerrado}
               canManageAssignment={canManageAssignment && !isCerrado}
+              canMoverDeEquipo={canMoverDeEquipo && !isCerrado}
               canSelfAssignOnly={canSelfAssignOnly}
               grupoAsignadoId={tramite.grupo_asignado_id}
               onResponsableChange={handleResponsableChange}
@@ -2017,7 +2120,7 @@ export function TramiteDetalle() {
               selectedEstatusSlug={selectedEstatusSlug}
             />
 
-            {/* Fecha Promesa de Entrega — solo líderes, gerentes y admins */}
+            {/* Fecha Promesa de Entrega — Empleados, Gerentes y Admins. El Agente la ve en la franja de fechas, solo si ya tiene valor. */}
             {canEditFechaPromesa && (
               <div className="mt-6 pt-6 border-t border-neutral-100">
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -2048,11 +2151,30 @@ export function TramiteDetalle() {
                     // dedicado de arriba (Responsable/Equipo), y puede quedar desactualizado
                     // si el Responsable cambió después. Mostrarlo aquí (como UUID crudo, sin
                     // resolver) era una duplicación confusa, a veces con un valor ya obsoleto.
-                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus' && c.sistema_key !== 'asignado_a' && !(tipoEsInterno && (c.sistema_key === 'agente_vendedor' || c.sistema_key === 'oficina_jiro')))
+                    // `descripcion` se excluye desde el 04/11 (U-04): el mismo texto ya
+                    // sale completo en "Instrucciones / Descripción", dos renglones más
+                    // arriba, y como comentario inicial. Tres copias del mismo párrafo en
+                    // una pantalla no informan, estorban.
+                    .filter(c => c.is_sistema && c.sistema_key !== 'estatus' && c.sistema_key !== 'asignado_a' && c.sistema_key !== 'descripcion' && !(tipoEsInterno && (c.sistema_key === 'agente_vendedor' || c.sistema_key === 'oficina_jiro')))
                     .map(campo => {
-                      const val = respuestasDinamicas[campo.id];
+                      // QA 2026-10-30 (H-005) — estos campos de sistema NO viven en
+                      // `tramite_respuestas`: tienen columna propia en `tickets`. La tabla
+                      // leía solo las respuestas, así que decía "Sin registrar" sobre datos
+                      // que esta misma pantalla enseñaba dos renglones arriba (el chip de
+                      // Prioridad decía "Baja" y aquí decía "Sin registrar").
+                      // Se quedan de SOLO LECTURA a propósito: cada uno ya tiene su editor
+                      // en esta pantalla —el chip del encabezado, el input de Fecha Promesa,
+                      // Instrucciones— y dos editores para un mismo dato es exactamente
+                      // cómo nació esta contradicción.
+                      const valorDeColumna =
+                        campo.sistema_key === 'prioridad' ? (tramite.prioridad ?? null)
+                        : campo.sistema_key === 'descripcion' ? (tramite.instrucciones ?? null)
+                        : campo.sistema_key === 'fecha_promesa_entrega' ? (tramite.fecha_promesa_entrega ?? null)
+                        : null;
+                      const tieneColumnaPropia = valorDeColumna !== null || ['prioridad', 'descripcion', 'fecha_promesa_entrega'].includes(campo.sistema_key || '');
+                      const val = respuestasDinamicas[campo.id] ?? valorDeColumna;
                       const set = (v: any) => setRespuestasDinamicas(prev => ({ ...prev, [campo.id]: v }));
-                      const adminEditable = isAdmin && !isCerrado && campo.sistema_key !== 'fecha_finalizacion' && campo.sistema_key !== 'creado_por';
+                      const adminEditable = isAdmin && !isCerrado && campo.sistema_key !== 'fecha_finalizacion' && campo.sistema_key !== 'creado_por' && !tieneColumnaPropia;
                       const violet = 'px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl text-sm text-violet-700';
                       const muted  = 'px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-500 italic';
                       const inputCls = 'w-full px-3 py-2 border border-violet-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-surface-card';
@@ -2092,6 +2214,18 @@ export function TramiteDetalle() {
                             )
                           ) : (
                             (() => {
+                              // UX 2026-11-04 (U-02) — las fechas salían EN CRUDO.
+                              //
+                              // Esta tabla pintaba el valor tal cual, así que la fecha de
+                              // creación decía "2026-11-04T22:33:11.806Z" mientras la franja
+                              // de arriba, con el MISMO dato, decía "04 nov 2026, 04:33 p.m.".
+                              // Lo grave no es el formato: es que el usuario lee 04:33 p.m.
+                              // en un lado y 22:33 en el otro. Son la misma hora —una es
+                              // UTC— pero nadie tiene por qué saberlo.
+                              //
+                              // Usa la MISMA función que la franja, no una copia.
+                              const esFecha = campo.sistema_key === 'fecha_creacion'
+                                || campo.sistema_key === 'fecha_finalizacion';
                               const displayVal = campo.sistema_key === 'agente_vendedor' && val
                                 ? (() => {
                                     const u = usuariosMovi.find(x => x.id === val);
@@ -2099,7 +2233,7 @@ export function TramiteDetalle() {
                                     const ag = agentesVendedor.find(a => a.id === val);
                                     return ag?.usuario_nombre ?? ag?.nombre ?? val;
                                   })()
-                                : val;
+                                : (esFecha && val ? fechaYHora(String(val)) : val);
                               return displayVal
                                 ? <div className={violet}>{displayVal}</div>
                                 : <div className={muted}>{campo.sistema_key === 'fecha_finalizacion' ? 'Al cerrar' : 'Sin registrar'}</div>;
@@ -2521,6 +2655,8 @@ export function TramiteDetalle() {
                                 {editable && (
                                   <button type="button"
                                     onClick={() => set(archivos.filter((_, j) => j !== i))}
+                                    aria-label={`Quitar ${archivo.nombre}`}
+                                    title={`Quitar ${archivo.nombre}`}
                                     className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -2711,7 +2847,14 @@ export function TramiteDetalle() {
             })()}
           </>
         )}
-        {activeTab === 'comentarios' && <TramiteComentarios tramiteId={tramite.id} grupoId={tramite.grupo_asignado_id} />}
+        {activeTab === 'comentarios' && (
+          <TramiteComentarios
+            tramiteId={tramite.id}
+            grupoId={tramite.grupo_asignado_id}
+            agente={tramite.agente}
+            folio={tramite.folio}
+          />
+        )}
         {activeTab === 'archivos' && (
           <TramiteArchivos
             tramiteId={tramite.id}

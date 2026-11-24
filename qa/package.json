@@ -1,0 +1,12 @@
+{
+  "name": "movi-qa",
+  "private": true,
+  "type": "module",
+  "description": "Usuarios bot de MOVI: exploracion manejada desde Claude Code + regresion con Playwright",
+  "scripts": {
+    "ver": "node conducir.mjs --resumen"
+  },
+  "dependencies": {
+    "playwright": "^1.64.1"
+  }
+}

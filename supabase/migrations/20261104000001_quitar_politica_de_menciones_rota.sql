@@ -1,0 +1,48 @@
+-- Quita `tickets_mencionados_select`, una política de SELECT sobre `tickets`
+-- que nunca hizo lo que decía.
+--
+-- La intención era: "si te mencionaron en un trámite, puedes verlo". Su
+-- condición compara la tabla de menciones CONSIGO MISMA en vez de ligarla al
+-- trámite que se está consultando, así que la subconsulta no queda
+-- correlacionada con la fila de `tickets` de la que se pregunta.
+--
+-- Dos consecuencias, y las dos son razón suficiente para quitarla:
+--
+--   1. Nunca concedió nada. Ser mencionado jamás dio acceso a un trámite, en
+--      toda la vida de esta política.
+--   2. Su alcance no está ligado al trámite consultado. Una política de
+--      SELECT cuyo alcance no depende de la fila que filtra no se puede
+--      razonar, y en una tabla como `tickets` eso no se deja así.
+--
+-- POR QUÉ BORRAR Y NO REPARAR (decisión de Ricardo, 04/11):
+--
+-- Como nunca concedió nada, **quitarla no le quita acceso a nadie**. No hay
+-- quien dependa de ella hoy. Las políticas permisivas se combinan con OR, así
+-- que restar una solo puede cerrar lo que nunca estuvo abierto: ninguna otra
+-- regla de `tickets` cambia de comportamiento.
+--
+-- Repararla sería, en cambio, ABRIR algo que nunca estuvo abierto —ampliar
+-- quién ve qué trámite— y eso es una decisión de producto, no un arreglo.
+-- Si algún día se quiere que "te mencionaron" dé acceso, se escribe una
+-- política nueva, correlacionada con `tickets.id`, y se decide de paso si
+-- además debe notificar (hoy no notifica: nada lee
+-- `ticket_usuarios_mencionados`).
+--
+-- La tabla NO se toca: conserva el registro de quién mencionó a quién.
+
+drop policy if exists tickets_mencionados_select on public.tickets;
+
+-- Comprobación: no debe devolver ninguna fila.
+--
+--   select polname
+--     from pg_policy
+--    where polrelid = 'public.tickets'::regclass
+--      and polname = 'tickets_mencionados_select';
+--
+-- Y para confirmar que el resto sigue en pie (debe listar las demás de
+-- SELECT sobre tickets, intactas):
+--
+--   select polname, polcmd
+--     from pg_policy
+--    where polrelid = 'public.tickets'::regclass
+--    order by polname;

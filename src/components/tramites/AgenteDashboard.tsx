@@ -15,7 +15,7 @@ import {
 import {
   getTipoTramiteLabel as centralGetLabel,
   getTipoTramiteArea,
-  AREA_CONFIG,
+  colorDeArea,
 } from '../../lib/registroActividadesTypes';
 
 interface TicketRecord {
@@ -275,7 +275,7 @@ export function AgenteDashboard() {
                 const entries = Object.entries(byType).sort((a, b) => b[1] - a[1]);
                 return entries.map(([tipo, count]) => {
                   const area = getTipoTramiteArea(tipo);
-                  const ac = AREA_CONFIG[area];
+                  const ac = colorDeArea(area);
                   return (
                     <div key={tipo} className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
@@ -331,7 +331,7 @@ function TicketRow({ ticket, onNavigate }: { ticket: TicketRecord; onNavigate: (
           </span>
           {(() => {
             const area = getTipoTramiteArea(ticket.tipo_tramite);
-            const ac = AREA_CONFIG[area];
+            const ac = colorDeArea(area);
             return (
               <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${ac.bg} ${ac.color}`}>
                 {TIPO_LABELS(ticket.tipo_tramite)}

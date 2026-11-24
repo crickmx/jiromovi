@@ -1,22 +1,33 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, Calculator, History, Settings, Plus, Trash2, Users, FileDown, Loader, CircleAlert as AlertCircle, Check, Pencil } from 'lucide-react';
+import { Heart, Calculator, Settings, Plus, Trash2, Users, FileDown, Loader, CircleAlert as AlertCircle, Check, FileText, FilePlus } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
-import { supabase } from '../lib/supabase';
 import { calculateBnv, calculateBxplus, calculateBnp } from '../lib/multicotizadorGmm';
+import type { BnvRateRecord } from '../lib/multicotizadorGmm/bnvEngine';
+import type { BnpRateRecord } from '../lib/multicotizadorGmm/bnpEngine';
 import type {
-  ProductId, QuotePerson, FormaPago, MultiGmmOption, OptionResult,
-  BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput, SavedMultiGmmQuote,
+  ProductId, QuotePerson, MultiGmmOption, OptionResult,
+  BnvQuoteInput, BnpQuoteInput, BxplusQuoteInput,
 } from '../lib/multicotizadorGmm/types';
-import { DEFAULT_BXPLUS_COVERAGES } from '../lib/multicotizadorGmm/types';
+import { DEFAULT_BXPLUS_COVERAGES, PRODUCT_LABELS } from '../lib/multicotizadorGmm/types';
+import { cargarTarifasActivas, opcionesDeTarifas, type TarifasActivas } from '../lib/multicotizadorGmm/tarifas';
 import { TarifasAdminPanel } from '../components/multicotizadorGmm/TarifasAdminPanel';
 import { ComparisonResults } from '../components/multicotizadorGmm/ComparisonResults';
 import { OptionConfigurator } from '../components/multicotizadorGmm/OptionConfigurator';
 import { generateMultiGmmPdf } from '../lib/multicotizadorGmm/pdfGenerator';
 import { getEffectiveUserLogo } from '../lib/logoUtils';
+import { guardarCotizacion, cargarCotizacion, idCotizacionEnUrl } from '../lib/cotizaciones';
+
+// Lo que se guarda en cotizaciones.datos (mismo formato que el backfill de la migración).
+interface DatosGmm {
+  people: QuotePerson[];
+  options: MultiGmmOption[];
+  results: OptionResult[] | null;
+  selected_formas_pago?: string[];
+}
 
 const TABS = [
   { id: 'cotizador', label: 'Cotizador', icon: Calculator },
-  { id: 'historial', label: 'Cotizaciones', icon: History },
   { id: 'tarifas', label: 'Tarifas', icon: Settings },
 ] as const;
 
@@ -50,6 +61,7 @@ function createDefaultOption(index: number): MultiGmmOption {
 
 export default function MulticotizadorGMM() {
   const { usuario } = useMoviAuth();
+  const navigate = useNavigate();
   const isAdmin = usuario?.rol === 'Administrador';
   const [activeTab, setActiveTab] = useState<TabId>('cotizador');
 
@@ -65,59 +77,97 @@ export default function MulticotizadorGMM() {
   const [calculating, setCalculating] = useState(false);
   const [results, setResults] = useState<OptionResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [savedQuotes, setSavedQuotes] = useState<SavedMultiGmmQuote[]>([]);
+  const [cotizacionId, setCotizacionId] = useState<string | null>(null);
   const [lastSavedFolio, setLastSavedFolio] = useState<string | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const savedResultsRef = useRef<string | null>(null);
 
-  const loadSavedQuotes = useCallback(async () => {
-    const { data, error: loadError } = await supabase
-      .from('multicotizador_gmm_quotes')
-      .select('*')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (loadError) {
-      console.error('[MulticotizadorGMM] loadSavedQuotes error:', loadError.message);
-      return;
-    }
-    if (data) setSavedQuotes(data as any);
+  // Tarifas activas (paquetes vigentes). De aquí salen tanto las listas de opciones
+  // que ve el asesor como los datos con los que se calcula.
+  const [tarifas, setTarifas] = useState<TarifasActivas | null>(null);
+  const [cargandoTarifas, setCargandoTarifas] = useState(true);
+
+  // Abrir una cotización guardada desde Cotizar › Cotizaciones (?cotizacion=<id>).
+  useEffect(() => {
+    const id = idCotizacionEnUrl();
+    if (!id) return;
+    cargarCotizacion<DatosGmm>(id)
+      .then(c => {
+        setClientName(c.cliente_nombre || '');
+        setPeople(c.datos.people?.length ? c.datos.people : [DEFAULT_PERSON()]);
+        const opts = c.datos.options?.length ? c.datos.options : [createDefaultOption(1)];
+        setOptions(opts);
+        setResults(c.datos.results ?? null);
+        setCotizacionId(c.id);
+        setLastSavedFolio(c.folio);
+        savedResultsRef.current = c.datos.results ? JSON.stringify(c.datos.results) : null;
+        setExpandedOptions(new Set([opts[0].id]));
+      })
+      .catch(e => setError('No se pudo abrir la cotización: ' + (e?.message ?? e)));
   }, []);
 
+  // Cargar las tarifas activas una sola vez al abrir la pantalla.
   useEffect(() => {
-    if (activeTab === 'historial') loadSavedQuotes();
-  }, [activeTab, loadSavedQuotes]);
+    let vivo = true;
+    cargarTarifasActivas()
+      .then(t => {
+        if (!vivo) return;
+        setTarifas(t);
+        // Si una opción de BNP todavía no tiene lugar de residencia, se elige el primero
+        // que corresponda a su zona: el Excel deriva la zona del estado, no al revés.
+        setOptions(prev => prev.map(o => {
+          if (o.product_id !== 'BNP') return o;
+          const inp = o.input as BnpQuoteInput;
+          if (inp.estado) return o;
+          const estados = t.BNP?.meta.estados ?? [];
+          const elegido = estados.find(e => e.zona === inp.region_zone) ?? estados[0];
+          return elegido ? { ...o, input: { ...inp, estado: elegido.estado } } : o;
+        }));
+      })
+      .catch(() => { if (vivo) setTarifas({ errores: {} }); })
+      .finally(() => { if (vivo) setCargandoTarifas(false); });
+    return () => { vivo = false; };
+  }, []);
 
+  const nuevaCotizacion = () => {
+    setClientName('');
+    setPeople([DEFAULT_PERSON()]);
+    const opts = [createDefaultOption(1), createDefaultOption(2), createDefaultOption(3)];
+    setOptions(opts);
+    setExpandedOptions(new Set([opts[0].id]));
+    setResults(null);
+    setCotizacionId(null);
+    setLastSavedFolio(null);
+    savedResultsRef.current = null;
+    navigate('/cotizar/multicotizador-gmm', { replace: true });
+  };
+
+  // Se guarda sola tras cada cálculo. Si ya tiene folio, se actualiza ese mismo.
   const autoSaveQuote = useCallback(async (optionResults: OptionResult[]) => {
-    // Always use the real authenticated session UID — not usuario.id which may be
-    // an impersonated user and would fail the RLS WITH CHECK (created_by = auth.uid())
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user.id;
-    if (!userId) return;
-
     const resultsKey = JSON.stringify(optionResults);
     if (savedResultsRef.current === resultsKey) return;
 
     setAutoSaveStatus('saving');
     try {
-      const { data, error: saveError } = await supabase
-        .from('multicotizador_gmm_quotes')
-        .insert({
-          created_by: userId,
-          client_name: clientName.trim() || 'Sin nombre',
-          people_json: people,
-          options_json: options,
-          results_json: optionResults,
-          selected_formas_pago: ['Anual', 'Semestral', 'Trimestral', 'Mensual'],
-          status: 'calculated',
-        })
-        .select('folio')
-        .single();
-
-      if (saveError) throw saveError;
+      const { id, folio } = await guardarCotizacion<DatosGmm>({
+        id: cotizacionId,
+        cotizador: 'gmm_multi',
+        cliente_nombre: clientName,
+        datos: {
+          people,
+          options,
+          results: optionResults,
+          selected_formas_pago: ['Anual', 'Semestral', 'Trimestral', 'Bimestral', 'Mensual'],
+        },
+        resumen: {
+          productos: [...new Set(options.map(o => o.product_id))],
+          personas: people.length,
+        },
+      });
 
       savedResultsRef.current = resultsKey;
-      if (data?.folio) setLastSavedFolio(data.folio);
+      setCotizacionId(id);
+      setLastSavedFolio(folio);
       setAutoSaveStatus('saved');
       setTimeout(() => setAutoSaveStatus('idle'), 3000);
     } catch (err: any) {
@@ -125,7 +175,7 @@ export default function MulticotizadorGMM() {
       setAutoSaveStatus('error');
       setTimeout(() => setAutoSaveStatus('idle'), 4000);
     }
-  }, [clientName, people, options]);
+  }, [cotizacionId, clientName, people, options]);
 
   const addPerson = () => setPeople(prev => [...prev, { ...DEFAULT_PERSON(), relation: prev.length === 0 ? 'Titular' : 'Dependiente' }]);
   const removePerson = (id: string) => setPeople(prev => prev.filter(p => p.id !== id));
@@ -188,114 +238,63 @@ export default function MulticotizadorGMM() {
     savedResultsRef.current = null;
 
     try {
+      if (!tarifas) {
+        setError('Las tarifas todavía se están cargando. Vuelve a intentar en un momento.');
+        return;
+      }
+
       const optionResults: OptionResult[] = [];
 
-      const productTariffs: Record<string, any> = {};
-
-      const needsBnv = options.some(o => o.product_id === 'BNV');
-      const needsBnp = options.some(o => o.product_id === 'BNP');
-      const needsBxplus = options.some(o => o.product_id === 'BXPLUS');
-
-      if (needsBnv) {
-        const { data: pkg } = await supabase
-          .from('multicotizador_gmm_packages')
-          .select('id, derecho_poliza, asistencia_extranjero')
-          .eq('product', 'BNV')
-          .eq('status', 'active')
-          .single();
-        if (pkg) {
-          const { data: rates } = await supabase
-            .from('multicotizador_gmm_rates')
-            .select('plan_name, region, age, rate, rate_type')
-            .eq('package_id', pkg.id);
-          if (rates && rates.length > 0) {
-            productTariffs.BNV = { pkg, rates };
-          } else {
-            productTariffs.BNV = { error: 'La tarifa BNV activa no tiene datos. Sube un nuevo archivo de cotizador en la pestana Tarifas.' };
-          }
-        } else {
-          productTariffs.BNV = { error: 'No hay tarifa BNV activa. Sube una tarifa en la pestana Tarifas.' };
-        }
-      }
-
-      if (needsBnp) {
-        const { data: pkg } = await supabase
-          .from('multicotizador_gmm_packages')
-          .select('id, derecho_poliza, asistencia_extranjero, costo_catastrofica_extranjero')
-          .eq('product', 'BNP')
-          .eq('status', 'active')
-          .single();
-        if (pkg) {
-          const { data: rates } = await supabase
-            .from('multicotizador_gmm_rates')
-            .select('plan_name, region, age, rate, rate_type')
-            .eq('package_id', pkg.id);
-          if (rates && rates.length > 0) {
-            productTariffs.BNP = { pkg, rates };
-          } else {
-            productTariffs.BNP = { error: 'La tarifa BNP activa no tiene datos. Sube un nuevo archivo de cotizador en la pestana Tarifas.' };
-          }
-        } else {
-          productTariffs.BNP = { error: 'No hay tarifa BNP activa. Sube una tarifa en la pestana Tarifas.' };
-        }
-      }
-
-      if (needsBxplus) {
-        const { data: pkg } = await supabase
-          .from('tariff_packages')
-          .select('id')
-          .eq('status', 'active')
-          .single();
-        if (pkg) {
-          const { data: tables } = await supabase
-            .from('tariff_tables')
-            .select('table_key, data_json')
-            .eq('tariff_package_id', pkg.id);
-          productTariffs.BXPLUS = { pkg, tables };
-        } else {
-          productTariffs.BXPLUS = { error: 'No hay tarifa BX+ Unikuz activa.' };
-        }
-      }
+      // Resultado de error con la forma de CarrierResult (sin tarifa disponible).
+      const resultadoVacio = (product_id: ProductId, error: string): OptionResult['result'] => ({
+        product: product_id,
+        people_results: [],
+        prima_anual_total: 0,
+        totals: {},
+        tariff_package_id: '',
+        error,
+      } as unknown as OptionResult['result']);
 
       for (const opt of options) {
-        const tariff = productTariffs[opt.product_id];
-
-        if (!tariff || tariff.error) {
+        const falta = tarifas.errores[opt.product_id];
+        if (falta) {
           optionResults.push({
             option_id: opt.id,
             option_label: opt.label,
             product_id: opt.product_id,
-            result: {
-              product: opt.product_id,
-              people_results: [],
-              prima_anual_total: 0,
-              totals: {} as any,
-              tariff_package_id: '',
-              error: tariff?.error || 'Tarifa no disponible',
-            } as any,
+            result: resultadoVacio(opt.product_id, falta),
           });
           continue;
         }
 
-        if (opt.product_id === 'BNV') {
-          const { pkg, rates } = tariff;
-          const result = calculateBnv(opt.input as BnvQuoteInput, people, rates, {
+        if (opt.product_id === 'BNV' && tarifas.BNV) {
+          const { pkg, rates, meta } = tarifas.BNV;
+          const result = calculateBnv(opt.input as BnvQuoteInput, people, rates as BnvRateRecord[], {
             id: pkg.id,
-            derecho_poliza: pkg.derecho_poliza || 0,
-            asistencia_extranjero: pkg.asistencia_extranjero || 0,
+            derecho_poliza: Number(meta.derecho_poliza ?? pkg.derecho_poliza ?? 0),
+            asistencia_extranjero: Number(meta.asistencia_extranjero ?? pkg.asistencia_extranjero ?? 0),
+            plan_prefix: meta.plan_prefix,
+            zonas: meta.zonas,
+            factores_pago: meta.factores_pago,
           });
           optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BNV', result });
-        } else if (opt.product_id === 'BNP') {
-          const { pkg, rates } = tariff;
-          const result = calculateBnp(opt.input as BnpQuoteInput, people, rates, {
+        } else if (opt.product_id === 'BNP' && tarifas.BNP) {
+          const { pkg, rates, meta } = tarifas.BNP;
+          const result = calculateBnp(opt.input as BnpQuoteInput, people, rates as BnpRateRecord[], {
             id: pkg.id,
-            derecho_poliza: pkg.derecho_poliza || 0,
-            asistencia_extranjero: pkg.asistencia_extranjero || 0,
-            costo_catastrofica_extranjero: pkg.costo_catastrofica_extranjero || 0,
+            derecho_poliza: Number(meta.derecho_poliza ?? pkg.derecho_poliza ?? 0),
+            asistencia_extranjero: Number(meta.asistencia_extranjero ?? pkg.asistencia_extranjero ?? 0),
+            costo_catastrofica_extranjero: Number(meta.catastrofica?.costo_por_integrante ?? pkg.costo_catastrofica_extranjero ?? 0),
+            plan_prefix: meta.plan_prefix,
+            zonas: meta.zonas,
+            estados: meta.estados,
+            client_types: meta.client_types,
+            catastrofica: meta.catastrofica,
+            factores_pago: meta.factores_pago,
           });
           optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BNP', result });
-        } else if (opt.product_id === 'BXPLUS') {
-          const { pkg, tables } = tariff;
+        } else if (opt.product_id === 'BXPLUS' && tarifas.BXPLUS) {
+          const { pkg, tables } = tarifas.BXPLUS;
           const result = calculateBxplus(opt.input as BxplusQuoteInput, people, tables, pkg.id);
           optionResults.push({ option_id: opt.id, option_label: opt.label, product_id: 'BXPLUS', result });
         }
@@ -344,53 +343,10 @@ export default function MulticotizadorGMM() {
     }
   };
 
-  const handleEditQuote = (quote: SavedMultiGmmQuote) => {
-    setClientName(quote.client_name || '');
-    setPeople(quote.people_json || [DEFAULT_PERSON()]);
-    setOptions(quote.options_json || [createDefaultOption(1)]);
-    setResults(quote.results_json || null);
-    setLastSavedFolio(quote.folio);
-    savedResultsRef.current = quote.results_json ? JSON.stringify(quote.results_json) : null;
-    setExpandedOptions(new Set(quote.options_json?.length ? [quote.options_json[0].id] : []));
-    setActiveTab('cotizador');
-  };
-
-  const handleDownloadSavedPdf = async (quote: SavedMultiGmmQuote) => {
-    if (!quote.results_json || quote.results_json.length === 0) {
-      setError('Esta cotizacion no tiene resultados para descargar');
-      return;
-    }
-    try {
-      let logoUrl: string | undefined;
-      if (usuario?.id) {
-        const url = await getEffectiveUserLogo(usuario.id);
-        if (url) logoUrl = url;
-      }
-
-      const blob = await generateMultiGmmPdf(
-        quote.results_json,
-        quote.people_json || [],
-        quote.client_name || '',
-        usuario,
-        quote.options_json || [],
-        logoUrl,
-        quote.folio
-      );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `multicotizador-gmm-${quote.client_name || quote.folio}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError('Error generando PDF: ' + err.message);
-    }
-  };
-
   const visibleTabs = TABS.filter(t => t.id !== 'tarifas' || isAdmin);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div>
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800/30">
@@ -400,7 +356,20 @@ export default function MulticotizadorGMM() {
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">Multicotizador GMM</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Compara BX+ Unikuz, Bupa Nacional Vital y Bupa Nacional Plus</p>
         </div>
+        <div className="ml-auto flex items-center gap-2">
+          {lastSavedFolio && (
+            <button onClick={nuevaCotizacion} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05]" title="Empezar una cotización nueva">
+              <FilePlus className="w-4 h-4" /> Nueva
+            </button>
+          )}
+          <Link to="/cotizar/cotizaciones" className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-200 dark:border-white/10 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:border-teal-400">
+            <FileText className="w-4 h-4" /> Cotizaciones
+          </Link>
+        </div>
       </div>
+      {lastSavedFolio && (
+        <p className="-mt-3 mb-4 text-xs text-neutral-500 dark:text-neutral-400">Editando <span className="font-mono font-semibold text-teal-600 dark:text-teal-400">{lastSavedFolio}</span> — al recalcular se actualiza este mismo folio.</p>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 p-1 bg-neutral-100 dark:bg-white/[0.04] rounded-xl w-fit">
@@ -516,10 +485,25 @@ export default function MulticotizadorGMM() {
                   canRemove={options.length > 1}
                   isExpanded={expandedOptions.has(opt.id)}
                   onToggleExpand={() => toggleExpand(opt.id)}
+                  opciones={tarifas ? opcionesDeTarifas(tarifas) : undefined}
                 />
               ))}
             </div>
           </div>
+
+          {/* Estado de las tarifas activas */}
+          {cargandoTarifas && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-neutral-50 dark:bg-white/[0.03] border border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-300 text-sm">
+              <Loader className="w-4 h-4 animate-spin flex-shrink-0" />
+              Cargando las tarifas vigentes…
+            </div>
+          )}
+          {tarifas && Object.entries(tarifas.errores).map(([prod, msg]) => (
+            <div key={prod} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 text-amber-800 dark:text-amber-200 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span><span className="font-medium">{PRODUCT_LABELS[prod as ProductId]}</span>: {msg}</span>
+            </div>
+          ))}
 
           {/* Error */}
           {error && (
@@ -533,7 +517,7 @@ export default function MulticotizadorGMM() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleCalculate}
-              disabled={calculating}
+              disabled={calculating || cargandoTarifas}
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm transition-colors disabled:opacity-50"
             >
               {calculating ? <Loader className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
@@ -564,73 +548,6 @@ export default function MulticotizadorGMM() {
 
           {/* Results */}
           {results && <ComparisonResults results={results} selectedFormaPago="Anual" />}
-        </div>
-      )}
-
-      {activeTab === 'historial' && (
-        <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl border border-soft dark:border-white/[0.06] overflow-hidden">
-          {savedQuotes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-neutral-500 dark:text-neutral-500">
-              <History className="w-10 h-10 mb-3 opacity-40" />
-              <p className="text-sm">No hay cotizaciones guardadas</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-neutral-100 dark:border-white/[0.06]">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Folio</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Cliente</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Fecha</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Aseguradoras</th>
-                    <th className="text-right px-5 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {savedQuotes.map(q => {
-                    const products = [...new Set((q.options_json || []).map((o: any) => o.product_id))];
-                    const productLabels: Record<string, string> = { BXPLUS: 'BX+ Unikuz', BNV: 'BNV', BNP: 'BNP' };
-                    return (
-                      <tr key={q.id} className="border-b border-neutral-50 dark:border-white/[0.03] hover:bg-neutral-50 dark:hover:bg-white/[0.02] transition-colors">
-                        <td className="px-5 py-3.5 font-mono text-xs text-teal-600 dark:text-teal-400 font-medium">{q.folio}</td>
-                        <td className="px-5 py-3.5 text-neutral-900 dark:text-white font-medium">{q.client_name}</td>
-                        <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400">{new Date(q.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {products.map(pid => (
-                              <span key={pid} className="inline-flex px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide bg-neutral-100 dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-300">
-                                {productLabels[pid as string] || pid}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => handleEditQuote(q)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/[0.05] transition-colors"
-                              title="Editar cotizacion"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => handleDownloadSavedPdf(q)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
-                              title="Descargar PDF"
-                            >
-                              <FileDown className="w-3.5 h-3.5" />
-                              Descargar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       )}
 

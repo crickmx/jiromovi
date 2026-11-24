@@ -12,11 +12,12 @@ import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { cn } from '@/lib/utils';
 import { computeThemeVars } from '@/lib/themeUtils';
 import { FloatingSiniestroButton } from './FloatingSiniestroButton';
+import { APP_TARGET } from '../../native/platform';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 const _HOST = typeof window !== 'undefined' ? window.location.hostname : '';
-const _isSWDomain = _HOST === 'seguwallet.mx' || _HOST.endsWith('.seguwallet.mx');
+const _isSWDomain = APP_TARGET === 'seguwallet' || _HOST === 'seguwallet.mx' || _HOST.endsWith('.seguwallet.mx');
 const SW_PREFIX = _isSWDomain ? '' : '/seguwallet';
 
 // Accesos de cuenta (dropdown en tablet, barra lateral en escritorio, menú en móvil)

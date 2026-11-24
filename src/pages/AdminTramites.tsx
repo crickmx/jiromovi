@@ -741,7 +741,7 @@ export default function AdminTramites() {
 
   if (usuario && !['Administrador', 'Gerente'].includes(usuario.rol)) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-8">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <Settings2 className="w-12 h-12 mx-auto text-neutral-300 mb-3" />
           <p className="text-neutral-500 font-medium">Solo administradores pueden acceder a esta sección.</p>
@@ -751,7 +751,7 @@ export default function AdminTramites() {
   }
 
   return (
-    <div className="p-6 sm:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       <PageHeader
         icon={Settings2}
         title="Admin › Trámites"

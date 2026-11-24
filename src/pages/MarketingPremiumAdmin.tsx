@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Sparkles, User, CheckCircle, Save, TrendingUp, Users, DollarSign, Calendar, AlertTriangle, Copy, UserPlus, X, Megaphone, Upload, Trash2, Image as ImageIcon, Video as VideoIcon, Loader as Loader2, Plus, FileText, ExternalLink, Download, Paperclip, Camera, ZoomIn, Lock } from 'lucide-react';
@@ -9,8 +10,6 @@ import { EventosPremiumPanel } from '../components/marketing/EventosPremiumPanel
 import { PagosPremiumPanel } from '../components/marketing/PagosPremiumPanel';
 import { TriggersPanel } from '../components/admin/TriggersPanel';
 import { CONFIG_TRIGGERS_PREMIUM } from '../lib/triggersConfig';
-import { BitacoraComercial } from '../components/admin/BitacoraComercial';
-import { CONFIG_BITACORA_MKT } from '../lib/bitacoraConfig';
 import type { PlanPremium } from '../lib/mktPremiumPagos';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -142,7 +141,7 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   const [verificandoAcceso, setVerificandoAcceso] = useState(true);
 
   const [mostrarNuevoAgente, setMostrarNuevoAgente] = useState(false);
-  const [vista, setVista] = useState<'agentes' | 'triggers' | 'eventos' | 'bitacora'>('agentes');
+  const [vista, setVista] = useState<'agentes' | 'triggers' | 'eventos'>('agentes');
 
   const [disenosAgente, setDisenosAgente] = useState<DisenoAgente[]>([]);
   const [cargandoDisenos, setCargandoDisenos] = useState(false);
@@ -265,6 +264,25 @@ export default function MarketingPremiumAdmin({ embedded }: { embedded?: boolean
   }, [usuario?.id]);
 
   useEffect(() => { cargarAgentes(); }, []);
+
+  // La bitácora enlaza a un agente concreto con `?agente=<id>`: al abrirlo hay
+  // que seleccionarlo y bajar a su panel de pagos, que es a lo que viene quien
+  // hace clic en una fila con saldo.
+  const [searchParams] = useSearchParams();
+  const agentePedido = searchParams.get('agente');
+  const [yaEnfocado, setYaEnfocado] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!agentePedido || agentes.length === 0 || yaEnfocado === agentePedido) return;
+    const agente = agentes.find(a => a.id === agentePedido);
+    if (!agente) return;
+    seleccionar(agente);
+    setYaEnfocado(agentePedido);
+    // El panel vive abajo en la ficha; sin esto queda fuera de la pantalla.
+    setTimeout(() => {
+      document.getElementById('panel-pagos-premium')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  }, [agentePedido, agentes, yaEnfocado]);
 
   useEffect(() => {
     supabase.from('store_frecuencias_pago').select('id, nombre').eq('activo', true).order('orden')
@@ -901,7 +919,6 @@ ALTER TABLE usuarios
           { key: 'agentes' as const, label: 'Agentes' },
           { key: 'triggers' as const, label: 'Reglas de tickets' },
           { key: 'eventos' as const, label: 'Eventos' },
-          { key: 'bitacora' as const, label: 'Bitácora' },
         ]).map(t => (
           <button
             key={t.key}
@@ -921,8 +938,6 @@ ALTER TABLE usuarios
         <EventosPremiumPanel />
       ) : vista === 'triggers' ? (
         <TriggersPanel config={CONFIG_TRIGGERS_PREMIUM} />
-      ) : vista === 'bitacora' ? (
-        <BitacoraComercial config={CONFIG_BITACORA_MKT} />
       ) : (
         <>
           {/* Estadísticas */}
@@ -1226,7 +1241,9 @@ ALTER TABLE usuarios
                   </div>
 
                   {/* Pagos — debajo de la configuración del plan, que es lo que
-                      define cuánto se espera cobrar. */}
+                      define cuánto se espera cobrar. El id es el destino del
+                      enlace que trae la bitácora. */}
+                  <div id="panel-pagos-premium" />
                   <PagosPremiumPanel
                     usuarioId={seleccionado.id}
                     plan={(seleccionado.mkt_premium_plan ?? null) as PlanPremium | null}

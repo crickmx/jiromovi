@@ -205,7 +205,7 @@ export default function RegimenFiscalEditor() {
 
   if (!rule) {
     return (
-      <div className="p-6 text-center text-neutral-500 dark:text-white/50">
+      <div className="py-6 text-center text-neutral-500 dark:text-white/50">
         <AlertTriangle className="mx-auto mb-2 h-8 w-8 text-amber-500" />
         <p>Regla fiscal no encontrada.</p>
         <Button variant="outline" className="mt-4" onClick={() => navigate('/comisiones/regimen-fiscal')}>
@@ -221,9 +221,9 @@ export default function RegimenFiscalEditor() {
   const preview = previewOpen ? getPreviewResult() : null;
 
   return (
-    <div className="min-h-screen dark:bg-neutral-900">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="max-w-6xl mx-auto px-6 py-5">
+      <div>
         <PageHeader
           title={REGIMEN_LABELS[regimen] ?? rule.nombre_regimen}
           description={`Versión ${rule.version} \u00b7 Vigente desde ${rule.vigente_desde}${rule.vigente_hasta ? ` hasta ${rule.vigente_hasta}` : ' (sin fecha de vencimiento)'}`}
@@ -258,7 +258,7 @@ export default function RegimenFiscalEditor() {
         />
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-6 space-y-5">
+      <div className="space-y-5">
 
         {/* Alerts */}
         {error && (

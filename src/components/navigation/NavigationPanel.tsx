@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import type { WorkspaceDefinition, WorkspaceNavItem, UserRole } from '@/lib/workspaceConfig';
 import { isItemVisible } from '@/lib/workspaceConfig';
 import { useSidebarItemsConfig } from '@/hooks/useSidebarItemsConfig';
+import { useMenuFavoritos } from '@/hooks/useMenuFavoritos';
 
 interface NavigationPanelProps {
   workspace: WorkspaceDefinition;
@@ -17,7 +18,6 @@ interface NavigationPanelProps {
   badgeCounts?: Record<string, number>;
 }
 
-const FAVORITES_KEY = 'movi_nav_favorites';
 const RECENTS_KEY = 'movi_nav_recents';
 
 export function NavigationPanel({
@@ -34,14 +34,8 @@ export function NavigationPanel({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem(FAVORITES_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Favoritos por usuario (BD), compartidos con el menú lateral.
+  const { favoritos: favorites, alternarFavorito } = useMenuFavoritos();
 
   const { getResolvedItems } = useSidebarItemsConfig();
 
@@ -74,13 +68,7 @@ export function NavigationPanel({
 
   const toggleFavorite = (path: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setFavorites(prev => {
-      const next = prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path];
-      try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
+    alternarFavorito(path);
   };
 
   const handleSelect = (item: WorkspaceNavItem) => {

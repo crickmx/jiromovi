@@ -91,7 +91,7 @@ export default function DiagnosticoWebhook() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="p-6 space-y-5">
+      <div className="space-y-5">
 
         {/* Webhook registration */}
         <div className={`rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center gap-4 ${webhookStatus?.configured ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>

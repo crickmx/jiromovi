@@ -37,9 +37,10 @@ interface BonosPerms {
   can_admin: boolean;
   can_campanias: boolean;
   can_users: boolean;
+  can_simulador: boolean;
 }
 
-const DEFAULT_PERMS: BonosPerms = { role: '', can_admin: false, can_campanias: false, can_users: false };
+const DEFAULT_PERMS: BonosPerms = { role: '', can_admin: false, can_campanias: false, can_users: false, can_simulador: false };
 
 type SectionDef = {
   label: string;
@@ -57,6 +58,7 @@ const SECTIONS: SectionDef[] = [
   { label: 'Cob. Pendiente', path: '/etl/cobranza-pendiente/', icon: Clock, show: () => true },
   { label: 'Renovaciones', path: '/reporting/renovaciones/', icon: RefreshCw, show: () => true },
   { label: 'Produccion', path: '/calculations/results/', icon: DollarSign, show: () => true },
+  { label: 'Simulador de Metas', path: '/simulador/', icon: Calculator, show: p => p.can_simulador },
   { label: 'Metas', path: '/metas/', icon: Target, show: p => p.can_admin },
   { label: 'Config. Metas', path: '/metas/config/', icon: Target, show: no_dirreg },
   { label: 'Config. de Bonos', path: '/catalogs/', icon: BookOpen, show: no_dirreg },
@@ -85,9 +87,11 @@ export default function BonosPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState(false);
-  const [activePath, setActivePath] = useState(
-    location.pathname === '/produccion/reportes-sicas-ccj' ? SICAS_CCJ_REPORTS_PATH : '/',
-  );
+  const CP_PATH_KEY = 'cp_last_path';
+  const [activePath, setActivePath] = useState(() => {
+    if (location.pathname === '/produccion/reportes-sicas-ccj') return SICAS_CCJ_REPORTS_PATH;
+    try { return sessionStorage.getItem(CP_PATH_KEY) || '/'; } catch { return '/'; }
+  });
   const activePathRef = useRef(activePath);
   activePathRef.current = activePath;
   const [perms, setPerms] = useState<BonosPerms>(DEFAULT_PERMS);
@@ -99,7 +103,11 @@ export default function BonosPage() {
   const ssoConfirmedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxRetries = 2;
-  const SSO_TIMEOUT_MS = 20000;
+  // CP manda su aviso cuando el servidor termina la página, y la de Inicio de quien ve
+  // toda la producción puede tardar más de 20 s. Reintentar por lentitud NO acelera:
+  // recarga el iframe y arranca otro cálculo pesado mientras el anterior sigue ocupando
+  // un worker de CP, y eso alentaba el portal para todos. Por eso el timeout ya no reintenta.
+  const SSO_TIMEOUT_MS = 60000;
   type ErrorReason = 'no_session' | 'timeout' | 'login_redirect' | null;
   const [errorReason, setErrorReason] = useState<ErrorReason>(null);
   const [showTramiteModal, setShowTramiteModal] = useState(false);
@@ -141,7 +149,7 @@ export default function BonosPage() {
     if (sessionError || !session?.access_token) return null;
     const url = new URL('/accounts/supabase/', BONOS_URL);
     url.searchParams.set('token', session.access_token);
-    url.searchParams.set('next', '/');
+    url.searchParams.set('next', activePathRef.current || '/');
     if (isImpersonating && impersonatedUser?.email_laboral) {
       url.searchParams.set('impersonate_email', impersonatedUser.email_laboral);
     }
@@ -172,12 +180,8 @@ export default function BonosPage() {
       setSrc(url);
       timeoutRef.current = setTimeout(() => {
         if (!ssoConfirmedRef.current) {
-          if (retryCount < maxRetries) {
-            setRetryCount(c => c + 1);
-          } else {
-            setError(true);
-            setErrorReason('timeout');
-          }
+          setError(true);
+          setErrorReason('timeout');
         }
       }, SSO_TIMEOUT_MS);
     });
@@ -226,6 +230,11 @@ export default function BonosPage() {
         setActivePath(path);
       }
 
+      if (type === 'cp_open_store') {
+        navigate('/store');
+        return;
+      }
+
       if (type === 'cp_crear_tramite') {
         const tipoTramite = event.data.tipo_tramite || '';
         if (!tipoTramite) return; // sin tipo configurado en CP — no abrir modal vacío
@@ -249,6 +258,7 @@ export default function BonosPage() {
           can_admin: !!(event.data.can_admin ?? event.data.payload?.can_admin),
           can_campanias: !!(event.data.can_campanias ?? event.data.payload?.can_campanias),
           can_users: !!(event.data.can_users ?? event.data.payload?.can_users),
+          can_simulador: !!(event.data.can_simulador ?? event.data.payload?.can_simulador),
         });
       }
     }
@@ -256,6 +266,13 @@ export default function BonosPage() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [clearSsoTimeout]);
+
+  // Persiste la última sección visitada del CP para restaurarla al volver
+  useEffect(() => {
+    if (activePath && activePath !== SICAS_CCJ_REPORTS_PATH) {
+      try { sessionStorage.setItem(CP_PATH_KEY, activePath); } catch {}
+    }
+  }, [activePath]);
 
   useEffect(() => {
     iframeRef.current?.contentWindow?.postMessage(
@@ -386,6 +403,21 @@ export default function BonosPage() {
           </button>
         );
       })}
+      {/* Botón secreto del minijuego — casi invisible, igual que en CP */}
+      <button
+        onClick={() => {
+          iframeRef.current?.contentWindow?.postMessage({ type: 'cp_show_game' }, BONOS_URL);
+          onSelect?.();
+        }}
+        title="🎮 Crane Blocks"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left w-full transition-all"
+        style={{ opacity: 0.06, color: 'inherit' }}
+        onMouseEnter={e => (e.currentTarget.style.opacity = '0.45')}
+        onMouseLeave={e => (e.currentTarget.style.opacity = '0.06')}
+      >
+        <span style={{ fontSize: '1rem' }}>🎮</span>
+        <span className="truncate">Crane Blocks</span>
+      </button>
     </>
   );
 

@@ -128,7 +128,7 @@ export default function CRMContactoPerfil() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
       </div>
     );
@@ -136,7 +136,7 @@ export default function CRMContactoPerfil() {
 
   if (!contacto) {
     return (
-      <div className="p-8 text-center">
+      <div className="text-center">
         <p>Contacto no encontrado</p>
         <button
           onClick={() => navigate('/contactos')}
@@ -149,7 +149,7 @@ export default function CRMContactoPerfil() {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div>
       <PageHeader
         title={contacto.nombre_completo}
         description={contacto.tipo_contacto}

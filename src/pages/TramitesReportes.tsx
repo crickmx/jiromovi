@@ -14,7 +14,7 @@ import {
   getTipoTramiteLabel as centralGetLabel,
   getTipoTramiteArea,
   getTipoTramitesByArea,
-  AREA_CONFIG,
+  colorDeArea,
   type AreaCategoria,
 } from '../lib/registroActividadesTypes';
 
@@ -596,7 +596,7 @@ export default function TramitesReportes() {
 
   if (!canViewReports) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-neutral-900 mb-2">
@@ -737,14 +737,14 @@ export default function TramitesReportes() {
   });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <PageHeader
         title="Dashboard de Trámites"
         description="Análisis y métricas de productividad"
         icon={BarChart3}
         badge={userArea ? (() => {
-          const ac = AREA_CONFIG[userArea];
+          const ac = colorDeArea(userArea);
           return (
             <span className={`px-3 py-1 text-sm font-bold rounded-full ${ac.bg} ${ac.color} border ${ac.border}`}>
               {userArea}
@@ -1199,7 +1199,7 @@ export default function TramitesReportes() {
         {(['Comercial', 'Operaciones'] as AreaCategoria[]).map(area => {
           const areaItems = kpisPorTipo.filter(item => getTipoTramiteArea(item.tipo) === area);
           if (areaItems.length === 0) return null;
-          const ac = AREA_CONFIG[area];
+          const ac = colorDeArea(area);
           return (
             <div key={area} className="mb-6 last:mb-0">
               <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-lg ${ac.bg} border ${ac.border}`}>
@@ -1425,7 +1425,7 @@ export default function TramitesReportes() {
             {(['Comercial', 'Operaciones'] as AreaCategoria[]).map(area => {
               const items = tramitesPorTipo.filter(i => getTipoTramiteArea(i.tipo) === area);
               if (items.length === 0) return null;
-              const ac = AREA_CONFIG[area];
+              const ac = colorDeArea(area);
               const maxVal = Math.max(1, ...tramitesPorTipo.map(t => t.cantidad));
               return (
                 <div key={area}>

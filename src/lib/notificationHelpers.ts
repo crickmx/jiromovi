@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseUrl } from './supabase';
 
 export interface NotificationParams {
   user_id: string;
@@ -9,6 +9,86 @@ export interface NotificationParams {
   accion_url?: string;
   accion_texto?: string;
   enviar_whatsapp?: boolean;
+}
+
+export interface AvisoPorEvento {
+  /** Código del aviso en Admin › Transaccionales (= `event_key` del motor). */
+  eventKey: string;
+  ticketId: string;
+  /** A quién se le avisa. Puede no ser el agente del trámite. */
+  destinatarioId: string;
+  disparadoPor: string;
+  /** Lo que la plantilla puede usar: {{folio}}, {{solicitante}}, … */
+  variables?: Record<string, string>;
+  /** Si el motor no pudo, se manda esto a mano. Nunca se pierde el aviso. */
+  respaldo: NotificationParams;
+}
+
+/**
+ * Avisa pasando por el motor de Transaccionales, con red abajo.
+ *
+ * El texto de los avisos de trámite vivía escrito a mano en las pantallas, así
+ * que la plantilla de Admin › Transaccionales podía decir una cosa y el aviso
+ * real otra. Esto los junta: manda el evento al despachador, que resuelve la
+ * plantilla, los canales configurados y la campanita.
+ *
+ * **La red importa tanto como el motor.** Si no hay plantilla para ese evento,
+ * si está apagado, o si el despachador falla, se manda el aviso de siempre. Un
+ * trámite nuevo del que nadie se entera es peor que un texto sin personalizar.
+ */
+export async function avisarPorEvento(
+  aviso: AvisoPorEvento,
+): Promise<{ via: 'motor' | 'motor_sin_campanita' | 'respaldo' }> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('sin sesión');
+
+    const resp = await fetch(`${supabaseUrl}/functions/v1/ticket-notification-dispatcher`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({
+        event_key: aviso.eventKey,
+        ticket_id: aviso.ticketId,
+        triggered_by_user_id: aviso.disparadoPor,
+        destinatario_user_id: aviso.destinatarioId,
+        extra_variables: aviso.variables ?? {},
+        // Un aviso de trámite nuevo no lleva archivos: mandarlos aquí sería
+        // repetir lo que ya hace el envío de adjuntos, con su propio candado.
+        attachment_file_ids: [],
+      }),
+    });
+
+    const r = resp.ok ? await resp.json().catch(() => null) : null;
+
+    // Qué salió de verdad, canal por canal. La primera versión exigía que la
+    // campanita hubiera salido para dar el aviso por bueno — y si el motor
+    // mandaba el WhatsApp pero fallaba la campanita, el respaldo lo mandaba
+    // OTRA VEZ. Llegaban dos WhatsApp del mismo trámite.
+    const correo = r?.email?.sent === true;
+    const whatsapp = r?.whatsapp?.messageSent === true;
+    const campanita = r?.inapp?.sent === true;
+
+    if (campanita || correo || whatsapp) {
+      // Algo salió. Si lo único que falta es la campanita, se crea SOLO esa:
+      // `crearNotificacion` manda WhatsApp por default y repetirlo es peor que
+      // quedarse sin el avisito de la app.
+      if (!campanita) {
+        console.warn(`[aviso] "${aviso.eventKey}": el motor avisó pero sin campanita, se crea solo esa`);
+        await crearNotificacion({ ...aviso.respaldo, enviar_whatsapp: false });
+        return { via: 'motor_sin_campanita' };
+      }
+      return { via: 'motor' };
+    }
+
+    console.warn(`[aviso] El motor no avisó por "${aviso.eventKey}", se usa el respaldo`, r);
+  } catch (err) {
+    console.warn(`[aviso] Falló el motor para "${aviso.eventKey}", se usa el respaldo`, err);
+  }
+
+  // Aquí el motor no mandó NADA: ni correo, ni WhatsApp, ni campanita. Solo en
+  // ese caso se usa el aviso de siempre.
+  await crearNotificacion(aviso.respaldo);
+  return { via: 'respaldo' };
 }
 
 export async function crearNotificacion(params: NotificationParams) {

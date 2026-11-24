@@ -38,7 +38,7 @@ export const USUARIO_COLUMNAS = [
   'mkt_premium_fecha_pago', 'mkt_premium_plan', 'mkt_premium_metodo_pago', 'apellido', 'email',
   'ubicacion_lat', 'ubicacion_lng', 'ubicacion_direccion_manual', 'ubicacion_metodo',
   'ubicacion_updated_at', 'seguros_express_habilitado', 'rol_id', 'mkt_premium_parcialidades',
-  'cedula_cnsf', 'mkt_premium_folio', 'mkt_premium_frecuencia_pago', 'es_bot',
+  'cedula_cnsf', 'mkt_premium_folio', 'mkt_premium_frecuencia_pago', 'es_bot', 'es_desarrollador',
 ].join(', ');
 
 export interface DatosPrivadosUsuario {

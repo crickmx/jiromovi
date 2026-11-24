@@ -52,6 +52,24 @@ export function getTipoTramitesByArea(area: AreaCategoria): TipoTramiteConfig[] 
   return _dynamicTipos.filter(t => t.area === area);
 }
 
+export interface ColorDeArea { color: string; bg: string; border: string }
+
+/**
+ * Colores de un area, incluidas las que no estan en este archivo.
+ *
+ * `AREA_CONFIG` es un mapa fijo de cinco llaves, pero las areas salen de la
+ * tabla `tramites_areas` desde el 2026-07-06 y cualquiera puede crear una. Al
+ * indexarlo con un nombre que no esta —"Tesoreria"— sale `undefined`, y el
+ * primer `ac.bg` tumba la pantalla entera: asi se caia Reportes de Tramites.
+ *
+ * Es el patron de siempre aqui: un CONFIG indexado por un valor que crece con
+ * el tiempo. Lo que lo cierra no es agregar "Tesoreria" al mapa —manana habra
+ * otra— sino que nunca devuelva undefined.
+ */
+export function colorDeArea(area: string | null | undefined): ColorDeArea {
+  return AREA_CONFIG[area as AreaCategoria] ?? AREA_CONFIG.Otro;
+}
+
 export const AREA_CONFIG: Record<AreaCategoria, { color: string; bg: string; border: string }> = {
   Comercial:      { color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200' },
   Operaciones:    { color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },

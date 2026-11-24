@@ -280,7 +280,7 @@ export default function Chava() {
 
   return (
     <div
-      className="h-[calc(100vh-8rem)] flex flex-col -mt-2 rounded-2xl overflow-hidden"
+      className="h-[calc(100vh-8rem)] flex flex-col rounded-2xl overflow-hidden"
       style={{ background: 'linear-gradient(160deg, #060f25 0%, #0A183D 60%, #071020 100%)', border: '1px solid rgba(255,255,255,0.07)' }}
     >
       {/* Ambient glow */}

@@ -280,7 +280,7 @@ export default function ImportacionMasivaCentroDigital() {
 
   if (usuario?.rol !== 'Administrador') {
     return (
-      <div className="p-8">
+      <div>
         <EmptyState icon={FileWarning} title="Acceso restringido" description="Solo administradores pueden acceder a esta sección." />
       </div>
     );

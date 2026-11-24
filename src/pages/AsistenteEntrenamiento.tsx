@@ -1074,7 +1074,7 @@ export default function AsistenteEntrenamiento() {
   }
 
   if (checkingRole) {
-    return <div className="flex items-center justify-center min-h-screen"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/45" /></div>;
+    return <div className="flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/45" /></div>;
   }
 
   if (!isAdmin) {
@@ -1102,10 +1102,10 @@ export default function AsistenteEntrenamiento() {
   ];
 
   return (
-    <div className="min-h-screen dark:bg-neutral-950">
+    <div className="space-y-6">
       {/* Header */}
       <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-white/10 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-4">
+        <div className="px-4 sm:px-6 pt-4">
           <PageHeader
             title="Entrenamiento del Asistente Inteligente"
             description="MOVI IA - Solo administradores"
@@ -1148,7 +1148,7 @@ export default function AsistenteEntrenamiento() {
       </div>
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div>
         {loadingSettings && tab === 'config' ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-neutral-300 dark:text-white/45" /></div>
         ) : (

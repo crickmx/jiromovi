@@ -140,7 +140,7 @@ export default function CRMLeadsSegurosExpress() {
 
   if (!habilitado) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+      <div className="text-center">
         <ShieldAlert className="mx-auto h-12 w-12 text-neutral-500" />
         <h1 className="mt-4 text-xl font-bold text-neutral-900 dark:text-white">
           seguros.express no está habilitado en tu cuenta
@@ -153,7 +153,7 @@ export default function CRMLeadsSegurosExpress() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
+    <div>
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-600 text-white">

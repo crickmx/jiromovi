@@ -12,6 +12,7 @@ import type { StorePedidoCompleto } from './storeTypes';
 import { supabase } from './supabase';
 import { getDisplayName } from './utils';
 import { desglosarFormaPago, planDeCobro, pesos } from './cobroDesglose';
+import { totalDelPedido } from './storePedidoTotal';
 import { dibujarFranja, tablaConceptos, bloqueCobro, bloqueDatos, pieDocumento } from './ordenCompraPdf';
 
 /**
@@ -41,15 +42,37 @@ export function construirPDFOrdenCompra(pedido: StorePedidoCompleto): jsPDF {
     fecha: pedido.created_at,
   });
 
-  y = tablaConceptos(doc, y, 'articulos', pedido.detalle.map(item => ({
-    concepto: item.producto?.titulo || 'Producto sin nombre',
-    detalle: item.producto?.categoria?.nombre || null,
-    cantidad: item.cantidad,
-    precioUnitario: item.precio_unitario,
-  })));
+  const cargos = pedido.cargos || [];
 
+  y = tablaConceptos(doc, y, 'articulos', [
+    ...pedido.detalle.map(item => ({
+      concepto: item.producto?.titulo || 'Producto sin nombre',
+      detalle: item.producto?.categoria?.nombre || null,
+      cantidad: item.cantidad,
+      precioUnitario: item.precio_unitario,
+    })),
+    // El envío va como renglón aparte, no sumado en silencio al precio de los
+    // artículos (decisión de Ricardo, 09/11): así el cliente ve de dónde sale
+    // el total. Sin envío capturado, el renglón no existe.
+    // Los cargos al cliente, cada uno con SU concepto y como renglón aparte
+    // (decisión de Ricardo, 09/11), para que se vea de dónde sale el total.
+    // El concepto lo escribe quien administra Store: envío, producción
+    // express, lo que surja. Sin cargos capturados, no hay renglones.
+    //
+    // ⚠️ Aquí NO se menciona la recolección: la coordina el cliente por su
+    // cuenta y no se le cobra, así que nombrarla en el documento que sustenta
+    // un cargo sugeriría que tiene costo.
+    ...cargos.map(c => ({
+      concepto: c.concepto,
+      detalle: null,
+      cantidad: 1,
+      precioUnitario: Number(c.monto) || 0,
+    })),
+  ]);
+
+  // Las piezas son artículos; un cargo no es una pieza que se entregue.
   const totalPiezas = pedido.detalle.reduce((s, i) => s + i.cantidad, 0);
-  const total = pedido.detalle.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0);
+  const total = totalDelPedido(pedido.detalle, cargos);
 
   doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCached, setCached, invalidateCacheByPrefix } from '../lib/sessionCache';
 import { useTiposTramite } from '../hooks/useTiposTramite';
@@ -6,7 +6,9 @@ import { supabase } from '../lib/supabase';
 import { subscribeResilientChannel } from '../lib/resilientRealtime';
 import { useAuth } from '../contexts/AuthContext';
 import { useImpersonation } from '../contexts/ImpersonationContext';
-import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy, MessageSquare } from 'lucide-react';
+import { filtroTramitesVistaComo } from '../lib/tramitesVisibilidad';
+import { columnaDeTipo } from '../lib/tramiteRespuestas';
+import { ClipboardList, Plus, Search, CircleAlert as AlertCircle, Clock, CircleCheck as CheckCircle2, FileText, Settings, Users, ChartBar as BarChart3, X, Paperclip, Trash2, RotateCcw, UserCheck, UserPlus, Check, UsersRound, LayoutList, LayoutGrid, ChevronDown, ArrowUpDown, Flag, UserMinus, Activity, Copy, MessageSquare, Bot, UserRound } from 'lucide-react';
 import { crearNotificacion } from '../lib/notificationHelpers';
 import { NuevoTramiteModal } from '../components/tramites/NuevoTramiteModal';
 import { GestionCatalogosRegistro } from '../components/tramites/GestionCatalogosRegistro';
@@ -14,6 +16,7 @@ import { GestionGruposVisualizacion } from '../components/tramites/GestionGrupos
 import { PanelLider } from '../components/tramites/PanelLider';
 import { ConfirmarMovimientoKanbanModal } from '../components/tramites/ConfirmarMovimientoKanbanModal';
 import TerminarTramiteModal from '../components/tramites/TerminarTramiteModal';
+import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -23,7 +26,7 @@ import {
   getTipoTramiteLabel as centralGetLabel,
   getTipoTramiteArea,
   getTipoTramitesByArea,
-  AREA_CONFIG,
+  colorDeArea,
 } from '../lib/registroActividadesTypes';
 
 interface TramiteEstatus {
@@ -52,8 +55,10 @@ interface TramiteItem {
   agente_usuario_id: string | null;
   creado_por: string | null;
   assigned_to_user_id: string | null;
+  attending_user_id?: string | null;
   grupo_asignado_id: string | null;
-  agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null } | null;
+  agente: { nombre_completo: string; oficina_id: string | null; oficina: { nombre: string } | null; es_bot?: boolean } | null;
+  creador: { es_bot?: boolean } | null;
   responsable: { nombre_completo: string } | null;
   estatus: TramiteEstatus | null;
   custom_estatus_label: string | null;
@@ -73,6 +78,33 @@ interface TicketTipoDB {
 
 const PRIORIDADES = ['Alta', 'Media', 'Baja'] as const;
 
+/** Qué mitad del tablero se está mirando. Solo aplica al Administrador. */
+type ModoTablero = 'reales' | 'bots' | 'todo';
+// La preferencia del tablero es de CADA persona, no del navegador.
+//
+// Hasta el 06/11 la clave era global (`tramites_modo_tablero`), así que en una
+// computadora compartida el segundo que entrara heredaba el toggle del primero
+// sin darse cuenta. Ahora lleva el id de quien mira.
+//
+// Sigue viviendo en `localStorage`, o sea que es por navegador: entrar desde
+// otra máquina arranca de cero. Guardarlo en la base lo haría seguir a la
+// persona entre computadoras, pero es una columna nueva para una preferencia
+// de un clic — si algún día estorba, ese es el cambio.
+const MODO_TABLERO_KEY_VIEJA = 'tramites_modo_tablero';
+const modoTableroKey = (userId: string) => `tramites_modo_tablero_${userId}`;
+
+/**
+ * Un trámite es "de bot" si lo levantó un agente de IA o si es para uno.
+ *
+ * Se miran los dos lados a propósito: un bot que reporta un bug queda como
+ * solicitante Y como creador, pero un bot podría levantar algo a nombre de una
+ * persona (o al revés). Con un solo lado, esos trámites se irían al tablero
+ * equivocado y nadie lo notaría hasta buscarlos.
+ */
+function esDeBot(t: { agente: { es_bot?: boolean } | null; creador: { es_bot?: boolean } | null }) {
+  return t.agente?.es_bot === true || t.creador?.es_bot === true;
+}
+
 function getSlaInfo(fechaCreacion: string, slaHoras: number | null | undefined) {
   const daysOpen = Math.max(0, Math.floor((Date.now() - new Date(fechaCreacion).getTime()) / 86_400_000));
   const HPD = 8; // horas por día (hardcoded; configuracion_jornada no está cargada aquí)
@@ -90,92 +122,6 @@ function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
-// ── Multi-select dropdown component ─────────────────────────────────────────
-function MultiSelectDropdown({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
-  label: string;
-  options: Array<{ value: string; label: string }>;
-  selected: string[];
-  onChange: (vals: string[]) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  const toggle = (val: string) =>
-    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val]);
-
-  const only = (val: string) => { onChange([val]); setOpen(false); };
-
-  const buttonLabel =
-    selected.length === 0 ? label
-    : selected.length === 1 ? (options.find(o => o.value === selected[0])?.label ?? `1 ${label}`)
-    : `${label} (${selected.length})`;
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all whitespace-nowrap ${
-          selected.length > 0
-            ? 'bg-accent/10 text-accent-ink border-accent/30'
-            : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/8'
-        }`}
-      >
-        {buttonLabel}
-        <ChevronDown className={`w-3 h-3 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] bg-surface-card dark:bg-neutral-800 rounded-xl border border-soft dark:border-white/10 shadow-xl overflow-hidden">
-          {selected.length > 0 && (
-            <button
-              onClick={() => { onChange([]); setOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-500 dark:text-white/55 hover:bg-neutral-50 dark:hover:bg-white/5 border-b border-neutral-100 dark:border-white/8 transition-colors"
-            >
-              <X className="w-3 h-3" />
-              Limpiar selección
-            </button>
-          )}
-          <div className="max-h-56 overflow-y-auto">
-            {options.map(opt => {
-              const isSel = selected.includes(opt.value);
-              return (
-                <div key={opt.value} className="flex items-center justify-between px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-white/5 group">
-                  <button onClick={() => toggle(opt.value)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
-                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
-                      isSel ? 'bg-accent border-accent' : 'border-neutral-300 dark:border-white/20'
-                    }`}>
-                      {isSel && <Check className="w-2.5 h-2.5 text-white" />}
-                    </span>
-                    <span className="text-xs text-neutral-700 dark:text-white/80 truncate">{opt.label}</span>
-                  </button>
-                  <button
-                    onClick={() => only(opt.value)}
-                    className="opacity-0 group-hover:opacity-100 text-[11px] font-semibold text-accent-ink px-1.5 py-0.5 rounded transition-all ml-2 shrink-0 hover:bg-accent/10"
-                  >
-                    Sólo
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function Tramites() {
   const { usuario } = useAuth();
@@ -205,6 +151,17 @@ export function Tramites() {
   // El pointer capture solo redirige eventos de Pointer, no el click nativo del mouse —
   // al soltar sobre otra tarjeta, esa tarjeta recibe el click real. Se suprime ese click
   // fantasma justo después de un arrastre real (moved=true), sin importar dónde caiga.
+  // QA 2026-10-30 (H-003) — las tarjetas de trámite eran <div> con onClick:
+  // no había UN SOLO link ni elemento enfocable en toda la pantalla, así que
+  // con teclado no se podía abrir ningún trámite. Se les da rol, foco y
+  // Enter/Espacio en vez de convertirlas en <a>: el arrastre del Kanban vive
+  // en los mismos pointer events y un ancla real se los pelearía.
+  const abrirConTeclado = (id: string) => (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    navigate(`/tramites/${id}`);
+  };
+
   const suppressClickRef = useRef(false);
   const DRAG_THRESHOLD = 4;
   const KANBAN_COL_COLORS: Record<'atencion' | 'proceso' | 'terminados', string> = {
@@ -230,7 +187,7 @@ export function Tramites() {
   const sortRef = useRef<HTMLDivElement>(null);
   const [grupos, setGrupos] = useState<Array<{ id: string; nombre: string }>>([]);
   const [showNuevoModal, setShowNuevoModal] = useState(false);
-  const [duplicarPreload, setDuplicarPreload] = useState<{ tipoTramite?: string; descripcion?: string; instrucciones?: string; prioridad?: string; agenteId?: string } | null>(null);
+  const [duplicarPreload, setDuplicarPreload] = useState<{ tipoTramite?: string; descripcion?: string; instrucciones?: string; prioridad?: string; agenteId?: string; respuestas?: Record<string, unknown> } | null>(null);
   const [showCatalogosModal, setShowCatalogosModal] = useState(false);
   const [showGruposModal, setShowGruposModal] = useState(false);
   const [showPanelLider, setShowPanelLider] = useState(false);
@@ -260,6 +217,15 @@ export function Tramites() {
   const [teamEjecutivos, setTeamEjecutivos] = useState<Array<{ id: string; nombre_completo: string }>>([]);
   const [assignTargetId, setAssignTargetId] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'lista'>('kanban');
+
+  // Qué tablero mira el Administrador. Arranca en 'reales' a propósito: los bots
+  // son los que saturan, así que esconderlos es el estado útil por default y ver
+  // los suyos es la excepción que se pide.
+  // Arranca en 'reales' y la preferencia guardada se carga abajo, cuando ya se
+  // sabe QUIÉN está mirando: al recargar, `usuario` llega en null un instante,
+  // y leer la clave aquí daría siempre la de nadie.
+  const [modoTablero, setModoTablero] = useState<ModoTablero>('reales');
+  const modoTableroCargado = useRef<string | null>(null);
   const [tramitesCerrados20, setTramitesCerrados20] = useState<TramiteItem[]>([]);
 
   // Estatus filtered by selected tipos (cascade)
@@ -410,31 +376,17 @@ export function Tramites() {
     try {
       let q = supabase
         .from('tickets')
-        .select(`*, agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)), responsable:assigned_to_user_id(nombre_completo), estatus:estatus_id(*), ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)), ticket_archivos(id)`)
+        .select(`*, agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre), es_bot), creador:creado_por(es_bot), responsable:assigned_to_user_id(nombre_completo), estatus:estatus_id(*), ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)), ticket_archivos(id)`)
         .is('eliminado_at', null)
         .not('cerrado_en', 'is', null)
         .gte('cerrado_en', desde.toISOString())
         .order('cerrado_en', { ascending: false });
 
-      const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : usuario.id;
-      const effectiveRol = isImpersonating && impersonatedUser ? (impersonatedUser.rol || '') : (usuario.rol || '');
-
-      if (effectiveRol === 'Gerente') {
-        // RLS deja pasar TODOS los tickets a Gerente sin filtro de equipo — acotar aquí
-        // a sus propios equipos, tanto en sesión real como impersonada. Sin equipo, nada.
-        const { data: gruposData } = await supabase
-          .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', effectiveId);
-        const grupIds = (gruposData || []).map(g => g.grupo_id);
-        if (grupIds.length === 0) { setTramitesCerrados20([]); return; }
-        q = q.in('grupo_asignado_id', grupIds);
-      } else if (isImpersonating && impersonatedUser && effectiveRol !== 'Administrador') {
-        const uid = impersonatedUser.id;
-        const { data: gruposData } = await supabase
-          .from('tramites_grupos_miembros').select('grupo_id').eq('usuario_id', uid);
-        const grupIds = (gruposData || []).map(g => g.grupo_id);
-        let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
-        if (grupIds.length > 0) orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
-        q = q.or(orFilter);
+      // En sesión normal la RLS (tickets_select_v10) ya deja solo lo que le toca a cada
+      // rol. Solo hay que reproducirla al impersonar, porque ahí el JWT es del Admin.
+      if (isImpersonating && impersonatedUser) {
+        const orFilter = await filtroTramitesVistaComo(impersonatedUser);
+        if (orFilter) q = q.or(orFilter);
       }
 
       const { data } = await q;
@@ -483,7 +435,8 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)),
+          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre), es_bot),
+          creador:creado_por(es_bot),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
@@ -502,23 +455,10 @@ export function Tramites() {
 
       // When admin is impersonating a non-admin/gerente user, RLS still runs as the real admin
       // (auth.uid() = admin). Apply an explicit filter to replicate the impersonated user's visibility.
+      // Misma regla que la RLS (tickets_select_v10), ver src/lib/tramitesVisibilidad.ts.
       if (isImpersonating && impersonatedUser) {
-        const impersonatedRol = impersonatedUser.rol || '';
-        if (!['Administrador'].includes(impersonatedRol)) {
-          const uid = impersonatedUser.id;
-          // Also include pool tramites (unassigned) for groups the user belongs to.
-          // Query inline to avoid myGrupoIds timing dependency.
-          const { data: gruposData } = await supabase
-            .from('tramites_grupos_miembros')
-            .select('grupo_id')
-            .eq('usuario_id', uid);
-          const grupIds = (gruposData || []).map(g => g.grupo_id);
-          let orFilter = `agente_id.eq.${uid},creado_por.eq.${uid},assigned_to_user_id.eq.${uid},agente_usuario_id.eq.${uid},attending_user_id.eq.${uid}`;
-          if (grupIds.length > 0) {
-            orFilter += `,and(assigned_to_user_id.is.null,attending_user_id.is.null,grupo_asignado_id.in.(${grupIds.join(',')}))`;
-          }
-          query = query.or(orFilter);
-        }
+        const orFilter = await filtroTramitesVistaComo(impersonatedUser);
+        if (orFilter) query = query.or(orFilter);
       }
 
       const { data, error } = await query;
@@ -558,7 +498,8 @@ export function Tramites() {
         .from('tickets')
         .select(`
           *,
-          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre)),
+          agente:agente_id(nombre_completo, oficina_id, oficina:oficina_id(nombre), es_bot),
+          creador:creado_por(es_bot),
           responsable:assigned_to_user_id(nombre_completo),
           estatus:estatus_id(*),
           ticket_asignaciones(ejecutivo:ejecutivo_id(nombre_completo)),
@@ -577,38 +518,100 @@ export function Tramites() {
     e.stopPropagation();
     if (!usuario) return;
     if (!confirm('¿Mover este trámite a la papelera? Podrás restaurarlo desde la pestaña Papelera.')) return;
-    await supabase.from('tickets').update({
+    // Antes no se revisaba el resultado y la tarjeta se quitaba de la pantalla
+    // igual: quien la mandaba a la papelera la veía desaparecer, pero si la
+    // escritura fallaba el trámite seguía ahí para todos los demás.
+    const { error, count } = await supabase.from('tickets').update({
       eliminado_at: new Date().toISOString(),
       eliminado_por: usuario.id,
-    }).eq('id', tramiteId);
+    }, { count: 'exact' }).eq('id', tramiteId);
+
+    if (error) {
+      alert(`No se pudo mover a la papelera: ${error.message}`);
+      return;
+    }
+    if (count === 0) {
+      alert('No se pudo mover a la papelera: no tienes permiso para modificar este trámite.');
+      return;
+    }
+
     invalidateCacheByPrefix('tramites_');
     setTramites(prev => prev.filter(t => t.id !== tramiteId));
     loadPapelera();
   };
 
+  // QA 2026-10-22 (A7) — "Duplicar trámite" abría el formulario vacío.
+  //
+  // Dos causas encadenadas: `tickets` NO tiene columna `descripcion` (es
+  // `instrucciones`), así que el select devolvía error 42703, nadie lo miraba y
+  // el texto llegaba vacío; y aunque hubiera llegado, lo único que se copiaba
+  // era tipo + prioridad — ningún dato del formulario.
   const handleDuplicar = async (e: React.MouseEvent, tramite: TramiteItem) => {
     e.stopPropagation();
-    // Fetch descripcion desde el ticket completo si no está en el resumen
-    let descripcion = '';
-    const { data } = await supabase
+
+    const { data: original, error: errTicket } = await supabase
       .from('tickets')
-      .select('descripcion')
+      .select('instrucciones, agente_id')
       .eq('id', tramite.id)
       .single();
-    if (data) descripcion = data.descripcion ?? '';
+    if (errTicket) {
+      alert(`No se pudo leer el trámite a duplicar: ${errTicket.message}`);
+      return;
+    }
+
+    // Los campos de SISTEMA se quedan fuera a propósito: área, equipo, estatus,
+    // fechas y responsable describen el estado del trámite viejo, no sus datos, y
+    // el alta los vuelve a resolver sola. El solicitante sí se hereda, por el
+    // camino que ya existe (`agenteId`).
+    const { data: respuestas, error: errResp } = await supabase
+      .from('tramite_respuestas')
+      .select('campo_id, valor_texto, valor_numerico, valor_fecha, valor_booleano, valor_json, campo:tramite_tipo_campos(tipo, is_sistema)')
+      .eq('tramite_id', tramite.id);
+    if (errResp) {
+      alert(`No se pudieron copiar los datos del trámite: ${errResp.message}`);
+      return;
+    }
+
+    type FilaRespuesta = {
+      campo_id: string;
+      valor_texto: string | null;
+      valor_numerico: number | null;
+      valor_fecha: string | null;
+      valor_booleano: boolean | null;
+      valor_json: unknown;
+      // Relación de UNO (el lado del FK): PostgREST la devuelve como objeto.
+      campo: { tipo: string; is_sistema: boolean } | null;
+    };
+
+    const copiadas: Record<string, unknown> = {};
+    for (const r of (respuestas ?? []) as unknown as FilaRespuesta[]) {
+      if (!r.campo || r.campo.is_sistema) continue;
+      const valor = r[columnaDeTipo(r.campo.tipo)];
+      if (valor === null || valor === undefined || valor === '') continue;
+      copiadas[r.campo_id] = valor;
+    }
+
     setDuplicarPreload({
       tipoTramite: tramite.tipo_tramite,
-      descripcion,
+      descripcion: original?.instrucciones ?? '',
       prioridad: tramite.prioridad,
+      agenteId: original?.agente_id ?? undefined,
+      respuestas: copiadas,
     });
     setShowNuevoModal(true);
   };
 
   const handleRestore = async (tramiteId: string) => {
-    await supabase.from('tickets').update({
+    const { error, count } = await supabase.from('tickets').update({
       eliminado_at: null,
       eliminado_por: null,
-    }).eq('id', tramiteId);
+    }, { count: 'exact' }).eq('id', tramiteId);
+
+    if (error || count === 0) {
+      alert(`No se pudo restaurar: ${error?.message ?? 'no tienes permiso para modificar este trámite.'}`);
+      return;
+    }
+
     invalidateCacheByPrefix('tramites_');
     setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
     loadTramites(true);
@@ -616,7 +619,11 @@ export function Tramites() {
 
   const handlePermanentDelete = async (tramiteId: string) => {
     if (!confirm('¿Eliminar definitivamente este trámite? Esta acción no se puede deshacer.')) return;
-    await supabase.from('tickets').delete().eq('id', tramiteId);
+    const { error, count } = await supabase.from('tickets').delete({ count: 'exact' }).eq('id', tramiteId);
+    if (error || count === 0) {
+      alert(`No se pudo eliminar: ${error?.message ?? 'no tienes permiso para borrar este trámite.'}`);
+      return;
+    }
     setTramitesPapelera(prev => prev.filter(t => t.id !== tramiteId));
   };
 
@@ -704,20 +711,31 @@ export function Tramites() {
 
   const handleTakeTramite = async (tramiteId: string) => {
     if (!usuario) return;
-    await supabase.from('tickets').update({ assigned_to_user_id: usuario.id, attending_user_id: usuario.id }).eq('id', tramiteId);
-    await supabase.from('ticket_asignaciones').insert({
+    // Sin revisar el error, un 403 de RLS se veia como que el cambio se guardo:
+    // la tarjeta se recargaba con el valor viejo y nadie entendia por que. Era
+    // la mitad invisible de A2.
+    const { error: errTicket } = await supabase.from('tickets')
+      .update({ assigned_to_user_id: usuario.id, attending_user_id: usuario.id })
+      .eq('id', tramiteId);
+    if (errTicket) { alert(`No se pudo tomar el tramite: ${errTicket.message}`); return; }
+    const { error: errAsig } = await supabase.from('ticket_asignaciones').insert({
       ticket_id: tramiteId, ejecutivo_id: usuario.id, asignado_por: usuario.id,
     });
+    if (errAsig) alert(`El tramite se asigno, pero no se registro la asignacion: ${errAsig.message}`);
     invalidateCacheByPrefix('tramites_');
     loadTramites(true);
   };
 
   const handleAssignTramite = async (tramiteId: string, ejecutivoId: string) => {
     if (!usuario || !ejecutivoId) return;
-    await supabase.from('tickets').update({ assigned_to_user_id: ejecutivoId, attending_user_id: ejecutivoId }).eq('id', tramiteId);
-    await supabase.from('ticket_asignaciones').insert({
+    const { error: errTicket } = await supabase.from('tickets')
+      .update({ assigned_to_user_id: ejecutivoId, attending_user_id: ejecutivoId })
+      .eq('id', tramiteId);
+    if (errTicket) { alert(`No se pudo asignar el tramite: ${errTicket.message}`); return; }
+    const { error: errAsig } = await supabase.from('ticket_asignaciones').insert({
       ticket_id: tramiteId, ejecutivo_id: ejecutivoId, asignado_por: usuario.id,
     });
+    if (errAsig) alert(`El tramite se asigno, pero no se registro la asignacion: ${errAsig.message}`);
     setAssigningTramiteId(null);
     setAssignTargetId('');
     invalidateCacheByPrefix('tramites_');
@@ -733,11 +751,46 @@ export function Tramites() {
   // todo lo de su equipo, no solo lo suyo. Ver comentario junto a esRolSistemaAdmin/
   // esRolSistemaGerente/esRolSistemaAgente arriba para la explicación completa.
   // - Admin (sistema): todo
-  // - Gerente (sistema): trámites de su oficina (agente.oficina_id) + grupos a los que pertenece + directamente involucrado
+  // - Gerente (sistema): todo lo de sus oficinas + sus equipos + lo suyo (lo decide la RLS, tickets_select_v10)
   // - Líder (equipo, cualquier rol de sistema): todos los trámites de su equipo
   // - Agente (sistema, cliente externo): solo los propios
-  // - Todos los demás: solo los propios (directamente involucrado) + trámites de sus grupos/equipos
+  // - Empleado y demás: lo propio + todo lo de sus equipos (asignado o no)
+  // Cargar la preferencia de ESTA persona. La guarda `modoTableroCargado` evita
+  // que un re-render tardío pise lo que el usuario acabe de elegir.
+  useEffect(() => {
+    const uid = usuario?.id;
+    if (!uid || modoTableroCargado.current === uid) return;
+    modoTableroCargado.current = uid;
+    try {
+      // Si todavía no tiene clave propia, se respeta la global de antes del
+      // 06/11 para que a nadie se le resetee el toggle de un día para otro.
+      const guardado = localStorage.getItem(modoTableroKey(uid))
+        ?? localStorage.getItem(MODO_TABLERO_KEY_VIEJA);
+      if (guardado === 'reales' || guardado === 'bots' || guardado === 'todo') setModoTablero(guardado);
+    } catch { /* ventana privada o storage bloqueado: el default sirve igual */ }
+  }, [usuario?.id]);
+
+  useEffect(() => {
+    const uid = usuario?.id;
+    if (!uid) return;   // sin saber de quién es, no se guarda
+    try { localStorage.setItem(modoTableroKey(uid), modoTablero); } catch { /* da igual si no se puede guardar */ }
+  }, [modoTablero, usuario?.id]);
+
+  // El toggle de Reales/Bots es SOLO del Administrador: es el único que ve todo
+  // y por eso el único a quien los bots le saturan el tablero. Para cualquier
+  // otro rol esto no filtra nada.
+  const pasaModoTablero = useCallback((t: TramiteItem) => {
+    if (!esRolSistemaAdmin || modoTablero === 'todo') return true;
+    return modoTablero === 'bots' ? esDeBot(t) : !esDeBot(t);
+  }, [esRolSistemaAdmin, modoTablero]);
+
   const visibleTramites = tramites.filter(tramite => {
+    // Antes que cualquier otra cosa: si el modo lo deja fuera, no existe para
+    // esta pantalla. Va aquí y no en `filteredTramites` porque las fichas de
+    // arriba (Requiere Atención, Alta Prioridad…) se cuentan de `visibleTramites`
+    // y de los filtros no se enteran — ponerlo abajo limpiaría el Kanban y
+    // dejaría los contadores saturados, que es justo lo que se vino a evitar.
+    if (!pasaModoTablero(tramite)) return false;
     if (esRolSistemaAdmin) return true;
 
     const isDirectlyInvolved =
@@ -749,16 +802,11 @@ export function Tramites() {
       tramite.grupo_asignado_id !== null &&
       myGrupoIds.includes(tramite.grupo_asignado_id);
 
-    // Pool del equipo: trámites SIN asignar en grupos del usuario (para autoasignarse)
-    const isPoolOfMyGroup =
-      !tramite.assigned_to_user_id &&
-      isInMyGroup;
-
-    // Gerente: solo trámites de sus equipos. Sin equipo asignado, no ve nada
-    // (decisión explícita: solo Administrador ve todo sin restricción de equipo).
-    if (esRolSistemaGerente) {
-      return isInMyGroup;
-    }
+    // Gerente: todo lo de sus oficinas + sus equipos + lo suyo. Desde el 23/10 eso lo
+    // decide la RLS (tickets_select_v10) — y al impersonar, filtroTramitesVistaComo —,
+    // así que aquí no hay nada más que recortar: "lo de su oficina" depende de la
+    // oficina de cada persona del trámite, y esa información no viaja en la tarjeta.
+    if (esRolSistemaGerente) return true;
 
     // Lider: todos los tramites de su grupo (asignados o no) — se evalúa antes que el
     // corte de Agente, porque el rol de líder es por equipo, no por rol global del usuario
@@ -770,8 +818,9 @@ export function Tramites() {
     // Agente: solo sus propios trámites
     if (esRolSistemaAgente) return isDirectlyInvolved;
 
-    // Ejecutivo y demás: propios + pool sin asignar de sus equipos (para autoasignarse)
-    return isDirectlyInvolved || isPoolOfMyGroup;
+    // Empleado y demás: propios + todo lo de sus equipos, asignado o no (regla del 23/10).
+    // "Requiere atención" sigue contando solo lo propio y el pool, ver needsAttentionFn.
+    return isDirectlyInvolved || isInMyGroup;
   });
 
   // ── Kanban helpers ────────────────────────────────────────────────────────
@@ -793,12 +842,35 @@ export function Tramites() {
     }
     // Ejecutivos / agentes: sin acción aún (null) también requiere atención
     const effectiveId = isImpersonating && impersonatedUser ? impersonatedUser.id : usuario?.id;
+    // Un trámite de su equipo o de su oficina que ya lleva otra persona se puede ver,
+    // pero no le pide nada a este usuario: solo cuenta lo propio y el pool sin asignar.
+    // Es la misma regla que el badge del sidebar (useTramitesAttentionCount).
+    const loTocaAMi =
+      t.creado_por === effectiveId ||
+      t.agente_id === effectiveId ||
+      t.agente_usuario_id === effectiveId ||
+      t.assigned_to_user_id === effectiveId ||
+      t.attending_user_id === effectiveId ||
+      (!t.assigned_to_user_id && !t.attending_user_id && !!t.grupo_asignado_id && myGrupoIds.includes(t.grupo_asignado_id));
+    if (!loTocaAMi) return false;
     return !t.ultima_accion_por || t.ultima_accion_por !== effectiveId;
   };
 
   // Mover a mano entre "En Proceso" y "Requiere Atención": solo Admin o el responsable asignado.
-  const puedeMoverAtencion = (t: TramiteItem) =>
-    esRolSistemaAdmin || (!!usuario && t.assigned_to_user_id === usuario.id);
+  /**
+   * Quién puede arrastrar una tarjeta entre columnas.
+   *
+   * Antes era solo el Admin o la persona asignada, y un trámite "Sin
+   * responsable" —que es como nacen casi todos— no lo podía mover nadie más
+   * que un Admin. Ahora también quien lleva el equipo al que está asignado.
+   */
+  const ROLES_QUE_MUEVEN = ['lider', 'supervisor', 'director', 'ejecutivo'];
+  const puedeMoverAtencion = (t: TramiteItem) => {
+    if (esRolSistemaAdmin) return true;
+    if (!!usuario && t.assigned_to_user_id === usuario.id) return true;
+    if (!t.grupo_asignado_id) return false;
+    return ROLES_QUE_MUEVEN.includes(myGrupoRoles.get(t.grupo_asignado_id) ?? '');
+  };
 
   const handleDropEnColumna = (destino: 'atencion' | 'proceso'): boolean => {
     const id = dragTramiteId.current;
@@ -1133,6 +1205,7 @@ export function Tramites() {
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const term = norm(searchTerm ?? '');
     return tramitesCerrados20.filter(t => {
+      if (!pasaModoTablero(t)) return false;
       const matches = (v: string | null | undefined) => norm(v ?? '').includes(term);
       const matchSearch = !term || matches(t.folio) || matches(t.instrucciones) || matches(t.poliza) || matches(t.agente?.nombre_completo) || matches(t.responsable?.nombre_completo) || matches(getTipoTramiteLabel(t.tipo_tramite));
       const matchAreas      = selectedAreas.length === 0 || selectedAreas.includes(getTipoTramiteArea(t.tipo_tramite));
@@ -1145,7 +1218,7 @@ export function Tramites() {
       const matchResponsables = selectedResponsables.length === 0 || (t.assigned_to_user_id != null && selectedResponsables.includes(t.assigned_to_user_id));
       return matchSearch && matchAreas && matchTipos && matchEstatuses && matchPrioridades && matchOficinas && matchAgentes && matchEquipos && matchResponsables;
     });
-  }, [tramitesCerrados20, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos, selectedResponsables]);
+  }, [tramitesCerrados20, pasaModoTablero, searchTerm, selectedAreas, selectedTipos, selectedEstatuses, selectedPrioridades, selectedOficinas, selectedAgentes, selectedEquipos, selectedResponsables]);
 
   return (
     <div className="space-y-5">
@@ -1154,7 +1227,7 @@ export function Tramites() {
         description="Gestiona solicitudes y soporte interno"
         icon={ClipboardList}
         badge={userArea && !esRolSistemaAdmin ? (
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.bg} ${AREA_CONFIG[userArea as keyof typeof AREA_CONFIG]?.color}`}>
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colorDeArea(userArea).bg} ${colorDeArea(userArea).color}`}>
             {userArea}
           </span>
         ) : undefined}
@@ -1190,22 +1263,62 @@ export function Tramites() {
                 <span className="hidden sm:inline">Formularios</span>
               </Button>
             )}
-            <div className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden">
-              <button
-                onClick={() => setViewMode('lista')}
-                className={`p-2 transition-colors ${viewMode === 'lista' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
-                title="Vista lista"
+            {esRolSistemaAdmin && (
+              <div
+                className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden"
+                role="group"
+                aria-label="Qué trámites se muestran"
               >
-                <LayoutList className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('kanban')}
-                className={`p-2 transition-colors ${viewMode === 'kanban' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
-                title="Vista tablero"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-            </div>
+                {([
+                  { modo: 'reales', icono: <UserRound className="w-4 h-4" />, texto: 'Reales', ayuda: 'Solo trámites de personas' },
+                  { modo: 'bots',   icono: <Bot className="w-4 h-4" />,       texto: 'Bots',   ayuda: 'Solo trámites de los agentes de IA' },
+                  { modo: 'todo',   icono: null,                              texto: 'Todo',   ayuda: 'Personas y agentes de IA juntos' },
+                ] as const).map(({ modo, icono, texto, ayuda }) => (
+                  <button
+                    key={modo}
+                    onClick={() => setModoTablero(modo)}
+                    title={ayuda}
+                    aria-pressed={modoTablero === modo}
+                    className={`flex items-center gap-1.5 px-2.5 py-2 text-xs font-semibold transition-colors ${
+                      modoTablero === modo
+                        ? 'bg-accent text-white'
+                        : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'
+                    }`}
+                  >
+                    {icono}
+                    <span className="hidden sm:inline">{texto}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* QA 2026-10-22 (M9) — el Kanban SOLO existe en la pestaña Activos
+                (abajo: `activeTab === 'activos' && viewMode === 'kanban'`). Este par
+                se dibujaba siempre, así que en Concluidos "Vista tablero" marcaba
+                el botón de azul y dejaba la pantalla igual, y en Papelera los dos
+                no hacían nada. Se esconde donde no manda: un control que no hace
+                nada no debe estar en pantalla. */}
+            {activeTab === 'activos' && (
+              <div className="flex rounded-lg border border-neutral-200 dark:border-white/10 overflow-hidden">
+                <button
+                  onClick={() => setViewMode('lista')}
+                  aria-pressed={viewMode === 'lista'}
+                  aria-label="Vista lista"
+                  className={`p-2 transition-colors ${viewMode === 'lista' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
+                  title="Vista lista"
+                >
+                  <LayoutList className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  aria-pressed={viewMode === 'kanban'}
+                  aria-label="Vista tablero"
+                  className={`p-2 transition-colors ${viewMode === 'kanban' ? 'bg-accent text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 dark:text-white/50 hover:bg-neutral-100 dark:hover:bg-white/8'}`}
+                  title="Vista tablero"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <Button size="sm" onClick={() => setShowNuevoModal(true)}>
               <Plus className="w-4 h-4 mr-1.5" />
               Nuevo
@@ -1214,10 +1327,10 @@ export function Tramites() {
         }
       >
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-neutral-200 dark:border-white/8">
+        <div className="flex gap-1 overflow-x-auto border-b border-neutral-200 dark:border-white/8 [-ms-overflow-style:none] [scrollbar-width:none]">
           <button
             onClick={() => setActiveTab('activos')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === 'activos'
                 ? 'text-accent-ink border-accent'
                 : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
@@ -1228,7 +1341,7 @@ export function Tramites() {
           </button>
           <button
             onClick={() => setActiveTab('cerrados')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === 'cerrados'
                 ? 'text-accent-ink border-accent'
                 : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
@@ -1240,7 +1353,7 @@ export function Tramites() {
           {esRolSistemaAdmin && (
             <button
               onClick={() => setActiveTab('papelera')}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+              className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
                 activeTab === 'papelera'
                   ? 'text-red-500 border-red-500'
                   : 'text-neutral-500 dark:text-white/50 border-transparent hover:text-neutral-700 dark:hover:text-white/70'
@@ -1611,7 +1724,7 @@ export function Tramites() {
             <div className="space-y-3">
               {tramitesPapelera.map(tramite => {
                 const area = getTipoTramiteArea(tramite.tipo_tramite);
-                const ac = AREA_CONFIG[area];
+                const ac = colorDeArea(area);
                 const tipoDb = tiposDb.get(tramite.tipo_tramite);
                 const dbColor = tipoDb?.color;
                 const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
@@ -1716,7 +1829,7 @@ export function Tramites() {
               <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-8">Sin trámites pendientes</p>
             ) : kanbanAtención.map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
-              const ac = AREA_CONFIG[area];
+              const ac = colorDeArea(area);
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
               const dbColor = tipoDb?.color;
               const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
@@ -1732,11 +1845,15 @@ export function Tramites() {
                 <div
                   key={tramite.id}
                   onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Trámite ${tramite.folio}`}
+                  onKeyDown={abrirConTeclado(tramite.id)}
                   onPointerDown={(e) => startKanbanDrag(e, tramite, 'atencion')}
                   onPointerMove={(e) => moveKanbanDrag(e, tramite)}
                   onPointerUp={endKanbanDrag}
                   onPointerCancel={endKanbanDrag}
-                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
+                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
                 >
                   {!tramite.cerrado_en && (
                     <button onClick={(e) => handleMarkAsRead(e, tramite.id)} className="absolute -top-1.5 -right-1.5 z-10" title="Marcar como leído">
@@ -1817,7 +1934,7 @@ export function Tramites() {
               <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-8">Sin trámites en proceso</p>
             ) : kanbanProceso.map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
-              const ac = AREA_CONFIG[area];
+              const ac = colorDeArea(area);
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
               const dbColor = tipoDb?.color;
               const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
@@ -1833,11 +1950,15 @@ export function Tramites() {
                 <div
                   key={tramite.id}
                   onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Trámite ${tramite.folio}`}
+                  onKeyDown={abrirConTeclado(tramite.id)}
                   onPointerDown={(e) => startKanbanDrag(e, tramite, 'proceso')}
                   onPointerMove={(e) => moveKanbanDrag(e, tramite)}
                   onPointerUp={endKanbanDrag}
                   onPointerCancel={endKanbanDrag}
-                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
+                  className={`relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 ${puedeMoverAtencion(tramite) ? 'active:cursor-grabbing' : ''}`}
                 >
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
@@ -1910,7 +2031,7 @@ export function Tramites() {
               <p className="text-xs text-neutral-500 dark:text-white/45 text-center py-8">Sin cierres recientes</p>
             ) : kanbanCerrados.slice(0, 10).map(tramite => {
               const area = getTipoTramiteArea(tramite.tipo_tramite);
-              const ac = AREA_CONFIG[area];
+              const ac = colorDeArea(area);
               const tipoDb = tiposDb.get(tramite.tipo_tramite);
               const dbColor = tipoDb?.color;
               const fbc = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
@@ -1921,7 +2042,7 @@ export function Tramites() {
                   : null;
               const totalDays = Math.max(0, Math.floor((new Date(tramite.cerrado_en!).getTime() - new Date(tramite.fecha_creacion).getTime()) / 86_400_000));
               return (
-                <div key={tramite.id} onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }} className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex opacity-75">
+                <div key={tramite.id} onClick={() => { if (!suppressClickRef.current) navigate(`/tramites/${tramite.id}`); }} role="button" tabIndex={0} aria-label={`Trámite ${tramite.folio}`} onKeyDown={abrirConTeclado(tramite.id)} className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 opacity-75">
                   <div className={`w-1.5 group-hover:w-2 shrink-0 transition-all duration-200 rounded-l-xl ${!dbColor ? fbc : ''}`} style={dbColor ? { backgroundColor: dbColor } : undefined} />
                   <div className="flex-1 min-w-0 px-3 py-3 flex flex-col gap-1">
                     <p className={`font-extrabold text-xs uppercase tracking-wide leading-tight truncate ${!dbColor ? ac.color : ''}`} style={dbColor ? { color: dbColor } : undefined}>{tramite.agente?.nombre_completo || 'Sin asignar'}</p>
@@ -1986,7 +2107,7 @@ export function Tramites() {
 
           {filteredTramites.map(tramite => {
             const area = getTipoTramiteArea(tramite.tipo_tramite);
-            const ac = AREA_CONFIG[area];
+            const ac = colorDeArea(area);
             const tipoDb = tiposDb.get(tramite.tipo_tramite);
             const dbColor = tipoDb?.color;
             const fallbackBarClass = area === 'Comercial' ? 'bg-sky-700' : 'bg-amber-600';
@@ -1997,7 +2118,11 @@ export function Tramites() {
               <div
                 key={tramite.id}
                 onClick={() => navigate(`/tramites/${tramite.id}`)}
-                className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 hover:border-neutral-300 dark:hover:border-white/20 transition-all duration-200 cursor-pointer group flex"
+                role="button"
+                tabIndex={0}
+                aria-label={`Trámite ${tramite.folio}`}
+                onKeyDown={abrirConTeclado(tramite.id)}
+                className="relative bg-surface-card dark:bg-neutral-800/50 rounded-xl border border-neutral-200/60 dark:border-white/8 overflow-visible hover:shadow-lg hover:-translate-y-0.5 hover:border-neutral-300 dark:hover:border-white/20 transition-all duration-200 cursor-pointer group flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
               >
                 {/* Globito animado — requiere atención */}
                 {needsAttention && (

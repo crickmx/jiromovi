@@ -1,6 +1,1822 @@
 # jiromovi — instrucciones para Claude Code
 
-## ⏳ PENDIENTES para próximas sesiones (revisado 2026-10-09)
+## ⏳ PENDIENTES para próximas sesiones (revisado 2026-11-23)
+
+### ✉️ 2026-11-10 — Correo y WhatsApp rediseñados (rama `claude/optimistic-johnson-dfrcq6`, sin merge)
+
+Inventario, verificación y riesgos: **`docs/correo-whatsapp/inventario.md`**. Pruebas: **`qa/ui-correo/`**
+(`node qa/ui-correo/prueba.mjs` — crear/agregar a trámite y remitente, con datos simulados).
+
+- **Correo** (`GestorEmails.tsx` ahora solo orquesta; piezas en `src/components/email/gestor/`, lógica pura
+  con pruebas en `src/lib/correo/`): Inicio, carpetas con espacio usado, lista con fragmento, selección
+  múltiple, filtros, deslizar con Deshacer, lectura con tarjeta del remitente, hilo, adjuntos con vista previa,
+  aviso de remitente sospechoso, imágenes externas bloqueadas, redactar flotante con plantillas y borrador
+  con adjuntos (IndexedDB). Roundcube = **"Vista alternativa"**. Los modales de trámite NO cambiaron.
+- **Acciones de lo destructivo con Deshacer no llegan al servidor hasta que se cierra el aviso (5 s).**
+- **`ionos-webmail` v76 desplegada** (MCP): acciones nuevas opcionales `withSnippet`, `inBody`, `quota`,
+  `thread`; las viejas igual. 🔑 La v75 desplegada era más nueva que el repo (adjuntos en "Enviados") —
+  antes de desplegar una función, **comparar con `get_edge_function`**.
+- **Migración `20261110191059`** (corrida): `correo_reglas` y `correo_plantillas_respuesta`, solo del dueño.
+  Las reglas se aplican al abrir el correo (decisión de Ricardo).
+- **WhatsApp**: filtro **Todos / MOVI / Personal** (`src/lib/buzonWhatsApp.ts`), tiempo real filtrado al
+  usuario, "Trámites ligados" ahora sale de `task_contact_center_items` (antes consultaba columnas
+  inexistentes), pestaña Plantillas alcanzable.
+- 🔑 **`cn()` borra los tamaños del sistema** (`text-body-sm`, `text-micro`…) si van con un color:
+  tailwind-merge los toma por colores. Se agregó `cnSistema` en `src/lib/utils.ts` y lo usan los archivos
+  nuevos; `cn` no se tocó (afectaría toda la app).
+- ⏳ Falta: verlo en beta con un buzón real (fragmento, espacio, hilo) y decidir si se mergea.
+
+### 📱 2026-11-07 — Apps nativas de MOVI y Seguwallet (rama `claude/sweet-einstein-iuxeok`, sin merge)
+
+Todo lo de tiendas vive en **`store/`** (empezar por `store/CHECKLIST.md` y `store/README.md`).
+
+- **Capacitor 8**, dos apps desde el mismo código: `CAP_APP=movi|seguwallet` en `capacitor.config.ts`,
+  proyectos en `native/<app>/`. La build lleva `VITE_APP_TARGET` (`src/native/platform.ts`) porque dentro de la app
+  el host es `localhost`: **cualquier detección de Seguwallet por dominio debe mirar también `APP_TARGET`**.
+- Compilar SIEMPRE con `npm run native:<app>` (fija `CAP_APP`, no corre el postbuild de Plesk).
+  `scripts/native/ajustar-proyectos.py` reaplica Info.plist / Manifest / gradle / versiones si se regenera un proyecto.
+- **MOVI Android usa `com.wnapp.id1739907855051`** (reemplaza a “MOVI Digital (beta)” en Play, versionCode 100).
+  iOS es `digital.movi.app`. Seguwallet: `mx.seguwallet.app`. Cuentas de tienda: **hola@mekate.mx**.
+- **Corrido y desplegado el 07/11** (con el MCP de Supabase): migraciones `20261107225105` (solicitudes de
+  eliminación de cuenta), `20261107225844` + `20261107225905` (push nativo); funciones `solicitar-eliminacion-cuenta`
+  y `enviar-push-nativo`, las dos con **Verify JWT apagado** (validan por dentro).
+- **Push nativo**: trigger en `notificaciones` y `notifications` → `enviar-push-nativo` → APNs directo (iOS) / FCM
+  (Android). Solo dispara si el usuario tiene teléfono en `push_dispositivos`. **Faltan los Secrets** de APNs y FCM.
+  🔑 Un trigger que sirve a dos tablas con columnas distintas NO puede leer `new.columna_que_no_existe`, ni dentro
+  de un CASE: falla en el DECLARE y tumba el INSERT. Se lee por `to_jsonb(new)` (pasó y se corrigió en 21 s).
+- **Descargas** dentro de la app: `src/native/descargasNativas.ts` intercepta `<a download>`, `XLSX.writeFile`,
+  `jsPDF.save` y `window.open(blob:)` → guarda y abre Compartir. No hay que tocar cada pantalla.
+- **Seguwallet ganó “Entrar con contraseña”** (para la cuenta de revisión; los clientes no tienen contraseña).
+- Avisos de privacidad en `public/legal/`, generados por `scripts/native/avisos.py` con los datos de
+  https://jiro.mx/privacidad/. ⚠️ `grupojiro.com/aviso-de-privacidad` da **404** (Mutuus lo enlaza).
+
+---
+
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-11-23
+
+#### ✅ HECHO — el servidor ya no compila en cada deploy (23/11)
+
+**Funcionando y verificado desde fuera.** Beta pasó de `6ebd1ae5` a `c7b916d`
+sin compilar nada en el servidor, y el `.htaccess` sigue aplicando
+(`Cache-Control: no-cache, no-store` en `index.html`), que es la prueba de que
+los archivos aterrizaron **dentro** del document root y no al lado.
+
+| Pieza | |
+|---|---|
+| `.github/workflows/publicar-beta.yml` | publica `dist/` a la rama **`beta-dist`** en cada push a `main` |
+| Secrets en GitHub | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_BONOS_URL` |
+| Plesk | rama **`beta-dist`**, acciones de despliegue **vacías** |
+| Document root de beta | `/var/www/vhosts/movi.digital/beta.movi.digital/dist` |
+
+**El ciclo:** push a `main` → GitHub hornea (2-3 min) → deja el paquete en
+`beta-dist` → Ricardo da Pull + Deploy cuando quiere. **Publicar a la rama NO
+despliega**; el autodespliegue que se quitó el 05/11 sigue sin existir.
+
+- **`beta-dist` no es código.** Se reescribe entera (force-push) en cada
+  publicación. No se mergea, no se edita, no se revisa.
+- **Si el build truena, el paquete no se actualiza** y `beta-dist` conserva el
+  último que sí compiló. Lo que se despliega siempre construyó bien — y ahora
+  truena en GitHub, no junto a la base de datos.
+- Una ✗ roja en la pestaña **Actions** significa *"el paquete no se actualizó"*.
+  La barra naranja sigue siendo la verdad final de qué está vivo.
+
+⚠️ **Esto es SOLO para beta.** `produccion` / `app.movi.digital` **sigue
+compilando en el servidor**: el workflow solo se dispara con `main`. Queda
+pendiente armarle el equivalente — mismo molde apuntando a `produccion`, ya con
+las dos trampas de abajo resueltas.
+
+🔑 **Por qué Plesk no mostraba la rama**, que fue donde se atoró un rato: su
+lista de ramas es de la última vez que habló con GitHub, y `beta-dist` nació
+después. Se resolvió con un **Pull normal** (todavía con la rama en `main`), que
+lo obliga a volver a preguntar. Si algún día no bastara, es que clonó con una
+sola rama:
+
+```bash
+cd /var/www/vhosts/movi.digital/beta.movi.digital
+git branch -r      # ¿solo sale origin/main? -> es ese caso
+git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+git fetch origin
+```
+
+🔑 **`beta.movi.digital` es un SUBDOMINIO de la suscripción `movi.digital`.** En
+Plesk su Git cuelga de la tarjeta del subdominio, no de la de `movi.digital`,
+que tiene su propio repositorio distinto.
+
+#### 💾 RESPALDO — las "Acciones de despliegue adicionales" de Plesk
+
+Lo que había en esa caja antes del cambio. **Esto es el botón de reversa**: si
+algo sale mal, se regresa la rama a `main`, se vuelve a pegar esto y Pull +
+Deploy deja todo como estaba.
+
+```bash
+cp -f /var/www/vhosts/movi.digital/beta.movi.digital/.env /tmp/.env_movi_build 2>/dev/null && chmod 644 /tmp/.env_movi_build || true
+CI=1 timeout --signal=TERM --kill-after=30s 10m npm ci --no-audit --no-fund
+CI=1 timeout --signal=TERM --kill-after=30s 10m npm run build
+```
+
+⚠️ **La primera línea está en revisión con Christofer.** Nada del repo la usa —
+`vite.config.ts` no define `envDir` ni llama a `loadEnv`, así que Vite lee el
+`.env` de la raíz del proyecto, no esa copia. **Antes de restaurarla, preguntar
+si algo fuera del repo depende de ella**; si nadie la necesita, se queda fuera.
+
+(Las otras dos son las que hacían que el servidor compilara. Con `beta-dist` la
+caja va **vacía**.)
+
+### 🔜 Lo que venía de antes — abierto desde el 2026-11-09
+
+**Lo de MOVI Store quedó TERMINADO y probado por Ricardo** ("ya funciona", 09/11).
+Todas las migraciones corridas, todo desplegado. Lo que sigue abierto de ese
+hilo es una sola cosa, y es un ofrecimiento sin respuesta:
+
+- ⏳ **La ficha "Gastos generales del pedido" sigue sin edición en su lugar.**
+  La de cargos al cliente ya la tiene (clic en el texto → se guarda al salir);
+  la de gastos todavía es solo agregar y quitar. Se le ofreció emparejarlas y
+  no contestó. Es copiar el mismo patrón.
+
+⏳ **Y lo del servidor que se cae al desplegar**: falta que Ricardo corra los
+dos comandos por SSH. Está en la sección del 09/11, más abajo.
+
+### 🔜 Lo que venía de antes — abierto desde el 2026-11-06
+
+**Todas las migraciones están corridas**, incluida la del 04/11
+(`20261104000001`). **`produccion` NO se tocó** desde el merge del 12.
+
+**El reporte de los bots del 22/10 está CERRADO ENTERO.** Lo último que
+quedaba —B5, B7 y A6— se cerró el 04/11. No queda nada de ese reporte.
+
+⚠️ **Hay más gente trabajando en `main`.** El 04/11 entraron tres commits
+ajenos a media sesión (Directorio, limpieza de Bolt) y hubo que rebasar dos
+veces. `git fetch` antes de empezar, siempre.
+
+**Lo siguiente, acordado con Ricardo al cerrar el 04/11:** seguir el recorrido
+de experiencia de usuario **como Empleado y como Gerente**. El del Agente ya
+está hecho (16 hallazgos, 4 arreglados). Ahí vive lo de atender, reasignar y
+cerrar, que el Agente no toca.
+
+#### ✅ Perfil Desarrollador (Froilán) — TERMINADO y verificado el 06/11
+
+| | |
+|---|---|
+| `es_desarrollador` | ✅ activo |
+| `rol` / `rol_id` | **Administrador** (lo cambió Ricardo el 06/11) |
+| Equipo | agregado al de Sistemas, para poder **tomar** reportes y no solo comentarlos |
+| Correo | `desarrollo@jiro-operacion.mx`, en `email_laboral` — el login resuelve por ahí |
+| Su ventana de QA | puerto **9227**, perfil `froilan` |
+
+**Las dos mitades, medidas con su sesión:**
+
+- **Ve y usa todos los módulos:** le aparece *Admin* y entra al Panel con sus
+  47 herramientas, sin peticiones fallidas.
+- **El candado aguantó:** ve **6 usuarios** (los 5 bots y él) y
+  `commission_details` le devuelve **0 filas** — **siendo Administrador**.
+  Ser Admin **no** le abrió los datos porque la política es `RESTRICTIVE` y se
+  combina con **Y**: ninguna permisiva de Admin puede anularla.
+
+🔑 **Son DOS cosas distintas con el mismo nombre, y se prestan a confusión:**
+
+| | Qué es | Qué hace |
+|---|---|---|
+| **Rol "Desarrollador"** del catálogo | un `rol_id`, con `rol_base = 'Empleado'` | solo destapa módulos vía `module_visibility` |
+| **Casilla "Perfil Desarrollador"** | la columna `es_desarrollador` | **esto es lo que manda**: permisos y candado |
+
+🔑 **Y `module_visibility` NO puede dar módulos, solo quitarlos.** El menú se
+arma con el **rol base** (`workspaceConfig`, `visibleTo: UserRole[]`) y la
+visibilidad corre **después**, como filtro. Por eso las filas de `/admin/*`
+configuradas para el rol Desarrollador estaban **inertes**, y por eso la
+solución fue que Ricardo lo pasara a Administrador.
+
+#### 🔜 EN CURSO — el reporte semanal de actividad
+
+**Lo construido y subido** (falta lo de abajo para que corra):
+
+| Pieza | Estado |
+|---|---|
+| `reportes_repos` (migración `20261106000002`) | ✅ corrida — `crickmx/jiromovi` y `medaunbrauni/lector-polizas`, `contar_por = 'pr'` |
+| `reportes_personas` (migración `20261106000003`) | ✅ corrida — Froilán ↔ `Froilan-Perez-Garcia` |
+| `supabase/functions/resumen-semanal-actividad/index.ts` | ✅ escrita (409 líneas, un archivo) — **falta pegarla en el dashboard** |
+| Cron semanal | ❌ no hecho |
+| Pantalla de Admin que liste los PDF | ❌ no hecho |
+
+**❌ Lo que falta, en orden, para destrabarlo:**
+
+1. **Pegar la función** en el dashboard como `resumen-semanal-actividad`. Ojo:
+   se corrigió tres veces el 06/11, así que hay que pegar **la última**.
+2. **Crearle la variable `REPORTE_SECRETO`** en los *Secrets* de la función
+   (una cadena larga cualquiera; es solo para que el cron se identifique).
+3. **Probarla** desde el SQL Editor y mirar la respuesta:
+
+```sql
+select net.http_post(
+  url := 'https://qhwvuuyjhcennqccgvse.supabase.co/functions/v1/resumen-semanal-actividad',
+  headers := jsonb_build_object(
+    'Content-Type',     'application/json',
+    'Authorization',    'Bearer <LA ANON KEY — es pública, está en el baseline>',
+    'x-llave-servicio', '<LO QUE SE PUSO EN REPORTE_SECRETO>'
+  ),
+  body := jsonb_build_object('desde','2026-08-01T00:00:00Z','hasta','2026-11-06T23:59:59Z')
+);
+
+-- a los pocos segundos:
+select status_code, left(content, 4000) from net._http_response order by id desc limit 1;
+```
+
+Sin `"para"` **no manda correo**, solo guarda: así se prueba sin arriesgar un
+envío. Si vuelve a dar 401, la respuesta trae un `pista` con qué llegó y qué
+está configurado (presencia y longitudes, nunca valores).
+
+🔑 **DOS trampas de autenticación que costaron dos intentos, y que valen para
+cualquier llamada de la base a una edge function:**
+
+1. **El gateway exige que `Authorization` sea un JWT**, y
+   `SUPABASE_SERVICE_ROLE_KEY` **ya no lo es** (es una `sb_secret_…` de ~41
+   caracteres desde el cambio de llaves del 15/10). Mandarla ahí devuelve
+   `UNAUTHORIZED_INVALID_JWT_FORMAT` **antes de llegar a la función**. Por eso
+   las funciones de la base llaman con la **anon key**.
+2. **El JWT largo que el dashboard llama "service_role" NO es el valor de esa
+   variable.** Compararlo falla aunque "se vea bien". De ahí que la función
+   use su propio `REPORTE_SECRETO`, como `alta-finalizar`.
+
+**Lo medido que define el diseño, y que no hay que volver a averiguar:**
+
+- 🔑 **El trabajo no se ve en los commits.** Froilán entra por **pull
+  requests** desde ramas propias: **1 commit en 30 días contra 20 PRs** en
+  `lector-polizas`. Contar commits lo dejaría como si no trabajara.
+  Verificado el 06/11 con la misma consulta que hace la función.
+- 🔑 **No se inventó bitácora nueva.** Dentro de MOVI se lee
+  **`user_activity_logs`** (ver abajo).
+- Los dos repos son **públicos**: GitHub se lee **sin token**. Si alguno deja
+  de serlo, el reporte **lo dice**; nunca informa cero en silencio.
+- ⚠️ `crickmx/lector-qualitas-bolt` **no** es el repo del lector. El bueno es
+  `medaunbrauni/lector-polizas`.
+
+#### ❌ Lo que falta, en orden
+
+**1. Terminar el recorrido de UX como Empleado y como Gerente.** El del Agente
+está en `qa/hallazgos.md` ("Recorrido de experiencia de usuario — 04/11"), con
+16 hallazgos; cuatro ya arreglados y verificados. Faltan los roles que
+**atienden**: tomar un trámite del pool, reasignarlo, cambiar estatus con su
+nota, cerrar. Prioridad 1 de Ricardo: *"la experiencia del usuario"*.
+
+**2. Los 12 hallazgos de UX que quedaron sin tocar.** Los que Ricardo y yo
+pusimos arriba:
+
+- **"Crear Trámite" está habilitado con el formulario vacío** (U-12).
+- **Área y Tipo ocupan las dos primeras posiciones ya elegidos** (U-13),
+  empujando abajo lo que hay que llenar.
+- **"Compañía\*" cuyo texto dice "(opcional)"** (U-08) y **"Vehiculos"** sin
+  acento mostrado al usuario (U-09).
+- **Un trámite "Iniciado" y sin responsable aparece bajo "En proceso — Siendo
+  atendidos por el equipo"** (U-03). La clasificación puede ser correcta; la
+  leyenda es la que miente.
+- **"0d / 1d"** en cada tarjeta sin decir qué son (U-11).
+- **Ningún campo del alta tiene etiqueta programática** (U-16), misma familia
+  que H-003 y H-008.
+
+**3. De Ricardo, en sus pantallas de Admin:**
+
+- **B8** — *"informaicón"* en la ayuda del adjunto de Cotización (FormBuilder).
+- **"Es Renovación" viene MARCADO por defecto** (U-14). Si la mayoría de las
+  cotizaciones son negocio nuevo, el default está al revés.
+- **Reporte Semanal** — Ricardo dijo el 04/11 que lo configura él como admin,
+  dentro de algún tipo de trámite. **No lo toquemos.**
+
+#### Cómo se maneja un usuario bot desde esta máquina
+
+La herramienta está en `qa/`, con su manual en `qa/README.md`. En corto:
+
+```
+cd C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\qa
+abrir.cmd diego 9223
+node conducir.mjs --puerto 9223 --resumen
+```
+
+**La contraseña la pone Ricardo y nunca pasa por el chat.** Se cambia desde el
+SQL Editor de Supabase, con comillas **simples**:
+
+```sql
+update auth.users
+set encrypted_password = crypt('LA-QUE-SEA', gen_salt('bf'))
+where email = 'ccjimenez+empleado1@jiro.com.mx';   -- DIEGO (Empleado)
+```
+
+Los otros: `+gerente@` LAURA · `+agente1@` MATEO · `+agente2@` VALERIA ·
+`+empleado2@` SOFÍA. **Ninguno es Administrador**: ese rol lo maneja Ricardo.
+
+⚠️ **Dos trampas del manejador**, las dos costaron una corrida falsa:
+1. `escribir` usa `fill()` y **no simula teclas**. El autocompletado de
+   @menciones no se dispara con él — para eso va `tecla`.
+2. El orden de `--pagina` **no** es el orden en que se abrieron las pestañas.
+   Identificar cada una con `--resumen` antes de actuar.
+
+#### ✅ B5 y B7 — resueltos el 04/11, y la lección que dejaron
+
+**B5 NO ERA UN DUPLICADO.** Eran **siete equipos legítimos, uno por área**
+(Administración, Comercial, Facturación/Cobranza, Mercadotecnia, Mesa de
+Control, Sistemas, Tesorería), creados en el mismo microsegundo por el script
+que levantó a los bots. El modelo **exige** uno por área: así resuelve
+`get_grupo_para_ticket`.
+
+Hasta el 04/11 esta misma sección decía *"hay que decidir cuál de los siete
+sobrevive"*. **Eso habría roto la asignación de seis áreas.** Lo único malo era
+el nombre, y se resolvió renombrándolos (`Pruebas MOVI Digital · <área>`).
+
+**B7** era una errata en un solo equipo, ya corregida:
+*Aguascalient**eses*** → *Aguascalientes*.
+
+Renombrar fue seguro porque se verificó antes: **nadie empareja equipos por
+nombre**. Los diez lugares del frontend buscan por `id` y leen el nombre solo
+para mostrarlo; ninguna función de la base lo usa.
+
+🔑 **Dos reglas de método que costaron tres diagnósticos equivocados seguidos,
+todos míos:**
+
+1. **Antes de llamar "duplicado" a algo que se ve repetido en un selector,
+   mirar qué lo distingue en la base.** Siete filas con el mismo nombre y siete
+   `area_id` distintos no son un duplicado: son una etiqueta mal puesta.
+2. **Dos listas que no coinciden no son prueba de nada.** El selector de
+   Responsable y el de @menciones mostraban cosas distintas; expliqué la
+   diferencia dos veces y las dos me equivoqué. Las dos listas estaban bien:
+   un **ejecutivo** solo puede asignarse a sí mismo (`canSelfAssignOnly`, está
+   escrito en el código), y las menciones son el equipo menos uno mismo. Hay
+   que mirar **qué pide cada consulta** antes de explicar por qué difieren.
+
+#### SeguWallet — FUERA de nuestros pendientes
+
+Decisión de Ricardo el 04/11: *"SeguWallet déjalo fuera de nuestros
+pendientes"*. No se trabaja ni se da seguimiento desde aquí. Lo que se sabe
+quedó en la conversación del 30/10 y como ficha corta en `qa/hallazgos.md`.
+
+🔑 **La regla que salió de ese hilo, y que sí aplica siempre:** este repo es
+**público** (`crickmx/jiromovi`, verificado el 30/10). Un hueco de seguridad
+sin cerrar **no se describe en un archivo versionado**.
+
+⚠️ **BETA YA NO SE DESPLIEGA SOLA.** El 05/11 (`14b9d38c`) se eliminó el job
+`deploy-beta` de `ci.yml`: GitHub Actions **solo valida** build + secretos, y el
+único canal para publicar a beta es el **Pull + Deploy manual de Plesk**.
+
+Consecuencia directa para trabajar: **un push NO se puede verificar en
+navegador.** Hay que pedirle a Ricardo el Pull/Deploy y esperar. La barra
+naranja dice qué commit está sirviendo beta de verdad — es la forma de saber si
+ya entró.
+
+(Hasta el 05/11 esto decía lo contrario, que `main` autodesplegaba beta. Ya no.)
+
+`main` **no tiene protección de rama** (la API devuelve 404).
+
+⚠️ **Al desplegar `process-poliza-pdf` desde el dashboard van DOS archivos.** El 19/10 se pegó por error el código de `escalar-tramite` (que es de un solo archivo) y el dashboard se llevó `extraccionExitosa.ts`; el deploy siguiente ya solo fallaba con *"Module not found … extraccionExitosa.ts"*. Se arregla volviendo a crear el archivo en el editor, no tocando el `index.ts`:
+
+```
+C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\process-poliza-pdf\index.ts              (482 líneas)
+C:\Users\RICARDO JIMENEZ\Desktop\jiromovi-main\supabase\functions\process-poliza-pdf\extraccionExitosa.ts  (100 líneas)
+```
+
+El `.test.mjs` y el `lector_endpoint.py` de esa carpeta **no** van al dashboard.
+
+
+#### Migraciones
+
+| Archivo | Qué hace | Estado |
+|---|---|---|
+| `20261014000001_bitacora_unificada.sql` | la bitácora de Store + Premium en una sola vista | ✅ corrida |
+| `20261014000002_pagos_premium_por_periodo.sql` | `mkt_premium_pagos.periodo_id` + backfill, y recrea la vista | ✅ corrida |
+| `20261015100000_equipos_todos_los_roles_y_unico_ejecutivo.sql` | el cambio de rol ya no apaga las reglas de equipo + autoasignar al único ejecutivo | ✅ corrida |
+| `20261015200000_envio_adjuntos_agente.sql` | config de envío de adjuntos por tipo + `archivo_id` en el log (candado) | ✅ corrida |
+| `20261016000001` … `…06` | las seis del motor de notificaciones (vista de uso, canales por tipo, plantilla, destinatarios_roles, emoji) | ✅ corridas |
+| `20261019000001_uso_incluye_notification_jobs.sql` | la vista de uso une los TRES motores, y solo cuenta `status='sent'` | ✅ corrida |
+| `20261019000002_avisos_tramite_por_trigger_respetan_pantalla.sql` | los avisos por trigger leen canales y destinatarios de la pantalla | ✅ corrida |
+| `20261019000003_una_sola_tabla_de_plantillas.sql` | una sola tabla de plantillas; `correo_plantillas` queda deprecada | ✅ corrida |
+| `20261019000004_resolver_unico_de_destinatarios.sql` | `resolver_destinatarios_aviso()`: un solo lugar con las reglas | ✅ corrida |
+| `20261021000001_marca_de_bot_en_usuarios.sql` | `usuarios.es_bot` — separa el tablero de Trámites del Admin | ✅ corrida |
+| `20261021000002_los_bots_no_notifican_a_personas.sql` | un trámite de bot solo le avisa a bots; el badge deja de contarlos | ✅ corrida |
+| `20261029000001_responsable_todo_el_equipo.sql` | `get_grupo_miembros_ejecutivos` devuelve los 5 `rol_en_equipo` con precedencia, y filtra por `activo` | ✅ corrida |
+| `20261029000002_un_solo_dato_de_cierre.sql` | `tickets.cerrado` sigue a `cerrado_en` por trigger + backfill | ✅ corrida |
+| `20261029000003_un_aviso_por_cambio_de_estatus.sql` | `es_nota_de_estatus` + `WHEN` en el trigger: un cambio manda UN aviso | ✅ corrida |
+| `20261029000004_el_equipo_puede_operar_sus_tramites.sql` | el miembro del equipo puede asignarse y operar; mover de equipo sigue siendo Admin/Gerente | ✅ corrida |
+| `20261029000005_el_equipo_se_ve_a_si_mismo.sql` | **A8** — lectura por equipo en `tramites_grupos_miembros` | ✅ corrida |
+| `20261029000006_las_tablas_de_tramites_si_transmiten.sql` | **A9** — publica Trámites y Store en `supabase_realtime` | ✅ corrida |
+| `20261030000001_quien_comento_es_quien_modifico.sql` | **H-006** — comentar ya actualiza `modificado_por`, no solo la fecha | ✅ corrida |
+| `20261104000001_quitar_politica_de_menciones_rota.sql` | quita `tickets_mencionados_select`, una política de SELECT sobre `tickets` que nunca concedió nada y cuyo alcance no estaba ligado a la fila consultada | ✅ corrida |
+| `20261105172354_cerrar_lectura_abierta_comisiones.sql` | `commission_details`/`errors` tenían `USING (true)`: cualquier usuario con sesión leía las comisiones y los clientes de TODOS los agentes | ✅ corrida |
+| `20261105182919_rol_desarrollador.sql` | `usuarios.es_desarrollador` — ve y prueba todos los módulos, pero de usuarios reales no ve ni una fila | ✅ corrida |
+| ~~`20261106000001_registrar_actividad_desarrollador.sql`~~ | **RETIRADA el 06/11, no correr** — ya existe `user_activity_logs`, ver abajo |
+| `20261106000002_repos_del_reporte_semanal.sql` | qué repos entran al reporte semanal; agregar uno es un INSERT, no un deploy | ✅ corrida |
+| `20261106000003_personas_del_reporte_semanal.sql` | a quién sigue el reporte y con qué cuenta de GitHub se le liga | ✅ corrida |
+| `20261107225105_solicitudes_eliminacion_cuenta.sql` | solicitudes de eliminación de cuenta (apps nativas) | ✅ corrida el 07/11 |
+| `20261107225844` + `…905_push_nativo*.sql` | push nativo a dispositivos; el trigger lee por `to_jsonb(new)` | ✅ corridas el 07/11 |
+| `20261109000001_costo_de_envio_en_el_pedido.sql` | `store_pedidos.costo_envio` + la vista de pagos lo suma al monto | ✅ corrida |
+| `20261109000002_cargos_al_cliente_del_pedido.sql` | **reemplaza a la de arriba el mismo día**: `store_pedido_cargos` (varios, con concepto), `store_puede_administrar()`, las DOS vistas, y quita `costo_envio` | ✅ corrida |
+
+🔑 **El baseline NO describe las políticas vivas de `tickets`.** Medido el
+06/11 contra `pg_policy`: hay **UNA sola de SELECT, `tickets_select_v10`**, y
+las que nombra el baseline (`tickets_select_policy`, `tickets_select_v8`) **ya
+no existen**. Antes de razonar sobre quién ve qué trámite, preguntar:
+
+```sql
+select polname, polcmd, polpermissive
+  from pg_policy
+ where polrelid = 'public.tickets'::regclass
+ order by polpermissive desc, polname;
+```
+
+Si al abrir la Bitácora sale *"Could not find the table … in the schema cache"*, la vista existe pero PostgREST no se enteró: `notify pgrst, 'reload schema';` y recargar.
+
+#### Falta probar en navegador
+- **Los tres arreglos del 23/11, ya desplegados en `c7b916d`:** abrir el propio
+  usuario en el Directorio y confirmar que (a) **fecha de nacimiento y fecha de
+  ingreso salen llenas** —esa es la prueba de que el modal ya lee el perfil
+  completo—, (b) aparece la casilla **"Perfil Desarrollador"** (antes se
+  escondía en cualquier Administrador) y está **apagada**, y (c) asignarse un
+  equipo de Administración o Comercial, guardar, reabrir y ver que **persiste**.
+  Si algo falla, ahora **se ve el error**: el modal solo se cierra cuando de
+  verdad escribió.
+- ~~**Cargos al cliente de Store (09/11)**~~ — ✅ **probado por Ricardo el
+  09/11**: *"listo, ya funciona"*. Lo único que no se alcanzó a mirar con él es
+  el **aviso del carrito** (que al levantar un pedido salga la ventana de que
+  el envío no está incluido, y que *"Volver al carrito"* no cree nada) y el
+  **Excel** con sus columnas nuevas.
+- **Lo del 29/10, después de correr las dos migraciones que faltan:**
+  - **@menciones (A8):** entrar con un **Empleado o Gerente** —no Administrador, que es el único a quien le funcionaban— a un trámite con equipo, escribir `@` en un comentario y confirmar que sale la lista de compañeros. De paso, que "Mi equipo" deje de decir **1 integrante**.
+  - **Tiempo real (A9):** dos navegadores en el mismo trámite; comentar en uno y verlo aparecer en el otro **sin recargar**. Y en el tablero, cambiar un estatus en una pestaña y ver moverse la tarjeta en la otra.
+  - **Duplicar trámite (A7):** duplicar uno con el formulario lleno y confirmar que llegan descripción, solicitante y los campos del negocio —**no** área, equipo, estatus ni responsable, que se resuelven solos.
+  - **Fecha Promesa (M8):** entrar como **Agente** a un tipo que la tenga marcada requerida y confirmar que ya se puede crear el trámite.
+  - **Cierre (A3):** cerrar un trámite de un tipo del FormBuilder y comprobar `select cerrado, cerrado_en from tickets where folio = '<folio>';` — los dos deben concordar.
+  - **Un solo aviso (A4/B22):** cambiar el estatus con su nota obligatoria y confirmar que llega **un** aviso, el de estatus, y no además "Nuevo comentario".
+  - **Asignarse (A2):** con un Empleado que sea ejecutivo del equipo dueño, tomar un trámite del pool. Antes daba 403 y la pantalla no decía nada.
+- **Tarjetas de bonos en el dashboard del agente** (Producción / Metas / Campaña): entrar en "ver como" a un agente que SÍ sea vendedor en bonos y ver si se llenan. El fix del 15/10 manda `?as=<uuid>` a `cp.movi.digital` (bonos ya desplegado, commit `b6356d8` en `master`). Si siguen vacías, mirar la petición `mi-resumen` en F12 → Red: `403` = bonos no lo reconoce como admin · `{"vinculado": false}` = ese agente nunca entró a bonos · `{"aplica": false}` = su rol en bonos no es vendedor · **sin `?as=` en la URL** = no entró el deploy de MOVI.
+- **Equipos de trámite en todos los roles** (15/10): asignarle equipos a un Empleado/Gerente desde Editar Usuario y confirmar que (a) se guardan, (b) un trámite levantado para esa persona nace con equipo, (c) **no perdió su membresía** en los equipos donde es ejecutivo/líder (menú de Trámites, permisos de catálogos).
+- **Equipo de un solo ejecutivo**: levantar un trámite que caiga en un equipo con un único `ejecutivo` y confirmar que sale asignado a esa persona, no "Sin responsable".
+- **Envío de adjuntos al agente** (15/10): configurar un tipo en FormBuilder → *Envío de adjuntos* (canales + categorías), subir a un trámite de ese tipo un archivo de una categoría marcada y otro de una sin marcar, y confirmar que (a) sale la ventana con el correcto marcado, (b) "No enviar" no manda archivos, (c) al volver a subir el mismo archivo el candado lo deja fuera de la preselección, (d) el botón "Enviar al agente" de la pestaña Archivos sí lo reenvía.
+- **Bitácora**: el modal de pagos al hacer clic en una fila de cada módulo, los filtros, y que el Excel/CSV exporte lo filtrado.
+- **Papelera**: mandar un trámite a la papelera. Si sale un mensaje de error, **mandarlo** — es la causa de fondo de por qué no escribía, y todavía no la sabemos.
+- **Kanban**: que un líder o ejecutivo del equipo pueda arrastrar un trámite "Sin responsable" de su equipo.
+- **Trámite hijo repetido**: volver a aplicar el estatus que dispara un trigger y confirmar que ahora avisa.
+- **Los bots no notifican a personas** (21/10): que un bot comente o cambie el estatus de un trámite suyo y confirmar que al Admin no le llega **ni campanita ni WhatsApp**, y que el badge del sidebar no se mueve. Verificación directa: `select position('''aviso_de_bot_para_persona''' in prosrc) > 0 from pg_proc where proname = '''enviar_notificacion_individual''';` debe dar true.
+- **Un solo motor de notificaciones** (19/10, después de correr las dos migraciones): cambiar el estatus de un trámite, dejarle un comentario y subirle un archivo, y confirmar que (a) llega UN solo aviso por cada uno, no dos, (b) por los canales que dice Admin › Transaccionales y no más, (c) a quien dicen los papeles configurados. Editar una plantilla desde la pantalla y volver a disparar el evento: el texto nuevo tiene que salir.
+- **Alta de trámite sin Solicitante** (19/10): crear una Cotización como Gerente sin elegir Solicitante. Antes tronaba con `uuid: ""`; ahora debe guardarse y quedar "Sin responsable" con el aviso a Administradores.
+
+#### ✅ MOTOR DE NOTIFICACIONES — qué queda del grupo Trámites (al 19/10)
+
+Los seis avisos del grupo Trámites **ya se disparan todos**, y la pantalla ya manda sobre ellos. Lo que queda es de menor calado:
+
+- **"Renovación de Póliza Próxima"** sigue sin dispararse — **a propósito**: Ricardo dijo que no (19/10). No hay cron ni código que lo mande, y así se queda.
+- **Fase 3 (no hecha):** `eventLabels` en `ticket-notification-dispatcher` (~línea 1107) sigue siendo un mapa fijo de 8 claves para el asunto del correo. Un evento **nuevo** creado desde la pantalla sale **sin asunto**. Sacarlo a la BD es lo único que falta para que un evento se pueda configurar entero sin tocar código.
+
+**Variables:** el catálogo vive en `src/lib/variablesPlantilla.ts`. **Si se agrega una variable a `allVariables` del despachador, hay que agregarla ahí** o la pantalla no la ofrece — y si alguien la escribe a mano, el aviso sale con un hueco sin avisar.
+---
+
+#### ⏸️ PENDIENTE — un adjunto no llegó por WhatsApp, y Wazzup dice que sí
+
+Prueba del 15/10 en el trámite **TK6B3AE** (3 archivos): por correo llegaron los 3, por WhatsApp 2. Se repitió el 16/10 a las 18:01 con los mismos 3.
+
+**Lo ya descartado, con datos:**
+- No es el candado ni el filtro por tipo: el log tiene las **6 filas** (3 archivos × 2 canales) de cada envío.
+- No es tamaño ni configuración: por correo salieron los 3.
+- No es la URL firmada: dura **1 hora** (`SIGNED_URL_DURATION_SECONDS`), de sobra para que Wazzup la baje.
+- **Las 3 filas de `whatsapp` dicen `sent_successfully = true`, sin error.** O sea que Wazzup contestó 200 a las tres y el archivo se perdió de su lado, entre su "recibido" y el teléfono.
+
+**Dónde se nos acaba la pista y cómo extenderla:** cuando Wazzup acepta un documento devuelve un **id de mensaje** que hoy se tira. Guardándolo en `notification_attachments_log` se le podría preguntar después qué pasó con ese mensaje — y ya existe `wazzup-webhook`, que es por donde ellos avisan los cambios de estado. Sin eso, la próxima vez volvemos a quedarnos aquí.
+
+**Falta un dato de Ricardo:** cuál de los 3 no llegó. Si siempre es `Aviso de Cobro 2° Sem Vida Lucia Balsa.pdf`, apunta al `°` del nombre (en mayo hubo `INVALID_MESSAGE_DATA` justo con un nombre con corchetes); si siempre es el último de la lista, apunta al ritmo (van con **500 ms** de separación).
+
+---
+
+#### 🔑 CORREGIDO el 19/10 — los avisos de trámite SÍ se disparan, por TRIGGERS DE BASE
+
+El 16/10 quedó escrito aquí que *"5 de los 6 avisos de Trámites no los dispara nadie"*. **Era falso, y vale la pena recordar por qué:** la revisión grepeó el frontend y las edge functions, y nunca miró los triggers de Postgres. Ahí estaban los cinco:
+
+| Trigger | Sobre | Evento |
+|---|---|---|
+| `trigger_notificar_comentario_tramite` | `ticket_comentarios` | `tramite_comentario_nuevo` |
+| `trigger_notificar_cambio_estatus_tramite` | `tickets` | `tramite_cambio_estatus` |
+| `trigger_notificar_actualizacion_tramite` | `tickets` | `tramite_actualizado` |
+| `trigger_notificar_documento_tramite` | `ticket_archivos` | `tramite_documento_cargado` |
+
+Los cuatro llaman a `notify_tramite_recipients` → `enviar_notificacion_transaccional`, que encola en `notification_jobs` y el cron `notification-dispatcher` los manda.
+
+**Por qué la pantalla los marcaba como muertos:** `notificaciones_uso_view` unía los historiales de dos motores y ese tercer camino no aparecía en ninguno. Se corrigió (`20261019000001`): la vista une los **tres**, y solo cuenta `status = 'sent'`. Con eso, 5 de los 6 pasaron a verde *"Se envió hace N días"*.
+
+**🔑 La regla que sale de aquí:** *un `grep` sobre `src/` y `supabase/functions/` no es una búsqueda completa en este proyecto.* Hay lógica viva en triggers y funciones de Postgres que ningún archivo del repo menciona. Antes de afirmar que algo "no lo dispara nadie", mirar `pg_trigger` y `pg_proc`:
+
+```sql
+select tgname, c.relname from pg_trigger t
+join pg_class c on c.oid = t.tgrelid
+where not t.tgisinternal and c.relname in ('tickets','ticket_comentarios','ticket_archivos');
+
+select proname from pg_proc where prosrc ilike '%<lo que busques>%';
+```
+---
+
+#### 🔜 LO PRIMERO DE MAÑANA — tres ajustes al envío de adjuntos (pedidos el 15/10 al cerrar)
+
+Lo del 15/10 ya está corrido, desplegado y en beta. Esto es lo que sigue:
+
+**1. Archivos sin categoría deben entrar al envío.** Hoy la regla es "solo las categorías marcadas", así que un archivo **sin categoría** —o de un tipo de trámite cuyo campo adjunto no obliga a elegirla— nunca sale. Ricardo quiere que esos salgan marcados por defecto.
+  - ⚠️ **Falta su respuesta antes de tocar código:** ¿sin categoría se manda **solo** cuando alguien confirma en la ventana (más seguro), o también en los envíos automáticos por cambio de estatus, donde nadie lo revisa? Lo segundo es lo que dice literal el pedido, pero deja salir cualquier archivo al que se le haya olvidado la categoría —incluido lo interno—, que es justo el problema que se vino a arreglar. Recomendación: preseleccionarlo en la ventana, y en el camino automático dejarlo fuera.
+  - Dónde se toca: `prepararConfirmacionEnvio()` en `TramiteArchivos.tsx` (la preselección) y `filtrarAdjuntosParaEnvio()` en `ticket-notification-dispatcher` (solo si la respuesta es "también automático").
+
+**2. Confirmar también al guardar o al salir del trámite.** Hoy la ventana sale al subir desde la pestaña Archivos. Falta el otro camino: los adjuntos de un **campo `adjunto`** del formulario (`TramiteDetalle.tsx`, ~línea 2509 — ahí se insertan en `ticket_archivos` al elegir el archivo, no al guardar) hoy **no disparan ninguna notificación**. Hay que llamar al mismo `ConfirmarEnvioAdjuntosModal` al guardar cambios, y poner una guarda al salir si quedan archivos sin decidir.
+
+**3. Configuración de CUÁNDO se envía.** Columna nueva en `ticket_tipos` (ej. `envio_adjuntos_momento`: `al_guardar` | `al_cambiar_estatus`), su control en la pestaña *Envío de adjuntos*, y que lo respeten los dos caminos. Hoy el envío va pegado al evento `tramite_documento_cargado` (al subir).
+
+---
+
+#### Pendiente de decisión
+- **Registrar pagos de Store desde el modal.** Hoy el modal de Store es de solo lectura: registrar un pago tiene validaciones de método/forma de pago que viven en `StorePedidoDetalle`. Hacerlo bien es sacar esa parte a su propio componente y usarlo en los dos lados; copiarla sería la segunda copia que se desincroniza.
+- **Solicitante obligatorio en Cotización.** Hoy el tipo no lo exige, así que un trámite puede nacer sin agente: no cae en ninguna regla de equipo y queda "Sin responsable". Si debe exigirse, se marca requerido en el FormBuilder (decisión de Ricardo, 19/10).
+- **La landing de Mutuus sigue bifurcada** entre `main` y `produccion`: hay que decidir cuál gana antes del próximo merge.
+
+#### Hilos viejos
+Modo oscuro de los modales (`BaseModal.tsx`, 0 clases `dark:`) · SICAS pausado y su filtro de "efectuada" · ~65 ramas muertas del remoto.
+
+---
+
+### ✅ 2026-11-23 — editar un usuario le borraba 16 columnas, y el build sale del servidor
+
+Ricardo reportó tres cosas de golpe. **Son tres causas distintas, y ninguna es
+una regresión de los 64 commits que entraron estas dos semanas** — se verificó:
+ninguna migración nueva toca las políticas de `usuarios`, y `UserModal.tsx` y
+`Directorio.tsx` no se tocaron.
+
+#### 🔴 Lo grave: cada edición de usuario borraba 16 columnas
+
+Síntoma que él vio: *"intenté actualizar mi información, fecha de nacimiento y
+fecha de ingreso… y los cambios no se guardan"*.
+
+Medido: el `.select()` del Directorio trae **18 columnas** y el modal **escribe
+28**. Las 16 de en medio llegaban `undefined`, el formulario las pintaba vacías
+y al guardar su `|| null` se escribía **encima del dato bueno**. No era "no
+guarda": era que **cualquier admin, al editar a cualquiera**, borraba fecha de
+nacimiento, fecha de ingreso, régimen fiscal, días de vacaciones (a 0),
+extensión, equipo de cómputo y celular, plan Premium, seguros express y la
+ubicación.
+
+Probado de punta a punta: `update-user` hace `if (userData.x !== undefined)` y
+`JSON.stringify` **tira los undefined** — o sea que un `undefined` no viaja y un
+`null` **sí se escribe**.
+
+🔑 **La prueba de que no era nuevo:** `banco` y `clabe` ya tenían su candado, con
+este comentario al lado — *"antes el formulario los mandaba vacíos y borraba el
+banco y la CLABE de cualquiera que se editara desde el Directorio"*. Alguien ya
+chocó con esto y lo parchó **para dos columnas**, dejando catorce.
+
+**El arreglo va a la raíz, no al Directorio:** el modal es quien ESCRIBE, así que
+es quien tiene que LEER. Al abrir en edición pide el perfil completo con
+`USUARIO_COLUMNAS` —la lista canónica que ya existía para esto— y no con `*`,
+que truena porque los datos bancarios no tienen grant. Eso cubre también a
+`MarketingPremiumAdmin`, el otro que abre ese modal.
+
+- Si la lectura falla, esas columnas **no se mandan** (`perfilCompletoCargado`).
+- La respuesta tardía se descarta si el modal ya pasó a otro usuario: sin eso,
+  la fecha de nacimiento de A aterriza en el formulario de B y el siguiente
+  Guardar la escribe.
+
+🔑 **Lo confirmó Ricardo sin querer:** *"lo de los equipos y slug para página web
+sí persiste, pero la fecha de nacimiento y fecha de ingreso no"*. Exacto:
+`web_slug` **sí** viene en el `.select()` (lo agregaron en un commit llamado
+*"fix(directorio): cargar slug personalizado al editar usuario"* — el mismo bug,
+parchado para esa columna). Los equipos van por su propia consulta.
+
+⚠️ **Y una corrección mía:** le dije *"vuelve a capturar tus fechas, eso sí se
+perdió"*. **Probablemente no.** Si las tecleó antes de guardar, se guardaron; lo
+roto era que el modal nunca las volvía a leer. El borrado ocurre al revés: al
+editar otra cosa dejando esos campos vacíos.
+
+**La comprobación:** `node src/components/UserModal.columnas.test.mjs`. Vigila la
+regla que se rompió — una columna escrita FUERA del candado tiene que venir en el
+`.select()` de la lista; una escrita DENTRO tiene que estar en
+`USUARIO_COLUMNAS`. **TypeScript no puede atrapar esto porque la lista es una
+CADENA**, y por eso el patrón ya mordió cinco veces.
+
+#### 🔴 La casilla "Perfil Desarrollador", una trampa que armamos entre los dos
+
+La condición era `isAdmin && formData.rol !== 'Administrador'`. El **06/11
+Froilán pasó a Administrador** —recomendación mía, para que el menú le destapara
+los módulos, porque `module_visibility` solo puede quitar— y con eso la casilla
+desapareció de su perfil. Y con ella **la única forma de quitarle la marca desde
+la pantalla**: quedó encendida, invisible y sin apagador.
+
+Ahora la condición es solo `isAdmin`: un Administrador marcado como desarrollador
+existe de verdad y hay que poder verlo.
+
+#### 🔴 Guardar podía borrarle los equipos a alguien, en silencio
+
+Lo encontró su pregunta: *"no manda error para usuario admin o empleados, ya que
+no es requisito que tengan asignados los equipos. ¿Puede ser eso parte del
+problema?"*. Sí.
+
+Guardar con la selección vacía **no es "no guardar nada"**:
+`planearReglasDeEquipo` manda a `desactivar` **toda** regla que no venga en la
+selección. Si el selector no había leído los equipos actuales —o su lectura
+falló— el guardado **se los borra**, sin error, con el modal cerrándose normal
+(`onSave()` solo corre por el camino de éxito). Y nadie lo detiene: la exigencia
+de cubrir las categorías es **solo del Agente** (`mustValidateTramiteTeams`).
+
+El hueco fino: el selector marcaba `ready` en cuanto dejaba de cargar, **aunque
+`loadUserTramiteTeamIds` hubiera tronado** — ahí los equipos sí estaban cargados
+(categorías > 0) pero la selección quedaba vacía, que es justo el caso que
+borra. Por eso la señal nueva no es "ya no está cargando" sino **`hidratado`**:
+si de verdad se pudo leer qué equipos tiene hoy ese usuario.
+
+**Verificado con los datos de Ricardo:** su consulta devolvió **una sola fila,
+`activo = true`**. O sea que la vía existía pero **con él nunca se disparó** —
+nada que restaurar. El candado es prevención.
+
+🔑 **La regla que apareció TRES veces el mismo día:** *escribir lo que no se pudo
+leer es borrarlo.* Es el mismo candado en `perfilCompletoCargado`,
+`datosBancariosCargados` y `hidratado`.
+
+#### 🟡 Lo de "solo veo trámites de los usuarios de prueba" NO era un bug
+
+Es el toggle **Reales · Bots · Todo** de Trámites (arriba a la derecha, solo
+Administrador), que estaba en **Bots**. Un clic lo arregla.
+
+**No era el candado del desarrollador**, y la prueba estaba en su propia captura:
+si su cuenta tuviera `es_desarrollador`, el Directorio le mostraría **6
+usuarios**, y le muestra cientos. Las políticas de ese candado están
+condicionadas a `soy_desarrollador()`.
+
+⏳ **Queda ofrecido y sin respuesta:** el selector de equipos marca **"⚠
+Faltante"** aunque al rol no se le exija ningún equipo. Esa advertencia solo
+tiene sentido para un Agente, y es lo que lo llevó a pensar que había un permiso
+roto. Hacerla condicional son minutos.
+
+#### ✅ El build de beta sale del servidor
+
+Pregunta suya: *"¿vuelve a hacer build de todo MOVI desde cero en Plesk? ¿Hay
+otra opción menos costosa en recursos?"*.
+
+**Sí, y el build ya se hacía DOS veces:** `ci.yml` construye lo mismo en cada
+push a `main` para validar que compila, **y tira el resultado**; el servidor lo
+vuelve a construir después. Se pagaba el caro.
+
+`.github/workflows/publicar-beta.yml` construye en GitHub y deja el `dist` en la
+rama `beta-dist`. Plesk pasa a tirar de ahí con las acciones **vacías**: el
+deploy se vuelve copiar archivos. **De minutos y 2.2 GB a segundos y ~0 RAM.**
+
+**NO revive el autodespliegue** que se quitó a propósito el 05/11: publicar a la
+rama no despliega nada; el sitio sigue cambiando solo con el Pull + Deploy manual.
+
+**Lo verificado antes de escribirlo, no supuesto:**
+
+- Las únicas variables que se hornean son `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY` y `VITE_BONOS_URL`. La llave del bundle dice
+  `"role":"anon"` y **ya estaba committeada** en el baseline, así que publicar el
+  `dist` **no expone nada nuevo**. Medido también: cero `service_role`, cero
+  `sb_secret_`, cero mapas de código fuente, cero volcados (`.sql`/`.csv`/`.env`).
+- `vite.config.ts` ya lee `GITHUB_SHA`, así que la barra naranja sigue diciendo
+  la verdad. Dirá **7 caracteres en vez de 8**.
+- El `.npmrc` trae `legacy-peer-deps=true`, así que `npm ci` pelado basta.
+
+⚠️ **DOS trampas que costaron una corrida cada una:**
+
+1. **La rama lleva la CARPETA `dist/`, no su contenido pelado.** Plesk deja los
+   archivos en el directorio del repositorio y el document root es la subcarpeta
+   `dist` de ahí; publicando el contenido suelto, `index.html` caería **al lado**
+   del document root y el sitio seguiría sirviendo el build anterior **sin que
+   nada avisara**. Hay un cinturón en el workflow que aborta si la raíz del
+   árbol deja de ser exactamente `dist`.
+2. 🔑 **Una rama con historial HUÉRFANO la rechaza GitHub.** El primer intento la
+   creaba con `git init` aparte y el push murió con
+   `remote: fatal error in commit_refs_rules`. **No era el ruleset** —medido
+   contra la API: *"Proteger main y produccion"* solo cubre `~DEFAULT_BRANCH` y
+   `refs/heads/produccion`, con `deletion` y `non_fast_forward`— ni el tamaño
+   (397 archivos). Era que el evaluador de reglas se atraganta con una rama que
+   no comparte historia con nada. Ahora el commit cuelga del commit real
+   (`-p "$GITHUB_SHA"`), y de paso queda trazable de qué commit salió.
+
+🔑 **Y el dato que importa para el futuro:** los *rulesets* **no** aparecen en la
+API vieja de protección de ramas. El CLAUDE.md decía *"`main` no tiene protección
+(la API devuelve 404)"* y era verdad para esa API, pero **sí hay un ruleset
+activo**. Para saberlo: `gh api repos/crickmx/jiromovi/rulesets`.
+
+#### Pendientes de Ricardo con terceros
+
+- **Tres PDFs de cotizaciones con nombre de persona** en `public/cotizaciones/`
+  (`Christofer_-_BUPA_PLUS.pdf` y dos más), servidos públicamente desde la web.
+  **Son de Christofer y Ricardo lo ve con él** (23/11). No tocar.
+- `public/test-sicas-rest-real.html` — página de pruebas accesible en producción.
+  Revisada: **no tiene credenciales**, solo apunta a la URL pública de Supabase.
+
+---
+
+### ✅ 2026-11-09 — "u._result is undefined", y por qué se cae el servidor al desplegar
+
+Dos síntomas que Ricardo reportó como cosas de "sesión abierta mucho tiempo".
+Son dos causas distintas y ninguna es la sesión.
+
+#### 🔴 El `TypeError` lo fabricaba nuestra propia red de seguridad
+
+Con una pestaña abierta desde antes de un despliegue, al entrar a `/admin/deploy`:
+
+```
+TypeError: can't access property "default", u._result is undefined
+```
+
+y la pantalla decía **"Algo salió mal"** —el mensaje genérico— cuando lo que
+pasaba era justo lo que el `ErrorBoundary` ya sabe tratar: un fragmento de
+código que ya no existe en el servidor porque hubo un deploy.
+
+**La causa, leída del bundle ya compilado y no de memoria.** El ayudante de
+precarga de Vite es, literal:
+
+```js
+function c(f){ const g = new Event("vite:preloadError", {cancelable:!0});
+               g.payload = f; window.dispatchEvent(g);
+               if (!g.defaultPrevented) throw f }
+return a().catch(c)
+```
+
+`c` **relanza el error solo si nadie canceló el evento**. Nuestro listener en
+`main.tsx` hacía `e.preventDefault()`, así que `c` no lanzaba, el `.catch`
+devolvía `undefined` y **la importación RESOLVÍA con `undefined`** en vez de
+rechazar. `React.lazy` lo guarda como módulo bueno (`_status = Resolved`,
+`_result = undefined`) y al siguiente render lee `_result.default`.
+
+🔑 **La lección:** cancelar el evento de error de una librería no es
+"manejarlo"; puede convertir un rechazo legible en un éxito falso que revienta
+tres capas más arriba, con un mensaje que no se parece en nada a la causa. Las
+**tres** redes que ya existían (`vite:preloadError`, `unhandledrejection` y el
+`ErrorBoundary`) estaban bien escritas y ninguna lo reconocía, porque lo que
+llegaba ya no era un error de carga.
+
+Quitar ese `preventDefault` es todo el arreglo. De paso `esErrorDeCarga`
+reconoce esa forma —las pestañas abiertas con el build viejo todavía la
+producen— y **los casos que NO deben recargar quedaron escritos** en
+`src/components/ErrorBoundary.test.mjs`: recargar ante un bug real lo esconde y
+le quita al usuario el mensaje con el que lo reportaría.
+
+Verificado de paso: `beta.movi.digital/index.html` se sirve con
+`Cache-Control: no-cache, no-store, must-revalidate`, o sea que **la recarga sí
+trae HTML fresco**. El único defecto era el mensaje.
+
+#### ⏳ Por qué se cae el servidor al hacer Pull + Deploy — falta confirmarlo con Ricardo
+
+Ricardo: *"al hacer pull y deploy, seguido se cae el servidor y hay que
+reiniciarlo"*. Encaja exacto con el incidente del **06/11**: Plesk daba 500 con
+`Plesk\Exception\Database` / *Connection refused* —o sea **MariaDB caído**—
+mientras **los tres sitios seguían respondiendo 200**, que es justo lo que pasa
+cuando muere la base y no el servidor web.
+
+**Lo medido:**
+
+- `dist/` **no está versionado**, así que el servidor **compila en cada Deploy**.
+- El script es `node --max-old-space-size=4096 … vite build`: **pide hasta 4 GB
+  de heap**.
+- Pico real medido el 09/11 en la máquina de Ricardo: **2,184 MB** sumando
+  todos los `node`. El servidor hace eso **además** de `npm install`.
+
+**La hipótesis:** el build se come la RAM, entra el *OOM killer* de Linux y mata
+al proceso más grande, que en un Plesk casi siempre es **`mysqld`**. Por eso
+"se cae" y hay que reiniciar.
+
+**Cómo confirmarlo o descartarlo en 30 segundos, por SSH:**
+
+```bash
+free -h                                  # RAM total y swap (swap en 0 es la señal)
+sudo dmesg -T | grep -iE "killed process|out of memory" | tail -20
+sudo journalctl -u mariadb --since "7 days ago" | grep -iE "killed|oom|signal" | tail
+```
+
+Si ahí sale `Killed process … (mysqld)`, está probado.
+
+**Qué haríamos según el resultado** (ninguno toca el código de MOVI):
+
+1. **Swap**, si `free -h` dice 0. Es lo primero y lo más barato: un pico de
+   compilación pagina a disco en vez de invitar al OOM killer.
+2. **Blindar MariaDB** con `OOMScoreAdjust=-900` en su unidad de systemd: si
+   algo tiene que morir, que sea el build y no la base.
+3. **Que el servidor deje de compilar**: compilar en GitHub Actions y publicar
+   el `dist`. Es el arreglo de fondo, pero cambia el canal de despliegue —y el
+   05/11 Ricardo quitó a propósito el job `deploy-beta`—, así que es decisión
+   suya.
+
+⚠️ **Bajar `--max-old-space-size` NO es el arreglo**: no reduce lo que el build
+necesita, solo cambia *morir el servidor* por *fallar el build*. Mejor que lo
+primero, pero no resuelve.
+
+---
+
+### ✅ 2026-11-09 — los cargos al cliente de MOVI Store, y los OCHO totales
+
+Arrancó como *"hace falta campo para agregar los costos de envío a un pedido,
+debe sumarle al total"* y terminó, el mismo día y por petición suya, en una
+tabla de cargos con concepto libre. **Probado por Ricardo: "ya funciona".**
+
+⚠️ **El día tuvo DOS migraciones y la segunda deshace parte de la primera.** La
+`…000001` agregó `store_pedidos.costo_envio`; la `…000002`, unas horas después,
+la convirtió en renglones y **borró la columna**. Las dos están corridas. Si
+alguien lee solo la primera, va a buscar una columna que ya no existe.
+
+#### 🔑 Lo de fondo: el total del pedido se calculaba en OCHO lugares
+
+Medido antes de tocar nada. Cada uno con su propia copia:
+
+| | |
+|---|---|
+| `StorePedidoDetalle.tsx` | el Total de la pantalla, y de ahí el margen y la validación de "Liquidado" |
+| `storePdfOrdenCompra.ts` | el importe y el plan de cobro de la **Orden de Compra** |
+| `storeUtils → obtenerPedidosUsuario` | el total en **Mis Pedidos** |
+| `storeUtils → obtenerTodosPedidos` | el total en la lista de **Admin** y en su Excel |
+| `storeUtils → obtenerPedidoCompleto` | el `total` del pedido completo |
+| `storeUtils → resolverTemplatePedido` | el `{{monto_total}}` de los avisos por **WhatsApp y correo** |
+| `store_bitacora_view` (SQL) | …que **el frontend no lee** (ver abajo) |
+| **`bitacora_comercial_view`** (SQL) | **ESTA es la del control de pagos de la Bitácora** |
+
+Mientras los ocho sumaran lo mismo, no se notaba. **Agregar un cargo a unos y no
+a otros es el bug que ya se pagó en octubre con Marketing Premium** —la bitácora
+decía *"$0 de $200"* y el panel de pagos $2,400—, y aquí habría sido peor: el
+cliente ve un total y se le cobra otro.
+
+Ahora hay **uno solo**: `totalDelPedido()` en `src/lib/storePedidoTotal.ts`, y
+los ocho lo llaman.
+
+- **Vive aparte de `storeUtils`** a propósito: ahí dentro vive `supabase`, y
+  este archivo tiene que poder correrse fuera del navegador para su
+  autocomprobación (`npx tsx src/lib/storePedidoTotal.test.mjs`).
+- **Redondea a centavos.** `19.99 × 3` en flotante da `59.97000000000001`, y
+  `estado_pago` compara contra lo pagado con tolerancia de **un centavo**: sin
+  eso, un pedido pagado al exacto puede salir *"debe"*.
+- **Convierte el texto de PostgREST.** `numeric` llega como cadena; sin
+  convertir, `"185.50"` se **concatena** en vez de sumarse y el total sale
+  `800185.5` sin dar ningún error.
+
+#### 🔴 Actualicé la vista equivocada, y casi se va así
+
+La migración de la mañana actualizó `store_bitacora_view`. **El frontend no la
+lee.** La pantalla de Bitácora consulta **`bitacora_comercial_view`**
+(`VISTA_BITACORA` en `src/lib/bitacoraConfig.ts`), que calcula el monto de Store
+por su cuenta — así que el envío **no llegaba al control de pagos** y habría dado
+saldos mal.
+
+🔑 **La lección:** haber grepeado el nombre de la vista en `src/` habría bastado,
+y es exactamente la comprobación que este proyecto ya tiene escrita para las
+pantallas de configuración (*"si solo aparece donde se guarda, no sirve para
+nada"*). No se aplicó al revés: **antes de arreglar una vista, preguntar quién
+la consulta.** `store_bitacora_view` hoy no la consulta nadie en el frontend; se
+dejó correcta igual, y la migración trae al pie una consulta que **exige que las
+dos digan lo mismo del mismo pedido**.
+
+#### El modelo: dos tablas que son el reverso una de la otra
+
+| | Qué es | Dónde |
+|---|---|---|
+| **`store_pedido_gastos`** | lo que **GASTA JIRO**. De aquí sale el **margen**. No se le cobra al cliente | ficha *Gastos generales del pedido **(A cargo de Jiro)*** |
+| **`store_pedido_cargos`** | lo que se le **COBRA al cliente** además de los artículos. **SUMA al total** | ficha *Envío y otros costos **(A cargo del cliente)*** |
+
+Por eso un pedido puede decir **Total $650.00** junto a **Costo $686.12** sin
+contradecirse: son dos cosas distintas. Las dos fichas van **pegadas y
+etiquetadas** a propósito — verlas juntas es lo que evita confundirlas.
+
+🔑 **Por qué `store_pedido_cargos` es una tabla aparte y no un `a_cargo_de` en
+`store_pedido_gastos`.** Esa tabla ya tenía concepto, monto y tipo, así que
+parecía el lugar obvio. Pero marcar sus filas obligaría a filtrar en los **tres**
+lectores que hoy suman el margen (`StorePedidoDetalle`, `StorePedidosReporte` y
+el cálculo de ganancia), y **olvidar uno haría que un cargo al cliente se
+contara como costo de JIRO en silencio**. Una tabla aparte no toca nada de lo
+que ya funciona.
+
+🔑 **Y si algún día se quiere el margen del envío**, los dos datos ya están
+separados: el cargo es lo que se cobra y el gasto `tipo='envio'` lo que costó.
+Juntarlos en un solo lugar habría borrado esa resta para siempre.
+
+#### Dónde se ve
+
+| | |
+|---|---|
+| **Captura** | ficha **"Envío y otros costos (A cargo del cliente)"**. Concepto **libre** y **varios** por pedido; concepto y monto **se editan en su lugar** (clic al texto, guarda al salir del campo) y se pueden quitar. **Solo quien administra Store** |
+| **Total de la pantalla** | desglose que **nombra cada cargo** (*Artículos / Envío / Producción express*), no un "Otros" que obligue a ir a buscar de qué se trata. Solo aparece si hay cargos |
+| **Orden de Compra** | **un renglón por cargo**, con su concepto, debajo de los artículos. Las **piezas no los cuentan**: un cargo no es una pieza que se entregue |
+| **Excel de Admin** | *"Cargos al Cliente"* (la suma) + *"Conceptos de los Cargos"*, antes de *Total Pedido*, porque el total ya los incluye |
+| **Bitácora** | `monto`, `saldo` y `estado_pago` los suman, en **las dos** vistas |
+| **Carrito** | la ventana de aviso, **antes** de crear el pedido |
+
+**El texto del aviso**, con sus palabras: que los costos de envío **no están
+incluidos** en los precios del catálogo, y que **una persona de Mercadotecnia se
+pondrá en contacto** para coordinar el envío o la recolección. Va como **ventana
+y no como nota al pie** porque una nota al pie no se lee. Solo hay **una puerta**
+para levantar un pedido (`crearPedido`, un único llamador), así que no quedó
+ningún camino sin el aviso.
+
+⚠️ **En la OC NO se menciona la recolección** (Ricardo, 09/11): esa la coordina
+el cliente por su cuenta y no se le cobra, así que nombrarla en el documento que
+sustenta un cargo sugeriría que tiene costo. En el aviso del carrito **sí** se
+mencionan las dos, porque ahí se está coordinando, no cobrando.
+
+#### Cuatro cosas de método
+
+1. **Las vistas se reconstruyeron de su definición VIVA**, extraída del baseline,
+   no de memoria — la regla del 19/10. En `bitacora_comercial_view` se cambió
+   **solo** el monto de la rama de Store; la de Premium quedó letra por letra.
+   ⚠️ `create or replace view` **no deja cambiar** nombre, orden ni tipo de las
+   columnas que ya existen; solo deja **agregar al final**. Por eso
+   `bitacora_comercial_view` entró con `replace` (solo cambian expresiones) y
+   `store_bitacora_view` necesitó `drop` + `create` + **reponer su `grant`**.
+2. 🔑 **La política de lectura de los cargos es "si puedes ver el pedido"**,
+   escrita como un `EXISTS` contra `store_pedidos` en vez de repetir sus
+   condiciones — esa subconsulta ya pasa por la RLS de esa tabla, así que las
+   dos reglas no pueden separarse nunca. **Y es lo que mantiene honesta a la
+   Bitácora:** las vistas son `security_invoker`, así que si alguien pudiera ver
+   el pedido pero no sus cargos, la suma le saldría **más baja sin avisar** —
+   una vista que dice un monto distinto según quién la mire.
+3. **`store_puede_administrar()`** recoge en una sola definición el `EXISTS` que
+   `store_pedido_gastos` repite en **ocho políticas superpuestas**. Mismo molde
+   que `mkt_puede_administrar()`, que ya existía. `SECURITY DEFINER` a propósito:
+   sin eso, consultar `usuarios` desde dentro de una política choca con su RLS.
+4. 🔴 **Escribí un `GRANT` que sobraba, con un comentario falso al lado.** Puse
+   *"esta tabla da permisos columna por columna"*: **no es cierto**,
+   `store_pedidos` los tiene **a nivel de tabla**. El `grant` era inofensivo; el
+   comentario no — una explicación equivocada dentro de una migración es lo que
+   desvía al siguiente. Se quitaron los dos.
+
+#### Detalles de implementación que se prestan a romperse
+
+- **Los campos de cada renglón de cargos son NO controlados** (`defaultValue` +
+  guardar al salir del campo), así que su `key` **lleva el contenido**
+  (`${c.id}-${c.concepto}-${c.monto}`): sin eso, al cambiar el dato en la base
+  el campo seguiría enseñando lo viejo.
+- **`obtenerPedidoCompleto` lanza si no puede leer los cargos**, en vez de
+  seguir con un total menor al real. Un cargo que no se leyó es cobrarle de
+  menos al cliente.
+- **Los tres handlers (alta, edición, baja) recargan el pedido** al terminar y
+  **miran el error** del update. Sin lo primero, el Total de arriba se queda en
+  el monto viejo; sin lo segundo, la pantalla da por bueno algo que no se
+  guardó.
+
+---
+
+### ✅ 2026-11-06 — el perfil Desarrollador, el circuito de reportes, y tres correcciones mías
+
+Día de arrancar en otra máquina, traer lo de ayer y probar de verdad.
+
+#### 🔴 Lo que más vale del día: corregí tres cosas que yo mismo había dicho mal
+
+1. **"MOVI no registra actividad" — FALSO.** Miré `audit_logs`, vi que solo
+   tenía altas y bajas de usuarios y concluí de más. **Existe
+   `user_activity_logs`**, con su pantalla (**Admin → Actividad**,
+   `/actividad-usuarios`), filtros, exportación y cuatro RPCs
+   (`get_activity_logs`, `get_activity_kpis`, `get_top_active_users`,
+   `get_top_modules`). Medido: **91 eventos en el mes, 65 trámites atendidos**.
+   Está viva. **Retiré la migración que iba a crear una segunda bitácora**
+   antes de que se corriera.
+
+   ⚠️ El hueco real es de **cobertura**: `activityLogger.ts` tiene **41
+   funciones `track*`** y solo **11 pantallas** las llaman. Si falta registrar
+   algo, se agrega la llamada donde falte. **No** una bitácora paralela.
+
+2. **"El desplegable de Rol no guarda" — sí guardaba.** `rol_id` apuntaba
+   correctamente al rol Desarrollador; lo que fallaba era el **dibujo** al
+   reabrir: el `.select()` del Directorio pedía `rol`, `estado` y hasta
+   `es_desarrollador`, **pero no `rol_id`**. Llegaba `undefined`, caía al
+   respaldo por nombre y pintaba "Empleado".
+
+   🔑 **Cuarta vez que muerde el mismo patrón**: el tipo declara la columna, la
+   cadena del `.select()` la omite, y TypeScript no valida esa cadena.
+
+3. **Casi reporto que "Reportes de Bugs" no estaba en el panel de Admin.**
+   Estaba: esa página mide **4,070 caracteres** y el verbo `texto` corta a
+   **1,500**. Para preguntas de *"¿aparece X?"*, **contar en el DOM**, no
+   buscar en el texto.
+
+#### El circuito del reporte de bugs, probado de punta a punta
+
+MATEO levantó un reporte con el botón → se volvió el trámite **TKEDDEE**
+(`revision_de_bugerror`), cayó solo en el equipo de Sistemas → **el diagnóstico
+automático por IA corrió y acertó** (señaló el formato crudo de la fecha, que
+es el U-02 del 04/11) → Froilán lo vio en Admin → Reportes de Bugs y respondió.
+
+**Quien levanta un reporte NO puede volver a verlo, y es a propósito.**
+Decisión de Ricardo: *"no todos los reportes son una responsabilidad para el
+equipo de desarrollo, a veces son sugerencias, o que el usuario no encontró
+cómo resolver algo"*. El código ya lo decía (`tickets_select_v9 excluye
+explícitamente los reportes de bug`). Lo único que se cambió es **lo que se le
+dice a quien reporta**: ahora *"La información será turnada al equipo de
+desarrollo para su revisión"*, y dos mensajes de error de ese modal dejaron de
+decirle "trámite" al usuario.
+
+#### Lo demás que se arregló
+
+| | |
+|---|---|
+| **Cambiar de equipo mentía** | `handleEquipoChange` no miraba el error del update, **avisaba al líder del equipo nuevo** de un trámite que nunca se movió, y remataba con "Cambios guardados automáticamente". Probado con SOFÍA: la RLS contestó **403** y la pantalla no dijo nada. Su hermano `handleResponsableChange` ya lo hacía bien desde el 29/10 |
+| **Y se le ofrecía a quien no puede** | el selector de Equipo se habilitaba con `canManageAssignment`, que incluye al ejecutivo. Mover de equipo es de Admin/Gerente/líder: un ejecutivo **toma** el trámite, no lo reparte |
+| **El toggle Reales/Bots es de cada persona** | su clave de `localStorage` llevaba nombre global, así que en una computadora compartida el segundo heredaba el del primero. Ahora lleva el id, respetando la preferencia anterior para que a nadie se le resetee |
+
+#### 🔑 El mapa de políticas de `tickets`, medido contra `pg_policy`
+
+**El baseline ya no las describe.** Hoy hay **UNA sola de SELECT**,
+`tickets_select_v10` —las que nombra el baseline ya no existen— y **CUATRO de
+UPDATE**. Razonar sobre quién ve qué leyendo el baseline lleva a conclusiones
+falsas; me pasó hoy. Preguntar siempre:
+
+```sql
+select polname, polcmd, polpermissive
+  from pg_policy
+ where polrelid = 'public.tickets'::regclass
+ order by polpermissive desc, polname;
+```
+
+#### Dos cosas de método
+
+- **Los backticks en `git commit -m "…"` los ejecuta bash.** Un mensaje perdió
+  dos palabras por eso. Para mensajes largos, heredoc entrecomillado (`<<'FIN'`).
+- **`gh repo list` y `gh repo view` se contradijeron** sobre si un repo era
+  público. Gana la API directa: `gh api repos/OWNER/NOMBRE --jq .private`.
+
+---
+
+### ✅ 2026-11-04 — cinco sesiones a la vez, las menciones, y el recorrido de UX
+
+Día largo. Lo importante en orden de valor.
+
+#### Las cinco ventanas, una por bot
+
+`qa/abrir-todos.cmd` abre **una ventana de Chrome por usuario bot**, cada una
+con su perfil y **su puerto fijo**, para que decir "el 9224" sea siempre Diego:
+
+| Puerto | Quién | Rol |
+|---|---|---|
+| 9222 | MATEO | Agente |
+| 9223 | VALERIA | Agente |
+| 9224 | DIEGO | Empleado |
+| 9225 | SOFÍA | Empleado |
+| 9226 | LAURA | Gerente |
+
+⚠️ **Van de una en una con pausa a propósito**: lanzar las cinco a la vez **no
+funciona** —Chrome se pisa a sí mismo y solo arranca una, y las otras cuatro
+acaban como pestañas dentro de la primera—. Probado.
+
+La contraseña la pone Ricardo; el SQL para las cinco de un golpe está en
+`qa/README.md`. **La sesión sobrevive a cerrar Chrome y al fin de semana**:
+el 04/11 se reabrió y entró directo, sin pedir nada.
+
+#### Lo que solo se puede ver con sesiones de personas distintas
+
+- **Tiempo real ENTRE USUARIOS: funciona.** Diego comentó y apareció en la
+  pestaña de Valeria sin recargar. **No es la prueba del 29/10**, que eran dos
+  pestañas del mismo usuario: Realtime evalúa la RLS **por suscriptor**.
+- **Permisos correctos:** un trámite nuevo de Mateo lo ven Diego (del equipo) y
+  Laura (Gerente); **Valeria, que es otra Agente, no.**
+- **Fecha Promesa, la regla de Ricardo, verificada entera:** Valeria (Agente)
+  **ve** la fecha cuando el trámite la trae y **no tiene el campo** para
+  editarla; en un trámite sin fecha no le aparece nada.
+
+#### 🔴 Las menciones no avisaban a nadie (H-009)
+
+La mención se guardaba en `ticket_usuarios_mencionados` y **nada en el proyecto
+leía esa tabla**: ni el frontend, ni las edge functions, ni ningún trigger
+(se revisó `pg_trigger`, no solo el repo). El autocompletado que se arregló el
+29/10 servía para **escribir** la mención; la persona mencionada no se enteraba
+nunca. Comprobado consultando las notificaciones de Laura con su propia sesión.
+
+**Tres decisiones, con su porqué:**
+
+1. **El aviso NO puede colgarse de un trigger sobre esa tabla.** El upsert usa
+   `ignoreDuplicates`, así que la segunda mención a la misma persona en el
+   mismo trámite **no inserta fila**: un trigger avisaría de la primera y
+   callaría el resto. Esa tabla es *"a quién se ha mencionado aquí"*, un
+   conjunto, no una bitácora.
+2. **Campanita sí, WhatsApp no.** Es cambiar un `false` si se quiere.
+3. **Un aviso que falla no tumba el comentario.**
+
+**Y H-010:** a un **Agente no se le podía mencionar ni siendo el solicitante**,
+porque la lista eran los miembros del equipo y un Agente no es miembro
+operativo. Ahora se le suma aparte.
+
+**🔴 Un bug que introduje y cerré el mismo día:** Valeria, que es la
+solicitante, recibió **dos** campanitas por el mismo comentario —"te mencionó"
+y "Nuevo comentario"—, que es el ruido de A4/B22 otra vez. Se cierra
+preguntándole a **`resolver_destinatarios_aviso`** quién va a recibir ya el
+aviso de comentario y restando a esos; se le pregunta a **esa** función en vez
+de reimplementar las reglas, que es como nacen las copias que se desincronizan.
+Si falla, se avisa a todos: una campanita de más molesta, una que desaparece en
+silencio es la que hace daño.
+
+Prueba final, con tres sesiones: Diego mencionó a Valeria **y** a Sofía en un
+comentario. Valeria recibió **una** ("Nuevo comentario"), Sofía recibió **una**
+("te mencionó"). Nadie dos, nadie cero.
+
+#### A6 — eran dos tipos, y el arreglo no era el que parecía
+
+La consulta de diagnóstico que quedó escrita en octubre **sobre-reporta**:
+lista ocho tipos sin campo de sistema, pero **seis no tienen nada roto** porque
+ya tienen su **propio** campo de adjuntos.
+
+Los dos que fallaban —*Alta Usuario Beta* y *Reporte Semanal*— resultaron no
+necesitar campos nuevos: **ninguno se crea desde el formulario genérico en la
+vida real.** *Alta Usuario Beta* nace del botón "Únete al Programa Beta"
+(`SolicitudBetaModal`), que sí tiene su casilla y la guarda; *Reporte Semanal*
+no lo crea ninguna pantalla. **Los únicos dos trámites vacíos que existen son
+de la corrida de los bots del 22/10.**
+
+Decisión de Ricardo: **quitar *Alta Usuario Beta* de las altas genéricas.** Y
+eran **dos** puertas, no una: el alta de Trámites y "Iniciar trámite" desde un
+correo. La lista vive en `useTiposTramite` (`TIPOS_CON_PANTALLA_PROPIA`) y la
+usan las dos.
+
+**No se desactivó el tipo**: desactivarlo diría en Catálogos que está dado de
+baja, y no lo está. (`SolicitudBetaModal` lo busca **sin** filtrar por
+`activo`, así que desactivarlo tampoco habría roto el botón — pero habría
+dejado una pantalla mintiendo.)
+
+#### El recorrido de experiencia de usuario
+
+Pedido de Ricardo: *"la experiencia del usuario es la prioridad 1"*. Hecho
+**como usuario**, con la sesión de MATEO (Agente): se creó TK873C5 de principio
+a fin y se siguió hasta que Diego lo tomó. **16 hallazgos**, en
+`qa/hallazgos.md`.
+
+**Lo que funciona y no hay que tocar:** el contador de requeridos es honesto
+(`2/6` con Vehículos → `2/3` con Daños, y la sección Autos desaparece); el
+selector de aseguradoras pone las preferentes arriba; el agente **se entera**
+cuando alguien toma su trámite (campanita 32 → 33); el modal de confirmación
+solo sale cuando hay cambio de estatus.
+
+**Los cuatro que Ricardo aprobó, arreglados y verificados en navegador:**
+
+| | Antes | Ahora |
+|---|---|---|
+| **U-01** oficina | *"Auto-completa al seleccionar agente"*, vacía | **"Oficina MOVI Digital"** |
+| **U-02** fecha | tabla `2026-11-04T22:33:11.806Z` · franja `04 nov 2026, 04:33 p.m.` | **las dos iguales** |
+| **U-04** descripción | **3 veces** en el detalle | **1 vez** |
+| **U-07** texto | *"El área y equipo se asignan automáticamente…"* junto a un Área obligatoria | *"El equipo que lo atenderá se asigna solo…"* |
+
+🔑 **U-01 no se arregló con un valor por defecto.** La causa era que el campo
+solo se llenaba dentro del `onChange` del selector de Solicitante, y cuando el
+Agente levanta su propio trámite **ese selector ni se dibuja**: esperaba un
+evento imposible. Es el mismo molde que ya tenía al lado, con su comentario, de
+cuando al Solicitante le pasó exactamente lo mismo.
+
+🔑 **U-02 usa la MISMA función que la franja** (`fechaYHora`, ahora exportada),
+no una copia. Dos copias de un formato de fecha es cómo vuelven a divergir.
+
+#### 🔑 Tres trampas del manejador, anotadas
+
+1. **El verbo `texto` corta a 1500 caracteres.** Un texto que no aparece puede
+   estar más allá del corte; casi doy por no desplegado un cambio que sí estaba.
+2. **`--resumen` y `texto` incluyen TODAS las opciones de un `<select>`**, no
+   la elegida. Por eso el bloque de Equipo "decía" *Sin equipo asignado* con
+   "Pruebas MOVI Digital" seleccionado. Para saber qué se ve, leer
+   `select.value`.
+3. **Dar "Guardar" en el detalle no guarda**: abre *"Antes de guardar…"* y el
+   guardado real está en **"Guardar cambios"** del modal — el **primero** de
+   los dos con ese texto; el otro es la barra pegajosa de atrás, tapada por el
+   velo. Me costó concluir, mal, que no se mandaba ninguna petición.
+
+#### Lo que quedó de prueba en producción
+
+**TK873C5** — *"[PRUEBA UX 04/11] Cotización de auto…"*, de MATEO, tomado por
+DIEGO. Es de bot (`es_bot`), así que no sale en el tablero del Admin.
+
+---
+
+### ✅ 2026-10-30 — los bots se manejan desde esta máquina, y M11 no era bug
+
+Pedido de Ricardo: *"correr los bots usuarios desde esta máquina… que tú puedas
+cachar errores y con mi autorización y un plan presentado, los podamos ir
+corrigiendo"*. Alcance que autorizó: **flujo completo, incluido cerrar**.
+
+#### La herramienta: `qa/`
+
+Tres piezas, manual en `qa/README.md`, registro en `qa/hallazgos.md`.
+`conducir.mjs` **se conecta** por CDP a un Chrome que ya está abierto con la
+sesión iniciada — **nunca lanza navegador y nunca ve una contraseña**. Imprime
+estructura de pantalla, no imágenes: *un screenshot en base64 no cabe en una
+conversación*, y para decidir el siguiente clic hace falta la estructura.
+
+Sensores: consola, `pageerror`, peticiones fallidas, respuestas ≥400 y
+**`dialog`** — un `alert()` ES lo que el usuario ve, y Playwright los descarta
+solos si nadie escucha, perdiendo justo la evidencia.
+
+#### 🔑 M11 no era bug, y por qué conviene recordarlo
+
+El reporte decía *"Diego no ve la caja de comentarios"*. Con **su sesión real**,
+en los dos trámites exactos del reporte: la pestaña está, la caja está, se
+comentó y **quedó guardado**.
+
+Lo que sí había: la pestaña **Detalles** enseñaba un comentario con un link
+*"Ver todos los comentarios"* y **ninguna caja**. Quien se queda ahí concluye
+que no puede comentar. **El reporte describía bien lo que el usuario vivió y mal
+dónde estaba** — por tercera vez. El link ahora dice *"Ver y responder
+comentarios"*.
+
+#### A8 y A9 por fin se vieron funcionar
+
+- **A8 @menciones:** Diego (Empleado) escribió `@` y salieron **Laura y Sofía**.
+  Es la **primera vez** que funcionan para alguien que no es Administrador.
+- **A2 asignarse:** Diego se puso de Responsable y **sobrevivió a recargar**.
+- **A9 tiempo real:** un comentario apareció en otra pestaña sin recargar.
+
+#### Lo arreglado de los hallazgos propios
+
+| | Qué era |
+|---|---|
+| **H-003** | la **barra lateral colapsada** no tenía un solo nombre accesible, y las tarjetas eran `<div>` con `onClick`: **ningún elemento enfocable en toda la pantalla**, imposible abrir un trámite con teclado. Se les dio rol, foco y Enter/Espacio — **no `<a>`**, porque el arrastre del Kanban vive en esos mismos pointer events |
+| **H-005** | la tabla "Información del Trámite" lee **solo `tramite_respuestas`**, pero prioridad, descripción y fecha promesa tienen **columna propia en `tickets`**. Decía *"Sin registrar"* tres renglones debajo de donde la misma pantalla mostraba el dato. Ahora caen a la columna y quedan **de solo lectura**: cada uno ya tiene su editor ahí, y dos editores para un dato es como nació la contradicción |
+| **H-006** | `actualizar_ultima_accion_ticket()` hace UPDATE sobre `tickets` al comentar; eso dispara el trigger que pone `ultima_modificacion = now()` y **nadie toca `modificado_por`**. La fecha avanzaba y el nombre se quedaba en el anterior — un dato de auditoría afirmando que alguien tocó el trámite cuando no lo tocó. Una línea, en la base y no en la pantalla, porque un comentario entra por varios caminos y todos pasan por ese trigger |
+| **H-007** | `grupos.find(...)?.nombre \|\| 'Sin equipo asignado'` — decía "sin equipo" siempre que no pudiera **nombrarlo**. Tener equipo y poder nombrarlo son dos preguntas distintas |
+
+**Fecha Promesa, regla nueva de Ricardo:** la ponen **Empleados**, Gerentes y
+Admins; el **Agente nunca la edita** y solo la ve cuando ya trae valor. Antes un
+Empleado que no fuera líder de equipo tampoco podía.
+
+#### 🔑 Tres cosas que conviene no volver a aprender
+
+1. **Este repo es PÚBLICO** (`crickmx/jiromovi`, verificado). Un hueco de
+   seguridad sin cerrar **no se describe en un archivo versionado**.
+2. **`fill()` no simula teclas.** El autocompletado de @menciones no se dispara
+   con `escribir`; con `tecla` sí. Una prueba dio falso negativo por esto.
+3. **El orden de `--pagina` no es el orden en que se abrieron las pestañas.**
+   Identificar cada una con `--resumen` antes de actuar.
+
+---
+
+### ✅ 2026-10-29 — el reporte de los bots: Trámites y Store
+
+Ricardo entregó `reporte-agentesia-movi.pdf` con los hallazgos de los agentes de IA y acotó el alcance: *"me gustaría enfocarnos en los de trámites y store, los demás los está revisando Christofer"*. Eligió el orden **"lo roto y barato"**.
+
+**🔑 La lección de método del día: el reporte describe síntomas, no causas, y sus diagnósticos propuestos estuvieron equivocados más veces que acertados.** Leerlo como lista de tareas habría arreglado la pantalla equivocada en seis de los once hallazgos. Lo que sirvió fue tratarlo como lista de **síntomas reproducibles** y buscar la causa en el código y en `pg_policies` / `pg_publication_tables`.
+
+| | El reporte decía | Lo que era de verdad |
+|---|---|---|
+| **A2** | "no se puede asignar" | Las **tres** políticas de escritura de `ticket_asignaciones` exigen Admin o Gerente, y las **tres** de UPDATE de `tickets` deciden por **oficina**. Christofer pasó la LECTURA a equipos el 23/10 y la escritura se quedó atrás: un Empleado **ve** los trámites de su equipo y solo puede escribir en los de su oficina |
+| **A3** | "los KPIs salen mal" | `cerrado` no alimenta ningún KPI. Lo lee **una** función del Centro de Contacto, y con `cerrado=false` eterno un ejecutivo seguía viendo conversaciones de agentes cuyos trámites cerraron hace meses |
+| **A4** | "el aviso sale 2 veces" | Es el **mismo bug que B22**: la nota obligatoria del cambio de estatus dispara también el trigger de comentario. Y su segunda mitad (TKA65F1 sin destinatarios) **no era un bug**: es un trámite de bot con responsable humano, o sea nuestro propio filtro del 21/10 |
+| **A5** | "agregar Tesorería al mapa de colores" | Un `CONFIG[valor]` indexado por un valor que crece con el tiempo. Agregar un área no arregla la siguiente |
+| **A7** | "precargar los datos" | `tickets` **no tiene columna `descripcion`** (es `instrucciones`): el select tronaba con 42703 y nadie miraba el error. Y aun así solo se copiaban tipo y prioridad |
+| **A8** | "revisar la consulta del autocompletado" | La consulta está bien. **La RLS de `tramites_grupos_miembros` solo deja ver tu propia fila** si no eres Administrador |
+| **A9** | "revisar el canal realtime" | `ticket_comentarios` **nunca estuvo en la publicación `supabase_realtime`** |
+| **A10** | "un error" | Cuatro archivos y **dos** errores distintos (`created_at` que no existe, y un embed sin FK) |
+| **B1** | "las imágenes pesan mucho" | Faltaba `loading="lazy"`: el catálogo bajaba 14.9 MB de golpe |
+| **B14** | "96 botones sin etiqueta" | Son **dos por tarjeta de producto**, el `−` y el `+` |
+| **M8** | "marcar el campo con asterisco" | El asterisco ya se pinta. **El campo no se dibuja para un Agente** (`if (isAgent) return null`) y la validación no lo sabía |
+
+#### 🔑 Los dos hallazgos de fondo, que valen más que el reporte entero
+
+**1. Trámites y Store llevan años sin tiempo real.** Supabase solo transmite las tablas que estén en la publicación `supabase_realtime`. En esta base hay **tres** (`contact_center_messages`, `notificaciones`, `notifications`) y el frontend se suscribe a **más de veinte**. `tickets`, `ticket_comentarios`, `ticket_archivos`, `ticket_historial` y `store_pedidos` nunca estuvieron ahí.
+
+Eso explica por qué *"no se actualiza hasta recargar"* reaparece cada pocos meses en una pantalla distinta y nunca se cierra. **El arreglo de julio** —pasar el canal del tablero a `subscribeResilientChannel`— **hizo que se reconectara de forma confiable a un flujo vacío.** La migración `20261029000006` publica las cinco de este alcance; las otras ~17 tablas siguen igual y están listadas dentro del archivo.
+
+Comprobación:
+```sql
+select tablename from pg_publication_tables
+ where pubname = 'supabase_realtime' and schemaname = 'public' order by tablename;
+```
+
+**No se tocó `REPLICA IDENTITY`** a propósito: en FULL, Postgres escribiría la fila vieja completa al WAL en cada UPDATE de `tickets`, que es la tabla más movida del sistema. Con la identidad por llave primaria llegan igual los INSERT y los UPDATE con la fila nueva, que es lo único que estas pantallas usan — y los borrados de trámite son lógicos (`eliminado_at`), o sea UPDATE. **La RLS sigue mandando**: Realtime evalúa las políticas contra cada suscriptor, publicar no abre nada.
+
+**2. Las @menciones nunca funcionaron para nadie salvo un Administrador.** `tramites_grupos_miembros` tiene **una sola** política de lectura: `usuario_id = auth.uid() OR rol = 'Administrador'`. El autocompletado pide los miembros del equipo, recibe una fila —la suya— y la descarta porque uno no se menciona a sí mismo. **Patrón #1 del proyecto**, en su forma más limpia.
+
+No son solo las menciones: la misma tabla la leen la lista de miembros del detalle y el conteo de "Mi equipo" (`PanelLider`), que **por esto cuenta 1 siempre**.
+
+#### Lo arreglado, por commit
+
+| Commit | Qué |
+|---|---|
+| `2749c010` | **A3** — `cerrado` sigue a `cerrado_en` |
+| `8d275e18` | **A4 + B22** — un cambio de estatus manda UN aviso, y dice que es de estatus |
+| `18cc70ab` | **Store** — B1 (lazy loading), B14/B16 (`aria-label`), B19 (Escape) |
+| `a692af0a` | **A2** — el equipo puede operar sus trámites, y los seis `update`/`insert` por fin miran su error |
+| `fc8467ec` | **A7 + M8** — duplicar copia el trámite; un requerido invisible deja de bloquear |
+| `1fef6956` | **A8 + A9** — el equipo se ve a sí mismo; Trámites y Store transmiten |
+
+A1, A5, A10 y A12 entraron antes, en la pasada de `colorDeArea()` y los dashboards.
+
+#### Decisiones que conviene no volver a discutir
+
+- **En A2 se AGREGÓ una política, no se reescribieron las tres.** Las permisivas se combinan con OR, así que sumar una solo puede abrir lo que falta: no hay forma de romper lo que hoy funciona.
+- **El `with check` de esa política exige que el trámite SIGA en un equipo del usuario**: puede asignarse, cambiar prioridad y estatus, pero **no mover el trámite a otro equipo**. Un `with check` permisivo ahí relajaría de paso las restricciones de las otras tres, porque el check final también es un OR.
+- **Al duplicar, los campos de SISTEMA se quedan fuera** (área, equipo, estatus, fechas, responsable): describen el *estado* del trámite viejo, no sus datos, y el alta los resuelve sola. El solicitante sí se hereda.
+- **M8 dejó una sola definición, `campoSistemaOculto`**, que usan el render, la validación y la barra de progreso — para que lo que se ve y lo que se exige no se puedan volver a separar.
+
+#### 🔴 Dos bugs encontrados de paso, que nadie reportó
+
+1. **`confirmarEscalacion` escribía en `ticket_comentarios.contenido`**, columna que **no existe** (es `mensaje`). Los comentarios de escalación se perdían en silencio desde julio. Corregido.
+2. **`bug-reports-daily-digest` consulta `ticket_comentarios.created_at`** — tampoco existe (es `fecha_hora`). **Sigue sin corregir**; es cambiar la palabra en dos lugares.
+
+#### ❌ Lo que queda del reporte
+
+| | |
+|---|---|
+| **Código, pendiente** | **M9** "Vista tablero" no cambia la pantalla · **M10** comentar sin conexión no muestra nada · **M11** Diego no ve la caja de comentarios en trámites de Sistemas que él creó |
+| **Configuración de Ricardo** | **A6** — medido contra la base el 04/11: son **exactamente dos tipos**, "Alta Usuario Beta" y "Reporte Semanal". Les faltan los campos de sistema `descripcion` y `archivos_adjuntos`, así que `instrucciones` se guarda como *"Sin descripción"* y no hay dónde adjuntar. **Lo que el usuario escribe en "Comentarios" SÍ se guarda** — lo que se pierde es el encabezado y la línea de descripción del aviso por WhatsApp/correo, que leen `instrucciones`. ⚠️ Otros **seis** tipos activos tampoco traen el `archivos_adjuntos` de sistema y **eso NO es un defecto**: ya tienen su propio campo de adjuntos (Cambio bancario, Cotización, Registro de Póliza, Registro Pedido MOVI STORE Comisiones, Solicitud de comisiones, Solicitud de Pago a Proveedores). La consulta de abajo los lista a todos; hay que cruzarla con los campos propios antes de concluir |
+| **Datos** | **B5** equipo "Pruebas MOVI Digital" duplicado · **B7** "Mesa de Control Aguascalienteses" · **B8** "informaicón" en la ayuda del adjunto de Cotización (está en el FormBuilder) |
+
+Para A6, qué tipos están así:
+```sql
+select t.label,
+       bool_or(c.sistema_key = 'descripcion')        as tiene_descripcion,
+       bool_or(c.sistema_key = 'archivos_adjuntos')  as tiene_adjuntos
+from ticket_tipos t
+left join tramite_tipo_campos c on c.tramite_tipo_id = t.id and c.activo
+where t.activo
+group by t.label
+having not bool_or(c.sistema_key = 'descripcion')
+    or not bool_or(c.sistema_key = 'archivos_adjuntos')
+order by t.label;
+```
+
+#### ⚠️ Señalado a Ricardo, sin tocar
+
+- **Las políticas de UPDATE de `tickets` ya son CUATRO** (medido el 06/11):
+  `tickets_update_by_role`, `tickets_update_by_role_or_participant`,
+  `tickets_update_policy` y `tickets_update_por_equipo`. Siguen siendo
+  permisivas, o sea que se combinan con OR: **no se puede saber qué permite el
+  conjunto sin leer las cuatro**, y cada una que se suma solo puede abrir más.
+  Cuando se escribió esta nota eran tres.
+- **`tickets_update_by_role_or_participant` usa `get_my_oficina_id()` en singular**, mientras el 23/10 se agregó `get_my_oficina_ids()` plural. Un Gerente con oficina adicional **ve** esos trámites pero no los puede editar. Es una palabra, pero toca una política existente.
+- **`tramite_respuestas` tiene la escritura abierta**: cualquier usuario con sesión puede modificar las respuestas del formulario de cualquier trámite.
+
+---
+
+### 🤖 2026-10-21 — los agentes de IA son usuarios de MOVI: qué se sabe y qué falta
+
+Ricardo le pidió a Christofer crear agentes de IA que son **usuarios de MOVI reales**, con oficina y equipo, para detectar bugs. Esto es lo averiguado, porque **casi nada de ello está en el repo**.
+
+#### Quiénes son
+
+Cinco, todos en la oficina **MOVI Digital**, apellido **PRUEBAS**:
+
+| | Rol de sistema | Qué alcanza a ver |
+|---|---|---|
+| MATEO, VALERIA | Agente | solo sus propios trámites |
+| DIEGO, SOFÍA | Empleado | lo suyo + lo de sus equipos |
+| LAURA | Gerente | lo de sus equipos |
+
+Cubren los niveles de permiso a propósito. **No hay ninguno Administrador**, y ahí viven casi todas las pantallas de configuración (Transaccionales, FormBuilder, Control de Módulos, Base de Datos) — que son justo donde más ha mordido el patrón de "pantalla que guarda sin error y no hace nada". Hoy nadie las prueba.
+
+#### Lo que NO está en el repo, y se buscó a fondo
+
+`"Flujo QA"`, `"PRUEBA QA"`, `"prueba automatizada"` y el id de flujo: **0 resultados** en las 129 ramas **y** en toda la historia (`git log -S`, no solo las puntas). Ninguna rama agregó una edge function. La org `crickmx` solo tiene este repo activo. **El prompt y lo que genera los flujos QA no pasan por GitHub** — al repo solo llega el resultado de los arreglos.
+
+#### Lo que dicen los datos de la base (21/10)
+
+- **No hay cron de QA.** Los 17 jobs de `cron.job` son los de siempre.
+- **Las 5 cuentas nacieron de un golpe**: mismo `created_at` al microsegundo (`17:03:20.842114`). Un script o una llamada por API, no alta manual.
+- **Entran con sesión real** (`auth.users.last_sign_in_at` entre 18:13 y 18:41), así que pasan por RLS y permisos como cualquiera. No usan `service_role`.
+- **Lo que los mueve es una sesión, no un sistema.** El último login es de las 18:41 y los trámites siguen hasta las 21:21; los intervalos son irregulares (+7, +2, +21, +3, +2, +3, +40 min); y el texto fue cambiando durante la corrida (de *"Cotización de prueba"* a *"Flujo completo QA"* a *"#MVIKQHL5"*). Alguien iterando el script en vivo.
+
+  **Si Christofer cierra esa sesión, los bots se detienen.** Todavía no es un sistema, es una corrida.
+- **Los 8 trámites son el mismo flujo feliz** ocho veces (`cotizacion_emision_nuevo`: Valeria crea, Sofía atiende, Laura supervisa). Valida que el camino funciona, pero **no es navegar como usuario real**: así no salen parpadeos, botones muertos, etiquetas confusas ni campos que no se dejan llenar.
+
+#### GitHub: los bots NO tienen cuenta propia
+
+Primera lectura, equivocada: "los bots tienen permiso de push". **El autor del commit es texto libre y no dice nada de permisos.** Verificado contra la API (`triggering_actor`): los commits de "Claude" del 20 y 21 los empujó **`crickmx`**. Los colaboradores son cuatro personas —`crickmx` (admin), `medaunbrauni`, `Froilan-Perez-Garcia`, `dieguegue`— y ninguna es un bot.
+
+Consecuencia: **no hay push que revocar**; quitárselo sería quitárselo a Christofer. La única palanca es **proteger `main`** exigiendo PR, y marcando *"incluir administradores"* o a él no le aplica.
+
+#### Lo decidido con Ricardo (21/10)
+
+- **Los agentes dejan de arreglar código.** Solo reportan, como usuarios reales.
+- Un **agente monitor** revisa su actividad; los hallazgos van a un **registro**, y de ahí salen los reportes de bugs/mejoras/fixes. Qué se arregla lo decide Ricardo.
+- El registro es **tabla + pantalla en MOVI**, no un trámite por hallazgo: si reportan como usuarios reales van a soltar decenas al día e inundarían Trámites. Se **promueve a trámite** solo lo que valga.
+
+#### La rúbrica acordada — en qué se deben fijar
+
+| | Qué cuenta como hallazgo |
+|---|---|
+| Botones | no hace nada, no dice qué hizo, se queda en "Guardando…", el doble clic duplica |
+| Links | 404, pantalla en blanco, ancla muerta, abre fuera del sitio sin avisar |
+| Estabilidad visual | parpadeo, el contenido salta al cargar, el encabezado oscila al hacer scroll, modal recortado |
+| Claridad | etiqueta que no dice lo que el control hace, error sin decir qué hacer, instrucción ambigua |
+| Campos | requerido imposible de llenar, selector vacío, bloqueado sin decir por qué, validación que rechaza algo válido |
+| Configuración sin efecto | una pantalla que guarda sin error y no cambia nada — **el patrón #1 de este proyecto**, ya pasó cuatro veces |
+| Guardados que mienten | la tarjeta desaparece de pantalla pero la base no cambió |
+| Permisos por rol | un rol ve de más o de menos de lo que debería (es el bug de `/oficinas` que encontraron el 21) |
+
+Cada hallazgo obliga a cuatro datos: **ruta · qué esperaba · qué pasó · se repite**. Sin los cuatro, no entra al registro.
+
+#### ❌ Lo que falta, y de quién depende
+
+**De Christofer:**
+1. El script que creó las 5 cuentas a las 17:03 — ahí está cómo quedaron configuradas.
+2. El script o la sesión que genera los flujos QA, para volverlo permanente.
+3. El prompt actual.
+
+**De nosotros, en el repo:**
+4. **Apagar la línea que les ordena arreglar.** `supabase/functions/bug-reports-daily-digest/index.ts`, línea 112: *"revisa el repo real antes de confirmar una causa o **aplicar un fix**"*. Mientras esté ahí siguen arreglando aunque el prompt diga otra cosa.
+5. **Pieza 2: el registro de hallazgos** (tabla + pantalla).
+6. **Proteger `main`** con PR obligatorio, incluyendo administradores.
+
+🔴 **Bug encontrado de paso, sin arreglar:** el digest consulta `ticket_comentarios.created_at` y **esa columna no existe** (es `fecha_hora`). La consulta falla, nadie revisa el `error`, y todo reporte cerrado sale con *"Sin comentarios registrados"*. Es cambiar la palabra en dos lugares.
+
+---
+
+### ✅ 2026-10-21 — el tablero se separa en Reales / Bots / Todo
+
+Pedido de Ricardo: *"no tener saturado mi tablero de trámites de bots… ya sé que existen los filtros, pero quiero un toggle"*.
+
+**Los filtros no alcanzaban, y esa es la razón de fondo.** Las fichas de arriba (Requiere Atención, Alta Prioridad, En Riesgo, Sin Asignar) se cuentan de `visibleTramites`, **antes** de los filtros (`Tramites.tsx`, el bloque `const activos = visibleTramites.filter(...)`). Filtrar por agente o equipo limpiaba el Kanban y dejaba los contadores igual de saturados. Por eso el toggle corta **al nivel de `visibleTramites`**: con un solo punto se limpian fichas, las tres columnas, la papelera y las opciones de los propios filtros.
+
+- `usuarios.es_bot`, **una columna y no una tabla**: ser bot es un atributo de la persona. Reconocerlos por una lista de ids en el código, por su equipo o por el dominio del correo deja de ser cierto el día que alguien los mueve, y nadie se entera.
+- Un trámite es de bot si lo levantó un bot **o** si es para uno (`esDeBot`). Mirar un solo lado mandaría al tablero equivocado los que mezclan persona y agente.
+- Arranca en **Reales**, se recuerda en `localStorage`, y **solo lo ve el Administrador** — es el único que ve TODO y por eso el único a quien le satura.
+
+**Para marcar a un agente nuevo**, hasta que haya casilla en el modal de usuario:
+
+```sql
+update usuarios u set es_bot = true
+from oficinas o
+where o.id = u.oficina_id and o.nombre = 'Oficina MOVI Digital' and u.apellidos = 'PRUEBAS';
+```
+
+Va por apellido **y** oficina a propósito: si entra una persona real a esa oficina, no se vuelve bot sola.
+
+**Fuera de alcance a propósito:** en modo "Todo" no se distingue cuál tarjeta es de bot (sería un ícono), y Reportes de Trámites sigue contándolos.
+
+---
+
+### ✅ 2026-10-21 — los trámites de los bots dejan de avisarle a las personas
+
+La regla es **"un trámite de bot solo le avisa a bots"**, no "los trámites de bot no avisan". Los agentes están para ejercitar el flujo completo y las notificaciones son parte de lo que tienen que poder romper: apagarlas del todo dejaría el motor de avisos sin nadie que lo probara hasta que fallara con una persona enfrente.
+
+Se corta en **dos** lugares, porque son dos caminos que no se tocan:
+
+| Dónde | Qué cubre |
+|---|---|
+| `resolver_destinatarios_aviso` | todo lo que sale por triggers de la base (comentario, estatus, actualización, documento) + el trámite nuevo del frontend. Es el grueso, y apaga también correo y WhatsApp de la cola |
+| `enviar_notificacion_individual` | los **siete** avisos sueltos escritos a mano en `TramiteDetalle` y `NuevoTramiteModal` |
+
+**🔑 Por qué no bastaba un trigger sobre `notificaciones`:** las siete llamadas sueltas mandan **WhatsApp además de la campanita**, y el WhatsApp sale de `enviar_notificacion_individual` *después* del insert. Un trigger habría cortado la campanita y dejado salir el WhatsApp igual.
+
+**🔑 Cómo se modificó esa función sin reescribirla.** Tiene ~100 líneas. La migración lee su definición **viva** con `pg_get_functiondef`, le inserta la guarda justo después del `BEGIN` y aborta si no encuentra el ancla. Dos razones: reconstruir 100 líneas de memoria es como se cuela un error sin síntoma (ya pasó el 19/10), y la versión viva de esta base no siempre coincide con la del repo (`tickets_select_v6`, `ejecutar_recurrencias`). **Es el patrón a reusar cada vez que haya que tocar una función larga que no escribimos nosotros.**
+
+`aviso_de_bot_para_persona(user_id, accion_url)` deduce el trámite del `accion_url` (`/tramites/<uuid>`), que es el único dato que todas las llamadas traen, y **devuelve false ante cualquier duda** —sin url, otra ruta, trámite inexistente, error—: un aviso de más molesta, uno que desaparece en silencio es el que hace daño.
+
+El badge del sidebar (`get_admin_tramites_attention_count`) deja de contarlos. **Decisión de Ricardo: nunca los cuenta, aunque el toggle esté en Bots** — es un contador global y lo útil es que diga trabajo real pendiente.
+
+Para limpiar las que ya se acumularon:
+
+```sql
+delete from notificaciones n where aviso_de_bot_para_persona(n.usuario_id, n.accion_url);
+```
+
+---
+
+### 🔴 2026-10-19 — tres motores de notificaciones, y la cuenta de que eran tres
+
+Arrancó con *"¿cómo podemos mover todo a un solo motor?"*. La respuesta corta de por qué hacía falta: **había tres**, y ninguno sabía de los otros.
+
+| Motor | Lo dispara | Lee plantillas de | Cómo manda |
+|---|---|---|---|
+| `ticket-notification-dispatcher` (edge) | el frontend | `transactional_notification_templates` | Resend/Wazzup directo + campanita, y **contesta qué mandó** |
+| `enviar_notificacion_transaccional` (SQL) | **triggers de BD** | `correo_plantillas` (hasta hoy) | encola en `notification_jobs`, el cron los saca |
+| `send_transactional_notification` (SQL) | edge functions de leads | `transactional_notification_templates` | campanita + `net.http_post` |
+
+**Dos tablas de plantillas y las reglas de destinatarios escritas dos veces** (una en TS, otra en SQL). Nada de eso da error: solo hace que un día los dos caminos empiecen a avisar distinto, y nadie se entera.
+
+#### Lo que se hizo
+
+| | Qué resuelve |
+|---|---|
+| `20261019000001` | la vista de uso une los **tres** motores (antes dos) y solo cuenta `status='sent'`. Con eso, 5 de los 6 avisos de Trámites pasaron de rojo a verde — ver la sección "CORREGIDO el 19/10" arriba |
+| `20261019000002` | los avisos que salen por trigger leen sus **canales** de `correo_tipos_notificacion` y sus **destinatarios** de `destinatarios_roles`. Antes mandaban siempre por los dos canales, sin mirar la pantalla |
+| `20261019000003` (Fase 1) | **una sola tabla de plantillas**. `enviar_notificacion_transaccional` deja `correo_plantillas` y lee `transactional_notification_templates`; el editor deja de escribir en dos tablas |
+| `20261019000004` (Fase 2) | **un solo lugar con las reglas**: `resolver_destinatarios_aviso(ticket, codigo)`. La usan los triggers y el frontend por RPC; `destinatariosAviso.ts` se queda solo con el catálogo que pinta los botones |
+| `63c83d33` | tres `crear_notificacion` muertas en `escalar-tramite` (1) y `process-poliza-pdf` (2) — esa función **no existe** en la base, llevaban meses fallando en silencio |
+
+**Decisiones de Ricardo en la migración de plantillas:** **gana la plantilla que se está usando**, para que nadie note un cambio de texto el día que corra. Los cinco avisos que salen por SQL imponen su texto; `tramite_documento_cargado` es el único que puede cambiar, porque sale por los dos caminos.
+
+#### 🔑 Lo que conviene no volver a aprender
+
+1. **Un `grep` del repo no es una búsqueda completa aquí.** Lo de arriba: cinco avisos declarados muertos porque la revisión nunca miró `pg_trigger`.
+2. **No reconstruir una función SQL de memoria.** A media sesión se reescribieron a mano las ~143 líneas de `enviar_notificacion_transaccional` para cambiarle una línea. Se tiró y se regeneró **del texto real de la migración anterior**, cambiando solo la fuente de la plantilla: reconstruir de memoria es exactamente cómo se cuela un error que no da síntoma.
+3. **`DROP` antes de `CREATE OR REPLACE`** si cambia el tipo de retorno o se agrega un parámetro — si no, Postgres crea una **sobrecarga** y el llamador sigue entrando a la vieja.
+4. **`.rpc()` devuelve el error, no lo lanza.** Una llamada sin revisar `error` falla en silencio.
+
+---
+
+### ✅ 2026-10-19 — el alta de trámite tronaba con `uuid: ""`
+
+Reportado al cerrar: crear una **Cotización** como Gerente devolvía *«invalid input syntax for type uuid: ""»* y el trámite no se guardaba.
+
+`asignado` y `comAgenteUserId` son estados de selector: **arrancan en cadena vacía, no en null**. Si el tipo de trámite no marca Solicitante como requerido —y Cotización no lo marca, por eso la barra decía 4/4— nadie lo elige, y ese `''` viajaba tal cual a `tickets.agente_id`, que es `uuid`.
+
+Se normaliza en el **único punto** donde se arma el insert (`uuidONull`, en `handleSubmit` de `NuevoTramiteModal.tsx`), no en cada selector. **No era regresión de ese día**: está así desde septiembre, solo que hasta entonces nadie había dado de alta un tipo sin Solicitante obligatorio.
+
+**Dos cosas que quedaron abiertas:** si Cotización **sí** debe pedir Solicitante, se marca requerido en el FormBuilder; y sin solicitante el trámite nace sin agente, así que no cae en ninguna regla de equipo y queda "Sin responsable" con el aviso a Administradores.
+
+**🔑 Patrón:** en este proyecto los selectores inicializan en `''`. Cualquier estado de selector que termine en una columna `uuid`, `date` o numérica necesita esa normalización — el `''` no da problema hasta que alguien no elige nada.
+
+---
+
+### 🔴 2026-10-16 — Admin › Transaccionales: cuatro pantallas que no mandaban nada
+
+Día entero sobre el motor de notificaciones. La pregunta de arranque fue *"¿esta sección realmente está funcionando?"*. **No, casi nada.** Cuatro hallazgos encadenados, cada uno tapando al siguiente:
+
+| Lo que se veía en pantalla | Lo que pasaba de verdad |
+|---|---|
+| 6 avisos de Trámites activos con sus canales | **5 no los dispara nadie**; solo `tramite_documento_cargado` |
+| Botones Push / WhatsApp / Correo por evento | **El despachador nunca los leía**: mandaba siempre por los dos |
+| Lista de "Destinatarios" | Otro mecanismo; el destinatario real estaba **escrito en el código** |
+| "Editar Plantilla" | Editaba **`correo_plantillas`, tabla de la que NINGÚN motor manda** |
+
+**El patrón, por cuarta vez en el proyecto:** una pantalla de configuración completa, que guarda sin error, y que el motor nunca consulta. Ya pasó con `tramite_team_tipo_config`, con los eventos de Marketing Premium y con los equipos habilitados por tipo. **Al tocar una pantalla de configuración, lo primero es un `grep` del nombre de la tabla en `supabase/functions/` y `src/`: si solo aparece donde se guarda, no sirve para nada.**
+
+#### Lo que se construyó
+
+| Pieza | Qué resuelve |
+|---|---|
+| `notificaciones_uso_view` + marcas verde/roja | La pantalla dice si un aviso **se disparó alguna vez**. Une los historiales de los DOS motores (`correo_historial_envios` por código y `transactional_notification_history` por `event_key`) — mirar solo uno habría marcado como muertas todas las de trámites |
+| `canalesDelAviso()` en el despachador | Los botones de canal por fin apagan algo |
+| `tramite_tipo_notificacion_canales` | Excepciones por **tipo de trámite**; la lista sale de `ticket_tipos` activos, individual o en bloque. Sin renglón, hereda del evento |
+| `destinatarios_roles` + `destinatariosAviso.ts` (con autocomprobación) | A quién se le avisa, **por su papel**: solicitante, responsable, líder, lista fija |
+| `avisarPorEvento()` en `notificationHelpers` | Dispara el evento al motor **con red**: si no hay plantilla, está apagado o falla, manda el aviso de siempre |
+| `destinatario_user_id` en el despachador | Nació para avisarle al AGENTE; estos avisos van al responsable o al líder |
+| Campanita desde la plantilla | Solo mandaba correo y WhatsApp; los campos `inapp_*` existían desde el principio y nadie los usaba |
+| Plantilla de `nuevo_tramite` | Correo (fragmento HTML con estilos en línea), WhatsApp y campanita, con 📋 |
+| `variablesPlantilla.ts` + `SelectorVariables` | Las variables que el motor **de verdad** sustituye, con buscador y filtros, más los campos del formulario como `{{campo_<clave>}}` |
+
+#### 🔑 Tres trampas, una prueba en vivo cada una
+
+**1. `crear_notificacion` NO EXISTE en la base.** El despachador la llamaba para la campanita, fallaba siempre, y como `avisarPorEvento` usa eso para saber si el aviso salió, mandaba su respaldo: **llegaban dos WhatsApp**. La buena es `enviar_notificacion_individual(p_user_id, p_titulo, p_mensaje, p_modulo, p_accion_url, p_enviar_whatsapp)` — con el último en `false`, o el WhatsApp se duplica otra vez.
+
+**2. `ON CONFLICT DO NOTHING` no instaló la plantilla nueva.** Ya existía un renglón de enero para `nuevo_tramite`, así que la plantilla diseñada nunca se guardó y siguió mandando la vieja. Y la vieja usa nombres de variable que el despachador no entrega, así que el WhatsApp llegaba con *"Folio:", "Usuario:", "Fecha:"* **en blanco**. `renderTemplate` borra lo que no puede sustituir: **un nombre de variable equivocado no da error, deja un hueco**.
+
+**3. El respaldo no debe correr si el motor mandó ALGO.** La primera versión exigía que la campanita hubiera salido para dar el aviso por bueno; con el WhatsApp ya enviado y la campanita rota, el respaldo lo repetía. Ahora: si salió algo, no hay respaldo; y si lo único que faltó fue la campanita, se crea solo esa, con el WhatsApp apagado.
+
+#### Decisiones de Ricardo
+- Por tipo de trámite se configuran **solo los canales**, no el texto (30 tipos x 6 eventos de textos no los mantiene nadie).
+- Un tipo sin configuración **hereda** la del evento; una configuración vacía **nunca** significa "no avisar".
+- El líder del equipo es **respaldo**, no un segundo destinatario: con responsable puesto, no le llega.
+- El aviso a Administradores cuando el trámite no cae en ninguna regla **no es configurable**: es una alarma de configuración rota, y poder apagarla sería poder quedarse sin enterarse.
+
+---
+
+### 2026-10-15 — saber qué adjunto llegó y cuál no
+
+Ricardo mandó 3 archivos y llegaron 2. **El dato ya se guardaba** —`notification_attachments_log` registra por archivo y por canal si salió y el motivo— pero no se leía en ningún lado: un archivo que falló se veía **idéntico** a uno que nunca se intentó mandar.
+
+- La pestaña Archivos lee ahora **todos** los intentos, no solo los exitosos: marca verde "Enviado", marca roja "No se envió" con el motivo en el tooltip. Un reenvío exitoso borra la marca roja anterior.
+- El aviso al terminar dice los números reales (`correo 2/3, WhatsApp 3/3 — falló X.pdf`) y pasa a rojo si alguno se quedó. **Un "enviado correctamente" cuando salieron 2 de 3 es justo lo que impide ver el problema.**
+- La respuesta del despachador separa `intentadosCorreo`/`intentadosWhatsapp` de `resueltos`: con el filtro por tipo y el candado, "cuántos archivos hay" y "cuántos se intentaron mandar" dejaron de ser el mismo número, y el viejo `total` ya no servía para saber si llegaron todos.
+
+**🔑 Patrón, otra vez el mismo:** el sistema ya sabía la respuesta y la guardaba; lo que faltaba era enseñarla. Antes de construir un mecanismo de diagnóstico nuevo, revisar si el dato ya está en alguna tabla de log.
+
+---
+
+### 2026-10-15 — adjuntos al agente: configurables por tipo, con candado
+
+Pedido de Ricardo: que al agente le lleguen por WhatsApp y correo los archivos que se adjuntan, poder elegir cuáles, poder reenviar a mano, y que no se repitan en cada cambio de estatus.
+
+**La mitad ya existía:** las dos funciones de envío saben mandar archivos, `enviar-correo-transaccional` acepta `attachment_file_ids` (una lista específica), y `notification_attachments_log` ya registraba qué archivo salió por qué canal. **El origen del problema:** `getTicketNotificationAttachments()` sin lista explícita devuelve **TODOS** los archivos del trámite, así que cada evento con adjuntos reenviaba todo, incluido lo interno.
+
+**Lo que se agregó:**
+
+| Pieza | Dónde |
+|---|---|
+| Config por tipo: canales + categorías que salen solas | FormBuilder → pestaña **Envío de adjuntos** (`EnvioAdjuntosTab.tsx`); columnas `ticket_tipos.envio_adjuntos_canales` / `..._categorias_ids` |
+| Candado global | `filtrarAdjuntosParaEnvio()` en `ticket-notification-dispatcher`; se apoya en `notification_attachments_log.archivo_id` (columna nueva) |
+| Casilla por archivo + botón "Enviar al agente" + marca "Enviado" | pestaña Archivos del trámite (`TramiteArchivos.tsx`) |
+
+**Decisiones de Ricardo:** automático **solo lo configurado** (no todo); candado **global** (si ya salió por cualquier canal, no se repite); por tipo se configuran **canales + categorías**, no un simple switch.
+
+**Un tipo sin configurar no manda nada automáticamente**, y así quedan todos tras la migración. Es a propósito: el estado anterior era "mandar todo", y volver a encenderlo debe ser una decisión por tipo.
+
+- El envío manual va con `forzar_reenvio: true`: **salta la config y el candado**. Alguien lo presionó a propósito.
+- El candado reconoce por `archivo_id`; las filas anteriores al 15/10 no lo tienen, así que caen al **nombre dentro del mismo trámite** (la migración hace ese backfill). Mismo criterio en el frontend y en el despachador, a propósito.
+- Si el log no se puede leer, **no se manda nada automáticamente**: repetir un envío molesta al agente, y el botón manual sigue ahí.
+- Se reutiliza el evento `tramite_documento_cargado` para el envío manual — no hizo falta una plantilla nueva.
+
+**Migración corrida y `ticket-notification-dispatcher` redesplegado el 15/10.** Falta probarlo en navegador (ver la lista de arranque).
+
+---
+
+### 🔑 2026-10-15 — llaves nuevas de Supabase: lo que se midió (y por qué NO hay que migrar 189 funciones)
+
+Supabase está cambiando `anon`/`service_role` (JWT) por `sb_publishable_…`/`sb_secret_…` (que **no** son JWT). Deprecación anunciada: fin de 2026. Christofer mandó un plan para cambiar las ~189 edge functions que leen `SUPABASE_SERVICE_ROLE_KEY` a que lean `SUPABASE_SECRET_KEYS`. **Se midió con una sonda desechable (`probar-llaves-nuevas`, ya borrada) y ese trabajo no hace falta:**
+
+| Qué se probó | Resultado |
+|---|---|
+| Contenido de `SUPABASE_SERVICE_ROLE_KEY` | **ya es una `sb_secret_…`** de 41 caracteres, no un JWT |
+| `createClient(url, sb_secret_…)` | ✅ funciona (consulta real contra `usuarios`) |
+| Llamar a otra edge function con `Authorization: Bearer <sb_secret_>` | ✅ 200 |
+| Lo mismo con el header `apikey` | ✅ 200 |
+
+**Lo que esto significa:** Supabase ya cambió el **contenido** de la variable vieja. Las ~189 funciones que la leen ya usan la llave nueva sin saberlo; leerla por `SUPABASE_SECRET_KEYS` daría el mismo valor. Y las 9 funciones que llaman a otra con `Bearer ${supabaseServiceKey}` (`notification-dispatcher`, `process-policy-delivery`, `sicas-register-document-delivery`, `sicas-sync-orchestrator`, `submit-express-lead`, `sync-insurers-from-sheets`, `sync-production-from-sheets`, `wazzup-webhook`, `escalar-express-leads`) **no están rotas**: el gateway acepta la llave nueva de las dos formas, aunque la doc de Supabase recomiende `apikey`.
+
+**Dónde SÍ rompe el cambio de formato: donde se COMPARA la llave contra el header de quien llama.** Eran dos lugares, los dos cerrados:
+- `escalar-express-leads` — el 401 del cron cada minuto (14:16–14:22 UTC del 15/10). Arreglo de Christofer, PR #83.
+- `send-push-notification` — mismo patrón, arreglado el 15/10 (`8b086110`).
+
+⚠️ **El `includes()` era además un hueco de seguridad.** `authHeader.includes(serviceKey)`: si esa variable llegara vacía, `includes("")` es **siempre verdadero** y cualquiera con la URL podía disparar la función. Las dos ahora comparan exacto contra las llaves de servidor (`SUPABASE_SECRET_KEYS` + legacy), en `Bearer` o en `apikey`. **Si aparece ese patrón en otra función, es el mismo bug.**
+
+**Lo único que queda del plan:** cambiar las apps de `anon` a `sb_publishable_` (beta, producción, tienda, seguros.express, lector, bonos_jiro) — variable de entorno en Plesk + rebuild. Independiente de todo lo anterior.
+
+**Nota de método:** la sonda costó dos deploys y evitó reescribir 189 funciones sobre una suposición. El deploy es desde el **dashboard**, que empaqueta solo la carpeta de la función: por eso el bloque de llaves va **copiado** en cada función y no importado de `_shared`.
+
+---
+
+### 2026-10-15 — aseguradoras duplicadas en el selector + filtros multi-opción en el Directorio
+
+**La trampa:** el campo dinámico de aseguradoras guarda la selección como UN texto separado por comas, y **varios nombres del catálogo traen coma propia** (`ANA COMPAÑIA DE SEGUROS, S.A.`). Al releerlo, `split(',')` lo partía en pedazos, ninguno coincidía con el catálogo, la casilla salía sin palomear — y cada clic volvía a agregar el nombre. Tampoco se podía deseleccionar.
+
+`src/lib/aseguradorasSeleccion.ts` (+ su `.test.mjs`) vuelve a pegar los pedazos que juntos forman un nombre del catálogo, del más largo al más corto, y deduplica. **El formato guardado no cambió** — el detalle del trámite sigue leyendo y mostrando la lista completa. Lo que cambió es el campo cerrado del formulario: primera aseguradora + `otras N` (la lista completa queda en el `title`). Se lee contra el catálogo **completo**, no contra las filtradas por ramo, o filtrar por ramo borraría de la lectura algo ya elegido.
+
+El bloque Legacy `ce*` (`cotizacion_emision`) no tiene este bug: ahí la selección vive como arreglo, no como texto.
+
+**Directorio:** los filtros de Rol y Oficina ahora son multi-selección. El `MultiSelectDropdown` que vivía dentro de `pages/Tramites.tsx` se sacó a `components/ui/multi-select-dropdown.tsx` y lo usan las dos pantallas. El de Estado se dejó como `<select>`: sus tres opciones ya se excluyen entre sí.
+
+---
+
+### 2026-10-15 — equipos de trámite en todos los roles, Gerente ve lo suyo, equipo de un solo ejecutivo
+
+Salió de un reporte de DIANA JIMÉNEZ GUTIERREZ (Gerente): levantó varios trámites y **no le aparecían en su tablero**. Tres causas encadenadas, las tres arregladas:
+
+**1. Los equipos de trámite solo se podían configurar a Agentes (y Admins).** `puedeTenerEquiposTramite()` traía una lista blanca de roles (`ROLES_CON_EQUIPOS_TRAMITE`, ya borrada) y la sección "Equipos" se escondía para todo lo demás. Pero el motor (`get_grupo_para_ticket`) resuelve por **usuario + área** en `tramites_grupos_reglas` — el rol no entra en la consulta. Un trámite levantado para un Empleado o un Gerente nacía sin equipo. Ahora cualquier rol puede tener equipos asignados; lo que **sigue siendo solo del Agente** es la exigencia de cubrir todas las categorías (`mustValidateTramiteTeams`, intacto).
+
+- ⚠️ **La trampa que esto destapó:** `syncUserTramiteTeamAssignments()` terminaba con un `delete` de TODAS las filas del usuario en `tramites_grupos_miembros`. Era correcto mientras solo aplicara a Agentes (un agente no es miembro operativo, la BD hasta lo prohíbe con un trigger). Con los demás roles habría sido un desastre: de esa tabla salen los permisos de Trámites (`usePermisos`, `equiposAcceso`, `PanelLider`, menciones, notificaciones) — guardarle los equipos a un ejecutivo lo habría echado de su propio equipo. Ahora la función recibe el `rol` y solo limpia si es `'Agente'`; sin `rol`, no borra nada.
+- Al **dar de alta**, los equipos de un Agente los sigue validando y guardando la edge function `create-user` (no se tocó, no hay que redesplegar); los de cualquier otro rol los guarda `UserModal` después del alta, por la misma ruta que usa el admin al editar.
+- En la BD, `cleanup_tramite_relationships_on_role_change()` **desactivaba todas las reglas** del usuario al dejar de ser Agente. Esa mitad se eliminó; la otra (al pasar A Agente se le borran las membresías) se conservó.
+
+**2. Un Gerente no veía los trámites que él mismo levantó.** El filtro de `visibleTramites` cortaba al Gerente a `isInMyGroup` y nada más — sin equipo resuelto (`grupo_asignado_id` null, causa #1), no entraba por ningún lado. Ahora es `isInMyGroup || isDirectlyInvolved`. Mismo arreglo en `loadCerrados20`, que acotaba la consulta con un `in('grupo_asignado_id', …)` y hasta cortaba en seco (`return []`) si el Gerente no tenía equipos. **Ver TODO sigue siendo solo del Administrador.**
+
+**3. Equipo de un solo ejecutivo → se asigna directo.** `get_grupo_para_ticket` dejaba el trámite en el pool siempre que la regla no trajera `ejecutivo_id`, incluso en un equipo de una sola persona donde el pool no reparte nada. Se reescribió el cuerpo con variables (`v_grupo`/`v_ejecutivo`) en vez de un `RETURN QUERY` por nivel, para que el relleno final aplique a los tres niveles: si no hay ejecutivo resuelto y el equipo tiene **exactamente un** miembro con `rol_en_equipo = 'ejecutivo'`, ese se asigna. Con dos o más, el pool se respeta igual que antes. La prioridad de los niveles no cambió.
+
+- Detalle de Postgres: el conteo usa `(array_agg(m.usuario_id))[1] … HAVING count(*) = 1`. **`min(uuid)` no existe**, ya nos tropezamos con eso antes.
+
+**Migración:** `20261015100000_equipos_todos_los_roles_y_unico_ejecutivo.sql` (los puntos 1-BD y 3). Los demás son frontend.
+
+---
+
+### 🔴 2026-10-15 — migraciones: baseline nuevo, las viejas se archivaron
+
+Los correos de supabase[bot] en los PRs y la rama `main` de la integración en `MIGRATIONS_FAILED` desde el 1 de sept tenían una sola causa: **el historial de migraciones de producción ya no coincidía con el repo** (274 archivos corridos a mano sin registrar, 128 registros sin archivo, 4 timestamps repetidos, archivos duplicados que truenan al correr desde cero).
+
+**Ahora:** `supabase/migrations/` tiene UN solo archivo, `20261015000000_baseline_produccion.sql` (esquema real de producción, verificado objeto por objeto). Las 1,330 viejas están en `supabase/migrations_archive/`, solo de referencia. El historial de producción quedó con esa única versión (respaldo en `supabase_migrations.schema_migrations_backup_20261015`). Detalle y reglas en `supabase/README_MIGRACIONES.md`.
+
+**🔑 Regla desde hoy:** una migración nueva llega a producción por merge a `main`. Si se corre a mano en el SQL Editor, hay que registrarla (`supabase migration repair --status applied <version>`) o el historial se vuelve a desincronizar. Timestamp único siempre.
+
+---
+
+### 🔴 2026-10-14 — un `[0]` sobre algo que no es arreglo: dos listas salían vacías
+
+"No tienes equipos asignados como líder" sobre un usuario que SÍ era líder de dos equipos activos.
+
+La consulta embebe el grupo (`tramites_grupos_visualizacion!inner(...)`). Como un miembro pertenece a **un** grupo, PostgREST devuelve un **objeto**, no un arreglo — y el código lo leía con `[0]`. Daba `undefined`, el filtro siguiente lo descartaba, y la lista salía vacía. Un `as unknown as Row[]` tapaba el error de tipo.
+
+**El mismo despiste estaba en `TramiteDetalles.tsx`** con el usuario embebido: la lista de miembros del equipo también salía vacía.
+
+**🔑 Regla:** en PostgREST, una relación *de uno* (el lado del FK) llega como objeto; una *de muchos* llega como arreglo. Si hay un `as unknown as` cerca de un `[0]`, revisar cuál de las dos es.
+
+---
+
+### 🔴 2026-10-14 — la papelera "no borraba": la pantalla mentía
+
+Ricardo: *"los trámites que mandé a la papelera siguen apareciéndoles a otros"*. Los cuatro folios tenían `eliminado_at` en **null**: nunca se borraron.
+
+`handleSoftDelete` hacía el `update` y **no revisaba el resultado**; luego quitaba la tarjeta de la pantalla igual. Quien borraba la veía desaparecer y para todos los demás seguía ahí, porque en la base no había pasado nada. Ahora se revisa `error` **y** `count`, y si no se escribió se dice por qué y la tarjeta no se mueve. Igual en restaurar y en el borrado definitivo.
+
+**La causa de fondo de por qué el update no escribía sigue sin saberse** — hace falta reintentarlo con el build nuevo y leer el mensaje.
+
+**🔑 Un `await supabase...update()` sin mirar su resultado es una mentira en pantalla.** Pasó también con `enviarAPapelera`, y es el mismo patrón que ya mordió en `handleGuardarPago` de Store (2026-07-04) y en el toggle de equipos de Marketing (2026-10-02).
+
+---
+
+### ✅ 2026-10-14 — los trámites repetidos: dos causas distintas
+
+Lo que parecía "la papelera no sirve" era en realidad **duplicados**: se borraban las copias y en el tablero quedaba el original. ABRILVACA CASIQUE llegó a tener **7** trámites idénticos; JUAN PABLO JIMENEZ, dos creados **con 11 segundos de diferencia**.
+
+**Causa 1 — Store/Marketing:** se cerró sola el 2026-10-02, cuando el motor compartido estrenó su guarda `yaExiste`. El duplicado más reciente por esa vía es de ese mismo día.
+
+**Causa 2 — trámite padre→hijo:** esa sigue viva hasta hoy. `TKCB783` generó `-A` a las 17:39 y `-B` a las 19:48.
+
+Dos fallas encadenadas en `TramiteDetalle`:
+1. La revisión de *"este padre ya tiene un hijo de esta regla"* **solo corría para los triggers con `requiere_confirmacion`**. Los silenciosos creaban otro hijo cada vez que se reaplicaba el estatus, sin mirar ni avisar.
+2. Esa revisión usaba `.maybeSingle()`, **que falla con más de una fila**, y el error se ignoraba. Con dos hijos ya creados el sistema concluía "no hay ninguno" y dejaba de avisar: **se agravaba solo**.
+
+Ahora se revisa para todas las reglas, con `.limit(1)`. Una regla silenciosa deja de serlo si ya tiene un hijo: sale la ventana con el folio existente. Y el default pasó a **"conservar"** — crear otro debe ser una decisión expresa, no lo que pasa al dar Guardar.
+
+El cálculo de la letra ya era correcto (toma la siguiente libre entre todos los hermanos), por eso salió `-B`.
+
+**🔑 `.maybeSingle()` solo sirve donde el dato es único POR DISEÑO.** Donde puede haber varios, falla justo cuando más falta hace el aviso.
+
+---
+
+### ✅ 2026-10-14 — Kanban: el equipo ya puede mover sus trámites
+
+Arrastrar una tarjeta era solo del Admin o de la persona asignada. Casi todos los trámites nacen **"Sin responsable"**, así que nadie del equipo podía moverlos. Ahora también quien lleva el equipo al que está asignado: líder, supervisor, director o ejecutivo. El mapa `myGrupoRoles` ya existía, no hizo falta otra consulta.
+
+**Ojo:** el arrastre sigue siendo **solo con mouse** (`e.pointerType !== 'mouse'` lo corta). En tableta no funciona.
+
+---
+
+### ✅ 2026-10-14 — bitácora única de Store y Premium, con el control de pagos encima
+
+Eran dos pantallas separadas y para ver todo lo que un agente debe había que entrar a las dos. Ahora es **una sola tabla** (`bitacora_comercial_view`) con filtros por módulo, oficina, estado de pago y nombre, totales de lo filtrado, y exportación a Excel/CSV de lo que se está viendo.
+
+**Dónde entrar:** Marketing Admin → pestaña **Bitácora** (subió al menú principal, junto a "Equipos con acceso", y la ve también el equipo con acceso) · MOVI Store → Admin → **Bitácora**. Es la misma tabla; quien solo administra un módulo solo ve sus filas, y el filtro de módulo ni le aparece.
+
+**Clic en una fila → modal con el control de pagos.** Navegar a otra pantalla perdía la lista, los filtros y el lugar donde ibas, y en la práctica no respondía hasta recargar. Al cerrar el modal la bitácora se recarga sola.
+
+En **Premium** el modal trae el control completo. En **Store** es de solo lectura con un botón para abrir el pedido: registrar un pago ahí tiene validaciones de método y forma de pago que viven en `StorePedidoDetalle`, y reimplementarlas sería la segunda copia que se desincroniza.
+
+#### 🔴 El hallazgo de fondo: un pago de Premium no sabía de qué contratación era
+
+| | A qué se ataba el pago |
+|---|---|
+| MOVI Store | `store_pedido_pagos.pedido_id` → **al pedido** |
+| Marketing Premium | `mkt_premium_pagos.usuario_id` → **al usuario, nada más** |
+
+La bitácora tenía que **deducir** el folio por rango de fechas. Un periodo con la fecha mal capturada —hay uno que dice **2050**— dejaba fuera todos sus pagos: el de Ricardo de $600 existía y la pantalla mostraba al agente como si no hubiera pagado nada. Y con dos contrataciones del mismo agente, los pagos de una y otra eran indistinguibles.
+
+`mkt_premium_pagos` ganó **`periodo_id`** — lo que en pantalla se llama **FOLIO**, palabra de Ricardo. Backfill con la misma regla que la bitácora usaba para adivinar (el periodo más reciente ya empezado; si el pago es anterior a todos, el primero), así ningún pago queda huérfano. La vista dejó de adivinar.
+
+**Y el precio estaba escrito a mano** como `200 / 2000`. Desde el 2026-10-02 el mensual son 12 cobros de $200 = **$2,400**, así que la bitácora decía "$0 de $200" mientras el panel de pagos decía $2,400. Ahora sale de `mkt_premium_monto_periodo()`, una sola definición en SQL — que sigue duplicando a `montoDelPlan()` en TS: **si cambia el precio, hay que cambiarlo en los dos lados**.
+
+#### 🔑 Tres cosas que costaron tiempo aquí
+1. **La ruta del detalle de pedido es `/store/pedido/:id`, en SINGULAR.** `/store/pedidos` es la lista; el enlace llevaba ahí sin abrir nada.
+2. **Una pantalla enlazada con query params tiene que leerlos.** `MktAdminDashboard` no leía `?tab=` y `MarketingPremiumAdmin` no leía `?agente=`: el clic cambiaba la URL y no pasaba nada visible.
+3. **Una consulta que se traga su error se ve igual que "no hay datos".** El primer síntoma de la vista faltante fue una tabla vacía; con el error a la vista, se resolvió en un minuto.
+
+---
+
+### ✅ 2026-10-14 — avisos de trámite con algo que leer, y el usuario duplicado
+
+**Notificaciones.** El aviso de nuevo trámite era *"Se te asignó el trámite TK571BB (Registro de Póliza)"* y nada más. Ese texto llega **tal cual a WhatsApp** — `enviar_notificacion_individual` manda título y mensaje sin plantilla— así que quien lo recibía tenía que entrar a MOVI para saber de quién era. Ahora lleva solicitante, oficina, prioridad y las instrucciones recortadas a 280 caracteres (`src/lib/tramiteAviso.ts`, con autocomprobación: omite las líneas sin dato y no muestra los rellenos que guarda el alta, como "Sin descripción").
+
+**Usuario duplicado.** Había dos cuentas de JUAN CARLOS DESIGAUD —`@jiro.mx` (abril, con todo el historial y la única que inicia sesión) y `@jiroseguros.com.mx` (junio, sin un solo trámite creado)— **las dos con `id_sicas = 67`, las dos con mapeo y con regla de asignación**. Ese es el escenario del bug TK37540 de agosto. Se movió lo poco que tenía la de junio a la de abril, se le quitaron equipos/regla/mapeo, se le soltó el ID de SICAS y se dio de baja desde la pantalla (no por SQL, para que quedara en `audit_logs` y se liberara el correo).
+
+**🔑 Al limpiar un usuario duplicado, el `id_sicas` se reafirma en la cuenta buena al final:** si las dos lo compartían, limpiarlo en la duplicada dispara el trigger de SICAS y puede desligar a la que se conserva.
+
+---
+
+### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-12
+
+| Rama | Commit | Qué sirve |
+|---|---|---|
+| `origin/main` | `bdc76fe4` | beta.movi.digital |
+| `origin/produccion` | `8728154e` | app.movi.digital — **se le subieron 51 commits hoy** |
+
+**Producción recibió dos semanas de trabajo de golpe.** Falta que Ricardo confirme que el Pull + Deploy en Plesk salió bien. Dos cosas que delatan si el build no corrió:
+- El menú de Herramientas debe salir con los **nombres nuevos** (Mis Contactos, Espacio JIRO, Centro Digital, Vacaciones, Mi Progreso). Si salen los viejos **con el orden nuevo**, el código no llegó: la migración del menú sí está corrida.
+- Y lo que hay que vigilar de los usuarios: un **Gerente** ya solo ve solicitantes de su oficina al crear un trámite (antes veía a todos los agentes de JIRO). Es lo más probable que reporten.
+
+**`main` va 2 commits adelante** (`ee9d6fb2` + su merge): unificación visual de los `PageHeader` de Hermes. No entraron a producción, quedan para el siguiente merge.
+
+#### Hilos que siguen abiertos
+- **La landing de Mutuus está bifurcada a propósito.** Producción conserva la suya; main tiene 5 commits más (dominio mutuus.mx, og-image, links legales, cobranding, simulador). **Alguien tiene que decidir cuál gana** antes del próximo merge, o el conflicto se repite igual.
+- **Ningún modal soporta modo oscuro** (`BaseModal.tsx`, 0 clases `dark:`).
+- **SICAS pausado** a propósito; el filtro de "efectuada" sigue roto.
+- **~65 ramas muertas** del remoto.
+- Falta probar en vivo lo del 2026-10-08: oficinas múltiples de Gerente y la bitácora de Store/Marketing.
+
+---
+
+### 🔴 2026-10-12 — LA BASE DE DATOS ES UNA SOLA: beta y producción comparten Supabase
+
+Salió al revisar si el merge era seguro, y **cambia cómo hay que pensar los despliegues**. No estaba escrito en ningún lado.
+
+Los dos sitios apuntan al mismo proyecto (`qhwvuuyjhcennqccgvse`). Consecuencias que conviene tener presentes SIEMPRE:
+
+- **Correr una migración afecta a producción en el acto**, aunque el código siga sin desplegarse. No existe "probarla en beta primero".
+- **Las edge functions también son una sola.** Desplegar `process-poliza-pdf` cambia lo que producción está llamando ahora mismo.
+- Por eso producción llevaba dos semanas corriendo contra una base **por delante de su código**. El merge de hoy cerró ese desfase, no lo creó.
+- Al correr una migración que va en pareja con código (como la del menú de Christofer), el sitio que no tenga ese código queda **a medias**: orden nuevo con nombres viejos.
+
+**🔑 Regla:** antes de correr una migración, preguntarse qué le hace al sitio que todavía NO tiene el código. Si la respuesta es fea, primero el deploy.
+
+---
+
+### 🔴 2026-10-12 — `produccion` llevaba días sin poder compilar
+
+Al preparar el merge resultó que `origin/produccion` **no construía**. Su `App.tsx` hacía `lazy(() => import(...))` de dos archivos que en esa rama no existían:
+
+```
+src/landings/LandingsStudio.tsx
+src/seguwallet/pages/SeguwalletProductLanding.tsx
+```
+
+El trabajo de landings se portó a mano a `produccion` en vez de mergearse, y se quedó a medias: entraron las rutas del `App.tsx`, no los componentes. Un `npm run build` ahí falla con *"Rollup failed to resolve import"*. O sea que lo que servía `app.movi.digital` era un build anterior a `e7bfb327`, y nadie se enteró.
+
+**🔑 Dos cosas que esto enseña:**
+1. **Portar commits a mano entre ramas deja agujeros.** Si hay que llevar algo a producción sin el resto, es un cherry-pick del commit completo, no copiar archivos.
+2. **Un deploy que falla no avisa.** El sitio se queda sirviendo el build viejo y se ve normal. La barra de beta muestra `Commit:`/`Build:` desde `/version.json`; producción no tiene esa barra, así que ahí hay que mirar el log de Plesk o `curl https://app.movi.digital/version.json`.
+
+---
+
+### ✅ 2026-10-12 — merge de `main` a `produccion` conservando la landing de Mutuus
+
+Ricardo pidió mergear **sin lo de Hermes**, para no esperar a que alguien decidiera qué versión de la landing de Mutuus gana.
+
+**Cómo se hizo:** merge normal y los dos conflictos (`App.tsx` y `MutuusLanding.tsx`) resueltos **a favor de producción** (`git checkout --ours`). Los dos archivos quedaron idénticos bit por bit a lo que producción ya tenía — se verificó con `git diff --stat origin/produccion HEAD` sobre ellos (vacío).
+
+**Los conflictos eran de ese trabajo portado a mano**, no de código del core: las dos ramas habían escrito las mismas rutas de landings por su cuenta. Los hunks del `App.tsx` eran comentarios, espacios y rutas duplicadas.
+
+**Lo que sí entró a producción:** todo lo de trámites, usuarios, bitácora, permisos y correos de las últimas dos semanas, **más los dos archivos que faltaban** para que la rama compilara. Build verificado antes de subir.
+
+**🔑 Antes de decir que un merge es seguro:** `git merge-tree` solo dice si hay choque de TEXTO. Lo que de verdad hay que mirar es (a) qué migraciones trae y qué le hacen al otro sitio, (b) si la rama destino compila HOY, y (c) qué cambios de comportamiento van a notar los usuarios. Aquí las tres cosas dieron sorpresas.
+
+---
+
+### ✅ 2026-10-12 — la categoría del adjunto vuelve a ser opcional
+
+El 09 la dejé obligatoria para cualquier campo que tuviera tipos configurados, y eso estorba a quien solo quiere subir un archivo. Ricardo lo acotó: **opcional, salvo que la configuración del trámite diga lo contrario.**
+
+Ahora solo se exige cuando el FormBuilder marcó algún tipo como **requerido** (`tipos_config[].requerido`). Ahí sí hace falta: sin la categoría, la validación del cambio de estatus no tiene cómo saber si el documento ya está — que es justo el caso que él reportó con "Documentos de emisión".
+
+En los demás campos el selector sigue ahí, como **"(opcional)"**, para quien quiera clasificar.
+
+---
 
 ### 🔜 AL ARRANCAR — lo que quedó abierto el 2026-10-09
 
@@ -1179,7 +2995,7 @@ Entidad · Apellido Paterno · Apellido Materno · Nombre · Razón Social · R.
 Con la Fase 4, la casilla `dispara_extraccion` del campo adjunto reemplaza parcialmente al tab "Extracción PDF" (que queda solo para notificaciones). Revisar si conviene fusionar o mantener ambos.
 
 ---
--2. **✅ RESUELTO 2026-08-13: Botón "Admin > Deploy" funcionando con seguridad de dos niveles.** El puerto 8443 de Plesk está bloqueado para todo tráfico externo. Solución: relay PHP en `https://relay.movi.digital/deploy-relay.php` que llama a `server1.miemail.digital:8443` con `CURLOPT_RESOLVE` forzando por `127.0.0.1`. Edge function `trigger-deploy` usa el relay. Secrets en Supabase: `PLESK_RELAY_URL`, `PLESK_RELAY_TOKEN`. Seguridad agregada: **Beta** = reCAPTCHA v3 invisible; **Producción** = reCAPTCHA + TOTP (modal de código de 6 dígitos del autenticador, verificado contra `usuario_totp_secrets`). Si el servidor se cae tras un reinicio: `bash /var/www/vhosts/movi.digital/cp.movi.digital/restart_gunicorn.sh` (desde SSH Terminal root en Plesk) levanta `cp.movi.digital`.
+-2. **✅ RESUELTO 2026-08-13: Botón "Admin > Deploy" funcionando con seguridad de dos niveles.** El puerto 8443 de Plesk está bloqueado para todo tráfico externo. Solución: relay PHP en `https://relay.movi.digital/deploy-relay.php` que llama a `mainserver.movi.digital:8443` con `CURLOPT_RESOLVE` forzando por `127.0.0.1`. Edge function `trigger-deploy` usa el relay. Secrets en Supabase: `PLESK_RELAY_URL`, `PLESK_RELAY_TOKEN`. Seguridad agregada: **Beta** = reCAPTCHA v3 invisible; **Producción** = reCAPTCHA + TOTP (modal de código de 6 dígitos del autenticador, verificado contra `usuario_totp_secrets`). Si el servidor se cae tras un reinicio: `bash /var/www/vhosts/movi.digital/cp.movi.digital/restart_gunicorn.sh` (desde SSH Terminal root en Plesk) levanta `cp.movi.digital`.
 
 -1. **✅ RESUELTO 2026-08-13: tienda.movi.digital — vitrina pública de productos.** Implementada y en producción. Ver sección "tienda.movi.digital" abajo. Pendientes de polish: OG tags por producto, deep-link directo al producto en MOVI, diseño más elaborado.
 
@@ -1232,6 +3048,8 @@ Visto repetidamente: alguien agrega una tabla + política RLS para dar acceso a 
 | `beta.movi.digital` (**donde Ricardo prueba todo**) | `origin/main` |
 | `movi.digital` (producción) | `origin/produccion` |
 
+⚠️ **Dos ramas, pero UNA SOLA base de datos.** Los dos sitios apuntan al mismo proyecto de Supabase (`qhwvuuyjhcennqccgvse`), así que **correr una migración o desplegar una edge function afecta a producción en el acto**, aunque su código siga sin desplegarse. No existe "probarlo en beta primero" para nada que viva en la base. Antes de correr una migración, preguntarse qué le hace al sitio que todavía NO tiene el código que la acompaña.
+
 ```bash
 git push origin HEAD:main         # para que llegue a BETA
 git push origin HEAD:produccion   # para que llegue a PRODUCCIÓN
@@ -1280,6 +3098,8 @@ Es una simulación **solo de cliente**: `MoviAuthContext`/`ImpersonationContext`
 
 ## Reglas de arquitectura — CRÍTICAS
 - Tabla de tickets: `tickets` (NO `tramites`) — crítico para SQL y migraciones
+- **`tickets` NO tiene columna `descripcion`** — el texto del trámite vive en **`instrucciones`**. Un `.select('descripcion')` devuelve 42703 y, si nadie mira el `error`, se ve igual que un trámite sin texto (así se rompió "Duplicar trámite" durante meses).
+- **Realtime: una tabla solo transmite si está en la publicación `supabase_realtime`.** Al agregar un `postgres_changes` sobre una tabla nueva, publicarla en la misma migración o el canal escucha un flujo vacío — y el síntoma ("no se actualiza hasta recargar") es indistinguible de un canal mal configurado. Verificar con `select tablename from pg_publication_tables where pubname = 'supabase_realtime';`
 - Tipos de trámite: tabla `ticket_tipos`, columna `value` como slug, **columna `label` para el nombre visible (NO `nombre` — esa columna no existe y falla en silencio vía PostgREST)**
 - `assignment_mode` eliminado de `ticket_tipos` el 2026-06-24 — no referenciar jamás
 - Campos del formulario por tipo: `tramite_tipo_campos` · Respuestas: `tramite_respuestas`

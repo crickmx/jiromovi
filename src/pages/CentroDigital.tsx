@@ -720,7 +720,7 @@ export default function CentroDigital() {
             Volver al Centro Digital
           </Button>
         </PageHeader>
-        <div className="p-6">
+        <div className="pt-6">
           {archivosPapelera.length === 0 ? (
             <EmptyState icon={Archive} title="Papelera vacia" description="No hay archivos eliminados" />
           ) : (
@@ -802,7 +802,7 @@ export default function CentroDigital() {
           </div>
         </PageHeader>
 
-        <div className="p-6">
+        <div className="pt-6">
           <div className="mb-4 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <Input placeholder="Buscar archivos..." value={busqueda}
@@ -1005,7 +1005,7 @@ export default function CentroDigital() {
 
       {/* Tab navigation (admin only shows Auditoria) */}
       {esAdmin && (
-        <div className="px-6 pt-4 border-b border-neutral-100">
+        <div className="pt-4 border-b border-neutral-100">
           <div className="flex gap-0">
             {([
               { id: 'carpetas', label: 'Carpetas', icon: Folder },
@@ -1031,7 +1031,7 @@ export default function CentroDigital() {
       {activeTab === 'auditoria' && esAdmin ? (
         <AuditoriaPanel esAdmin={esAdmin} />
       ) : (
-        <div className="p-6">
+        <div className="pt-6">
           <div className="mb-5 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <Input placeholder="Buscar carpetas..." value={busqueda}

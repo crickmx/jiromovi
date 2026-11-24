@@ -178,6 +178,13 @@ export interface StorePedido {
       };
     };
   }>;
+  /**
+   * Los cargos al cliente (envío, producción express…). Las listas los traen
+   * resumidos —concepto y monto— porque el `total` de arriba ya los incluye y
+   * sin ellos no habría forma de cuadrarlo. El pedido completo los trae enteros
+   * en `StorePedidoCompleto.cargos`.
+   */
+  cargos?: Array<{ pedido_id: string; concepto: string; monto: number }>;
 }
 
 export interface StorePedidoDetalle {
@@ -192,12 +199,31 @@ export interface StorePedidoDetalle {
   gastos?: StorePedidoDetalleGasto[];
 }
 
+/** Lo que GASTA JIRO en el pedido. De aquí sale el margen; NO se le cobra al cliente. */
 export interface StorePedidoGasto {
   id: string;
   pedido_id: string;
   concepto: string;
   tipo: string;
   descripcion?: string;
+  monto: number;
+  creado_por?: string;
+  created_at: string;
+}
+
+/**
+ * Lo que se le COBRA al cliente además de los artículos: envío, producción
+ * express, lo que surja. SUMA al total (`totalDelPedido` en
+ * `storePedidoTotal.ts`).
+ *
+ * Es el reverso exacto de `StorePedidoGasto` y por eso son dos tablas: mezclar
+ * "lo que gastamos" con "lo que cobramos" es lo que deja un pedido que nadie
+ * puede leer sin preguntar de cuál de los dos se habla.
+ */
+export interface StorePedidoCargo {
+  id: string;
+  pedido_id: string;
+  concepto: string;
   monto: number;
   creado_por?: string;
   created_at: string;
@@ -290,6 +316,8 @@ export interface StorePedidoCompleto extends StorePedido {
   notas: StorePedidoNota[];
   historial: StorePedidoHistorial[];
   gastos?: StorePedidoGasto[];
+  /** Los cargos al cliente. El total del pedido los suma. */
+  cargos?: StorePedidoCargo[];
   pagos?: StorePedidoPago[];
 }
 

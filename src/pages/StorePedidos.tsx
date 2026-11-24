@@ -5,6 +5,7 @@ import { Package, Eye, ListFilter as Filter, Download, Search, Calendar, Trash2,
 import { PageHeader } from '@/components/ui/page-header';
 import { obtenerTodosPedidos, eliminarPedido, tieneAccesoEquipoStore, esLiderDeEquipoConAccesoStore } from '../lib/storeUtils';
 import type { StorePedido } from '../lib/storeTypes';
+import { importeCargos } from '../lib/storePedidoTotal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
@@ -155,6 +156,10 @@ export default function StorePedidos() {
             ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
             : (pedido.metodo_pago || 'N/A'),
 
+          // Van antes del total porque el total YA los incluye: sin esta
+          // columna nadie puede cuadrar los subtotales contra el total.
+          'Cargos al Cliente': `$${importeCargos(pedido.cargos).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          'Conceptos de los Cargos': (pedido.cargos || []).map(c => c.concepto).join(' · '),
           'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
 
           'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
@@ -199,6 +204,10 @@ export default function StorePedidos() {
               ? `Otro: ${pedido.metodo_pago_otro_detalle || 'N/A'}`
               : (pedido.metodo_pago || 'N/A'),
 
+            // Van antes del total porque el total YA los incluye: sin esta
+            // columna nadie puede cuadrar los subtotales contra el total.
+            'Cargos al Cliente': `$${importeCargos(pedido.cargos).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            'Conceptos de los Cargos': (pedido.cargos || []).map(c => c.concepto).join(' · '),
             'Total Pedido': `$${(pedido.total || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
 
             'Dirección Entrega': pedido.direccion_entrega || 'No especificada',
@@ -272,7 +281,7 @@ export default function StorePedidos() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         <PageHeader
           title="Gestión de Pedidos"
           description={`Administra todos los pedidos de MOVI Store${pedidos.length > 0 ? ` — ${pedidos.length} pedidos de ${new Set(pedidos.map(p => p.usuario_id)).size} usuarios` : ''}`}

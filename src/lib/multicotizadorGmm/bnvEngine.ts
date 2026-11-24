@@ -1,74 +1,70 @@
+/**
+ * Motor de Bupa Nacional Vital (BNV) — replica el cotizador Excel
+ * "Cotizador-BNV-2026-V4".
+ *
+ * Logica (hoja "Datos Asegurado" + "MasterBase"):
+ *   F4  = "NVFS" & (SA/1e6) & "D" & (Deducible/1e3) & "C" & (Coaseguro*100) & IF(Tope=0,"","TC" & Tope/1e3)
+ *   A7  = IF(Zona="Zona 1: ...", "Mexico Region 1 BNV", "Mexico Region 2 (no CDMX, ZM Y MTY)")
+ *   Prima de cada asegurado = VLOOKUP(F4 & A7 & Edad, MasterBase, Rate)   <- ya trae todos los factores
+ *   Total Prima   = SUM(primas) + IF(Asistencia="Si", 1632, 0)
+ *   Recargo       = x1.045 (semestral) / x1.075 (trimestral) / x1.09 (mensual)
+ *   IVA           = (Total Prima + Derecho de poliza) * 16%
+ *   Primer pago   = (Total Prima/n + Derecho) * 1.16   (el Derecho se cobra completo en el 1er recibo)
+ */
+
 import type {
   BnvQuoteInput, BnvCalculationResult, BnvPersonResult, BnvPaymentBreakdown,
-  QuotePerson, FormaPago,
+  QuotePerson, FormaPago, GenderType,
 } from './types';
-import { PAYMENT_FACTORS, IVA_RATE } from './types';
+import {
+  FACTORES_PAGO_DEFAULT, buildRateIndex, lookupRate,
+  calcularPagos, regionDeZona, numKey, round2, sexoExcel,
+  type BupaRateRecord, type FactoresPago,
+} from './bupaShared.ts';
 
-export interface BnvRateRecord {
-  plan_name: string;
-  region: string;
-  age: number;
-  rate: number;
-  rate_type: string;
-}
+export type BnvRateRecord = BupaRateRecord;
 
 export interface BnvPackageConfig {
   id: string;
   derecho_poliza: number;
   asistencia_extranjero: number;
+  /** Prefijo del codigo de plan tal como lo arma el Excel ("NVFS"). */
+  plan_prefix?: string;
+  zonas?: Array<{ label: string; region: string; factor: number }>;
+  factores_pago?: FactoresPago;
+  max_integrantes?: number;
 }
 
 export interface BnvAvailableOptions {
   sumasAseguradas: number[];
   deducibles: number[];
   coaseguros: number[];
+  topesCoaseguro: number[];
 }
 
-interface ParsedPlan {
-  suma: number;
-  deducible: number;
-  coaseguro: number;
-  topeCoaseguro: number | null;
-}
-
-const PLAN_REGEX = /^NVFS(\d+)D(\d+)C(\d+)(?:TC(\d+))?/;
-
-function parsePlanName(planName: string): ParsedPlan | null {
-  const m = planName.match(PLAN_REGEX);
-  if (!m) return null;
-  return {
-    suma: Number(m[1]),
-    deducible: Number(m[2]),
-    coaseguro: Number(m[3]),
-    topeCoaseguro: m[4] != null ? Number(m[4]) : null,
-  };
-}
-
-function matchesRegion(region: string, zone: string): boolean {
-  if (zone === 'Zona 1') return region.toLowerCase().includes('region 1');
-  return region.toLowerCase().includes('region 2');
-}
-
-export function getBnvAvailableOptions(rates: BnvRateRecord[]): BnvAvailableOptions & { topesCoaseguro: number[] } {
+/** Deriva las opciones que ofrece el cotizador a partir de la tabla de tarifas cargada. */
+export function getBnvAvailableOptions(rates: BnvRateRecord[], prefix = 'NVFS'): BnvAvailableOptions {
   const sumas = new Set<number>();
   const deds = new Set<number>();
   const coass = new Set<number>();
   const topes = new Set<number>();
+  const re = new RegExp(`^${prefix}(\\d+(?:\\.\\d+)?)D(\\d+(?:\\.\\d+)?)C(\\d+)(?:TC(\\d+))?$`);
 
   for (const r of rates) {
-    const parsed = parsePlanName(r.plan_name);
-    if (!parsed) continue;
-    sumas.add(parsed.suma);
-    deds.add(parsed.deducible);
-    coass.add(parsed.coaseguro);
-    if (parsed.topeCoaseguro != null) topes.add(parsed.topeCoaseguro);
+    const m = re.exec(String(r.plan_name ?? ''));
+    if (!m) continue;
+    sumas.add(Number(m[1]));
+    deds.add(Number(m[2]));
+    coass.add(Number(m[3]));
+    if (m[4] != null) topes.add(Number(m[4]));
   }
 
+  const asc = (a: number, b: number) => a - b;
   return {
-    sumasAseguradas: [...sumas].sort((a, b) => a - b),
-    deducibles: [...deds].sort((a, b) => a - b),
-    coaseguros: [...coass].sort((a, b) => a - b),
-    topesCoaseguro: [...topes].sort((a, b) => a - b),
+    sumasAseguradas: [...sumas].sort(asc),
+    deducibles: [...deds].sort(asc),
+    coaseguros: [...coass].sort(asc),
+    topesCoaseguro: [...topes].sort(asc).map(k => k * 1000),
   };
 }
 
@@ -78,104 +74,97 @@ export function calculateBnv(
   rates: BnvRateRecord[],
   packageConfig: BnvPackageConfig
 ): BnvCalculationResult {
+  const vacio = (error: string): BnvCalculationResult => ({
+    product: 'BNV',
+    people_results: [],
+    prima_anual_total: 0,
+    totals: {} as Partial<Record<FormaPago, BnvPaymentBreakdown>>,
+    tariff_package_id: packageConfig.id,
+    error,
+  });
+
   try {
     if (!rates || rates.length === 0) {
-      return {
-        product: 'BNV', people_results: [], prima_anual_total: 0, totals: {} as any,
-        tariff_package_id: packageConfig.id,
-        error: 'No hay tarifas cargadas para BNV. Sube un archivo de cotizador en Tarifas.',
-      };
+      return vacio('No hay tarifas cargadas para BNV. Sube un archivo de cotizador en Tarifas.');
+    }
+    if (!people || people.length === 0) {
+      return vacio('Agrega al menos un asegurado.');
     }
 
-    // Build a lookup: filter rates matching the requested S/D/C/TC/region, index by age
-    const targetSuma = input.suma_asegurada;
-    const targetDed = input.deducible;
-    const targetCoas = input.coaseguro;
-    const targetTopeK = input.tope_coaseguro ? Math.round(input.tope_coaseguro / 1000) : 0;
+    const prefix = packageConfig.plan_prefix || 'NVFS';
+    const index = buildRateIndex(rates, prefix, 'BNV');
 
-    const ratesByAge = new Map<number, number>();
-
-    for (const r of rates) {
-      const parsed = parsePlanName(r.plan_name);
-      if (!parsed) continue;
-      if (parsed.suma !== targetSuma) continue;
-      if (parsed.deducible !== targetDed) continue;
-      if (parsed.coaseguro !== targetCoas) continue;
-      // TC matching: when coaseguro > 0, plans include TC; match by tope_coaseguro
-      if (targetCoas > 0) {
-        if (parsed.topeCoaseguro == null) continue;
-        if (targetTopeK > 0 && parsed.topeCoaseguro !== targetTopeK) continue;
-      }
-      if (!matchesRegion(r.region, input.region_zone)) continue;
-      const rate = Number(r.rate);
-      if (isNaN(rate) || rate <= 0) continue;
-      ratesByAge.set(r.age, rate);
+    // Si la tarifa activa se cargó con el lector anterior (u otro archivo) no habrá ni una
+    // llave del producto: mejor un error claro que una cotización en ceros.
+    if (index.size === 0) {
+      return vacio(
+        `La tarifa BNV activa no contiene la tabla de tarifas del cotizador (no hay planes "${prefix}..."). ` +
+        'Vuelve a subir el Excel en la pestaña Tarifas y actívala.'
+      );
     }
 
-    if (ratesByAge.size === 0) {
-      return {
-        product: 'BNV', people_results: [], prima_anual_total: 0, totals: {} as any,
-        tariff_package_id: packageConfig.id,
-        error: `No se encontraron tarifas BNV para SA ${targetSuma} MDP, Deducible ${targetDed}K, Coaseguro ${targetCoas}%, ${input.region_zone}.`,
-      };
-    }
+    const region = regionDeZona(input.region_zone, packageConfig.zonas, 'BNV');
 
-    const allAges = [...ratesByAge.keys()].sort((a, b) => a - b);
+    // Llave del plan, tal como la arma el Excel (columna F de MasterBase).
+    const saMdp = Number(input.suma_asegurada);
+    const dedK = Number(input.deducible);
+    const coasPct = Number(input.coaseguro);
+    const topePesos = Number(input.tope_coaseguro ?? 0);
+    const topeK = topePesos > 0 ? topePesos / 1000 : 0;
+    const planCode =
+      `${prefix}${numKey(saMdp)}D${numKey(dedK)}C${numKey(coasPct)}` +
+      (topeK > 0 ? `TC${numKey(topeK)}` : '');
 
+    const warnings: string[] = [];
     const peopleResults: BnvPersonResult[] = people.map(p => {
-      const nearestAge = allAges.reduce((prev, curr) =>
-        Math.abs(curr - p.age) < Math.abs(prev - p.age) ? curr : prev, allAges[0]);
-      const annualRate = ratesByAge.get(nearestAge) ?? 0;
-
+      const age = Number(p.age);
+      const rate = lookupRate(index, planCode, region, age, 'Unisex');
+      if (rate === null) {
+        warnings.push(`Sin tarifa para ${p.name || 'asegurado'} (${age} años) en el plan ${planCode} / ${region}`);
+      }
       return {
         person_id: p.id,
         person_name: p.name,
         relation: p.relation,
-        age: p.age,
-        lookup_key: `${input.region_zone}|SA${input.suma_asegurada}M|D${input.deducible}K|C${input.coaseguro}%`,
-        base_rate: annualRate,
-        discounted_rate: annualRate,
+        age,
+        gender: p.gender as GenderType,
+        lookup_key: `${planCode}${region}${age}`,
+        base_rate: rate ?? 0,
+        discounted_rate: rate ?? 0,
       };
     });
 
-    const primaAnualTotal = peopleResults.reduce((sum, p) => sum + p.discounted_rate, 0);
+    const primaPersonas = peopleResults.reduce((s, p) => s + p.discounted_rate, 0);
+    const asistencia = input.asistencia_extranjero ? Number(packageConfig.asistencia_extranjero || 0) : 0;
+    const primaAnual = round2(primaPersonas + asistencia);
 
-    const totals: Record<FormaPago, BnvPaymentBreakdown> = {} as any;
-    const formasPago: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
-
-    for (const fp of formasPago) {
-      const { factor, num_recibos } = PAYMENT_FACTORS[fp];
-      const primaNeta = primaAnualTotal * factor;
-      const asistencia = input.asistencia_extranjero ? packageConfig.asistencia_extranjero : 0;
-      const subtotal = primaNeta + asistencia + packageConfig.derecho_poliza;
-      const iva = subtotal * IVA_RATE;
-      const total = subtotal + iva;
-      const primerPago = total / num_recibos;
-
-      totals[fp] = {
-        forma_pago: fp,
-        prima_neta: primaNeta,
-        asistencia_extranjero: asistencia,
-        derecho_poliza: packageConfig.derecho_poliza,
-        subtotal, iva, total,
-        primer_pago: primerPago,
-        pagos_subsecuentes: num_recibos > 1 ? primerPago : 0,
-        num_recibos,
-      };
-    }
+    const factores = packageConfig.factores_pago ?? FACTORES_PAGO_DEFAULT;
+    // En el Excel cada renglon (primas + asistencia) se multiplica por el factor de la
+    // forma de pago, asi que equivale a multiplicar el "Total Prima".
+    const totals = calcularPagos(
+      {
+        primaPeriodo: primaPersonas + asistencia,
+        derechoPoliza: Number(packageConfig.derecho_poliza || 0),
+        asistenciaExtranjero: asistencia,
+        catastroficaExtranjero: 0,
+        extraEnCostoTotal: 0,
+      },
+      factores
+    ) as unknown as Partial<Record<FormaPago, BnvPaymentBreakdown>>;
 
     return {
       product: 'BNV',
       people_results: peopleResults,
-      prima_anual_total: primaAnualTotal,
+      prima_anual_total: primaAnual,
       totals,
       tariff_package_id: packageConfig.id,
+      warnings: warnings.length ? warnings : undefined,
     };
-  } catch (err: any) {
-    return {
-      product: 'BNV', people_results: [], prima_anual_total: 0, totals: {} as any,
-      tariff_package_id: packageConfig.id,
-      error: err.message || 'Error al calcular BNV',
-    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return vacio(msg || 'Error al calcular BNV');
   }
 }
+
+// Reexport util para las pruebas y para la UI.
+export { sexoExcel };

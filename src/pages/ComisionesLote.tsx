@@ -398,7 +398,7 @@ export default function ComisionesLote() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="flex items-center justify-center">
         <div className="bg-white rounded-3xl shadow-card p-8 sm:p-12 text-center max-w-md w-full">
           <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-2">
@@ -428,7 +428,7 @@ export default function ComisionesLote() {
 
   if (!batch) {
     return (
-      <div className="bg-surface-card rounded-2xl shadow-card border border-soft p-8 sm:p-12 text-center mx-4">
+      <div className="bg-surface-card rounded-2xl shadow-card border border-soft p-8 sm:p-12 text-center">
         <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500 mx-auto mb-4" />
         <h3 className="text-lg sm:text-xl font-semibold text-neutral-700 mb-2">
           Lote no encontrado
@@ -447,7 +447,7 @@ export default function ComisionesLote() {
   const agentSummaries = calculateAgentSummaries(details);
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+    <div className="space-y-4 sm:space-y-6">
       <div className="bg-surface-card dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-soft dark:border-neutral-800 p-4 sm:p-6">
         <div className="mb-4 sm:mb-6">
           <PageHeader

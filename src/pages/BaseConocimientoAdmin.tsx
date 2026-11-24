@@ -314,7 +314,7 @@ export default function BaseConocimientoAdmin() {
     return (
       <>
         <PageHeader title="Base de Conocimiento Admin" description="Solo administradores" />
-        <div className="p-8 text-center text-neutral-500">No tienes permisos para acceder a esta sección.</div>
+        <div className="py-8 text-center text-neutral-500">No tienes permisos para acceder a esta sección.</div>
       </>
     );
   }
@@ -351,7 +351,7 @@ export default function BaseConocimientoAdmin() {
       )}
 
       {/* Tabs */}
-      <div className="px-6 border-b border-neutral-100 bg-white">
+      <div className="border-b border-neutral-100 bg-white">
         <div className="flex gap-1">
           {(['documentos', 'anuncios', 'importar'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -368,7 +368,7 @@ export default function BaseConocimientoAdmin() {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="pt-6">
         {/* ── Documentos tab ── */}
         {tab === 'documentos' && (
           <div className="space-y-4">

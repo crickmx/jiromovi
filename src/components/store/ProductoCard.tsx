@@ -41,9 +41,18 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
         className="aspect-square w-full bg-neutral-100 dark:bg-white/5 cursor-pointer overflow-hidden relative"
         onClick={() => onVerDetalle(producto)}
       >
+        {/*
+          El catalogo pesaba 14.9 MB y hacia 96 peticiones porque bajaba la
+          imagen original de TODOS los productos de golpe, estuvieran o no en
+          pantalla; en 3G no cargaba en 90 s. Con `lazy` el navegador solo baja
+          las que se ven. El contenedor ya es `aspect-square`, asi que el
+          espacio esta reservado y la carga diferida no mueve el layout.
+        */}
         <img
           src={getImageUrl(producto.imagen_url)}
           alt={producto.titulo}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -112,12 +121,14 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
                 <button
                   onClick={() => setCantidad(c => Math.max(1, c - 1))}
                   disabled={cantidad <= 1}
+                  aria-label={`Quitar uno de ${producto.titulo}`}
                   className="w-7 h-7 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
                 <input
                   type="number"
+                  aria-label={`Cantidad de ${producto.titulo}`}
                   min="1"
                   max="999"
                   value={cantidad}
@@ -127,6 +138,7 @@ export function ProductoCard({ producto, onAgregar, onVerDetalle }: Props) {
                 <button
                   onClick={() => setCantidad(c => Math.min(999, c + 1))}
                   disabled={cantidad >= 999}
+                  aria-label={`Agregar uno de ${producto.titulo}`}
                   className="w-7 h-7 flex items-center justify-center border border-neutral-300 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
                 >
                   <Plus className="w-3 h-3" />

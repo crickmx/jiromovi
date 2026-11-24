@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { crearNotificacion } from '../../lib/notificationHelpers';
+import { subscribeResilientChannel } from '../../lib/resilientRealtime';
 import { useAuth } from '../../contexts/AuthContext';
 import { Send, Upload, X, FileText, AtSign } from 'lucide-react';
 
@@ -22,9 +24,13 @@ interface Miembro {
 interface TramiteComentariosProps {
   tramiteId: string;
   grupoId?: string | null;
+  /** QA 2026-11-04 (H-010) — el solicitante, para poder mencionarlo. */
+  agente?: Miembro | null;
+  /** Solo para que el aviso diga de qué trámite se trata. */
+  folio?: string | null;
 }
 
-export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosProps) {
+export function TramiteComentarios({ tramiteId, grupoId, agente, folio }: TramiteComentariosProps) {
   const { usuario } = useAuth();
   const [comentarios, setComentarios] = useState<Comentario[]>([]);
   const [mensaje, setMensaje] = useState('');
@@ -39,12 +45,19 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
   const [mencionQuery, setMencionQuery] = useState<string | null>(null);
   const [mencionIndex, setMencionIndex] = useState(0);
 
+  // QA 2026-10-22 (A9) — los comentarios de otros solo aparecían al recargar.
+  //
+  // La causa de fondo es de base de datos: `ticket_comentarios` no estaba en la
+  // publicación `supabase_realtime`, así que este canal escuchaba un flujo por
+  // el que nunca pasó nada (migración 20261029000006). Ya que por fin llegan
+  // eventos, el canal usa `subscribeResilientChannel`: reintenta con backoff y
+  // recarga al volver el foco o la red. Un websocket suspendido en segundo
+  // plano reproduce el mismo síntoma sin avisar.
   useEffect(() => {
-    loadComentarios();
-
-    const subscription = supabase
-      .channel(`tramite_comentarios_${tramiteId}`)
-      .on(
+    const unsubscribe = subscribeResilientChannel({
+      channelName: `tramite_comentarios_${tramiteId}`,
+      onReconnect: loadComentarios,
+      configure: (channel) => channel.on(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -73,33 +86,49 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
             });
           }
         }
-      )
-      .subscribe();
+      ),
+    });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return unsubscribe;
   }, [tramiteId]);
 
   useEffect(() => {
     scrollToBottom();
   }, [comentarios]);
 
-  // Cargar miembros del equipo cuando haya grupoId
+  // A quién se puede mencionar: el equipo del trámite + el solicitante.
+  //
+  // QA 2026-11-04 (H-010) — antes era SOLO el equipo, y un Agente no es
+  // miembro operativo de ningún equipo (la base lo prohíbe con un trigger,
+  // 15/10). O sea que la persona PARA QUIEN es el trámite era justo la única
+  // que no se podía llamar. Se le suma aparte.
   useEffect(() => {
-    if (!grupoId) return;
-    supabase
-      .from('tramites_grupos_miembros')
-      .select('usuario_id, usuario:usuario_id(id, nombre_completo)')
-      .eq('grupo_id', grupoId)
-      .then(({ data }) => {
-        const ms: Miembro[] = (data ?? [])
-          .map((r: any) => r.usuario)
-          .filter(Boolean)
-          .filter((m: Miembro) => m.id !== usuario?.id);
-        setMiembros(ms);
-      });
-  }, [grupoId]);
+    let vigente = true;
+    const cargar = async () => {
+      const lista: Miembro[] = [];
+
+      if (grupoId) {
+        const { data, error } = await supabase
+          .from('tramites_grupos_miembros')
+          .select('usuario_id, usuario:usuario_id(id, nombre_completo)')
+          .eq('grupo_id', grupoId);
+        // Una consulta que se traga su error se ve igual que "no hay nadie", y
+        // así se veía este hueco: hasta la migración 20261029000005 la RLS solo
+        // dejaba leer la fila propia, la lista salía vacía y nadie se enteraba.
+        if (error) {
+          console.error('No se pudo cargar el equipo para las @menciones:', error.message);
+        } else {
+          for (const r of (data ?? []) as any[]) if (r.usuario) lista.push(r.usuario);
+        }
+      }
+
+      if (agente?.id && !lista.some(m => m.id === agente.id)) lista.push(agente);
+
+      if (vigente) setMiembros(lista.filter(m => m.id !== usuario?.id));
+    };
+    cargar();
+    return () => { vigente = false; };
+  }, [grupoId, agente?.id, usuario?.id]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -241,7 +270,7 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
         prev.map(c => c.id === tempId ? data as Comentario : c)
       );
 
-      // Registrar menciones (@X solo miembros del mismo equipo)
+      // Registrar menciones (@X: el equipo del trámite y el solicitante)
       const mentionedIds = extractMentionedIds(mensajeTexto);
       if (mentionedIds.length > 0) {
         await supabase.from('ticket_usuarios_mencionados').upsert(
@@ -252,6 +281,72 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
           })),
           { onConflict: 'ticket_id,usuario_id', ignoreDuplicates: true }
         );
+
+        // QA 2026-11-04 (H-009) — mencionar a alguien NO le avisaba.
+        //
+        // La mención se guardaba en `ticket_usuarios_mencionados` y **nada en
+        // el proyecto leía esa tabla**: ni el frontend, ni las edge functions,
+        // ni ningún trigger (se revisó `pg_trigger`, no solo el repo). O sea
+        // que el autocompletado servía para ESCRIBIR la mención y la persona
+        // mencionada no se enteraba nunca. Comprobado en vivo el 04/11.
+        //
+        // El aviso va aquí y NO en un trigger sobre esa tabla a propósito: el
+        // upsert de arriba usa `ignoreDuplicates`, así que la segunda vez que
+        // mencionas a alguien en el mismo trámite NO inserta fila. Un trigger
+        // avisaría solo de la primera mención y callaría el resto. Esa tabla
+        // es "a quién se ha mencionado aquí", un conjunto, no una bitácora de
+        // menciones.
+        //
+        // Campanita sí, WhatsApp no: una mención no es urgente, y el camino de
+        // WhatsApp ya duplicó avisos antes (16/10). Si alguna vez se quiere,
+        // es cambiar ese false.
+        //
+        // El filtro de bots viene gratis: `enviar_notificacion_individual` ya
+        // trae la guarda `aviso_de_bot_para_persona` (21/10), que deduce el
+        // trámite del `accion_url` — por eso la url va exactamente así.
+        const quien = (usuario as any).nombre_completo
+          || `${usuario.nombre ?? ''} ${(usuario as any).apellidos ?? ''}`.trim()
+          || 'Alguien';
+        const donde = folio ? `el trámite ${folio}` : 'un trámite';
+        const extracto = mensajeTexto.slice(0, 160);
+
+        // QA 2026-11-04 — y NO avisarle dos veces a la misma persona.
+        //
+        // Un comentario ya dispara `tramite_comentario_nuevo` por trigger, y
+        // ese aviso va al solicitante y al responsable. Sin esta resta,
+        // mencionar al solicitante le dejaba DOS campanitas por el mismo
+        // comentario (se vio en vivo: "te mencionó" a las 21:14:47 y "Nuevo
+        // comentario" a las 21:15:00). Es el mismo ruido que se arregló en
+        // A4/B22.
+        //
+        // A quién le toca el aviso de comentario lo decide `resolver_
+        // destinatarios_aviso`, la única función con esas reglas desde el
+        // 19/10. Se le pregunta en vez de reimplementarlas aquí, que es como
+        // nacen las dos copias que luego se desincronizan.
+        let yaAvisados: string[] = [];
+        const { data: dest, error: errDest } = await supabase
+          .rpc('resolver_destinatarios_aviso', {
+            p_ticket_id: tramiteId,
+            p_codigo_tipo: 'tramite_comentario_nuevo',
+          });
+        // Si no se puede saber, se avisa a todos los mencionados. Una campanita
+        // de más molesta; una que desaparece en silencio es la que hace daño.
+        if (errDest) console.warn('[menciones] no se pudo saber a quién ya se le avisa:', errDest.message);
+        else yaAvisados = (dest as string[] | null) ?? [];
+
+        const porAvisar = mentionedIds.filter(uid => !yaAvisados.includes(uid));
+
+        // Un aviso que no sale NO debe tumbar el comentario: el comentario ya
+        // se guardó y es lo que importa. `crearNotificacion` ya atrapa y
+        // registra su propio error.
+        await Promise.all(porAvisar.map(uid => crearNotificacion({
+          user_id: uid,
+          titulo: `${quien} te mencionó`,
+          mensaje: `${quien} te mencionó en ${donde}${extracto ? `: "${extracto}"` : ''}`,
+          modulo: 'Tramites',
+          accion_url: `/tramites/${tramiteId}`,
+          enviar_whatsapp: false,
+        })));
       }
 
     } catch (err: any) {
@@ -368,7 +463,7 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
               ref={textareaRef}
               value={mensaje}
               onChange={handleMensajeChange}
-              placeholder={grupoId ? 'Escribe un comentario... (usa @ para mencionar a alguien)' : 'Escribe un comentario...'}
+              placeholder={miembros.length ? 'Escribe un comentario... (usa @ para mencionar a alguien)' : 'Escribe un comentario...'}
               rows={3}
               className="w-full px-4 py-3 border border-neutral-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none bg-surface-card dark:bg-white/5 text-neutral-900 dark:text-white"
               onKeyDown={(e) => {
@@ -409,7 +504,7 @@ export function TramiteComentarios({ tramiteId, grupoId }: TramiteComentariosPro
           </div>
         </div>
         <p className="text-xs text-neutral-500 dark:text-white/55 mt-2">
-          Presiona Ctrl+Enter para enviar{grupoId ? ' · @ para mencionar' : ''}
+          Presiona Ctrl+Enter para enviar{miembros.length ? ' · @ para mencionar' : ''}
         </p>
       </form>
     </div>

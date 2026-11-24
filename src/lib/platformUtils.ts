@@ -1,3 +1,4 @@
+import { isNativeApp } from '../native/platform';
 export interface PlatformInfo {
   isAndroid: boolean;
   isIOS: boolean;
@@ -79,11 +80,13 @@ export function getPlatformName(): string {
 }
 
 export function shouldShowAndroidAppLink(): boolean {
+  if (isNativeApp()) return false; // ya está dentro de la app
   const platform = detectPlatform();
   return platform.isAndroid;
 }
 
 export function shouldShowPWAInstall(): boolean {
+  if (isNativeApp()) return false;
   const platform = detectPlatform();
   return !platform.isAndroid && platform.canInstallPWA && !platform.isStandalone;
 }

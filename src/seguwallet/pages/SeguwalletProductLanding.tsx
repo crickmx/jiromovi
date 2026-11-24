@@ -36,6 +36,7 @@ import {
   UserCheck,
   FolderOpen
 } from 'lucide-react';
+import { APP_TARGET } from '../../native/platform';
 
 // ─── ASSETS & CONSTANTS ──────────────────────────────────────────────────────
 const SEGUWALLET_LOGO = '/seguwallet-logo.png';
@@ -43,7 +44,7 @@ const LOGO_JIRO = '/logojiro.png';
 const MOVI_LOGO = '/movirecurso_2.png';
 
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
-const isSeguwalletDomain = HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
+const isSeguwalletDomain = APP_TARGET === 'seguwallet' || HOST === 'seguwallet.mx' || HOST.endsWith('.seguwallet.mx');
 const LOGIN_PATH = isSeguwalletDomain ? '/login' : '/seguwallet/login';
 
 const CARRIERS = [
@@ -135,7 +136,7 @@ export default function SeguwalletProductLanding() {
           content="Todas tus pólizas en un solo lugar. Consulta vigencias, descarga documentos y reporta siniestros en segundos."
         />
         <meta property="og:url" content="https://seguwallet.mx/" />
-        <meta property="og:image" content="https://seguwallet.mx/seguwallet-logo.png" />
+        <meta property="og:image" content="https://app.movi.digital/seguwallet-logo.png" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { supabaseUrl } from '../../lib/supabase';
-import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2, Printer, Loader2, Check } from 'lucide-react';
+import { FileText, Download, Upload, Eye, FolderDown, Trash2, Music, Video, FileSpreadsheet, FileType2, File, Tag, X, AlertCircle, Share2, Printer, Loader2, Check, Send } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilePreviewModal } from './FilePreviewModal';
+import { ConfirmarEnvioAdjuntosModal, type ArchivoParaEnviar } from './ConfirmarEnvioAdjuntosModal';
 import { getPdfThumbnail } from '../../lib/pdfThumbnail';
 import JSZip from 'jszip';
 
@@ -57,6 +58,20 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
   const { usuario } = useAuth();
   const isAdmin = usuario?.rol === 'Administrador';
   const [archivos, setArchivos] = useState<Archivo[]>([]);
+  // Envío de adjuntos al agente: qué está marcado y qué ya salió alguna vez.
+  // El despachador aplica el mismo candado del lado del servidor; esto es para
+  // que se vea en pantalla antes de presionar.
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [yaEnviados, setYaEnviados] = useState<Set<string>>(new Set());
+  // Un archivo que se intentó mandar y NO salió se veía igual que uno que
+  // nunca se intentó. El despachador ya guardaba el motivo por archivo y por
+  // canal; aquí se lee para poder decirlo en pantalla.
+  const [falloEnvio, setFalloEnvio] = useState<Record<string, string>>({});
+  const [enviandoAdjuntos, setEnviandoAdjuntos] = useState(false);
+  // Ventana de confirmación tras subir: qué se va a mandar y qué viene marcado.
+  const [confirmEnvio, setConfirmEnvio] = useState<
+    { archivos: ArchivoParaEnviar[]; preseleccion: string[]; canales: string[]; files: File[] } | null
+  >(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -150,6 +165,34 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
         .eq('ticket_id', tramiteId),
     ]);
 
+    const { data: intentos } = await supabase
+      .from('notification_attachments_log')
+      .select('archivo_id, file_name, channel, sent_successfully, error_message')
+      .eq('ticket_id', tramiteId)
+      .order('created_at', { ascending: true });
+    if (intentos) {
+      // Las filas viejas no tienen archivo_id; ahí el nombre dentro del mismo
+      // trámite es el mejor respaldo, igual que en el despachador.
+      const idDe = (fila: { archivo_id: string | null; file_name: string | null }) =>
+        fila.archivo_id ?? (data ?? []).find(a => a.nombre === fila.file_name)?.id ?? null;
+
+      const ok = new Set<string>();
+      const fallos: Record<string, string> = {};
+      for (const fila of intentos) {
+        const id = idDe(fila as any);
+        if (!id) continue;
+        if (fila.sent_successfully) {
+          ok.add(id);
+          delete fallos[id]; // un reenvío que sí salió borra la falla anterior
+        } else {
+          const canal = fila.channel === 'email' ? 'correo' : fila.channel;
+          fallos[id] = `${canal}: ${fila.error_message || 'no se pudo enviar'}`;
+        }
+      }
+      setYaEnviados(ok);
+      setFalloEnvio(fallos);
+    }
+
     if (data) setArchivos(data as Archivo[]);
     if (extraidos) {
       const map: Record<string, { estado: 'pendiente' | 'ok' | 'error'; mensaje?: string }> = {};
@@ -161,6 +204,61 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       setExtractionStatus(map);
     }
     setLoading(false);
+  };
+
+  /**
+   * Manda los archivos elegidos al agente por correo y WhatsApp.
+   *
+   * Va con `forzar_reenvio`: salta la configuración del tipo y el candado de
+   * "ya se mandó". Es un botón que alguien presionó a propósito — si quiere
+   * mandar otra vez el mismo archivo, es su decisión, no un descuido.
+   */
+  const enviarAlAgente = async (ids: string[]) => {
+    if (ids.length === 0 || enviandoAdjuntos) return;
+    setEnviandoAdjuntos(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { showToast('No hay sesión activa', 'error'); return; }
+
+      const resp = await fetch(`${supabaseUrl}/functions/v1/ticket-notification-dispatcher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          event_key: 'tramite_documento_cargado',
+          ticket_id: tramiteId,
+          triggered_by_user_id: usuario!.id,
+          attachment_file_ids: ids,
+          forzar_reenvio: true,
+          extra_variables: {
+            nombre_archivo: ids.length === 1
+              ? (archivos.find(a => a.id === ids[0])?.nombre ?? 'documento')
+              : `${ids.length} archivos`,
+          },
+        }),
+      });
+
+      // Un envío que falla en silencio es peor que no tener el botón: el
+      // usuario se queda creyendo que el agente ya lo recibió.
+      if (!resp.ok) {
+        showToast(`No se pudo enviar: ${await resp.text()}`, 'error');
+        return;
+      }
+      showToast(ids.length === 1 ? 'Archivo enviado al agente' : `${ids.length} archivos enviados al agente`);
+      setSeleccionados(new Set());
+      setYaEnviados(prev => new Set([...prev, ...ids]));
+    } catch (err) {
+      showToast(`No se pudo enviar: ${err instanceof Error ? err.message : 'error desconocido'}`, 'error');
+    } finally {
+      setEnviandoAdjuntos(false);
+    }
+  };
+
+  const alternarSeleccion = (id: string) => {
+    setSeleccionados(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   const handleCambiarCategoria = async (archivoId: string, nuevaCategoriaId: string) => {
@@ -292,7 +390,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       }
 
       if (uploadedFileIds.length > 0) {
-        dispatchDocumentNotification(uploadedFileIds, items.map(i => i.file));
+        void prepararConfirmacionEnvio(uploadedFileIds, items.map(i => i.file));
       }
     } catch (err: any) {
       console.error('Error uploading file:', err);
@@ -340,7 +438,64 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
     }
   };
 
-  const dispatchDocumentNotification = async (fileIds: string[], files: File[]) => {
+  /**
+   * Decide si hay que preguntar antes de mandarle los archivos al agente.
+   *
+   * Pregunta solo cuando de verdad saldría algo: el tipo de trámite tiene
+   * canales y categorías configuradas, y alguno de los archivos recién subidos
+   * cae en ellas. Si no, manda la notificación sin adjuntos y no estorba — una
+   * ventana que siempre dice "no se enviará nada" se vuelve un clic de más que
+   * la gente aprende a ignorar.
+   */
+  const prepararConfirmacionEnvio = async (fileIds: string[], files: File[]) => {
+    try {
+      const { data: ticket } = await supabase
+        .from('tickets').select('tipo_tramite').eq('id', tramiteId).maybeSingle();
+      const { data: cfg } = ticket?.tipo_tramite
+        ? await supabase
+            .from('ticket_tipos')
+            .select('envio_adjuntos_canales, envio_adjuntos_categorias_ids')
+            .eq('value', ticket.tipo_tramite)
+            .maybeSingle()
+        : { data: null };
+
+      const canales: string[] = cfg?.envio_adjuntos_canales ?? [];
+      const categorias: string[] = cfg?.envio_adjuntos_categorias_ids ?? [];
+
+      const { data: subidos } = await supabase
+        .from('ticket_archivos')
+        .select('id, nombre, categoria_id, categoria:maestro_adjunto_categorias!categoria_id(nombre)')
+        .in('id', fileIds);
+
+      const candidatos = (subidos ?? []).filter(
+        a => a.categoria_id && categorias.includes(a.categoria_id),
+      );
+
+      if (canales.length === 0 || candidatos.length === 0) {
+        dispatchDocumentNotification(fileIds, files);
+        return;
+      }
+
+      setConfirmEnvio({
+        canales,
+        files,
+        archivos: (subidos ?? []).map(a => ({
+          id: a.id as string,
+          nombre: (a.nombre as string) ?? 'documento',
+          categoriaNombre: (a.categoria as { nombre?: string } | null)?.nombre ?? null,
+          yaEnviado: yaEnviados.has(a.id as string),
+        })),
+        preseleccion: candidatos.map(a => a.id as string),
+      });
+    } catch (err) {
+      // Si algo falla al armar la confirmación, se manda la notificación sin
+      // adjuntos: nunca enviar de más sin que nadie lo haya visto.
+      console.error('No se pudo preparar la confirmación de envío:', err);
+      dispatchDocumentNotification([], files);
+    }
+  };
+
+  const dispatchDocumentNotification = async (fileIds: string[], files: File[], forzar = false) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -364,6 +519,7 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
             ticket_id: tramiteId,
             triggered_by_user_id: usuario!.id,
             attachment_file_ids: fileIds,
+            ...(forzar ? { forzar_reenvio: true } : {}),
             extra_variables: {
               nombre_archivo: fileIds.length === 1 ? fileNames : `${fileIds.length} archivos`,
               tamano_archivo: sizeLabel,
@@ -375,10 +531,41 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
       if (!response.ok) {
         const err = await response.text();
         console.error('Notification dispatch failed:', err);
+        return { ok: false, detalle: err };
       }
+      return { ok: true, resultado: await response.json() };
     } catch (err) {
       console.error('Error dispatching document notification:', err);
+      return { ok: false, detalle: err instanceof Error ? err.message : 'error desconocido' };
     }
+  };
+
+  /**
+   * Qué decir después de mandar. Un "enviado correctamente" cuando salieron 2
+   * de 3 es exactamente lo que no deja ver el problema — si alguno se quedó,
+   * tiene que decirlo con su motivo.
+   */
+  const resumenDeEnvio = (ids: string[], resultado: any): { texto: string; falla: boolean } => {
+    const a = resultado?.attachments;
+    if (!a) return { texto: 'Envío disparado', falla: false };
+
+    const fallidos = new Set<string>([...(a.emailFailed ?? []), ...(a.whatsappFailed ?? [])]);
+    const partes: string[] = [];
+    if (a.intentadosCorreo > 0) partes.push(`correo ${a.emailSent}/${a.intentadosCorreo}`);
+    if (a.intentadosWhatsapp > 0) partes.push(`WhatsApp ${a.whatsappSent}/${a.intentadosWhatsapp}`);
+
+    const faltaronCorreo = (a.intentadosCorreo ?? 0) - (a.emailSent ?? 0);
+    const faltaronWa = (a.intentadosWhatsapp ?? 0) - (a.whatsappSent ?? 0);
+    const falla = faltaronCorreo > 0 || faltaronWa > 0;
+
+    if (!falla) {
+      return { texto: `${ids.length === 1 ? 'Archivo enviado' : `${ids.length} archivos enviados`} (${partes.join(', ')})`, falla: false };
+    }
+    const nombres = [...fallidos].slice(0, 3).join(', ');
+    return {
+      texto: `No salieron todos: ${partes.join(', ')}${nombres ? ` — falló ${nombres}` : ''}. Revisa la marca roja en los archivos.`,
+      falla: true,
+    };
   };
 
   const formatFileSize = (bytes: number | null) => {
@@ -590,6 +777,17 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
           Archivos Adjuntos ({archivos.length})
         </h3>
         <div className="flex items-center space-x-2">
+          {seleccionados.size > 0 && (
+            <button
+              onClick={() => enviarAlAgente([...seleccionados])}
+              disabled={enviandoAdjuntos}
+              className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all font-semibold disabled:opacity-50"
+              title="Manda los archivos marcados al agente por correo y WhatsApp"
+            >
+              {enviandoAdjuntos ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              <span>{enviandoAdjuntos ? 'Enviando…' : `Enviar al agente (${seleccionados.size})`}</span>
+            </button>
+          )}
           {archivos.length > 0 && (
             <button
               onClick={handleDownloadAll}
@@ -637,6 +835,36 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
                 onClick={() => setPreviewFile(archivo)}
               >
                 <FileThumbnail archivo={archivo} />
+
+                {/* Marcar para enviar. Click aparte: la miniatura abre la vista previa. */}
+                <label
+                  className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-1.5 py-1 rounded-lg bg-white/90 dark:bg-neutral-900/80 shadow cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                  title={yaEnviados.has(archivo.id)
+                    ? 'Ya se le envió al agente. Marcarlo lo manda otra vez.'
+                    : falloEnvio[archivo.id]
+                      ? `Se intentó enviar y falló — ${falloEnvio[archivo.id]}. Márcalo para reintentar.`
+                      : 'Marcar para enviar al agente'}
+                >
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.has(archivo.id)}
+                    onChange={() => alternarSeleccion(archivo.id)}
+                    className="w-3.5 h-3.5 rounded border-neutral-300"
+                  />
+                  {yaEnviados.has(archivo.id) && (
+                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">Enviado</span>
+                  )}
+                  {!yaEnviados.has(archivo.id) && falloEnvio[archivo.id] && (
+                    <span
+                      className="text-[10px] font-semibold text-red-600 dark:text-red-400 cursor-help"
+                      title={falloEnvio[archivo.id]}
+                    >
+                      No se envió
+                    </span>
+                  )}
+                </label>
+
                 {extractionStatus[archivo.id] && (
                   <div className="absolute top-2 right-2 z-10">
                     {extractionStatus[archivo.id].estado === 'pendiente' && (
@@ -820,6 +1048,47 @@ export function TramiteArchivos({ tramiteId, puedeEditarCategoria }: TramiteArch
             </div>
           ))}
         </div>
+      )}
+
+      {confirmEnvio && (
+
+        <ConfirmarEnvioAdjuntosModal
+
+          archivos={confirmEnvio.archivos}
+
+          preseleccion={confirmEnvio.preseleccion}
+
+          canales={confirmEnvio.canales}
+
+          enviando={enviandoAdjuntos}
+
+          onCancelar={() => {
+
+            // La notificación del trámite sale igual; lo que no sale son los
+
+            // archivos. La lista vacía es explícita (ver el despachador).
+
+            void dispatchDocumentNotification([], confirmEnvio.files);
+
+            setConfirmEnvio(null);
+
+          }}
+
+          onConfirmar={async (ids) => {
+            setEnviandoAdjuntos(true);
+            const r = await dispatchDocumentNotification(ids, confirmEnvio.files, true);
+            setEnviandoAdjuntos(false);
+            setConfirmEnvio(null);
+            if (!r?.ok) {
+              showToast(`No se pudo enviar: ${r?.detalle ?? 'error desconocido'}`, 'error');
+            } else {
+              const resumen = resumenDeEnvio(ids, r.resultado);
+              showToast(resumen.texto, resumen.falla ? 'error' : 'success');
+            }
+            // Relee el log: ahí está, por archivo, qué salió y qué no.
+            void loadArchivos();
+          }}
+        />
       )}
 
       {previewFile && (

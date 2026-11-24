@@ -119,7 +119,7 @@ export default function MoviPreloader({
             <img
               src={logoIconUrl}
               alt="MOVI Digital"
-              className={`h-12 w-auto opacity-95 object-contain ${isDark ? 'brightness-0 invert' : ''}`}
+              className={`h-12 w-auto object-contain ${isDark ? 'bg-white rounded-xl p-1.5' : ''}`}
             />
           </div>
         </div>

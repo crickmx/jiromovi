@@ -299,7 +299,7 @@ export default function MapeoVendedoresAdmin() {
   ];
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div>
       <div className="mb-6">
         <PageHeader
           title="Mapeo Unificado SICAS"

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Container } from '../components/ui/container';
 import { PageHeader } from '../components/ui/page-header';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -297,18 +296,18 @@ export default function MiPaginaWeb() {
 
   if (loading) {
     return (
-      <Container>
+      <div>
         <PageHeader
           title="Mi Pagina Web"
           description="Configura tu landing page publica"
         />
         <div className="text-center py-12">Cargando configuracion...</div>
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container className="max-w-full">
+    <div>
       <PageHeader
         title="Mi Pagina Web"
         description="Crea y personaliza tu pagina web publica profesional"
@@ -568,6 +567,6 @@ export default function MiPaginaWeb() {
           </Card>
         </div>
       </div>
-    </Container>
+    </div>
   );
 }

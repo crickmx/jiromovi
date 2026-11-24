@@ -1,10 +1,19 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { trackCourseStart } from '../lib/activityLogger';
 import { Search, Plus, Video, ListFilter as Filter, Play, Clock, Award, Upload, X, Settings, Trash2, Pencil as Edit2, FileText } from 'lucide-react';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { LessonDocuments } from '../components/segurosEducation/LessonDocuments';
+import { SelectorEtiquetas, PildorasEtiquetas } from '../components/segurosEducation/SelectorEtiquetas';
+import {
+  cargarEtiquetas,
+  guardarEtiquetasLeccion,
+  resolverEtiquetas,
+  coincide,
+  type Etiqueta,
+} from '../lib/etiquetas';
 import { analyticsTracker } from '../lib/analyticsTracker';
 import { SegurosEducationLayout } from '../components/segurosEducation/SegurosEducationLayout';
 
@@ -24,6 +33,7 @@ interface Lesson {
   titulo: string;
   descripcion: string;
   categorias: { nombre: string; id: string }[];
+  etiquetas: Etiqueta[];
   miniatura_url: string | null;
   video_url: string;
   duracion: number;
@@ -58,6 +68,11 @@ export function SegurosEducationOnDemand() {
   const [oficinas, setOficinas] = useState<Oficina[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [catalogoEtiquetas, setCatalogoEtiquetas] = useState<Etiqueta[]>([]);
+  const [filtroAseguradora, setFiltroAseguradora] = useState<string>('all');
+  const [filtroRamo, setFiltroRamo] = useState<string>('all');
+  const [filtroSubramo, setFiltroSubramo] = useState<string>('all');
+  const [etiquetasSeleccion, setEtiquetasSeleccion] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -138,7 +153,7 @@ export function SegurosEducationOnDemand() {
           : Promise.resolve({ data: [] as Oficina[] }),
         supabase
           .from('seguros_lessons')
-          .select('id, titulo, descripcion, miniatura_url, video_url, duracion, fecha_creacion, oficinas_asignadas, seguros_lesson_categories(seguros_categories(id, nombre))')
+          .select('id, titulo, descripcion, miniatura_url, video_url, duracion, fecha_creacion, oficinas_asignadas, seguros_lesson_categories(seguros_categories(id, nombre)), seguros_leccion_etiquetas(etiqueta_id)')
           .order('fecha_creacion', { ascending: false }),
         supabase
           .from('seguros_progress')
@@ -150,17 +165,22 @@ export function SegurosEducationOnDemand() {
       setOficinas(ofisRes.data || []);
 
       const progressByLesson = new Map((progressRes.data || []).map((p) => [p.lesson_id, p]));
-      type LessonRow = Omit<Lesson, 'categorias'> & {
+      type LessonRow = Omit<Lesson, 'categorias' | 'etiquetas'> & {
         seguros_lesson_categories: { seguros_categories: { id: string; nombre: string } | null }[] | null;
+        seguros_leccion_etiquetas: { etiqueta_id: string }[] | null;
       };
 
-      setLessons(((lessonsRes.data || []) as unknown as LessonRow[]).map(({ seguros_lesson_categories, ...lesson }) => {
+      const catalogo = catalogoEtiquetas.length > 0 ? catalogoEtiquetas : await cargarEtiquetas();
+      if (catalogoEtiquetas.length === 0) setCatalogoEtiquetas(catalogo);
+
+      setLessons(((lessonsRes.data || []) as unknown as LessonRow[]).map(({ seguros_lesson_categories, seguros_leccion_etiquetas, ...lesson }) => {
         const progress = progressByLesson.get(lesson.id);
         return {
           ...lesson,
           categorias: (seguros_lesson_categories || [])
             .map((lc) => lc.seguros_categories)
             .filter((c): c is { id: string; nombre: string } => !!c),
+          etiquetas: resolverEtiquetas((seguros_leccion_etiquetas || []).map((e) => e.etiqueta_id), catalogo),
           progreso: progress?.progreso || 0,
           completado: progress?.completado || false,
           tiempo_reproduccion: progress?.tiempo_reproduccion || 0,
@@ -175,14 +195,45 @@ export function SegurosEducationOnDemand() {
   };
 
   const filteredLessons = useMemo(() => {
-    const term = searchTerm.toLowerCase();
-    return lessons.filter((lesson) =>
-      (!term ||
-        lesson.titulo.toLowerCase().includes(term) ||
-        (lesson.descripcion && lesson.descripcion.toLowerCase().includes(term))) &&
-      (selectedCategory === 'all' || lesson.categorias?.some(cat => cat.id === selectedCategory))
-    );
-  }, [lessons, searchTerm, selectedCategory]);
+    const term = searchTerm.trim();
+    return lessons.filter((lesson) => {
+      const coincideTexto =
+        !term ||
+        coincide(lesson.titulo, term) ||
+        (lesson.descripcion ? coincide(lesson.descripcion, term) : false) ||
+        lesson.etiquetas.some((e) => coincide(e.nombre, term));
+      if (!coincideTexto) return false;
+      if (selectedCategory !== 'all' && !lesson.categorias?.some((cat) => cat.id === selectedCategory)) return false;
+
+      const ids = new Set(lesson.etiquetas.map((e) => e.id));
+      if (filtroAseguradora !== 'all' && !ids.has(filtroAseguradora)) return false;
+      if (filtroRamo !== 'all' && !ids.has(filtroRamo)) return false;
+      if (filtroSubramo !== 'all' && !ids.has(filtroSubramo)) return false;
+      return true;
+    });
+  }, [lessons, searchTerm, selectedCategory, filtroAseguradora, filtroRamo, filtroSubramo]);
+
+  const aseguradoras = useMemo(() => catalogoEtiquetas.filter((e) => e.tipo === 'aseguradora'), [catalogoEtiquetas]);
+  const ramos = useMemo(() => catalogoEtiquetas.filter((e) => e.tipo === 'ramo'), [catalogoEtiquetas]);
+  const subramos = useMemo(() => {
+    const todos = catalogoEtiquetas.filter((e) => e.tipo === 'subramo');
+    return filtroRamo === 'all' ? todos : todos.filter((e) => e.padre_id === filtroRamo);
+  }, [catalogoEtiquetas, filtroRamo]);
+
+  const hayFiltros =
+    selectedCategory !== 'all' ||
+    filtroAseguradora !== 'all' ||
+    filtroRamo !== 'all' ||
+    filtroSubramo !== 'all' ||
+    searchTerm.trim() !== '';
+
+  const limpiarFiltros = () => {
+    setSearchTerm('');
+    setSelectedCategory('all');
+    setFiltroAseguradora('all');
+    setFiltroRamo('all');
+    setFiltroSubramo('all');
+  };
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;
@@ -382,7 +433,7 @@ export function SegurosEducationOnDemand() {
       setUploadProgress(70);
 
       // Upload thumbnail if provided
-      let thumbnailUrl = null;
+      let thumbnailUrl: string | null = null;
       if (thumbnailFile) {
         console.log('[handleUploadLesson] Starting thumbnail upload');
         const thumbFileName = `${Date.now()}-${thumbnailFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
@@ -446,6 +497,15 @@ export function SegurosEducationOnDemand() {
       if (categoriesError) {
         console.error('Error assigning categories:', categoriesError);
         // No throw - lesson was created successfully, just log the error
+      }
+
+      // Etiquetas de clasificación (aseguradora, ramo, subramo…)
+      if (etiquetasSeleccion.length > 0 && newLesson) {
+        try {
+          await guardarEtiquetasLeccion(newLesson.id, etiquetasSeleccion);
+        } catch (err) {
+          console.error('Error guardando etiquetas:', err);
+        }
       }
 
       setUploadProgress(95);
@@ -587,6 +647,12 @@ export function SegurosEducationOnDemand() {
         p_lesson_id: editingLesson.id,
         p_category_ids: formData.categoria_ids
       });
+      try {
+        await guardarEtiquetasLeccion(editingLesson.id, etiquetasSeleccion);
+      } catch (err) {
+        console.error('Error guardando etiquetas:', err);
+      }
+
 
       if (categoriesError) {
         console.error('Error updating categories:', categoriesError);
@@ -618,6 +684,7 @@ export function SegurosEducationOnDemand() {
       categoria_ids: lesson.categorias?.map(c => c.id) || [],
       oficinas_asignadas: lesson.oficinas_asignadas ?? [],
     });
+    setEtiquetasSeleccion(lesson.etiquetas.map((e) => e.id));
     setShowUploadModal(true);
   };
 
@@ -841,17 +908,33 @@ export function SegurosEducationOnDemand() {
     setSelectedLesson(null);
   };
 
-  const formatDuration = (seconds: number | null | undefined) => {
-    if (!seconds || seconds <= 0) return null;
+  // Esc cierra el reproductor y se bloquea el scroll del fondo mientras está abierto.
+  useEffect(() => {
+    if (!showVideoModal) return;
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeVideoModal();
+    };
+    const overflowPrevio = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', alTeclear);
+    return () => {
+      window.removeEventListener('keydown', alTeclear);
+      document.body.style.overflow = overflowPrevio;
+    };
+    // closeVideoModal se recrea en cada render; solo importa al abrir/cerrar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showVideoModal]);
 
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    if (hours > 0) {
-      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  // `seguros_lessons.duracion` está en SEGUNDOS (así lo guarda el módulo al
+  // leer el video). Se muestra legible: "1 h 44 min", "45 min", "38 s".
+  const formatDuration = (segundos: number | null | undefined) => {
+    if (!segundos || segundos <= 0) return null;
+    const total = Math.round(segundos);
+    const horas = Math.floor(total / 3600);
+    const minutos = Math.round((total % 3600) / 60);
+    if (horas > 0) return minutos ? `${horas} h ${minutos} min` : `${horas} h`;
+    if (minutos > 0) return `${minutos} min`;
+    return `${total} s`;
   };
 
 
@@ -875,7 +958,7 @@ export function SegurosEducationOnDemand() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className="text-base font-bold text-neutral-900 dark:text-white">Lecciones disponibles</h2>
-            <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">{filteredLessons.length} lección{filteredLessons.length !== 1 ? 'es' : ''}</p>
+            <p className="text-xs text-neutral-500 dark:text-white/55 mt-0.5">{filteredLessons.length} {filteredLessons.length === 1 ? 'lección' : 'lecciones'}</p>
           </div>
           {isAdmin && (
             <div className="flex gap-2 flex-wrap">
@@ -896,7 +979,11 @@ export function SegurosEducationOnDemand() {
                 {recalculatingDurations ? `${recalcProgress.current}/${recalcProgress.total}` : 'Recalc. duraciones'}
               </button>
               <button
-                onClick={() => setShowUploadModal(true)}
+                onClick={() => {
+                  setEditingLesson(null);
+                  setEtiquetasSeleccion([]);
+                  setShowUploadModal(true);
+                }}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1C37E0] text-white text-xs font-semibold hover:bg-[#1630C8] transition-all shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -906,8 +993,67 @@ export function SegurosEducationOnDemand() {
           )}
         </div>
 
+        {/* Continuar viendo: lo que quedó a medias, a un clic */}
+        {(() => {
+          const enCurso = lessons.filter((l) => (l.progreso || 0) > 0 && !l.completado);
+          if (enCurso.length === 0) return null;
+          return (
+            <section className="rounded-2xl border border-soft bg-surface-card p-3 shadow-card dark:border-white/10 sm:p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-body font-bold text-neutral-900 dark:text-white">
+                  <Play className="h-4 w-4 text-accent-ink" fill="currentColor" />
+                  Continuar viendo
+                </h2>
+                <span className="text-caption text-neutral-400">{enCurso.length}</span>
+              </div>
+              <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-1">
+                {enCurso.slice(0, 8).map((lesson) => (
+                  <button
+                    key={lesson.id}
+                    onClick={() => handleLessonClick(lesson)}
+                    className="group w-[240px] shrink-0 snap-start overflow-hidden rounded-xl border border-neutral-200/70 bg-surface-card text-left transition hover:border-accent/40 hover:shadow-card dark:border-white/10"
+                  >
+                    <div className="relative aspect-video overflow-hidden bg-neutral-100 dark:bg-white/5">
+                      {lesson.miniatura_url ? (
+                        <img
+                          src={lesson.miniatura_url}
+                          alt={lesson.titulo}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Video className="h-8 w-8 text-neutral-300 dark:text-white/20" />
+                        </div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 h-1 bg-black/30">
+                        <div className="h-full bg-accent" style={{ width: `${lesson.progreso || 0}%` }} />
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition group-hover:opacity-100">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 shadow-lg">
+                          <Play className="ml-0.5 h-4 w-4 text-accent-ink" fill="currentColor" />
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-2.5">
+                      <p className="line-clamp-2 text-caption font-semibold leading-snug text-neutral-900 dark:text-white">
+                        {lesson.titulo}
+                      </p>
+                      <p className="mt-1 text-[11px] text-accent-ink">
+                        {Math.floor(lesson.progreso || 0)}% visto
+                        {formatDuration(lesson.duracion) ? ` · ${formatDuration(lesson.duracion)}` : ''}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
+
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <input
@@ -933,8 +1079,45 @@ export function SegurosEducationOnDemand() {
           </div>
         </div>
 
+        {/* Etiquetas: aseguradora, ramo y subramo */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { valor: filtroAseguradora, set: setFiltroAseguradora, vacio: 'Aseguradora', lista: aseguradoras },
+            { valor: filtroRamo, set: (v: string) => { setFiltroRamo(v); setFiltroSubramo('all'); }, vacio: 'Ramo', lista: ramos },
+            { valor: filtroSubramo, set: setFiltroSubramo, vacio: 'Subramo', lista: subramos },
+          ].map((filtro) => (
+            <select
+              key={filtro.vacio}
+              value={filtro.valor}
+              onChange={(e) => filtro.set(e.target.value)}
+              className={`rounded-lg border px-2.5 py-1.5 text-caption font-semibold transition ${
+                filtro.valor === 'all'
+                  ? 'border-neutral-200 text-neutral-500 dark:border-white/10 dark:text-white/55'
+                  : 'border-accent bg-accent-soft text-accent-ink'
+              }`}
+            >
+              <option value="all">{filtro.vacio}</option>
+              {filtro.lista.map((etiqueta) => (
+                <option key={etiqueta.id} value={etiqueta.id}>{etiqueta.nombre}</option>
+              ))}
+            </select>
+          ))}
+
+          {hayFiltros && (
+            <button
+              onClick={limpiarFiltros}
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-caption font-semibold text-neutral-400 transition hover:text-accent-ink"
+            >
+              <X className="h-3.5 w-3.5" /> Limpiar
+            </button>
+          )}
+          <span className="ml-auto text-caption text-neutral-400">
+            {filteredLessons.length} {filteredLessons.length === 1 ? 'lección' : 'lecciones'}
+          </span>
+        </div>
+
         {/* Lessons Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filteredLessons.length === 0 ? (
             <div className="col-span-full bg-surface-card dark:bg-white/[0.03] rounded-2xl border-2 border-dashed border-soft dark:border-white/10 p-14 text-center">
               <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-4">
@@ -979,9 +1162,9 @@ export function SegurosEducationOnDemand() {
                   </div>
 
                   {/* Progress bar */}
-                  {lesson.progreso > 0 && (
+                  {(lesson.progreso ?? 0) > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
-                      <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso}%` }} />
+                      <div className="h-full bg-[#1C37E0]" style={{ width: `${lesson.progreso ?? 0}%` }} />
                     </div>
                   )}
 
@@ -1039,17 +1222,23 @@ export function SegurosEducationOnDemand() {
                     {lesson.titulo}
                   </h3>
 
+                  {lesson.etiquetas.length > 0 && (
+                    <div className="mb-2">
+                      <PildorasEtiquetas etiquetas={lesson.etiquetas} max={3} />
+                    </div>
+                  )}
+
                   {lesson.descripcion && (
                     <p className="text-xs text-neutral-500 dark:text-white/55 line-clamp-2 mb-2">
                       {lesson.descripcion}
                     </p>
                   )}
 
-                  {lesson.progreso > 0 && !lesson.completado && (
+                  {(lesson.progreso ?? 0) > 0 && !lesson.completado && (
                     <div className="mt-2">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[11px] text-neutral-500 dark:text-white/55">Progreso</span>
-                        <span className="text-[11px] font-semibold text-[#1C37E0]">{Math.floor(lesson.progreso)}%</span>
+                        <span className="text-[11px] font-semibold text-[#1C37E0]">{Math.floor(lesson.progreso ?? 0)}%</span>
                       </div>
                       <div className="h-1 bg-neutral-100 dark:bg-white/10 rounded-full overflow-hidden">
                         <div className="h-full bg-[#1C37E0] rounded-full" style={{ width: `${lesson.progreso}%` }} />
@@ -1063,93 +1252,99 @@ export function SegurosEducationOnDemand() {
         </div>
       </div>
 
-      {/* Video Player Modal */}
-      {showVideoModal && selectedLesson && (
+      {/* Reproductor de la capacitación grabada */}
+      {showVideoModal && selectedLesson && createPortal(
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-ios flex items-center justify-center z-50 animate-fade-in p-0 sm:p-4"
+          className="fixed inset-0 z-[9999] flex items-end justify-center bg-neutral-950/80 backdrop-blur-sm sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label={selectedLesson.titulo}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeVideoModal();
+          }}
         >
-          <div className="w-full h-full sm:w-[95vw] sm:h-[90vh] lg:w-[1200px] lg:h-[720px] bg-white sm:rounded-2xl shadow-ios-xl overflow-hidden animate-scale-in flex flex-col">
-            {/* Header - minimizado en móvil */}
-            <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 sm:py-3 border-b border-ios-gray-200/50 flex justify-between items-center gap-2 flex-shrink-0">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-[14px] sm:text-[18px] font-semibold text-ios-gray-900 truncate">
+          <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-surface-card shadow-2xl sm:h-auto sm:max-h-[92vh] sm:w-[min(1080px,96vw)] sm:rounded-2xl sm:border sm:border-soft">
+            {/* Encabezado: título legible y cierre siempre a la vista */}
+            <header className="flex shrink-0 items-start gap-3 border-b border-neutral-200 px-4 py-3 dark:border-white/10 sm:px-5 sm:py-4">
+              <div className="min-w-0 flex-1">
+                <h2 className="line-clamp-2 text-title-sm font-bold leading-snug text-neutral-900 dark:text-white">
                   {selectedLesson.titulo}
                 </h2>
-                <div className="hidden md:flex items-center gap-2 mt-1 flex-wrap">
-                  {selectedLesson.categorias && selectedLesson.categorias.length > 0 && selectedLesson.categorias.map(cat => (
-                    <span key={cat.id} className="inline-flex items-center px-2 py-0.5 bg-accent/10 text-accent-ink rounded-ios text-[11px] font-medium">
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {selectedLesson.categorias?.map((cat) => (
+                    <span key={cat.id} className="rounded-md bg-accent-soft px-2 py-0.5 text-micro font-semibold text-accent-ink">
                       {cat.nombre}
                     </span>
                   ))}
                   {formatDuration(selectedLesson.duracion) && (
-                    <span className="flex items-center gap-1 text-ios-gray-600 text-[11px]">
-                      <Clock className="w-3.5 h-3.5 stroke-[1.5]" />
+                    <span className="flex items-center gap-1 text-caption text-neutral-500 dark:text-white/55">
+                      <Clock className="h-3.5 w-3.5" />
                       {formatDuration(selectedLesson.duracion)}
                     </span>
                   )}
+                  {selectedLesson.completado && (
+                    <span className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-micro font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                      <Award className="h-3 w-3" /> Completada
+                    </span>
+                  )}
                 </div>
+                {selectedLesson.etiquetas.length > 0 && (
+                  <div className="mt-1.5">
+                    <PildorasEtiquetas etiquetas={selectedLesson.etiquetas} max={5} />
+                  </div>
+                )}
               </div>
               <button
                 onClick={closeVideoModal}
-                className="text-ios-gray-500 hover:text-ios-gray-900 hover:bg-ios-gray-200 p-1.5 rounded-ios transition-all active:scale-95 flex-shrink-0"
-                title="Cerrar"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-neutral-500 transition hover:bg-surface-100 hover:text-neutral-900 dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
+                title="Cerrar (Esc)"
               >
-                <X className="w-5 h-5 stroke-[2]" />
+                <X className="h-5 w-5" />
               </button>
-            </div>
+            </header>
 
-            {/* Video Container - con altura fija y minima */}
-            <div className="bg-black w-full flex-1 min-h-0 relative">
-              <VideoPlayer
-                videoUrl={selectedLesson.video_url}
-                initialTime={selectedLesson.tiempo_reproduccion || 0}
-                onProgressUpdate={handleProgressUpdate}
-                onComplete={handleVideoComplete}
-                lessonId={selectedLesson.id}
-              />
-            </div>
-
-            {/* Footer - super compacto en móvil */}
-            <div className="bg-ios-gray-50 px-3 sm:px-6 py-2 border-t border-ios-gray-200/50 flex-shrink-0 max-h-[30vh] overflow-y-auto">
-              <div className="flex flex-col gap-2">
-                {/* Progress row */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {selectedLesson.completado ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-ios-green/10 text-ios-green rounded-ios text-[11px] sm:text-[12px] font-medium">
-                        <Award className="w-3 h-3 stroke-[1.5]" />
-                        <span className="hidden sm:inline">Completado</span>
-                      </span>
-                    ) : selectedLesson.progreso > 0 ? (
-                      <span className="text-[11px] sm:text-[12px] text-ios-gray-600">
-                        Progreso: <span className="font-semibold text-accent-ink">{Math.floor(selectedLesson.progreso)}%</span>
-                      </span>
-                    ) : (
-                      <span className="text-[11px] sm:text-[12px] text-ios-gray-500">Sin progreso</span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => {
-                      closeVideoModal();
-                    }}
-                    className="px-3 sm:px-4 py-1 sm:py-1.5 bg-accent text-accent-foreground rounded-ios text-[12px] sm:text-[14px] font-medium hover:bg-accent-dark transition-colors active:scale-95 flex-shrink-0"
-                  >
-                    Cerrar
-                  </button>
-                </div>
-
-                {/* Documents row */}
-                <div className="border-t border-ios-gray-200/50 pt-2">
-                  <LessonDocuments
-                    lessonId={selectedLesson.id}
-                    isAdmin={isAdmin}
-                    isEditMode={false}
-                  />
-                </div>
+            {/* Video: 16:9 con techo de altura para que quepa el material */}
+            <div className="w-full shrink-0 overflow-hidden bg-black">
+              <div className="relative mx-auto aspect-video max-h-[56vh] w-full overflow-hidden">
+                <VideoPlayer
+                  videoUrl={selectedLesson.video_url}
+                  initialTime={selectedLesson.tiempo_reproduccion || 0}
+                  onProgressUpdate={handleProgressUpdate}
+                  onComplete={handleVideoComplete}
+                  lessonId={selectedLesson.id}
+                />
               </div>
             </div>
+
+            {/* Descripción, progreso y material de apoyo */}
+            <div className="min-h-0 flex-1 overflow-y-auto bg-surface-50 px-4 py-3 dark:bg-white/[0.02] sm:px-5 sm:py-4">
+              {selectedLesson.descripcion && (
+                <p className="mb-3 text-body-sm leading-relaxed text-neutral-600 dark:text-white/60">
+                  {selectedLesson.descripcion}
+                </p>
+              )}
+
+              <div className="mb-3 flex items-center gap-3">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all"
+                    style={{ width: `${Math.min(100, Math.floor(selectedLesson.progreso || 0))}%` }}
+                  />
+                </div>
+                <span className="shrink-0 text-caption font-semibold text-neutral-600 dark:text-white/60">
+                  {selectedLesson.completado
+                    ? 'Completada'
+                    : (selectedLesson.progreso ?? 0) > 0
+                    ? `${Math.floor(selectedLesson.progreso ?? 0)}%`
+                    : 'Sin progreso'}
+                </span>
+              </div>
+
+              <LessonDocuments lessonId={selectedLesson.id} isAdmin={isAdmin} isEditMode={false} />
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Upload Modal */}
@@ -1239,6 +1434,30 @@ export function SegurosEducationOnDemand() {
                     })}
                   </div>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                  Etiquetas
+                  <span className="ml-2 text-xs font-normal text-neutral-500">
+                    Aseguradora, ramo y subramo para filtrar el directorio
+                  </span>
+                </label>
+                <div className="rounded-lg border border-neutral-300 p-3 dark:border-white/10">
+                  <SelectorEtiquetas
+                    etiquetas={catalogoEtiquetas}
+                    valor={etiquetasSeleccion}
+                    onChange={setEtiquetasSeleccion}
+                    onNuevaEtiqueta={(nueva) =>
+                      setCatalogoEtiquetas((prev) =>
+                        prev.some((e) => e.id === nueva.id)
+                          ? prev
+                          : [...prev, nueva].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+                      )
+                    }
+                    compacto
+                  />
+                </div>
               </div>
 
               <div>

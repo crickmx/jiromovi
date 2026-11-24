@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Upload, User, Users, CircleAlert as AlertCircle, FileText, Package, DollarSign, Building2, Plus, Trash2, Calendar, Shield, Clock, CircleCheck as CheckCircle2, ChevronRight, ChevronDown, Lock, RotateCcw, Star, Layers } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { TIPOS_CON_PANTALLA_PROPIA } from '../../hooks/useTiposTramite';
 import { puedeVerCampo, puedeEditarCampo } from '../../lib/rolCampos';
-import { crearNotificacion } from '../../lib/notificationHelpers';
+import { crearNotificacion, avisarPorEvento } from '../../lib/notificationHelpers';
+import { mensajeNuevoTramite } from '../../lib/tramiteAviso';
 import { saveDraft, loadDraft, clearDraft } from '../../lib/formDraft';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseModal } from '../BaseModal';
 import type { TramiteSeccion } from './catalogos/types';
 import { seccionDesbloqueada, agruparCamposPorSeccion, motivoSeccionBloqueada, estiloSeccionColor, campoExigible, campoCumpleSuCondicion, conteoSeccion, seccionesAbiertasPorDefecto, CAMPOS_ANCHOS } from '../../lib/tramiteSecciones';
 import { analizarRFC, analizarCURP, RFC_GENERICO_NACIONAL, ENTIDADES_CURP } from '../../lib/rfcCurp';
+import { parseAseguradoras, etiquetaAseguradoras } from '../../lib/aseguradorasSeleccion';
 import { SelectorVehiculo, type VehiculoSeleccionado } from './SelectorVehiculo';
 import {
   canAccessRegistroActividades,
@@ -22,7 +25,6 @@ import {
   REGISTRO_ACTIVIDAD_ESTATUS,
   getTipoTramitesByArea,
   getTipoTramiteArea,
-  AREA_CONFIG,
   isCommercialTicketType,
   type UsuarioOficina
 } from '../../lib/registroActividadesTypes';
@@ -96,6 +98,8 @@ interface NuevoTramiteModalProps {
     descripcion?: string;
     prioridad?: string;
     agenteId?: string;
+    /** Respuestas del formulario a precargar, por id de campo (duplicar trámite). */
+    respuestas?: Record<string, unknown>;
   };
 }
 
@@ -329,12 +333,16 @@ export function NuevoTramiteModal({
       .eq('activo', true)
       .order('orden');
     if (!data) return;
-    setTiposDb(data as Array<{ id: string; value: string; label: string; area: string; is_custom: boolean; es_interno: boolean }>);
+
+    // QA 2026-11-04 (A6) — los tipos que tienen su propia pantalla no se
+    // ofrecen aquí; el porqué está en `TIPOS_CON_PANTALLA_PROPIA`.
+    const visibles = data.filter(t => !TIPOS_CON_PANTALLA_PROPIA.includes(t.value));
+    setTiposDb(visibles as Array<{ id: string; value: string; label: string; area: string; is_custom: boolean; es_interno: boolean }>);
 
     // Admin y Gerente no tienen restricciones
     if (!usuario || ['Administrador', 'Gerente'].includes(usuario.rol)) return;
 
-    const tipoIds = data.map(t => t.id);
+    const tipoIds = visibles.map(t => t.id);
 
     // Permisos por rol
     const { data: rolData } = await supabase
@@ -415,6 +423,18 @@ export function NuevoTramiteModal({
         if (agCampo && preloadedData?.agenteId) {
           setRespuestasDinamicas(prev => ({ ...prev, [agCampo.id]: preloadedData.agenteId! }));
           setAsignado(preloadedData.agenteId!);
+        }
+
+        // Datos del formulario al duplicar un trámite. Va después del reset de
+        // arriba por lo mismo que el agente, y solo se aceptan los campos que
+        // este tipo tiene HOY: si al tipo le quitaron un campo, su id ya no
+        // corresponde a nada y arrastrarlo dejaría basura en el insert.
+        if (preloadedData?.respuestas) {
+          const idsDelTipo = new Set(campos.map(c => c.id));
+          const validas = Object.entries(preloadedData.respuestas).filter(([id]) => idsDelTipo.has(id));
+          if (validas.length > 0) {
+            setRespuestasDinamicas(prev => ({ ...prev, ...Object.fromEntries(validas) }));
+          }
         }
 
         // La prioridad inicial se configura por tipo desde el FormBuilder; antes
@@ -712,10 +732,33 @@ export function NuevoTramiteModal({
     if (!isAgent || !usuario?.id) return;
     const agCampo = camposDinamicos.find(c => c.sistema_key === 'agente_vendedor');
     if (!agCampo) return;
-    setRespuestasDinamicas(prev =>
-      prev[agCampo.id] === usuario.id ? prev : { ...prev, [agCampo.id]: usuario.id }
-    );
-  }, [camposDinamicos, isAgent, usuario?.id]);
+
+    // UX 2026-11-04 (U-01) — y su OFICINA, por la misma razón.
+    //
+    // La oficina solo se llenaba dentro del `onChange` del selector de
+    // Solicitante. Pero cuando quien levanta el trámite es el propio Agente
+    // **ese selector ni siquiera se dibuja**: él es el solicitante y punto. O
+    // sea que el campo se quedaba esperando un evento que nunca iba a ocurrir,
+    // mostraba "Auto-completa al seleccionar agente" y el trámite nacía con la
+    // oficina en blanco ("Sin registrar" en el detalle).
+    //
+    // El dato siempre estuvo ahí: es la oficina del perfil de quien crea.
+    const ofCampo = camposDinamicos.find(c => c.sistema_key === 'oficina_jiro');
+    const ofNombre = usuario.oficina_id
+      ? (oficinas.find(o => o.id === usuario.oficina_id)?.nombre ?? '')
+      : '';
+
+    setRespuestasDinamicas(prev => {
+      const faltaAgente = prev[agCampo.id] !== usuario.id;
+      const faltaOficina = !!ofCampo && !!ofNombre && prev[ofCampo.id] !== ofNombre;
+      if (!faltaAgente && !faltaOficina) return prev;
+      return {
+        ...prev,
+        ...(faltaAgente ? { [agCampo.id]: usuario.id } : {}),
+        ...(faltaOficina && ofCampo ? { [ofCampo.id]: ofNombre } : {}),
+      };
+    });
+  }, [camposDinamicos, isAgent, usuario?.id, usuario?.oficina_id, oficinas]);
 
   // Resuelve la asignación mientras se llena el formulario, para poder mostrarla
   // antes de guardar. El submit vuelve a resolverla por su cuenta — esto es solo
@@ -1000,6 +1043,22 @@ export function NuevoTramiteModal({
 
   const AUTO_FILL_KEYS = ['area', 'equipo', 'fecha_creacion', 'fecha_finalizacion', 'oficina_jiro', 'agente_vendedor', 'creado_por', 'asignado_a', 'estatus'];
 
+  // QA 2026-10-22 (M8) — dos campos de sistema NO se dibujan en ciertos contextos
+  // (ver `renderCampoSistema`), pero la validación no lo sabía: con la Fecha
+  // Promesa marcada requerida, un Agente no podía crear el trámite NUNCA — el
+  // error nombraba un campo que su pantalla no muestra, y la barra de progreso
+  // se quedaba atorada contándolo. Un requerido que no se puede llenar no es un
+  // requerido. Esta es la única definición; el render también la usa, para que
+  // lo que se ve y lo que se exige no puedan volver a separarse.
+  const campoSistemaOculto = (campo: CampoDinamico): boolean => {
+    if (!campo.is_sistema) return false;
+    if (campo.sistema_key === 'fecha_promesa_entrega') return isAgent;
+    if (campo.sistema_key === 'archivos_adjuntos') {
+      return tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes';
+    }
+    return false;
+  };
+
   // Único punto de verdad de "¿este campo ya tiene respuesta?" — usado por validateForm()
   // y por la barra de progreso (que necesita el mismo criterio sin lanzar errores).
   const isCampoRespondido = (campo: CampoDinamico): boolean => {
@@ -1100,6 +1159,7 @@ export function NuevoTramiteModal({
       if (!campoExigible(campo, secciones, camposDinamicos, respuestasDinamicas)) continue;
       if (!canSeeCampo(campo)) continue;
       if (campo.is_sistema && AUTO_FILL_KEYS.includes(campo.sistema_key || '')) continue;
+      if (campoSistemaOculto(campo)) continue;
       if (!isCampoRespondido(campo)) {
         setError(`El campo "${campo.label}" es obligatorio`);
         return false;
@@ -1246,7 +1306,9 @@ export function NuevoTramiteModal({
               })
             : catalogoCompanias;
 
-          const seleccionadas = val ? String(val).split(',').map(s => s.trim()).filter(Boolean) : [];
+          // Contra el catálogo COMPLETO, no contra `companiasDisponibles`: filtrar
+          // por ramo no debe borrar de la lectura una aseguradora ya elegida.
+          const seleccionadas = parseAseguradoras(val as string, catalogoCompanias.map(c => c.nombre));
           const ui = asegUiState[campo.id] || { open: false, search: '', verMas: false };
           const setUi = (patch: Partial<typeof ui>) => setAsegUiState(prev => ({ ...prev, [campo.id]: { ...ui, ...patch } }));
 
@@ -1284,7 +1346,7 @@ export function NuevoTramiteModal({
               >
                 {seleccionadas.length === 0
                   ? <span className="text-neutral-500">{ramoCampo && !ramoVal ? 'Selecciona primero un ramo (opcional)...' : 'Selecciona aseguradoras...'}</span>
-                  : <span className="text-neutral-900">{seleccionadas.join(', ')}</span>
+                  : <span className="text-neutral-900" title={seleccionadas.join(', ')}>{etiquetaAseguradoras(seleccionadas)}</span>
                 }
                 <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${ui.open ? 'rotate-180' : ''}`} />
               </div>
@@ -1712,6 +1774,8 @@ export function NuevoTramiteModal({
                         setAdjuntosTemporales(prev => ({ ...prev, [campo.id]: files.filter((_, j) => j !== i) }));
                         setAdjuntoCatsArchivo(prev => ({ ...prev, [campo.id]: catsDeArchivo.filter((_, j) => j !== i) }));
                       }}
+                      aria-label={`Quitar ${f.name}`}
+                      title={`Quitar ${f.name}`}
                       className="p-1 text-red-400 hover:text-red-600 transition-colors shrink-0">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1970,7 +2034,7 @@ export function NuevoTramiteModal({
     );
 
     if (campo.sistema_key === 'fecha_promesa_entrega') {
-      if (isAgent) return null;
+      if (campoSistemaOculto(campo)) return null;
       return (
         <div key={campo.id}>
           <label className="block text-sm font-semibold text-neutral-900 mb-2">
@@ -1992,7 +2056,7 @@ export function NuevoTramiteModal({
     }
 
     if (campo.sistema_key === 'archivos_adjuntos') {
-      if (tipoTramite === 'registro_poliza' || tipoTramite === 'solicitud_comisiones_pendientes') return null;
+      if (campoSistemaOculto(campo)) return null;
       return (
         <div key={campo.id}>
           <label className="block text-sm font-semibold text-neutral-900 mb-2">
@@ -2195,6 +2259,12 @@ export function NuevoTramiteModal({
         : (isAgent ? (autoResponsableId || null) : (isCommercial ? usuario.id : null));
       const assignedTo = isCommercial ? usuario.id : (isAgent ? usuario.id : asignado);
 
+      // Los estados de los selectores arrancan en cadena vacía, no en null, y
+      // Postgres rechaza `''` como uuid: el alta tronaba con «invalid input
+      // syntax for type uuid: ""» cuando el tipo no exige Solicitante y nadie
+      // lo eligió. Vacío significa "no hay", y eso en la base es null.
+      const uuidONull = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v : null);
+
       const ticketData: any = {
         tipo_tramite: tipoTramite,
         estatus_id: estatusNuevo.id,
@@ -2202,9 +2272,9 @@ export function NuevoTramiteModal({
         instrucciones: isCommercial ? buildCommercialDescription() : (descripcion.trim() || 'Sin descripción'),
         creado_por: usuario.id,
         modificado_por: usuario.id,
-        agente_id: esInterno ? null : (isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo)),
-        agente_usuario_id: isCommercial ? comAgenteUserId : undefined,
-        assigned_to_user_id: responsableId,
+        agente_id: esInterno ? null : uuidONull(isCommercial ? comAgenteUserId : (isAgent ? usuario.id : assignedTo)),
+        agente_usuario_id: isCommercial ? (uuidONull(comAgenteUserId) ?? undefined) : undefined,
+        assigned_to_user_id: uuidONull(responsableId),
         grupo_asignado_id: grupoAsignadoId ?? undefined,
       };
 
@@ -2400,41 +2470,115 @@ export function NuevoTramiteModal({
         }
       }
 
+      // El aviso llega por WhatsApp tal cual se escribe aquí, así que lleva con
+      // qué decidir: de quién es, de dónde y qué pide. Antes era solo el folio
+      // y el tipo, y había que entrar a MOVI para enterarse de algo.
+      const solicitanteId = ticketData.agente_id as string | null;
+      const solicitante = usuariosDisponibles.find(u => u.id === solicitanteId);
+      const avisoTramite = mensajeNuevoTramite({
+        folio: ticket.folio,
+        tipoLabel: tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite,
+        solicitante: solicitante?.nombre_completo,
+        oficina: oficinas.find(o => o.id === solicitante?.oficina_id)?.nombre,
+        prioridad,
+        instrucciones: ticketData.instrucciones as string | null,
+      });
+
       // Notificar al responsable asignado o al líder del equipo
-      if (responsableId) {
-        await crearNotificacion({
-          user_id: responsableId,
-          titulo: 'Nuevo trámite asignado',
-          mensaje: `Se te asignó el trámite ${ticket.folio} (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}).`,
-          modulo: 'Tramites',
-          icono: 'clipboard-list',
-          accion_url: `/tramites/${ticket.id}`,
-          accion_texto: 'Ver trámite',
-        });
-      } else if (grupoAsignadoId) {
+      // Las variables que puede usar la plantilla de Admin › Transaccionales.
+      // El respaldo de cada aviso es el texto de siempre: si no hay plantilla o
+      // el motor falla, el aviso sale igual.
+      // Un guion y no cadena vacía: la plantilla no tiene condicionales, así que
+      // un dato ausente dejaría su renglón en blanco y el correo se vería roto.
+      const oDash = (v: string | null | undefined) => (v && v.trim() ? v.trim() : '—');
+      const varsAviso = {
+        folio: ticket.folio ?? '',
+        solicitante: oDash(solicitante?.nombre_completo),
+        oficina: oDash(oficinas.find(o => o.id === solicitante?.oficina_id)?.nombre),
+        prioridad: oDash(prioridad),
+        instrucciones: oDash(String(ticketData.instrucciones ?? '')),
+        tipo_tramite: tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite,
+      };
+
+      // A quién se le avisa lo decide la BASE, no esta pantalla.
+      //
+      // Las reglas vivían aquí Y en SQL —los avisos que salen por trigger usan
+      // las mismas— y eran dos copias que nadie iba a mantener sincronizadas.
+      // Ahora hay una sola: `resolver_destinatarios_aviso`. Si falla, se cae al
+      // camino de siempre (abajo), nunca a "no avisarle a nadie".
+      let destinatarios: string[] = [];
+      const { data: resueltos, error: errDest } = await supabase
+        .rpc('resolver_destinatarios_aviso', { p_ticket_id: ticket.id, p_codigo_tipo: 'nuevo_tramite' });
+      if (errDest) console.error('[aviso] No se pudieron resolver los destinatarios:', errDest.message);
+      else destinatarios = (resueltos as string[] | null) ?? [];
+
+      // El líder solo se necesita para el respaldo de abajo.
+      let liderEquipoId: string | null = null;
+      if (grupoAsignadoId && !responsableId) {
         const { data: miembros } = await supabase.rpc('get_grupo_miembros_ejecutivos', { p_grupo_id: grupoAsignadoId });
-        const lider = (miembros as Array<{ id: string; nombre_completo: string }>)?.[0];
-        if (lider) {
-          await crearNotificacion({
-            user_id: lider.id,
-            titulo: 'Nuevo trámite en tu equipo',
-            mensaje: `Nuevo trámite ${ticket.folio} asignado a tu equipo (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}).`,
+        liderEquipoId = (miembros as Array<{ id: string }>)?.[0]?.id ?? null;
+      }
+
+      const tituloPara = (id: string) =>
+        id === responsableId ? 'Nuevo trámite asignado'
+        : id === solicitanteId ? 'Tu trámite fue registrado'
+        : 'Nuevo trámite en tu equipo';
+
+      if (destinatarios.length > 0) {
+        for (const destinatarioId of destinatarios) {
+          await avisarPorEvento({
+            eventKey: 'nuevo_tramite',
+            ticketId: ticket.id,
+            destinatarioId,
+            disparadoPor: usuario!.id,
+            variables: varsAviso,
+            respaldo: {
+              user_id: destinatarioId,
+              titulo: tituloPara(destinatarioId),
+              mensaje: avisoTramite,
+              modulo: 'Tramites',
+              icono: 'clipboard-list',
+              accion_url: `/tramites/${ticket.id}`,
+              accion_texto: 'Ver trámite',
+            },
+          });
+        }
+      } else if (responsableId || liderEquipoId) {
+        // Sin configuración: el camino de siempre. Una config en blanco no debe
+        // significar "no avisarle a nadie".
+        const destinatarioId = responsableId || liderEquipoId!;
+        await avisarPorEvento({
+          eventKey: 'nuevo_tramite',
+          ticketId: ticket.id,
+          destinatarioId,
+          disparadoPor: usuario!.id,
+          variables: varsAviso,
+          respaldo: {
+            user_id: destinatarioId,
+            titulo: tituloPara(destinatarioId),
+            mensaje: avisoTramite,
             modulo: 'Tramites',
             icono: 'clipboard-list',
             accion_url: `/tramites/${ticket.id}`,
             accion_texto: 'Ver trámite',
-          });
-        }
-      } else {
-        // Ni responsable ni equipo: la auto-asignación (override, oficina, o regla de
-        // área) no resolvió nada. Avisar a Admin para que no se pierda de vista.
+          },
+        });
+      }
+
+      // Ni responsable ni equipo: la auto-asignación (override, oficina, o regla
+      // de área) no resolvió nada. Esto NO se configura desde la pantalla: es una
+      // alarma de configuración rota, no un aviso de negocio, y poder apagarla
+      // sería poder quedarse sin enterarse de que algo quedó en el limbo.
+      if (!responsableId && !grupoAsignadoId) {
         const { data: adminsSinEquipo } = await supabase.from('usuarios').select('id')
           .eq('rol', 'Administrador').eq('activo', true);
         for (const adm of (adminsSinEquipo ?? [])) {
           await crearNotificacion({
             user_id: adm.id,
             titulo: 'Trámite sin equipo asignado',
-            mensaje: `El trámite ${ticket.folio} (${tiposDb.find(t => t.value === tipoTramite)?.label || tipoTramite}) no se pudo asignar automáticamente a ningún equipo. Requiere asignación manual.`,
+            mensaje: `${avisoTramite}
+
+No cayó en ninguna regla de asignación. Requiere asignarlo a mano.`,
             modulo: 'Tramites',
             icono: 'alert-triangle',
             accion_url: `/tramites/${ticket.id}`,
@@ -2685,7 +2829,8 @@ export function NuevoTramiteModal({
   // aparte como agente/lote de comisiones, que no vienen de camposDinamicos).
   const camposRequeridosVisibles = camposDinamicos.filter(c =>
     campoExigible(c, secciones, camposDinamicos, respuestasDinamicas) &&
-    canSeeCampo(c) && !(c.is_sistema && AUTO_FILL_KEYS.includes(c.sistema_key || ''))
+    canSeeCampo(c) && !campoSistemaOculto(c) &&
+    !(c.is_sistema && AUTO_FILL_KEYS.includes(c.sistema_key || ''))
   );
   const camposRequeridosCompletos = camposRequeridosVisibles.filter(isCampoRespondido).length;
   const progresoPct = camposRequeridosVisibles.length > 0
@@ -3444,8 +3589,13 @@ export function NuevoTramiteModal({
           });
         })()}
 
+        {/* UX 2026-11-04 (U-07) — decía "El área y equipo se asignan
+            automáticamente según tu perfil", y lo PRIMERO que pide el
+            formulario es elegir el Área. El texto hablaba de los campos de
+            sistema que se esconden aquí, no del selector de arriba, pero quien
+            lo lee entiende que no debería tener que elegir nada. */}
         {isEmpleadoOAgente && (
-          <p className="text-xs text-neutral-500 text-center pt-2">El área y equipo se asignan automáticamente según tu perfil.</p>
+          <p className="text-xs text-neutral-500 text-center pt-2">El equipo que lo atenderá se asigna solo, según el área y tu perfil.</p>
         )}
       </div>
     </BaseModal>

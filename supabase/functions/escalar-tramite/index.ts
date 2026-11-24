@@ -93,13 +93,22 @@ Deno.serve(async (req) => {
     }
 
     // In-app notification
-    await supabase.rpc("crear_notificacion", {
-      p_usuario_id: u.id,
-      p_tipo: "escalacion_tramite",
+    // `enviar_notificacion_individual`, no `crear_notificacion`: esa NO EXISTE
+    // en la base. La campanita de las escalaciones llevaba fallando en silencio
+    // desde julio — el WhatsApp y el correo sí salían, así que el hueco pasaba
+    // desapercibido.
+    //
+    // `p_enviar_whatsapp: false` porque esta misma función ya mandó el WhatsApp
+    // unas líneas arriba; dejarlo en true lo duplicaría.
+    const { error: errCampanita } = await supabase.rpc("enviar_notificacion_individual", {
+      p_user_id: u.id,
       p_titulo: `Escalación — ${ticket.folio}`,
       p_mensaje: comentario.slice(0, 200),
-      p_url: `/tramites/${ticket_id}`,
-    }).maybeSingle();
+      p_modulo: "Tramites",
+      p_accion_url: `/tramites/${ticket_id}`,
+      p_enviar_whatsapp: false,
+    });
+    if (errCampanita) console.error("No se pudo crear la campanita:", errCampanita.message);
 
     notified++;
   }

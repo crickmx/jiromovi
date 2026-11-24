@@ -56,13 +56,22 @@ export async function loadUserTramiteTeamIds(userId: string): Promise<string[]> 
 }
 
 /**
- * Guarda los equipos que ATIENDEN al agente.
+ * Guarda los equipos que ATIENDEN a este usuario.
  *
- * Un agente nunca es miembro operativo del equipo. La relación correcta vive
- * en tramites_grupos_reglas (agente + área -> equipo), no en
+ * Quien recibe la atención nunca es miembro operativo del equipo: eso vive en
+ * tramites_grupos_reglas (usuario + área -> equipo), no en
  * tramites_grupos_miembros (líderes/ejecutivos que trabajan dentro del equipo).
+ *
+ * `rol` existe solo para la limpieza de abajo: un Empleado o un Gerente sí puede
+ * ser miembro operativo de un equipo —de ahí salen sus permisos en Trámites— y
+ * borrarle las membresías al guardar sus equipos de atención lo dejaría fuera de
+ * su propio equipo. Sin `rol` no se borra nada.
  */
-export async function syncUserTramiteTeamAssignments(userId: string, selectedIds: string[]) {
+export async function syncUserTramiteTeamAssignments(
+  userId: string,
+  selectedIds: string[],
+  rol?: string | null,
+) {
   const uniqueIds = Array.from(new Set(selectedIds.filter(Boolean)));
   const { data: selectedTeams, error: teamsError } = await supabase
     .from('tramites_grupos_visualizacion')
@@ -123,10 +132,13 @@ export async function syncUserTramiteTeamAssignments(userId: string, selectedIds
     if (error) throw error;
   }
 
-  // Limpia cualquier pertenencia incorrecta creada por versiones anteriores.
-  const { error: membershipError } = await supabase
-    .from('tramites_grupos_miembros')
-    .delete()
-    .eq('usuario_id', userId);
-  if (membershipError) throw membershipError;
+  // Solo para Agentes: limpia la pertenencia incorrecta que dejaron versiones
+  // anteriores (la BD además la rechaza con un trigger).
+  if ((rol ?? '').trim() === 'Agente') {
+    const { error: membershipError } = await supabase
+      .from('tramites_grupos_miembros')
+      .delete()
+      .eq('usuario_id', userId);
+    if (membershipError) throw membershipError;
+  }
 }

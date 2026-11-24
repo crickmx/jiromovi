@@ -6,7 +6,8 @@ import { isBetaHost } from './betaAccess';
 export interface ModuleVisibilityRule {
   id: string;
   module_key: string;
-  target_type: 'role' | 'office' | 'user' | 'beta_user' | 'rol_id';
+  /** 'global' apaga el módulo para todos, incluidos administradores. */
+  target_type: 'role' | 'office' | 'user' | 'beta_user' | 'rol_id' | 'global';
   target_value: string; // role name, oficina_id, usuario id, o (para rol_id) id del rol del catálogo
   visible: boolean;
   updated_at: string;
@@ -55,6 +56,10 @@ export function useModuleVisibility(): UseModuleVisibilityReturn {
   useEffect(() => { fetch(); }, [fetch]);
 
   const isVisible = useCallback((moduleKey: string, userRole: string, oficina_id?: string | null, userId?: string | null): boolean => {
+    // Apagado global: manda sobre todo, incluso sobre Administrador.
+    const globalRule = rules.find(r => r.module_key === moduleKey && r.target_type === 'global');
+    if (globalRule) return globalRule.visible;
+
     // Administradores siempre ven todo, sin importar las reglas configuradas
     if (userRole === 'Administrador') return true;
 

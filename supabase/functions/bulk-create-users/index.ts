@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { esPasswordValida, errorDePasswordInvalida, mensajeDeRechazo } from '../_shared/passwordPolicy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -389,6 +390,12 @@ Deno.serve(async (req: Request) => {
           estado,
         };
 
+        // Cada fila del CSV trae su contraseña: si no cumple la política, el
+        // reporte debe decir qué fila y por qué, no el inglés de GoTrue.
+        if (!esPasswordValida(String(password))) {
+          throw new Error(`Error en autenticación (${email}): ${errorDePasswordInvalida(String(password))}`);
+        }
+
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
           email,
           password,
@@ -396,7 +403,7 @@ Deno.serve(async (req: Request) => {
         });
 
         if (authError || !authData.user) {
-          throw new Error(`Error en autenticación: ${authError?.message || 'no se pudo crear el usuario'}`);
+          throw new Error(`Error en autenticación (${email}): ${mensajeDeRechazo(authError, String(password)) || authError?.message || 'no se pudo crear el usuario'}`);
         }
 
         const authUserId = authData.user.id;

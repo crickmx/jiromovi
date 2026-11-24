@@ -10,13 +10,7 @@
 // ============================================================================
 
 import { json, preflight, serviceClient, bitacora, transicion, notificarAdmins, type AltaRow } from '../_shared/alta/service.ts';
-
-function generarPassword(): string {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
-  const arr = new Uint8Array(24);
-  crypto.getRandomValues(arr);
-  return Array.from(arr).map((b) => chars[b % chars.length]).join('');
-}
+import { generarPasswordSegura } from '../_shared/passwordPolicy.ts';
 
 function autorizado(req: Request): boolean {
   const auth = (req.headers.get('Authorization') || '').replace('Bearer ', '');
@@ -89,7 +83,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 1) Crear usuario en auth.
-    const password = generarPassword();
+    const password = generarPasswordSegura(24);
     const { data: authData, error: authErr } = await db.auth.admin.createUser({
       email: String(alta.email), password, email_confirm: true,
     });

@@ -390,7 +390,8 @@ body {
 /* Mobile content area — add bottom padding for the fixed nav bar */
 @media (max-width: 767px) {
   .mobile-page-content {
-    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    /* 4.5rem: la barra inferior mide 70px y antes quedaba contenido debajo. */
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -638,4 +639,50 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ── App nativa (Capacitor) ─────────────────────────────────────────────
+   initNative() marca <html> con .native-app y .native-ios / .native-android.
+   En iOS la vista ocupa toda la pantalla (contentInset: never), así que el
+   contenido se aparta del notch y de la barra de inicio con las áreas seguras.
+   En la web estas reglas no aplican: env() vale 0 y las clases no existen. */
+html.native-app,
+html.native-app body {
+  background-color: #ffffff;
+  overscroll-behavior-y: none;
+}
+html.native-ios #root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  box-sizing: border-box;
+  min-height: 100vh;
+}
+html.native-app {
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+/* Bienvenida del dashboard: capa de color que gira muy despacio */
+@keyframes movi-aurora {
+  from { transform: rotate(0deg) scale(1.6); }
+  to   { transform: rotate(360deg) scale(1.6); }
+}
+.movi-aurora {
+  background: conic-gradient(
+    from 0deg at 35% 45%,
+    rgba(28, 55, 224, 0.55),
+    rgba(255, 255, 255, 0),
+    rgba(118, 87, 255, 0.45),
+    rgba(255, 255, 255, 0),
+    rgba(28, 55, 224, 0.55)
+  );
+  filter: blur(46px);
+  opacity: 0.75;
+  animation: movi-aurora 34s linear infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .movi-aurora { animation: none; }
 }

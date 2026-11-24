@@ -7,6 +7,8 @@ import {
   Clock, KeyRound, Smartphone, Lock
 } from 'lucide-react';
 import { useSeguwallet } from '../lib/SeguwalletContext';
+import { useSeguwalletAuth } from '../lib/SeguwalletAuthContext';
+import { EliminarCuentaCard } from '@/components/cuenta/EliminarCuentaCard';
 import { useAgentBrand } from '../lib/AgentBrandContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
@@ -91,6 +93,7 @@ interface ProfileFormData {
 
 export function SeguwalletPerfil() {
   const { customer, refresh } = useSeguwallet();
+  const { signOut } = useSeguwalletAuth();
   const { brand } = useAgentBrand();
   const primary = brand.primaryColor;
   const contrastOnPrimary = getContrastColor(primary);
@@ -690,6 +693,14 @@ export function SeguwalletPerfil() {
           ))}
         </ul>
       </div>
+
+      {/* Requisito de App Store / Google Play: eliminar la cuenta desde la app */}
+      <EliminarCuentaCard
+        plataforma="seguwallet"
+        onSolicitada={({ cuentaBloqueada }) => {
+          if (cuentaBloqueada) window.setTimeout(() => { signOut(); }, 4000);
+        }}
+      />
     </div>
   );
 

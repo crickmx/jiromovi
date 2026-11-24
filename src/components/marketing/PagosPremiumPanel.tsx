@@ -53,6 +53,13 @@ const ACCION_TEXTO: Record<LogRow['accion'], string> = {
 
 interface Props {
   usuarioId: string;
+  /**
+   * Contratación a la que pertenecen estos pagos — lo que en pantalla se llama
+   * FOLIO. Sin esto el pago solo decía de quién era, no de qué contratación, y
+   * la bitácora tenía que deducirlo por fechas.
+   */
+  periodoId?: string | null;
+  folio?: string | null;
   plan: PlanPremium | null;
   /** Solo quien administra Marketing puede capturar o corregir. */
   puedeEditar: boolean;
@@ -69,7 +76,7 @@ function soloDia(iso: string): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : String(iso);
 }
 
-export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
+export function PagosPremiumPanel({ usuarioId, periodoId, folio, plan, puedeEditar }: Props) {
   const [pagos, setPagos] = useState<PagoRow[]>([]);
   const [log, setLog] = useState<LogRow[]>([]);
   const [verLog, setVerLog] = useState(false);
@@ -87,15 +94,20 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    const { data, error: err } = await supabase
+    let q = supabase
       .from('mkt_premium_pagos')
       .select('id, fecha, metodo, monto, comentario, registrado_por, comprobante_path, comprobante_nombre, registrador:usuarios!registrado_por(nombre_completo, nombre)')
       .eq('usuario_id', usuarioId)
       .order('fecha', { ascending: false });
+    // Con folio se listan solo los suyos. Sin folio, todos los del agente: los
+    // pagos viejos no dicen a qué contratación pertenecen.
+    if (periodoId) q = q.eq('periodo_id', periodoId);
+
+    const { data, error: err } = await q;
     if (err) setError(err.message);
     setPagos((data ?? []) as unknown as PagoRow[]);
     setLoading(false);
-  }, [usuarioId]);
+  }, [usuarioId, periodoId]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -145,6 +157,7 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
     }
 
     const { error: err } = await supabase.from('mkt_premium_pagos').insert({
+      periodo_id: periodoId ?? null,
       id: pagoId,
       usuario_id: usuarioId,
       fecha,
@@ -196,7 +209,12 @@ export function PagosPremiumPanel({ usuarioId, plan, puedeEditar }: Props) {
     <div className="rounded-2xl border border-neutral-200 dark:border-white/10 p-4 space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <p className="text-sm font-semibold text-neutral-900 dark:text-white">Pagos del Premium</p>
+          <p className="text-sm font-semibold text-neutral-900 dark:text-white">
+            Pagos del Premium
+            {/* De qué contratación son estos pagos. Sin esto, con dos
+                contrataciones del mismo agente no se sabe cuál se está cobrando. */}
+            {folio && <span className="ml-2 font-mono text-xs font-normal text-neutral-500">{folio}</span>}
+          </p>
           <p className="text-xs text-neutral-500 dark:text-white/55">
             {cuenta.estado === 'sin_plan' ? 'Sin plan asignado'
               : cuenta.estado === 'al_corriente' ? `Al corriente · ${pesos(cuenta.pagado)} de ${pesos(cuenta.esperado)}`

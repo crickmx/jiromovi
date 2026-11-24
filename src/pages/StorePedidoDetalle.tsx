@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2, Settings } from 'lucide-react';
+import { Package, User, MapPin, FileText, Clock, MessageSquare, History, CreditCard, Download, Save, CircleCheck as CheckCircle, Circle as XCircle, Plus, X, DollarSign, TrendingUp, ChevronDown, ChevronUp, Loader as Loader2, Wallet, Trash2, Settings, Truck } from 'lucide-react';
 import { BaseModal } from '../components/BaseModal';
 import { PageHeader } from '@/components/ui/page-header';
+import { totalDelPedido, importeArticulos } from '../lib/storePedidoTotal';
 import { obtenerPedidoCompleto, actualizarEstatusPedido, agregarNotaPedido, obtenerEstatus, obtenerPagosPedido, registrarPago, eliminarPago, tieneAccesoEquipoStore, obtenerMapeoCamposTrigger, resolverTemplatePedido, parsearCapasPersonalizacion, IMAGEN_FINAL_PERSONALIZACION_KEY } from '../lib/storeUtils';
 import { PersonalizacionPreview } from '../components/store/PersonalizarLogoScreen';
 import { AsociarPedidoPublico } from '../components/store/AsociarPedidoPublico';
@@ -59,6 +60,10 @@ export default function StorePedidoDetalle() {
   const [nuevaCombParcialidad, setNuevaCombParcialidad] = useState('');
   const [nuevaCombFrecuencia, setNuevaCombFrecuencia] = useState('');
   const [observacionesOC, setObservacionesOC] = useState('');
+  const [nuevoCargoConcepto, setNuevoCargoConcepto] = useState('');
+  const [nuevoCargoMonto, setNuevoCargoMonto] = useState('');
+  const [guardandoCargo, setGuardandoCargo] = useState(false);
+  const [cargoError, setCargoError] = useState<string | null>(null);
   const [guardandoPago, setGuardandoPago] = useState(false);
   const [generandoOC, setGenerandoOC] = useState(false);
 
@@ -489,6 +494,84 @@ export default function StorePedidoDetalle() {
   };
 
 
+  /**
+   * Los cargos al cliente: alta, edición y baja.
+   *
+   * Los tres recargan el pedido al terminar. Sin eso, el Total y el desglose de
+   * arriba seguirían diciendo el monto viejo — la pantalla que miente, que en
+   * este proyecto ya mordió en la papelera y en el toggle de equipos.
+   *
+   * Y los tres miran el error del update: un cargo que no se guardó y que la
+   * pantalla da por bueno significa cobrarle de menos al cliente.
+   */
+  const handleAgregarCargo = async () => {
+    if (!pedidoId || !isAdmin) return;
+    const concepto = nuevoCargoConcepto.trim();
+    const monto = Number(nuevoCargoMonto);
+    if (!concepto) { setCargoError('Escribe el concepto del cargo.'); return; }
+    if (!Number.isFinite(monto) || monto <= 0) { setCargoError('El monto tiene que ser mayor que cero.'); return; }
+    try {
+      setGuardandoCargo(true);
+      setCargoError(null);
+      const { error } = await supabase.from('store_pedido_cargos').insert({
+        pedido_id: pedidoId,
+        concepto,
+        monto,
+        creado_por: usuario?.id ?? null,
+      });
+      if (error) throw error;
+      setNuevoCargoConcepto('');
+      setNuevoCargoMonto('');
+      await cargarDatos();
+    } catch (err: any) {
+      console.error('[Store] Error agregando el cargo al cliente:', err);
+      setCargoError(err?.message || 'No se pudo agregar el cargo.');
+    } finally {
+      setGuardandoCargo(false);
+    }
+  };
+
+  /** Guarda un cambio de concepto o de monto de un cargo que ya existe. */
+  const handleActualizarCargo = async (
+    cargoId: string,
+    campos: { concepto?: string; monto?: number },
+  ) => {
+    if (!isAdmin) return;
+    if (campos.concepto !== undefined && campos.concepto.trim() === '') {
+      showToast('El concepto no puede quedar vacío.', 'error');
+      await cargarDatos();   // devuelve el texto anterior al campo
+      return;
+    }
+    if (campos.monto !== undefined && (!Number.isFinite(campos.monto) || campos.monto <= 0)) {
+      showToast('El monto tiene que ser mayor que cero.', 'error');
+      await cargarDatos();
+      return;
+    }
+    try {
+      const { error } = await supabase.from('store_pedido_cargos')
+        .update(campos.concepto !== undefined ? { concepto: campos.concepto.trim() } : { monto: campos.monto })
+        .eq('id', cargoId);
+      if (error) throw error;
+      await cargarDatos();
+    } catch (err: any) {
+      console.error('[Store] Error actualizando el cargo al cliente:', err);
+      showToast(`No se pudo guardar el cambio: ${err?.message || 'error desconocido'}`, 'error');
+      await cargarDatos();
+    }
+  };
+
+  const handleQuitarCargo = async (cargoId: string) => {
+    if (!isAdmin) return;
+    try {
+      const { error } = await supabase.from('store_pedido_cargos').delete().eq('id', cargoId);
+      if (error) throw error;
+      await cargarDatos();
+    } catch (err: any) {
+      console.error('[Store] Error quitando el cargo al cliente:', err);
+      showToast(`No se pudo quitar el cargo: ${err?.message || 'error desconocido'}`, 'error');
+    }
+  };
+
   const handleGuardarPago = async () => {
     if (!pedidoId || !isAdmin || !formaPago || !metodoPago) return;
     try {
@@ -645,7 +728,11 @@ export default function StorePedidoDetalle() {
   };
 
   // Calculations
-  const calcularTotal = () => pedido?.detalle.reduce((sum, item) => sum + (item.precio_unitario * item.cantidad), 0) || 0;
+  // El total incluye el envío. Es la misma función que usan la Orden de
+  // Compra, la lista, los avisos y la vista `store_bitacora_view`: si aquí se
+  // sumara distinto, el cliente vería un total y se le cobraría otro.
+  const calcularTotal = () => totalDelPedido(pedido?.detalle, pedido?.cargos);
+  const calcularArticulos = () => importeArticulos(pedido?.detalle);
 
   const calcularCostoProductos = () => {
     if (!pedido) return 0;
@@ -700,6 +787,7 @@ export default function StorePedidoDetalle() {
   }
 
   const ingresos = calcularTotal();
+  const cargosAlCliente = pedido.cargos || [];
   const costoProductos = calcularCostoProductos();
   const gastosTotales = calcularGastosTotales();
   const gananciaNeta = ingresos - costoProductos - gastosTotales;
@@ -733,7 +821,7 @@ export default function StorePedidoDetalle() {
           {toast.message}
         </div>
       )}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         <PageHeader
           title="Detalle de Pedido"
           description={`Folio: ${pedido.folio_oc || 'Pendiente de asignación'}`}
@@ -901,6 +989,24 @@ export default function StorePedidoDetalle() {
                 })}
               </div>
               <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-white/10">
+                {/* El desglose solo aparece cuando hay envío: sin él, repetir
+                    el mismo número dos veces sobra. */}
+                {cargosAlCliente.length > 0 && (
+                  <div className="space-y-1 mb-3 text-sm">
+                    <div className="flex justify-between text-neutral-600 dark:text-white/60">
+                      <span>Artículos</span>
+                      <span>${calcularArticulos().toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    {/* Cada cargo con su concepto, no un "Otros" que obligue a
+                        ir a buscar de qué se trata. */}
+                    {cargosAlCliente.map(c => (
+                      <div key={c.id} className="flex justify-between text-neutral-600 dark:text-white/60">
+                        <span>{c.concepto}</span>
+                        <span>${Number(c.monto).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-neutral-900 dark:text-white">Total</span>
                   <span className="text-2xl font-bold text-accent-ink">
@@ -916,6 +1022,7 @@ export default function StorePedidoDetalle() {
                 <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
                   Gastos generales del pedido
+                  <span className="text-sm font-normal text-neutral-500 dark:text-white/55">(A cargo de Jiro)</span>
                 </h2>
                 {pedidoGastos.length > 0 && (
                   <ul className="space-y-2 mb-4">
@@ -973,6 +1080,114 @@ export default function StorePedidoDetalle() {
                     )}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Lo que SÍ se le cobra al cliente. Va pegada a la ficha de arriba
+                a propósito: son las dos caras del mismo pedido —lo que gasta
+                JIRO y lo que se cobra— y verlas juntas con su etiqueta es lo
+                que evita confundirlas, que es de donde salía el lío. */}
+            {isAdmin && (
+              <div className="bg-surface-card dark:bg-white/5 rounded-2xl border border-soft dark:border-white/10 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-1 flex items-center gap-2">
+                  <Truck className="w-5 h-5" />
+                  Envío y otros costos
+                  <span className="text-sm font-normal text-neutral-500 dark:text-white/55">(A cargo del cliente)</span>
+                </h2>
+                <p className="text-xs text-neutral-500 dark:text-white/55 mb-4">
+                  Suman al total del pedido y salen como renglón aparte en la Orden de Compra.
+                  Por ejemplo: envío, producción express.
+                </p>
+
+                {cargosAlCliente.length > 0 && (
+                  <ul className="space-y-2 mb-4">
+                    {cargosAlCliente.map(c => (
+                      /* El `key` lleva el contenido a propósito: los campos son
+                         no controlados (`defaultValue`), así que si el dato
+                         cambia en la base hay que remontarlos o se quedarían
+                         enseñando lo viejo. */
+                      <li
+                        key={`${c.id}-${c.concepto}-${c.monto}`}
+                        className="flex items-center gap-2 bg-neutral-50 dark:bg-white/5 rounded-lg px-3 py-2"
+                      >
+                        <input
+                          type="text"
+                          defaultValue={c.concepto}
+                          aria-label="Concepto del cargo"
+                          onBlur={e => {
+                            const v = e.target.value;
+                            if (v.trim() !== c.concepto) handleActualizarCargo(c.id, { concepto: v });
+                          }}
+                          onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                          className="flex-1 min-w-0 bg-transparent text-sm font-medium px-1 py-0.5 rounded border border-transparent hover:border-neutral-300 focus:border-accent focus:bg-surface-card dark:hover:border-white/20 dark:focus:bg-white/10 outline-none"
+                        />
+                        <div className="relative w-28 flex-shrink-0">
+                          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-white/50">$</span>
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            inputMode="decimal"
+                            defaultValue={Number(c.monto)}
+                            aria-label="Monto del cargo"
+                            onBlur={e => {
+                              const v = Number(e.target.value);
+                              if (v !== Number(c.monto)) handleActualizarCargo(c.id, { monto: v });
+                            }}
+                            onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                            className="w-full bg-transparent text-sm font-semibold text-right pl-5 pr-1 py-0.5 rounded border border-transparent hover:border-neutral-300 focus:border-accent focus:bg-surface-card dark:hover:border-white/20 dark:focus:bg-white/10 outline-none"
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleQuitarCargo(c.id)}
+                          title={`Quitar ${c.concepto}`}
+                          aria-label={`Quitar ${c.concepto}`}
+                          className="text-red-400 hover:text-red-600 flex-shrink-0"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {cargoError && (
+                  <p className="text-xs text-red-600 mb-2">{cargoError}</p>
+                )}
+
+                <div className="flex gap-2 items-end">
+                  <input
+                    type="text"
+                    value={nuevoCargoConcepto}
+                    onChange={e => { setNuevoCargoConcepto(e.target.value); setCargoError(null); }}
+                    placeholder="Concepto (Envío, Producción express…)"
+                    aria-label="Concepto del cargo nuevo"
+                    className="flex-1 min-w-0 px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    inputMode="decimal"
+                    value={nuevoCargoMonto}
+                    onChange={e => { setNuevoCargoMonto(e.target.value); setCargoError(null); }}
+                    placeholder="$0.00"
+                    aria-label="Monto del cargo nuevo"
+                    className="w-24 flex-shrink-0 px-2.5 py-1.5 text-sm border border-neutral-300 dark:border-white/20 rounded-lg"
+                    onKeyDown={e => e.key === 'Enter' && handleAgregarCargo()}
+                  />
+                  <button
+                    onClick={handleAgregarCargo}
+                    disabled={guardandoCargo || !nuevoCargoConcepto.trim() || !nuevoCargoMonto}
+                    className="px-3 py-1.5 bg-accent text-accent-foreground rounded-lg text-sm disabled:opacity-40 flex items-center justify-center min-w-[36px] flex-shrink-0"
+                  >
+                    {guardandoCargo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-neutral-500 dark:text-white/55 mt-2">
+                  Si el cliente recoge su pedido, no agregues nada: la recolección no tiene costo.
+                </p>
               </div>
             )}
 

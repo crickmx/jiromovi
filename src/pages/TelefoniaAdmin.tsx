@@ -23,7 +23,7 @@ export default function TelefoniaAdmin() {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div className="p-2.5 rounded-xl bg-blue-50 text-accent-ink">
           <Phone className="w-6 h-6" />

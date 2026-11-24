@@ -18,6 +18,15 @@ interface Props {
     valid: boolean;
     missingCategories: string[];
     categories: TramiteTeamCategory[];
+    /**
+     * Si de verdad se pudo leer QUÉ equipos tiene hoy este usuario.
+     *
+     * Hace falta porque guardar con la lista vacía NO es inocuo:
+     * `planearReglasDeEquipo` manda a `desactivar` todo lo que no venga en la
+     * selección, así que guardar antes de que esto cargue —o después de que
+     * falle— le borra al usuario los equipos que tenía, sin un solo error.
+     */
+    hidratado: boolean;
   }) => void;
   disabled?: boolean;
 }
@@ -45,6 +54,7 @@ export function AgentTramiteTeamsSection({
   const [teams, setTeams] = useState<TramiteTeamOption[]>([]);
   const [error, setError] = useState('');
   const hydratedUserRef = useRef<string | null>(null);
+  const [hidratado, setHidratado] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -62,8 +72,13 @@ export function AgentTramiteTeamsSection({
           if (!alive) return;
           hydratedUserRef.current = userId;
           onSelectedIdsChange(existingIds);
+          setHidratado(true);
         } else if (!userId) {
+          // Alta: no hay nada que leer, así que no hay nada que se pueda perder.
           hydratedUserRef.current = null;
+          setHidratado(true);
+        } else {
+          setHidratado(true);
         }
       } catch (err) {
         if (!alive) return;
@@ -88,8 +103,9 @@ export function AgentTramiteTeamsSection({
       valid: selectionState.valid,
       missingCategories: selectionState.missingCategories,
       categories: selectionState.categories,
+      hidratado,
     });
-  }, [loading, onStateChange, selectionState]);
+  }, [loading, onStateChange, selectionState, hidratado]);
 
   // Si una categoría solo tiene un equipo posible, no tiene caso pedirle al
   // admin que lo marque a mano -- se asigna solo.

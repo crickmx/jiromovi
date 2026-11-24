@@ -18,17 +18,17 @@ export interface TramiteTeamCategory {
 }
 
 /**
- * Roles que pueden tener equipos de trámite asignados.
+ * Quién puede tener equipos de trámite asignados: cualquiera con rol.
  *
- * Un Administrador también levanta trámites y las reglas del motor se resuelven
- * por agente + área igual que con un Agente, así que necesita su asignación.
- * Lo que NO comparte es la exigencia de cubrir todas las categorías: eso se
- * sigue pidiendo solo al Agente (ver `mustValidateTramiteTeams`).
+ * El motor resuelve por usuario + área (`tramites_grupos_reglas`), no por rol.
+ * A un Empleado o a un Gerente también se le levantan trámites, y sin regla el
+ * trámite nace sin equipo —el solicitante ni siquiera lo ve en su tablero—, así
+ * que la asignación tiene que poder configurarse en todos los niveles. Lo que
+ * NO se le exige al resto es cubrir todas las categorías: eso sigue siendo solo
+ * del Agente (ver `mustValidateTramiteTeams`).
  */
-export const ROLES_CON_EQUIPOS_TRAMITE = ['Agente', 'Administrador'];
-
 export function puedeTenerEquiposTramite(rol: string | null | undefined): boolean {
-  return ROLES_CON_EQUIPOS_TRAMITE.includes((rol ?? '').trim());
+  return (rol ?? '').trim() !== '';
 }
 
 const CATEGORY_PRIORITY = [

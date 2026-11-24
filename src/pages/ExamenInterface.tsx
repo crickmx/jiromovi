@@ -17,7 +17,7 @@ import {
   obtenerPreguntasExamen,
   evaluarExamen
 } from '../lib/cedulaAUtils';
-import type { CedulaAExamen, CedulaAPregunta, ResultadoEvaluacion } from '../lib/cedulaATypes';
+import type { CedulaAExamen, CedulaAPregunta, ResultadoEvaluacion, RetroalimentacionPregunta } from '../lib/cedulaATypes';
 import { LoadingState } from '@/components/ui/loading-state';
 
 const formatearTiempo = (segundos: number): string => {
@@ -30,6 +30,19 @@ const formatearTiempo = (segundos: number): string => {
 };
 
 /** Cronómetro aislado: solo este span se re-renderiza cada segundo, no todo el examen. */
+/** Fisher-Yates: cada intento presenta preguntas y opciones en otro orden. */
+function barajar<T>(lista: T[]): T[] {
+  const copia = [...lista];
+  for (let i = copia.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copia[i], copia[j]] = [copia[j], copia[i]];
+  }
+  return copia;
+}
+
+/** La letra que se muestra depende de la posición; la respuesta enviada conserva la letra original. */
+const letraVisible = (indice: number) => String.fromCharCode(65 + indice);
+
 function Cronometro({ inicio }: { inicio: number }) {
   const [ahora, setAhora] = useState(() => Date.now());
   useEffect(() => {
@@ -75,7 +88,7 @@ export default function ExamenInterface() {
       ]);
 
       setExamen(examenData);
-      setPreguntas(preguntasData);
+      setPreguntas(barajar(preguntasData).map((p) => ({ ...p, opciones: barajar(p.opciones) })));
       setInicio(Date.now());
     } catch (error) {
       console.error('Error cargando examen:', error);
@@ -142,7 +155,7 @@ export default function ExamenInterface() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900 flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <LoadingState text="Cargando examen..." />
       </div>
     );
@@ -150,7 +163,7 @@ export default function ExamenInterface() {
 
   if (!examen || preguntas.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900 flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <p className="text-neutral-600 dark:text-white/60 mb-4">No se encontró el examen</p>
           <button
@@ -166,8 +179,8 @@ export default function ExamenInterface() {
 
   if (resultado) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900">
-        <div className="max-w-5xl mx-auto px-4 py-8">
+      <div>
+        <div>
           <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-ios-lg p-8 mb-6">
             <div className="text-center mb-8">
               <div className={`w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center ${
@@ -238,10 +251,39 @@ export default function ExamenInterface() {
             </div>
           </div>
 
+          {examen.tipo === 'final' ? (
+            <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-ios p-6">
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-2">Resultado del simulador</h2>
+              <p className="text-sm text-neutral-600 dark:text-white/60 mb-4">
+                Como en el examen oficial de la CNSF, el simulador final solo muestra tu calificación. Para identificar qué repasar, usa los exámenes de práctica de cada módulo.
+              </p>
+              {resultado.desglose && resultado.desglose.length > 0 && (
+                <div className="space-y-3">
+                  {resultado.desglose.map((d) => {
+                    const pct = d.total > 0 ? Math.round((d.correctas / d.total) * 100) : 0;
+                    return (
+                      <div key={d.modulo}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-neutral-700 dark:text-white/70">{d.modulo}</span>
+                          <span className="font-medium text-neutral-900 dark:text-white">{d.correctas}/{d.total} · {pct}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
+                          <div className={`h-full ${pct >= 70 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
           <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-ios p-6">
             <h2 className="text-xl font-bold text-neutral-900 dark:text-white mb-4">Retroalimentación Detallada</h2>
             <div className="space-y-6">
-              {resultado.retroalimentacion.map((retro, index) => (
+              {preguntas
+                .map((p) => ({ p, retro: resultado.retroalimentacion.find((r) => r.pregunta_id === p.id) }))
+                .filter((x): x is { p: CedulaAPregunta; retro: RetroalimentacionPregunta } => !!x.retro)
+                .map(({ p, retro }, index) => (
                 <div key={index} className={`border-l-4 rounded-ios-lg p-4 ${
                   retro.es_correcta ? 'border-emerald-500 bg-emerald-50' : 'border-red-500 bg-red-50'
                 }`}>
@@ -260,9 +302,9 @@ export default function ExamenInterface() {
                   </div>
 
                   <div className="space-y-2 mb-3">
-                    {retro.opciones.map((opcion) => {
+                    {p.opciones.map((opcion, indiceOpcion) => {
                       const esRespuestaUsuario = opcion.letra === retro.respuesta_usuario;
-                      const esRespuestaCorrecta = opcion.letra === retro.respuesta_correcta;
+                      const esRespuestaCorrecta = !!retro.respuesta_correcta && opcion.letra === retro.respuesta_correcta;
 
                       return (
                         <div
@@ -276,7 +318,7 @@ export default function ExamenInterface() {
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold">{opcion.letra}.</span>
+                            <span className="font-semibold">{letraVisible(indiceOpcion)}.</span>
                             <span>{opcion.texto}</span>
                             {esRespuestaCorrecta && (
                               <CheckCircle2 className="w-4 h-4 text-emerald-600 ml-auto" />
@@ -290,14 +332,17 @@ export default function ExamenInterface() {
                     })}
                   </div>
 
-                  <div className="bg-white dark:bg-white/5 rounded-ios p-3">
-                    <h4 className="font-semibold text-neutral-900 dark:text-white mb-1">Explicación:</h4>
-                    <p className="text-neutral-700 dark:text-white/70">{retro.explicacion}</p>
-                  </div>
+                  {retro.explicacion && (
+                    <div className="bg-white dark:bg-white/5 rounded-ios p-3">
+                      <h4 className="font-semibold text-neutral-900 dark:text-white mb-1">Explicación:</h4>
+                      <p className="text-neutral-700 dark:text-white/70">{retro.explicacion}</p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </div>
+          )}
         </div>
       </div>
     );
@@ -308,9 +353,9 @@ export default function ExamenInterface() {
   const progresoRespuestas = Math.round((respondidas / preguntas.length) * 100);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-neutral-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-900 flex flex-col">
+    <div className="flex flex-col">
       <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-200/50 dark:border-white/10 px-4 sm:px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto">
+        <div>
           <button
             onClick={() => navigate('/seguros-education/cedula-a')}
             className="flex items-center gap-2 text-neutral-600 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white mb-3 transition-colors"
@@ -345,7 +390,7 @@ export default function ExamenInterface() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="pt-4 sm:pt-8">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
             <div className="lg:col-span-3">
               <div className="bg-surface-card dark:bg-neutral-800/50 rounded-2xl border border-neutral-200/60 dark:border-white/8 shadow-ios p-5 sm:p-8 mb-4 sm:mb-6">
@@ -354,7 +399,7 @@ export default function ExamenInterface() {
                 </h2>
 
                 <div className="space-y-3">
-                  {pregunta.opciones.map((opcion) => {
+                  {pregunta.opciones.map((opcion, indiceOpcion) => {
                     const seleccionada = respuestas[pregunta.id] === opcion.letra;
 
                     return (
@@ -378,7 +423,7 @@ export default function ExamenInterface() {
                             )}
                           </div>
                           <div className="flex-1">
-                            <span className="font-semibold text-neutral-900 dark:text-white">{opcion.letra}.</span>
+                            <span className="font-semibold text-neutral-900 dark:text-white">{letraVisible(indiceOpcion)}.</span>
                             <span className="ml-2 text-neutral-700 dark:text-white/70">{opcion.texto}</span>
                           </div>
                         </div>

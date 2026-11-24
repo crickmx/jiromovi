@@ -123,7 +123,7 @@ export default function GMMTarifasAdmin() {
         subtitle="Gestiona las versiones de tarifas del cotizador"
       />
 
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="mt-6 space-y-6">
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Cargar Nueva Tarifa</h3>
 

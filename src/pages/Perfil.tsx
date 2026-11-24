@@ -1,11 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
+import { EliminarCuentaCard } from '../components/cuenta/EliminarCuentaCard';
 import { supabase } from '../lib/supabase';
 import { User, Phone, Mail, MapPin, Building2, Shield, Camera, Check, Loader as Loader2, Pencil, X, Globe, CreditCard, Calendar, BadgeCheck, Info, ExternalLink, Lock, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import UbicacionPicker, { type UbicacionValue } from '../components/ubicacion/UbicacionPicker';
 import TOTPSetupPanel from '../components/configuracion/TOTPSetupPanel';
+import PasswordRules, { PasswordStrengthBar } from '../components/PasswordRules';
+import { describePasswordError, failingRules, isPasswordValid } from '../lib/passwordPolicy';
 
 interface FiscalRegime {
   id: string;
@@ -146,96 +149,73 @@ function FieldRow({ label, value, editable, editing, onChange, type = 'text', ic
 }
 
 function PasswordSection() {
-  const [mode, setMode] = useState<'idle' | 'create' | 'change'>('idle');
+  const [open, setOpen] = useState(false);
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // `password_set` lo escribe esta pantalla cada vez que se guarda una
+  // contraseña. Para las cuentas antiguas no existe, así que la tarjeta habla
+  // de "establecer" en vez de afirmar si hay contraseña o no: no hay forma de
+  // saberlo desde el navegador y decir "no tienes" a quien sí tiene es mentir.
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
 
   useEffect(() => {
-    checkHasPassword();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { setHasPassword(null); return; }
+      setHasPassword(session.user.user_metadata?.password_set === true);
+    }).catch(() => setHasPassword(null));
   }, []);
 
-  async function checkHasPassword() {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const factors = session.user.user_metadata;
-      const hasEmailProvider = session.user.app_metadata?.providers?.includes('email') ?? false;
-      const hasPasswordSet = hasEmailProvider && !!(factors as any)?.password_set;
-      setHasPassword(hasPasswordSet || hasEmailProvider);
-    } catch {
-      setHasPassword(null);
-    }
+  const faltantes = failingRules(newPw);
+  const puedeGuardar = isPasswordValid(newPw) && newPw === confirmPw;
+
+  function reset() {
+    setOpen(false);
+    setNewPw('');
+    setConfirmPw('');
+    setMsg(null);
   }
 
-  function getStrength(pw: string): { level: number; label: string; color: string } {
-    if (pw.length === 0) return { level: 0, label: '', color: '' };
-    let score = 0;
-    if (pw.length >= 8) score++;
-    if (pw.length >= 12) score++;
-    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
-    if (/\d/.test(pw)) score++;
-    if (/[^A-Za-z0-9]/.test(pw)) score++;
-
-    if (score <= 2) return { level: 1, label: 'Débil', color: '#ef4444' };
-    if (score <= 3) return { level: 2, label: 'Media', color: '#f59e0b' };
-    if (score <= 4) return { level: 3, label: 'Fuerte', color: '#22c55e' };
-    return { level: 4, label: 'Muy fuerte', color: '#10b981' };
-  }
-
-  async function handleCreatePassword(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
-    if (newPw.length < 8) { setMsg({ type: 'error', text: 'La contraseña debe tener al menos 8 caracteres.' }); return; }
-    if (newPw !== confirmPw) { setMsg({ type: 'error', text: 'Las contraseñas no coinciden.' }); return; }
+    if (!isPasswordValid(newPw)) {
+      setMsg({ type: 'error', text: `La contraseña no cumple las reglas: ${faltantes.map(r => r.label.toLowerCase()).join(', ')}.` });
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setMsg({ type: 'error', text: 'Las dos contraseñas no coinciden.' });
+      return;
+    }
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPw });
+      const { error } = await supabase.auth.updateUser({
+        password: newPw,
+        // Deja constancia de que esta cuenta ya tiene contraseña propia: es lo
+        // que permite que el formulario sepa si ofrecer "cambiar" o "establecer".
+        data: { password_set: true },
+      });
       if (error) {
-        setMsg({ type: 'error', text: 'No se pudo crear la contraseña. Intenta de nuevo.' });
+        setMsg({ type: 'error', text: describePasswordError(error) });
         return;
       }
-      setMsg({ type: 'success', text: 'Contraseña creada exitosamente. Ahora puedes iniciar sesión con ella.' });
+      setMsg({
+        type: 'success',
+        text: 'Contraseña guardada. Ya puedes iniciar sesión con tu correo y esta contraseña (o seguir usando Ingreso Express).',
+      });
       setHasPassword(true);
-      setMode('idle');
+      setOpen(false);
       setNewPw('');
       setConfirmPw('');
-    } catch {
-      setMsg({ type: 'error', text: 'Error de conexión.' });
+    } catch (err) {
+      setMsg({ type: 'error', text: describePasswordError(err as { message?: string }) });
     } finally {
       setLoading(false);
     }
   }
-
-  async function handleChangePassword(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg(null);
-    if (newPw.length < 8) { setMsg({ type: 'error', text: 'La nueva contraseña debe tener al menos 8 caracteres.' }); return; }
-    if (newPw !== confirmPw) { setMsg({ type: 'error', text: 'Las contraseñas no coinciden.' }); return; }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPw });
-      if (error) {
-        setMsg({ type: 'error', text: 'No se pudo actualizar la contraseña.' });
-        return;
-      }
-      setMsg({ type: 'success', text: 'Contraseña actualizada exitosamente.' });
-      setMode('idle');
-      setNewPw('');
-      setConfirmPw('');
-    } catch {
-      setMsg({ type: 'error', text: 'Error de conexión.' });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const strength = getStrength(newPw);
 
   const inputCls = "w-full h-10 rounded-xl text-sm px-3 outline-none border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-white/5 text-neutral-900 dark:text-white/90 focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all";
 
@@ -257,40 +237,25 @@ function PasswordSection() {
         </div>
       )}
 
-      {mode === 'idle' && (
+      {!open && (
         <div className="space-y-3">
-          {hasPassword ? (
-            <>
-              <p className="text-sm text-neutral-600 dark:text-white/50">
-                Tu contraseña está configurada. Puedes iniciar sesión con ella o usar Ingreso Express.
-              </p>
-              <button
-                onClick={() => { setMode('change'); setMsg(null); }}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent/10 text-accent-ink hover:bg-accent/20 transition-colors"
-              >
-                <Lock className="w-4 h-4" />
-                Cambiar contraseña
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-neutral-600 dark:text-white/50">
-                Actualmente utilizas Ingreso Express. Puedes crear una contraseña para acceder más rápido.
-              </p>
-              <button
-                onClick={() => { setMode('create'); setMsg(null); }}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent/10 text-accent-ink hover:bg-accent/20 transition-colors"
-              >
-                <Lock className="w-4 h-4" />
-                Crear contraseña
-              </button>
-            </>
-          )}
+          <p className="text-sm text-neutral-600 dark:text-white/50">
+            {hasPassword
+              ? 'Puedes cambiar tu contraseña cuando quieras. Recuerda: también puedes entrar sin contraseña con Ingreso Express.'
+              : 'Establece una contraseña para entrar con tu correo sin esperar el código de Ingreso Express.'}
+          </p>
+          <button
+            onClick={() => { setOpen(true); setMsg(null); }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent/10 text-accent-ink hover:bg-accent/20 transition-colors"
+          >
+            <Lock className="w-4 h-4" />
+            {hasPassword ? 'Cambiar contraseña' : 'Establecer contraseña'}
+          </button>
         </div>
       )}
 
-      {mode === 'create' && (
-        <form onSubmit={handleCreatePassword} className="space-y-4">
+      {open && (
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wide">Nueva contraseña</label>
             <div className="relative">
@@ -301,20 +266,16 @@ function PasswordSection() {
                 placeholder="Mínimo 8 caracteres"
                 className={inputCls}
                 autoComplete="new-password"
+                autoFocus
               />
               <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500" tabIndex={-1}>
                 {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            {newPw && (
-              <div className="flex items-center gap-2 mt-1.5">
-                <div className="flex-1 h-1.5 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${(strength.level / 4) * 100}%`, background: strength.color }} />
-                </div>
-                <span className="text-[11px] font-medium" style={{ color: strength.color }}>{strength.label}</span>
-              </div>
-            )}
+            <PasswordStrengthBar value={newPw} className="mt-1.5" />
           </div>
+
+          <PasswordRules value={newPw} />
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wide">Confirmar contraseña</label>
@@ -326,79 +287,23 @@ function PasswordSection() {
               className={inputCls}
               autoComplete="new-password"
             />
-          </div>
-
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-accent-foreground bg-accent hover:bg-accent/90 transition-colors disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Crear contraseña
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('idle'); setNewPw(''); setConfirmPw(''); setMsg(null); }}
-              className="text-sm font-medium text-neutral-500 dark:text-white/55 hover:text-neutral-700 dark:hover:text-white/60 transition-colors"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      )}
-
-      {mode === 'change' && (
-        <form onSubmit={handleChangePassword} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wide">Nueva contraseña</label>
-            <div className="relative">
-              <input
-                type={showNew ? 'text' : 'password'}
-                value={newPw}
-                onChange={e => setNewPw(e.target.value)}
-                placeholder="Mínimo 8 caracteres"
-                className={inputCls}
-                autoComplete="new-password"
-              />
-              <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500" tabIndex={-1}>
-                {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {newPw && (
-              <div className="flex items-center gap-2 mt-1.5">
-                <div className="flex-1 h-1.5 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${(strength.level / 4) * 100}%`, background: strength.color }} />
-                </div>
-                <span className="text-[11px] font-medium" style={{ color: strength.color }}>{strength.label}</span>
-              </div>
+            {confirmPw.length > 0 && confirmPw !== newPw && (
+              <p className="text-xs text-red-600 dark:text-red-400">Las dos contraseñas no coinciden.</p>
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-neutral-500 dark:text-white/55 uppercase tracking-wide">Confirmar nueva contraseña</label>
-            <input
-              type="password"
-              value={confirmPw}
-              onChange={e => setConfirmPw(e.target.value)}
-              placeholder="Repite la nueva contraseña"
-              className={inputCls}
-              autoComplete="new-password"
-            />
-          </div>
-
           <div className="flex items-center gap-3 pt-2">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !puedeGuardar}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-accent-foreground bg-accent hover:bg-accent/90 transition-colors disabled:opacity-50"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Actualizar contraseña
+              Guardar contraseña
             </button>
             <button
               type="button"
-              onClick={() => { setMode('idle'); setNewPw(''); setConfirmPw(''); setMsg(null); }}
+              onClick={reset}
               className="text-sm font-medium text-neutral-500 dark:text-white/55 hover:text-neutral-700 dark:hover:text-white/60 transition-colors"
             >
               Cancelar
@@ -411,7 +316,7 @@ function PasswordSection() {
 }
 
 export default function Perfil() {
-  useEffect(() => { document.title = 'Mi Perfil · MOVI Digital'; }, []);
+  useEffect(() => { document.title = 'Mi Perfil · MOVI Mi Oficina Virtual'; }, []);
   const { usuario, reloadUsuario } = useMoviAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -561,7 +466,7 @@ export default function Perfil() {
   const rolBadgeCls = rolColor[rol] || 'bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-white/60';
 
   return (
-    <div className="pb-10">
+    <div>
       {/* Page title row */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -919,6 +824,9 @@ export default function Perfil() {
 
           {/* ── Password Management Section ── */}
           <PasswordSection />
+
+          {/* ── Eliminar cuenta (requisito de App Store / Google Play) ── */}
+          <EliminarCuentaCard plataforma="movi" />
         </div>
       </div>
     </div>

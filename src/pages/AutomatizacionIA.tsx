@@ -100,14 +100,14 @@ interface BitacoraItem {
 }
 
 export default function AutomatizacionIA() {
-  useEffect(() => { document.title = 'Automatización IA · MOVI Digital'; }, []);
+  useEffect(() => { document.title = 'Automatización IA · MOVI Mi Oficina Virtual'; }, []);
   const { usuario } = useAuth();
   const [tab, setTab] = useState<Tab>('dashboard');
 
   if (!usuario) return null;
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6">
       <PageHeader
         title="Automatización IA por E-Mail"
         description="Monitoreo inteligente de correos, clasificación automática y robots especializados"

@@ -605,7 +605,7 @@ export default function PublicWebPagePreview({
 
               <div className="flex items-center justify-center lg:justify-end">
                 <img
-                  src="https://movi.digital/wp-content/uploads/2025/02/seguwallet-movidigital.png"
+                  src="/seguwallet-logo.png"
                   alt="Seguwallet app en iOS y Android"
                   loading="lazy"
                   className="w-full max-w-sm lg:max-w-md object-contain transform hover:scale-105 transition-transform duration-500"

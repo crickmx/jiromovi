@@ -405,7 +405,10 @@ function QuoteTemplate(props: QuoteTemplateProps) {
           logoUrl, accentColor, people, plans, results, bestIdx } = props;
 
   const best = plans[bestIdx];
-  const formasPago: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
+  // Sólo se listan las formas que algún plan realmente ofrece: Bupa no maneja el pago
+  // bimestral, así que no debe salir una fila vacía en su cotización.
+  const formasPago: FormaPago[] = (['Anual', 'Semestral', 'Trimestral', 'Bimestral', 'Mensual'] as FormaPago[])
+    .filter(fp => fp === 'Anual' || plans.some(p => p.totals?.[fp]));
   const N = plans.length;
 
   // Font scale for tables based on option count

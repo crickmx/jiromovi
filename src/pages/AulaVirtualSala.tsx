@@ -1,42 +1,99 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { solicitarSala100ms } from '../lib/aulaVirtual100ms';
+import { supabase } from '../lib/supabase';
+import { aulaDaily, type EntradaAula } from '../lib/aulaDaily';
+import { SalaAula } from '../components/aula/SalaAula';
 
 /**
- * Sala virtual con 100ms Prebuilt embebido por iframe.
- * La edge function resuelve la sesión, decide el rol en el servidor y devuelve
- * la URL de la sala; así el SDK de 100ms (≈12 MB) no entra al bundle.
+ * Sala del Aula Virtual (usuarios MOVI).
+ * La edge function resuelve el rol en el servidor y devuelve el meeting token:
+ * aquí nunca se decide quién puede moderar.
  */
 export function AulaVirtualSala() {
-  const { id, roomId } = useParams<{ id?: string; roomId?: string }>();
-  const { usuario } = useAuth();
-  const [url, setUrl] = useState<string | null>(null);
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { usuario, loading: cargandoSesion } = useAuth();
+
+  const [entrada, setEntrada] = useState<EntradaAula | null>(null);
+  const [titulo, setTitulo] = useState('Aula Virtual');
+  const [grabar, setGrabar] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const userId = usuario?.id;
-  const nombre = usuario ? (usuario.nombre_completo || `${usuario.nombre} ${usuario.apellidos}`) : '';
-  const identifier = id || roomId;
+  const salir = useCallback(() => navigate('/seguros-education/aula-virtual'), [navigate]);
 
   useEffect(() => {
-    if (!userId || !identifier) return;
-    let cancelled = false;
-    solicitarSala100ms({ sesion: identifier, name: nombre })
-      .then((r) => { if (!cancelled) setUrl(r.url); })
-      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : 'No fue posible entrar a la sala'); });
-    return () => { cancelled = true; };
-    // nombre se lee solo al entrar; no debe reconectar la sala si cambia el perfil.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, identifier]);
+    if (cargandoSesion) return;
+    if (!id || !usuario) return;
 
-  if (error) return <div className="flex min-h-screen items-center justify-center text-red-600">{error}</div>;
-  if (!url) return <div className="flex min-h-screen items-center justify-center">Cargando sala…</div>;
+    let vivo = true;
+    aulaDaily
+      .entrar(id)
+      .then((r) => {
+        if (vivo) setEntrada(r);
+      })
+      .catch((e: Error) => {
+        if (vivo) setError(e.message || 'No fue posible entrar a la clase');
+      });
+
+    return () => {
+      vivo = false;
+    };
+  }, [id, usuario, cargandoSesion]);
+
+  useEffect(() => {
+    if (!id) return;
+    let vivo = true;
+    supabase
+      .from('aula_eventos')
+      .select('titulo, grabar')
+      .eq('id', id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!vivo || !data) return;
+        if (data.titulo) setTitulo(data.titulo);
+        setGrabar(data.grabar === true);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [id]);
+
+  if (error) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-title-sm font-bold text-neutral-900 dark:text-white">No se pudo entrar</p>
+        <p className="max-w-md text-body-sm text-neutral-500 dark:text-white/60">{error}</p>
+        <button
+          onClick={salir}
+          className="rounded-xl bg-accent px-4 py-2 text-body-sm font-semibold text-white hover:bg-accent-hover"
+        >
+          Volver al Aula Virtual
+        </button>
+      </div>
+    );
+  }
+
+  if (!entrada) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-accent/20 border-t-accent" />
+        <p className="text-body-sm text-neutral-500 dark:text-white/60">Preparando la sala…</p>
+      </div>
+    );
+  }
+
   return (
-    <iframe
-      title="Aula virtual"
-      src={url}
-      allow="camera *; microphone *; display-capture *; autoplay *; fullscreen *"
-      className="block h-screen w-full border-0"
+    <SalaAula
+      eventoId={id!}
+      entrada={entrada}
+      anfitrion={entrada.rol === 'host'}
+      usuarioId={usuario?.id ?? null}
+      linkInvitado={entrada.link_token ? `${window.location.origin}/aula/${entrada.link_token}` : null}
+      linkOyente={entrada.link_token_asistente ? `${window.location.origin}/aula/${entrada.link_token_asistente}` : null}
+      titulo={titulo}
+      conGrabacion={grabar}
+      onSalir={salir}
     />
   );
 }
