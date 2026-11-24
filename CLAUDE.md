@@ -80,10 +80,36 @@ despliega**; el autodespliegue que se quitó el 05/11 sigue sin existir.
 - Una ✗ roja en la pestaña **Actions** significa *"el paquete no se actualizó"*.
   La barra naranja sigue siendo la verdad final de qué está vivo.
 
-⚠️ **Esto es SOLO para beta.** `produccion` / `app.movi.digital` **sigue
-compilando en el servidor**: el workflow solo se dispara con `main`. Queda
-pendiente armarle el equivalente — mismo molde apuntando a `produccion`, ya con
-las dos trampas de abajo resueltas.
+#### ✅ HECHO — producción también dejó de compilar (24/11)
+
+`.github/workflows/publicar-produccion.yml` es el mismo molde, disparando con
+`produccion` y publicando `dist/` a la rama **`produccion-dist`**. Las acciones
+post-deploy del repo de producción (sitio 53) quedaron **vacías** ese día.
+
+Dejó de ser opcional: el build en el servidor tumbó el host entero —sin HTTP ni
+SSH, con el panel contestando un 302 estático y degradándose de 0,25 s a 14 s— y
+hubo que reiniciarlo desde el panel del proveedor (IONOS). Es exactamente lo de
+abajo desde el 09/11: *"al hacer pull y deploy, seguido se cae el servidor"*.
+
+⚠️ **La rama del sitio 53 se quedó en `produccion` a propósito.**
+`app.movi.digital` corre un app Node por Passenger (`PassengerStartupFile
+"app.js"`) y esa rama solo trae `dist/`: cambiarla borraría `app.js` del
+directorio de despliegue. Si algún día se quiere, primero hay que re-subir
+`app.js`, `package.json` y su `node_modules` como archivos no versionados (así
+quedó beta).
+
+🔑 **Publicar producción mientras la rama siga en `produccion`:** GitHub ya hizo
+el build (está en `produccion-dist`) → copiar su `dist/` a
+`/var/www/vhosts/movi.digital/httpdocs/dist`. El `version.json` de ahí dice qué
+commit está vivo.
+
+💾 **Botón de reversa** — las acciones post-deploy que tenía el sitio 53 antes del
+24/11. Pegarlas de vuelta es volver a compilar en el servidor (y volver al riesgo
+de arriba):
+
+```bash
+export PATH=/opt/plesk/node/20/bin:/opt/plesk/node/22/bin:/usr/local/bin:$PATH && npm install --legacy-peer-deps --no-audit --no-fund --prefer-offline && rm -rf dist_new && node --max-old-space-size=4096 node_modules/vite/bin/vite.js build --outDir dist_new --emptyOutDir && test -f dist_new/index.html && cp dist/version.json dist_new/version.json && cp dist_new/index.html dist_new/404.html && rm -rf dist && mv dist_new dist
+```
 
 🔑 **Por qué Plesk no mostraba la rama**, que fue donde se atoró un rato: su
 lista de ramas es de la última vez que habló con GitHub, y `beta-dist` nació
