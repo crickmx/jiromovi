@@ -97,7 +97,8 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
   items: [
     { path: '/cotizar', label: 'Inicio', icon: House, visibleTo: ALL_ROLES },
     { path: '/cotizar/cotizaciones', label: 'Cotizaciones', icon: FileText, visibleTo: ALL_ROLES },
-    { path: '/cotizar/gmm-bx', label: 'GMM BX+', icon: HeartPulse, visibleTo: ADMIN_ONLY },
+    // GMM BX+ ya vive dentro de "Multicotizador GMM": su botón de menú se oculta
+    // para no duplicar el acceso. La ruta sigue redirigiendo (MoviFullRoutes).
     // { path: '/cotizar/formularios', label: 'Formularios', icon: FormInput, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: SlidersHorizontal, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/multicotizador', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },

@@ -21,6 +21,8 @@ interface CotizadorModule {
   shadowHover: string;
   iconColor: string;
   logo: string | null;
+  /** Logos de las aseguradoras que trae el comparador (se muestran juntos). */
+  logos?: string[];
   /** Aseguradoras que trae cargadas el comparador (los planes incluidos). */
   aseguradoras?: AseguradoraDelComparador[];
 }
@@ -36,7 +38,8 @@ const MODULES: CotizadorModule[] = [
     borderHover: 'hover:border-teal-400/60 dark:hover:border-teal-500/50',
     shadowHover: 'hover:shadow-teal-100/40 dark:hover:shadow-teal-900/20',
     iconColor: 'text-teal-600 dark:text-teal-400',
-    logo: '/logo-bupa.png',
+    logo: null,
+    logos: ['/logo-bupa.png', '/logo-bx.png'],
     aseguradoras: [
       { name: 'Bupa Nacional Vital', logo: '/logo-bupa.png' },
       { name: 'Bupa Nacional Plus', logo: '/logo-bupa.png' },
@@ -121,12 +124,25 @@ export default function CotizarHub() {
               <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${mod.color}`} />
 
               <div>
-                <div className={`flex items-center justify-center w-12 h-12 rounded-2xl ${mod.bgLight} mb-4 transition-transform duration-300 group-hover:scale-110 overflow-hidden ${mod.logo ? 'p-1.5' : ''}`}>
-                  {mod.logo
-                    ? <img src={mod.logo} alt={mod.label} className="w-full h-full object-contain" />
-                    : <Icon className={`w-6 h-6 ${mod.iconColor}`} />
-                  }
-                </div>
+                {mod.logos && mod.logos.length > 0 ? (
+                  <div className="flex items-center gap-1.5 mb-4">
+                    {mod.logos.map((src) => (
+                      <div
+                        key={src}
+                        className={`flex items-center justify-center w-12 h-12 rounded-2xl ${mod.bgLight} p-1.5 transition-transform duration-300 group-hover:scale-110 overflow-hidden`}
+                      >
+                        <img src={src} alt={mod.label} className="w-full h-full object-contain" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-2xl ${mod.bgLight} mb-4 transition-transform duration-300 group-hover:scale-110 overflow-hidden ${mod.logo ? 'p-1.5' : ''}`}>
+                    {mod.logo
+                      ? <img src={mod.logo} alt={mod.label} className="w-full h-full object-contain" />
+                      : <Icon className={`w-6 h-6 ${mod.iconColor}`} />
+                    }
+                  </div>
+                )}
 
                 <h3 className="text-base font-bold text-neutral-900 dark:text-white mb-2 tracking-tight">
                   {mod.label}
