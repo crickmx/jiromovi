@@ -2,7 +2,7 @@ export type ProductId = 'BXPLUS' | 'BNV' | 'BNP';
 export type RelationType = 'Titular' | 'Conyuge' | 'Hijo' | 'Dependiente';
 export type GenderType = 'Masculino' | 'Femenino';
 export type RegionZone = 'Zona 1' | 'Zona 2';
-export type FormaPago = 'Anual' | 'Semestral' | 'Trimestral' | 'Mensual';
+export type FormaPago = 'Anual' | 'Semestral' | 'Trimestral' | 'Bimestral' | 'Mensual';
 
 export interface QuotePerson {
   id: string;
@@ -83,7 +83,8 @@ export interface BnvCalculationResult {
   product: 'BNV';
   people_results: BnvPersonResult[];
   prima_anual_total: number;
-  totals: Record<FormaPago, BnvPaymentBreakdown>;
+  /** Bupa no ofrece Bimestral, así que puede faltar la llave. */
+  totals: Partial<Record<FormaPago, BnvPaymentBreakdown>>;
   tariff_package_id: string;
   error?: string;
   /** Avisos no bloqueantes (p. ej. una edad sin tarifa en el plan elegido). */
@@ -156,7 +157,7 @@ export interface BnpCalculationResult {
   product: 'BNP';
   people_results: BnpPersonResult[];
   prima_anual_total: number;
-  totals: Record<FormaPago, BnpPaymentBreakdown>;
+  totals: Partial<Record<FormaPago, BnpPaymentBreakdown>>;
   tariff_package_id: string;
   error?: string;
   warnings?: string[];
@@ -259,7 +260,7 @@ export interface BxplusCalculationResult {
     prima_xtensuz?: number;
   }>;
   prima_anual_total: number;
-  totals: Record<FormaPago, BxplusPaymentBreakdown>;
+  totals: Partial<Record<FormaPago, BxplusPaymentBreakdown>>;
   tariff_package_id: string;
   error?: string;
 }
@@ -319,6 +320,9 @@ export const PAYMENT_FACTORS: Record<FormaPago, { factor: number; num_recibos: n
   Anual: { factor: 1.0, num_recibos: 1 },
   Semestral: { factor: 1.03, num_recibos: 2 },
   Trimestral: { factor: 1.05, num_recibos: 4 },
+  // Bimestral sólo la ofrece Únikuz Bx+ (6 recibos, recargo 6.5% en su tabla del Excel);
+  // Bupa no la maneja, por eso su motor no la devuelve.
+  Bimestral: { factor: 1.0, num_recibos: 6 },
   Mensual: { factor: 1.07, num_recibos: 12 },
 };
 

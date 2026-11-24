@@ -112,7 +112,7 @@ export function calculateBnp(
     product: 'BNP',
     people_results: [],
     prima_anual_total: 0,
-    totals: {} as Record<FormaPago, BnpPaymentBreakdown>,
+    totals: {} as Partial<Record<FormaPago, BnpPaymentBreakdown>>,
     tariff_package_id: packageConfig.id,
     error,
   });
@@ -212,7 +212,7 @@ export function calculateBnp(
         extraEnCostoTotal: importeCatastrofica,
       },
       factores
-    ) as unknown as Record<FormaPago, BnpPaymentBreakdown>;
+    ) as unknown as Partial<Record<FormaPago, BnpPaymentBreakdown>>;
 
     return {
       product: 'BNP',

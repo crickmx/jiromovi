@@ -22,13 +22,12 @@ export interface BupaRateRecord {
   rate_type: string;
 }
 
+/** Bupa (BNV y BNP) no ofrece pago bimestral: su Excel sólo trae anual, semestral,
+ *  trimestral y mensual. Bimestral existe en el tipo compartido porque Únikuz Bx+ sí la maneja. */
+export type FormaPagoBupa = Exclude<FormaPago, 'Bimestral'>;
+
 /** Recargo por pago fraccionado. El Excel lo trae dentro de las formulas de "Datos Asegurado". */
-export interface FactoresPago {
-  Anual: number;
-  Semestral: number;
-  Trimestral: number;
-  Mensual: number;
-}
+export type FactoresPago = Record<FormaPagoBupa, number>;
 
 export const FACTORES_PAGO_DEFAULT: FactoresPago = {
   Anual: 1,
@@ -41,10 +40,11 @@ export const NUM_RECIBOS: Record<FormaPago, number> = {
   Anual: 1,
   Semestral: 2,
   Trimestral: 4,
+  Bimestral: 6,
   Mensual: 12,
 };
 
-export const FORMAS_PAGO: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
+export const FORMAS_PAGO: FormaPagoBupa[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
 
 export interface PagoDesglose {
   forma_pago: FormaPago;
@@ -150,9 +150,9 @@ export interface EntradaPagos {
 export function calcularPagos(
   entrada: EntradaPagos,
   factores: FactoresPago
-): Record<FormaPago, PagoDesglose> {
+): Partial<Record<FormaPago, PagoDesglose>> {
   const { primaPeriodo, derechoPoliza, asistenciaExtranjero, catastroficaExtranjero, extraEnCostoTotal } = entrada;
-  const out = {} as Record<FormaPago, PagoDesglose>;
+  const out: Partial<Record<FormaPago, PagoDesglose>> = {};
 
   for (const fp of FORMAS_PAGO) {
     const factor = factores[fp] ?? FACTORES_PAGO_DEFAULT[fp];

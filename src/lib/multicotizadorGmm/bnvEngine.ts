@@ -78,7 +78,7 @@ export function calculateBnv(
     product: 'BNV',
     people_results: [],
     prima_anual_total: 0,
-    totals: {} as Record<FormaPago, BnvPaymentBreakdown>,
+    totals: {} as Partial<Record<FormaPago, BnvPaymentBreakdown>>,
     tariff_package_id: packageConfig.id,
     error,
   });
@@ -150,7 +150,7 @@ export function calculateBnv(
         extraEnCostoTotal: 0,
       },
       factores
-    ) as unknown as Record<FormaPago, BnvPaymentBreakdown>;
+    ) as unknown as Partial<Record<FormaPago, BnvPaymentBreakdown>>;
 
     return {
       product: 'BNV',

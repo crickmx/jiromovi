@@ -157,7 +157,7 @@ export default function MulticotizadorGMM() {
           people,
           options,
           results: optionResults,
-          selected_formas_pago: ['Anual', 'Semestral', 'Trimestral', 'Mensual'],
+          selected_formas_pago: ['Anual', 'Semestral', 'Trimestral', 'Bimestral', 'Mensual'],
         },
         resumen: {
           productos: [...new Set(options.map(o => o.product_id))],

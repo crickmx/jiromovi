@@ -210,7 +210,7 @@ export function calculateBxplus(
     product: 'BXPLUS',
     people_results: [],
     prima_anual_total: 0,
-    totals: {} as Record<FormaPago, BxplusPaymentBreakdown>,
+    totals: {} as Partial<Record<FormaPago, BxplusPaymentBreakdown>>,
     tariff_package_id: packageId,
     error: msg,
   });
@@ -243,13 +243,14 @@ export function calculateBxplus(
       ? Number(tables.iva)
       : IVA_DEFAULT;
 
-    const totals = {} as Record<FormaPago, BxplusPaymentBreakdown>;
-    const formas: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
+    const totals: Partial<Record<FormaPago, BxplusPaymentBreakdown>> = {};
+    const formas: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Bimestral', 'Mensual'];
     const nombreExcel: Record<FormaPago, string[]> = {
       Anual: ['ANUAL'],
       Semestral: ['SEMESTRAL'],
       Trimestral: ['TRIMESTRAL'],
-      Mensual: ['MENSUAL', 'MENSUAL*', 'BIMESTRAL'],
+      Bimestral: ['BIMESTRAL'],
+      Mensual: ['MENSUAL', 'MENSUAL*'],
     };
 
     for (const fp of formas) {

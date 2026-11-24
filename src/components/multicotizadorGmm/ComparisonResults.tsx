@@ -7,7 +7,7 @@ interface ComparisonResultsProps {
   selectedFormaPago: FormaPago;
 }
 
-const FORMAS_PAGO: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Mensual'];
+const FORMAS_PAGO: FormaPago[] = ['Anual', 'Semestral', 'Trimestral', 'Bimestral', 'Mensual'];
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
