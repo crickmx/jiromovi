@@ -1,0 +1,1 @@
+function p(r){const t=r.replace("#","").padEnd(6,"0"),o=parseInt(t.substring(0,2),16)/255,a=parseInt(t.substring(2,4),16)/255,e=parseInt(t.substring(4,6),16)/255,n=s=>s<=.03928?s/12.92:Math.pow((s+.055)/1.055,2.4);return .2126*n(o)+.7152*n(a)+.0722*n(e)>.179?"#111827":"#ffffff"}export{p as g};
