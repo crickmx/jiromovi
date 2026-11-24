@@ -87,6 +87,46 @@ function metaDe(pkg: FilaPaqueteGmm): Partial<BupaPackageMeta> {
   };
 }
 
+/**
+ * Trae TODAS las filas de una consulta paginando.
+ *
+ * PostgREST corta cada respuesta en 1,000 filas (`content-range: 0-999/*`), así que una sola
+ * llamada a `multicotizador_gmm_rates` devolvía sólo la milésima parte de la tabla y el
+ * cotizador no encontraba la tarifa de casi ningún plan. Se piden páginas en paralelo.
+ */
+async function traerTodo<T>(
+  construir: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<T[] | { error: string }> {
+  const TAMANO = 1000;
+  const CONCURRENTES = 8;
+
+  const primera = await construir(0, TAMANO - 1);
+  if (primera.error) return { error: primera.error.message };
+  const filas: T[] = [...(primera.data ?? [])];
+  if (filas.length < TAMANO) return filas;
+
+  // Páginas siguientes en tandas: si una tanda trae menos de lo pedido, ya no hay más.
+  for (let vuelta = 0; vuelta < 400; vuelta++) {
+    const inicio = TAMANO + vuelta * TAMANO * CONCURRENTES;
+    const peticiones: Array<PromiseLike<{ data: T[] | null; error: { message: string } | null }>> = [];
+    for (let i = 0; i < CONCURRENTES; i++) {
+      const desde = inicio + i * TAMANO;
+      peticiones.push(construir(desde, desde + TAMANO - 1));
+    }
+    const resultados = await Promise.all(peticiones);
+    let corto = false;
+    for (const r of resultados) {
+      if (r.error) return { error: r.error.message };
+      const lote = r.data ?? [];
+      filas.push(...lote);
+      if (lote.length < TAMANO) corto = true;
+    }
+    if (corto) break;
+  }
+
+  return filas;
+}
+
 async function cargarBupa(product: BupaProduct): Promise<PaqueteBupa | { error: string }> {
   const { data, error } = await supabase
     .from('multicotizador_gmm_packages')
@@ -100,17 +140,21 @@ async function cargarBupa(product: BupaProduct): Promise<PaqueteBupa | { error: 
   const pkg = (data?.[0] ?? null) as FilaPaqueteGmm | null;
   if (!pkg) return { error: `No hay tarifa ${product} activa. Súbela en la pestaña Tarifas.` };
 
-  const { data: rates, error: ratesError } = await supabase
-    .from('multicotizador_gmm_rates')
-    .select('plan_name, region, age, rate, rate_type')
-    .eq('package_id', pkg.id);
+  const rates = await traerTodo<BnvRateRecord>((desde, hasta) =>
+    supabase
+      .from('multicotizador_gmm_rates')
+      .select('plan_name, region, age, rate, rate_type')
+      .eq('package_id', pkg.id)
+      .order('id', { ascending: true })
+      .range(desde, hasta)
+  );
 
-  if (ratesError) return { error: `No se pudieron leer las tarifas ${product}: ${ratesError.message}` };
-  if (!rates || rates.length === 0) {
+  if (!Array.isArray(rates)) return { error: `No se pudieron leer las tarifas ${product}: ${rates.error}` };
+  if (rates.length === 0) {
     return { error: `La tarifa ${product} activa no tiene datos. Sube de nuevo el cotizador en Tarifas.` };
   }
 
-  return { pkg, rates: rates as BnvRateRecord[], meta: metaDe(pkg) };
+  return { pkg, rates, meta: metaDe(pkg) };
 }
 
 async function cargarBxplus(): Promise<PaqueteBxplus | { error: string }> {
