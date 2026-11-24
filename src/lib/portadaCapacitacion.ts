@@ -152,7 +152,7 @@ export async function generarPortadaCapacitacion(datos: DatosPortada): Promise<F
 
   const altoLinea = tamano * 1.18;
   const altoTitulo = lineas.length * altoLinea;
-  const yTitulo = Math.round(ALTO * 0.42 - altoTitulo / 2);
+  const yTitulo = Math.round(ALTO * 0.455 - altoTitulo / 2);
 
   // Barra de acento sobre el título.
   ctx.fillStyle = 'rgba(255,255,255,0.9)';
