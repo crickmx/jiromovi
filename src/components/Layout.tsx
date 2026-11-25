@@ -17,7 +17,6 @@ import { useTramitesAttentionCount } from '../hooks/useTramitesAttentionCount';
 import { useStoreAttentionCount } from '../hooks/useStoreAttentionCount';
 import { useBugReportConfig } from '../hooks/useBugReportConfig';
 import { FloatingBugReportButton } from './FloatingBugReportButton';
-import { AmbientBackdrop } from './layout/AmbientBackdrop';
 
 const PINNED_KEY = 'movi:sidebar_pinned';
 
@@ -130,9 +129,6 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className={`app-shell min-h-screen flex overflow-hidden ${bannerPt}`}>
-      {/* Formas orgánicas de marca detrás del contenido (decorativo) */}
-      <AmbientBackdrop />
-
       {/* Impersonation banner & Beta Banner */}
       <ImpersonationBanner />
       {isBeta && <BetaBanner />}
@@ -163,7 +159,7 @@ export function Layout({ children }: LayoutProps) {
       ) : (
         <main className="flex-1 flex flex-col overflow-y-auto min-w-0 mobile-page-content md:!pb-0">
           {/* Barra de Breadcrumbs contextual */}
-          <div className="hidden md:flex px-6 py-2.5 border-b border-soft bg-surface-card/60 backdrop-blur-sm shrink-0 justify-between items-center">
+          <div className="hidden md:flex px-6 py-2.5 border-b border-soft bg-surface-card shrink-0 justify-between items-center">
             <Breadcrumbs workspace={workspace} activeItem={activeItem} />
           </div>
 

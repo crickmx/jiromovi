@@ -26,8 +26,8 @@ export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }
     <nav
       className={cn(
         'md:hidden fixed bottom-0 left-0 right-0 z-40',
-        'bg-white/90 dark:bg-[#111113]/92 backdrop-blur-xl backdrop-saturate-150',
-        'border-t border-soft shadow-[0_-8px_24px_-16px_rgba(28,25,23,0.25)]',
+        'bg-surface-card',
+        'border-t border-soft',
         'flex items-center px-1.5 pt-1',
         className
       )}
@@ -51,7 +51,7 @@ export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }
               }}
               className="flex-1 flex flex-col items-center justify-center -mt-3 relative group"
             >
-              <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-lg shadow-accent/30 group-active:scale-95 transition-transform">
+              <div className="w-10 h-10 rounded-none bg-accent text-accent-foreground flex items-center justify-center">
                 <Icon className="w-5 h-5" />
               </div>
               <span className="font-display text-[10.5px] font-semibold text-accent-ink mt-0.5">{item.label}</span>
@@ -76,7 +76,7 @@ export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }
             )}
           >
             <span className={cn(
-              'flex items-center justify-center w-12 h-7 rounded-full transition-colors duration-fast',
+              'flex items-center justify-center w-12 h-7 rounded-none transition-colors duration-fast',
               active && 'bg-accent-soft dark:bg-accent/20'
             )}>
               <Icon className="w-5 h-5" />
@@ -98,7 +98,7 @@ export function MobileNav({ onOpenDrawer, className, currentPath, onChavaClick }
         <span className="relative flex items-center justify-center w-12 h-7">
           <Menu className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 right-1.5 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+            <span className="absolute -top-1 right-1.5 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-none flex items-center justify-center leading-none">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

@@ -35,12 +35,12 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={cn("overflow-x-auto rounded-2xl", className)}>
+    <div className={cn("overflow-x-auto rounded-none", className)}>
       <table className="w-full text-sm">
         <thead>
           <tr className={cn(
             "border-b border-soft bg-surface-muted/60 dark:bg-white/[0.03]",
-            stickyHeader && "sticky top-0 bg-surface-card/95 backdrop-blur-sm z-10"
+            stickyHeader && "sticky top-0 bg-surface-card z-10"
           )}>
             {columns.map((col) => (
               <th
@@ -63,7 +63,7 @@ export function DataTable<T>({
               onClick={() => onRowClick?.(item)}
               className={cn(
                 "transition-colors duration-150",
-                onRowClick && "cursor-pointer hover:bg-accent-softer dark:hover:bg-white/5 transition-colors duration-fast"
+                onRowClick && "cursor-pointer hover:bg-surface-muted dark:hover:bg-white/5 transition-colors duration-fast"
               )}
             >
               {columns.map((col) => (

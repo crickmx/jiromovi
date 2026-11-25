@@ -36,7 +36,7 @@ const BADGE_COLORS: Record<string, string> = {
   purple: 'bg-purple-500 text-white',
 };
 
-const TOOLTIP_CLS = "text-xs font-semibold bg-slate-900 text-white border-slate-700/60 shadow-xl rounded-xl px-2.5 py-1.5";
+const TOOLTIP_CLS = "text-xs font-semibold bg-neutral-900 text-white border-0 rounded-none shadow-e1 px-2.5 py-1.5";
 const MAX_SIDEBAR_ITEMS = 12;
 const PINNED_KEY = 'movi:sidebar_pinned';
 const FAVORITOS_ABIERTO_KEY = 'movi:favoritos_abierto';
@@ -204,7 +204,7 @@ export function DesktopSidebar({
         <button
           onClick={() => handleNav(item.path)}
           className={cn(
-            'w-full flex items-center justify-between gap-2 pl-2.5 pr-8 py-1.5 rounded-lg text-[11.5px] font-medium transition-colors text-left group',
+            'w-full flex items-center justify-between gap-2 pl-2.5 pr-8 py-1.5 rounded-none text-[11.5px] font-medium transition-colors text-left group',
             active
               ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
               : fav
@@ -218,7 +218,7 @@ export function DesktopSidebar({
           </div>
 
           {badgeCount > 0 && (
-            <span className="px-1.5 py-0.2 bg-red-500 text-white text-[9.5px] font-bold rounded-full shrink-0">
+            <span className="px-1.5 py-0.2 bg-red-500 text-white text-[9.5px] font-bold rounded-none shrink-0">
               {badgeCount > 99 ? '99+' : badgeCount}
             </span>
           )}
@@ -230,7 +230,7 @@ export function DesktopSidebar({
           aria-pressed={fav}
           title={fav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
           className={cn(
-            'absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center transition-all active:scale-90',
+            'absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-none flex items-center justify-center transition-colors',
             fav
               ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10'
               : 'text-neutral-300 hover:text-amber-500 hover:bg-surface-muted dark:hover:bg-white/10 opacity-0 group-hover/sub:opacity-100 focus-visible:opacity-100'
@@ -258,7 +258,7 @@ export function DesktopSidebar({
         <TooltipTrigger asChild>
           <button
             onClick={() => toggleFavoritos()}
-            className="w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+            className="w-11 h-11 mx-auto rounded-none flex items-center justify-center relative transition-colors text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10"
             aria-label={favoritosAbierto ? 'Cerrar favoritos' : 'Abrir favoritos'}
             aria-expanded={favoritosAbierto}
           >
@@ -278,7 +278,7 @@ export function DesktopSidebar({
               <button
                 onClick={() => handleNav(item.path)}
                 className={cn(
-                  'w-9 h-9 mx-auto rounded-lg flex items-center justify-center transition-all active:scale-95',
+                  'w-9 h-9 mx-auto rounded-none flex items-center justify-center transition-colors',
                   active
                     ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink'
                     : 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10'
@@ -300,16 +300,16 @@ export function DesktopSidebar({
       <div
         onClick={toggleFavoritos}
         aria-expanded={favoritosAbierto}
-        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group cursor-pointer active:scale-[0.98] text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white"
+        className="w-full flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium transition-colors text-left relative group cursor-pointer text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white"
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Star className="w-4 h-4 shrink-0 text-amber-500 fill-amber-400" />
           <span className="truncate">Favoritos</span>
-          <span className="px-1.5 py-[1px] rounded-full text-[9.5px] font-bold leading-none bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 shrink-0">
+          <span className="px-1.5 py-[1px] rounded-none text-[9.5px] font-bold leading-none bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 shrink-0">
             {itemsFavoritos.length}
           </span>
         </div>
-        <span className="p-1 rounded-md text-neutral-400 ml-1" aria-hidden="true">
+        <span className="p-1 rounded-none text-neutral-400 ml-1" aria-hidden="true">
           {favoritosAbierto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </span>
       </div>
@@ -332,7 +332,7 @@ export function DesktopSidebar({
     const customBadgeEl = badge ? (
       <span
         className={cn(
-          'px-1.5 py-[1px] rounded-full text-[9.5px] font-bold leading-none whitespace-nowrap shrink-0',
+          'px-1.5 py-[1px] rounded-none text-[9.5px] font-bold leading-none whitespace-nowrap shrink-0',
           BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber
         )}
       >
@@ -352,7 +352,7 @@ export function DesktopSidebar({
       const badgeEl = tlBadge > 0 ? (
         <span className="relative flex items-center justify-center shrink-0">
           <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" />
-          <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+          <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-none flex items-center justify-center leading-none">
             {tlBadge > 99 ? '99+' : tlBadge}
           </span>
         </span>
@@ -369,16 +369,16 @@ export function DesktopSidebar({
                   aria-label={item.label}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
+                    'w-11 h-11 mx-auto rounded-none flex items-center justify-center relative transition-colors',
                     isActive
-                      ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                      ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
                       : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
                   )}
                 >
                   <Icon className="w-4 h-4" />
                   {badgeEl}
                   {isActive && (
-                    <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent" />
+                    <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-accent" />
                   )}
                 </button>
               </TooltipTrigger>
@@ -396,9 +396,9 @@ export function DesktopSidebar({
           <button
             onClick={() => handleNav(item.path)}
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group active:scale-[0.98]',
+              'w-full flex items-center gap-3 px-3 py-2 rounded-none text-xs font-medium transition-colors text-left relative group',
               isActive
-                ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
                 : 'text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
             )}
           >
@@ -407,7 +407,7 @@ export function DesktopSidebar({
             {badgeEl}
             {customBadgeEl}
             {isActive && (
-              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-accent" />
+              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-accent" />
             )}
           </button>
         </Fragment>
@@ -447,15 +447,15 @@ export function DesktopSidebar({
                 aria-label={ws.label}
                 aria-current={isWsActive ? 'page' : undefined}
                 className={cn(
-                  'w-11 h-11 mx-auto rounded-xl flex items-center justify-center relative transition-all active:scale-95',
+                  'w-11 h-11 mx-auto rounded-none flex items-center justify-center relative transition-colors',
                   isWsActive
-                    ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+                    ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
                     : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
                 )}
               >
                 <Icon className="w-4 h-4" />
                 {isWsActive && (
-                  <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent" />
+                  <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-accent" />
                 )}
               </button>
             </TooltipTrigger>
@@ -475,9 +475,9 @@ export function DesktopSidebar({
         <div
           onClick={() => handleNav(hubRoute)}
           className={cn(
-            'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left relative group cursor-pointer active:scale-[0.98]',
+            'w-full flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium transition-colors text-left relative group cursor-pointer',
             isWsActive
-              ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold shadow-2xs'
+              ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
               : 'text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white'
           )}
         >
@@ -490,7 +490,7 @@ export function DesktopSidebar({
           {allWsItems.length > 0 && (
             <button
               onClick={(e) => toggleAccordion(ws.id, e)}
-              className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors ml-1"
+              className="p-1 rounded-none text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors ml-1"
               aria-label={isOpen ? `Colapsar ${ws.label}` : `Expandir ${ws.label}`}
             >
               {isOpen ? (
@@ -502,7 +502,7 @@ export function DesktopSidebar({
           )}
 
           {isWsActive && (
-            <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-accent" />
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-accent" />
           )}
         </div>
 
@@ -514,7 +514,7 @@ export function DesktopSidebar({
             {isExtensive && (
               <button
                 onClick={() => setPanelWorkspace(ws)}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-accent-ink hover:bg-accent-softer transition-colors text-left"
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-none text-[11px] font-semibold text-accent-ink hover:bg-accent-softer transition-colors text-left"
               >
                 <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
                 <span>Ver todas ({allWsItems.length}) ▾</span>
@@ -539,15 +539,15 @@ export function DesktopSidebar({
         <aside
           aria-label="Menú lateral inteligente"
           className={cn(
-            'relative flex flex-col h-full font-display bg-surface-card dark:bg-[#111114] border-r border-soft shadow-[8px_0_24px_-18px_rgba(28,25,23,0.18)] transition-all duration-200 ease-out',
+            'relative flex flex-col h-full font-display bg-surface-card dark:bg-[#111114] border-r border-soft transition-[width] duration-200 ease-out',
             isExpanded
-              ? 'w-[264px] shadow-[6px_0_24px_rgba(0,0,0,0.08)] dark:shadow-[6px_0_28px_rgba(0,0,0,0.45)]'
-              : 'w-[72px] shadow-2xs',
+              ? 'w-[264px]'
+              : 'w-[72px]',
             !isPinned && isExpanded ? 'absolute top-0 left-0 bottom-0' : 'relative'
           )}
         >
           {/* Velo de marca muy sutil (decorativo) */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(120%_100%_at_0%_0%,rgb(var(--movi-accent-rgb)/0.08),transparent_70%)]" />
+          
           
           {/* ── TOP: Logo Oficial + Botón Pin / Fijar ── */}
           <div className="relative h-[60px] px-3.5 flex items-center justify-between border-b border-soft shrink-0">
@@ -555,11 +555,11 @@ export function DesktopSidebar({
               <>
                 <button
                   onClick={() => handleNav('/dashboard')}
-                  className="flex items-center gap-2.5 py-1 px-1 rounded-xl hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
+                  className="flex items-center gap-2.5 py-1 px-1 rounded-none hover:bg-surface-muted dark:hover:bg-white/5 transition-colors group"
                   title="MOVI Mi Oficina Virtual · Ir al Dashboard"
                 >
                   <span
-                    className="grid place-items-center w-9 h-9 rounded-xl bg-white border border-soft dark:border-white/10 shadow-2xs group-hover:scale-105 transition-transform"
+                    className="grid place-items-center w-9 h-9 rounded-none group-hover:opacity-80 transition-opacity"
                   >
                     <img
                       src="/movirecurso_7.png"
@@ -582,7 +582,7 @@ export function DesktopSidebar({
                     <button
                       onClick={onTogglePin}
                       className={cn(
-                        'w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90',
+                        'w-8 h-8 rounded-none flex items-center justify-center transition-colors',
                         isPinned
                           ? 'bg-accent-soft dark:bg-accent/20 text-accent-ink font-semibold'
                           : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/5'
@@ -601,11 +601,11 @@ export function DesktopSidebar({
               <div className="w-full flex items-center justify-center">
                 <button
                   onClick={() => handleNav('/dashboard')}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-surface-muted dark:hover:bg-white/5 active:scale-95 transition-all group"
+                  className="w-10 h-10 rounded-none flex items-center justify-center hover:bg-surface-muted dark:hover:bg-white/5 transition-colors group"
                   title="MOVI Mi Oficina Virtual"
                 >
                   <span
-                    className="grid place-items-center w-9 h-9 rounded-xl bg-white border border-soft dark:border-white/10 shadow-2xs group-hover:scale-105 transition-transform"
+                    className="grid place-items-center w-9 h-9 rounded-none group-hover:opacity-80 transition-opacity"
                   >
                     <img
                       src="/movirecurso_7.png"
@@ -634,11 +634,11 @@ export function DesktopSidebar({
             {isExpanded ? (
               <button
                 onClick={() => handleNav('/perfil')}
-                className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-200/60 dark:hover:bg-white/5 active:scale-95 transition-all text-left group"
+                className="w-full flex items-center gap-2.5 p-2 rounded-none hover:bg-neutral-200/60 dark:hover:bg-white/5 transition-colors text-left group"
               >
-                <Avatar className="h-8 w-8 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10 shrink-0">
-                  <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
-                  <AvatarFallback className="text-[11px] font-bold rounded-lg bg-accent text-accent-foreground">
+                <Avatar className="h-8 w-8 rounded-none border border-soft shrink-0">
+                  <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-none" />
+                  <AvatarFallback className="text-[11px] font-bold rounded-none bg-accent text-accent-foreground">
                     {getInitials()}
                   </AvatarFallback>
                 </Avatar>
@@ -657,11 +657,11 @@ export function DesktopSidebar({
                   <button
                     onClick={() => handleNav('/perfil')}
                     aria-label="Mi Perfil"
-                    className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/5 active:scale-95 transition-all"
+                    className="w-10 h-10 mx-auto rounded-none flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/5 transition-colors"
                   >
-                    <Avatar className="h-7 w-7 rounded-lg ring-1 ring-neutral-200 dark:ring-white/10">
-                      <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-lg" />
-                      <AvatarFallback className="text-[10px] font-bold rounded-lg bg-accent text-accent-foreground">
+                    <Avatar className="h-7 w-7 rounded-none border border-soft">
+                      <AvatarImage src={usuario?.imagen_perfil_url} alt={usuario?.nombre} crossOrigin="anonymous" className="rounded-none" />
+                      <AvatarFallback className="text-[10px] font-bold rounded-none bg-accent text-accent-foreground">
                         {getInitials()}
                       </AvatarFallback>
                     </Avatar>
@@ -682,7 +682,7 @@ export function DesktopSidebar({
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => handleNav('/chava')}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/10 active:scale-90 transition-transform"
+                      className="w-7 h-7 rounded-none flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/10 transition-colors"
                     >
                       <ChavaOrbIcon size="sm" sidebarVariant />
                     </button>
@@ -701,7 +701,7 @@ export function DesktopSidebar({
                   <button
                     onClick={onSignOut}
                     aria-label="Cerrar Sesión"
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-90 transition-colors"
+                    className="w-7 h-7 rounded-none flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                   </button>

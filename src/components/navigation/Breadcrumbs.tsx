@@ -17,7 +17,7 @@ export function Breadcrumbs({ workspace, activeItem, className }: BreadcrumbsPro
       {/* Inicio */}
       <button
         onClick={() => navigate('/dashboard')}
-        className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors py-0.5 px-1 rounded-md hover:bg-neutral-100 dark:hover:bg-white/5"
+        className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors py-0.5 px-1 rounded-none hover:bg-neutral-100 dark:hover:bg-white/5"
         title="Ir al Inicio"
       >
         <Home className="w-3.5 h-3.5" />
@@ -34,7 +34,7 @@ export function Breadcrumbs({ workspace, activeItem, className }: BreadcrumbsPro
               navigate(firstPath);
             }}
             className={cn(
-              'font-medium transition-colors py-0.5 px-1 rounded-md hover:bg-neutral-100 dark:hover:bg-white/5',
+              'font-medium transition-colors py-0.5 px-1 rounded-none hover:bg-neutral-100 dark:hover:bg-white/5',
               activeItem
                 ? 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
                 : 'text-neutral-900 dark:text-white font-semibold'

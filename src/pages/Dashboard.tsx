@@ -9,6 +9,7 @@ import {
   Star,
   Radio,
   ExternalLink,
+  Rocket,
   type LucideIcon,
 } from 'lucide-react';
 import { useMoviAuth } from '../contexts/MoviAuthContext';
@@ -30,6 +31,7 @@ import { GerenteSections } from '../components/dashboard/GerenteSections';
 import { DireccionSections } from '../components/dashboard/DireccionSections';
 import { EjecutivoSections } from '../components/dashboard/EjecutivoSections';
 import { isBetaHost } from '../lib/betaAccess';
+import { ZocaloCard } from '../components/ui/zocalo-card';
 
 // ── Tarjetas que sólo viven en beta ─────────────────────────────────────
 // La base es la misma para beta y producción, así que estas tarjetas no son
@@ -106,7 +108,7 @@ function SectionShell({
   children: ReactNode;
 }) {
   return (
-    <div className="bg-surface-card dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-card transition-shadow hover:shadow-card-hover">
+    <div className="bg-surface-card border border-soft p-5 sm:p-6">
       <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-neutral-100 dark:border-white/5">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-neutral-100 dark:bg-white/10 flex items-center justify-center text-neutral-600 dark:text-neutral-300">
@@ -144,34 +146,23 @@ const BETA_FAVORITOS = [
 // ── WelcomeHero ─────────────────────────────────────────────────────────
 
 function WelcomeHero({ usuario }: { usuario: Usuario }) {
-  const accentColor = usuario.oficina?.accent_color || '#164281';
-
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl border border-white/10 shadow-md"
-      style={{ backgroundColor: accentColor }}
-    >
-      {/* Capa animada, muy tenue: da vida sin distraer */}
-      <div className="movi-aurora pointer-events-none absolute inset-0" aria-hidden />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-black/15 via-transparent to-black/45" aria-hidden />
-
-      <div className="relative z-10 px-5 py-6 sm:px-7 sm:py-7">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
-          {getGreeting()}
-        </p>
-        <h1 className="mt-1.5 text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl">
-          {usuario.nombre} <span className="font-light text-white/85">{usuario.apellidos}</span>
-        </h1>
-        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-white/70">
-          <span>{formatDate()}</span>
-          {usuario.oficina?.nombre && (
-            <>
-              <span className="text-white/30">·</span>
-              <span>{usuario.oficina.nombre}</span>
-            </>
-          )}
-        </p>
-      </div>
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-ink">
+        {getGreeting()}
+      </p>
+      <h1 className="mt-2 font-display text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-neutral-900 dark:text-white sm:text-[34px]">
+        {usuario.nombre} <span className="font-normal text-neutral-500 dark:text-neutral-400">{usuario.apellidos}</span>
+      </h1>
+      <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13.5px] font-medium text-neutral-500 dark:text-neutral-400">
+        <span>{formatDate()}</span>
+        {usuario.oficina?.nombre && (
+          <>
+            <span className="text-neutral-300 dark:text-neutral-600">·</span>
+            <span>{usuario.oficina.nombre}</span>
+          </>
+        )}
+      </p>
     </div>
   );
 }
@@ -207,42 +198,16 @@ function ModuleVCards({
         const singleSpan = isOddLast(i);
 
         return (
-          <button
+          <ZocaloCard
             key={m.card_key}
-            type="button"
+            title={m.label}
+            description={m.descripcion ?? ''}
+            icon={Icon}
+            iconColor="text-accent-ink"
+            cta="Abrir"
+            className={singleSpan ? 'sm:col-span-2' : undefined}
             onClick={() => onNavigate(m.route)}
-            className={cn(
-              'group text-left relative rounded-2xl overflow-hidden p-4 sm:p-5 min-h-[112px] flex flex-col justify-between gap-3 transition-all duration-200 cursor-pointer shadow-sm border border-white/15 hover:shadow-lg hover:-translate-y-1 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
-              singleSpan && 'sm:col-span-2'
-            )}
-            style={{
-              background: `linear-gradient(145deg, ${m.gradient_from}, ${m.gradient_to})`,
-            }}
-          >
-            {/* Ambient glass sheen */}
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 pointer-events-none group-hover:scale-125 transition-transform duration-300" />
-
-            <div className="flex items-start justify-between gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-inner group-hover:bg-white/30 transition-colors">
-                <Icon className="w-5 h-5 text-white" />
-              </div>
-
-              <div className="w-7 h-7 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white/90 group-hover:bg-white group-hover:text-neutral-900 group-hover:translate-x-0.5 transition-all shadow-sm shrink-0">
-                <ArrowRight className="w-3.5 h-3.5" />
-              </div>
-            </div>
-
-            <div className="relative z-10 min-w-0">
-              <h2 className="text-base font-bold text-white tracking-tight leading-snug group-hover:underline decoration-white/50 underline-offset-2">
-                {m.label}
-              </h2>
-              {m.descripcion && (
-                <p className="text-xs text-white/85 line-clamp-2 leading-relaxed mt-0.5">
-                  {m.descripcion}
-                </p>
-              )}
-            </div>
-          </button>
+          />
         );
       })}
     </div>
@@ -253,12 +218,10 @@ function ModuleVCards({
 
 function FavoritosGrid({ onNavigate }: { onNavigate: (route: string) => void }) {
   return (
-    <div className="bg-surface-card dark:bg-neutral-900/90 border border-neutral-200/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-card">
+    <div className="bg-surface-card border border-soft p-5 sm:p-6">
       <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-neutral-100 dark:border-white/5">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-            <Star className="w-3.5 h-3.5 fill-current" />
-          </div>
+          <Star className="w-4 h-4 text-amber-600 dark:text-amber-400" strokeWidth={1.5} />
           <div>
             <h3 className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight leading-none">
               Mis Favoritos
@@ -276,11 +239,9 @@ function FavoritosGrid({ onNavigate }: { onNavigate: (route: string) => void }) 
               key={fav.route}
               type="button"
               onClick={() => onNavigate(fav.route)}
-              className="group p-3 rounded-xl border border-neutral-200/80 dark:border-white/10 bg-neutral-50/70 dark:bg-white/5 hover:bg-neutral-100 dark:hover:bg-white/10 active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer min-h-[64px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="group p-3 rounded-none border border-soft hover:border-neutral-900 dark:hover:border-white hover:bg-surface-muted dark:hover:bg-white/5 transition-colors flex flex-col items-center justify-center gap-2 text-center cursor-pointer min-h-[72px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
-              <div className="w-7 h-7 rounded-lg bg-neutral-200/60 dark:bg-white/10 flex items-center justify-center text-accent-ink dark:text-sky-300 group-hover:scale-110 transition-transform">
-                <Icon className="w-4 h-4" />
-              </div>
+              <Icon className="w-5 h-5 text-accent-ink" strokeWidth={1.5} />
               <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200 group-hover:text-neutral-900 dark:group-hover:text-white tracking-tight leading-tight line-clamp-1">
                 {fav.label}
               </span>
@@ -320,19 +281,15 @@ function JoinBetaCard({ usuario }: { usuario: Usuario }) {
 
   if (estado === 'ya_beta') {
     return (
-      <div
-        className="rounded-2xl p-5 relative overflow-hidden border border-white/20 text-white shadow-md"
-        style={{ background: 'linear-gradient(135deg, #10B981, #065F46)' }}
-      >
-        <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">🎉</span>
-          <span className="text-xs font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full border border-white/25">
-            Usuario Activo
+      <div className="border border-soft bg-surface-card p-5 sm:p-6">
+        <div className="flex items-center gap-2.5 mb-3">
+          <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
+          <span className="border border-soft px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-neutral-600 dark:text-neutral-300">
+            Usuario activo
           </span>
         </div>
-        <p className="text-base font-bold text-white mb-1">Ya eres usuario Beta</p>
-        <p className="text-xs text-white/85 leading-relaxed">
+        <p className="font-display text-[17px] font-semibold tracking-[-0.02em] text-neutral-900 dark:text-white mb-1.5">Ya eres usuario Beta</p>
+        <p className="text-[13.5px] leading-[1.6] text-neutral-500 dark:text-neutral-400">
           Cuentas con acceso a todas las nuevas herramientas en desarrollo. Gracias por ayudarnos a mejorar.
         </p>
       </div>
@@ -341,46 +298,35 @@ function JoinBetaCard({ usuario }: { usuario: Usuario }) {
 
   return (
     <>
-      <div className="relative group">
-        <div
-          className="absolute -inset-0.5 rounded-2xl opacity-75 blur-sm animate-pulse pointer-events-none"
-          style={{ background: 'linear-gradient(145deg, #FFD166, #E84F8A, #8E1A52)', animationDuration: '3s' }}
-        />
-        <div
-          className="rounded-2xl p-5 relative overflow-hidden border border-white/20 shadow-md flex flex-col justify-between"
-          style={{ background: 'linear-gradient(135deg, #E84F8A, #8E1A52)' }}
-        >
-          <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-2xl">🚀</span>
-              <span className="text-[11px] font-extrabold uppercase tracking-wider bg-[#FFD166] text-[#5A3300] px-2 py-0.5 rounded-full shadow-sm">
-                Novedad
-              </span>
-            </div>
-
-            <h3 className="text-base font-bold text-white mb-1">Únete al Programa Beta</h3>
-            <p className="text-xs text-white/85 mb-4 leading-relaxed">
-              Prueba las nuevas funciones de MOVI antes que nadie y comparte tu retroalimentación directa.
-            </p>
+      <div className="border border-soft bg-surface-card p-5 sm:p-6 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <Rocket className="w-5 h-5 text-accent-ink" strokeWidth={1.5} />
+            <span className="border border-soft px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-neutral-600 dark:text-neutral-300">
+              Novedad
+            </span>
           </div>
 
-          {estado === 'pendiente' ? (
-            <div className="bg-white/20 border border-white/30 text-white text-xs font-semibold py-2 px-3 rounded-xl text-center">
-              ⏳ Solicitud enviada, en revisión
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowModal(true)}
-              disabled={estado === 'cargando'}
-              className="w-full bg-white text-[#8E1A52] text-xs font-bold py-2.5 px-4 rounded-xl text-center hover:bg-white/95 active:scale-[0.99] transition-all shadow-md disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              Solicitar acceso Beta →
-            </button>
-          )}
+          <h3 className="font-display text-[17px] font-semibold tracking-[-0.02em] text-neutral-900 dark:text-white mb-1.5">Únete al Programa Beta</h3>
+          <p className="text-[13.5px] leading-[1.6] text-neutral-500 dark:text-neutral-400 mb-5">
+            Prueba las nuevas funciones de MOVI antes que nadie y comparte tu retroalimentación directa.
+          </p>
         </div>
+
+        {estado === 'pendiente' ? (
+          <div className="border border-soft text-[13px] font-semibold py-2.5 px-3 text-center text-neutral-600 dark:text-neutral-300">
+            Solicitud enviada, en revisión
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            disabled={estado === 'cargando'}
+            className="w-full bg-accent text-accent-foreground font-display text-[13px] font-semibold py-3 px-4 text-center transition-colors hover:bg-accent-hover disabled:opacity-50 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            Solicitar acceso Beta
+          </button>
+        )}
       </div>
       {showModal && (
         <SolicitudBetaModal

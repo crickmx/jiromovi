@@ -40,7 +40,7 @@ export function MultiSelectDropdown({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-all whitespace-nowrap ${
+        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-none border transition-all whitespace-nowrap ${
           selected.length > 0
             ? 'bg-accent/10 text-accent-ink border-accent/30'
             : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-white/60 border-neutral-200 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/8'
@@ -51,7 +51,7 @@ export function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] bg-surface-card dark:bg-neutral-800 rounded-xl border border-soft dark:border-white/10 shadow-xl overflow-hidden">
+        <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] bg-surface-card dark:bg-neutral-800 rounded-none border border-soft dark:border-white/10 shadow-e1 overflow-hidden">
           {selected.length > 0 && (
             <button
               onClick={() => { onChange([]); setOpen(false); }}
@@ -67,7 +67,7 @@ export function MultiSelectDropdown({
               return (
                 <div key={opt.value} className="flex items-center justify-between px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-white/5 group">
                   <button onClick={() => toggle(opt.value)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
-                    <span className={`w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
+                    <span className={`w-3.5 h-3.5 rounded-none flex items-center justify-center flex-shrink-0 border transition-all ${
                       isSel ? 'bg-accent border-accent' : 'border-neutral-300 dark:border-white/20'
                     }`}>
                       {isSel && <Check className="w-2.5 h-2.5 text-white" />}
@@ -76,7 +76,7 @@ export function MultiSelectDropdown({
                   </button>
                   <button
                     onClick={() => only(opt.value)}
-                    className="opacity-0 group-hover:opacity-100 text-[11px] font-semibold text-accent-ink px-1.5 py-0.5 rounded transition-all ml-2 shrink-0 hover:bg-accent/10"
+                    className="opacity-0 group-hover:opacity-100 text-[11px] font-semibold text-accent-ink px-1.5 py-0.5 rounded-none transition-all ml-2 shrink-0 hover:bg-accent/10"
                   >
                     Sólo
                   </button>

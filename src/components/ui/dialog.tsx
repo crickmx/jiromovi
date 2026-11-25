@@ -15,7 +15,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-neutral-950/45 backdrop-blur-[3px] movi-overlay-in",
+      "fixed inset-0 z-50 bg-neutral-950/45 movi-overlay-in",
       "data-[state=open]:animate-in data-[state=closed]:animate-out",
       "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
@@ -56,9 +56,9 @@ const DialogContent = React.forwardRef<
         // Appearance
         "border border-soft",
         "bg-surface-card",
-        "rounded-[var(--radius-xl)] shadow-e4",
+        "rounded-none shadow-e1",
         // Inner layout
-        "grid p-6 gap-5",
+        "grid p-6 sm:p-[30px] gap-5",
         // Animations
         "duration-200 movi-dialog-in",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -75,7 +75,7 @@ const DialogContent = React.forwardRef<
         <DialogPrimitive.Close
           className={cn(
             "absolute right-4 top-4",
-            "p-2 rounded-xl text-neutral-500 dark:text-white/60",
+            "p-2 rounded-none text-neutral-500 dark:text-white/60",
             "transition-colors hover:text-neutral-900 dark:hover:text-white",
             "hover:bg-surface-muted dark:hover:bg-white/10",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
@@ -96,7 +96,7 @@ const DialogHeader = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("flex flex-col space-y-1.5 text-center sm:text-left pr-8", className)}
+    className={cn("flex flex-col space-y-1.5 text-center sm:text-left pr-8 -mx-6 sm:-mx-[30px] px-6 sm:px-[30px] pb-4 border-b border-soft", className)}
     {...props}
   />
 )

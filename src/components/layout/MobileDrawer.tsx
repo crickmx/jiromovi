@@ -8,7 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import type { Usuario } from '@/contexts/MoviAuthContext';
 import { NotificationBell } from '../NotificationBell';
 import { ThemeToggle } from '../ThemeToggle';
-import { getForegroundColor, hexToRgb } from '@/lib/themeUtils';
 import { useSidebarConfig } from '../../hooks/useSidebarConfig';
 import { useSidebarItemsConfig } from '../../hooks/useSidebarItemsConfig';
 import { useMenuFavoritos } from '../../hooks/useMenuFavoritos';
@@ -25,7 +24,7 @@ const BADGE_COLORS: Record<string, string> = {
 function CountBadge({ n }: { n: number }) {
   if (n <= 0) return null;
   return (
-    <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[10.5px] font-bold rounded-full flex items-center justify-center leading-none">
+    <span className="flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[10.5px] font-bold rounded-none flex items-center justify-center leading-none">
       {n > 99 ? '99+' : n}
     </span>
   );
@@ -34,7 +33,7 @@ function CountBadge({ n }: { n: number }) {
 function TextBadge({ badge }: { badge: { texto: string; color: string } | null }) {
   if (!badge) return null;
   return (
-    <span className={cn('flex-shrink-0 px-1.5 py-[2px] rounded-full text-[9.5px] font-bold leading-none whitespace-nowrap', BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber)}>
+    <span className={cn('flex-shrink-0 px-1.5 py-[2px] rounded-none text-[9.5px] font-bold leading-none whitespace-nowrap', BADGE_COLORS[badge.color] ?? BADGE_COLORS.amber)}>
       {badge.texto}
     </span>
   );
@@ -107,14 +106,6 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
   const oficinaNombre = usuario?.oficina?.nombre || '';
   const rolLabel = usuario?.rol || '';
 
-  const accentStyle = useMemo(() => {
-    const hex = (usuario?.oficina as any)?.accent_color as string | undefined;
-    if (!hex) return null;
-    const fgRgb = getForegroundColor(hex);
-    const bgRgb = hexToRgb(hex);
-    return { hex, fgRgb, bgRgb };
-  }, [(usuario?.oficina as any)?.accent_color]);
-
   const isActive = (item: WorkspaceNavItem) => {
     if (location.pathname === item.path) return true;
     if (item.matchPrefix) {
@@ -160,7 +151,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
         aria-label={fav ? `Quitar ${item.label} de favoritos` : `Agregar ${item.label} a favoritos`}
         aria-pressed={fav}
         className={cn(
-          'flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors active:scale-90',
+          'flex-shrink-0 w-10 h-10 rounded-none flex items-center justify-center transition-colors',
           fav ? 'text-amber-500' : 'text-neutral-300 dark:text-white/25'
         )}
       >
@@ -179,7 +170,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
           onClick={() => handleNav(item.path)}
           aria-current={active ? 'page' : undefined}
           className={cn(
-            'flex-1 min-w-0 flex items-center gap-2.5 px-3 py-3 rounded-xl text-[14px] font-medium transition-colors text-left active:scale-[0.98]',
+            'flex-1 min-w-0 flex items-center gap-2.5 px-3 py-3 rounded-none text-[14px] font-medium transition-colors text-left',
             active
               ? 'bg-accent-soft text-accent-ink dark:bg-accent/15 font-semibold'
               : 'text-neutral-700 dark:text-white/70 hover:bg-surface-muted dark:hover:bg-white/[0.05] hover:text-neutral-900 dark:hover:text-white'
@@ -212,7 +203,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
       <div
         className={cn(
           'fixed inset-0 z-40 md:hidden transition-all duration-300',
-          open ? 'bg-neutral-950/45 backdrop-blur-[3px] pointer-events-auto' : 'bg-transparent pointer-events-none'
+          open ? 'bg-neutral-950/45 pointer-events-auto' : 'bg-transparent pointer-events-none'
         )}
         onClick={onClose}
       />
@@ -227,34 +218,21 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
           'app-shell fixed top-0 right-0 z-50 md:hidden flex flex-col',
           'w-[300px] max-w-[85vw]',
           'bg-surface-card dark:bg-[#111113]',
-          'shadow-[-8px_0_40px_rgba(0,0,0,0.18)] rounded-l-[24px] overflow-hidden',
+          'border-l border-soft overflow-hidden',
           'transition-transform duration-slow ease-smooth will-change-transform',
           open ? 'translate-x-0' : 'translate-x-full'
         )}
       >
-        {/* ── Profile header ── (gradiente de marca + formas orgánicas; texto con contraste AA calculado) */}
-        <div
-          className="relative isolate overflow-hidden pt-10 pb-5 px-5"
-          style={accentStyle
-            ? {
-                background: `radial-gradient(90% 120% at 100% 0%, rgb(var(--movi-accent-2-rgb) / 0.5) 0%, transparent 60%), linear-gradient(135deg, ${accentStyle.hex} 0%, rgb(var(--movi-accent-deep-rgb)) 100%)`,
-                color: `rgb(${accentStyle.fgRgb})`,
-              }
-            : { color: '#ffffff' }}
-        >
-          {!accentStyle && (
-            <div className="absolute inset-0 -z-10 bg-gradient-to-br from-neutral-900 to-neutral-800 dark:from-[#0a0a0d] dark:to-[#141417]" />
-          )}
-          <span aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 w-56 h-56 -z-10 rounded-[58%_42%_46%_54%/47%_52%_48%_53%] bg-white/10" />
-          <span aria-hidden="true" className="pointer-events-none absolute right-10 -bottom-24 w-40 h-40 -z-10 rounded-[50%_50%_38%_62%/60%_44%_56%_40%] bg-white/[0.07]" />
+        {/* ── Encabezado de perfil ── (superficie llana: sin degradado, sin formas, sin sombra) */}
+        <div className="relative border-b border-soft pt-8 pb-5 px-5">
           <div className="relative z-10">
             {/* Close button */}
             <button
               onClick={onClose}
               aria-label="Cerrar menú"
-              className="absolute -top-6 -right-1 w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
+              className="absolute -top-6 -right-1 w-9 h-9 rounded-none border border-soft text-neutral-500 dark:text-white/60 hover:text-neutral-900 dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/10 flex items-center justify-center transition-colors"
             >
-              <X className="w-4 h-4 opacity-90" />
+              <X className="w-4 h-4" strokeWidth={1.5} />
             </button>
 
             {/* Avatar + name */}
@@ -262,22 +240,22 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
               <button
                 onClick={() => handleNav('/perfil')}
                 aria-label="Mi perfil"
-                className="flex-shrink-0 ring-2 ring-white/25 hover:ring-white/50 rounded-2xl transition-all"
+                className="flex-shrink-0 transition-opacity hover:opacity-85"
               >
-                <Avatar className="h-14 w-14 rounded-2xl">
-                  <AvatarImage src={usuario?.imagen_perfil_url || undefined} alt={fullName} crossOrigin="anonymous" className="rounded-2xl" />
-                  <AvatarFallback className="rounded-2xl bg-white/20 text-current text-lg font-bold">
+                <Avatar className="h-14 w-14 rounded-none">
+                  <AvatarImage src={usuario?.imagen_perfil_url || undefined} alt={fullName} crossOrigin="anonymous" className="rounded-none" />
+                  <AvatarFallback className="rounded-none bg-accent-soft text-accent-ink text-lg font-bold">
                     {getInitials()}
                   </AvatarFallback>
                 </Avatar>
               </button>
               <div className="min-w-0">
-                <p className="font-display font-semibold text-[16px] leading-tight truncate">{fullName || 'Usuario'}</p>
+                <p className="font-display font-semibold text-[16px] leading-tight truncate text-neutral-900 dark:text-white">{fullName || 'Usuario'}</p>
                 {oficinaNombre && (
-                  <p className="opacity-80 text-[12.5px] mt-0.5 truncate">{oficinaNombre}</p>
+                  <p className="text-[12.5px] mt-0.5 truncate text-neutral-500 dark:text-neutral-400">{oficinaNombre}</p>
                 )}
                 {rolLabel && (
-                  <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-white/15 text-[10.5px] font-semibold">
+                  <span className="inline-block mt-1.5 border border-soft px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-neutral-600 dark:text-neutral-300">
                     {rolLabel}
                   </span>
                 )}
@@ -288,7 +266,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
             <div className="mt-4">
               <button
                 onClick={() => handleNav('/perfil')}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 font-display text-[12.5px] font-semibold transition-colors"
+                className="inline-flex items-center justify-center gap-1.5 border border-strong px-4 py-2.5 rounded-none font-display text-[12.5px] font-semibold text-accent-ink hover:bg-surface-muted dark:hover:bg-white/8 transition-colors"
               >
                 <User className="w-3.5 h-3.5" />
                 Mi Perfil
@@ -308,7 +286,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                   aria-expanded={favoritosAbierto}
                   className="w-full flex items-center gap-2 px-2 mb-2 text-left"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/15 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-none bg-amber-50 dark:bg-amber-500/15 flex items-center justify-center">
                     <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
                   </div>
                   <p className="movi-eyebrow text-neutral-600 dark:text-white/60 flex-1">Favoritos · {itemsFavoritos.length}</p>
@@ -330,7 +308,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
           {workspace && (
             <div className="px-3 pt-4 pb-2">
               <div className="flex items-center gap-2 px-2 mb-2">
-                <div className="w-7 h-7 rounded-lg bg-accent-soft dark:bg-accent/15 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-none bg-accent-soft dark:bg-accent/15 flex items-center justify-center">
                   <workspace.icon className="w-3.5 h-3.5 text-accent-ink" />
                 </div>
                 <p className="movi-eyebrow text-neutral-600 dark:text-white/60">
@@ -356,7 +334,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                           <button
                             onClick={() => setGruposColapsados(prev => ({ ...prev, [grupo.id]: !colapsado }))}
                             aria-expanded={!colapsado}
-                            className="w-full flex items-center gap-1.5 px-3 py-2 rounded-lg movi-eyebrow !text-[10.5px] text-neutral-500 dark:text-white/50"
+                            className="w-full flex items-center gap-1.5 px-3 py-2 rounded-none movi-eyebrow !text-[10.5px] text-neutral-500 dark:text-white/50"
                           >
                             {colapsado ? <ChevronRight className="w-3 h-3 flex-shrink-0" /> : <ChevronDown className="w-3 h-3 flex-shrink-0" />}
                             <span className="truncate">{grupo.nombre}</span>
@@ -401,7 +379,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                       onClick={() => handleNav(item.path)}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[14px] font-medium transition-colors text-left active:scale-[0.98]',
+                        'w-full flex items-center gap-3 px-3 py-3 rounded-none text-[14px] font-medium transition-colors text-left',
                         active
                           ? 'bg-accent-soft text-accent-ink dark:bg-accent/15 font-semibold'
                           : 'text-neutral-700 dark:text-white/70 hover:bg-surface-muted dark:hover:bg-white/[0.05] hover:text-neutral-900 dark:hover:text-white'
@@ -440,7 +418,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
                     onClick={() => handleNav(firstPath)}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[14px] font-medium transition-colors text-left active:scale-[0.98]',
+                      'w-full flex items-center gap-3 px-3 py-3 rounded-none text-[14px] font-medium transition-colors text-left',
                       active
                         ? 'bg-accent-soft text-accent-ink dark:bg-accent/15 font-semibold'
                         : 'text-neutral-700 dark:text-white/70 hover:bg-surface-muted dark:hover:bg-white/[0.05] hover:text-neutral-900 dark:hover:text-white'
@@ -469,7 +447,7 @@ export function MobileDrawer({ open, onClose, workspace, activeItem, userRole, u
           </div>
           <button
             onClick={() => { onClose(); onSignOut(); }}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[14px] font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors active:scale-[0.98] text-left"
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-none text-[14px] font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors text-left"
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
             <span>Cerrar Sesión</span>

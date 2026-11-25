@@ -17,7 +17,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between gap-2 rounded-xl",
+      "flex h-11 w-full items-center justify-between gap-2 rounded-none",
       "border border-strong dark:border-white/15 hover:border-neutral-300 dark:hover:border-white/25",
       "bg-white dark:bg-white/6",
       "px-3.5 py-2 text-sm",
@@ -85,11 +85,11 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-2xl animate-scale-in",
+        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-none border border-soft bg-surface-card animate-scale-in",
         "border border-soft",
         "bg-surface-card",
         "text-neutral-900 dark:text-white",
-        "shadow-e3",
+        "shadow-e1",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -140,7 +140,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-lg py-2 pl-8 pr-2 text-sm outline-none",
+      "relative flex w-full cursor-default select-none items-center rounded-none py-2 pl-8 pr-2 text-sm outline-none",
       "text-neutral-800 dark:text-white/90",
       "focus:bg-neutral-100 dark:focus:bg-white/10 focus:text-neutral-900 dark:focus:text-white",
       "data-[state=checked]:text-accent dark:data-[state=checked]:text-accent",

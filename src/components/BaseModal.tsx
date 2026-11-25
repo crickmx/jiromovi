@@ -57,22 +57,22 @@ export function BaseModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 backdrop-blur-[3px] p-3 sm:p-4 overflow-y-auto movi-overlay-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/45 p-3 sm:p-4 overflow-y-auto movi-overlay-in"
       data-state="open"
     >
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative bg-surface-card border border-soft rounded-[var(--radius-xl)] shadow-e4 ${maxWidthClasses[maxWidth]} w-full my-4 flex flex-col max-h-[90dvh] animate-scale-in`}
+        className={`relative bg-surface-card border border-soft rounded-none shadow-e1 ${maxWidthClasses[maxWidth]} w-full my-4 flex flex-col max-h-[90dvh] animate-scale-in`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex-shrink-0 sticky top-0 z-10 bg-surface-card border-b border-soft px-5 sm:px-6 py-4 rounded-t-[var(--radius-xl)]">
+        <div className="flex-shrink-0 sticky top-0 z-10 bg-surface-card border-b border-soft px-5 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-title-sm sm:text-title font-semibold text-neutral-900 dark:text-white">{title}</h2>
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="text-neutral-500 hover:text-neutral-900 hover:bg-surface-muted dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10 p-2 rounded-xl transition-colors duration-fast active:scale-95 flex-shrink-0"
+                className="text-neutral-500 hover:text-neutral-900 hover:bg-surface-muted dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10 p-2 rounded-none transition-colors duration-fast flex-shrink-0"
                 aria-label="Cerrar"
               >
                 <X className="w-5 h-5 stroke-[1.5]" />
@@ -87,7 +87,7 @@ export function BaseModal({
         </div>
 
         {footer && (
-          <div className="flex-shrink-0 sticky bottom-0 z-10 bg-surface-muted/80 backdrop-blur border-t border-soft px-5 sm:px-6 py-4 rounded-b-[var(--radius-xl)] flex flex-wrap justify-end gap-3">
+          <div className="flex-shrink-0 sticky bottom-0 z-10 bg-surface-card border-t border-soft px-5 sm:px-6 py-4 flex flex-wrap justify-end gap-3">
             {footer}
           </div>
         )}
