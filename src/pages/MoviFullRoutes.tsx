@@ -173,10 +173,13 @@ function LayoutShell() {
   );
 }
 
-export default function MoviFullRoutes() {
+export default function MoviFullRoutes({ landingEnRaiz = false }: { landingEnRaiz?: boolean }) {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
+        {/* En movi.digital, una ruta desconocida vuelve a la landing (como
+            antes del cambio); en la app, al panel. */}
+        {landingEnRaiz && <Route path="*" element={<Navigate to="/" replace />} />}
         {/* Landings públicas */}
         <Route path="/mutuus" element={<MutuusLanding />} />
         <Route path="/landings/mutuus" element={<MutuusLanding />} />
@@ -357,8 +360,10 @@ export default function MoviFullRoutes() {
           {/* Salud Today Module */}
           <Route path="/saludtoday" element={<ProtectedRoute><SaludToday /></ProtectedRoute>} />
 
-          {/* Catch-all within MOVI */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Catch-all dentro de MOVI (solo cuando la raíz no es la landing) */}
+          {!landingEnRaiz && (
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          )}
         </Route>
       </Routes>
     </Suspense>
