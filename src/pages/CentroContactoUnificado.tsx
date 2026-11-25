@@ -195,7 +195,10 @@ export default function CentroContactoUnificado() {
         .select('id, user_id, remote_phone, remote_name, remote_avatar_url, last_message_text, last_message_at, unread_count, is_group, group_name, is_archived')
         .eq('user_id', userId)
         .order('last_message_at', { ascending: false, nullsFirst: false })
-        .limit(200);
+        // Se pide de más porque una parte de las filas son residuos del
+        // emparejamiento (sin ningún mensaje) que se descartan abajo: con 200
+        // pelados la lista se quedaba corta.
+        .limit(400);
       if (waErr) throw waErr;
 
       // El último mensaje y el nombre reales no siempre están en la fila: la
@@ -224,7 +227,8 @@ export default function CentroContactoUnificado() {
         })
         // Fuera los chats fantasma: sin un solo mensaje y sin nombre. Son
         // residuo del emparejamiento y dejan la bandeja llena de números.
-        .filter(c => ultimoPorConversacion.has(c.id) || !!c.remote_name);
+        .filter(c => ultimoPorConversacion.has(c.id) || !!c.remote_name)
+        .slice(0, 200);
 
       const merged = mergeConversations({
         moviMsgs: moviMsgs || [],
