@@ -192,7 +192,7 @@ export default function CentroContactoUnificado() {
       // 2. WA Personal: whatsapp_conversations
       const { data: waConvs, error: waErr } = await supabase
         .from('whatsapp_conversations')
-        .select('id, user_id, remote_phone, remote_name, remote_avatar_url, last_message_text, last_message_at, unread_count, is_group, group_name, is_archived')
+        .select('id, user_id, remote_phone, remote_pn, remote_name, remote_avatar_url, last_message_text, last_message_at, unread_count, is_group, group_name, is_archived')
         .eq('user_id', userId)
         .order('last_message_at', { ascending: false, nullsFirst: false })
         // Se pide de más porque una parte de las filas son residuos del
@@ -223,7 +223,10 @@ export default function CentroContactoUnificado() {
             : ultimo?.contenido && ultimo.contenido !== '[unknown]' ? ultimo.contenido : null;
           const nombreCrudo = c.remote_name && c.remote_name !== c.remote_phone ? c.remote_name : null;
           const nombre = nombreCrudo && !esNumeroCrudo(nombreCrudo) ? nombreCrudo : (ultimo?.nombre_sugerido || null);
-          return { ...c, last_message_text: texto, remote_name: nombre };
+          // El chat puede venir direccionado por lid (no marcable); si la base
+          // ya conoce el teléfono real, se pinta ese.
+          const telefono = c.remote_pn && c.remote_pn !== c.remote_phone ? c.remote_pn : c.remote_phone;
+          return { ...c, remote_phone: telefono, last_message_text: texto, remote_name: nombre };
         })
         // Fuera los chats fantasma: sin un solo mensaje y sin nombre. Son
         // residuo del emparejamiento y dejan la bandeja llena de números.

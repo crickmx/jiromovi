@@ -67,6 +67,9 @@ app.get('/health', (req, res) => {
     status: 'ok',
     sessions: sessionManager.getActiveCount(),
     uptime: process.uptime(),
+    // Marca de despliegue: si no aparece en /health, Railway sigue con la
+    // versión anterior y los cambios del servidor no están corriendo.
+    build: '2026-11-25-contactos-pn',
   });
 });
 
