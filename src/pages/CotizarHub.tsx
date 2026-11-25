@@ -122,7 +122,6 @@ export default function CotizarHub() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Cotizar"
-        badge={`${visibleModules.length} herramientas`}
         description="Herramientas para cotizar seguros, formularios y comparadores multi-aseguradora."
         icon={Calculator}
         action={{ label: 'Mis cotizaciones', onClick: () => navigate('/cotizar/cotizaciones'), icon: FileText }}

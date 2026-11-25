@@ -104,7 +104,6 @@ export default function CentroContactoHub() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Centro de Contacto"
-        badge={`${visibleModules.length} canales`}
         description="Comunícate con clientes y equipo a través de WhatsApp, correo corporativo, chat interno y telefonía."
         icon={Headphones}
       />

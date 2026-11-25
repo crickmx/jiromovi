@@ -150,7 +150,6 @@ export default function AdminHub() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Panel de Administración"
-        badge={`${visibleModules.length} herramientas`}
         description="Configuración global, permisos, inteligencia artificial, despliegues y control operativo de MOVI."
         icon={Settings}
       >

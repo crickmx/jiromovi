@@ -8,11 +8,7 @@ import {
   AlertCircle, 
   RefreshCw,
   Send,
-  ShieldCheck,
-  Stethoscope,
   PhoneCall,
-  Sparkles,
-  Award,
   Calendar,
   CreditCard,
   Check,
@@ -433,10 +429,6 @@ export default function SaludToday() {
               </div>
             )}
 
-            <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Emisión Digital Activa 24/7
-            </span>
             <button
               onClick={() => {
                 fetchPlanes();
@@ -456,10 +448,6 @@ export default function SaludToday() {
       <div>
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-emerald-950 text-white p-6 sm:p-10 shadow-xl border border-neutral-800">
           <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-medium backdrop-blur-xs mb-4 border border-emerald-500/30">
-              <Sparkles className="w-3.5 h-3.5" />
-              Módulo de Salud & Beneficios Integrados
-            </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
               {activeTab === 'reportes' ? 'Reporte de Ventas SICAS' : 'Emisión de Membresías'} <span className="text-emerald-400">salud.today</span>
             </h1>
@@ -468,21 +456,6 @@ export default function SaludToday() {
                 ? 'Monitorea las membresías emitidas y exporta el layout compatible con SICAS para el registro y conciliación de producción por vendedor y despacho/oficina.'
                 : 'Expide y activa en tiempo real coberturas de telemedicina 24/7, asistencias médicas, plan dental, visión y beneficios para individuos y empresas a través de MOVI Digital.'}
             </p>
-
-            <div className="mt-6 flex flex-wrap gap-4 text-xs sm:text-sm text-neutral-200">
-              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-xs">
-                <Stethoscope className="w-4 h-4 text-emerald-400" />
-                <span>Telemedicina 24/7 Ilimitada</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-xs">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Activación Inmediata</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-xs">
-                <Award className="w-4 h-4 text-emerald-400" />
-                <span>Red Médica Nacional</span>
-              </div>
-            </div>
           </div>
 
           <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-15 pointer-events-none hidden lg:flex items-center justify-center">
