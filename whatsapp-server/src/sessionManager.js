@@ -65,7 +65,16 @@ class SessionManager {
     }
 
     const sessionDir = path.join(SESSIONS_DIR, userId);
-    const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+    // El contenedor no conserva el disco: si las credenciales no están, se
+    // traen del respaldo (bucket privado) antes de abrir el socket. Así un
+    // deploy no obliga a escanear el QR de nuevo.
+    await supabaseSync.restaurarCredenciales(userId, sessionDir).catch(() => {});
+
+    const { state, saveCreds: escribirCreds } = await useMultiFileAuthState(sessionDir);
+    const saveCreds = async () => {
+      await escribirCreds();
+      supabaseSync.respaldarCredenciales(userId, sessionDir).catch(() => {});
+    };
     const { version } = await fetchLatestBaileysVersion();
 
     const sessionData = {
@@ -165,6 +174,10 @@ class SessionManager {
           sessionData.qrBase64 = null;
           sessionData.sock = null;
           try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch {}
+          // Si el teléfono cerró la sesión, el respaldo también se borra: si no,
+          // el arranque siguiente restauraría credenciales muertas y pediría QR
+          // en bucle.
+          await supabaseSync.borrarCredenciales(userId).catch(() => {});
           await supabaseSync.updateSessionStatus(userId, 'disconnected');
           console.log(`[${userId}] Logged out`);
         }
@@ -594,6 +607,7 @@ class SessionManager {
 
     const sessionDir = path.join(SESSIONS_DIR, userId);
     try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch {}
+    await supabaseSync.borrarCredenciales(userId).catch(() => {});
   }
 
   async sendMessage(userId, to, text, quotedId) {

@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const mime = require('mime-types');
 
@@ -10,12 +12,84 @@ class SupabaseSync {
       this.supabase = createClient(url, key);
       this.enabled = true;
       this.supabaseUrl = url;
+      this.bucketCredenciales = 'whatsapp-sessions';
+      this._respaldoTimer = new Map();
       console.log('Supabase sync enabled');
     } else {
       this.supabase = null;
       this.enabled = false;
       this.supabaseUrl = null;
       console.log('Supabase sync disabled (missing env vars)');
+    }
+  }
+
+  // ─── Credenciales de WhatsApp fuera del contenedor ────────────
+  //
+  // Railway no guarda el disco entre despliegues: sin esto, cada deploy deja
+  // la sesión sin credenciales y obliga a escanear el QR otra vez. Se respaldan
+  // en un bucket privado y se restauran antes de abrir el socket.
+
+  async respaldarCredenciales(userId, dir) {
+    if (!this.enabled) return;
+    clearTimeout(this._respaldoTimer.get(userId));
+    this._respaldoTimer.set(userId, setTimeout(async () => {
+      try {
+        const archivos = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
+        for (const archivo of archivos) {
+          const contenido = fs.readFileSync(path.join(dir, archivo));
+          await this.supabase.storage
+            .from(this.bucketCredenciales)
+            .upload(`${userId}/${archivo}`, contenido, { upsert: true, contentType: 'application/json' });
+        }
+        console.log(`[Creds] respaldo de ${archivos.length} archivo(s) de ${userId}`);
+      } catch (err) {
+        console.log(`[Creds] respaldo falló para ${userId}: ${err.message}`);
+      }
+    }, 8000));
+  }
+
+  async restaurarCredenciales(userId, dir) {
+    if (!this.enabled) return false;
+    try {
+      if (fs.existsSync(path.join(dir, 'creds.json'))) return false;
+      const { data: lista, error } = await this.supabase.storage
+        .from(this.bucketCredenciales)
+        .list(userId, { limit: 200 });
+      if (error || !lista || lista.length === 0) return false;
+
+      fs.mkdirSync(dir, { recursive: true });
+      let restaurados = 0;
+      for (const item of lista) {
+        if (!item.name || !item.name.endsWith('.json')) continue;
+        const { data } = await this.supabase.storage
+          .from(this.bucketCredenciales)
+          .download(`${userId}/${item.name}`);
+        if (!data) continue;
+        fs.writeFileSync(path.join(dir, item.name), Buffer.from(await data.arrayBuffer()));
+        restaurados++;
+      }
+      console.log(`[Creds] restaurados ${restaurados} archivo(s) de ${userId}`);
+      return restaurados > 0;
+    } catch (err) {
+      console.log(`[Creds] restauración falló para ${userId}: ${err.message}`);
+      return false;
+    }
+  }
+
+  async borrarCredenciales(userId) {
+    if (!this.enabled) return;
+    try {
+      const { data: lista } = await this.supabase.storage
+        .from(this.bucketCredenciales)
+        .list(userId, { limit: 200 });
+      if (lista && lista.length) {
+        await this.supabase.storage
+          .from(this.bucketCredenciales)
+          .remove(lista.map((i) => `${userId}/${i.name}`));
+      }
+      console.log(`[Creds] respaldo borrado para ${userId}`);
+    } catch (err) {
+      console.log(`[Creds] no se pudo borrar el respaldo: ${err.message}`);
     }
   }
 

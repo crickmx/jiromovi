@@ -91,7 +91,7 @@ app.get('/health', (req, res) => {
     storage: credencialesEnDisco(),
     // Marca de despliegue: si no aparece en /health, Railway sigue con la
     // versión anterior y los cambios del servidor no están corriendo.
-    build: '2026-11-25-grupos-y-almacen',
+    build: '2026-11-25-creds-en-storage',
   });
 });
 
