@@ -117,6 +117,10 @@ export const aulaDaily = {
   finalizar: (eventoId: string) =>
     invocar<{ ok: boolean }>('aula-daily', { action: 'finalizar', evento_id: eventoId }),
 
+  /** Borra la sala en Daily y el evento (sus hijos caen en cascada). */
+  eliminar: (eventoId: string) =>
+    invocar<{ ok: boolean }>('aula-daily', { action: 'eliminar', evento_id: eventoId }),
+
   estado: (eventoId: string) =>
     invocar<{ estado: string; empezado: boolean; link_activo: boolean; sala_lista: boolean }>(
       'aula-daily',

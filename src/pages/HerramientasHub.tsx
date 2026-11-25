@@ -152,7 +152,6 @@ export default function HerramientasHub() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Herramientas"
-        badge={`${visibleModules.length} módulos`}
         description="Centro de utilidades operativas y comerciales para agilizar tu gestión diaria, clientes, reservas y progreso."
         icon={Wrench}
       />

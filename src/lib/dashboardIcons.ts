@@ -26,6 +26,8 @@ import {
   Briefcase,
   FolderOpen,
   FileText,
+  HeartHandshake,
+  Stethoscope,
 } from 'lucide-react';
 
 export const DASHBOARD_ICON_OPTIONS: { key: string; label: string; icon: LucideIcon }[] = [
@@ -53,6 +55,8 @@ export const DASHBOARD_ICON_OPTIONS: { key: string; label: string; icon: LucideI
   { key: 'Building2', label: 'Sucursal / corporativo', icon: Building2 },
   { key: 'Landmark', label: 'Dirección', icon: Landmark },
   { key: 'Briefcase', label: 'Trabajo', icon: Briefcase },
+  { key: 'HeartHandshake', label: 'Salud / asistencia', icon: HeartHandshake },
+  { key: 'Stethoscope', label: 'Salud médica', icon: Stethoscope },
   { key: 'FolderOpen', label: 'Carpeta', icon: FolderOpen },
   { key: 'FileText', label: 'Documento', icon: FileText },
 ];
@@ -97,6 +101,8 @@ const LEGACY_EMOJI_TO_KEY: Record<string, string> = {
   '🌴': 'Sun',
   '✈️': 'Rocket',
   '🔴': 'Target',
+  '🩺': 'HeartHandshake',
+  '❤️': 'HeartHandshake',
 };
 
 export function resolveDashboardIcon(value?: string | null): LucideIcon {

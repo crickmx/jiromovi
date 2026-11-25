@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
@@ -309,54 +309,54 @@ function MoviTiendaApp() {
   );
 }
 
-// movi.digital solo es la landing; cualquier entrada a la app se manda a app.movi.digital.
-function RedirectToApp({ path }: { path: string }) {
+// ── movi.digital / www.movi.digital ───────────────────────────────────────
+// El sitio público sigue en "/" y la app completa vive en el MISMO dominio:
+// /login, /dashboard, /tramites, los slugs públicos… Antes "/" era la landing
+// y cualquier entrada a la app se mandaba a app.movi.digital; ahora la app se
+// sirve aquí y app.movi.digital queda como alias con 301 (public/.htaccess).
+//
+// `public-page` (scroll normal del documento) solo aplica mientras se ve una
+// landing: en las pantallas de la app rompería el alto de 100dvh del shell.
+
+const RUTAS_LANDING = new Set(['/', '/landing', '/home', '/movi', '/producto', '/ecosistema']);
+
+function PublicPageClass() {
+  const { pathname } = useLocation();
   useEffect(() => {
-    window.location.replace(`https://app.movi.digital${path}`);
-  }, [path]);
+    document.getElementById('root')?.classList.toggle('public-page', RUTAS_LANDING.has(pathname));
+    return () => document.getElementById('root')?.classList.remove('public-page');
+  }, [pathname]);
   return null;
 }
 
 function MoviMainSiteApp() {
-  useEffect(() => { 
-    document.getElementById('root')?.classList.add('public-page'); 
-    return () => {
-      document.getElementById('root')?.classList.remove('public-page');
-    };
-  }, []);
-
+  const { updateAvailable } = useAppUpdate();
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/" element={<MoviProductLanding />} />
-            <Route path="/landing" element={<MoviProductLanding />} />
-            <Route path="/home" element={<MoviProductLanding />} />
-            <Route path="/movi" element={<MoviProductLanding />} />
-            <Route path="/producto" element={<MoviProductLanding />} />
-            {/* La sesión es por dominio: iniciar sesión en movi.digital no sirve, la app vive en app.movi.digital */}
-            <Route path="/login" element={<RedirectToApp path="/login" />} />
-            <Route path="*" element={<MoviProductLanding />} />
-          </Routes>
-        </Suspense>
+        {updateAvailable && <AppUpdateBanner />}
+        <PublicPageClass />
+        <ImpersonationProvider>
+          <MoviAuthProvider>
+            <LoadingProvider>
+              <LoadingOverlay />
+              <MoviAppRoutes landingEnRaiz />
+            </LoadingProvider>
+          </MoviAuthProvider>
+        </ImpersonationProvider>
       </BrowserRouter>
     </HelmetProvider>
   );
 }
 
-function MoviApp() {
-  const { updateAvailable } = useAppUpdate();
+function MoviAppRoutes({ landingEnRaiz = false }: { landingEnRaiz?: boolean }) {
   return (
-    <BrowserRouter>
-      {updateAvailable && <AppUpdateBanner />}
-      <ImpersonationProvider>
-        <MoviAuthProvider>
-          <LoadingProvider>
-            <LoadingOverlay />
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/login" element={<MoviLogin />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* En movi.digital la landing vive en la raíz; en el resto de hosts la
+            raíz entra a la app (y sin sesión, a /login). */}
+        {landingEnRaiz && <Route path="/" element={<MoviProductLanding />} />}
+        <Route path="/login" element={<MoviLogin />} />
                 {/* Enlace del correo de recuperación de contraseña. Fuera del
                     área protegida: se llega con la sesión de recuperación del
                     propio enlace y hace falta funcionar aunque no haya sesión. */}
@@ -424,9 +424,22 @@ function MoviApp() {
                     <SeguwalletProtectedRoute><SeguwalletAseguradoras /></SeguwalletProtectedRoute>
                   </SeguwalletStack>
                 } />
-                <Route path="/*" element={<MoviFullRoutes />} />
-              </Routes>
-            </Suspense>
+        <Route path="/*" element={<MoviFullRoutes landingEnRaiz={landingEnRaiz} />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+function MoviApp() {
+  const { updateAvailable } = useAppUpdate();
+  return (
+    <BrowserRouter>
+      {updateAvailable && <AppUpdateBanner />}
+      <ImpersonationProvider>
+        <MoviAuthProvider>
+          <LoadingProvider>
+            <LoadingOverlay />
+            <MoviAppRoutes />
           </LoadingProvider>
         </MoviAuthProvider>
       </ImpersonationProvider>

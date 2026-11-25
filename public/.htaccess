@@ -54,6 +54,21 @@ Options -MultiViews
   RewriteRule ^mutuus(/.*)?$ https://mutuus.mx/ [R=301,L]
 </IfModule>
 
+# --- 3b. Dominio canónico: app.movi.digital -> movi.digital ----------------
+# Solo ese host. Los alias del MISMO vhost (agentedeseguros.website,
+# seguros.education, seguros.express, app.seguwallet.mx) siguen sirviendo su
+# app: por eso la regla va con RewriteCond sobre HTTP_HOST y no a lo bruto.
+# Conserva ruta y query; el fragmento (#access_token de los enlaces de
+# recuperación) lo mantiene el navegador. www.movi.digital también va al
+# dominio raíz para que la sesión viva en un solo origen.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} ^app\.movi\.digital$ [NC]
+  RewriteRule ^ https://movi.digital%{REQUEST_URI} [R=301,L]
+  RewriteCond %{HTTP_HOST} ^www\.movi\.digital$ [NC]
+  RewriteRule ^ https://movi.digital%{REQUEST_URI} [R=301,L]
+</IfModule>
+
 # --- 4. Fallback del SPA (React Router) ------------------------------------
 <IfModule mod_rewrite.c>
   RewriteEngine On

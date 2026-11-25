@@ -289,10 +289,7 @@ export function MegaMenu({
         </div>
 
         {/* Footer shortcuts */}
-        <div className="p-3 bg-neutral-50 dark:bg-white/3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-          <span>
-            {allVisibleItems.length} opciones disponibles en <strong>{workspace.label}</strong>
-          </span>
+        <div className="p-3 bg-neutral-50 dark:bg-white/3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-end text-[11px] text-neutral-500 dark:text-neutral-400">
           <div className="flex items-center gap-2">
             <kbd className="px-1.5 py-0.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded text-[10px] font-mono">
               Esc

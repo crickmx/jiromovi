@@ -138,7 +138,6 @@ export default function Cotizaciones() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Cotizaciones"
-        badge={cargando ? undefined : `${filtradas.length}`}
         description="Todas las cotizaciones hechas en los cotizadores de MOVI: ábrelas, edítalas, descarga su PDF o envíalas al cliente."
         icon={FileText}
         backTo="/cotizar"

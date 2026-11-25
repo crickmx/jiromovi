@@ -4,7 +4,7 @@ import type { DailyCall, DailyParticipant } from '@daily-co/daily-js';
 import {
   Mic, MicOff, Video, VideoOff, MonitorUp, MonitorX, Hand, MessageSquare,
   Users, PhoneOff, Paperclip, Send, Shield, Volume2, CircleStop, Radio, X, Crown,
-  Copy, Check, Mail, MessageCircle,
+  Copy, Check, Mail, MessageCircle, PictureInPicture2,
 } from 'lucide-react';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../lib/supabase';
 import { aulaDaily, aulaInvitado, aulaPublicar, subirConUrlFirmada, type EntradaAula } from '../../lib/aulaDaily';
@@ -131,7 +131,11 @@ export function SalaAula({
   const [mano, setMano] = useState(false);
   const [manos, setManos] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<'chat' | 'gente'>('chat');
-  const [panelAbierto, setPanelAbierto] = useState(true);
+  // En móvil el chat arranca cerrado (tapaba la cámara en Safari); en
+  // escritorio sigue abierto como hasta ahora.
+  const [panelAbierto, setPanelAbierto] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches,
+  );
 
   const [mensajes, setMensajes] = useState<MensajeChat[]>([]);
   const [texto, setTexto] = useState('');
@@ -146,6 +150,7 @@ export function SalaAula({
 
   const grabadorRef = useRef<GrabadorClase | null>(null);
   const chatFondo = useRef<HTMLDivElement | null>(null);
+  const escenarioRef = useRef<HTMLDivElement | null>(null);
   const avisoTimer = useRef<number | null>(null);
 
   const avisar = useCallback((mensaje: string) => {
@@ -610,6 +615,70 @@ export function SalaAula({
 
   const tiempo = `${String(Math.floor(segundosGrabacion / 60)).padStart(2, '0')}:${String(segundosGrabacion % 60).padStart(2, '0')}`;
 
+  // ── Ventana flotante (Picture-in-Picture) ────────────────────────────────
+  // Sirve para seguir viendo la sesión mientras se usa otra app. Chrome y Edge
+  // lo permiten con cualquier <video>; Safari solo con pistas de video reales.
+  const [pipActivo, setPipActivo] = useState(false);
+
+  const abrirVentanaFlotante = async () => {
+    const videos = Array.from(escenarioRef.current?.querySelectorAll('video') ?? []) as HTMLVideoElement[];
+    const conImagen = videos.filter((v) => {
+      const flujo = v.srcObject as MediaStream | null;
+      return !!flujo && flujo.getVideoTracks().some((t) => t.readyState === 'live');
+    });
+    // Quien comparte pantalla primero, luego el que esté hablando.
+    const elegido = conImagen.sort((a, b) => b.videoWidth - a.videoWidth)[0] ?? videos[0];
+
+    if (!elegido || !elegido.videoWidth) {
+      avisar('Todavía no hay cámara que puedas sacar a una ventana flotante.');
+      return;
+    }
+
+    try {
+      const cualquierVideo = elegido as HTMLVideoElement & {
+        webkitSetPresentationMode?: (modo: string) => void;
+        webkitSupportsPresentationMode?: (modo: string) => boolean;
+      };
+
+      if (document.pictureInPictureEnabled && elegido.requestPictureInPicture) {
+        if (document.pictureInPictureElement) await document.exitPictureInPicture();
+        await elegido.requestPictureInPicture();
+        setPipActivo(true);
+        return;
+      }
+
+      if (cualquierVideo.webkitSupportsPresentationMode?.('picture-in-picture')) {
+        cualquierVideo.webkitSetPresentationMode?.('picture-in-picture');
+        setPipActivo(true);
+        return;
+      }
+
+      avisar('Este navegador no permite ventana flotante. En iPhone, deja la pestaña abierta: el audio sigue sonando al cambiar de app.');
+    } catch {
+      avisar('No se pudo abrir la ventana flotante. Mantén esta pestaña abierta para no perder la sesión.');
+    }
+  };
+
+  useEffect(() => {
+    const salir = () => setPipActivo(false);
+    document.addEventListener('leavepictureinpicture', salir);
+    return () => document.removeEventListener('leavepictureinpicture', salir);
+  }, []);
+
+  // Al volver de otra app, la sesión puede haber quedado caída (iOS suspende la
+  // pestaña): se reintenta la unión para que nadie se quede fuera sin saberlo.
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState !== 'visible' || !call) return;
+      const estadoLlamada = call.meetingState();
+      if (estadoLlamada === 'left-meeting' || estadoLlamada === 'error') {
+        void call.join().catch(() => null);
+      }
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => document.removeEventListener('visibilitychange', alVolver);
+  }, [call]);
+
   if (estado === 'error') {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
@@ -623,9 +692,9 @@ export function SalaAula({
   }
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] gap-3">
+    <div className="flex h-[calc(100dvh-5.25rem)] flex-col gap-2 pb-[4.75rem] lg:h-[calc(100vh-7rem)] lg:flex-row lg:gap-3 lg:pb-0">
       {/* ── Escenario ── */}
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
+      <div ref={escenarioRef} className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 lg:gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className="relative flex h-2 w-2">
@@ -643,7 +712,7 @@ export function SalaAula({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
             {anfitrion && linkInvitado && (
               <button
                 onClick={() => setInvitarTipo('ponente')}
@@ -730,10 +799,10 @@ export function SalaAula({
         </div>
 
         {/* Barra de controles */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-soft bg-surface-card px-3 py-2 shadow-card dark:border-white/10">
+        <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto rounded-2xl border border-soft bg-surface-card px-2 py-2 [scrollbar-width:none] lg:flex-wrap lg:justify-center lg:overflow-visible lg:px-3 dark:border-white/10">
           <button
             onClick={alternarMic}
-            className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
               mic ? 'bg-accent text-white' : 'bg-surface-100 text-neutral-600 hover:bg-surface-200 dark:bg-white/10 dark:text-white/70'
             }`}
             title={mic ? 'Silenciar micrófono' : 'Activar micrófono'}
@@ -765,7 +834,7 @@ export function SalaAula({
 
           <button
             onClick={alternarMano}
-            className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-caption font-semibold transition ${
+            className={`flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-caption font-semibold transition ${
               mano ? 'bg-amber-500 text-white' : 'bg-surface-100 text-neutral-600 hover:bg-surface-200 dark:bg-white/10 dark:text-white/70'
             }`}
             title="Levantar la mano"
@@ -773,11 +842,21 @@ export function SalaAula({
             <Hand className="h-4 w-4" /> {mano ? 'Mano levantada' : 'Pedir la palabra'}
           </button>
 
-          <div className="mx-1 h-6 w-px bg-neutral-200 dark:bg-white/10" />
+          <button
+            onClick={() => void abrirVentanaFlotante()}
+            className={`flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-caption font-semibold transition ${
+              pipActivo ? 'bg-accent text-white' : 'bg-surface-100 text-neutral-600 hover:bg-surface-200 dark:bg-white/10 dark:text-white/70'
+            }`}
+            title="Seguir viendo la sesión en una ventana flotante mientras usas otra app"
+          >
+            <PictureInPicture2 className="h-4 w-4" /> <span className="hidden sm:inline">Flotante</span>
+          </button>
+
+          <div className="mx-1 h-6 w-px shrink-0 bg-neutral-200 dark:bg-white/10" />
 
           <button
             onClick={() => { setPanelAbierto(true); setTab('chat'); }}
-            className="flex h-10 items-center gap-1.5 rounded-xl bg-surface-100 px-3 text-caption font-semibold text-neutral-600 hover:bg-surface-200 dark:bg-white/10 dark:text-white/70"
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-surface-100 px-3 text-caption font-semibold text-neutral-600 hover:bg-surface-200 dark:bg-white/10 dark:text-white/70"
           >
             <MessageSquare className="h-4 w-4" /> Chat
             {mensajes.length > 0 && (
@@ -787,7 +866,7 @@ export function SalaAula({
 
           <button
             onClick={() => { setPanelAbierto(true); setTab('gente'); }}
-            className="relative flex h-10 items-center gap-1.5 rounded-xl bg-surface-100 px-3 text-caption font-semibold text-neutral-600 hover:bg-surface-200 dark:bg-white/10 dark:text-white/70"
+            className="relative flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-surface-100 px-3 text-caption font-semibold text-neutral-600 hover:bg-surface-200 dark:bg-white/10 dark:text-white/70"
           >
             <Users className="h-4 w-4" /> Gente
             {manosActivas.length > 0 && (
@@ -799,7 +878,7 @@ export function SalaAula({
 
           <button
             onClick={salir}
-            className="flex h-10 items-center gap-1.5 rounded-xl bg-red-50 px-3 text-caption font-semibold text-red-600 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-400"
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-red-50 px-3 text-caption font-semibold text-red-600 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-400"
           >
             <PhoneOff className="h-4 w-4" /> Salir
           </button>
@@ -808,7 +887,17 @@ export function SalaAula({
 
       {/* ── Panel lateral ── */}
       {panelAbierto && (
-        <aside className="flex w-80 shrink-0 flex-col overflow-hidden rounded-2xl border border-soft bg-surface-card shadow-card dark:border-white/10">
+        <aside
+          className="fixed inset-x-0 bottom-[4.5rem] z-30 flex max-h-[52dvh] flex-col overflow-hidden rounded-t-2xl border-t border-soft bg-surface-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)] dark:border-white/10 lg:static lg:bottom-auto lg:z-auto lg:max-h-none lg:w-80 lg:shrink-0 lg:rounded-2xl lg:border lg:shadow-card"
+        >
+          {/* Asa para cerrar en móvil: el chat nunca debe tapar la cámara por completo */}
+          <button
+            onClick={() => setPanelAbierto(false)}
+            className="flex w-full items-center justify-center py-2 lg:hidden"
+            aria-label="Cerrar panel"
+          >
+            <span className="h-1.5 w-10 rounded-full bg-neutral-300 dark:bg-white/25" />
+          </button>
           <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-2 dark:border-white/10">
             <div className="flex gap-1">
               {(['chat', 'gente'] as const).map((t) => (
@@ -834,7 +923,7 @@ export function SalaAula({
 
           {tab === 'chat' ? (
             <>
-              <div ref={chatFondo} className="flex-1 space-y-2.5 overflow-y-auto px-3 py-3">
+              <div ref={chatFondo} className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 py-3">
                 {mensajes.length === 0 && (
                   <p className="py-8 text-center text-caption text-neutral-400">
                     Aquí aparecerá el chat de la sesión.
@@ -879,7 +968,7 @@ export function SalaAula({
                 })}
               </div>
 
-              <div className="border-t border-neutral-200 p-2 dark:border-white/10">
+              <div className="shrink-0 border-t border-neutral-200 p-2 dark:border-white/10">
                 <div className="flex items-end gap-1.5">
                   <label className="cursor-pointer rounded-lg p-2 text-neutral-500 hover:bg-surface-100 dark:hover:bg-white/10" title="Enviar archivo">
                     <Paperclip className="h-4 w-4" />

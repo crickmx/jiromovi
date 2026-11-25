@@ -1,5 +1,6 @@
-import { LayoutDashboard, Briefcase, Wrench, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet, UserPlus, FileSignature, BarChart3, Store, Package, Crown, Tags, Settings2, ListTree, FileText } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Wrench, Palette, TrendingUp, GraduationCap, Settings, ClipboardList, FolderInput as FormInput, Headphones, Trophy, Car, BookOpen, Users, Key, Calendar, CalendarDays, ShoppingBag, BookUser, Wallet, Megaphone, Globe, Bot, ChartLine, Video, BadgeCheck, Calculator, Mail, MessageSquare, Bell, Brain, Database, HardDrive, Phone, BrainCircuit, Monitor, Newspaper, PackageCheck, FileSearch, MessageCircle, Building2, House, HeartPulse, HeartHandshake, SlidersHorizontal, Stethoscope, Cog, Landmark, Paintbrush, Fingerprint, MonitorPlay, UserCheck, Upload, LayoutTemplate, Percent, Receipt, GitBranch, PenLine, ArrowLeftRight, SearchCode, UserCog, LayoutGrid, LibraryBig, Workflow, Clock, Camera, Sparkles, Bookmark, PanelLeft, Bug, Zap, Rocket, FileSpreadsheet, UserPlus, FileSignature, BarChart3, Store, Package, Crown, Tags, Settings2, ListTree, FileText } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { isBetaHost } from './betaAccess';
 
 export type WorkspaceId =
   | 'herramientas'
@@ -21,6 +22,8 @@ export interface WorkspaceNavItem {
   visibleTo: UserRole[];
   matchPrefix?: boolean;
   excludePrefixes?: string[];
+  /** Módulo que por ahora sólo existe en beta.movi.digital (ver RUTAS_SOLO_BETA). */
+  soloBeta?: boolean;
 }
 
 export interface WorkspaceDefinition {
@@ -103,6 +106,9 @@ const WORKSPACE_COTIZAR: WorkspaceDefinition = {
     { path: '/cotizar/a-la-medida', label: 'A la Medida', icon: SlidersHorizontal, visibleTo: ALL_ROLES, matchPrefix: true },
     { path: '/cotizar/multicotizador', label: 'Multicotizador', icon: Car, visibleTo: ALL_ROLES },
     { path: '/cotizar/multicotizador-gmm', label: 'Multicotizador GMM', icon: Stethoscope, visibleTo: ALL_ROLES },
+    // salud.today (membresías de salud y asistencias) es emisión, no cotización,
+    // pero vive en la sección de Cotizar. Por ahora SÓLO en beta.
+    { path: '/saludtoday', label: 'salud.today', icon: HeartHandshake, visibleTo: ALL_ROLES, soloBeta: true },
     { path: '/cotizar/auna-oncologico', label: 'Auna Oncológico', icon: HeartPulse, visibleTo: ALL_ROLES },
   ],
 };
@@ -365,6 +371,7 @@ export function isWorkspaceVisible(ws: WorkspaceDefinition, userRole: UserRole):
 }
 
 export function isItemVisible(item: WorkspaceNavItem, userRole: UserRole): boolean {
+  if (item.soloBeta && !isBetaHost()) return false;
   if (item.visibleTo.length === 0) return true;
   return item.visibleTo.includes(userRole);
 }

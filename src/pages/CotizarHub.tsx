@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Car, Compass, ChevronRight, Calculator, Heart, FileText, type LucideIcon } from 'lucide-react';
+import { Car, Compass, ChevronRight, Calculator, Heart, HeartHandshake, FileText, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useModuleVisibility } from '../lib/useModuleVisibility';
 import { isItemVisible, WORKSPACES, type UserRole } from '../lib/workspaceConfig';
@@ -21,6 +21,8 @@ interface CotizadorModule {
   shadowHover: string;
   iconColor: string;
   logo: string | null;
+  /** Texto del pie de la tarjeta (por omisión «Abrir cotizador»). */
+  cta?: string;
   /** Logos de las aseguradoras que trae el comparador (se muestran juntos). */
   logos?: string[];
   /** Aseguradoras que trae cargadas el comparador (los planes incluidos). */
@@ -82,6 +84,21 @@ const MODULES: CotizadorModule[] = [
     iconColor: 'text-rose-600 dark:text-rose-400',
     logo: null,
   },
+  // No es un comparador: es emisión de membresías. Va al final y con su propio CTA.
+  // El candado de beta lo pone el item del menú (`soloBeta`) vía isItemVisible.
+  {
+    path: '/saludtoday',
+    label: 'salud.today',
+    description: 'Emite y activa membresías de salud: telemedicina 24/7, asistencias médicas, dental, visión y beneficios para individuos y empresas. Reporte SICAS para Administrador.',
+    icon: HeartHandshake,
+    color: 'from-emerald-600 to-emerald-400',
+    bgLight: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40',
+    borderHover: 'hover:border-emerald-400/60 dark:hover:border-emerald-500/50',
+    shadowHover: 'hover:shadow-emerald-100/40 dark:hover:shadow-emerald-900/20',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    logo: '/salud-today-logo.png',
+    cta: 'Emitir membresía',
+  },
 ];
 
 const cotizarWorkspace = WORKSPACES.find(w => w.id === 'cotizar')!;
@@ -105,7 +122,6 @@ export default function CotizarHub() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Cotizar"
-        badge={`${visibleModules.length} comparadores`}
         description="Herramientas para cotizar seguros, formularios y comparadores multi-aseguradora."
         icon={Calculator}
         action={{ label: 'Mis cotizaciones', onClick: () => navigate('/cotizar/cotizaciones'), icon: FileText }}
@@ -169,7 +185,7 @@ export default function CotizarHub() {
               </div>
 
               <div className={`inline-flex items-center gap-1.5 mt-5 pt-3 border-t border-neutral-100 dark:border-white/5 text-xs font-semibold ${mod.iconColor} transition-all duration-200 group-hover:gap-2.5`}>
-                Abrir cotizador
+                {mod.cta ?? 'Abrir cotizador'}
                 <ChevronRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               </div>
             </button>

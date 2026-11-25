@@ -8,11 +8,7 @@ import {
   AlertCircle, 
   RefreshCw,
   Send,
-  ShieldCheck,
-  Stethoscope,
   PhoneCall,
-  Sparkles,
-  Award,
   Calendar,
   CreditCard,
   Check,
@@ -28,52 +24,73 @@ import {
 import * as XLSX from 'xlsx';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 
-// Helper para llamar a la API de salud.today (vía Edge Function proxy para evitar bloqueos de CORS en el navegador)
-const callSaludToday = async (path: string, options: { method?: string; body?: any; headers?: Record<string, string> } = {}) => {
+// Helper para llamar a la API de salud.today a través de la Edge Function
+// `saludtoday-proxy` del propio proyecto de MOVI: el token de salud.today es un
+// secreto de la función y el navegador no lo ve (además evita el bloqueo de
+// CORS al llamar al API desde el navegador).
+interface SaludTodayApiError {
+  code?: string;
+  message?: string;
+}
+
+interface SaludTodayApiResponse {
+  ok: boolean;
+  data?: unknown;
+  error?: SaludTodayApiError;
+  message?: string;
+}
+
+const callSaludToday = async (
+  path: string,
+  options: { method?: string; body?: unknown; headers?: Record<string, string> } = {}
+): Promise<SaludTodayApiResponse> => {
   const method = options.method || 'GET';
   const customHeaders = options.headers || {};
-  
-  // Intentar primero a través del proxy Edge Function de Supabase
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || '';
-    
-    const proxyHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-    };
-    if (customHeaders['Idempotency-Key']) {
-      proxyHeaders['Idempotency-Key'] = customHeaders['Idempotency-Key'];
-    }
 
-    const proxyRes = await fetch(`https://whnckbbksicffqjscmtl.supabase.co/functions/v1/saludtoday-proxy?path=${encodeURIComponent(path)}`, {
-      method,
-      headers: proxyHeaders,
-      body: options.body ? JSON.stringify(options.body) : undefined
-    });
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
 
-    if (proxyRes.ok) {
-      return await proxyRes.json();
-    }
-  } catch (proxyErr) {
-    console.warn('Proxy request failed, fallbacking to direct fetch:', proxyErr);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'apikey': supabaseAnonKey,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+  if (customHeaders['Idempotency-Key']) {
+    headers['Idempotency-Key'] = customHeaders['Idempotency-Key'];
   }
 
-  // Fallback directo
-  const directHeaders: Record<string, string> = {
-    'Authorization': `Bearer ${API_TOKEN}`,
-    'Content-Type': 'application/json',
-    ...customHeaders
-  };
+  let res: Response;
+  try {
+    res = await fetch(`${supabaseUrl}/functions/v1/saludtoday-proxy?path=${encodeURIComponent(path)}`, {
+      method,
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+  } catch {
+    return {
+      ok: false,
+      error: { code: 'sin_conexion', message: 'No se pudo contactar al servicio de salud.today. Revisa tu conexión e inténtalo de nuevo.' }
+    };
+  }
 
-  const res = await fetch(`${API_BASE}/${path.replace(/^\//, '')}`, {
-    method,
-    headers: directHeaders,
-    body: options.body ? JSON.stringify(options.body) : undefined
-  });
-  return await res.json();
+  let data: SaludTodayApiResponse | null = null;
+  try {
+    data = await res.json() as SaludTodayApiResponse;
+  } catch {
+    // respuesta no-JSON: se resuelve abajo con el mensaje de error genérico
+  }
+
+  if (!res.ok) {
+    if (data?.error) return data;
+    if (res.status === 401) {
+      return { ok: false, error: { code: 'no_autorizado', message: 'Tu sesión de MOVI expiró. Vuelve a entrar e inténtalo otra vez.' } };
+    }
+    return { ok: false, error: { code: `http_${res.status}`, message: `salud.today respondió con un error (${res.status}).` } };
+  }
+
+  return data ?? { ok: false, error: { code: 'respuesta_vacia', message: 'salud.today devolvió una respuesta vacía.' } };
 };
 
 interface Plan {
@@ -189,15 +206,16 @@ export default function SaludToday() {
     setError(null);
     try {
       const data = await callSaludToday('planes');
-      if (data.ok && data.data?.planes) {
-        setPlanes(data.data.planes);
-        if (data.data.planes.length > 0 && !selectedPlanId) {
-          setSelectedPlanId(data.data.planes[0].id);
+      const payload = data.data as { planes?: Plan[] } | undefined;
+      if (data.ok && payload?.planes) {
+        setPlanes(payload.planes);
+        if (payload.planes.length > 0 && !selectedPlanId) {
+          setSelectedPlanId(payload.planes[0].id);
         }
       } else {
         setError(data.error?.message || 'No fue posible cargar el catálogo de planes.');
       }
-    } catch (err: any) {
+    } catch {
       setError('Error de comunicación al consultar los planes de salud.today.');
     } finally {
       setLoading(false);
@@ -208,8 +226,12 @@ export default function SaludToday() {
     setLoadingReporte(true);
     try {
       const data = await callSaludToday('membresias');
-      if (data.ok && data.data?.membresias) {
-        const rawMembresias = data.data.membresias;
+      if (data.ok) {
+        // La API puede devolver el listado suelto (`data: []`) o envuelto
+        // (`data: { membresias: [] }`): aceptamos las dos formas.
+        const rawMembresias: MembresiaItem[] = Array.isArray(data.data)
+          ? (data.data as MembresiaItem[])
+          : ((data.data as { membresias?: MembresiaItem[] } | undefined)?.membresias || []);
         // Enriquecer con vendedor y oficina por defecto del usuario logueado o catálogos
         const defaultVend = vendedoresList.find(v => v.id === usuario?.id)?.nombre || usuario?.nombre_completo || 'Agente MOVI';
         const defaultIdSicas = vendedoresList.find(v => v.id === usuario?.id)?.id_sicas || (usuario as any)?.id_sicas || 'MOVI-01';
@@ -288,7 +310,10 @@ export default function SaludToday() {
       });
 
       if (data.ok) {
-        setSuccessMsg(`¡Emisión exitosa! Folio: ${data.data?.folio || data.data?.id || 'Generado'}`);
+        const venta = data.data as
+          | { folio?: string; id?: string; venta?: { folio?: string } }
+          | undefined;
+        setSuccessMsg(`¡Emisión exitosa! Folio: ${venta?.folio || venta?.venta?.folio || venta?.id || 'Generado'}`);
         setVentaResult(data.data);
         setNombre('');
         setApellidos('');
@@ -404,10 +429,6 @@ export default function SaludToday() {
               </div>
             )}
 
-            <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Emisión Digital Activa 24/7
-            </span>
             <button
               onClick={() => {
                 fetchPlanes();
@@ -427,10 +448,6 @@ export default function SaludToday() {
       <div>
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-emerald-950 text-white p-6 sm:p-10 shadow-xl border border-neutral-800">
           <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-medium backdrop-blur-xs mb-4 border border-emerald-500/30">
-              <Sparkles className="w-3.5 h-3.5" />
-              Módulo de Salud & Beneficios Integrados
-            </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
               {activeTab === 'reportes' ? 'Reporte de Ventas SICAS' : 'Emisión de Membresías'} <span className="text-emerald-400">salud.today</span>
             </h1>
@@ -439,21 +456,6 @@ export default function SaludToday() {
                 ? 'Monitorea las membresías emitidas y exporta el layout compatible con SICAS para el registro y conciliación de producción por vendedor y despacho/oficina.'
                 : 'Expide y activa en tiempo real coberturas de telemedicina 24/7, asistencias médicas, plan dental, visión y beneficios para individuos y empresas a través de MOVI Digital.'}
             </p>
-
-            <div className="mt-6 flex flex-wrap gap-4 text-xs sm:text-sm text-neutral-200">
-              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-xs">
-                <Stethoscope className="w-4 h-4 text-emerald-400" />
-                <span>Telemedicina 24/7 Ilimitada</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-xs">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Activación Inmediata</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl backdrop-blur-xs">
-                <Award className="w-4 h-4 text-emerald-400" />
-                <span>Red Médica Nacional</span>
-              </div>
-            </div>
           </div>
 
           <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-15 pointer-events-none hidden lg:flex items-center justify-center">
@@ -658,9 +660,6 @@ export default function SaludToday() {
                     <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center">1</span>
                     Elige el Plan de Salud
                   </h2>
-                  <span className="text-xs text-neutral-500">
-                    {planes.length} opciones disponibles
-                  </span>
                 </div>
 
                 {loading ? (

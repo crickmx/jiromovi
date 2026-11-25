@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
+const MAX_SALA = 200;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -153,7 +154,9 @@ async function asegurarSala(evento: Evento, creador: string) {
     await daily(`/rooms/${encodeURIComponent(evento.daily_room_name)}`, {
       method: 'POST',
       body: JSON.stringify({
-        properties: { exp, eject_at_room_exp: true },
+        // Las salas creadas antes del cambio llevaban tope: se sube al máximo
+        // que permite la plataforma para que no rechace oyentes.
+        properties: { exp, eject_at_room_exp: true, max_participants: MAX_SALA },
       }),
     }).catch(() => null);
     return { room_name: evento.daily_room_name, room_url: evento.daily_room_url };
@@ -165,7 +168,9 @@ async function asegurarSala(evento: Evento, creador: string) {
   const propiedades = {
     exp,
     eject_at_room_exp: true,
-    max_participants: evento.max_participantes ?? 100,
+    // Sin tope propio: los eventos son siempre abiertos. Daily aplica su
+    // máximo de plataforma (200 por sala); más que eso se contrata allá.
+    max_participants: MAX_SALA,
     enable_screenshare: true,
     enable_chat: false,
     enable_people_ui: false,
@@ -506,6 +511,21 @@ Deno.serve(async (req) => {
           method: 'DELETE',
         }).catch(() => null);
       }
+
+      return json({ ok: true });
+    }
+
+    if (accion === 'eliminar') {
+      if (!puedeAdministrar) return json({ error: 'No tienes permiso para esta clase' }, 403);
+
+      // La sala en Daily se borra primero: si quedara viva, seguirían entrando
+      // por el enlace a una clase que ya no existe.
+      if (evento.daily_room_name) {
+        await daily(`/rooms/${encodeURIComponent(evento.daily_room_name)}`, { method: 'DELETE' }).catch(() => null);
+      }
+
+      const { error: errBaja } = await admin.from('aula_eventos').delete().eq('id', eventoId);
+      if (errBaja) return json({ error: errBaja.message }, 400);
 
       return json({ ok: true });
     }
