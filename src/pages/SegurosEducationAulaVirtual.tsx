@@ -844,6 +844,30 @@ export function SegurosEducationAulaVirtual() {
                         <ExternalLink className="h-3.5 w-3.5" /> Ver en On Demand
                       </button>
                     )}
+                    {puedeAdministrar(clase.id) && (
+                      <>
+                        <button
+                          onClick={() => setEditando(clase)}
+                          className="flex items-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-caption font-semibold text-neutral-600 transition hover:border-accent hover:text-accent-ink dark:border-white/10 dark:text-white/60"
+                          title="Editar esta capacitación"
+                        >
+                          <Pencil className="h-3.5 w-3.5" /> Editar
+                        </button>
+                        <button
+                          onClick={() => void eliminarClase(clase)}
+                          disabled={ocupado === clase.id}
+                          className="flex items-center gap-1.5 rounded-lg border border-red-200 px-2.5 py-1.5 text-caption font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-500/25 dark:text-red-400 dark:hover:bg-red-500/10"
+                          title="Eliminar esta capacitación"
+                        >
+                          {ocupado === clase.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </li>
                 );
               })}
