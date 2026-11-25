@@ -128,6 +128,27 @@ class SessionManager {
         });
 
         console.log(`[${userId}] WhatsApp connected: ${sessionData.phone}`);
+
+        // Los grupos llegan sólo con su JID: el asunto hay que pedirlo aparte.
+        // Sin esto la bandeja muestra "1203634…@g.us" o "Grupo de WhatsApp"
+        // para todos, y la lista no se parece a la del teléfono.
+        setTimeout(async () => {
+          try {
+            const grupos = await sock.groupFetchAllParticipating();
+            let conNombre = 0;
+            for (const [jid, meta] of Object.entries(grupos || {})) {
+              const asunto = meta && meta.subject;
+              if (!asunto) continue;
+              const idx = sessionData.conversations.findIndex((c) => c.phone === jid);
+              if (idx >= 0) sessionData.conversations[idx].name = asunto;
+              await supabaseSync.updateGroupConversationName(userId, jid, asunto).catch(() => {});
+              conNombre++;
+            }
+            console.log(`[${userId}] grupo(s) con nombre: ${conNombre}`);
+          } catch (err) {
+            console.log(`[${userId}] grupos sin nombre: ${err.message}`);
+          }
+        }, 5000);
       }
 
       if (connection === 'close') {
@@ -208,6 +229,15 @@ class SessionManager {
       if (!Array.isArray(contactos) || contactos.length === 0) return;
       console.log(`[${userId}] contacts.upsert: ${contactos.length} contactos`);
       supabaseSync.syncContacts(userId, contactos).catch(() => {});
+    });
+
+    sock.ev.on('groups.upsert', (grupos) => {
+      for (const g of grupos || []) {
+        if (!g.id || !g.subject) continue;
+        const idx = sessionData.conversations.findIndex((c) => c.phone === g.id);
+        if (idx >= 0) sessionData.conversations[idx].name = g.subject;
+        supabaseSync.updateGroupConversationName(userId, g.id, g.subject).catch(() => {});
+      }
     });
 
     sock.ev.on('contacts.set', ({ contacts }) => {

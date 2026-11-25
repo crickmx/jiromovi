@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 const { SessionManager } = require('./sessionManager');
@@ -62,14 +64,34 @@ function adminAuth(req, res, next) {
 }
 
 // Health check
+/**
+ * ¿Cuántas sesiones tienen credenciales en disco? Sirve para saber si un
+ * reinicio del contenedor se comió la vinculación de WhatsApp: si tras
+ * reconectar vale 0, el disco del servicio no es persistente y cada deploy
+ * obliga a escanear el QR otra vez.
+ */
+function credencialesEnDisco() {
+  try {
+    const dir = path.join(process.cwd(), 'sessions');
+    if (!fs.existsSync(dir)) return { dir_existe: false, sesiones_con_creds: 0 };
+    const conCreds = fs.readdirSync(dir).filter((u) => {
+      try { return fs.existsSync(path.join(dir, u, 'creds.json')); } catch { return false; }
+    });
+    return { dir_existe: true, sesiones_con_creds: conCreds.length };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     sessions: sessionManager.getActiveCount(),
     uptime: process.uptime(),
+    storage: credencialesEnDisco(),
     // Marca de despliegue: si no aparece en /health, Railway sigue con la
     // versión anterior y los cambios del servidor no están corriendo.
-    build: '2026-11-25-contactos-pn',
+    build: '2026-11-25-grupos-y-almacen',
   });
 });
 
