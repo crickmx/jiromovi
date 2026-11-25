@@ -692,7 +692,7 @@ export function SalaAula({
   }
 
   return (
-    <div className="flex h-[calc(100dvh-5.5rem)] flex-col gap-2 lg:h-[calc(100vh-7rem)] lg:flex-row lg:gap-3">
+    <div className="flex h-[calc(100dvh-5.25rem)] flex-col gap-2 pb-[4.75rem] lg:h-[calc(100vh-7rem)] lg:flex-row lg:gap-3 lg:pb-0">
       {/* ── Escenario ── */}
       <div ref={escenarioRef} className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 lg:gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -712,7 +712,7 @@ export function SalaAula({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
             {anfitrion && linkInvitado && (
               <button
                 onClick={() => setInvitarTipo('ponente')}
@@ -888,7 +888,7 @@ export function SalaAula({
       {/* ── Panel lateral ── */}
       {panelAbierto && (
         <aside
-          className="fixed inset-x-0 bottom-0 z-40 flex max-h-[58dvh] flex-col overflow-hidden rounded-t-2xl border-t border-soft bg-surface-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)] dark:border-white/10 pb-[env(safe-area-inset-bottom)] lg:static lg:z-auto lg:max-h-none lg:w-80 lg:shrink-0 lg:rounded-2xl lg:border lg:pb-0 lg:shadow-card"
+          className="fixed inset-x-0 bottom-[4.5rem] z-30 flex max-h-[52dvh] flex-col overflow-hidden rounded-t-2xl border-t border-soft bg-surface-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)] dark:border-white/10 lg:static lg:bottom-auto lg:z-auto lg:max-h-none lg:w-80 lg:shrink-0 lg:rounded-2xl lg:border lg:shadow-card"
         >
           {/* Asa para cerrar en móvil: el chat nunca debe tapar la cámara por completo */}
           <button
