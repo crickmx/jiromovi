@@ -12,6 +12,7 @@ import {
   mergeConversations,
   buildContactNameMap,
   normalizeMexicanPhone,
+  esNumeroCrudo,
 } from '@/lib/unifiedContactCenter';
 import { UnifiedConversationList } from '@/components/contactCenter/UnifiedConversationList';
 import { UnifiedConversationThread } from '@/components/contactCenter/UnifiedConversationThread';
@@ -197,9 +198,37 @@ export default function CentroContactoUnificado() {
         .limit(200);
       if (waErr) throw waErr;
 
+      // El último mensaje y el nombre reales no siempre están en la fila: la
+      // caché denormalizada (last_message_text / remote_name) la deja vacía el
+      // importador de historial del servidor de WhatsApp. Se completan desde
+      // los mensajes, en una sola consulta para toda la página.
+      const idsWa = (waConvs || []).map(c => c.id);
+      const { data: ultimosWa } = idsWa.length
+        ? await supabase.rpc('wa_ultimos_mensajes', { p_ids: idsWa })
+        : { data: [] };
+      const ultimoPorConversacion = new Map<string, { contenido: string | null; nombre_sugerido: string | null }>();
+      for (const u of (ultimosWa || []) as { conversation_id: string; contenido: string | null; nombre_sugerido: string | null }[]) {
+        ultimoPorConversacion.set(u.conversation_id, u);
+      }
+
+      const waConvsUtiles = (waConvs || [])
+        .map(c => {
+          const ultimo = ultimoPorConversacion.get(c.id);
+          const textoCrudo = typeof c.last_message_text === 'string' ? c.last_message_text : null;
+          const texto = textoCrudo && textoCrudo !== '[unknown]'
+            ? textoCrudo
+            : ultimo?.contenido && ultimo.contenido !== '[unknown]' ? ultimo.contenido : null;
+          const nombreCrudo = c.remote_name && c.remote_name !== c.remote_phone ? c.remote_name : null;
+          const nombre = nombreCrudo && !esNumeroCrudo(nombreCrudo) ? nombreCrudo : (ultimo?.nombre_sugerido || null);
+          return { ...c, last_message_text: texto, remote_name: nombre };
+        })
+        // Fuera los chats fantasma: sin un solo mensaje y sin nombre. Son
+        // residuo del emparejamiento y dejan la bandeja llena de números.
+        .filter(c => ultimoPorConversacion.has(c.id) || !!c.remote_name);
+
       const merged = mergeConversations({
         moviMsgs: moviMsgs || [],
-        waConvs: waConvs || [],
+        waConvs: waConvsUtiles,
         myChats: [],
         chatLastMsgs: {},
         chatUnread: {},
