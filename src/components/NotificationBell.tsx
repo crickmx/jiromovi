@@ -194,8 +194,8 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
   };
 
   const buttonClass = compact
-    ? 'w-7 h-7 rounded-lg flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/10 active:scale-90 transition-all text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white relative'
-    : 'relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-accent-ink hover:bg-neutral-100 dark:hover:bg-white/10 rounded-lg transition-colors';
+ ? 'w-7 h-7 rounded-none flex items-center justify-center hover:bg-neutral-200/60 dark:hover:bg-white/10 transition-all text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white relative'
+ : 'relative p-2 text-neutral-600 dark:text-neutral-400 hover:text-accent-ink hover:bg-neutral-100 dark:hover:bg-white/10 rounded-none transition-colors';
 
   return (
     <div className="relative inline-block" ref={containerRef}>
@@ -212,7 +212,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex items-center justify-center">
             <span className="absolute inset-0 rounded-full bg-red-400 opacity-70 animate-ping" />
-            <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10.5px] font-extrabold rounded-full flex items-center justify-center leading-none shadow-xs">
+ <span className="relative min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10.5px] font-extrabold rounded-none flex items-center justify-center leading-none ">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           </span>
@@ -226,22 +226,22 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
             ref={panelRef}
             style={fullScreen ? { position: 'fixed', inset: 0, zIndex: 99999 } : panelStyle}
             className={cn(
-              "bg-white/95 dark:bg-[#16161a]/95 backdrop-blur-md shadow-2xl flex flex-col overflow-hidden border border-neutral-200/90 dark:border-white/10 animate-in fade-in zoom-in-95 duration-150",
-              fullScreen ? "rounded-none border-0" : "rounded-2xl"
+ "bg-white/95 dark:bg-[#16161a]/95 flex flex-col overflow-hidden border border-neutral-200/90 dark:border-white/10 animate-in fade-in zoom-in-95 duration-150",
+ fullScreen ? "rounded-none-none border-0" : "rounded-none"
             )}
           >
             {/* ── Header: Título, Pestañas y Acciones ── */}
             <div className="p-3.5 border-b border-neutral-100 dark:border-white/10 bg-neutral-50/50 dark:bg-white/[0.02]">
               <div className="flex items-center justify-between gap-2 mb-2.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-accent/10 dark:bg-accent/20 flex items-center justify-center text-accent-ink">
+ <div className="w-7 h-7 rounded-none bg-accent/10 dark:bg-accent/20 flex items-center justify-center text-accent-ink">
                     <Bell className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-1.5 leading-tight">
                       Notificaciones
                       {unreadCount > 0 && (
-                        <span className="px-1.5 py-0.2 bg-red-500 text-white text-[11px] font-bold rounded-full">
+ <span className="px-1.5 py-0.2 bg-red-500 text-white text-[11px] font-bold rounded-none">
                           {unreadCount}
                         </span>
                       )}
@@ -253,7 +253,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-accent-ink hover:bg-accent/10 rounded-lg transition-colors"
+ className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-accent-ink hover:bg-accent/10 rounded-none transition-colors"
                       title="Marcar todas como leídas"
                     >
                       <CheckCheck className="w-3.5 h-3.5" />
@@ -262,7 +262,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                   )}
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="p-1 rounded-lg text-neutral-500 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-200/60 dark:hover:bg-white/10 transition-colors"
+ className="p-1 rounded-none text-neutral-500 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-200/60 dark:hover:bg-white/10 transition-colors"
                     title="Cerrar"
                   >
                     <X className="w-4 h-4" />
@@ -272,13 +272,13 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
 
               {/* Pestañas: Todas vs No Leídas */}
               <div className="flex items-center justify-between gap-2 pt-1">
-                <div className="flex items-center gap-1 bg-neutral-200/70 dark:bg-white/5 p-0.5 rounded-lg text-xs font-medium">
+ <div className="flex items-center gap-1 bg-neutral-200/70 dark:bg-white/5 p-0.5 rounded-none text-xs font-medium">
                   <button
                     onClick={() => setActiveTab('all')}
                     className={cn(
-                      'px-2.5 py-1 rounded-md transition-all',
+ 'px-2.5 py-1 rounded-none transition-all',
                       activeTab === 'all'
-                        ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-2xs font-semibold'
+ ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold'
                         : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
                     )}
                   >
@@ -287,9 +287,9 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                   <button
                     onClick={() => setActiveTab('unread')}
                     className={cn(
-                      'px-2.5 py-1 rounded-md transition-all flex items-center gap-1',
+ 'px-2.5 py-1 rounded-none transition-all flex items-center gap-1',
                       activeTab === 'unread'
-                        ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-2xs font-semibold'
+ ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold'
                         : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
                     )}
                   >
@@ -306,7 +306,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                     <select
                       value={filterModule}
                       onChange={(e) => setFilterModule(e.target.value)}
-                      className="text-xs py-1 pl-2 pr-6 border border-soft dark:border-white/10 rounded-lg bg-surface-card dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-accent appearance-none cursor-pointer"
+ className="text-xs py-1 pl-2 pr-6 border border-soft dark:border-white/10 rounded-none bg-surface-card dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 focus:outline-none focus:ring-1 focus:ring-accent appearance-none cursor-pointer"
                     >
                       <option value="all">Módulos (todos)</option>
                       {modules.map((m) => (
@@ -325,7 +325,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
             <div className="flex-1 overflow-y-auto divide-y divide-neutral-100 dark:divide-white/[0.04]">
               {filteredNotifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-white/5 flex items-center justify-center text-neutral-500 mb-3">
+ <div className="w-12 h-12 rounded-none bg-neutral-100 dark:bg-white/5 flex items-center justify-center text-neutral-500 mb-3">
                     <Inbox className="w-6 h-6" />
                   </div>
                   <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
@@ -359,11 +359,11 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                     >
                       {/* Indicador de no leído */}
                       {isUnread && (
-                        <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full bg-accent" />
+ <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-none-r-full bg-accent" />
                       )}
 
                       {/* Icono del Módulo */}
-                      <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', cfg.bgCls, cfg.colorCls)}>
+ <div className={cn('w-9 h-9 rounded-none flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', cfg.bgCls, cfg.colorCls)}>
                         <Icon className="w-4 h-4" />
                       </div>
 
@@ -387,7 +387,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
 
                         {/* Metadatos y Botones de Acción */}
                         <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-neutral-100/60 dark:border-white/[0.03]">
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[10.5px] font-bold uppercase tracking-wider bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-400">
+ <span className="inline-block px-1.5 py-0.5 rounded-none text-[10.5px] font-bold uppercase tracking-wider bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-400">
                             {n.modulo}
                           </span>
 
@@ -397,14 +397,14 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                                 <a
                                   href={`tel:${numeroLlamada}`}
                                   onClick={(e) => handleLlamarClick(e, n)}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-accent-ink hover:bg-accent/10 rounded-md transition-colors"
+ className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-accent-ink hover:bg-accent/10 rounded-none transition-colors"
                                 >
                                   <Phone className="w-3 h-3" />
                                   Llamar
                                 </a>
                                 <button
                                   onClick={(e) => handleWhatsappClick(e, n, numeroLlamada)}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-md transition-colors"
+ className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-none transition-colors"
                                 >
                                   <MessageCircle className="w-3 h-3" />
                                   WhatsApp
@@ -422,7 +422,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                                   e.stopPropagation();
                                   markAsRead(n.id);
                                 }}
-                                className="p-1 text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-md transition-colors"
+ className="p-1 text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-none transition-colors"
                                 title="Marcar como leída"
                               >
                                 <Check className="w-3.5 h-3.5" />
@@ -434,7 +434,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
                                 e.stopPropagation();
                                 deleteNotification(n.id);
                               }}
-                              className="p-1 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+ className="p-1 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-none transition-colors"
                               title="Eliminar notificación"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -457,7 +457,7 @@ export function NotificationBell({ compact, dropdownSide = 'right', fixedPanel }
               {!pushEnabled && (
                 <button
                   onClick={requestPushPermission}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-accent-ink hover:bg-accent/10 transition-colors"
+ className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none font-semibold text-accent-ink hover:bg-accent/10 transition-colors"
                 >
                   <Sparkles className="w-3 h-3" />
                   Activar Push en PC

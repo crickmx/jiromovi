@@ -202,6 +202,14 @@ class SessionManager {
     });
 
     // ─── Contacts Sync ──────────────────────────────────────────
+    // Baileys 6.7 emite `contacts.upsert` con los contactos que llegan del
+    // teléfono; sin este manejador los nombres solo aparecían al emparejar.
+    sock.ev.on('contacts.upsert', (contactos) => {
+      if (!Array.isArray(contactos) || contactos.length === 0) return;
+      console.log(`[${userId}] contacts.upsert: ${contactos.length} contactos`);
+      supabaseSync.syncContacts(userId, contactos).catch(() => {});
+    });
+
     sock.ev.on('contacts.set', ({ contacts }) => {
       console.log(`[${userId}] contacts.set: ${contacts.length} contacts received`);
 
@@ -377,9 +385,15 @@ class SessionManager {
         // Update conversation list
         this.updateConversationList(sessionData, key, isFromMe ? null : (senderName || pushName), content.text || `[${content.mediaType}]`, isFromMe, isGroup);
 
-        // Update contact pushName
+        // Nombre y teléfono real del contacto: el lid del chat no es ninguno de los dos.
         if (!isFromMe && pushName && pushName !== key && !isGroup) {
-          supabaseSync.updateContactPushName(userId, key, pushName).catch(() => {});
+          supabaseSync.updateContactPushName(
+            userId,
+            key,
+            pushName,
+            this.telefonoReal(msg),
+            /@lid$/.test(remoteJid) ? remoteJid : null,
+          ).catch(() => {});
         }
 
         // Persist ALL messages to Supabase (not just type===notify)
@@ -422,6 +436,9 @@ class SessionManager {
 
       // Store all in memory
       let stored = 0;
+      // El historial trae el nombre de cada chat que ha escrito; es la única
+      // fuente de nombres cuando el contacto no está en la agenda del teléfono.
+      const contactosHistorial = new Map();
       for (const msg of msgs) {
         if (!msg.message && !msg.messageStubType) continue;
         const remoteJid = msg.key?.remoteJid;
@@ -441,6 +458,14 @@ class SessionManager {
           ? (msg.key?.participant || msg.participant || null)
           : null;
         const pushName = msg.pushName || (isGroup ? senderJid?.split('@')[0] : key) || key;
+
+        if (!isFromMe && !isGroup && msg.pushName && msg.pushName !== key) {
+          contactosHistorial.set(key, {
+            nombre: msg.pushName,
+            pn: this.telefonoReal(msg),
+            jid: /@lid$/.test(remoteJid) ? remoteJid : null,
+          });
+        }
 
         if (!sessionData.messageStore[key]) sessionData.messageStore[key] = [];
         const exists = sessionData.messageStore[key].some(m => m.id === msg.key.id);
@@ -469,6 +494,12 @@ class SessionManager {
       }
 
       console.log(`[${userId}] messaging-history.set: stored ${stored}/${msgs.length} new in memory`);
+      console.log(`[${userId}] messaging-history.set: ${contactosHistorial.size} contactos con nombre`);
+
+      // Los nombres del historial se guardan una vez por chat, no por mensaje.
+      for (const [phone, datos] of contactosHistorial) {
+        supabaseSync.updateContactPushName(userId, phone, datos.nombre, datos.pn, datos.jid).catch(() => {});
+      }
 
       // Persist to Supabase in background
       supabaseSync.syncHistoryBatch(userId, msgs, sock).catch(err => {
@@ -613,6 +644,18 @@ class SessionManager {
     console.log(`[${userId}] Manual history sync: ${allMessages.length} messages from memory`);
     const synced = await supabaseSync.syncHistoryBatch(userId, allMessages, session.sock);
     return { synced, total: allMessages.length };
+  }
+
+  /**
+   * El teléfono real (PN) de un chat. Cuando WhatsApp direcciona por `lid`
+   * (14-16 dígitos, no marcable) el número llega aparte en `remoteJidAlt` o
+   * `participantAlt`. Devolverlo importa: sin él la bandeja solo tiene lids.
+   */
+  telefonoReal(msg) {
+    const alt = msg?.key?.remoteJidAlt || msg?.key?.participantAlt || null;
+    if (!alt || /@lid$/.test(String(alt))) return null;
+    const digitos = String(alt).split('@')[0].replace(/\D/g, '');
+    return digitos || null;
   }
 
   updateConversationList(sessionData, key, name, lastMessage, fromMe = false, isGroup = false) {

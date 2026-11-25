@@ -73,7 +73,7 @@ export function TableSkeleton({ rows = 5, columns = 4, className }: TableSkeleto
   return (
     <div className={cn("space-y-0 animate-fade-in", className)}>
       {/* Header row */}
-      <div className="flex gap-4 px-4 py-3 border-b border-soft bg-surface-muted/60 dark:bg-white/3 rounded-t-2xl">
+      <div className="flex gap-4 px-4 py-3 border-b border-soft bg-surface-muted/60 dark:bg-white/3">
         {Array.from({ length: columns }).map((_, i) => (
           <Skeleton key={i} className="h-3.5 flex-1" />
         ))}
@@ -107,10 +107,10 @@ export function CardSkeleton({ count = 3, className }: CardSkeletonProps) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="bg-surface-card rounded-[var(--radius-lg)] border border-soft shadow-e1 p-5 space-y-3"
+          className="bg-surface-card rounded-none border border-soft p-5 space-y-3"
         >
           <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-xl flex-shrink-0" />
+            <Skeleton className="h-10 w-10 rounded-none flex-shrink-0" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-1/2" />

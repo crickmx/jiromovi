@@ -27,7 +27,7 @@ export function Section({
 
   const variantStyles: Record<string, string> = {
     default: '',
-    card: 'bg-white dark:bg-neutral-800/60 rounded-2xl border border-neutral-200/70 dark:border-white/10 shadow-card',
+    card: 'bg-surface-card rounded-none border border-soft',
     bordered: 'border-l-4 border-accent pl-4',
   };
 
@@ -44,7 +44,7 @@ export function Section({
             {title && (
               <div className="flex items-center gap-2 mb-1">
                 {Icon && (
-                  <div className="p-1.5 rounded-xl bg-accent-soft dark:bg-accent/15">
+                  <div className="p-1.5 rounded-none bg-accent-soft dark:bg-accent/15">
                     <Icon className="w-4 h-4 text-accent-ink flex-shrink-0" />
                   </div>
                 )}

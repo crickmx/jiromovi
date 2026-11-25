@@ -7,7 +7,7 @@ function Skeleton({
   return (
     <div
       className={cn(
-        "rounded-xl bg-surface-muted dark:bg-white/5 shimmer",
+        "rounded-none bg-surface-muted dark:bg-white/5 shimmer",
         className
       )}
       {...props}

@@ -28,8 +28,8 @@ export function FilterBar({
 }: FilterBarProps) {
   return (
     <div className={cn(
-      "bg-surface-card rounded-2xl border border-soft shadow-e1 p-3 sm:p-4",
-      sticky && "sticky top-0 z-10 shadow-sm",
+      "bg-surface-card rounded-none border border-soft p-3 sm:p-4",
+      sticky && "sticky top-0 z-10 bg-surface-card",
       className
     )}>
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -42,7 +42,7 @@ export function FilterBar({
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={searchPlaceholder}
               className={cn(
-                "w-full pl-9 pr-3 py-2 text-sm rounded-xl outline-none",
+                "w-full pl-9 pr-3 py-2 text-sm rounded-none outline-none",
                 "bg-surface-muted dark:bg-white/6",
                 "border border-soft dark:border-white/12",
                 "text-neutral-900 dark:text-white",
@@ -64,7 +64,7 @@ export function FilterBar({
           {hasActiveFilters && onClearFilters && (
             <button
               onClick={onClearFilters}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-white/70 bg-neutral-100 dark:bg-white/8 rounded-lg hover:bg-neutral-200 dark:hover:bg-white/14 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-white/70 bg-neutral-100 dark:bg-white/8 rounded-none hover:bg-neutral-200 dark:hover:bg-white/14 transition-colors"
             >
               <X className="w-3 h-3" />
               Limpiar
@@ -97,7 +97,7 @@ export function FilterSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        "px-3 py-2 text-sm rounded-xl outline-none",
+        "px-3 py-2 text-sm rounded-none outline-none",
         "bg-surface-muted dark:bg-white/6",
         "border border-soft dark:border-white/12",
         "text-neutral-800 dark:text-white/85",

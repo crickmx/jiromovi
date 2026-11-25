@@ -3,7 +3,7 @@ import { useThemeMode } from "@/hooks/useThemeMode";
 import { Sun, Moon, Laptop } from "lucide-react";
 
 interface ThemeToggleProps {
-  /** Render as a compact sidebar-rail style button (44×44 px, rounded-2xl) */
+ /** Render as a compact sidebar-rail style button (44×44 px, rounded-none) */
   compact?: boolean;
   /** Which side to open the dropdown. Defaults to 'right' (left-full) for sidebar, 'bottom' for inline. */
   dropdownSide?: 'right' | 'bottom';
@@ -74,14 +74,14 @@ export function ThemeToggle({ compact, dropdownSide = 'right', fixedPanel }: The
   }, [open, fixedPanel, calculatePosition]);
 
   const buttonClass = compact
-    ? "sidebar-rail-btn w-11 h-11 rounded-2xl flex items-center justify-center active:scale-90"
-    : "inline-flex items-center justify-center h-10 w-10 rounded-xl border border-soft bg-surface-card hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all duration-200 ease-ios";
+ ? "sidebar-rail-btn w-11 h-11 rounded-none flex items-center justify-center "
+ : "inline-flex items-center justify-center h-10 w-10 rounded-none border border-soft bg-surface-card hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-all duration-200 ease-ios";
 
   const dropdownPanel = (
     <div
       ref={panelRef}
       style={fixedPanel ? panelStyle : undefined}
-      className={`w-48 rounded-2xl border border-gray-200 bg-white shadow-ios-lg overflow-hidden dark:border-white/10 dark:bg-slate-900 animate-scale-in ${
+ className={`w-48 rounded-none border border-gray-200 bg-white overflow-hidden dark:border-white/10 dark:bg-slate-900 animate-scale-in ${
         fixedPanel
           ? ''
           : `absolute z-50 ${dropdownSide === 'right' ? 'left-full ml-2 top-0' : 'right-0 mt-2 top-full'}`

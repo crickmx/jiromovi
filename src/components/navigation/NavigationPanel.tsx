@@ -128,11 +128,11 @@ export function NavigationPanel({
       role="dialog"
       aria-modal="true"
       aria-label={`Panel de navegación de ${workspace.label}`}
-      className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-black/40 animate-in fade-in duration-150"
     >
       <div
         ref={containerRef}
-        className="w-full max-w-2xl bg-white dark:bg-[#16161a] rounded-2xl shadow-2xl border border-neutral-200 dark:border-white/10 flex flex-col max-h-[78vh] overflow-hidden animate-in zoom-in-95 duration-150"
+        className="w-full max-w-2xl bg-surface-card rounded-none shadow-e1 border border-soft flex flex-col max-h-[78vh] overflow-hidden animate-in zoom-in-95 duration-150"
       >
         {/* Cabecera y Buscador */}
         <div className="p-3.5 border-b border-neutral-100 dark:border-white/10 flex items-center gap-3">
@@ -144,7 +144,7 @@ export function NavigationPanel({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={`Buscar en ${workspace.label}...`}
-              className="w-full pl-9 pr-8 py-2 text-sm bg-neutral-100 dark:bg-white/5 border border-transparent rounded-xl focus:outline-none focus:border-accent text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
+              className="w-full pl-9 pr-8 py-2 text-sm bg-neutral-100 dark:bg-white/5 border border-transparent rounded-none focus:outline-none focus:border-accent text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
             />
             {search && (
               <button
@@ -157,7 +157,7 @@ export function NavigationPanel({
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-white rounded-xl hover:bg-surface-muted dark:hover:bg-white/5"
+            className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-white rounded-none hover:bg-surface-muted dark:hover:bg-white/5"
             title="Cerrar (Esc)"
           >
             <X className="w-4 h-4" />
@@ -182,7 +182,7 @@ export function NavigationPanel({
                       key={`fav-${item.path}`}
                       onClick={() => handleSelect(item)}
                       className={cn(
-                        'flex items-center justify-between p-2.5 rounded-xl border transition-all text-left group',
+                        'flex items-center justify-between p-2.5 rounded-none border transition-colors text-left group',
                         isActive
                           ? 'bg-accent/10 border-accent/30 text-accent font-semibold'
                           : 'bg-neutral-50 dark:bg-white/3 border-neutral-200/80 dark:border-white/5 hover:border-neutral-300 dark:hover:border-white/15'
@@ -227,9 +227,9 @@ export function NavigationPanel({
                       key={item.path}
                       onClick={() => handleSelect(item)}
                       className={cn(
-                        'flex items-center justify-between p-2.5 rounded-xl border transition-all text-left group',
+                        'flex items-center justify-between p-2.5 rounded-none border transition-colors text-left group',
                         isActive
-                          ? 'bg-accent/10 border-accent/40 text-accent font-semibold shadow-xs'
+                          ? 'bg-accent/10 border-accent/40 text-accent font-semibold'
                           : 'bg-white dark:bg-[#1a1a1e] border-neutral-200/80 dark:border-white/5 hover:bg-neutral-50 dark:hover:bg-white/5 hover:border-neutral-300 dark:hover:border-white/15'
                       )}
                     >
@@ -247,12 +247,12 @@ export function NavigationPanel({
 
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
                         {countBadge > 0 && (
-                          <span className="px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">
+                          <span className="px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-none">
                             {countBadge}
                           </span>
                         )}
                         {badge && (
-                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-neutral-300">
+                          <span className="px-1.5 py-0.5 rounded-none text-[9.5px] font-bold uppercase tracking-wider bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-neutral-300">
                             {badge.texto}
                           </span>
                         )}
@@ -283,7 +283,7 @@ export function NavigationPanel({
         {/* Footer */}
         <div className="p-3 bg-neutral-50 dark:bg-white/3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-end text-[11px] text-neutral-500 dark:text-neutral-400">
           <div className="flex items-center gap-2">
-            <kbd className="px-1.5 py-0.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded text-[10px] font-mono">
+            <kbd className="px-1.5 py-0.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-none text-[10px] font-mono">
               Esc
             </kbd>
             <span>para cerrar</span>

@@ -22,7 +22,7 @@ const TabsList = React.forwardRef<
         variant === "underline"
           ? "inline-flex h-10 items-center justify-start gap-0 border-b border-neutral-200 dark:border-white/10"
           : cn(
-              "inline-flex h-11 items-center justify-start rounded-2xl",
+              "inline-flex h-11 items-center justify-start rounded-none",
               "bg-surface-muted dark:bg-white/8 border border-soft",
               "p-1 gap-0.5 max-w-full overflow-x-auto"
             ),
@@ -57,8 +57,8 @@ const TabsTrigger = React.forwardRef<
               "dark:data-[state=active]:text-white dark:data-[state=active]:border-accent"
             )
           : cn(
-              "rounded-xl px-3.5 py-1.5 hover:text-neutral-800 dark:hover:text-white/80",
-              "data-[state=active]:bg-white data-[state=active]:text-accent-ink data-[state=active]:shadow-e2",
+              "rounded-none px-3.5 py-1.5 hover:text-neutral-800 dark:hover:text-white/80",
+              "data-[state=active]:bg-white data-[state=active]:text-accent-ink",
               "dark:data-[state=active]:bg-white/12 dark:data-[state=active]:text-white"
             ),
         className

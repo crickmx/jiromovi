@@ -183,13 +183,38 @@ export function getConversationDisplayName(
     const name = participantNames[conv.participantIds[0]];
     if (name) return name;
   }
-  if (conv.contactName) return conv.contactName;
+  // Grupos: el `group_name` que guarda el servidor suele ser el propio JID
+  // ("1203634…@g.us"), que no es un nombre.
+  if (conv.isGroup) {
+    if (conv.groupName && !esJid(conv.groupName)) return conv.groupName;
+    if (conv.contactName && !esJid(conv.contactName) && !esNumeroCrudo(conv.contactName)) return conv.contactName;
+    return 'Grupo de WhatsApp';
+  }
+  if (conv.contactName && !esJid(conv.contactName) && !esNumeroCrudo(conv.contactName)) return conv.contactName;
   // Los chats del protocolo nuevo llegan con un "lid" de 14-16 dígitos en vez
   // de un teléfono: mostrarlo como número confunde más que ayudar.
   if (conv.contactPhone && conv.contactPhone.replace(/\D/g, '').length <= 13) {
     return formatMoviPhone(conv.contactPhone);
   }
   return 'Contacto sin nombre';
+}
+
+/** Un identificador interno de WhatsApp (`…@g.us`, `…@lid`, `…@s.whatsapp.net`). */
+export function esJid(valor: string | null | undefined): boolean {
+  return !!valor && /@(g\.us|lid|s\.whatsapp\.net|broadcast)$/i.test(valor.trim());
+}
+
+/**
+ * Un "nombre" que en realidad es un número (o un lid de WhatsApp, el
+ * identificador interno de 14-16 dígitos) no es un nombre: no aporta nada
+ * pintarlo y confunde al asesor, que cree estar viendo un teléfono marcable.
+ */
+export function esNumeroCrudo(valor: string | null | undefined): boolean {
+  if (!valor) return false;
+  const limpio = valor.trim();
+  if (!/^[0-9+\s()-]+$/.test(limpio)) return false;
+  const digitos = limpio.replace(/\D/g, '');
+  return digitos.length >= 14;
 }
 
 export function formatMoviPhone(phone: string): string {

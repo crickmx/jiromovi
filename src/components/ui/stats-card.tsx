@@ -60,14 +60,14 @@ export function StatsCard({
     <div
       onClick={onClick}
       className={cn(
-        'bg-surface-card rounded-[var(--radius-lg)]',
+        'bg-surface-card rounded-none',
         'border border-soft',
-        'shadow-card',
+        
         'transition-all duration-200 ease-smooth',
         compact ? 'p-4' : 'p-4 sm:p-5',
         onClick && [
           'cursor-pointer',
-          'hover:shadow-card-hover',
+          
           'hover:border-accent/25 dark:hover:border-white/18',
           'hover:-translate-y-0.5',
           'active:translate-y-0 active:scale-[0.99]',
@@ -110,7 +110,7 @@ export function StatsCard({
         </div>
 
         {Icon && (
-          <div className={cn('flex-shrink-0 p-2.5 rounded-2xl', iconColorMap[color])}>
+          <div className={cn('flex-shrink-0 p-2.5 rounded-none', iconColorMap[color])}>
             <Icon className="w-5 h-5" />
           </div>
         )}

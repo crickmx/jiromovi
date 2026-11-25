@@ -39,14 +39,8 @@ export function EmptyState({
       )}
     >
       {Icon && (
-        <div className="relative mb-5" aria-hidden="true">
-          {/* Halo orgánico de marca, bajo contraste */}
-          <span
-            className="absolute -inset-4 rounded-[46%_54%_58%_42%/52%_44%_56%_48%] bg-accent-soft dark:bg-accent/10"
-          />
-          <span className="relative grid place-items-center w-14 h-14 rounded-2xl bg-surface-card border border-soft shadow-e2">
-            <Icon className="h-6 w-6 text-accent-ink" strokeWidth={1.75} />
-          </span>
+        <div className="mb-5" aria-hidden="true">
+          <Icon className="h-9 w-9 text-accent-ink" strokeWidth={1.5} />
         </div>
       )}
 

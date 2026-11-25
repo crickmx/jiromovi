@@ -205,11 +205,10 @@ class SupabaseSync {
         })
         .eq('id', conversationId);
 
-      if (incrementUnread) {
-        await this.supabase.rpc('increment_unread_count', { conv_id: conversationId }).catch(() => {
-          this.supabase.from('whatsapp_conversations').update({ unread_count: 1 }).eq('id', conversationId);
-        });
-      }
+      // El contador de pendientes lo lleva un trigger de la base
+      // (trg_wa_contar_mensaje): contarlo también aquí lo duplicaba. El
+      // parámetro se conserva por compatibilidad y se ignora a propósito.
+      void incrementUnread;
     } catch (err) {
       console.error(`[Sync] Error updating conversation:`, err.message);
     }
@@ -604,17 +603,30 @@ class SupabaseSync {
         continue;
       }
 
+      const esLid = /@lid$/.test(contact.id);
       const phone = contact.id.split('@')[0];
-      const name = contact.notify || contact.name || contact.verifiedName;
-      if (name) await this.updateConversationName(userId, phone, name);
+      // Con el protocolo nuevo el chat va por lid y el teléfono real llega
+      // aparte (`phoneNumber` / `idAlt`). Se guardan en columnas distintas.
+      const pnBruto = contact.phoneNumber || contact.idAlt || null;
+      const pn = pnBruto && !/@lid$/.test(String(pnBruto)) ? String(pnBruto).split('@')[0] : null;
+      const lid = contact.lid ? String(contact.lid).split('@')[0] : (esLid ? phone : null);
 
-      await this.upsertContact(userId, phone, contact);
+      const name = contact.notify || contact.name || contact.verifiedName || contact.pushName;
+      if (name) {
+        await this.updateConversationName(userId, phone, name);
+        if (lid && lid !== phone) await this.updateConversationName(userId, lid, name);
+      }
+
+      await this.upsertContact(userId, phone, contact, { pn });
+      if (lid && lid !== phone) {
+        await this.upsertContact(userId, lid, { ...contact, id: `${lid}@lid` }, { pn });
+      }
       synced++;
     }
     console.log(`[${userId}] [Contacts] Synced ${synced} contacts`);
   }
 
-  async upsertContact(userId, phone, contactData) {
+  async upsertContact(userId, phone, contactData, { pn = null } = {}) {
     if (!this.enabled) return;
 
     try {
@@ -625,6 +637,7 @@ class SupabaseSync {
         is_business: !!contactData.isBusiness,
       };
 
+      if (pn) record.pn = String(pn);
       if (contactData.name) record.saved_name = contactData.name;
       if (contactData.notify) record.notify_name = contactData.notify;
       if (contactData.verifiedName) record.verified_name = contactData.verifiedName;
@@ -645,18 +658,35 @@ class SupabaseSync {
     }
   }
 
-  async updateContactPushName(userId, phone, pushName) {
+  async updateContactPushName(userId, phone, pushName, pn = null, jid = null) {
     if (!this.enabled || !pushName) return;
+    await this.registrarContacto(userId, { phone, nombre: pushName, pn, jid });
+  }
 
+  /**
+   * Guarda lo que WhatsApp nos dice del contacto. `phone` es la clave del chat
+   * (el lid cuando el protocolo nuevo direcciona por lid) y `pn` el teléfono
+   * real cuando viene en `remoteJidAlt`; nunca se mezclan en la misma columna.
+   * El nombre que se pinta lo resuelve un trigger de la base, así que no hace
+   * falta decidir aquí si `pushName` es mejor que el nombre guardado.
+   */
+  async registrarContacto(userId, { phone, nombre, pn = null, jid = null }) {
+    if (!this.enabled || !phone || !nombre) return;
     try {
+      const record = {
+        user_id: userId,
+        phone: String(phone),
+        push_name: nombre,
+      };
+      if (jid) record.jid = jid;
+      if (pn) record.pn = String(pn);
+
       await this.supabase
         .from('whatsapp_contacts')
-        .upsert({
-          user_id: userId,
-          phone,
-          push_name: pushName,
-        }, { onConflict: 'user_id,phone' });
-    } catch {}
+        .upsert(record, { onConflict: 'user_id,phone' });
+    } catch (err) {
+      console.error(`[Sync] Error registrando contacto ${phone}:`, err.message);
+    }
   }
 
   // ─── Media Download & Storage ─────────────────────────────────

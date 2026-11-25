@@ -47,7 +47,7 @@ export function ContextMessage({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-xl border backdrop-blur-sm',
+        'flex items-start gap-3 p-4 rounded-none border',
         style.bg,
         style.border,
         'animate-slide-down',
