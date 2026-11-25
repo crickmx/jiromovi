@@ -65,7 +65,16 @@ class SessionManager {
     }
 
     const sessionDir = path.join(SESSIONS_DIR, userId);
-    const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+    // El contenedor no conserva el disco: si las credenciales no están, se
+    // traen del respaldo (bucket privado) antes de abrir el socket. Así un
+    // deploy no obliga a escanear el QR de nuevo.
+    await supabaseSync.restaurarCredenciales(userId, sessionDir).catch(() => {});
+
+    const { state, saveCreds: escribirCreds } = await useMultiFileAuthState(sessionDir);
+    const saveCreds = async () => {
+      await escribirCreds();
+      supabaseSync.respaldarCredenciales(userId, sessionDir).catch(() => {});
+    };
     const { version } = await fetchLatestBaileysVersion();
 
     const sessionData = {
@@ -128,6 +137,78 @@ class SessionManager {
         });
 
         console.log(`[${userId}] WhatsApp connected: ${sessionData.phone}`);
+
+        // Los grupos llegan sólo con su JID: el asunto hay que pedirlo aparte.
+        // Sin esto la bandeja muestra "1203634…@g.us" o "Grupo de WhatsApp"
+        // para todos, y la lista no se parece a la del teléfono.
+        setTimeout(async () => {
+          try {
+            const grupos = await sock.groupFetchAllParticipating();
+            let conNombre = 0;
+            for (const [jid, meta] of Object.entries(grupos || {})) {
+              const asunto = meta && meta.subject;
+              if (!asunto) continue;
+              const idx = sessionData.conversations.findIndex((c) => c.phone === jid);
+              if (idx >= 0) sessionData.conversations[idx].name = asunto;
+              await supabaseSync.updateGroupConversationName(userId, jid, asunto).catch(() => {});
+              conNombre++;
+            }
+            console.log(`[${userId}] grupo(s) con nombre: ${conNombre}`);
+          } catch (err) {
+            console.log(`[${userId}] grupos sin nombre: ${err.message}`);
+          }
+        }, 5000);
+
+        // El chat puede venir sólo con lid (identificador interno, no marcable).
+        // Se intenta resolver el teléfono real con el mapeo de Baileys y, si no,
+        // preguntando a WhatsApp; sin esto la bandeja no puede mostrar número.
+        setTimeout(async () => {
+          try {
+            const { data: conversaciones } = await supabaseSync.supabase
+              .from('whatsapp_conversations')
+              .select('id, remote_phone')
+              .eq('user_id', userId)
+              .is('remote_pn', null)
+              .limit(300);
+            const soloLid = (conversaciones || [])
+              .filter((c) => /^\d{14,}$/.test(c.remote_phone || ''))
+              .slice(0, 80);
+
+            const mapping = sock.signalRepository && sock.signalRepository.lidMapping;
+            let resueltos = 0;
+            for (const conv of soloLid) {
+              try {
+                let pn = null;
+                if (mapping && typeof mapping.getPNForLID === 'function') {
+                  const r = await mapping.getPNForLID(`${conv.remote_phone}@lid`);
+                  const limpio = String(r || '').split('@')[0].replace(/\D/g, '');
+                  if (limpio.length >= 10) pn = limpio;
+                }
+                if (!pn && typeof sock.onWhatsApp === 'function') {
+                  const info = await sock.onWhatsApp(`${conv.remote_phone}@lid`).catch(() => []);
+                  const jid = (Array.isArray(info) && info[0] && info[0].jid) || '';
+                  if (jid && !/@lid$/.test(jid)) {
+                    const limpio = String(jid).split('@')[0].replace(/\D/g, '');
+                    if (limpio.length >= 10) pn = limpio;
+                  }
+                }
+                if (pn) {
+                  await supabaseSync.supabase
+                    .from('whatsapp_conversations')
+                    .update({ remote_pn: pn })
+                    .eq('id', conv.id);
+                  resueltos++;
+                }
+                await new Promise((r) => setTimeout(r, 120));
+              } catch {
+                /* un chat sin resolver no debe parar al resto */
+              }
+            }
+            console.log(`[${userId}] teléfonos reales resueltos: ${resueltos}/${soloLid.length}`);
+          } catch (err) {
+            console.log(`[${userId}] no se pudo resolver teléfonos: ${err.message}`);
+          }
+        }, 12000);
       }
 
       if (connection === 'close') {
@@ -144,6 +225,10 @@ class SessionManager {
           sessionData.qrBase64 = null;
           sessionData.sock = null;
           try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch {}
+          // Si el teléfono cerró la sesión, el respaldo también se borra: si no,
+          // el arranque siguiente restauraría credenciales muertas y pediría QR
+          // en bucle.
+          await supabaseSync.borrarCredenciales(userId).catch(() => {});
           await supabaseSync.updateSessionStatus(userId, 'disconnected');
           console.log(`[${userId}] Logged out`);
         }
@@ -208,6 +293,15 @@ class SessionManager {
       if (!Array.isArray(contactos) || contactos.length === 0) return;
       console.log(`[${userId}] contacts.upsert: ${contactos.length} contactos`);
       supabaseSync.syncContacts(userId, contactos).catch(() => {});
+    });
+
+    sock.ev.on('groups.upsert', (grupos) => {
+      for (const g of grupos || []) {
+        if (!g.id || !g.subject) continue;
+        const idx = sessionData.conversations.findIndex((c) => c.phone === g.id);
+        if (idx >= 0) sessionData.conversations[idx].name = g.subject;
+        supabaseSync.updateGroupConversationName(userId, g.id, g.subject).catch(() => {});
+      }
     });
 
     sock.ev.on('contacts.set', ({ contacts }) => {
@@ -564,6 +658,7 @@ class SessionManager {
 
     const sessionDir = path.join(SESSIONS_DIR, userId);
     try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch {}
+    await supabaseSync.borrarCredenciales(userId).catch(() => {});
   }
 
   async sendMessage(userId, to, text, quotedId) {
@@ -656,6 +751,26 @@ class SessionManager {
     if (!alt || /@lid$/.test(String(alt))) return null;
     const digitos = String(alt).split('@')[0].replace(/\D/g, '');
     return digitos || null;
+  }
+
+  /**
+   * Cierra los sockets sin desvincular (no borra credenciales). Railway manda
+   * SIGTERM antes de matar el contenedor: si el socket se cierra limpio, la
+   * instancia nueva hereda la vinculación en vez de pelearse con la vieja
+   * (lo que WhatsApp resuelve con un 401 y obliga a escanear el QR otra vez).
+   */
+  async shutdownAll() {
+    const abiertas = [...this.sessions.values()].filter((s) => s && s.sock);
+    for (const session of abiertas) {
+      try {
+        session.sock.end(undefined);
+      } catch {
+        /* el socket ya estaba cerrado */
+      }
+    }
+    if (abiertas.length) await new Promise((r) => setTimeout(r, 800));
+    this.sessions.clear();
+    return abiertas.length;
   }
 
   updateConversationList(sessionData, key, name, lastMessage, fromMe = false, isGroup = false) {

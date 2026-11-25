@@ -13,6 +13,7 @@ import {
   buildContactNameMap,
   normalizeMexicanPhone,
   esNumeroCrudo,
+  esJid,
 } from '@/lib/unifiedContactCenter';
 import { UnifiedConversationList } from '@/components/contactCenter/UnifiedConversationList';
 import { UnifiedConversationThread } from '@/components/contactCenter/UnifiedConversationThread';
@@ -222,7 +223,11 @@ export default function CentroContactoUnificado() {
             ? textoCrudo
             : ultimo?.contenido && ultimo.contenido !== '[unknown]' ? ultimo.contenido : null;
           const nombreCrudo = c.remote_name && c.remote_name !== c.remote_phone ? c.remote_name : null;
-          const nombre = nombreCrudo && !esNumeroCrudo(nombreCrudo) ? nombreCrudo : (ultimo?.nombre_sugerido || null);
+          const sugerido = ultimo?.nombre_sugerido || null;
+          // Ni el lid ni el propio número sirven como nombre: si sólo hay eso,
+          // se deja vacío para que la ficha muestre el teléfono.
+          const legible = (v: string | null) => !!v && !esNumeroCrudo(v) && !esJid(v) ? v : null;
+          const nombre = legible(nombreCrudo) || legible(sugerido);
           // El chat puede venir direccionado por lid (no marcable); si la base
           // ya conoce el teléfono real, se pinta ese.
           const telefono = c.remote_pn && c.remote_pn !== c.remote_phone ? c.remote_pn : c.remote_phone;
