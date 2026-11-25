@@ -688,6 +688,26 @@ class SessionManager {
     return digitos || null;
   }
 
+  /**
+   * Cierra los sockets sin desvincular (no borra credenciales). Railway manda
+   * SIGTERM antes de matar el contenedor: si el socket se cierra limpio, la
+   * instancia nueva hereda la vinculación en vez de pelearse con la vieja
+   * (lo que WhatsApp resuelve con un 401 y obliga a escanear el QR otra vez).
+   */
+  async shutdownAll() {
+    const abiertas = [...this.sessions.values()].filter((s) => s && s.sock);
+    for (const session of abiertas) {
+      try {
+        session.sock.end(undefined);
+      } catch {
+        /* el socket ya estaba cerrado */
+      }
+    }
+    if (abiertas.length) await new Promise((r) => setTimeout(r, 800));
+    this.sessions.clear();
+    return abiertas.length;
+  }
+
   updateConversationList(sessionData, key, name, lastMessage, fromMe = false, isGroup = false) {
     const idx = sessionData.conversations.findIndex(c => c.phone === key);
     const conv = {

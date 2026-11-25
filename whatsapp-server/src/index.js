@@ -255,6 +255,21 @@ app.get('/admin/sessions', adminAuth, (req, res) => {
   res.json({ sessions });
 });
 
+// Cierre ordenado: Railway reinicia el contenedor en cada deploy y, sin esto,
+// la instancia vieja y la nueva se pelean por las mismas credenciales.
+for (const senal of ['SIGTERM', 'SIGINT']) {
+  process.on(senal, async () => {
+    console.log(`[shutdown] ${senal}: cerrando sesiones de WhatsApp`);
+    try {
+      const cerradas = await sessionManager.shutdownAll();
+      console.log(`[shutdown] ${cerradas} sesión(es) cerradas`);
+    } catch (error) {
+      console.log(`[shutdown] error: ${error.message}`);
+    }
+    process.exit(0);
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`MOVI WhatsApp Server running on port ${PORT}`);
   console.log(`Sessions directory: ./sessions`);
