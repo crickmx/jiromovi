@@ -1,0 +1,1 @@
+import{j as a}from"./ui-DZqB0MA6.js";import{c as t}from"./index-DF2v8Q1U.js";function n({children:x,className:l,size:m="xl"}){const s={sm:"max-w-3xl",md:"max-w-5xl",lg:"max-w-7xl",xl:"max-w-[1600px]",full:"max-w-full"};return a.jsx("div",{className:t("w-full mx-auto px-4 sm:px-6 lg:px-8",s[m],l),children:x})}export{n as C};
