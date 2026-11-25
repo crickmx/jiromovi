@@ -158,6 +158,57 @@ class SessionManager {
             console.log(`[${userId}] grupos sin nombre: ${err.message}`);
           }
         }, 5000);
+
+        // El chat puede venir sólo con lid (identificador interno, no marcable).
+        // Se intenta resolver el teléfono real con el mapeo de Baileys y, si no,
+        // preguntando a WhatsApp; sin esto la bandeja no puede mostrar número.
+        setTimeout(async () => {
+          try {
+            const { data: conversaciones } = await supabaseSync.supabase
+              .from('whatsapp_conversations')
+              .select('id, remote_phone')
+              .eq('user_id', userId)
+              .is('remote_pn', null)
+              .limit(300);
+            const soloLid = (conversaciones || [])
+              .filter((c) => /^\d{14,}$/.test(c.remote_phone || ''))
+              .slice(0, 80);
+
+            const mapping = sock.signalRepository && sock.signalRepository.lidMapping;
+            let resueltos = 0;
+            for (const conv of soloLid) {
+              try {
+                let pn = null;
+                if (mapping && typeof mapping.getPNForLID === 'function') {
+                  const r = await mapping.getPNForLID(`${conv.remote_phone}@lid`);
+                  const limpio = String(r || '').split('@')[0].replace(/\D/g, '');
+                  if (limpio.length >= 10) pn = limpio;
+                }
+                if (!pn && typeof sock.onWhatsApp === 'function') {
+                  const info = await sock.onWhatsApp(`${conv.remote_phone}@lid`).catch(() => []);
+                  const jid = (Array.isArray(info) && info[0] && info[0].jid) || '';
+                  if (jid && !/@lid$/.test(jid)) {
+                    const limpio = String(jid).split('@')[0].replace(/\D/g, '');
+                    if (limpio.length >= 10) pn = limpio;
+                  }
+                }
+                if (pn) {
+                  await supabaseSync.supabase
+                    .from('whatsapp_conversations')
+                    .update({ remote_pn: pn })
+                    .eq('id', conv.id);
+                  resueltos++;
+                }
+                await new Promise((r) => setTimeout(r, 120));
+              } catch {
+                /* un chat sin resolver no debe parar al resto */
+              }
+            }
+            console.log(`[${userId}] teléfonos reales resueltos: ${resueltos}/${soloLid.length}`);
+          } catch (err) {
+            console.log(`[${userId}] no se pudo resolver teléfonos: ${err.message}`);
+          }
+        }, 12000);
       }
 
       if (connection === 'close') {

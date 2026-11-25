@@ -349,11 +349,11 @@ class SupabaseSync {
         metadata: msgData.metadata || null,
       };
 
-      // Add sender_jid for group messages if column exists
-      if (msgData.senderJid) {
-        record.sender_jid = msgData.senderJid;
-        record.sender_name = msgData.senderName || null;
-      }
+      // Quién escribe: en grupos hace falta el participante; en los chats
+      // individuales el nombre del perfil es la única fuente de nombre cuando
+      // WhatsApp direcciona por lid (14-16 dígitos, no marcable).
+      if (msgData.senderName) record.sender_name = msgData.senderName;
+      if (msgData.senderJid) record.sender_jid = msgData.senderJid;
 
       if (msgData.waMessageId) {
         const { data, error } = await this.supabase
@@ -369,7 +369,6 @@ class SupabaseSync {
           // If sender_jid column doesn't exist, retry without it
           if (error.code === '42703' && msgData.senderJid) {
             delete record.sender_jid;
-            delete record.sender_name;
             const { data: d2 } = await this.supabase
               .from('whatsapp_messages')
               .upsert(record, { onConflict: 'user_id,wa_message_id', ignoreDuplicates: true })
