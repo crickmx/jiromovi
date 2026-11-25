@@ -91,7 +91,10 @@ class SupabaseSync {
           session_id: sessionId,
           remote_phone: phone,
           remote_name: name,
-          last_message_at: new Date().toISOString(),
+          // Nace sin fecha: la pone el primer mensaje que se guarde. Si el
+          // emparejamiento crea un chat que nunca trae mensajes, no debe
+          // aparecer arriba de la bandeja.
+          last_message_at: null,
         })
         .select('id, session_id')
         .single();
@@ -134,7 +137,7 @@ class SupabaseSync {
         session_id: sessionId,
         remote_phone: groupJid,
         remote_name: groupName || groupJid,
-        last_message_at: new Date().toISOString(),
+        last_message_at: null,
         unread_count: 0,
       };
 
@@ -327,6 +330,8 @@ class SupabaseSync {
     let synced = 0;
     let skipped = 0;
     let groups = 0;
+    // Último mensaje por conversación, para actualizar la vista previa al final.
+    const nuevas = new Map();
 
     await this.logAudit(userId, 'sync_history_started', { total_messages: messages.length });
     console.log(`[${userId}] [History] Processing ${messages.length} messages from history batch`);
@@ -350,6 +355,12 @@ class SupabaseSync {
           ? (isFromMe ? null : (msg.key?.participant || msg.participant || null))
           : null;
 
+        // El contenido se revisa ANTES de crear la conversación: crear una
+        // fila por un mensaje que no se puede guardar era lo que llenaba la
+        // bandeja de chats vacíos tras cada emparejamiento.
+        const content = this.extractMessageContent(msg);
+        if (!content) { skipped++; continue; }
+
         let conv;
         if (isGroup) {
           // We'll update group name later from group metadata if available
@@ -359,9 +370,6 @@ class SupabaseSync {
           conv = await this.getOrCreateConversation(userId, phone, isFromMe ? null : pushName);
         }
         if (!conv) { skipped++; continue; }
-
-        const content = this.extractMessageContent(msg);
-        if (!content) { skipped++; continue; }
 
         const msgTimestamp = msg.messageTimestamp
           ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp * 1000 : Number(msg.messageTimestamp) * 1000)
@@ -384,6 +392,14 @@ class SupabaseSync {
         });
         synced++;
 
+        const previa = nuevas.get(conv.id);
+        if (!previa || msgTimestamp > previa.ts) {
+          nuevas.set(conv.id, {
+            ts: msgTimestamp,
+            texto: content.text || (content.mediaType ? `[${content.mediaType}]` : null),
+          });
+        }
+
         // Download media for recent messages (last 7 days)
         if (content.hasMedia && sock && (Date.now() - msgTimestamp < 7 * 86400000)) {
           this.downloadAndStoreMedia(userId, conv.id, msg, content, sock).catch(() => {});
@@ -394,6 +410,13 @@ class SupabaseSync {
           console.error(`[Sync] History msg error:`, err.message);
         }
       }
+    }
+
+    // La caché de la lista (last_message_text / last_message_at) también se
+    // actualiza con lo que trae el historial; antes sólo lo hacía el mensaje
+    // en vivo y la bandeja quedaba sin vista previa.
+    for (const [convId, datos] of nuevas) {
+      await this.updateConversationLastMessage(convId, datos.texto, new Date(datos.ts).toISOString(), false);
     }
 
     await this.logAudit(userId, 'sync_history_completed', {

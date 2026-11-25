@@ -230,7 +230,10 @@ export default function CentroContactoUnificado() {
         })
         // Fuera los chats fantasma: sin un solo mensaje y sin nombre. Son
         // residuo del emparejamiento y dejan la bandeja llena de números.
-        .filter(c => ultimoPorConversacion.has(c.id) || !!c.remote_name)
+        // Fuera los chats sin un solo mensaje. Aunque tengan nombre (el
+        // servidor crea una conversación por JID que ve al emparejar), no
+        // aportan nada y tapan a los chats reales.
+        .filter(c => ultimoPorConversacion.has(c.id))
         .slice(0, 200);
 
       const merged = mergeConversations({
