@@ -660,9 +660,6 @@ export default function SaludToday() {
                     <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center">1</span>
                     Elige el Plan de Salud
                   </h2>
-                  <span className="text-xs text-neutral-500">
-                    {planes.length} opciones disponibles
-                  </span>
                 </div>
 
                 {loading ? (
