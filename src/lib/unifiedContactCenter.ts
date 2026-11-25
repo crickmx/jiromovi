@@ -183,13 +183,25 @@ export function getConversationDisplayName(
     const name = participantNames[conv.participantIds[0]];
     if (name) return name;
   }
-  if (conv.contactName && !esNumeroCrudo(conv.contactName)) return conv.contactName;
+  // Grupos: el `group_name` que guarda el servidor suele ser el propio JID
+  // ("1203634…@g.us"), que no es un nombre.
+  if (conv.isGroup) {
+    if (conv.groupName && !esJid(conv.groupName)) return conv.groupName;
+    if (conv.contactName && !esJid(conv.contactName) && !esNumeroCrudo(conv.contactName)) return conv.contactName;
+    return 'Grupo de WhatsApp';
+  }
+  if (conv.contactName && !esJid(conv.contactName) && !esNumeroCrudo(conv.contactName)) return conv.contactName;
   // Los chats del protocolo nuevo llegan con un "lid" de 14-16 dígitos en vez
   // de un teléfono: mostrarlo como número confunde más que ayudar.
   if (conv.contactPhone && conv.contactPhone.replace(/\D/g, '').length <= 13) {
     return formatMoviPhone(conv.contactPhone);
   }
   return 'Contacto sin nombre';
+}
+
+/** Un identificador interno de WhatsApp (`…@g.us`, `…@lid`, `…@s.whatsapp.net`). */
+export function esJid(valor: string | null | undefined): boolean {
+  return !!valor && /@(g\.us|lid|s\.whatsapp\.net|broadcast)$/i.test(valor.trim());
 }
 
 /**
