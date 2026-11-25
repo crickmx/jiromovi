@@ -97,6 +97,16 @@ export function DesktopSidebar({
     return {};
   });
 
+  // Acordeón abierto TEMPORALMENTE por hover: se ve su contenido al pasar el cursor
+  // y vuelve a su estado normal (abierto a mano o cerrado) cuando el cursor sale.
+  const [acordeonHover, setAcordeonHover] = useState<string | null>(null);
+
+  // Abrir al pasar el cursor sobre el encabezado (o sobre sus propios sub-items,
+  // para que el acordeón no se cierre al bajar hacia el contenido).
+  const hoverAcordeon = (id: string) => () => setAcordeonHover(id);
+  const salirAcordeon = (id: string) => () =>
+    setAcordeonHover(prev => (prev === id ? null : prev));
+
   // Favoritos: abierto siempre por default; si el usuario lo cierra, se respeta hasta que lo reabra.
   const [favoritosAbierto, setFavoritosAbierto] = useState<boolean>(() => {
     try { return localStorage.getItem(FAVORITOS_ABIERTO_KEY) !== '0'; } catch { return true; }
@@ -251,6 +261,9 @@ export function DesktopSidebar({
     });
   };
 
+  // Los favoritos también se despliegan mientras el cursor está encima.
+  const favoritosVisibles = favoritosAbierto || acordeonHover === 'favoritos';
+
   const seccionFavoritos = itemsFavoritos.length === 0 ? null : !isExpanded ? (
     // Menú angosto: la estrella abre/cierra, y abierto muestra el ícono de cada favorito.
     <div key="favoritos" className="space-y-1">
@@ -296,10 +309,15 @@ export function DesktopSidebar({
       })}
     </div>
   ) : (
-    <div key="favoritos" className="space-y-0.5">
+    <div
+      key="favoritos"
+      className="space-y-0.5"
+      onMouseEnter={hoverAcordeon('favoritos')}
+      onMouseLeave={salirAcordeon('favoritos')}
+    >
       <div
         onClick={toggleFavoritos}
-        aria-expanded={favoritosAbierto}
+        aria-expanded={favoritosVisibles}
         className="w-full flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium transition-colors text-left relative group cursor-pointer text-neutral-700 dark:text-neutral-300 hover:bg-surface-muted dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white"
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -310,11 +328,11 @@ export function DesktopSidebar({
           </span>
         </div>
         <span className="p-1 rounded-none text-neutral-400 ml-1" aria-hidden="true">
-          {favoritosAbierto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          {favoritosVisibles ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </span>
       </div>
 
-      {favoritosAbierto && (
+      {favoritosVisibles && (
         <div className="pl-6 pr-1 py-0.5 space-y-0.5 border-l-2 border-amber-200/70 dark:border-amber-500/20 ml-4">
           {itemsFavoritos.map(item => renderSubItem(item, 'fav-'))}
         </div>
@@ -428,7 +446,7 @@ export function DesktopSidebar({
     const Icon = ws.icon;
     const hubRoute = WORKSPACE_HUB_ROUTES[ws.id] || ws.items[0]?.path || '/dashboard';
     const isWsActive = ws.id === (workspace?.id ?? null) || location.pathname === hubRoute;
-    const isOpen = openWorkspaces[ws.id] ?? isWsActive;
+    const isOpen = acordeonHover === ws.id || (openWorkspaces[ws.id] ?? isWsActive);
 
     // Sub-items del workspace
     const allWsItems = itemsVisiblesDe(ws);
@@ -468,12 +486,19 @@ export function DesktopSidebar({
     }
 
     return (
-      <div key={ws.id} className="space-y-0.5">
+      <div
+        key={ws.id}
+        className="space-y-0.5"
+        onMouseEnter={hoverAcordeon(ws.id)}
+        onMouseLeave={salirAcordeon(ws.id)}
+      >
         {separadorAntes && <div className="h-px bg-neutral-100 dark:bg-white/5 my-1.5 mx-2" />}
 
-        {/* Encabezado Acordeón: Clic navega a la página de sección (Hub) */}
+        {/* Encabezado Acordeón: Clic navega a la página de sección (Hub).
+            El contenido también se abre solo mientras el cursor está encima. */}
         <div
           onClick={() => handleNav(hubRoute)}
+          aria-expanded={isOpen}
           className={cn(
             'w-full flex items-center justify-between px-3 py-2 rounded-none text-xs font-medium transition-colors text-left relative group cursor-pointer',
             isWsActive
