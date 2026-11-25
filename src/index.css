@@ -89,12 +89,12 @@
   --font-display: 'Sora Variable', 'Sora', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-body: 'Manrope Variable', 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
-  /* ── Superficies (marfil cálido) ── */
+  /* ── Superficies (gris claro neutro frío) ── */
   /* Canales RGB (permiten opacidad en Tailwind: bg-surface-card/95) */
-  --surface-canvas-rgb: 246 245 242;
+  --surface-canvas-rgb: 245 245 247;   /* #F5F5F7 — fondo de la app */
   --surface-card-rgb:   255 255 255;
-  --surface-muted-rgb:  241 239 235;
-  --surface-sunken-rgb: 235 233 228;
+  --surface-muted-rgb:  240 240 243;
+  --surface-sunken-rgb: 234 234 238;
   --surface-canvas:  rgb(var(--surface-canvas-rgb));   /* fondo de la app */
   --surface-card:    rgb(var(--surface-card-rgb));
   --surface-muted:   rgb(var(--surface-muted-rgb));
