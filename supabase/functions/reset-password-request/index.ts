@@ -99,11 +99,14 @@ Deno.serve(async (req: Request) => {
     }
 
     // Step 5: Generate recovery link
-    // El enlace tiene que volver al mismo sitio desde el que se pidió: si no,
-    // con la lista de redirecciones del proyecto, un usuario de producción acaba
-    // aterrizando en beta y sin pantalla donde escribir su contraseña.
+    // El enlace va al host canónico. `app.movi.digital` y `www.movi.digital`
+    // sólo hacen 301 a `movi.digital`: mandar el enlace ahí añade un salto que
+    // no aporta nada y que se rompe en cuanto cambia la regla del .htaccess
+    // (pasó: la app vivió en app.movi.digital y el dominio se movió ayer).
+    // Beta se respeta porque es otro despliegue y tiene que volver a beta.
     const origen = req.headers.get('Origin') || '';
-    const appUrl = /^https:\/\/(app|beta)\.movi\.digital$/.test(origen) ? origen : 'https://app.movi.digital';
+    const esBeta = /^https:\/\/beta\.movi\.digital$/.test(origen);
+    const appUrl = esBeta ? origen : 'https://movi.digital';
     const redirectUrl = `${appUrl}/reset-password`;
 
     const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
@@ -186,8 +189,8 @@ Deno.serve(async (req: Request) => {
               </p>
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 32px 0 16px;" />
               <p style="color: #a0aec0; font-size: 12px; margin: 0;">
-                Si el boton no funciona, copia y pega este enlace en tu navegador:<br>
-                <a href="${resetUrl}" style="color: #0E23E2; word-break: break-all;">${resetUrl}</a>
+                Si el boton no funciona, abre este enlace completo:<br>
+                <a href="${resetUrl}" style="color: #0E23E2; word-break: break-all; user-select: all; -webkit-user-select: all;">${resetUrl}</a>
               </p>
             </td>
           </tr>
