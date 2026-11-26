@@ -1,0 +1,1 @@
+import{j as e}from"./ui-DwXELlN8.js";import{O as o}from"./vendor-wNc7A80n.js";import"./supabase-D6X4so3E.js";function i(){return e.jsx("div",{className:"flex flex-col h-full min-h-0",children:e.jsx("div",{className:"flex-1 min-h-0 overflow-hidden",children:e.jsx(o,{})})})}export{i as default};

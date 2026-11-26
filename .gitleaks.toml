@@ -1,5 +1,0 @@
-[allowlist]
-description = "Global allowlist"
-paths = [
-  '''src/pages/SaludToday\.tsx''',
-]
